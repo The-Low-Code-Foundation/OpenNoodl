@@ -33,6 +33,7 @@ const RouterNavigate: NodeDefinitionOptions = {
     navigate: {
       displayName: 'Navigate',
       group: 'Actions',
+      description: 'Navigates the Router to Target Page',
       valueChangedToTrue: function (this: RouterNavigateInstance) {
         this.scheduleNavigate();
       }
@@ -43,6 +44,7 @@ const RouterNavigate: NodeDefinitionOptions = {
       group: 'General',
       default: false,
       type: 'boolean',
+      description: 'Opens the target page in a new browser tab instead of navigating this one',
       set(this: RouterNavigateInstance, value) {
         this._internal.openInNewTab = !!value;
       }
@@ -55,17 +57,20 @@ const RouterNavigate: NodeDefinitionOptions = {
     navigated: {
       type: 'signal',
       displayName: 'Navigated',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the Router has switched to the target page'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when no Target Page is set, or the Router does not serve that page'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'Why the navigation did not happen, set just before Failure fires',
       getter: function (this: RouterNavigateInstance) {
         return this._internal.lastError;
       }

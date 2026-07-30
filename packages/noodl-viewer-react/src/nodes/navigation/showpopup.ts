@@ -42,6 +42,7 @@ const ShowPopupNode: NodeDefinitionOptions = {
       type: 'component',
       displayName: 'Target',
       group: 'General',
+      description: 'Component to open as a popup; its Component Inputs become input ports on this node',
       set: function (this: ShowPopupInstance, value: string) {
         this._internal.target = value;
       }
@@ -57,6 +58,7 @@ const ShowPopupNode: NodeDefinitionOptions = {
       displayName: 'When A Popup Is Open',
       group: 'General',
       default: 'replace',
+      description: 'Replace It closes the popup already showing, Show On Top opens this one over it',
       set: function (this: ShowPopupInstance, value: PopupStackPolicy) {
         this._internal.stackPolicy = value === 'stack' ? 'stack' : 'replace';
       }
@@ -65,6 +67,7 @@ const ShowPopupNode: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Show',
       group: 'Actions',
+      description: 'Opens Target as a popup',
       valueChangedToTrue: function (this: ShowPopupInstance) {
         this.scheduleShow();
       }
@@ -75,23 +78,32 @@ const ShowPopupNode: NodeDefinitionOptions = {
   // never opened was indistinguishable from one the user had not finished with yet. The
   // trigger is an author `Do` (`Show`, group `Actions`), so this cannot fire on the boot path.
   outputs: {
+    // `Closed` carried neither a `displayName` nor a `group`, so it rendered on its own above
+    // the three ports it belongs with. Presentation only — ports are addressed by name — but
+    // it is why the node's own outcome ports read as two unrelated sets.
     Closed: {
-      type: 'signal'
+      type: 'signal',
+      displayName: 'Closed',
+      group: 'Events',
+      description: 'Fires when the popup was closed without a close action, after Close Results are up to date'
     },
     Dismissed: {
       type: 'signal',
       displayName: 'Dismissed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when another popup replaced this one before the user closed it, so there are no Close Results'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when no Target is set, or the component could not be opened'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'Why the popup did not open, set just before Failure fires',
       getter: function (this: ShowPopupInstance) {
         return this._internal.lastError;
       }
@@ -239,7 +251,13 @@ const ShowPopupModule: NodeModule = {
             for (const _n of c.getNodesWithType('NavigationClosePopup')) {
               if (_n.parameters['closeActions'] !== undefined) {
                 (_n.parameters['closeActions'] as string).split(',').forEach((a) => {
-                  if (ports.find((p) => p.name === a)) return;
+                  // NDA-012 (Navigation). This guard compared the *bare* action name against
+                  // `p.name`, which is always the prefixed `closeAction-…` — so it never
+                  // matched and never deduplicated anything. Two Close Popup nodes in the same
+                  // popup declaring the same close action (the ordinary case: one on a button,
+                  // one on a backdrop) pushed two ports with identical names. `navigate.ts:304`
+                  // is the same guard written correctly, one file over.
+                  if (ports.find((p) => p.name === 'closeAction-' + a)) return;
 
                   ports.push({
                     name: 'closeAction-' + a,
@@ -269,6 +287,10 @@ const ShowPopupModule: NodeModule = {
                    * Falling back to `'*'` is deliberate — a result with no matching output port is
                    * exactly as connectable as it was before, so no graph that works today stops.
                    */
+                  // Same duplication as the close actions above, except this loop never had a
+                  // guard at all. `navigate.ts:318` carries it for `backResult-`.
+                  if (ports.find((_p) => _p.name === 'closeResult-' + p)) return;
+
                   const declared = c.outputPorts && c.outputPorts[p];
                   ports.push({
                     name: 'closeResult-' + p,

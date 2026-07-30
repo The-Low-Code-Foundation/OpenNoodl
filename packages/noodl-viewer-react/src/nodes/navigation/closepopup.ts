@@ -83,6 +83,7 @@ const ClosePopupNode: NodeDefinitionOptions = {
       type: 'component',
       displayName: 'Popup',
       group: 'General',
+      description: 'Which popup to close when popups are nested; leave blank to close the nearest enclosing one',
       set: function (this: ClosePopupInstance, value: string) {
         this._internal.targetComponent = value || undefined;
         this.reportResolution();
@@ -90,22 +91,29 @@ const ClosePopupNode: NodeDefinitionOptions = {
     },
     results: {
       type: { name: 'stringlist', allowEditOnly: true },
+      displayName: 'Results',
       group: 'Results',
+      description:
+        'Names of values to hand back to the Show Popup node that opened this popup, one input port each',
       set: function (this: ClosePopupInstance, value: string) {
         this._internal.results = value;
       }
     },
     closeActions: {
       type: { name: 'stringlist', allowEditOnly: true },
+      displayName: 'Close Actions',
       group: 'Close Actions',
+      description:
+        'Names of the ways this popup can be closed, one signal input each; the matching signal fires on the Show Popup node',
       set: function (this: ClosePopupInstance, value: string) {
         this._internal.closeActions = value;
       }
     },
     close: {
-      type: 'Signal',
+      type: 'signal',
       displayName: 'Close',
       group: 'Actions',
+      description: 'Closes the popup and hands back any Results',
       valueChangedToTrue: function (this: ClosePopupInstance) {
         this.scheduleClose();
       }
@@ -117,17 +125,20 @@ const ClosePopupNode: NodeDefinitionOptions = {
     success: {
       type: 'signal',
       displayName: 'Closed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the popup has been closed'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when this node is not inside an open popup, or Popup names one it is not inside'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'Why the popup was not closed, set just before Failure fires',
       getter: function (this: ClosePopupInstance) {
         return this._internal.lastError;
       }
@@ -231,6 +242,15 @@ const ClosePopupNode: NodeDefinitionOptions = {
       resolvedTargets.report(this, resolution.popup ? resolution.popup.name : undefined);
     },
     close: function (this: ClosePopupInstance) {
+      // NDA-012 (Navigation), and the same latch as Pop Component Stack's back action. The
+      // close action describes *this* close, so it is consumed here. It used to be written
+      // once by `closeActionTriggered` and never cleared, so after a popup had been closed
+      // through, say, `Save`, every later close through the plain `Close` signal fired `Save`
+      // on the Show Popup node again instead of `Closed` — the save branch running for an
+      // interaction the user never made.
+      const closeAction = this._internal.closeAction;
+      this._internal.closeAction = undefined;
+
       const resolution = this.resolvePopup();
       resolvedTargets.report(this, resolution.popup ? resolution.popup.name : undefined);
 
@@ -247,7 +267,7 @@ const ClosePopupNode: NodeDefinitionOptions = {
         return;
       }
 
-      resolution.close(this._internal.closeAction, this._internal.resultValues);
+      resolution.close(closeAction, this._internal.resultValues);
       this.sendSignalOnOutput('success');
     },
     closeActionTriggered: function (this: ClosePopupInstance, name: string) {

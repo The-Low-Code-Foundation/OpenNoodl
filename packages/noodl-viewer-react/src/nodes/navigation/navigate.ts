@@ -66,6 +66,7 @@ const Navigate: NodeDefinitionOptions = {
       displayName: 'Stack',
       group: 'General',
       default: 'Main',
+      description: 'Name of the Component Stack to navigate; leave blank for the one named Main',
       set: function (this: NavigateInstance, value: string) {
         this._internal.stack = value;
       }
@@ -81,6 +82,7 @@ const Navigate: NodeDefinitionOptions = {
       displayName: 'Mode',
       default: 'push',
       group: 'General',
+      description: 'Push adds the target on top of the stack, Replace swaps it for the component currently showing',
       set: function (this: NavigateInstance, value: string) {
         this._internal.navigationMode = value;
       }
@@ -88,6 +90,7 @@ const Navigate: NodeDefinitionOptions = {
     navigate: {
       displayName: 'Navigate',
       group: 'Actions',
+      description: 'Navigates the Component Stack to Target Page',
       valueChangedToTrue: function (this: NavigateInstance) {
         this.scheduleNavigate();
       }
@@ -101,17 +104,21 @@ const Navigate: NodeDefinitionOptions = {
     navigated: {
       type: 'signal',
       displayName: 'Navigated',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the stack has switched to the target component'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description:
+        'Fires when no Target Page is set, the stack has no components configured, or a navigation is still animating'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'Why the navigation did not happen, set just before Failure fires',
       getter: function (this: NavigateInstance) {
         return this._internal.lastError;
       }

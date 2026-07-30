@@ -39,20 +39,27 @@ const NavigateBack: NodeDefinitionOptions = {
     navigate: {
       displayName: 'Navigate',
       group: 'Actions',
+      description: 'Pops the enclosing Component Stack back to the component underneath',
       valueChangedToTrue: function (this: NavigateBackInstance) {
         this.scheduleNavigate();
       }
     },
     results: {
       type: { name: 'stringlist', allowEditOnly: true },
+      displayName: 'Results',
       group: 'Results',
+      description:
+        'Names of values to hand back to the node that pushed this component, one input port each',
       set: function (this: NavigateBackInstance, value: string) {
         this._internal.results = value;
       }
     },
     backActions: {
       type: { name: 'stringlist', allowEditOnly: true },
+      displayName: 'Back Actions',
       group: 'Back Actions',
+      description:
+        'Names of the ways this component can be closed, one signal input each; the matching signal fires on the node that pushed it',
       set: function (this: NavigateBackInstance, value: string) {
         this._internal.backActions = value;
       }
@@ -64,17 +71,21 @@ const NavigateBack: NodeDefinitionOptions = {
     success: {
       type: 'signal',
       displayName: 'Popped',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the stack has popped this component'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description:
+        'Fires when this node is not inside a pushed component, the stack is already at its first component, or a navigation is still animating'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'Why the stack did not pop, set just before Failure fires',
       getter: function (this: NavigateBackInstance) {
         return this._internal.lastError;
       }
@@ -109,6 +120,16 @@ const NavigateBack: NodeDefinitionOptions = {
      * used to lose its second tap without trace.
      */
     navigate(this: NavigateBackInstance) {
+      // NDA-012 (Navigation). The back action describes *this* pop, so it is consumed here
+      // rather than left standing. It used to latch: `backActionTriggered` wrote it and
+      // nothing ever cleared it, so once a component had been popped through a back action,
+      // every later pop through the plain `Navigate` signal reported that same action to the
+      // node that pushed it — and the pusher's `Navigated`-side branch for it ran again for
+      // an interaction that never happened. Cleared before the callback, not after, so a
+      // callback that pops and re-pushes cannot see a stale one either.
+      const backAction = this._internal.backAction;
+      this._internal.backAction = undefined;
+
       if (this._internal.backCallback === undefined) {
         return this.reportFailure(
           'pop-component-stack/no-stack-in-scope',
@@ -117,7 +138,7 @@ const NavigateBack: NodeDefinitionOptions = {
       }
 
       const result = this._internal.backCallback({
-        backAction: this._internal.backAction,
+        backAction,
         results: this._internal.resultValues
       });
 

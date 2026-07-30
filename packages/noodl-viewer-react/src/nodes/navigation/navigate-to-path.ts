@@ -53,6 +53,7 @@ const NavigateToPathNode: NodeDefinitionOptions = {
       type: { name: 'string' },
       displayName: 'Path',
       group: 'General',
+      description: 'Path to navigate to; wrap a segment in braces, as in /product/{id}, to get an input port for it',
       set(this: NavigateToPathInstance, value: string) {
         this._internal.path = value;
       }
@@ -61,6 +62,8 @@ const NavigateToPathNode: NodeDefinitionOptions = {
       type: { name: 'stringlist', allowEditOnly: true },
       displayName: 'Query',
       group: 'Query',
+      description:
+        'Names of query-string parameters to append, one input port each; a parameter left unset is omitted from the URL',
       set(this: NavigateToPathInstance, value: string) {
         this._internal.queryNames = value;
       }
@@ -71,6 +74,7 @@ const NavigateToPathNode: NodeDefinitionOptions = {
       group: 'General',
       default: false,
       type: 'boolean',
+      description: 'Opens the path in a new browser tab instead of navigating this one',
       set(this: NavigateToPathInstance, value) {
         this._internal.openInNewTab = !!value;
       }
@@ -78,6 +82,7 @@ const NavigateToPathNode: NodeDefinitionOptions = {
     navigate: {
       displayName: 'Navigate',
       group: 'Actions',
+      description: 'Navigates to Path, filling in any brace placeholders from their input ports',
       valueChangedToTrue(this: NavigateToPathInstance) {
         this.scheduleNavigate();
       }
@@ -90,17 +95,20 @@ const NavigateToPathNode: NodeDefinitionOptions = {
     success: {
       type: 'signal',
       displayName: 'Success',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the new path has been pushed to the browser history'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when no Path is set, or the browser blocked the new tab'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'Why the navigation did not happen, set just before Failure fires',
       getter(this: NavigateToPathInstance) {
         return this._internal.lastError;
       }

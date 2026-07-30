@@ -11,7 +11,7 @@
 | NDA-003 Empty-value contract | 1 | ✅ **Built** `e707f0cc`…`b2032129` | All E-rows green unmarked. Nullable Variables shipped with `Treat empty as` (String/Color: `null`/`''`; Number: `null`/`0`; Boolean: `null`/`false`); corpus E1/E8 expectations reconciled to the contract (`null`, not `''`). String `length` returns 0 on null store. httpnode normalised to one helper (both omit; JSON body keeps `null`-is-sent, documented). E5's null-clears-collection worked by accident — now explicit + tested. Enriched catalog needed the NDA-014 compatibility fix first (`61e8b3da`) |
 | NDA-013 Repeater Refresh | 1 | ✅ **Done** `0e96c93a` | `refresh()` resyncs from `items`; queue race handled by truncating the ops `set()` just appended (synchronous span, nothing interleaves). Full teardown kept deliberately, documented. Refresh added to Array Map; Array Filter's premise was wrong — its `Filter` signal always re-read fresh, `refresh` added as alias. 3 new corpus rows red→green. Live QA pending |
 | NDA-004 Failure contract | 2 | 🔄 §1 done, §3 **9 of 10**, §2 criterion 4 met; **criterion 2 closed** `382894e4` | Channel at `packages/noodl-runtime/src/runtimeerror.ts`; `On App Error` node; F1/F1′ green. §3: only **Logic Builder** left, still blocked by another session's uncommitted rewrite — `Response` landed 2026-07-29 (it was hiding a `TypeError` out of an input setter *and* a silently-discarded second answer). §2 batch 1: Set Object Properties, Set Record Properties, Add/Remove Record Relation. §2 batch 2 (2026-07-30): **Set Parent Component Object Properties** (reported `Done` for a write into a throwaway record — worst class-B defect so far), **Parent Component Object**, **Video** (×2 failures), plus Component Object and Set Component Object Properties 🔵 on evidence. **Criterion 2 closed 2026-07-30** — and it found that the two legs believed covered were not: `if (this.editorConnection)` is *always* true (`NoodlRuntime` builds one in every runtime and its own comment says so), so `createConsoleErrorSubscriber` was unreachable outside its unit test and a deployed browser build, SSR and SSG produced **no console output at all** for a raised failure. It read as met because both contexts *did* deliver to an `On App Error` node — a surface the author has to opt into. A second defect underneath: the disconnected send queue grew for the life of the page. FINDINGS **H-ii/H-iii**. **§1's catch-all was not creatable** — found 2026-07-30 by regenerating the catalog: `On App Error` was registered, working, and measured working in a deployed build, but absent from `nodelibraryexport.ts`'s curated picker index, so the only way to get one was to hand-write `project.json` — which is what every fixture that measured it did. Criterion 2's own trap one level down. Fixed, 3 corpus rows, ports documented 8/8. **Remaining: `Logic Builder` (§3), the deprecated-five policy question** |
-| NDA-005 Port documentation | 2 | 🔄 **§0 + the shared pass done 2026-07-30** | **The premise was half right and the wrong half was load-bearing: `description` was declared on both port types and copied nowhere.** `nodedefinition.ts` built metadata from `tooltip` and never read `description`; the catalog derived its own by *flattening* that tooltip. So the field this task tells an author to write was inert — and the three descriptions NDA-003 wrote on the Variables nodes, about the very contract that task established, reached no consumer. `tooltip` could never have served: it is a popup with a heading that restates the display name (hence the existing 142 reading like *"Clip content Controls if elements that are too big to fit will be clipped Enabled Disabled"*) and **it does not exist on output ports at all**, so half the library was undocumentable by any means. Plumbing fixed, flattened tooltip kept as fallback. House style at [`PORT-DESCRIPTION-STYLE.md`](../../reference/PORT-DESCRIPTION-STYLE.md) (criterion 3 ✅). **The concentration is greater than specced**: 133 port names = 1,861 instances = 70% of the library. 61 names documented in two files → **5.4% → 36.5%, now measured** (catalog regenerated 2026-07-30; the projected 41.2% was optimistic by ~3.5 points on its own denominator, reported as measured rather than reconciled away). Criterion 1 ✅. Criterion 2 needs the per-node tail: nodes at 0% fell 112 → **101**, of which exactly **1 is visual** — so the remainder is non-visual and per-node, which is NDA-012's pass. **The tail started 2026-07-30 inside NDA-012's Cloud Services pass: 148 ports over 21 node types, coverage 39.1% → 44.4% measured, nodes at 0% 83 → 62.** The whole category now reads 100% — with one caveat worth carrying, because it is a hole in the *instrument*: **`Config` reported 100% before this pass and still does, because it has no static ports at all** (`0/0`). Its three real ports are pushed from `setup`, and so are `User`'s three session signals, so a node can read fully documented while its most-used ports are invisible to the catalog, the validator and the AI loop. NDA-005 §0 fixed the plumbing for *declared* ports; `sendDynamicPorts` carries no `description` and nothing has asked it to |
+| NDA-005 Port documentation | 2 | 🔄 **§0 + the shared pass done 2026-07-30** | **The premise was half right and the wrong half was load-bearing: `description` was declared on both port types and copied nowhere.** `nodedefinition.ts` built metadata from `tooltip` and never read `description`; the catalog derived its own by *flattening* that tooltip. So the field this task tells an author to write was inert — and the three descriptions NDA-003 wrote on the Variables nodes, about the very contract that task established, reached no consumer. `tooltip` could never have served: it is a popup with a heading that restates the display name (hence the existing 142 reading like *"Clip content Controls if elements that are too big to fit will be clipped Enabled Disabled"*) and **it does not exist on output ports at all**, so half the library was undocumentable by any means. Plumbing fixed, flattened tooltip kept as fallback. House style at [`PORT-DESCRIPTION-STYLE.md`](../../reference/PORT-DESCRIPTION-STYLE.md) (criterion 3 ✅). **The concentration is greater than specced**: 133 port names = 1,861 instances = 70% of the library. 61 names documented in two files → **5.4% → 36.5%, now measured** (catalog regenerated 2026-07-30; the projected 41.2% was optimistic by ~3.5 points on its own denominator, reported as measured rather than reconciled away). Criterion 1 ✅. Criterion 2 needs the per-node tail: nodes at 0% fell 112 → **101**, of which exactly **1 is visual** — so the remainder is non-visual and per-node, which is NDA-012's pass. **The tail started 2026-07-30 inside NDA-012's Cloud Services pass: 148 ports over 21 node types, coverage 39.1% → 44.4% measured, nodes at 0% 83 → 62.** The whole category now reads 100% — with one caveat worth carrying, because it is a hole in the *instrument*: **`Config` reported 100% before this pass and still does, because it has no static ports at all** (`0/0`). Its three real ports are pushed from `setup`, and so are `User`'s three session signals, so a node can read fully documented while its most-used ports are invisible to the catalog, the validator and the AI loop. NDA-005 §0 fixed the plumbing for *declared* ports; `sendDynamicPorts` carries no `description` and nothing has asked it to. **§2 opened 2026-07-30 and scoped by measurement — and the measurement shrank it.** It was raised as "89 nodes, nobody owns this"; in fact **all 89 already carry a per-node `dynamicPorts` record with prose**, so dynamic ports are *not* invisible to the catalog, validator or AI loop. Three bounded gaps survive: 5 nodes report 100% on `0/0` ports (the register must say `n/a`, not 100%), **11** nodes sit on generic boilerplate prose rather than specific (only **3 in the picker** — `Config`, `Array Filter`, `Subscribe To Changes`), and `sendDynamicPorts` should carry `description` for the *fixed-name* dynamic ports. Kept in NDA-005 rather than made a new task because it is this task's own criteria 1 and 2 that the number misreports. **Navigation is the worked example**: it now reads 100% while `Navigate`'s `Target Page` — the input that says where to go — has no sentence anywhere. **Tail: Navigation's 46 ports, coverage 44.4% → 46.1% measured, nodes at 0% 62 → 54** |
 | NDA-006 Columns | 2 | 🔄 **Slices 1+2 done** | **Slice 2's premise was wrong**: a Repeater adds its items as *siblings* of its `ForEachComponent` (`foreach.tsx:472`), so they were always wrapped and sized — filtering the `ForEachComponent` out is *correct*, and F3's original expectation is reconciled, not satisfied. Seven real defects found instead, four of them worse: autofold was dead the moment an author set Horizontal Gap (a units port writes `'16px'`, and `number < string` is `NaN`); a Repeater that was a Columns node's **only** child was dropped from the tree entirely and never mounted; only the **first** of several Repeaters was rendered; wrappers were keyed by position, so a Repeater deleting one row remounted every row after it. Plus `calcAutofold` mutating its caller, folding to *zero* columns (`width: NaN%`), a double space in the layout string doing the same, and `visibility: hidden` painting blank through the whole of SSR. 11 corpus rows, 7 reverts, each reddening only its own. **Slice 3 done 2026-07-30** — Richard chose "both": `Column Sizing` → `Auto Fit` (one input, as many columns as hold their minimum) plus `Medium Below`/`Small Below` layout strings. **Container width, not viewport** — nothing in the editor or styles system has a breakpoint concept to extend (checked), and the node already measures its container, so the same node behaves correctly inside a sidebar or a repeater cell. Static ports, so no dynamic-port machinery and the AI loop sees them. 19 rows, 11 reverts. **Slice 4 (masonry) done** `b33b1b3e`. **Criterion 5's deployed leg run 2026-07-30** (`cc28a4be`): masonry itself is right in a real deploy (tops `0,0,0,40,90,60,160`, height 230), but the *first paint* was a **zero-width strip** — `width: calc(100% + (${marginX}px)` was one parenthesis short, which the CSSOM silently repairs on the client and a serialised `style` attribute does not, dropping `width` and `box-sizing` together. D7 stayed green throughout. See FINDINGS **H-i** |
 | NDA-007 Icon sets | 2 | 🔄 **§1 done + renderer built** | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked). **2026-07-30: the union is real in the renderer.** The font-triple splat existed in **six** components, each hard-wired to font semantics — widening the model meant widening it six times or once; now once, in `IconGlyph.tsx`. Criteria 2 and 3 met (font output byte-identical, `iconSize`/`iconColor` identical across kinds via `1em`+`currentColor`). 15 corpus rows. ⚠️ **§2 (registration) and §3 (picker) remain** — a sprite value renders but cannot yet be installed or selected, and the sanitiser runs at render time until §2 gives it a registration to live in. **§2+§3 done** `899ab676`; **criterion 1's deployed leg passed 2026-07-30** — `noodl_modules/` ships verbatim, the font stylesheet is injected, and the sprite `<use>` resolves over http with `getBBox()` 40×38; removing the asset gives `0×0` and no console error, so the witness discriminates |
 | NDA-008 Component Stack | 2 | ✅ **Done — all four sections** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). **Richard chose "Both" (2026-07-29): fix the box, keep the feature.** Applied as `overflow: clip` on the app root — `clip` creates no scroll container at all, where `hidden` creates one only the *browser* can scroll. `TextInput` keeps its plain `.focus()`, so a deliberate `Focus` still scrolls the nearest genuinely-scrollable ancestor. Measured live on the same element in one session: `hidden` 0 → **1762 px**, `clip` 0 → **0 px**. §1 done: replace animates through the same `Transitions` machinery, defaulting to `None` so no existing project starts moving; the `// Only push mode have transition` gate is gone. §3 done: `Popped`/`Failure`/`Error` and **three** codes, not two — the unbriefed one is `transition-in-progress`, i.e. a double-tapped back button used to lose its second tap. **§2 done 2026-07-29**: re-selecting the page already on top used to re-mount it in *both* modes, and push also pushed a duplicate entry (depth 1 → 2), so every click on the active tab lost its state and grew a stack Back had to walk back through. The no-op is **params-aware** — same component with different params is the master→detail idiom and must keep pushing — and replace additionally requires depth 1, since on a deeper stack it still has collapsing to do. `hasNavigated` still fires, or a re-selected tab would be a dead button. **NDA-008 is complete** |
@@ -22,7 +22,7 @@
 | NDA-016 `Layout.size` | 2 | ✅ **Done** | **§0 resolved: the spec's premise was wrong.** `sizeMode` is never unset — a fresh Text node carries `contentHeight`/`100%`, read live. The real defect is a stale `parentLayout`: children bake the parent's layout in at *their* render, `renderChildren` memoises them, and the Layout setter never invalidated the memo — so a layout change never reached the children, and the first child ate the row. Fixed with `setLayout` as the single writer. §1 built too, on its own terms (an abstaining *connection* can still unset the port). 10 regression tests; 15-node-type live blast-radius check. Criterion 4's screenshot corpus is an instrument mismatch — see the spec |
 | NDA-017 Signal input freshness | 2 | 🔄 **§0 done `d6db6f39`; §1 is Richard's** | Community report, **now reproduced** — 10 rows, 4 `test.failing`, including row 4 against the **Function** node, so the reporter's workaround is measured not to be one. The spec's mechanism survived §0 (unlike NDA-008/016). **One correction**: the seed also reaches the graph with *no* `Run` at all — with the signal connected the node never evaluates at boot, yet `connectInput` pushes a confident `0` downstream from `result`'s getter, so §1's option A as written closes three of four doors. Reusable: `update()` is synchronous and `settle()` yields, so a row written with `settle()` reports this whole defect class as absent. The confirmed mechanism: with `Run` connected the value setters go passive and `Run` evaluates whatever is in scope, so an async producer that hasn't landed leaves the previous cycle's value, and `On True`/`On False` pulse downstream while `Result` stays quiet. **Twelve node families**, not one. **§1 is now the blocker and it is a decision for Richard** (never-arrived detection vs. an upstream-pending notion in the runtime vs. making the completion-signal sequencing discoverable) |
 | NDA-011 REST → HTTP | 3 | ✅ **Done — §1, §2 decided, §3 already met** | Assessment at [`NDA-011-CAPABILITY-COMPARISON.md`](./NDA-011-CAPABILITY-COMPARISON.md). **There is no resource DSL**: REST is one path template plus two `new Function` scripts, and does *neither* of the things the spec lists as what a DSL is good for. HTTP Request wins every declarative row; REST wins two, both "run some JavaScript". So it is **not** a clean subset → **deprecated, not deleted**, with the conversion path left to LIB-006. §3 needed no work (NDA-003 already made the six guards one helper; `responseHeaders` became usable via NDA-014's `object → string` cast). **Criterion 3 was six nodes, not four** — and they held the *plain* names their modern replacements show via `displayName`, so the picker offered two entries reading "Button" and the deprecated one was as likely to be picked |
-| NDA-012 Per-node audit | 3 | 🔄 **9 of 17 categories, 44 of 155 nodes** | Variables (4/4) as the worked example; **Logic, Math, Events, String Manipulation, Interpolation, Javascript and Sensors added 2026-07-30**, run batched with NDA-005's C1 so each node is read once. **31 new defects in 22 nodes and no find-rate decline.** Two shapes recurred *across* categories, which the per-node reads could not have shown: **signal-before-value** (`Receive Event`, `Signal To Index` — in both, carrying data with a signal is the node's whole purpose) and **a value port whose setter emits**, announcing a change at page load once authored (`Switch`'s `State`, `Counter`'s `Start Value`). Two nodes are clean and both for a recorded reason. **Cloud Services added 2026-07-30 — all 22 nodes, 25 new defects, the largest single-category haul in the phase**, and it corrected this file's own dismissal of two nodes as picker-exempt: **`Sign In With` and `Request Magic Link` cannot be added to a graph at all**, while four deprecated nodes in the same picker group can (FINDINGS **CS-i**). The other headline is **CS-ii**: `Aggregate Records` carried both defects NDA-004 §2 and PLAT-003 had already swept for, because it is the one Cloud Services node in `noodl-viewer-cloud` and both sweeps covered two packages. Fixed; everything else is a verdict. **The per-node rate dipped for the first time (1.41 → 1.14) and the cause is five sibling nodes, not exhaustion** — read the find-rate table before treating it as a stop signal. A **third** cross-category shape joined the two: a create-on-read lookup fed by a value that can be absent. See the find-rate table |
+| NDA-012 Per-node audit | 3 | 🔄 **10 of 17 categories, 52 of 155 nodes** | **Navigation added 2026-07-30 — all 8 nodes, 15 defects, 8 of 8 nodes affected, 1.88/node: the highest rate of any category and the reversal of the Cloud Services dip.** Headline is **NV-i**: `Page Inputs` had *no connectable ports at all* and had not since the initial commit — its whole `setup` was commented out, so the node that exists to expose a page's own parameters could be added from the picker and wired to nothing. CS-i one step on (there the node could not be added; here it does nothing). Also **NV-ii**, which corrects this file: reordering `Signal To Index` changes nothing observable, because the *visibility* of signal-before-value depends on whether the paired value port was non-`undefined` at connect time — so the class is two situations, not one, and "a test catches it" is not the test. **NV-iii** is a fourth cross-category shape (one-shot state that latches, in Close Popup and Pop Component Stack). **NV-v** is where the rest probably are: 6 of the 15 live in a module's `setup`, which `graph-harness` does not run. 6 fixed, 9 filed. Variables (4/4) as the worked example; **Logic, Math, Events, String Manipulation, Interpolation, Javascript and Sensors added 2026-07-30**, run batched with NDA-005's C1 so each node is read once. **31 new defects in 22 nodes and no find-rate decline.** Two shapes recurred *across* categories, which the per-node reads could not have shown: **signal-before-value** (`Receive Event`, `Signal To Index` — in both, carrying data with a signal is the node's whole purpose) and **a value port whose setter emits**, announcing a change at page load once authored (`Switch`'s `State`, `Counter`'s `Start Value`). Two nodes are clean and both for a recorded reason. **Cloud Services added 2026-07-30 — all 22 nodes, 25 new defects, the largest single-category haul in the phase**, and it corrected this file's own dismissal of two nodes as picker-exempt: **`Sign In With` and `Request Magic Link` cannot be added to a graph at all**, while four deprecated nodes in the same picker group can (FINDINGS **CS-i**). The other headline is **CS-ii**: `Aggregate Records` carried both defects NDA-004 §2 and PLAT-003 had already swept for, because it is the one Cloud Services node in `noodl-viewer-cloud` and both sweeps covered two packages. Fixed; everything else is a verdict. **The per-node rate dipped for the first time (1.41 → 1.14) and the cause is five sibling nodes, not exhaustion** — read the find-rate table before treating it as a stop signal. A **third** cross-category shape joined the two: a create-on-read lookup fed by a value that can be absent. See the find-rate table |
 
 ## Audit coverage
 
@@ -30,8 +30,8 @@
 |---|---|---|
 | Nodes with a machine-derived smell row | 155 | ✅ `NODE-REGISTER.md` |
 | Nodes with a pre-filled audit worksheet | 155 | ✅ `audit/`, 17 category files |
-| Nodes whose implementation has been read | **44** | 8 named by Richard + 5 from his second list + Boolean/Color, then NDA-012's nine categories |
-| Nodes fully audited against the 12 checks | **44** | 9 of 17 categories: Variables, Logic, Math, Events, String Manipulation, Interpolation, Javascript, Sensors, **Cloud Services** |
+| Nodes whose implementation has been read | **52** | 8 named by Richard + 5 from his second list + Boolean/Color, then NDA-012's ten categories |
+| Nodes fully audited against the 12 checks | **52** | 10 of 17 categories: Variables, Logic, Math, Events, String Manipulation, Interpolation, Javascript, Sensors, Cloud Services, **Navigation** |
 | Systemic defect classes identified | 8 | A reactivity, B failure, C documentation, D string contracts, **E type dead ends**, **F implicit binding**, **G signal/value ordering** (G came from a community report, not from either pass), **H the deployed build nobody ran** |
 | Findings live-verified in the running editor | Tier 1 + NDA-014 | 2026-07-29 pass: preview runs the new collection semantics (push/index/length notify once each, synchronous, `items` identity holds, `set` = one change); zero renderer exceptions; no cyclic warnings; editor's live typecast table carries the three new casts. Catalog page empty = expected (DB query, no local data, no repeater on it) |
 
@@ -66,7 +66,22 @@ All three gating decisions were put to Richard on 2026-07-29 and he confirmed th
 | Javascript | 1 / 1 | 1 | 4 |
 | Sensors | 1 / 1 | 1 | 1 |
 | Cloud Services | 22 / 22 | 17 | 25 |
-| **9 of 17 categories** | **44 / 155** | **37** | **56** |
+| Navigation | 8 / 8 | **8** | **15** |
+| **10 of 17 categories** | **52 / 155** | **45** | **71** |
+
+**Navigation reversed the dip: 1.88 defects per node, against Cloud Services' 1.14 and the running
+1.41 — the highest per-node rate of any category so far, and the only one where *every* node carries
+at least one defect.** It was chosen as the small tractable category; it is the densest. Two of its
+defects are in `RouterHandler` and one shape has two sites, all counted once, so the per-node
+worksheet figure is higher than the 15 recorded here.
+
+The dip therefore had the cause the last entry gave it — sibling nodes diluting a per-node average —
+and not exhaustion. **There is still no evidence of a declining find rate anywhere in this protocol
+after 52 nodes.**
+
+**The Navigation entry also carries the clearest evidence yet for *where* the remaining defects are:
+six of its fifteen live in a module's `setup`**, the editor-time dynamic-port derivation that
+`graph-harness` does not run. See FINDINGS **NV-v**.
 
 **No decline in absolute terms — Cloud Services is the largest single-category haul in the phase —
 but the per-node rate moved for the first time**, from ~1.41 over the first eight categories to
@@ -83,6 +98,20 @@ a shared helper or the shared picker index and are counted once, per NDA-012's b
 table reports distinct defects; the per-node figure is a usage count.
 
 Two nodes were clean in earlier categories for recorded reasons (`Inverter`, `Unique Id`).
+
+**A fourth shape joined on 2026-07-30 — one-shot state that is not one-shot.** `Close Popup`'s close
+action and `Pop Component Stack`'s back action are both written by their trigger and never cleared, so
+the *second* use of the node reports the first one's outcome. It is not an ordering defect and it is
+invisible to any test that exercises the node once — which is why the twelve checks missed it, since
+none of them asks what happens the second time. FINDINGS **NV-iii**.
+
+⚠️ **And the signal-before-value shape turned out to be two situations, not one.** Reordering
+`Signal To Index` changes nothing observable, because whether the class is *visible* depends on
+whether the paired value port held a non-`undefined` value at connection time (`connectInput` pushes
+only then, `node.ts:452`, and the receiver's queue is per port). `Receive Event`'s payload reads
+`undefined` until an event arrives, so its defect was live; `Signal To Index` initialises its index to
+`0`, so its identical source order is masked. **A future sweep for this class cannot use "does a test
+catch it" as the test.** FINDINGS **NV-ii**.
 
 **Three shapes have now recurred across category boundaries**, up from two:
 
@@ -114,6 +143,94 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-30 (NDA-012 + NDA-005: Navigation, and the node that was never usable).** All 8 nodes,
+  all twelve checks, batched with NDA-005's C1 — **46 port descriptions, coverage 44.4% → 46.1%
+  measured, nodes at 0% 62 → 54**. **15 defects in 8 nodes — every node in the category — and at
+  1.88 per node the highest rate of any category so far.** The Cloud Services dip is reversed and its
+  stated cause (sibling nodes diluting an average) is confirmed rather than replaced. Worksheet:
+  [`audit/navigation.md`](./audit/navigation.md); the five findings that reach outside the category
+  are FINDINGS **NV-i…NV-v**. 6 fixed, 9 filed.
+
+  **The headline is a node that has never worked.** `Page Inputs` — whose whole purpose is giving a
+  page access to its own path and query parameters — shipped with the entirety of its module `setup`
+  commented out, and `git show b9c60b07` has it commented in this repository's **initial commit**.
+  `sendDynamicPorts` was therefore never called for it, and every real output it has is a `pm-*`
+  announced from there. The runtime half was intact throughout: the Router calls `_setPageParams`,
+  `registerOutputIfNeeded` resolves `pm-*`. What was missing was the editor ever being *told* the
+  ports exist — and a port the editor does not know about cannot be connected to. Meanwhile the node
+  sits in the curated picker at `nodelibraryexport.ts:568`, so an author could add it, fill in both
+  stringlists and find nothing to wire. **This is CS-i one step further along**: there the node could
+  not be added, here it can be added and does nothing. Restored in TypeScript; 5 corpus rows, and
+  detaching `setup` again reddens all five outright.
+
+  ⚠️ **The `Signal To Index` fix corrected this file's own account of the signal-before-value class,
+  and the correction is the more valuable half.** It was left standing last session precisely so it
+  would get its own discrimination check rather than ride along on `Receive Event`'s. **The check
+  then refused to discriminate** — restoring the original statement order leaves every row green.
+  That is a real difference between the two nodes, not a weak row. A receiver's input queue is **per
+  port** (`_inputValuesQueue` is `{ [portName]: value[] }`, drained via `Object.keys` at
+  `node.ts:531,543`), so which of a pulse and its paired value lands first is decided by **which port
+  name was inserted first**, not by the order the node sent them. That insertion happens at
+  *connection* time, and only `if (outputValue !== undefined)` (`node.ts:452`). `Signal To Index`
+  initialises its index to `0`, so `value` is queued at connect and drains ahead of `pulse` for the
+  life of the node — masking the source order. `Receive Event`'s payload reads `undefined` until an
+  event arrives, so its `pulse` key is created first and its defect was live. **Whether this class is
+  visible depends on an accident of the node's `initialize`, not on its ordering.** The reorder was
+  kept because it removes the dependence on the accident, and the corpus says so in as many words
+  rather than claiming a repair it cannot demonstrate. Banked: **a future sweep for this class cannot
+  use "does a test catch it" as the test.**
+
+  **A fourth cross-category shape: one-shot state that is not one-shot.** `Close Popup`'s close
+  action and `Pop Component Stack`'s back action are each written by their trigger and never cleared,
+  so the *second* use of the node reports the first one's outcome — close a popup through `Save`,
+  close it later through the plain `Close`, and the Show Popup node fires `Save` again, running the
+  author's save branch for an interaction the user never made. Not an ordering defect: correct on
+  first read, wrong on every read after. **Invisible to any test that exercises the node once**,
+  which is why the twelve checks did not find it — none of them asks what happens the second time.
+  Both fixed, both reverts discriminating.
+
+  ⚠️ **Six of the fifteen defects live in a module's `setup`, which no ordinary corpus row can
+  reach** — `graph-harness` does not call `setup` and says so in its own comment. Two of them are
+  `showpopup.ts` dedupe guards sitting twenty lines from `navigate.ts:304,318`, which are the same
+  two guards written correctly: one compared a bare action name against a prefixed `p.name` and so
+  never matched, the other had no guard at all. Every node in this category derives its most
+  important ports in `setup`. **A defect class that only exists in code no harness runs will keep
+  being found one file at a time** — an argument for making the fake-graph-model harness NDA-009 and
+  NDA-010 each built separately into a shared fixture. FINDINGS **NV-v**.
+
+  **NDA-005 §2 was opened and scoped by measuring it, and the measurement shrank it.** It came in as
+  "89 of 156 nodes have dynamic ports and nobody owns this". Measured: **all 89 already carry a
+  per-node `dynamicPorts` record** — mechanisms, editor adapter, prose description — so dynamic ports
+  are *not* invisible to the catalog, the validator or the AI loop. Three bounded gaps survive: 5
+  nodes report 100% on `0/0` static ports (the register must say `n/a`, not 100%); **11** nodes sit
+  on generic boilerplate prose where the other 78 have specific, and only **3 of the 11 are in the
+  picker** (`Config`, `Array Filter`, `Subscribe To Changes`); and `sendDynamicPorts` should carry a
+  `description` for the *fixed-name* dynamic ports. Kept as NDA-005 §2 rather than a new task,
+  because it is this task's own criteria 1 and 2 that the number misreports. **Navigation is the
+  worked example** — it now reads 100% documented while `Navigate`'s `Target Page`, the input that
+  says where to navigate, has no sentence anywhere.
+
+  Also filed rather than fixed, each with a citation in the worksheet: `RouterHandler` drops a
+  navigation to an unknown router **silently and forever**, growing an unbounded queue as it goes
+  (the H-iii shape); with exactly one router registered it **ignores the `Router` input entirely**;
+  `Navigate To Path` writes a `null` parameter into the URL as the four characters `null` and
+  interpolates query values **unencoded** (the third unencoded-URL instance this phase);
+  `Push Component To Stack` looks the same Page Stack up twice with only one of the two lookups
+  defaulting to `Main`, and types its `pm-*` params `'*'` where NDA-010 §1 fixed exactly that
+  asymmetry for popups one file over (**NV-iv**); `External Link` opens a tab without
+  `noopener,noreferrer` when `Open In New Tab` is delivered `undefined`, because two adjacent lines
+  disagree about what abstaining means.
+
+  Gates: runtime jest **1,218** (+20 net incl. the other session's files), viewer jest **367**,
+  cloud jest **57**, editor jasmine **1,894 / 0 failures**, runtime + viewer-react + viewer-cloud
+  typechecks clean. Catalog regenerated by substitution; **the strong assertion holds** — strip the
+  three port fields this session touched and the result is byte-identical to HEAD apart from
+  `PageInputs.parameterEncoding`, which flipped `known: false → true` *because* restoring its `setup`
+  let the deriver observe the port generation. 46 ports gained a description; exactly one changed,
+  `Signal To Index`'s `signalTriggered`, which had documented its own defect — the banked rule
+  applied for the second time. Both catalog gates verified green against a clean logic-builder
+  checkout (they read the working tree, so they are red in this tree by construction).
 
 - **2026-07-30 (the two audit-driven fixes that needed no decision).** Both were written up with
   citations by earlier NDA-012 batches and neither had been started.

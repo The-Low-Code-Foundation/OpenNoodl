@@ -1326,6 +1326,98 @@ wherever a service method guards its whole body rather than branching.
 
 ---
 
+## NDA-012 Navigation (2026-07-30) — 15 defects in 8 nodes, and a node that was never usable
+
+The full worksheet is [`audit/navigation.md`](./audit/navigation.md). Five findings reach outside the
+category.
+
+### NV-i. `Page Inputs` had no connectable ports, and had not since the initial commit
+
+The node whose entire purpose is giving a page access to its own path and query parameters shipped
+with the whole of its module `setup` commented out — `git show b9c60b07` has it commented in the
+first commit of this repository. `sendDynamicPorts` was therefore never called for it, and **every
+real output it has is a `pm-*` announced from there**.
+
+The runtime half was intact the whole time: the Router calls `_setPageParams`
+(`router.tsx:298,330`), and `registerOutputIfNeeded` resolves `pm-*` to `getPageParam`. What was
+missing was the editor ever being *told* the ports exist — and a port the editor does not know about
+cannot be connected to. Meanwhile the node sits in the curated picker index at
+`nodelibraryexport.ts:568`, so an author could add it, fill in both stringlists, and find nothing to
+wire.
+
+**This is CS-i one step further along.** There, `Sign In With` and `Request Magic Link` could not be
+*added* to a graph. Here the node can be added and does nothing. Both were invisible to every check
+this phase runs, because every check reads the node definition and this class of defect lives in
+what the definition is *not* wired to. Fixed; five corpus rows.
+
+### NV-ii. Signal-before-value is masked or exposed by an accident of `initialize`
+
+`Signal To Index` was left standing when `Receive Event` was fixed, specifically so it would get its
+own discrimination check. **The check refused to discriminate**: restoring the original statement
+order leaves every row green. That is not a weak row — it is a real difference between the two nodes,
+and the mechanism governs the whole class.
+
+A receiver's input queue is **per port**: `_inputValuesQueue` is `{ [portName]: value[] }`, and
+`Node.update` drains it with `Object.keys(...)` (`node.ts:531,543`), one entry per port per pass. So
+which of a pulse and its paired value is applied first is decided by **which port name was inserted
+into that object first**, not by the order the node called `sendPulse` and `sendValue`. And the first
+insertion happens at *connection* time — `connectInput` pushes the source port's current value
+downstream, but only `if (outputValue !== undefined)` (`node.ts:452`).
+
+Therefore:
+
+- `Signal To Index` initialises `currentIndex` to `0`, so `index`'s getter is non-`undefined` when the
+  wire is made. The `value` key is created first and drains ahead of `pulse` **for the life of the
+  node**, masking the source order entirely.
+- `Receive Event`'s payload outputs read `undefined` until an event arrives, so no `value` key is
+  created at connect, `pulse` is inserted first, and the defect is observable — which is why *that*
+  row discriminated.
+
+**Whether this defect class is visible depends on whether the paired value port held a non-`undefined`
+value when the connection was made** — an accident of the node's `initialize`, not of its ordering.
+Every node in the class is latently wrong; some graphs happen to hide it. The reorder was kept because
+it removes the dependence on the accident, not because it repaired an observed wrong read, and the
+worksheet says so. **Two nodes previously counted as one class turn out to be two situations**, and
+any future sweep for this class cannot use "does a test catch it" as the test.
+
+### NV-iii. A fourth cross-category shape — one-shot state that is not one-shot
+
+`Close Popup`'s close action (`closepopup.ts`) and `Pop Component Stack`'s back action
+(`navigate-back.ts`) are both written by their trigger and **never cleared**. So the second use of the
+node reports the first one's outcome: close a popup through `Save`, then close it later through the
+plain `Close` signal, and the Show Popup node fires `Save` again — running the author's save branch
+for an interaction the user never made.
+
+It is not an ordering defect: the value is correct when first read and wrong on every read after. It
+is invisible to any test that exercises the node once, which is why the twelve checks did not ask for
+it — they have no "and then what happens the second time?" question. Both fixed. Two independent
+implementations of one mistake, in two files with no shared helper.
+
+### NV-iv. The component boundary is still typed in one direction, one node over
+
+NDA-010 §1 fixed exactly this for Show Popup's close results: ports derived from another component
+should carry that component's declared type rather than `'*'`. **`Push Component To Stack` has the
+same asymmetry and did not get the fix** — `navigate.ts:291-296` pushes every `pm-<inputName>` as
+`'*'`, discarding the type the target component's `inputPorts` declares, where `showpopup.ts:233`
+reads `o.type || '*'`. Same phase, same class E, same shape, one file apart. Filed, not fixed:
+narrowing a port type is the kind of change that can stop an existing graph, and NDA-010 §1's fix was
+additive only because it fell back to `'*'`; the same care is needed here and it is more than a
+per-node pass should decide.
+
+### NV-v. Editor-time code is materially less well tested than runtime code
+
+**Six of the fifteen defects live in a module's `setup`** — the dynamic-port derivations. None were
+reachable by the ordinary corpus: `graph-harness` does not call `setup` and says so in its own
+comment. They needed the fake-graph-model harness NDA-009 and NDA-010 built.
+
+That is not a small corner. Every node in this category derives its most important ports there, and
+the two dedupe bugs found in `showpopup.ts` — a guard comparing a bare name against a prefixed one, and
+a loop with no guard at all — sit twenty lines from `navigate.ts:304,318`, which are the same two
+guards written correctly. **A defect class that only exists in code no harness runs will keep being
+found one file at a time**, which is an argument for making the `setup` harness a shared fixture rather
+than a per-task one.
+
+
 ## What these passes did *not* cover
 
 - **142 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No

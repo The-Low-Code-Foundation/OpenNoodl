@@ -16323,27 +16323,32 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Closes the popup and hands back any Results"
         },
         {
           "name": "closeActions",
+          "displayName": "Close Actions",
           "group": "Close Actions",
           "plug": "input",
           "type": {
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the ways this popup can be closed, one signal input each; the matching signal fires on the Show Popup node"
         },
         {
           "name": "results",
+          "displayName": "Results",
           "group": "Results",
           "plug": "input",
           "type": {
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of values to hand back to the Show Popup node that opened this popup, one input port each"
         },
         {
           "name": "targetComponent",
@@ -16353,7 +16358,8 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which popup to close when popups are nested; leave blank to close the nearest enclosing one"
         }
       ],
       "outputs": [
@@ -16365,7 +16371,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the popup was not closed, set just before Failure fires"
         },
         {
           "name": "failure",
@@ -16375,7 +16382,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when this node is not inside an open popup, or Popup names one it is not inside"
         },
         {
           "name": "success",
@@ -16385,7 +16393,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the popup has been closed"
         }
       ],
       "dynamicPorts": {
@@ -16469,7 +16478,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Opens Target as a popup"
         },
         {
           "name": "stackPolicy",
@@ -16490,7 +16500,8 @@
             ]
           },
           "isSignal": false,
-          "default": "replace"
+          "default": "replace",
+          "description": "Replace It closes the popup already showing, Show On Top opens this one over it"
         },
         {
           "name": "target",
@@ -16500,17 +16511,21 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Component to open as a popup; its Component Inputs become input ports on this node"
         }
       ],
       "outputs": [
         {
           "name": "Closed",
+          "displayName": "Closed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the popup was closed without a close action, after Close Results are up to date"
         },
         {
           "name": "Dismissed",
@@ -16520,7 +16535,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when another popup replaced this one before the user closed it, so there are no Close Results"
         },
         {
           "name": "error",
@@ -16530,7 +16546,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the popup did not open, set just before Failure fires"
         },
         {
           "name": "failure",
@@ -16540,7 +16557,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when no Target is set, or the component could not be opened"
         }
       ],
       "dynamicPorts": {
@@ -19679,23 +19697,27 @@
       "inputs": [
         {
           "name": "pathParams",
+          "displayName": "Path Parameters",
           "group": "Path Parameters",
           "plug": "input",
           "type": {
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the braced segments in this page’s route, one output port each"
         },
         {
           "name": "queryParams",
+          "displayName": "Query Parameters",
           "group": "Query Parameters",
           "plug": "input",
           "type": {
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of query-string parameters to read from the URL, one output port each"
         }
       ],
       "outputs": [],
@@ -19708,8 +19730,34 @@
         "editorAdapter": "PageInputsAdapter"
       },
       "parameterEncoding": {
-        "known": false,
-        "reason": "Ports are computed by the editor from the route that reaches the containing page component (PageInputsAdapter)."
+        "known": true,
+        "seededBy": [
+          "pathParams",
+          "queryParams"
+        ],
+        "patterns": [
+          {
+            "pattern": "pm-<pathParam>",
+            "plug": "output",
+            "variables": {
+              "pathParam": "one of the comma-separated entries in the `pathParams` parameter"
+            },
+            "group": "Parameters",
+            "valueType": "*",
+            "example": "pm-Sa1"
+          },
+          {
+            "pattern": "pm-<queryParam>",
+            "plug": "output",
+            "variables": {
+              "queryParam": "one of the comma-separated entries in the `queryParams` parameter"
+            },
+            "group": "Parameters",
+            "valueType": "*",
+            "example": "pm-Vb sp"
+          }
+        ],
+        "notes": "Names are interpolated verbatim, including spaces — a value called `bg color` produces a port called `value-true-bg color`, not `value-true-bgColor`."
       },
       "enrichment": {
         "typeName": "PageInputs",
@@ -19774,7 +19822,8 @@
             ]
           },
           "isSignal": false,
-          "default": "push"
+          "default": "push",
+          "description": "Push adds the target on top of the stack, Replace swaps it for the component currently showing"
         },
         {
           "name": "navigate",
@@ -19785,7 +19834,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Navigates the Component Stack to Target Page"
         },
         {
           "name": "stack",
@@ -19797,7 +19847,8 @@
             "identifierOf": "PackStack"
           },
           "isSignal": false,
-          "default": "Main"
+          "default": "Main",
+          "description": "Name of the Component Stack to navigate; leave blank for the one named Main"
         }
       ],
       "outputs": [
@@ -19809,7 +19860,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the navigation did not happen, set just before Failure fires"
         },
         {
           "name": "failure",
@@ -19819,7 +19871,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when no Target Page is set, the stack has no components configured, or a navigation is still animating"
         },
         {
           "name": "navigated",
@@ -19829,7 +19882,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the stack has switched to the target component"
         }
       ],
       "dynamicPorts": {
@@ -19884,13 +19938,15 @@
       "inputs": [
         {
           "name": "backActions",
+          "displayName": "Back Actions",
           "group": "Back Actions",
           "plug": "input",
           "type": {
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the ways this component can be closed, one signal input each; the matching signal fires on the node that pushed it"
         },
         {
           "name": "navigate",
@@ -19901,17 +19957,20 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Pops the enclosing Component Stack back to the component underneath"
         },
         {
           "name": "results",
+          "displayName": "Results",
           "group": "Results",
           "plug": "input",
           "type": {
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of values to hand back to the node that pushed this component, one input port each"
         }
       ],
       "outputs": [
@@ -19923,7 +19982,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the stack did not pop, set just before Failure fires"
         },
         {
           "name": "failure",
@@ -19933,7 +19993,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when this node is not inside a pushed component, the stack is already at its first component, or a navigation is still animating"
         },
         {
           "name": "success",
@@ -19943,7 +20004,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the stack has popped this component"
         }
       ],
       "dynamicPorts": {
@@ -20028,7 +20090,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Navigates to Path, filling in any brace placeholders from their input ports"
         },
         {
           "name": "openInNewTab",
@@ -20040,6 +20103,7 @@
           },
           "isSignal": false,
           "default": false,
+          "description": "Opens the path in a new browser tab instead of navigating this one",
           "index": 10
         },
         {
@@ -20050,7 +20114,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Path to navigate to; wrap a segment in braces, as in /product/{id}, to get an input port for it"
         },
         {
           "name": "queryNames",
@@ -20061,7 +20126,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of query-string parameters to append, one input port each; a parameter left unset is omitted from the URL"
         }
       ],
       "outputs": [
@@ -20073,7 +20139,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the navigation did not happen, set just before Failure fires"
         },
         {
           "name": "failure",
@@ -20083,7 +20150,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when no Path is set, or the browser blocked the new tab"
         },
         {
           "name": "success",
@@ -20093,7 +20161,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the new path has been pushed to the browser history"
         }
       ],
       "dynamicPorts": {
@@ -23776,7 +23845,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Navigates the Router to Target Page"
         },
         {
           "name": "openInNewTab",
@@ -23788,6 +23858,7 @@
           },
           "isSignal": false,
           "default": false,
+          "description": "Opens the target page in a new browser tab instead of navigating this one",
           "index": 10
         }
       ],
@@ -23800,7 +23871,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the navigation did not happen, set just before Failure fires"
         },
         {
           "name": "failure",
@@ -23810,7 +23882,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when no Target Page is set, or the Router does not serve that page"
         },
         {
           "name": "navigated",
@@ -23820,7 +23893,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the Router has switched to the target page"
         }
       ],
       "dynamicPorts": {
@@ -25082,7 +25156,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when any signal input fires, but before Index has been updated — read Index on the next frame"
+          "description": "Fires when any signal input fires, once Index holds the number of the input that fired"
         }
       ],
       "dynamicPorts": {
@@ -47758,7 +47832,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Opens Link, or fires Failure if there is no Link or the browser blocked the new tab"
         },
         {
           "name": "link",
@@ -47767,7 +47842,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Web address to open; one with no scheme is resolved relative to the page the app is served from"
         },
         {
           "name": "openInNewTab",
@@ -47777,7 +47853,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Opens the link in a new tab; when off the current page is replaced and the app unloads"
         }
       ],
       "outputs": [
@@ -47789,7 +47866,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the link could not be opened, set just before Failure fires"
         },
         {
           "name": "failure",
@@ -47799,7 +47877,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when no Link was set, or the browser blocked the new tab"
         },
         {
           "name": "success",
@@ -47809,7 +47888,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the link has been handed to the browser"
         }
       ],
       "dynamicPorts": null,

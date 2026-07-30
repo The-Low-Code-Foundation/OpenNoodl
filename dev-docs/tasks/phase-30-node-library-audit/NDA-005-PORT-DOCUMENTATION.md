@@ -115,6 +115,54 @@ it.
 3. Regenerate the catalog and the register after each category so the number visibly falls.
 4. The 14 nodes with no docs URL need one written or the field removed — a dead link is worse than none.
 
+## §2 — the ports the coverage number cannot see (added 2026-07-30)
+
+**Decision: this is NDA-005 §2, not a new task.** What is at stake is criterion 1 and criterion 2 of
+*this* task — the number they are measured by excludes a whole class of port — so putting it anywhere
+else would leave this task able to report success on a measurement it knows is partial.
+
+It was raised as "89 of 156 nodes have dynamic ports, `sendDynamicPorts` carries no `description`, and
+nobody owns this". **Measured, the gap is much narrower than that, and the difference matters enough
+to write down.** The catalog already carries a per-node `dynamicPorts` record — `mechanisms`, an
+`editorAdapter` where there is one, and a prose `description` — and **all 89 of the 89 have one**. So
+the dynamic ports are not invisible to the catalog, the validator or the AI authoring loop; a consumer
+can already learn that a node has them and where they come from. What does not exist is a sentence per
+individual dynamic port, and for most of them one could not: the names are chosen by the author
+(`pm-<pathParam>`, `result-<name>`, `closeAction-<name>`), so the documentable unit is the *family*,
+which is what `dynamicPorts.description` already is.
+
+Three real gaps survive that correction, and they are bounded:
+
+1. **A node with zero static ports reports 100% coverage.** `Config` (`DbConfig`) is the case that
+   surfaced this, and there are **5 such nodes** in the library. `0/0` is arithmetically 100% and
+   substantively nothing. The register must report these as `n/a — all ports dynamic` rather than as
+   fully documented, or criterion 2 ("no node has 0% coverage") is satisfiable by having no ports.
+2. **11 nodes sit on the generic runtime-discovered boilerplate** — *"Some ports are discovered at
+   runtime from user code, parameters or connected components…"* — which says nothing about what the
+   ports of *that* node are. The other 78 have specific prose (`"Ports are derived from the target
+   router and the path parameters of the selected page component"`). This is the flattened-tooltip
+   failure of §0 in a second place: a field that is populated everywhere and informative in most of
+   them. Only **3 of the 11 are in the node picker** — `Config`, `Array Filter`,
+   `Subscribe To Changes` — so the author-facing part of this is three nodes.
+3. **`sendDynamicPorts` has no `description` field**, which costs nothing for author-named ports and
+   costs real information for the *fixed-name* dynamic ports — ports that are pushed dynamically but
+   whose names and meanings are fixed by the node, not by the author. Those can and should carry a
+   sentence.
+
+**Scope of §2**, smallest-first, in the order that makes the number honest before it makes it bigger:
+
+- (a) Teach `scripts/node-audit/register.js` to distinguish "documented" from "has nothing to
+  document". A vacuous 100% is worse than a 0%, for §0's reason: a blank port is visibly undocumented
+  and a restatement — or an empty denominator — looks answered.
+- (b) Write specific `dynamicPorts.description` prose for the 11, starting with the 3 in the picker.
+- (c) Add an optional `description` to the `sendDynamicPorts` wire format and populate it for the
+  fixed-name dynamic ports.
+
+⚠️ **Navigation is the sharpest case in the library and should be the worked example.** Seven of its
+eight nodes carry their *primary* port dynamically — `Target Page`, `Router`, the path placeholders —
+so the category now reads **100% documented** while the input that says where to navigate has no
+sentence anywhere. See [`audit/navigation.md`](./audit/navigation.md).
+
 ## Success criteria
 
 1. Port documentation coverage ≥ 95% (inverting today's number), measured by

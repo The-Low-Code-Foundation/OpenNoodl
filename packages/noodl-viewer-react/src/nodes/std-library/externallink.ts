@@ -15,16 +15,19 @@ const ExternalLinkNode: NodeDefinitionOptions = {
   inputs: {
     link: {
       type: 'string',
-      displayName: 'Link'
+      displayName: 'Link',
+      description: 'Web address to open; one with no scheme is resolved relative to the page the app is served from'
     },
     openInNewTab: {
       type: 'boolean',
       displayName: 'Open In New Tab',
-      default: true
+      default: true,
+      description: 'Opens the link in a new tab; when off the current page is replaced and the app unloads'
     },
     do: {
       type: 'signal',
       displayName: 'Do',
+      description: 'Opens Link, or fires Failure if there is no Link or the browser blocked the new tab',
       valueChangedToTrue(this: ExternalLinkInstance) {
         // Opening a browser tab is meaningless server-side; degrade to a no-op
         // if the graph fires this during an SSR render.
@@ -71,17 +74,20 @@ const ExternalLinkNode: NodeDefinitionOptions = {
     success: {
       type: 'signal',
       displayName: 'Success',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the link has been handed to the browser'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when no Link was set, or the browser blocked the new tab'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'Why the link could not be opened, set just before Failure fires',
       getter(this: ExternalLinkInstance) {
         return this._internal.lastError;
       }

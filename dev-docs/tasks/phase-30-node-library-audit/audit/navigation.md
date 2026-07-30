@@ -8,204 +8,362 @@ in [FINDINGS.md](../FINDINGS.md). The `Pre-filled` column is machine-derived fro
 everything else needs the source read. Verdicts: ✅ pass · ⚠️ defect · 🔵 by design, document it ·
 ⬜ not audited.
 
+**Audited 2026-07-30, all 8 nodes, batched with NDA-005's C1** (check C1 *is* NDA-005 — one read per
+node, verdict and port sentences written together). All 46 static ports documented: the category went
+**0% → 100%**.
+
+> ⚠️ **And 100% here means less than it does anywhere else.** Seven of these eight nodes carry their
+> *primary* ports dynamically — `Target Page`, `Router`, `Popup Param`, `Close Result`, `Back Action`,
+> the path placeholders — and `sendDynamicPorts` has no `description` field to carry a sentence.
+> `Navigate` reads 5/5 documented while the input that says *where to navigate* is neither documented
+> nor in the catalog. See the NDA-005 §2 note in [PROGRESS.md](../PROGRESS.md).
+
+**15 distinct defects across 8 nodes; 8 of 8 nodes carry at least one.** Six fixed (they were either
+one-line and unambiguous or, in `Page Inputs`' case, a node that could not do its job at all); nine
+are verdicts. Two defects live in `RouterHandler`, which `Navigate` is the only Navigation-category
+consumer of, and one shape has two sites — counted once each, per NDA-012's batching warning.
+
 ---
 
 ### Close Popup  `NavigationClosePopup`
 
-3 inputs / 0 outputs · 1 signal in / 0 signal out · docs 0% · SSR `safe` · browser
+3 inputs / 0 outputs · 1 signal in / 0 signal out · docs 0% → **100% (7/7)** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/popups/close-popup)
+Source: [`closepopup.ts`](../../../../packages/noodl-viewer-react/src/nodes/navigation/closepopup.ts) ·
+Docs: [link](https://docs.noodl.net/nodes/popups/close-popup)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ⚠️ **no signal out** | ⬜ | |
-| C1 | ⚠️ **0%** (0/3) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | n/a | Holds `resultValues` only; no external source to notify from |
+| A2 |  | n/a | Nothing cached to refresh |
+| A3 |  | n/a | |
+| G1 |  | ✅ | `targetComponent` maps `''` → `undefined` = "the enclosing popup" (`:87`), which is the honest reading of blank |
+| B1 | ⚠️ **none** | ✅ | Stale pre-fill — `Failure`/`Error` landed with NDA-004 §3 |
+| B2 |  | ✅ | `raiseRuntimeError` with `close-popup/no-popup-in-scope` / `target-not-found` (`:241`) |
+| B3 | ⚠️ **no signal out** | ✅ | Stale pre-fill — `Closed` terminates `Close` |
+| C1 | ⚠️ **0%** (0/3) | ✅ | 7/7 written this pass |
+| D1 |  | 🔵 | `results` / `closeActions` are hand-typed stringlists matched by name against Show Popup's derived ports. Unvalidated on both sides — a typo is a port nobody can hit. NDA-010 §1's open question, not new here |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | ✅ | **The exemplar.** NDA-015 gave it an optional `Popup` input *and* a resolved-target sub-label; an explicit miss fails rather than falling back (`:189-201`) |
+| H1 | declares `safe` | ✅ | `_onNodeDeleted` releases the reporter (`:157`), which popups need — they are created and destroyed constantly |
 
-**Verdict:** ⬜ not audited
+⚠️ **The close action latched.** `closeActionTriggered` wrote `_internal.closeAction` (`:264`) and
+nothing ever cleared it, so after one close through a named action, **every later close through the
+plain `Close` signal reported that same action** to the Show Popup node — firing the author's `Save`
+branch for an interaction the user never made, instead of `Closed`. **Fixed**: the action is consumed
+in `close()`. Rows in
+[`nda-012-navigation-category.test.ts`](../../../../packages/noodl-runtime/test/corpus/nda-012-navigation-category.test.ts).
+
+**Verdict:** ⚠️ one defect, fixed. Otherwise the best-documented resolution behaviour in the library.
 
 ---
 
 ### External Link  `net.noodl.externallink`
 
-3 inputs / 0 outputs · 1 signal in / 0 signal out · docs 0% · SSR `safe` · browser
+3 inputs / 0 outputs · 1 signal in / 0 signal out · docs 0% → **100% (6/6)** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/navigation/external-link)
+Source: [`externallink.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/externallink.ts) ·
+Docs: [link](https://docs.noodl.net/nodes/navigation/external-link)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ⚠️ **no signal out** | ⬜ | |
-| C1 | ⚠️ **0%** (0/3) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | n/a | |
+| A2 |  | n/a | |
+| A3 |  | n/a | |
+| G1 |  | ⚠️ | See below — the two readings of `openInNewTab` disagree about `undefined` |
+| B1 | ⚠️ **none** | ✅ | Stale pre-fill — NDA-004 §2 gave it `Success`/`Failure`/`Error` |
+| B2 |  | ✅ | `external-link/no-link`, `external-link/blocked` |
+| B3 | ⚠️ **no signal out** | ✅ | Stale pre-fill |
+| C1 | ⚠️ **0%** (0/3) | ✅ | 6/6 written this pass |
+| D1 |  | 🔵 | `link` is an author- or data-supplied string handed to `window.open` with no scheme restriction. Worth a decision rather than a patch: restricting to `http`/`https` would be a behaviour change for anyone using `mailto:` or `tel:`, which are legitimate uses of this node |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | Guards `typeof window === 'undefined'` (`:31`) so an SSR pass is a no-op |
 
-**Verdict:** ⬜ not audited
+⚠️ **`undefined` on `Open In New Tab` opens a tab without `noopener,noreferrer`.** Two lines read the
+same port and disagree about the empty case: `:34` computes the window features with a bare truthiness
+test (`undefined` → `''`), while `:35` computes the target with `=== true || === undefined` (`undefined`
+→ `'_blank'`). Unset is safe — `registerInput` seeds the declared `default: true` into `_inputValues`
+(`node.ts:116`), so both lines see `true`. But a *connection* delivering `undefined` — which the
+Empty-Value Contract says is how a port abstains — takes the disagreeing path, and the opened page
+gets a live `window.opener` handle back to the app. Not fixed: it is one character either way, but
+which way is a decision about whether abstaining means "new tab" or "same tab", and the two lines
+currently answer differently.
+
+**Verdict:** ⚠️ one defect, filed.
 
 ---
 
 ### Navigate  `RouterNavigate`
 
-2 inputs / 1 outputs · 1 signal in / 1 signal out · docs 0% · SSR `safe` · browser
+2 inputs / 1 outputs / 1 signal in / 1 signal out · docs 0% → **100% (5/5)** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/navigation/navigate)
+Source: [`router-navigate.ts`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router-navigate.ts),
+[`router-handler.ts`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router-handler.ts) ·
+Docs: [link](https://docs.noodl.net/nodes/navigation/navigate)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/3) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | n/a | |
+| A2 |  | n/a | |
+| A3 |  | n/a | |
+| G1 |  | 🔵 | `openInNewTab` coerces with `!!value` (`:47`), so an abstaining connection reads as an explicit `false`. Consistent with Navigate To Path; harmless for a boolean whose default *is* false |
+| B1 | ⚠️ **none** | ✅ | Stale pre-fill — NDA-004 §2 |
+| B2 |  | ⚠️ | Two of the three ways this node fails never reach the channel — see below |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/3) | ✅ | 5/5 static. ⚠️ **`Target Page` and `Router` are dynamic and carry no description** — the node's two most important inputs are invisible to the catalog, the validator and the AI loop |
+| D1 |  | ⚠️ | `router` is a bare string with no validation on either side; see below |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | ⚠️ | The router is resolved implicitly and the resolution is invisible — see below |
+| H1 | declares `safe` | ✅ | |
 
-**Verdict:** ⬜ not audited
+⚠️ **`RouterHandler.navigate` drops a navigation silently, and grows a queue doing it.**
+`router-handler.ts:50-56`: if no router is registered under the name, the request is pushed onto
+`_navigationQueue` and **`args.hasFailed` is never called**. The queue exists so a router registering
+later can drain it, which is right — but a router that never appears (a typo'd name, a Router node on a
+page that is not mounted) leaves the node permanently silent: no `Navigated`, no `Failure`, no `Error`,
+nothing on the error channel. Every retry appends another entry, so the queue grows for the life of the
+page. **The same shape as FINDINGS H-iii**, the disconnected send queue NDA-004 criterion 2 found.
+
+⚠️ **With exactly one router, the `Router` input is ignored entirely.** `router-handler.ts:45-48`
+overwrites the requested name with the only registered router's name before looking it up. So an author
+who names a router that does not exist gets a *successful* navigation to a different one, with nothing
+on the card or the channel to say the name was discarded — BINDING-CONTRACT §(b) unmet on a node whose
+sibling `Close Popup` is the contract's exemplar. The convenience is defensible; its invisibility is
+the defect.
+
+**Verdict:** ⚠️ two defects, both in `RouterHandler`, both filed. Counted once each rather than against
+every caller, per the batching warning.
 
 ---
 
 ### Navigate To Path  `PageStackNavigateToPath`
 
-4 inputs / 0 outputs · 1 signal in / 0 signal out · docs 0% · SSR `safe` · browser
+4 inputs / 0 outputs · 1 signal in / 0 signal out · docs 0% → **100% (7/7)** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/navigation/navigate-to-path)
+Source: [`navigate-to-path.ts`](../../../../packages/noodl-viewer-react/src/nodes/navigation/navigate-to-path.ts) ·
+Docs: [link](https://docs.noodl.net/nodes/navigation/navigate-to-path)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ⚠️ **no signal out** | ⬜ | |
-| C1 | ⚠️ **0%** (0/4) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | n/a | |
+| A2 |  | n/a | |
+| A3 |  | n/a | |
+| G1 |  | ⚠️ | A `null` path parameter is written into the URL as the four characters `null` — see below |
+| B1 | ⚠️ **none** | ✅ | Stale pre-fill — NDA-004 §3 |
+| B2 |  | ✅ | `navigate-to-path/no-path`, `/blocked` |
+| B3 | ⚠️ **no signal out** | ✅ | Stale pre-fill |
+| C1 | ⚠️ **0%** (0/4) | ✅ | 7/7 static; the `p-*` / `q-*` ports are dynamic and undocumentable |
+| D1 |  | ⚠️ | Query values are interpolated into the URL unencoded — see below |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | Returns before touching `window.history` under SSR (`:170`), and deliberately sends no signal either way — there is no navigation to succeed or fail at |
 
-**Verdict:** ⬜ not audited
+⚠️ **`null` is stringified into the path.** `:144` guards only `undefined`
+(`v !== undefined ? String(v) : ''`), so a path parameter cleared to `null` — which the Empty-Value
+Contract defines as *clear this* — produces `/product/null`. The guard needs the same treatment
+NDA-003 gave the six httpnode call sites.
+
+⚠️ **Query values are not encoded.** `:156` builds `q + '=' + internal.query[q]` with no
+`encodeURIComponent`, so a value containing `&`, `=`, `#` or a space corrupts every parameter after it.
+This is the **third** instance this phase of unencoded interpolation into a URL — `UserService.verifyEmail`
+was the Cloud Services one, forty lines from a method that encoded both of its own. Worth the same
+repo-wide grep the bare-`indexOf` class got.
+
+**Verdict:** ⚠️ two defects, both filed.
 
 ---
 
 ### Page Inputs  `PageInputs`
 
-2 inputs / 0 outputs · 0 signal in / 0 signal out · docs 0% · SSR `safe` · browser
+2 inputs / 0 outputs · 0 signal in / 0 signal out · docs 0% → **100% (2/2)** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/navigation/page-inputs)
+Source: [`page-inputs.ts`](../../../../packages/noodl-viewer-react/src/nodes/navigation/page-inputs.ts) ·
+Docs: [link](https://docs.noodl.net/nodes/navigation/page-inputs)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | n/a — no action input | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | n/a | ⬜ | |
-| C1 | ⚠️ **0%** (0/2) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | `_setPageParams` flags each changed key dirty (`:38`) |
+| A2 |  | n/a | |
+| A3 |  | ⚠️ | A parameter that goes from a value to absent keeps its old value — see below |
+| G1 |  | ⚠️ | Same finding as A3 |
+| B1 | n/a — no action input | n/a | |
+| B2 |  | n/a | |
+| B3 | n/a | n/a | |
+| C1 | ⚠️ **0%** (0/2) | ✅ | 2/2 written this pass |
+| D1 |  | n/a | |
+| E1 | ✅ no dead-end types | 🔵 | Every `pm-*` is `'*'`. Defensible here and nowhere else in the category: these values come out of a URL, where everything really is an untyped string |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
 
-**Verdict:** ⬜ not audited
+⚠️ **This node had no connectable ports at all, and had not had any since the initial commit.**
+The whole of its module `setup` was commented out, so `sendDynamicPorts` was never called for it —
+and every real output it has is a `pm-*` announced from there. The runtime half was intact the entire
+time: the Router calls `_setPageParams` (`router.tsx:298,330`) and `registerOutputIfNeeded` resolves
+`pm-*` to `getPageParam`. What was missing was the editor ever being *told* the ports exist, and a
+port the editor does not know about cannot be connected to.
+
+So `Page Inputs` — the node whose entire purpose is giving a page access to its own path and query
+parameters — added a node with two edit-only stringlists and no way to read a single parameter out of
+it, while sitting in the picker at `nodelibraryexport.ts:568`. **This is FINDINGS CS-i one step
+further along**: there the node could not be *added*; here it can be added and does nothing.
+**Fixed** — `setup` restored in TypeScript, five corpus rows.
+
+⚠️ **A cleared parameter does not clear the output.** `_setPageParams` iterates the incoming keys
+only, so a parameter present on one navigation and absent on the next keeps the previous value.
+`router.tsx:294` carries this as its own `TODO` in the source. Not fixed: the repair is a decision
+about whether an absent query parameter means `null` (clear) or `undefined` (abstain), which is
+exactly the Empty-Value Contract question and belongs with NDA-003 rather than in a per-node pass.
+
+**Verdict:** ⚠️ two defects, one fixed. **The node was inert for the whole life of the project.**
 
 ---
 
 ### Pop Component Stack  `PageStackNavigateBack`
 
-3 inputs / 0 outputs · 1 signal in / 0 signal out · docs 0% · SSR `safe` · browser
+3 inputs / 0 outputs · 1 signal in / 0 signal out · docs 0% → **100% (6/6)** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/component-stack/pop-component)
+Source: [`navigate-back.ts`](../../../../packages/noodl-viewer-react/src/nodes/navigation/navigate-back.ts) ·
+Docs: [link](https://docs.noodl.net/nodes/component-stack/pop-component)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ⚠️ **no signal out** | ⬜ | |
-| C1 | ⚠️ **0%** (0/3) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | n/a | |
+| A2 |  | n/a | |
+| A3 |  | n/a | |
+| G1 |  | n/a | |
+| B1 | ⚠️ **none** | ✅ | Stale pre-fill — NDA-008 §3 gave it three failure codes, including `transition-in-progress` |
+| B2 |  | ✅ | |
+| B3 | ⚠️ **no signal out** | ✅ | Stale pre-fill — `Popped` |
+| C1 | ⚠️ **0%** (0/3) | ✅ | 6/6 written this pass |
+| D1 |  | 🔵 | `results` / `backActions` bare strings, same shape as Close Popup's and with the same standing question |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | ⚠️ | No way to name the stack, and no resolution feedback — see below |
+| H1 | declares `safe` | ✅ | |
 
-**Verdict:** ⬜ not audited
+⚠️ **The back action latched**, identically to Close Popup's: `backActionTriggered` wrote
+`_internal.backAction` and nothing cleared it, so every later plain pop re-reported the last named
+action to the node that pushed the component. **Fixed.** Two independent implementations of one shape,
+in two files — counted as two defects rather than one because there is no shared helper here, but they
+are one *mistake* and worth reading as such.
+
+⚠️ **No `Stack` input and no resolved-target report.** This node resolves purely by waiting to be
+handed a callback. Its sibling `Close Popup` was given both halves of the Binding Contract by NDA-015 —
+an optional explicit target and a sub-label saying what resolved — and the two nodes are otherwise the
+same shape. The asymmetry is unexplained rather than deliberate.
+
+**Verdict:** ⚠️ two defects, one fixed.
 
 ---
 
 ### Push Component To Stack  `PageStackNavigate`
 
-3 inputs / 1 outputs · 1 signal in / 1 signal out · docs 0% · SSR `safe` · browser
+3 inputs / 1 outputs · 1 signal in / 1 signal out · docs 0% → **100% (6/6)** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/component-stack/push-component)
+Source: [`navigate.ts`](../../../../packages/noodl-viewer-react/src/nodes/navigation/navigate.ts) ·
+Docs: [link](https://docs.noodl.net/nodes/component-stack/push-component)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/4) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | **The counter-example worth recording**: `backCallback` (`:145-153`) flags every `backResult-*` dirty *before* it sends the action signal. Correct signal/value ordering, in the same category as two nodes that got it wrong |
+| A2 |  | n/a | |
+| A3 |  | n/a | |
+| G1 |  | n/a | |
+| B1 | ⚠️ **none** | ✅ | Stale pre-fill — NDA-004 §2 |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/4) | ✅ | 6/6 static; `Target Page`, `Transition` and every `pm-*` are dynamic and undocumentable |
+| D1 |  | ⚠️ | `stack` is a bare name matched against Page Stack nodes, with the defaulting bug below |
+| E1 | ✅ no dead-end types | ⚠️ | `pm-*` params pushed as `'*'` — see below |
+| F1 |  | ⚠️ | Same class as Navigate's: `Stack` resolves by name with no feedback |
+| H1 | declares `safe` | ✅ | |
 
-**Verdict:** ⬜ not audited
+⚠️ **Two functions in one file look up the same Page Stack, and only one of them defaults.**
+`_updatePorts` matches with `(ps.parameters['name'] || 'Main') === (node.parameters['stack'] || 'Main')`
+(`:259-261`); `_trackTargetComponent` matches with a bare `ps.parameters['name'] === node.parameters['stack']`
+(`:340`). For a Page Stack explicitly named `Main` and a Navigate node with `Stack` left at its
+default, the first matches and the second returns early — so the ports are derived once and then
+**never tracked**, and adding a Component Input to the target page does not produce a `pm-` port until
+something unrelated re-runs the derivation. Editor-time only, but it is the "port did not appear" class
+of report.
+
+⚠️ **The component boundary is typed in one direction here too.** `:291-296` pushes every
+`pm-<inputName>` as `'*'`, discarding the type the target component's `inputPorts` declares — which is
+precisely the asymmetry NDA-010 §1 fixed for Show Popup's close results, in the same phase. Show Popup
+reads `o.type || '*'` for its params (`showpopup.ts:233`); this node does not. Class E, arrived at from
+the same side as NDA-010's finding and not yet closed.
+
+⚠️ **`_trackTargetComponent` re-subscribes without ever unsubscribing** (`:353-371`). Changing `Target
+Page` calls it again, adding a second set of `inputPortAdded` / `nodeAdded` listeners to the component
+and leaving the previous target's in place. Editor-time; the visible effect is `_updatePorts` running
+once per historical target on every change. **Show Popup has the same shape** (`showpopup.ts:293-317`)
+— one defect, two sites, counted once.
+
+**Verdict:** ⚠️ three defects, all filed.
 
 ---
 
 ### Show Popup  `NavigationShowPopup`
 
-2 inputs / 1 outputs · 1 signal in / 1 signal out · docs 0% · SSR `safe` · browser
+2 inputs / 1 outputs · 1 signal in / 1 signal out · docs 0% → **100% (7/7)** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/popups/show-popup)
+Source: [`showpopup.ts`](../../../../packages/noodl-viewer-react/src/nodes/navigation/showpopup.ts) ·
+Docs: [link](https://docs.noodl.net/nodes/popups/show-popup)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/3) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | `onClosePopup` flags every `closeResult-*` dirty before signalling (`:161-166`) — correct ordering |
+| A2 |  | n/a | |
+| A3 |  | n/a | |
+| G1 |  | 🔵 | `stackPolicy` normalises anything that is not `'stack'` to `'replace'` (`:61`), so an abstaining connection gets the documented default rather than an undefined policy |
+| B1 | ⚠️ **none** | ✅ | Stale pre-fill — NDA-004 §2 / NDA-010 §3 |
+| B2 |  | ✅ | `show-popup/no-target`, `show-popup/target-failed` |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/3) | ✅ | 7/7 written this pass |
+| D1 |  | 🔵 | Close-action names crossing from Close Popup's stringlist, as above |
+| E1 | ✅ no dead-end types | ✅ | NDA-010 §1 typed the close results |
+| F1 |  | ✅ | `Target` is explicit |
+| H1 | declares `safe` | ✅ | |
 
-**Verdict:** ⬜ not audited
+⚠️ **The duplicate-port guard compared the wrong string, so it never fired.** `:242` read
+`ports.find((p) => p.name === a)`, where `a` is the bare action name and `p.name` is always the
+prefixed `closeAction-…`. Two Close Popup nodes in one popup declaring the same close action — one on
+a button, one on a backdrop, which is how dialogs are built — published two ports with identical names.
+`navigate.ts:304` is the same guard written correctly, one file over, which is what makes this an
+oversight rather than a difference of design. **Fixed.**
+
+⚠️ **The close-*results* loop had no guard at all**, where `navigate.ts:318` carries one for
+`backResult-`. **Fixed.**
+
+⚠️ **`Closed` carried neither a `displayName` nor a `group`**, so the node's four outcome ports
+rendered as two unrelated sets. Presentation only — ports are addressed by name — but it is why this
+node's outputs read oddly on the card. **Fixed.**
+
+⚠️ `_trackTargetComponent` accumulates listeners — see Push Component To Stack, where the same shape
+is recorded once.
+
+**Verdict:** ⚠️ three defects, all fixed.
 
 ---
+
+## What this category adds to the phase
+
+**The find rate went up, not down: 15 defects in 8 nodes (1.88/node) against Cloud Services' 1.14 and
+the running 1.41.** Every node in the category carries at least one. Navigation was picked as the
+small, tractable one; it is the densest so far.
+
+**A fourth cross-category shape: one-shot state that is not one-shot.** `Close Popup`'s close action
+and `Pop Component Stack`'s back action are both written once and never cleared, so the *second* use
+of the node reports the first one's outcome. It is not an ordering defect — the value is right when it
+is first read and wrong on every read after — and it is invisible to any test that exercises the node
+once. Both were found by asking "what does this look like the *second* time?", which is a question the
+twelve checks do not currently ask.
+
+**Editor-time code is materially less well tested than runtime code.** Six of the fifteen defects live
+in a module's `setup` — the dynamic-port derivations — and `graph-harness` does not call `setup` at
+all, so none of them were reachable by the ordinary corpus. They needed the fake-graph-model harness
+NDA-009 and NDA-010 built. Every node in this category derives its most important ports there.
+
+**And the same coverage instrument that reported 0% now reports 100% for a category whose primary
+ports are still undocumented.** That is the NDA-005 §2 question, and Navigation is the sharpest case
+of it in the library.

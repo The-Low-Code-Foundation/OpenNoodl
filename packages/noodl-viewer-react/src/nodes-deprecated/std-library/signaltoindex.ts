@@ -58,19 +58,35 @@ const SignalToIndexNode: NodeDefinitionOptions = {
     signalTriggered: {
       displayName: 'Signal Triggered',
       type: 'signal',
-      description: 'Fires when any signal input fires, but before Index has been updated — read Index on the next frame'
+      description: 'Fires when any signal input fires, once Index holds the number of the input that fired'
     }
   },
   prototypeExtensions: {
+    /**
+     * NDA-012 — the second instance of *signal before value*, and the one left standing when
+     * `Receive Event` was fixed so that it could get its own discrimination check rather than
+     * ride along on another node's.
+     *
+     * The pulse used to go out first, so a node acting on `Signal Triggered` read the
+     * **previous** signal's index — or `0`, the initialised value, on the first one. Carrying
+     * which input fired alongside the announcement that one did is this node's entire purpose,
+     * so the ordering defeated the reason it exists.
+     *
+     * What settles the fix is program order: `flagOutputDirty` and `sendSignalOnOutput` both
+     * push into the receiving node's input queue, so flagging first queues the value ahead of
+     * the pulse. Same one-statement move as `eventreceiver.ts`'s `handleEvent`.
+     *
+     * The early return had to become a guarded update rather than stay an early return: the
+     * pulse fires on *every* signal, including one that re-selects the index already showing,
+     * and returning early after moving the pulse down would have swallowed those.
+     */
     onValueChangedToTrue: function (this: SignalToIndexNodeInstance, index: number) {
-      this.sendSignalOnOutput('signalTriggered');
-
-      if (this._internal.currentIndex === index) {
-        return;
+      if (this._internal.currentIndex !== index) {
+        this._internal.currentIndex = index;
+        this.flagOutputDirty('index');
       }
 
-      this._internal.currentIndex = index;
-      this.flagOutputDirty('index');
+      this.sendSignalOnOutput('signalTriggered');
     }
   }
 };
