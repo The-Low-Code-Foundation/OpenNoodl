@@ -33,6 +33,14 @@ NDA-014 §1–2. Since the last handover:
   would have** — read "Harness facts" below before writing a single row, because two of them mean
   rows you write can pin nothing at all while looking green.
 
+- **NDA-004 §2 closed its last coding items on 2026-07-30** — `2f519c1d` (item 4), `2a448a45` +
+  `1579121f` (all 21 remaining `setError` helpers, FINDINGS B-iv **closed**), `928531ce` (Array
+  Filter), `e442c9a1` (item 7), `27184f12` (Show Popup), `674aee0f` (the `hasOutput` top-up).
+  **Criterion 4 is met for every node that is a coding task**; only the deprecated-five policy
+  question is left. ~80 new corpus rows. The reusable half is in FINDINGS **B-viii…B-xi**, and the
+  one to read first is **B-x**: three controls written this session proved nothing, all by
+  asserting an absence in a state where the code under test never ran.
+
 - **A second session ran four tasks in parallel on 2026-07-30**, on files disjoint from NDA-004's
   ⏳ list: **NDA-006** slices 1–3 (`b09b9785`, `f3b0aba4`), **NDA-010 §3** (`c8c26382`), **NDA-011**
   (`069621be`), **NDA-007**'s renderer half (`f85be46f`). Two consequences for whoever picks this
@@ -46,9 +54,12 @@ Six normative docs in `dev-docs/reference/`: `REACTIVITY-CONTRACT.md`, `EMPTY-VA
 resolves a target without a wire**: "How to obey it" names the helpers, and "The two walks" is a
 table you will otherwise get wrong.
 
-Gates as of `f3b0aba4`: **1,112 runtime jest, 340 viewer jest, 1,885 editor jasmine (0 failures)**;
+Gates as of `3b1beb48`: **1,119 runtime jest, 349 viewer jest, 1,885 editor jasmine (0 failures)**;
 cloud jest 52, unchanged and untouched since `d21154e1`. The editor suite was last run at `63f76b62`
-and nothing since has touched editor source.
+and nothing since has touched editor source. Both packages typecheck (`npx tsc --noEmit`) — but see
+the red-suite warning below, which applies to the typecheck too: `noodl-viewer-react/src/types.ts`
+and the `components/controls` files were mid-edit by another session and reported errors that were
+not this workstream's.
 
 ⚠️ **A red runtime suite may not be yours.** Two sessions have been committing to this tree, and
 twice during 2026-07-30 a full run showed failures that were purely the *other* session's
@@ -195,90 +206,85 @@ are a `pages` proplist of `{id,label}` plus a `pageComp-<id>` parameter each.
 
 ## The work, in order
 
-### 1. NDA-004 §2 — the largest remaining block, and it is now a list
+### 1. NDA-004 §2 — **done**, bar one policy question
 
-`NODE-REGISTER.md` has a **§2 triage of all 50**, split into **read** (binding) and **reasoned**
-(provisional). Criterion 4 is *not* met and the section says so. Items 1, 2, 5, 6 and 8 and Video
-are now struck through. What is left on the ⏳ list:
+**Criterion 4 is met for every node that is a coding task** (2026-07-30). Every ⏳ entry in
+`NODE-REGISTER.md`'s triage is struck through except **item 9, the deprecated five**, which is a
+scope decision for Richard — whether deprecated nodes are in scope at all — and not something an
+implementer should settle. Closed this session:
 
-- **Item 3, Show Popup** — **unblocked**: NDA-010 §3 landed 2026-07-30 (`c8c26382`). Read
-  `showpopup.ts` again first, it grew a `stackPolicy` input and a `Dismissed` output. Note the
-  node's own unresolved-target case is still open — `show()` opens with
-  `if (this._internal.target == undefined) return;`, which is the shape §2 keeps finding.
-- **Item 4, Push Component To Stack / Navigate** — a target page that does not resolve;
-  `navigate.ts` already returns early on `_findPage` missing. Probably the highest yield left.
-- **Item 7** — Filter Records, State History, Stream Buffer, Set Variable, Repeater Item.
-- **`Array Filter`** — split out of item 6 deliberately. It is the family's genuinely *mixed* case:
-  `scheduleFilter` is reached from the `Filter`/`Refresh` signals **and** from the `enabled` setter
-  and the collection-change callback, so a raise there fires on the boot path. It needs the trigger
-  distinguished first (a flag set by the signal handlers is the obvious shape).
-- **Item 9, the deprecated five** — still an open policy question, not a coding task.
+| What | Commit |
+|---|---|
+| Item 4 — Push Component To Stack / Navigate | `2f519c1d` |
+| FINDINGS B-iv — the user/auth eleven `setError` helpers | `2a448a45` |
+| FINDINGS B-iv — the last ten | `1579121f` |
+| Array Filter | `928531ce` |
+| Item 7 — Filter Records, State History, Stream Buffer, Set Variable, Repeater Item | `e442c9a1` |
+| Item 3 — Show Popup | `27184f12` |
+| The `hasOutput` top-up, and the Send Event defect it found | `674aee0f` |
 
-Alternatively the **21 remaining `setError` helpers** (FINDINGS B-iv) are still the most contained
-high-value batch left; the user/auth eleven are near-identical and can go as one commit.
+**The four questions still apply to any node you audit** and are unchanged — they are below,
+under "Four questions". What this session added to them:
 
-Four questions to ask each node, in this order. Every one of them has now cost a batch to learn:
+1. **A grouping predicts nothing about the answers, and the register's own bullets are guesses.**
+   Item 7's five nodes had four different verdicts. Array Filter's "you will need a flag set by the
+   signal handlers" turned out to be already in the source, inverted, as
+   `isInputConnected('filter') === false`. Item 4's "a target page that does not resolve" named one
+   drop of **five**, none of them in the file the register cited.
+2. **The false-success shape is three registries deep** and the banked rule was too narrow. It is
+   not only create-on-read lookups: `Set Variable` did `Model.set(undefined, value)`, which makes
+   `undefined` a property name on the record every Variable node shares and then reports `Done`.
+   The general form is **any keyed operation whose key can be absent, where the absent case is
+   representable** — see FINDINGS B-ix.
+3. **A fix reported as done is a hypothesis too.** Send Event was ✅ from batch 1 on the strength of
+   a `Failure` signal and a raised code, and had **no `Error` port at all**. FINDINGS B-xi.
 
-1. **Is the trigger an author `Do`, or a value arriving?** `Model2.scheduleStore` has the identical
-   `if (!internal.model) return;` as four nodes that were fixed, and must stay silent — it is
-   reached from `userInputSetter` on every `prop-…` value, so failing there fires on the ordinary
-   boot path. Built, tested, reverted when the rows showed it. The **Array family** in the ⏳ list
-   poses exactly this question. `Component Object` answered it the same way in batch 2.
-2. **Does the report already exist?** Raise in `explicit` mode only, fire the graph surface in both.
-   In `foreach` mode `foreachitem.ts` has already raised the precise reason, and a second vaguer
-   event on one root cause is the contract's own "two wordings of one failure".
-3. **What value does it fall back to?** New in batch 2, from Expression: both its failure modes
-   returned **`0`**. That is worse than silence, because `0` is *plausible* — `Is False` fires and
-   every downstream branch takes the path a legitimate zero would send it down. A fallback
-   indistinguishable from a real result is strictly worse than an obviously wrong one, **and the
-   register's `Fail?` column cannot see the difference.**
-4. **Where does the diagnosis go?** A node can have `failure`/`error` ports — so the register's
-   `Fail?` column passes it — and still send its *message* to `editorConnection.sendWarning`, which
-   does not exist outside the editor. That is 22 nodes (see §2 below), and the register cannot see
-   that either.
+⚠️ **Read FINDINGS B-x before writing any control that asserts an absence.** Three controls written
+this session proved *nothing*, and all three were the same mistake: asserting silence in a state
+where the code under test never ran. An early-return dedup made a guard unreachable; a boot-path
+control never reached the scheduler; and two controls passed **vacuously** because `signalsFor` on
+a node that failed to construct returns `[]`. Make the control prove the code *did* run.
 
-⚠️ **The two failure modes are independent.** A node can be graph-observable and diagnostically
-mute (the Record family), or diagnostically loud and graph-mute (Parent Component Object before
-batch 2). Check both.
+### 2. NDA-004's other tails — **this is where the remaining work is**
 
-### 2. NDA-004's other tails
-
-- **Live QA of the nine nodes fixed on 2026-07-30, none of which has been watched running.** Batch
-  2's four (Set Parent Component Object Properties, Parent Component Object, Video, Expression) and
-  batch 3's five (Insert Object Into Array, Remove Object From Array, Clear Array, States, Open File
-  Picker). All nine passed jest and none has been seen in an editor. Two are worth the launch on
-  their own: **Open File Picker's `Cancelled`**, because its rows stub `document` and the real
-  `cancel` event is the one thing a stub cannot vouch for; and **States**, because the property panel
-  has to show the two new ports on a node whose port set is otherwise entirely dynamic.
-- **`Logic Builder`, the last mute node.** Still blocked by another session's uncommitted rewrite.
-  **Check `git status` first and skip if `logic-builder.ts` is still dirty.** It was still dirty on
-  2026-07-30.
-- **Criterion 2's cloud-runtime and export legs.** One raised error, observed in all four contexts.
-  Editor and browser are covered; cloud and export are not, and the spec itself predicts export is
-  the one that gets forgotten. It still is. The `Response` work touched `noodl-viewer-cloud`, so the
-  cloud leg is now the shorter of the two.
-- ~~**`dbmodelcrudbase.setError` still uses `sendWarning`**~~ — **done `88300a2a`**, and the note
-  above was wrong about the size. "Fixing it is one helper" turned out to be **22 `setError`
-  definitions across 22 files** (~80 call sites): 5 Record CRUD, 11 user/auth, 2 agent, 2 other, 2
-  deprecated. Same shape as FINDINGS F-i one layer down — a helper that looks shared, copied.
-  `dbmodelcrudbase` now raises `record/storage-op-failed`; **the other 21 are enumerated in FINDINGS
-  B-iv and open.** They are mechanical *individually* but each is two changes, not one: the bus's
-  editor subscriber keys its warning by the raised **`code`**, so a `clearWarning` still naming the
-  old hand-written key clears nothing and the node accumulates a warning it can never shed. Do the
-  user/auth eleven as one batch — they are near-identical and the code namespace is obvious.
-- **Catalog regeneration**, still skipped for the same reason (the tree is still dirty). Now owed
-  for batch 3 as well: `Failure`/`Error` on **Insert Object Into Array**, **Remove Object From
-  Array**, **Clear Array** and **States**, and `Cancelled`/`Failure`/`Error` on **Open File
-  Picker**. And for: `On App Error`; Parent Component Object's and Close Popup's `targetComponent`; Pop Component
-  Stack's `Popped`/`Failure`/`Error`; Navigate's transition ports in replace mode; **Response's**
-  `Sent`/`Failure`/`Error`; **Set Object Properties'** `Failure`/`Error`; and `repeaterComponent` on
-  seven node types — Object (`Model2`), Record (`DbModel2`), Set Object Properties, Set Record
-  Properties, Delete Record, Add Record Relation, Remove Record Relation. (The two `Create New …`
-  nodes correctly do *not* get it: `addModelId({ includeOutputs: true })` leaves `includeInputs`
-  falsy, which is right for a node that creates rather than references.) `nodelibraryexport.ts` reads
-  the live register so the editor picker and property panel are already correct — verified live —
-  only the generated JSON snapshot is stale. **`NODE-REGISTER.md`'s `Mute?`/`Fail?` columns are wrong
-  until this runs**; its hand-written Verdict column and the triage section are the current truth.
+- **Live QA. Owed, and now larger than the nine it used to be.** Nothing fixed on 2026-07-30 has
+  been watched running: batch 2's four, batch 3's five, and this session's **twelve more** (Push
+  Component To Stack, Navigate, Array Filter, Filter Records, Set Variable, Stream Buffer, Repeater
+  Item, Show Popup, State Snapshot, Undo/Redo, Subscribe To Changes, Send Event). All pass jest.
+  Three earn a launch on their own:
+  - **Open File Picker's `Cancelled`** — its rows stub `document`, and the real `cancel` event is
+    the one thing a stub cannot vouch for.
+  - **States** — the property panel must show two new static ports on a node whose port set is
+    otherwise entirely dynamic.
+  - **Show Popup's `show-popup/target-failed`** — the rows drive it through a rejected promise in
+    jest; what a real editor does with an unhandled-rejection-turned-raise is worth seeing once.
+  ⚠️ A dev editor and a webpack watch were running in this tree at the end of this session
+  (another workstream's). Check `ps aux | grep "[O]penNoodl/node_modules/electron/dist"` before
+  launching a second one, and remember that a dev launch rewrites the example project's
+  `project.json` on open *and* shutdown.
+- **`Logic Builder`, the last mute node.** Still blocked: `logic-builder.ts` was still dirty at the
+  end of this session. **Check `git status` first and skip if it is.**
+- **Criterion 2's cloud-runtime and export legs.** Unchanged and still owed. One raised error,
+  observed in all four contexts; editor and browser are covered, cloud and export are not, and the
+  spec predicts export is the one that gets forgotten. It still is. The `Response` work touched
+  `noodl-viewer-cloud`, so the cloud leg is the shorter of the two.
+- ~~**The 21 remaining `setError` helpers**~~ — **done**, `2a448a45` + `1579121f`. And **B-iv's own
+  table was wrong**, which is the part to carry: it counted twenty-two definitions and read them as
+  copies of one that posted to `sendWarning`. Fourteen do. **Six posted nowhere at all**, which is
+  worse rather than lesser, and three of those had no `Failure` port either. Corrected in place in
+  FINDINGS.
+- **Catalog regeneration**, still skipped — the tree is still dirty. The owed list has grown; on top
+  of everything the previous handover listed, add `Failure`/`Error` on **Push Component To Stack**,
+  **Navigate**, **Array Filter**, **Filter Records**, **Set Variable**, **Stream Buffer**, **Show
+  Popup**, **State Snapshot**, **Undo/Redo**, **Subscribe To Changes**, and `Error` on **Send
+  Event**. `nodelibraryexport.ts` reads the live register, so the editor picker and property panel
+  are already correct — only the generated JSON snapshot is stale. **`NODE-REGISTER.md`'s
+  `Mute?`/`Fail?` columns are wrong until this runs**; the hand-written Verdict column and the
+  triage section are the current truth.
+- **Show Popup's one residual**: `NodeContext.showPopup` opens with `if (!this.onShowPopup) return;`,
+  so a runtime with no popup host — an SSR render, a cloud function — resolves *successfully* having
+  done nothing. Distinguishing that needs a change in `nodecontext.ts`, which was another
+  workstream's file this session, so it was recorded rather than reached for.
 
 ### 3. Small residuals
 
