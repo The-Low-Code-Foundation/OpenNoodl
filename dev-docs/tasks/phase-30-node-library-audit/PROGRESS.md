@@ -12,7 +12,7 @@
 | NDA-013 Repeater Refresh | 1 | ✅ **Done** `0e96c93a` | `refresh()` resyncs from `items`; queue race handled by truncating the ops `set()` just appended (synchronous span, nothing interleaves). Full teardown kept deliberately, documented. Refresh added to Array Map; Array Filter's premise was wrong — its `Filter` signal always re-read fresh, `refresh` added as alias. 3 new corpus rows red→green. Live QA pending |
 | NDA-004 Failure contract | 2 | 🔄 §1 done, §3 **9 of 10**, §2 two batches | Channel at `packages/noodl-runtime/src/runtimeerror.ts`; `On App Error` node; F1/F1′ green. §3: only **Logic Builder** left, still blocked by another session's uncommitted rewrite — `Response` landed 2026-07-29 (it was hiding a `TypeError` out of an input setter *and* a silently-discarded second answer). §2 batch 1: Set Object Properties, Set Record Properties, Add/Remove Record Relation. §2 batch 2 (2026-07-30): **Set Parent Component Object Properties** (reported `Done` for a write into a throwaway record — worst class-B defect so far), **Parent Component Object**, **Video** (×2 failures), plus Component Object and Set Component Object Properties 🔵 on evidence. **Remaining: §2's ⏳ list in the register, criterion 2's cloud + export legs, catalog regeneration** |
 | NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
-| NDA-006 Columns | 2 | ⬜ Not started | Checked: `Columns.tsx` is the **only** file special-casing `ForEachComponent`. Slice 4 (Fable) is gated on slices 2–3 |
+| NDA-006 Columns | 2 | 🔄 **Slices 1+2 done** | **Slice 2's premise was wrong**: a Repeater adds its items as *siblings* of its `ForEachComponent` (`foreach.tsx:472`), so they were always wrapped and sized — filtering the `ForEachComponent` out is *correct*, and F3's original expectation is reconciled, not satisfied. Seven real defects found instead, four of them worse: autofold was dead the moment an author set Horizontal Gap (a units port writes `'16px'`, and `number < string` is `NaN`); a Repeater that was a Columns node's **only** child was dropped from the tree entirely and never mounted; only the **first** of several Repeaters was rendered; wrappers were keyed by position, so a Repeater deleting one row remounted every row after it. Plus `calcAutofold` mutating its caller, folding to *zero* columns (`width: NaN%`), a double space in the layout string doing the same, and `visibility: hidden` painting blank through the whole of SSR. 11 corpus rows, 7 reverts, each reddening only its own. **Slice 3 (breakpoints) needs Richard's API call; slice 4 (masonry) gated on it. Live QA owed** — the key fix is not reachable without a DOM |
 | NDA-007 Icon sets | 2 | 🔄 §1 done | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked) |
 | NDA-008 Component Stack | 2 | ✅ **Done — all four sections** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). **Richard chose "Both" (2026-07-29): fix the box, keep the feature.** Applied as `overflow: clip` on the app root — `clip` creates no scroll container at all, where `hidden` creates one only the *browser* can scroll. `TextInput` keeps its plain `.focus()`, so a deliberate `Focus` still scrolls the nearest genuinely-scrollable ancestor. Measured live on the same element in one session: `hidden` 0 → **1762 px**, `clip` 0 → **0 px**. §1 done: replace animates through the same `Transitions` machinery, defaulting to `None` so no existing project starts moving; the `// Only push mode have transition` gate is gone. §3 done: `Popped`/`Failure`/`Error` and **three** codes, not two — the unbriefed one is `transition-in-progress`, i.e. a double-tapped back button used to lose its second tap. **§2 done 2026-07-29**: re-selecting the page already on top used to re-mount it in *both* modes, and push also pushed a duplicate entry (depth 1 → 2), so every click on the active tab lost its state and grew a stack Back had to walk back through. The no-op is **params-aware** — same component with different params is the master→detail idiom and must keep pushing — and replace additionally requires depth 1, since on a deeper stack it still has collapsing to do. `hasNavigated` still fires, or a re-selected tab would be a dead button. **NDA-008 is complete** |
 | NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
@@ -64,6 +64,76 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-30 (NDA-006 slices 1+2 — Columns)** — run alongside NDA-004 in a second session, on
+  disjoint files. Seven defects in one 180-line component, and the task's own headline defect was
+  not among them.
+
+  **The premise, falsified.** Slice 2 said Columns "filters `ForEachComponent` out of children and
+  renders it separately, so Columns + Repeater produces unwrapped, unsized children", and offered
+  three fixes in preference order. All three would have made it worse. A Repeater does not render
+  its items: `internal.target.addChild(itemNode, index)` (`foreach.tsx:472`) adds them as
+  **siblings** of the `ForEachComponent`, under the same visual parent. So the items were always in
+  `props.children` and always got a `.column-item` box. The `ForEachComponent` renders `null` and
+  must *not* get one — an empty box would consume a fraction slot and shift every real item's
+  width. The exclusion the spec called the bug is the one correct line in the block. NDA-001's F3
+  row is **reconciled** rather than satisfied, and now asserts the widths a Repeater's siblings get
+  (slots 0 and 1 of `'1 2 1'`, not 1 and 2) — which is the half of F3 that was right.
+
+  **What was actually wrong with Columns + Repeater** — three defects, two of which render nothing
+  at all:
+
+  - `renderChildren` returns a bare element, not an array, when a node has exactly one child. The
+    single-child branch tested for `ForEachComponent` and then put it in **neither** bucket — it
+    assigned `forEachComponent` only in the array branch. So a Repeater that was a Columns node's
+    only child was dropped from the tree, never mounted, and with `repeaterDisabledWhenUnmounted`
+    on never drained `mountedOperations`. **A Columns node containing nothing but a Repeater
+    rendered nothing, permanently.**
+  - `find`, not `filter`: the second Repeater in a Columns node was never rendered, same
+    consequence one node along.
+  - The wrapper was keyed by **position** while its child carries the stable `reactKey` every
+    visual node renders with (`react-component-node.ts:1200`). Removing item 0 kept wrapper 0 and
+    handed it a different child, whose key no longer matched — so React unmounted and remounted it,
+    and the same cascaded down the list. **A Repeater deleting one row tore down every row after
+    it**, losing focus, scroll, media playback and any transition in flight. `Group` keys children
+    directly and has never had this, which is why "Columns is worse with a Repeater" was true
+    without anyone finding a missing width.
+
+  **Autofold was dead code on any authored project, and the input that turns it off is the one
+  next to the input that gives it a purpose.** `marginX` and `minWidth` are declared
+  `{ name: 'number', units: ['px'] }`, and that port shape writes `value.value + value.unit` —
+  the *string* `'16px'`. `acc.min + parseFloat(minWidth) + marginX` is then string concatenation,
+  and `number < string` coerces to `NaN`, which is false, so the fold never fired. It fired on a
+  **default** project only because `columns.ts:29` seeds bare numbers and a definition's own
+  `initialize` runs last (`react-component-node.ts:865`). Setting Horizontal Gap silently disabled
+  the node's only responsive behaviour; Min Column Width sits in the same panel.
+
+  Generalisable, and worth a grep beyond this node: **a units-typed port's value is a string in
+  `props`, and only ever a number before the author touches it.** Any arithmetic on one that does
+  not go through a `parseFloat` works in exactly the state nobody ships.
+
+  Three more, all of the "renders `NaN`" family: `calcAutofold` popped the **caller's** array
+  (`newLayout = layout`) and then compared a total taken *before* that pop against the array it had
+  since shortened — two readings that were never independent; folding had no floor, so a container
+  narrower than one minimum column folded to **zero**, making `fractionSize` `Infinity` and
+  `columnAmount` `0`, and `layout[i % 0]` is `layout[NaN]` — every child `width: NaN%`; and a
+  double space in the layout string (`'1  2'`) put one `NaN` in the fractions and did the same,
+  with no warning, because the port's `layout-type-warning` only checks the value is a *string*.
+
+  **`visibility: hidden` until measured is gone.** It painted blank on first render and, since a
+  server render never gets a `ResizeObserver` callback, blank for the whole of SSR/SSG — which is
+  why the catalog marks Columns `partial`. The authored layout is right at the width it was
+  designed for, so it renders, and autofold reflows once measured. Deliberate flash, documented.
+
+  11 new corpus rows in `nda-006-columns-layout.test.tsx`, **7 temporary reverts, each reddening
+  only its own rows**. Viewer jest **239** (was 228), typecheck clean. ⚠️ **The key fix is not
+  covered**: keys are not in markup and reconciliation needs a DOM, and this package has neither
+  jsdom nor `react-test-renderer`. B4 pins the precondition and says so in the row rather than
+  counting it. **Live QA owed**, and it is the fix that most needs it.
+
+  Owed: slice 3 (breakpoints) is a **design decision for Richard** — per-breakpoint layout strings
+  vs auto-fit `minmax()`, and whether breakpoints are project-level, since the editor has no
+  breakpoint concept today. Slice 4 (masonry) is gated on it.
 
 - **2026-07-30 (NDA-004 §2 — Push Component To Stack and Navigate)** — ⏳ item 4, both nodes, `2f519c1d`.
   Two ✅, 14 corpus rows, viewer jest 228 (delta +14; the absolute count now also carries another
