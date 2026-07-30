@@ -125,6 +125,7 @@ const ParentComponentState: NodeDefinitionOptions = {
       },
       displayName: 'Properties',
       group: 'Properties',
+      description: 'Names of the parent values to expose, each becoming a matching input and output',
       // Edit-only: the value is read from the node's parameters by `updatePorts`,
       // never at runtime, so the setter is deliberately empty.
       set() {}
@@ -132,6 +133,7 @@ const ParentComponentState: NodeDefinitionOptions = {
     store: {
       displayName: 'Set',
       group: 'Actions',
+      description: 'Writes the supplied property values into the parent component object',
       valueChangedToTrue(this: ParentComponentStateInstance) {
         this.scheduleStore();
       }
@@ -139,6 +141,7 @@ const ParentComponentState: NodeDefinitionOptions = {
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
+      description: 'Republishes every property from the parent; connecting this stops the outputs updating on their own',
       valueChangedToTrue: function (this: ParentComponentStateInstance) {
         this.setModelId(this._internal.modelId);
       }
@@ -148,17 +151,20 @@ const ParentComponentState: NodeDefinitionOptions = {
     changed: {
       type: 'signal',
       displayName: 'Changed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when a property on the resolved parent is written, unless Fetch is connected'
     },
     fetched: {
       type: 'signal',
       displayName: 'Fetched',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once Fetch has republished every property'
     },
     stored: {
       type: 'signal',
       displayName: 'Stored',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once Set has written every property'
     }
   },
   methods: {

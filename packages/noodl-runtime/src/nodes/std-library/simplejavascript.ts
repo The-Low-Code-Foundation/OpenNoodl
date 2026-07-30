@@ -40,6 +40,16 @@ interface SimpleJavascriptNodeInstance extends NodeInstance {
     func?: (...args: unknown[]) => Promise<unknown>;
     /** Message of the last throw from user code, for the built-in `Error` output. */
     lastError?: string;
+    /**
+     * Why the last `parseScript` failed, or `undefined` if the current script compiles.
+     *
+     * Kept rather than reported at the point of failure: `parseScript` runs from an input
+     * setter, before `Run` has been pressed, and a half-typed script is not a failure of
+     * anything the author asked for yet. See `runScript`.
+     */
+    parseError?: string;
+    /** The last compile failure already raised, so an edit-by-edit retype reports once. */
+    lastReportedError?: string;
   };
   /** On the instance rather than in `_internal`. */
   runScheduled?: boolean;
@@ -122,6 +132,7 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
         allowEditOnly: true
       },
       group: 'Script Inputs',
+      description: 'Names of the values the script reads from Inputs, each becoming an input port',
       set() {
         //  ignore
       }
@@ -132,12 +143,14 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
         allowEditOnly: true
       },
       group: 'Script Outputs',
+      description: 'Names of the values the script writes to Outputs, each becoming an output port',
       set() {
         //  ignore
       }
     },
     functionScript: {
       displayName: 'Script',
+      description: 'JavaScript run when Run fires, reading Inputs.name and writing Outputs.name',
       plug: 'input',
       type: {
         name: 'string',
@@ -148,6 +161,9 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
       set(this: SimpleJavascriptNodeInstance, script: string) {
         if (script === undefined) {
           this._internal.func = undefined;
+          // No script is not a broken script — a stale `parseError` left here would make the
+          // next `Run` report a syntax error the author has already deleted.
+          this._internal.parseError = undefined;
           return;
         }
 
@@ -160,6 +176,7 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Run',
       group: 'Actions',
+      description: 'Runs the script; connecting this stops it running whenever an input changes',
       valueChangedToTrue: function (this: SimpleJavascriptNodeInstance) {
         this.scheduleRun();
       }
@@ -178,17 +195,20 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
     success: {
       type: 'signal',
       displayName: 'Success',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the script has finished, waiting for an async script to resolve first'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when the script threw while running, or could not be compiled at all'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'What the script went wrong with, in JavaScript\'s own words',
       // A bare Failure signal reproduces "no information" one level up, so the message
       // travels with it (FAILURE-CONTRACT.md).
       getter: function (this: SimpleJavascriptNodeInstance) {
@@ -212,7 +232,39 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
     runScript: async function (this: SimpleJavascriptNodeInstance) {
       const func = this._internal.func;
 
-      if (func === undefined) return;
+      /**
+       * NDA-012 (CustomCode). NDA-004 §3 gave this node `Success`/`Failure`/`Error` for the
+       * case where user code *throws*, and left the case where it does not compile exactly as
+       * it was: `parseScript` swallowed the `SyntaxError` into a `console.log`, returned
+       * `undefined`, and `Run` then returned here without a sound. Neither signal fired, so a
+       * graph sequenced behind a Function with one stray bracket stopped dead, and the only
+       * diagnosis was `js-function-parse-waring` — `sendWarning`, and therefore editor-only.
+       *
+       * This is the same defect the Expression node had and the same fix
+       * (`expression.ts:189-196`): the two nodes are the library's two script hosts and had
+       * no reason to differ.
+       *
+       * The `parseError` guard keeps `Run` before any script has been written silent, which
+       * is the state a freshly dropped node is in.
+       */
+      if (func === undefined) {
+        const parseError = this._internal.parseError;
+        if (parseError !== undefined) {
+          this._internal.lastError = parseError;
+          this.flagOutputDirty('error');
+          // Deduplicated by message, exactly as `expression.ts:160-170` does and for the same
+          // reason: with `Run` unconnected the node re-runs on every script edit, so an author
+          // mid-keystroke would otherwise raise one event per character typed.
+          if (this._internal.lastReportedError !== parseError) {
+            this._internal.lastReportedError = parseError;
+            this.raiseRuntimeError('function/script-not-compiled', 'The script could not be compiled: ' + parseError, {
+              error: parseError
+            });
+          }
+          this.sendSignalOnOutput('failure');
+        }
+        return;
+      }
 
       const inputs = this._internal.inputValues;
       const outputs = this._internal.outputValuesProxy;
@@ -315,8 +367,15 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
           'Component',
           JavascriptNodeParser.getCodePrefix() + script
         );
+        this._internal.parseError = undefined;
+        // A script that compiles re-arms the report, so a syntax error reintroduced later is
+        // heard again rather than suppressed for the life of the node.
+        this._internal.lastReportedError = undefined;
       } catch (e) {
         console.log('Error while parsing action script: ' + e);
+        // NDA-012: kept for `runScript`, which is where an author asking the node to do
+        // something can be told it cannot. See the note there.
+        this._internal.parseError = e && e.message ? String(e.message) : String(e);
       }
 
       return func;

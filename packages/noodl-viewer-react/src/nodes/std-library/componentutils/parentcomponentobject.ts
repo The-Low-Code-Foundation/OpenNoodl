@@ -175,6 +175,7 @@ const ParentComponentObject: NodeDefinitionOptions = {
       type: 'component',
       displayName: 'Parent Component',
       group: 'General',
+      description: 'Which ancestor to read from; leave blank for the nearest one that has a Component Object',
       set(this: ParentComponentObjectInstance, value: string) {
         this._internal.targetComponent = value || undefined;
         // A retarget is a new question, so a miss already reported about the old target must
@@ -190,11 +191,13 @@ const ParentComponentObject: NodeDefinitionOptions = {
       },
       displayName: 'Properties',
       group: 'Properties',
+      description: 'Names of the parent values to expose, each becoming a matching input and output',
       set() {}
     },
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
+      description: 'Republishes every property from the parent; connecting this stops the outputs updating on their own',
       valueChangedToTrue: function (this: ParentComponentObjectInstance) {
         this.setModelId(this._internal.modelId);
       }
@@ -204,12 +207,14 @@ const ParentComponentObject: NodeDefinitionOptions = {
     changed: {
       type: 'signal',
       displayName: 'Changed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when a property on the resolved parent is written, unless Fetch is connected'
     },
     fetched: {
       type: 'signal',
       displayName: 'Fetched',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once Fetch has republished every property'
     },
     /**
      * NDA-004 §2. NDA-015 gave this node *raising* — the runtime error channel — but nothing an
@@ -221,12 +226,14 @@ const ParentComponentObject: NodeDefinitionOptions = {
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when no parent Component Object could be found, so there is nothing to read'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'Which ancestor was looked for and why it was not found',
       getter(this: ParentComponentObjectInstance) {
         return this._internal.lastError;
       }

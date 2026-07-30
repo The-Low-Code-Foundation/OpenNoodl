@@ -29,6 +29,7 @@ export const node = {
     params: {
       group: 'Parameters',
       type:{name:'stringlist',allowEditOnly:true},
+      description: 'Names to return in the response body, each becoming an input to supply it',
       set: function (value) {
         this._internal.params = value;
       }
@@ -37,6 +38,7 @@ export const node = {
       group: 'General',
       type: 'string',
       displayName:'Error Message',
+      description: 'Message returned to the caller; used only when Status is Failure',
       set: function (value) {
         this._internal.errorMessage = value;
       }
@@ -45,6 +47,7 @@ export const node = {
       displayName: 'Send',
       type: 'signal',
       group: 'General',
+      description: 'Sends the response and ends the request, which can only happen once',
       valueChangedToTrue: function () {
         this.sendResponse();
       }
@@ -52,6 +55,7 @@ export const node = {
     status: {
       group: 'General',
       displayName:'Status',
+      description: 'Whether the caller gets a 200 carrying Parameters or a 400 carrying Error Message',
       type: {
         name: 'enum',
         enums: [
@@ -82,17 +86,20 @@ export const node = {
     sent: {
       type: 'signal',
       displayName: 'Sent',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires as the response goes out, and before the request scope is torn down'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when the response could not be sent, because there is no request in scope or one was already answered'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'Why the response could not be sent',
       getter: function () {
         return this._internal.lastError;
       }

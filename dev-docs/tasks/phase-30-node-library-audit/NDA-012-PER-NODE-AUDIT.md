@@ -70,14 +70,14 @@ nobody starts from a blank page. **It never overwrites an existing file** — de
 | [Data](./audit/data.md) | 46 | 0 |
 | [Visual](./audit/visual.md) | 29 | 0 |
 | [Cloud Services](./audit/cloud-services.md) | 22 | **22** |
-| [Component Utilities](./audit/component-utilities.md) | 8 | 0 |
+| [Component Utilities](./audit/component-utilities.md) | 8 | **8** |
 | [Navigation](./audit/navigation.md) | 8 | **8** |
-| [Utilities](./audit/utilities.md) | 8 | 0 |
+| [Utilities](./audit/utilities.md) | 8 | **8** |
 | [Logic](./audit/logic.md) | 7 | **7** |
-| [CustomCode](./audit/customcode.md) | 5 | 0 |
-| [Animation](./audit/animation.md) | 4 | 0 |
+| [CustomCode](./audit/customcode.md) | 5 | **4** ⬜ `Logic Builder` blocked |
+| [Animation](./audit/animation.md) | 4 | **4** |
 | [Variables](./audit/variables.md) | 4 | **4** |
-| [Cloud](./audit/cloud.md) | 3 | 0 |
+| [Cloud](./audit/cloud.md) | 3 | **3** |
 | [String Manipulation](./audit/string-manipulation.md) | 3 | **3** |
 | [Events](./audit/events.md) | 2 | **2** |
 | [Interpolation](./audit/interpolation.md) | 2 | **2** |
@@ -86,9 +86,12 @@ nobody starts from a blank page. **It never overwrites an existing file** — de
 | [Sensors](./audit/sensors.md) | 1 | **1** |
 
 Variables was filled in first, from the first-pass findings, as the worked example of what a completed
-entry looks like. **10 of 17 categories are complete as of 2026-07-30 — 52 of 155 nodes.** The seven
-remaining are Data (46), Visual (29), Component Utilities (8), Utilities (9), CustomCode (5),
-Animation (4) and Cloud (3).
+entry looks like. **15 of 17 categories are complete as of 2026-07-30 — 79 of 155 nodes.** The two
+remaining are **Data (46)** and **Visual (29)**, which the suggested order below ranks first and
+third: the small tractable categories are done, and what is left is the bulk.
+
+⚠️ **One node is blocked, not audited**: `Logic Builder` (CustomCode). Another session has held the
+file uncommitted for nine handovers.
 
 ## Suggested order
 

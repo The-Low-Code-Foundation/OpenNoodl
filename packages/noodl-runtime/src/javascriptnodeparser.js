@@ -221,6 +221,38 @@ JavascriptNodeParser.createFromCode = function (code, options) {
 };
 
 /**
+ * A parser that never parsed anything, carrying the reason.
+ *
+ * Shaped like a real one — `error`, `getPorts()`, empty `inputs`/`outputs` — because every
+ * caller already branches on `parser.error`, and handing them `undefined` instead is what
+ * produced the defect below.
+ *
+ * @param {string} message
+ * @returns {JavascriptNodeParser}
+ */
+function failedParser(message) {
+  var parser = Object.create(JavascriptNodeParser.prototype);
+  parser.inputs = {};
+  parser.outputs = {};
+  parser.error = message;
+  parser.code = undefined;
+  parser.apis = { Node: {} };
+  return parser;
+}
+
+/**
+ * NDA-012 (CustomCode). The Script node's `External File` mode had **no failure path at all**.
+ *
+ * `onerror` logged to the console and never called back, so `Javascript2` left
+ * `isWaitingForExternalFileToLoad` set — and its `update()` override clears `_dirty` and skips
+ * `Node.prototype.update` for exactly as long as that flag is true (`javascript.ts:341-347`).
+ * A Script node pointed at a URL that could not be reached was therefore **permanently and
+ * silently inert**: no code, no ports, no warning, no error, and no further updates ever.
+ *
+ * The status check is the second half. `onreadystatechange` fired on *any* completed request,
+ * so a 404 handed the server's error page to the parser as if it were the author's script; the
+ * resulting `SyntaxError` reported a parse failure for code the author never wrote.
+ *
  * @param {string} url
  * @param {(parser: JavascriptNodeParser) => void} callback
  * @param {{ node?: unknown }} [options]
@@ -228,16 +260,33 @@ JavascriptNodeParser.createFromCode = function (code, options) {
 JavascriptNodeParser.createFromURL = function (url, callback, options) {
   url = getAbsoluteUrl(url);
 
+  var settled = false;
+  function settle(parser) {
+    if (settled) return;
+    settled = true;
+    callback(parser);
+  }
+
   var xhr = new window.XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.onreadystatechange = function () {
     // XMLHttpRequest.DONE = 4, but torped runtime doesn't support enum
     if (this.readyState === 4 || this.readyState === XMLHttpRequest.DONE) {
-      callback(new JavascriptNodeParser(this.response));
+      // `status` is 0 for a network-level failure, which `onerror` also reports; whichever
+      // arrives first settles, and `settle` makes the other one a no-op.
+      if (this.status !== 0 && (this.status < 200 || this.status >= 300)) {
+        settle(failedParser('Could not load "' + url + '": the server answered ' + this.status));
+        return;
+      }
+      if (this.status === 0) {
+        settle(failedParser('Could not load "' + url + '": the request failed'));
+        return;
+      }
+      settle(new JavascriptNodeParser(this.response, options));
     }
   };
   xhr.onerror = function () {
-    console.log('Failed to request', url);
+    settle(failedParser('Could not load "' + url + '": the request failed'));
   };
   xhr.send();
 };

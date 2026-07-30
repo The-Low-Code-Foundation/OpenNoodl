@@ -20,9 +20,21 @@ const ScreenResolution: NodeDefinitionOptions = {
     // Add SSR Support
     if (typeof window === 'undefined') return;
 
-    window.addEventListener('resize', () => {
+    /**
+     * NDA-012 (Utilities), check H1. The listener was an anonymous arrow with no matching
+     * `removeEventListener` anywhere, so every Screen Resolution node ever created stayed
+     * subscribed to `window` for the life of the page: a node inside a Repeater template, or
+     * on a page the author navigated away from, kept its whole node instance reachable and
+     * kept calling `flagAllOutputsDirty()` on a graph that no longer exists.
+     */
+    const onResize = () => {
       this._viewportSizeChanged();
+    };
+    window.addEventListener('resize', onResize);
+    this.addDeleteListener(() => {
+      window.removeEventListener('resize', onResize);
     });
+
     this._viewportSizeChanged();
   },
   getInspectInfo(this: ScreenResolutionInstance) {
@@ -32,6 +44,7 @@ const ScreenResolution: NodeDefinitionOptions = {
     width: {
       type: 'number',
       displayName: 'Width',
+      description: 'Width of the browser viewport, in pixels',
       get(this: ScreenResolutionInstance) {
         return this._internal.width;
       }
@@ -39,6 +52,7 @@ const ScreenResolution: NodeDefinitionOptions = {
     height: {
       type: 'number',
       displayName: 'Height',
+      description: 'Height of the browser viewport, in pixels',
       get(this: ScreenResolutionInstance) {
         return this._internal.height;
       }
@@ -46,6 +60,7 @@ const ScreenResolution: NodeDefinitionOptions = {
     aspectRatio: {
       type: 'number',
       displayName: 'Aspect Ratio',
+      description: 'Width divided by Height, so anything wider than it is tall is greater than one',
       get(this: ScreenResolutionInstance) {
         return this._internal.width / this._internal.height;
       }

@@ -1418,9 +1418,153 @@ found one file at a time**, which is an argument for making the `setup` harness 
 than a per-task one.
 
 
+## NDA-012 the small remainder (2026-07-30) — Component Utilities, Utilities, CustomCode, Animation, Cloud
+
+**39 defects in 21 of 27 audited nodes** (one, `Logic Builder`, is blocked). 1.44 per node, against
+the running 1.41 — **still no decline after 79 nodes.** But the per-category spread is the more
+useful number this time, because it moves for reasons that are visible:
+
+| Category | Nodes | With ≥1 | Defects | Per node |
+|---|---|---|---|---|
+| Animation | 4 | 4 | 10 | **2.50** |
+| CustomCode | 4 (of 5) | 4 | 8 | **2.00** |
+| Utilities | 8 | 7 | 12 | 1.50 |
+| Cloud | 3 | 3 | 4 | 1.33 |
+| Component Utilities | 8 | 3 | 5 | 0.63 |
+
+### SR-i — a low rate with a cause is not a low rate
+
+Component Utilities scored **0.63, less than half the running average**, and the reason is on the
+record rather than inferred: **four of its eight nodes had already been remediated twice**, by
+NDA-015 (the whole binding contract lives in `parentcomponentobject.ts`) and by NDA-004 §2 batch 2.
+The most-fixed node in the library, `net.noodl.ParentComponentObject`, came out of this pass with a
+clean sheet on all twelve checks — the only node in the phase to do so.
+
+This matters for the stop rule. **Cloud Services' 1.14 dip was explained by sibling dilution, and
+this one is explained by prior work; neither is evidence of exhaustion.** A category the phase has
+already worked over finds less, which is what "already worked over" means. The stop signal remains a
+category with *no* prior remediation producing nothing new, and nothing is close.
+
+### SR-ii — three of the four dynamic-port mechanisms carry no documentation at all
+
+NDA-005 §2 established that `sendDynamicPorts` has no `description` field. This pass found the same
+hole at two more mechanisms, which makes it a property of the design rather than an oversight:
+
+| Mechanism | Reaches the catalog? | Used by |
+|---|---|---|
+| Static `inputs`/`outputs` | **yes** — `nodedefinition.ts:79,146` | most nodes |
+| `sendDynamicPorts` | ports yes, `description` **no** | 89 nodes |
+| `numberedInputs` | **no metadata entry at all** — `nodedefinition.ts:100-131` | `String Mapper`, `Index To String`, `And`, `Or`, … |
+| Port Editor panel | **no** | `Component Inputs`, `Component Outputs`, `Globals` |
+
+`registerNumberedInput` wraps `registerInputIfNeeded` on the *instance* and never writes to
+`metadata.inputs`, so a `description` on a numbered family goes nowhere and the catalog, the
+validator and the AI loop cannot see the ports exist at all. The Port Editor mechanism is worse
+again: `Component Inputs` and `Component Outputs` **define every component's public interface** and
+are undocumentable by any means the library currently has.
+
+So NDA-005's coverage percentage measures one mechanism of four. It is not wrong — it is the number
+for the ports that *have* a documentation channel — but the six nodes reporting **100% on `0/0`
+ports** are not documented, they are unmeasurable, and the register should say `n/a`.
+
+### SR-iii — the library encodes structured names into flat strings and decodes them with `split('-')`
+
+Two independent instances landed on the same day, in different packages and different categories:
+
+- **`net.noodl.ComponentObject`** wrote `first-name` from the input and read `name` on the output,
+  because `registerOutputIfNeeded` took the last `-` segment while `registerInputIfNeeded` stripped
+  the prefix. **Fixed** — one node, one property, a writer and a reader on two different keys.
+- **`States`** decodes `value-<state>-<name>` with `parts[1]`/`parts[2]`, so a value called
+  `bg-color` writes `currentValues['bg']` while the output reads `bg-color`. **Not fixed**, and the
+  reason is the interesting half: the port name concatenates **two** author-chosen names, so
+  `value-a-b-c` is genuinely ambiguous. It needs an encoding decision, not a substring change.
+
+`Function`'s `'in' + n` missing its hyphen (`simplejavascript.ts:359`) and the deprecated
+`Component State`'s identical last-segment bug are the same family. **Nothing in the library
+validates that this round trip is lossless**, and every one of these is invisible until an author
+happens to use a hyphen in a name — which is the most ordinary thing in the world.
+
+This is the seventh cross-category shape, after signal-before-value, the emitting value port,
+create-on-read, and one-shot latching.
+
+### SR-iv — the escape hatches had the worst failure surfaces
+
+CustomCode's 2.00 is the phase's second-highest rate, and it is concentrated in exactly the wrong
+place: the nodes an author reaches for when no other node will do.
+
+- **`Script`'s External File mode had no failure path at all.** `createFromURL`'s `onerror` logged
+  to the console and **never called back**, so `isWaitingForExternalFileToLoad` stayed set — and the
+  node's `update()` override clears `_dirty` and skips `Node.prototype.update` for exactly as long as
+  that flag is true. A Script node pointed at an unreachable URL was **permanently and silently
+  inert**: no code, no ports, no warning, no error, no further updates, ever. A 404 was a second bug
+  underneath: `onreadystatechange` fired on any completed request, so the server's error page was
+  handed to the parser as if it were the author's script. Both **fixed**.
+- **`Function` was mute when its script would not compile** — `parseScript` swallowed the
+  `SyntaxError` into a `console.log` and `Run` returned without a sound. NDA-004 §3 had given this
+  node `Success`/`Failure`/`Error` for code that *throws*, and NDA-004 §2 had fixed the identical
+  compile-failure defect on `Expression`. **The two script hosts differed for no reason.** Fixed.
+- **`Script`'s run path is still editor-only** and is filed: user code that throws reaches
+  `sendWarning` and `console.log`, with no raise and no port, so a throwing Script node is silent in
+  a deployed build.
+
+The lesson generalises CS-ii. A sweep that fixes *"the Expression node"* and *"the Function node"* by
+name does not fix *"nodes that host user code"* — and there were four of those, in three packages.
+
+### SR-v — `Date To String`'s only failure port had never fired, and a comment said so
+
+`_format`'s catch called `flagOutputDirty('onError')`. `flagOutputDirty` is
+`sendValue(name, output.value)` (`node.ts:647-650`), and a signal output's `value` is `undefined`, so
+every receiver got a *value* of `undefined` on a signal input instead of the `true`/`false` pair
+`sendPulse` delivers. **`Invalid Date` had never fired, since the node was written.**
+
+PLAT-003 NOTES §25 had recorded the line — *"note this **flags** the signal dirty rather than sending
+it"* — and kept it verbatim, correctly for a typing slice whose rule was to change no behaviour. The
+observation was right and nobody came back for it. Fixed, with the corpus row driving it **over a
+real wire into a receiver**, because asserting on the sender's own signal log cannot tell a pulse
+from a value.
+
+A second, smaller correction fell out of the same read: the file's comment claimed an invalid date
+throws out of `getDate()`. It does not — `getDate()` returns `NaN`. The catch is reached because
+`Intl.DateTimeFormat.format` throws `RangeError`, which is incidental to the line that looks like
+the check.
+
+### SR-vi — the timer leak that four nodes shared and one node never had
+
+`TimerScheduler` keeps a running timer in `runningTimers` until something stops it, and deleting a
+node does not. `Animate To Value`, `Transition`, `States` and `Animation` never stopped theirs, so a
+node deleted mid-animation kept being ticked every frame — flagging outputs dirty on a dead node and
+holding the whole instance reachable through the scheduler. `Animation` was worst: it owns *n+1*
+timers, one per animated output plus one, and stopped none.
+
+**`Delay` has had the delete listener since it was written** (`timer.ts:38-40`). It is the same
+mechanism, correct, in the same repository — and it is filed under **`Utilities`, not `Animation`**,
+so no per-category read would ever have put the two side by side. Fixed at all four sites.
+
+### SR-vii — `Page Inputs`, live: the suspicion was wrong and a different defect is real
+
+NEXT-SESSION §3 carried a suspicion from live QA — the `Path Parameters` / `Query Parameters` group
+headers appearing with no entries — with an instruction not to write it up before reproducing it.
+Reproduced in the running editor, and **it does not happen.** The panel lists the entries, the model
+updates, and the ports update: `pathParams: 'productId,tab'` renders two rows, adding `categoryId`
+through the panel writes `productId,tab,categoryId`, and the node's dynamic ports become
+`pm-productId`, `pm-tab`, `pm-categoryId`, `pm-sort` — four, correctly de-duplicating the `tab` that
+appears in both lists, exactly as NV-i's fix documents. **NV-i is live-verified.**
+
+What the live check *did* find is one step to the left. The stringlist's **"New entry" popup renders
+the comment/code editor variant**: an 8-row `string-input-popup-textarea`, 420×198, with the
+placeholder `// Add your comment here...`. For a port whose entries are single identifiers that is
+wrong three times over — a multi-line field for a one-line name, a placeholder instructing the
+author to write a comment, and a value that can contain newlines and commas, which the node then
+splits on `,` into ports.
+
+**The general lesson is the one the phase keeps relearning from the other direction.** A suspicion
+formed by driving the model programmatically was not merely unconfirmed, it was pointed at the wrong
+component: the panel was fine and the *editor* in the popup was not. Neither could have been told
+apart without opening it.
+
 ## What these passes did *not* cover
 
-- **142 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No
+- **76 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No
   implementation has been read for them. The second pass is direct evidence that the structural sweep
   under-reports: five real defects in the first six nodes anyone looked at closely.
 - ~~**Two findings are unfinished.**~~ **Both closed 2026-07-29 in the running editor, and both

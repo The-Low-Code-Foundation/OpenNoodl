@@ -244,6 +244,7 @@ const Javascript: NodeDefinitionOptions = {
         allowEditOnly: true
       },
       group: 'Script Inputs',
+      description: 'Names of the values the script reads, each becoming an input port',
       set: function () {
         //  ignore
       }
@@ -254,6 +255,7 @@ const Javascript: NodeDefinitionOptions = {
         allowEditOnly: true
       },
       group: 'Script Outputs',
+      description: 'Names of the values the script writes, each becoming an output port',
       set: function () {
         //  ignore
       }
@@ -276,6 +278,7 @@ const Javascript: NodeDefinitionOptions = {
       default: 'no',
       displayName: 'Use External File',
       group: 'Code',
+      description: 'Whether the code is loaded from File Path instead of being typed into Code',
       set: function (this: JavascriptInstance, value: string) {
         this._internal.isWaitingForExternalFileToLoad = value === 'yes';
         this._internal.useExternalFile = value === 'yes';
@@ -284,6 +287,7 @@ const Javascript: NodeDefinitionOptions = {
     code: {
       displayName: 'Code',
       group: 'Code',
+      description: 'The script, which declares its own ports through the define API',
       type: {
         name: 'string',
         allowEditOnly: true,
@@ -309,6 +313,7 @@ const Javascript: NodeDefinitionOptions = {
     externalFile: {
       displayName: 'File Path',
       group: 'Code',
+      description: 'Where to load the script from; used only when Use External File is Yes',
       type: {
         name: 'source',
         allowEditOnly: true
@@ -349,12 +354,34 @@ const Javascript: NodeDefinitionOptions = {
       const editorConnection = this.context.editorConnection;
 
       if (editorConnection) {
-        for (const w of ['js-destroy-waring', 'js-run-waring', 'js-setup-waring']) {
+        // `js-parse-waring` joins the list because this method can now *send* it — a node whose
+        // External File starts resolving again must lose the warning that says it does not.
+        for (const w of ['js-parse-waring', 'js-destroy-waring', 'js-run-waring', 'js-setup-waring']) {
           editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, w);
         }
       }
 
+      /**
+       * NDA-012 (CustomCode). This was a bare `return`, which was defensible while the only
+       * way to get here with an error was a code parse the editor had already warned about.
+       * It is not defensible now that `createFromURL` reports a failed load through the same
+       * field: an External File that 404s used to hang the node for ever
+       * (`javascriptnodeparser.js`), and un-hanging it without saying anything would only
+       * convert a hang into a silence.
+       *
+       * The editor warning is kept as well as the raise — it is the one an author editing the
+       * node sees on the canvas, and the raise is the one that exists in a deployed build.
+       */
       if (parser.error) {
+        if (editorConnection && this.context.isWarningTypeEnabled('javascriptExecution')) {
+          editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'js-parse-waring', {
+            showGlobally: true,
+            message: parser.error
+          });
+        }
+        this.raiseRuntimeError('script/source-failed', 'The script could not be loaded: ' + parser.error, {
+          error: parser.error
+        });
         return;
       }
 

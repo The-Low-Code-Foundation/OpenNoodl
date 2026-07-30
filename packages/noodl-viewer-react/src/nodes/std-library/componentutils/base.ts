@@ -131,12 +131,14 @@ function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef
           },
           displayName: 'Properties',
           group: 'Properties',
+          description: 'Names of the values this node writes, each becoming an input to supply it',
           set() {}
         },
         store: {
           type: 'signal',
           group: 'Actions',
           displayName: 'Do',
+          description: 'Writes every supplied property value into the component object',
           valueChangedToTrue(this: SetComponentObjectPropertiesInstance) {
             this.scheduleStore();
           }
@@ -149,7 +151,8 @@ function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef
         stored: {
           type: 'signal',
           group: 'Events',
-          displayName: 'Done'
+          displayName: 'Done',
+          description: 'Fires once every property has been written'
         }
       },
       // NDA-004 §2. Only on the variant that can actually miss — see `canFailToResolve`.
@@ -158,12 +161,14 @@ function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef
             failure: {
               type: 'signal',
               group: 'Events',
-              displayName: 'Failure'
+              displayName: 'Failure',
+              description: 'Fires when no parent Component Object could be found, so nothing was written'
             },
             error: {
               type: 'string',
               group: 'Events',
               displayName: 'Error',
+              description: 'Which ancestor was looked for and why it was not found',
               getter: function (this: SetComponentObjectPropertiesInstance) {
                 return this._internal.lastError;
               }

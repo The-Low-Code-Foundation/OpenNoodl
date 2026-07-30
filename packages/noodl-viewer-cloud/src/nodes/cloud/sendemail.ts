@@ -36,6 +36,7 @@ export const node = {
       group: 'General',
       displayName: 'To',
       type: 'string',
+      description: 'Address the message goes to; the send fails outright when this is blank',
       set: function (value) {
         this._internal.to = value;
       }
@@ -43,6 +44,7 @@ export const node = {
     template: {
       group: 'Content',
       displayName: 'Template',
+      description: 'Which stored template to render, or None to use Subject, Text Body and HTML Body instead',
       type: {
         name: 'enum',
         enums: [
@@ -60,7 +62,7 @@ export const node = {
       group: 'Content',
       displayName: 'Template Variables',
       type: { name: 'object', allowConnectionsOnly: true },
-      description: 'Only used when Template is set. A plain object of {{variable}} values (e.g. from a Set Variables node).',
+      description: 'Values substituted into the template placeholders, and ignored when Template is None',
       set: function (value) {
         this._internal.variables = value;
       }
@@ -69,7 +71,7 @@ export const node = {
       group: 'Content',
       displayName: 'Subject',
       type: 'string',
-      description: 'Ignored when Template is set.',
+      description: 'Subject line of the message, and ignored when Template is set',
       set: function (value) {
         this._internal.subject = value;
       }
@@ -78,7 +80,7 @@ export const node = {
       group: 'Content',
       displayName: 'Text Body',
       type: 'string',
-      description: 'Ignored when Template is set.',
+      description: 'Plain-text body of the message, and ignored when Template is set',
       set: function (value) {
         this._internal.text = value;
       }
@@ -87,7 +89,7 @@ export const node = {
       group: 'Content',
       displayName: 'HTML Body',
       type: 'string',
-      description: 'Optional. Ignored when Template is set.',
+      description: 'HTML body sent alongside Text Body; optional, and ignored when Template is set',
       set: function (value) {
         this._internal.html = value;
       }
@@ -96,6 +98,7 @@ export const node = {
       displayName: 'Do',
       group: 'Actions',
       type: 'signal',
+      description: 'Sends the message',
       valueChangedToTrue: function () {
         this.scheduleSend();
       }
@@ -105,17 +108,20 @@ export const node = {
     sent: {
       displayName: 'Sent',
       type: 'signal',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the mail server has accepted the message for delivery'
     },
     failed: {
       displayName: 'Failed',
       type: 'signal',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when the message could not be sent, including when no mail service is configured'
     },
     error: {
       displayName: 'Error',
       type: 'string',
       group: 'Error',
+      description: 'Why the message could not be sent',
       getter: function () {
         return this._internal.error;
       }

@@ -194,6 +194,13 @@ const StatesNode: NodeDefinitionOptions = {
         if (_this.hasOutput(port)) _this.sendSignalOnOutput(port);
       }
     }) as StatesTimer;
+
+    // NDA-012 (Animation), check H1. See `animate-to-value.ts` — a transition in flight when
+    // the node is deleted kept ticking, and `onRunning` flags an output dirty per value per
+    // frame, so this was the noisiest of the four sites.
+    this.addDeleteListener(() => {
+      _internal.animation.stop();
+    });
   },
   getInspectInfo(this: StatesInstance) {
     return `Current state: ${this._internal.state}`;
@@ -203,6 +210,7 @@ const StatesNode: NodeDefinitionOptions = {
       type: { name: 'stringlist', allowEditOnly: true },
       displayName: 'States',
       group: 'States',
+      description: 'Names of the states this node can be in; the node starts in the first',
       set: function (this: StatesInstance, value: string) {
         this._internal.states = value ? value.split(',') : [];
 
@@ -221,9 +229,15 @@ const StatesNode: NodeDefinitionOptions = {
       type: { name: 'stringlist', allowEditOnly: true },
       displayName: 'Values',
       group: 'Values',
+      description: 'Names of the values that differ between states, each becoming an output',
       set: function (this: StatesInstance, value: string) {
         const internal = this._internal;
-        internal.values = value.split(',');
+        // NDA-012 (Animation). `value.split` unguarded, where the `states` setter directly
+        // above has always had `value ? … : []`. The stringlist editor hands back `undefined`
+        // when the author deletes the last entry, so emptying Values threw a `TypeError` out
+        // of an input setter — which `nodecontext.ts` catches and `console.error`s, abandoning
+        // the rest of this node's update pass. Same guard as its sibling, for the same reason.
+        internal.values = value ? value.split(',') : [];
 
         // Register output values at this point
         for (const i in internal.values) {
@@ -234,6 +248,7 @@ const StatesNode: NodeDefinitionOptions = {
     toggle: {
       group: 'Go to state',
       displayName: 'Toggle',
+      description: 'Moves to the next state in the list, wrapping round after the last',
       valueChangedToTrue: function (this: StatesInstance) {
         const internal = this._internal;
 
@@ -255,6 +270,7 @@ const StatesNode: NodeDefinitionOptions = {
       type: 'boolean',
       displayName: 'Use Transitions',
       group: 'General',
+      description: 'Whether a state change animates its values or jumps straight to them',
       default: true,
       set: function (this: StatesInstance, value: boolean) {
         const internal = this._internal;
@@ -267,6 +283,7 @@ const StatesNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'State',
       group: 'Current State',
+      description: 'Which state the node is in now',
       getter: function (this: StatesInstance) {
         return this._internal.state;
       }
@@ -274,7 +291,8 @@ const StatesNode: NodeDefinitionOptions = {
     stateChanged: {
       type: 'signal',
       displayName: 'State Changed',
-      group: 'Current State'
+      group: 'Current State',
+      description: 'Fires on every state change except entering the first, which is where the node starts'
     },
     /**
      * NDA-004 §2. `goToState` never checked that the state it was handed was one of the node's
@@ -297,12 +315,14 @@ const StatesNode: NodeDefinitionOptions = {
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when a state was asked for that this node does not have, leaving it where it was'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'Which state was asked for and which ones this node actually has',
       getter: function (this: StatesInstance) {
         return this._internal.error;
       }

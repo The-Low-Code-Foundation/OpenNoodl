@@ -64,6 +64,20 @@ const AnimateToValue: NodeDefinitionOptions = {
         self.sendSignalOnOutput('atTargetValue');
       }
     }) as AnimationTimer;
+
+    /**
+     * NDA-012 (Animation), check H1 — one shape, four sites.
+     *
+     * `TimerScheduler` holds a running timer in `runningTimers` until something stops it
+     * (`timerscheduler.ts:96-112`); deleting a node does not. So a node deleted mid-animation
+     * kept being ticked every frame, calling `flagOutputDirty` on a dead node and holding the
+     * whole instance reachable through the scheduler. The sibling `Delay` node has had this
+     * listener since it was written (`timer.ts:38-40`) — the three animation nodes and
+     * `States` simply never got one.
+     */
+    this.addDeleteListener(() => {
+      this._internal._animation.stop();
+    });
   },
   getInspectInfo(this: AnimateToValueInstance): InspectInfo {
     // Wrapped as a value entry — a bare number renders as nothing in the
@@ -77,6 +91,7 @@ const AnimateToValue: NodeDefinitionOptions = {
       },
       displayName: 'Target Value',
       group: 'Target Value',
+      description: 'Value to move towards; the first one to arrive is adopted outright rather than animated to',
       default: undefined, //default is undefined so transition initializes to the first input value
       set: function (this: AnimateToValueInstance, value: unknown) {
         if (value === true) {
@@ -114,6 +129,7 @@ const AnimateToValue: NodeDefinitionOptions = {
       type: 'number',
       group: 'Parameters',
       displayName: 'Duration',
+      description: 'How long the move takes, in milliseconds',
       default: defaultDuration,
       set: function (this: AnimateToValueInstance, value: number) {
         this._internal._animation.duration = value;
@@ -123,6 +139,7 @@ const AnimateToValue: NodeDefinitionOptions = {
       type: 'number',
       group: 'Parameters',
       displayName: 'Delay',
+      description: 'How long to wait before the move begins, in milliseconds',
       default: 0,
       set: function (this: AnimateToValueInstance, value: number) {
         this._internal._animation.delay = value;
@@ -141,6 +158,7 @@ const AnimateToValue: NodeDefinitionOptions = {
       default: 'easeOut',
       displayName: 'Easing Curve',
       group: 'Parameters',
+      description: 'Shape of the movement between where the value is and Target Value',
       set: function (this: AnimateToValueInstance, value: string) {
         this._internal._animation.ease = EaseCurves[value];
       }
@@ -151,6 +169,7 @@ const AnimateToValue: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Current Value',
       group: 'Current State',
+      description: 'Where the move has got to, updated every frame while it runs',
       getter: function (this: AnimateToValueInstance) {
         return this._internal.currentNumber;
       }
@@ -158,7 +177,8 @@ const AnimateToValue: NodeDefinitionOptions = {
     atTargetValue: {
       type: 'signal',
       displayName: 'At Target Value',
-      group: 'Signals'
+      group: 'Signals',
+      description: 'Fires when the value settles on Target Value, and not at all if a new target interrupted it'
     }
   }
 };

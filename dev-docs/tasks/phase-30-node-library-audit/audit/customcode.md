@@ -8,80 +8,92 @@ in [FINDINGS.md](../FINDINGS.md). The `Pre-filled` column is machine-derived fro
 everything else needs the source read. Verdicts: ✅ pass · ⚠️ defect · 🔵 by design, document it ·
 ⬜ not audited.
 
+**Audited 2026-07-30, batched with NDA-005's C1. 4 of 5 nodes — `Logic Builder` is blocked** (see
+its entry). 8 defects in 4 nodes, **2.00 per node: the highest rate of any category in the phase.**
+
+That is not an accident of this category being messy. These are the library's escape hatches — the
+nodes an author reaches for when no other node will do — and **two of the three script hosts had no
+runtime failure surface at all**, so the place where user code is most likely to be wrong is the
+place that said least about it.
+
 ---
 
 ### CSS Definition  `CSS Definition`
 
-1 inputs / 0 outputs · 0 signal in / 0 signal out · docs 0% · SSR `safe` · browser
+1 inputs / 0 outputs · 0 signal in / 0 signal out · docs 0% → **100%** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/utilities/css-definition)
+Source: [`packages/noodl-viewer-react/src/nodes/visual/css-definition.ts`](../../../../packages/noodl-viewer-react/src/nodes/visual/css-definition.ts) · Docs: [link](https://docs.noodl.net/nodes/utilities/css-definition)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | n/a — no action input | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | n/a | ⬜ | |
-| C1 | ⚠️ **0%** (0/1) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | n/a | |
+| A2 |  | n/a | |
+| A3 |  | ✅ | Every `Style` set rewrites the element |
+| G1 |  | ✅ | **The only node in the batch where `null` clears properly**: `updateStyle(null)` removes the `<style>` element rather than writing "null" into it (`:83-95`) |
+| B1 | n/a — no action input | n/a | |
+| B2 |  | n/a | |
+| B3 | n/a | n/a | |
+| C1 | ⚠️ **0%** (0/1) | ✅ | 1/1 written this pass |
+| D1 |  | 🔵 | CSS text is injected verbatim into a `<style>` element with no sanitisation. That is the node's entire purpose, and the CSS is the author's own — recorded, not a defect |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ⚠️ | **It declares `safe` and produces nothing at all server-side.** Both `updateStyle` and `removeStyleDeclaration` return early when `document` is undefined (`:66-67`, `:76-77`), so a server-rendered page paints **without the author's CSS** until hydration. `safe` is the wrong declaration; `partial` with a note is the honest one. Filed |
+| — |  | 🔵 | `_refCount` is keyed on the *graph node* id, so every instance of a component shares one `<style>` element — which is correct, and the reason the refcount exists (`:17`, `:33-45`) |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 1 defect (SSR honesty)
 
 ---
 
 ### Expression  `Expression`
 
-2 inputs / 8 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser, cloud
+2 inputs / 8 outputs · 1 signal in / 2 signal out · docs 0% → **100%** · SSR `safe` · browser, cloud
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/math/expression)
+Source: [`packages/noodl-runtime/src/nodes/std-library/expression.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/expression.ts) · Docs: [link](https://docs.noodl.net/nodes/math/expression)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/10) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | Reactive on every discovered input, plus a `Noodl.Variables/Objects/Arrays` subscription |
+| A2 |  | ✅ | `Run` |
+| A3 |  | ⚠️ | The value outputs are flagged dirty **only when the value changed** (`:135-139`) while `On True`/`On False` pulse on **every** evaluation (`:140-141`), so downstream is told "the condition held" with no accompanying value. This is NDA-017's mechanism at its own site — **cross-referenced there, not counted again here** |
+| G1 |  | 🔵 | Every discovered input is seeded to `0` (`:117-118`, `:290-291`), so an abstaining upstream is indistinguishable from a real zero. Documented in-file as the *reason* the `Failure` port is safe on this node; it is also a G1 violation, and both facts are true |
+| B1 | ⚠️ **none** | ✅ | NDA-004 §2 |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/10) | ✅ | 12/12 written this pass |
+| D1 |  | ⚠️ | **The sharpest finding in the category.** `parsePorts` mints an input port for *every* identifier not in a 30-name ignore list (`:470-500`, `:510-540`), and `_compileFunction` then passes those names as the compiled function's arguments (`:224-246`). So an expression using any JavaScript built-in outside the small maths preamble — `parseInt`, `Number`, `String`, `Date`, `JSON`, `Array`, `Object`, `isNaN`, `parseFloat` — **shadows it with the seeded `0`**, and the expression throws *"parseInt is not a function"*. **Filed, not fixed**: widening `portsToIgnore` changes the port set of every existing Expression node in every project, which is a migration decision, not a bug fix |
+| E1 | ✅ no dead-end types | ✅ | `Result` is `*`, with three typed siblings beside it |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | `_onNodeDeleted` unsubscribes and chains, both added by PLAT-003 |
+| — |  | 🔵 | `compiledFunctionsCache` is module-global and never evicted (`:468`), bounded by the number of distinct expressions in the project. `evalCompileWarnings` `console.log`s detected dependencies on every parameter update (`:596`) — editor noise |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 1 defect counted (D1); A3 cross-referenced to NDA-017
 
 ---
 
 ### Function  `JavaScriptFunction`
 
-4 inputs / 0 outputs · 1 signal in / 0 signal out · docs 0% · SSR `partial` · browser, cloud
+4 inputs / 0 outputs · 1 signal in / 0 signal out · docs 0% → **100%** · SSR `partial` · browser, cloud
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/javascript/function)
+Source: [`packages/noodl-runtime/src/nodes/std-library/simplejavascript.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/simplejavascript.ts) · Docs: [link](https://docs.noodl.net/nodes/javascript/function)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ⚠️ **no signal out** | ⬜ | |
-| C1 | ⚠️ **0%** (0/4) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `partial` | ⬜ | |
+| A1 |  | n/a | |
+| A2 |  | ✅ | `Run`, or any input change when `Run` is unconnected |
+| A3 |  | ✅ | |
+| G1 |  | 🔵 | Inputs reach user code as they arrive |
+| B1 | ⚠️ **none** | ⚠️ **FIXED** | **A script that would not compile was mute.** NDA-004 §3 gave this node `Success`/`Failure`/`Error` for user code that *throws* and left the code that does not *parse* exactly as it was: `parseScript` swallowed the `SyntaxError` into a `console.log` and returned `undefined`, and `Run` then returned without a sound (`:307-323`, `:212-215`). Neither signal fired, so a graph sequenced behind a Function with one stray bracket stopped dead, and the only diagnosis was `js-function-parse-waring` — `sendWarning`, and therefore editor-only. **This is the identical defect the Expression node had and NDA-004 fixed there** (`expression.ts:189-196`); the two are the library's script hosts and had no reason to differ. Fixed, deduplicated by message the same way |
+| B2 |  | ✅ | Raises `function/script-not-compiled` as well as firing the port |
+| B3 | ⚠️ **no signal out** | ✅ | The pre-filled ⚠️ predates NDA-004 §3 |
+| C1 | ⚠️ **0%** (0/4) | ✅ | 7/7 written this pass |
+| D1 |  | ⚠️ | `registerInputIfNeeded`'s `intype-` branch tests `this.hasInput('in' + n)` — **missing hyphen**, so the port is `in-<n>` and this matches nothing. Changing an input's Type after the port exists never retypes it (`:359-361`). Documented in place since PLAT-003 and still live. Filed |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `partial` | ✅ | `_deleted` is checked before every output write and before `Success`, because user code can outlive the node |
+| — |  | ⚠️ | `_isSignalType` is called with the **prefixed** name in `runScript` (`:222`) and the **stripped** name in `getScriptOutputValue` (`:290`), so a signal output's value getter returns the send-function object rather than `undefined`. Low impact — signal outputs are pulsed, not read — but the two call sites cannot both be right. Filed |
+| — |  | 🔵 | `setScriptInputType`/`setScriptOutputType` write into containers `initialize` never creates and would throw if reached; documented dead code |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 3 defects (1 fixed, 2 filed)
 
 ---
 
@@ -89,7 +101,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/javascript/func
 
 3 inputs / 1 outputs · 1 signal in / 0 signal out · docs 0% · SSR `safe` · browser, cloud
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/logic/logic-builder)
+Source: [`packages/noodl-runtime/src/nodes/std-library/logic-builder.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/logic-builder.ts) · Docs: [link](https://docs.noodl.net/nodes/logic/logic-builder)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
@@ -99,38 +111,66 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/logic/logic-bui
 | G1 |  | ⬜ | |
 | B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
-| B3 | ⚠️ **no signal out** | ⬜ | |
+| B3 | ⚠️ **no signal out** | ⬜ | This is NDA-004 §3's last open item, 9 of 10 done |
 | C1 | ⚠️ **0%** (0/4) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ✅ no dead-end types | ⬜ | |
 | F1 |  | ⬜ | |
 | H1 | declares `safe` | ⬜ | |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⬜ **BLOCKED — not audited.**
+
+The file has carried another session's uncommitted rewrite for **nine handovers**, together with an
+untracked `logic-builder-io.ts` it imports and a modified `enrichment/logic-builder.json`. Auditing
+the version at HEAD would produce verdicts about code that is being replaced, and auditing the
+working-tree version would audit work that is not ours and may not land.
+
+**It is also actively costing this task.** Regenerating the catalog this session picked up their
+in-progress change (`editorName: 'hidden'` removed from `run` and `error`), which the
+strip-and-compare check caught — the substitution dance in NEXT-SESSION §3 exists solely because of
+this file. This needs raising with Richard: NDA-004 §3 and NDA-012's CustomCode category **cannot
+close** while that session holds it.
 
 ---
 
 ### Script  `Javascript2`
 
-5 inputs / 0 outputs · 0 signal in / 0 signal out · docs 0% · SSR `partial` · browser
+5 inputs / 0 outputs · 0 signal in / 0 signal out · docs 0% → **100%** · SSR `partial` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/javascript/script)
+Source: [`packages/noodl-viewer-react/src/nodes/std-library/javascript.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/javascript.ts) · Docs: [link](https://docs.noodl.net/nodes/javascript/script)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | n/a — no action input | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | n/a | ⬜ | |
-| C1 | ⚠️ **0%** (0/5) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `partial` | ⬜ | |
+| A1 |  | n/a | |
+| A2 |  | n/a | |
+| A3 |  | ✅ | |
+| G1 |  | 🔵 | |
+| B1 | n/a — no action input | ⚠️ **FIXED** | **An External File that could not be loaded left the node permanently inert.** `createFromURL`'s `onerror` logged to the console and **never called back** (`javascriptnodeparser.js`), so `isWaitingForExternalFileToLoad` stayed set — and this node's `update()` override clears `_dirty` and skips `Node.prototype.update` for exactly as long as that flag is true (`:341-347`). No code, no ports, no warning, no error, and no further updates ever. Fixed in two halves: the parser now reports network failures **and** non-2xx responses (a 404 previously handed the server's error page to the parser as if it were the author's script), and `_onCodeParsed` raises `script/source-failed` rather than bare-returning |
+| B2 |  | ⚠️ | Fixed for the *load* path; still open for the **run** path. User code that throws is reported only through `sendWarning` — editor-only — plus `logJavaScriptNodeError`, with no raise and no port (`:467-476`, `:494-505`, `:516-524`, `:534-542`). **A throwing Script node is silent in a deployed build.** NDA-004 §3 gave `Function` the ports; `Script` never got the same treatment. Filed. (The destroy-path warning is also labelled `<strong>setup</strong>`, `:521` — folded into this row) |
+| B3 | n/a | n/a | The script declares its own ports |
+| C1 | ⚠️ **0%** (0/5) | ✅ | 5/5 written this pass |
+| D1 |  | ⚠️ | `code.set` early-returns on a falsy value (`:293-296`), so **clearing the Code box leaves the previously parsed `runFunction`/`destroyFunction` installed and running** until the page reloads. Filed |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `partial` | ✅ | `killed` is set and `destroy` called on delete |
+| — |  | 🔵 | `internal.onFrameStart` is bound in `initialize` and never subscribed; `internal.runNextFrame` is written and never read. Dead |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 3 defects (1 fixed, 2 filed)
 
 ---
+
+## Category summary
+
+| | |
+|---|---|
+| Nodes audited | 4 / 5 (`Logic Builder` blocked) |
+| Nodes with ≥1 defect | 4 |
+| New defects | **8** (3 fixed, 5 filed) |
+| Ports documented | 0% → **100%** on all four audited nodes |
+
+**Every audited node in this category carried at least one defect, at 2.00 per node.** The shape
+worth naming: `Expression` was given a runtime failure surface by NDA-004 §2 and `Function` by §3,
+and **neither pass looked at the third and fourth script hosts** — `Script`'s load path had no
+failure path at all, and its run path still has none. A sweep that fixes "the Expression node" and
+"the Function node" by name does not fix "nodes that host user code"; that is the same lesson as
+NDA-004 §2's criterion 2, which read as met because two of three packages were covered.

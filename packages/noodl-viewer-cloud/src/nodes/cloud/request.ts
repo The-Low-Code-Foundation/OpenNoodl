@@ -20,12 +20,14 @@ export const node = {
     receive: {
       displayName: 'Received',
       type: 'signal',
-      group: 'General'
+      group: 'General',
+      description: 'Fires when a request arrives, after every parameter output has been updated'
     },
     auth: {
       displayName: 'Authenticated',
       type: 'boolean',
       group: 'Request',
+      description: 'Whether the request carried a session token that resolved to a user',
       getter: function () {
         return !!this._internal.authenticated;
       }
@@ -34,6 +36,7 @@ export const node = {
       displayName: 'User Id',
       type: 'boolean',
       group: 'Request',
+      description: 'Id of the user the session token resolved to, and blank for an unauthenticated request',
       getter: function () {
         return this._internal.authUserId;
       }
@@ -45,6 +48,7 @@ export const node = {
       type: 'boolean',
       displayName: 'Allow Unauthenticated',
       default: false,
+      description: 'Whether a request with no valid session token is allowed to run this function at all',
       set: function (value) {
         this._internal.allowNoAuth = value;
       }
@@ -52,6 +56,7 @@ export const node = {
     params: {
       group: 'Parameters',
       type: { name: 'stringlist', allowEditOnly: true },
+      description: 'Names to pull out of the request body, each becoming an output',
       set: function (value) {
         this._internal.params = value;
       }

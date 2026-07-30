@@ -23,6 +23,8 @@ const DateToStringNode: NodeDefinitionOptions = {
       displayName: 'Format',
       type: 'string',
       default: '{year}-{month}-{date}',
+      description:
+        'Template in which {year} {yearShort} {month} {monthShort} {date} {hours} {minutes} {seconds} are replaced and everything else is copied through',
       set: function (this: DateToStringNodeInstance, value: string) {
         if (this._internal.formatString === value) return;
         this._internal.formatString = value;
@@ -36,6 +38,7 @@ const DateToStringNode: NodeDefinitionOptions = {
     input: {
       type: { name: 'date' },
       displayName: 'Date',
+      description: 'The instant to render; a string arriving here is parsed as a date first',
       set: function (this: DateToStringNodeInstance, value: string | Date) {
         const _value = typeof value === 'string' ? new Date(value) : value;
         // Reference equality, so a `Date` object is never equal to a previous one even
@@ -52,6 +55,7 @@ const DateToStringNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Date String',
       group: 'Value',
+      description: 'Date rendered through Format, or blank when the date could not be read',
       getter: function (this: DateToStringNodeInstance) {
         return this._internal.dateString;
       }
@@ -59,12 +63,14 @@ const DateToStringNode: NodeDefinitionOptions = {
     inputChanged: {
       type: 'signal',
       displayName: 'Date Changed',
-      group: 'Signals'
+      group: 'Signals',
+      description: 'Fires whenever a new Date arrives or Format changes, after Date String has been updated'
     },
     onError: {
       type: 'signal',
       displayName: 'Invalid Date',
-      group: 'Signals'
+      group: 'Signals',
+      description: 'Fires when the Date could not be read, leaving Date String blank'
     }
   },
   methods: {
@@ -97,10 +103,20 @@ const DateToStringNode: NodeDefinitionOptions = {
       } catch (error) {
         // Set the output to be blank, makes it easier to handle.
         this._internal.dateString = '';
-        // Note this *flags* the signal dirty rather than sending it — signals are
-        // delivered by `sendSignalOnOutput`, as the line below does for `inputChanged`.
-        // Kept verbatim (PLAT-003 NOTES §25).
-        this.flagOutputDirty('onError');
+        /**
+         * NDA-012 (Utilities). This was `flagOutputDirty('onError')`, and PLAT-003 NOTES §25
+         * recorded that as a curiosity kept verbatim. It is not a curiosity: `flagOutputDirty`
+         * is `sendValue(name, output.value)` (`node.ts:647-650`), and a signal output's `value`
+         * is `undefined`, so every receiver got `undefined` on a signal input instead of the
+         * `true`/`false` pair that `sendPulse` delivers. **`Invalid Date` had never fired.**
+         *
+         * Which made this node's only failure surface inert: the two ways in are an unset
+         * `Date` (`getDate()` on `undefined` throws `TypeError`) and a malformed one — a bad
+         * date string reaches here through `Intl.DateTimeFormat.format`'s `RangeError`, not
+         * through `getDate()`, which returns `NaN` quite happily. Either way the author saw
+         * `Date String` go blank and nothing else.
+         */
+        this.sendSignalOnOutput('onError');
       }
 
       // Flag that the value have changed

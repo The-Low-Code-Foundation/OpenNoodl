@@ -50,6 +50,7 @@ export default extendSetComponentObjectProperties({
       type: 'component',
       displayName: 'Parent Component',
       group: 'General',
+      description: 'Which ancestor to write to; leave blank for the nearest one that has a Component Object',
       set: function (this: SetComponentObjectPropertiesInstance, value: string) {
         this._internal.targetComponent = value || undefined;
         this.reportResolution();

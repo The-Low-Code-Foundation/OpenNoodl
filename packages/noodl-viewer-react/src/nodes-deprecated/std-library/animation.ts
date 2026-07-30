@@ -241,6 +241,20 @@ const AnimationNode: NodeDefinitionOptions = {
         }
       }
     });
+
+    /**
+     * NDA-012 (Animation), check H1. See `animate-to-value.ts`. This node is the worst of
+     * the four sites because it owns *n+1* timers — one signalling timer plus one per
+     * animated output — and none of them were stopped.
+     *
+     * The sub-animations are stopped through the scheduler rather than through
+     * `SubAnimation.stop()`, which also calls `setCurrentValue(undefined)`: pushing a value
+     * out of a node that is being deleted is exactly what this is fixing.
+     */
+    this.addDeleteListener(() => {
+      internal.animation.stop();
+      for (const sub of internal.animations) sub.animation.stop();
+    });
   },
   inputs: {
     duration: {
@@ -248,6 +262,7 @@ const AnimationNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Duration (ms)',
       group: 'Animation Properties',
+      description: 'How long a play takes, in milliseconds',
       default: defaultDuration,
       set: function (this: AnimationNodeInstance, value: number) {
         this._internal.duration = value;
@@ -261,6 +276,7 @@ const AnimationNode: NodeDefinitionOptions = {
       },
       group: 'Animation Properties',
       displayName: 'Easing Curve',
+      description: 'Shape of the movement between each value\'s start and end',
       default: 'easeOut',
       set: function (this: AnimationNodeInstance, value: string) {
         let easeCurve: EaseCurve;
@@ -278,6 +294,7 @@ const AnimationNode: NodeDefinitionOptions = {
       index: 20,
       group: 'Play',
       displayName: 'To End',
+      description: 'Animates every value from where it is now to its end value',
       editorName: 'Play To End',
       valueChangedToTrue: function (this: AnimationNodeInstance) {
         this._internal._isPlayingToEnd = true;
@@ -300,6 +317,7 @@ const AnimationNode: NodeDefinitionOptions = {
       index: 21,
       group: 'Play',
       displayName: 'To Start',
+      description: 'Animates every value from where it is now to its start value',
       editorName: 'Play To Start',
       valueChangedToTrue: function (this: AnimationNodeInstance) {
         this._internal._isPlayingToEnd = false;
@@ -321,6 +339,7 @@ const AnimationNode: NodeDefinitionOptions = {
       index: 22,
       group: 'Play',
       displayName: 'From Start To End',
+      description: 'Animates every value from its start value to its end value, wherever it is now',
       editorName: 'Play From Start To End',
       valueChangedToTrue: function (this: AnimationNodeInstance) {
         const animation = this._internal.animation,
@@ -342,6 +361,7 @@ const AnimationNode: NodeDefinitionOptions = {
       index: 23,
       group: 'Play',
       displayName: 'From End To Start',
+      description: 'Animates every value from its end value to its start value, wherever it is now',
       editorName: 'Play From End To Start',
       valueChangedToTrue: function (this: AnimationNodeInstance) {
         this._internal._isPlayingToEnd = false;
@@ -363,6 +383,7 @@ const AnimationNode: NodeDefinitionOptions = {
       index: 60,
       group: 'Instant Actions',
       displayName: 'Stop',
+      description: 'Abandons the play in progress, leaving every animated output unset',
       valueChangedToTrue: function (this: AnimationNodeInstance) {
         const animation = this._internal.animation,
           animations = this._internal.animations;
@@ -377,6 +398,7 @@ const AnimationNode: NodeDefinitionOptions = {
       index: 61,
       group: 'Instant Actions',
       displayName: 'Jump To Start',
+      description: 'Sets every value to its start value with no animation',
       valueChangedToTrue: function (this: AnimationNodeInstance) {
         const animations = this._internal.animations;
 
@@ -391,6 +413,7 @@ const AnimationNode: NodeDefinitionOptions = {
       index: 62,
       group: 'Instant Actions',
       displayName: 'Jump To End',
+      description: 'Sets every value to its end value with no animation',
       valueChangedToTrue: function (this: AnimationNodeInstance) {
         const animations = this._internal.animations;
 
@@ -404,6 +427,7 @@ const AnimationNode: NodeDefinitionOptions = {
     cubicBezierP1X: {
       displayName: 'P1 X',
       group: 'Cubic Bezier',
+      description: 'First control point along the time axis, clamped between 0 and 1; used only when Easing Curve is Cubic Bezier',
       type: {
         name: 'number'
       },
@@ -416,6 +440,7 @@ const AnimationNode: NodeDefinitionOptions = {
     cubicBezierP1Y: {
       displayName: 'P1 Y',
       group: 'Cubic Bezier',
+      description: 'First control point along the value axis, where beyond 0 and 1 overshoots; used only when Easing Curve is Cubic Bezier',
       type: {
         name: 'number'
       },
@@ -428,6 +453,7 @@ const AnimationNode: NodeDefinitionOptions = {
     cubicBezierP2X: {
       displayName: 'P2 X',
       group: 'Cubic Bezier',
+      description: 'Second control point along the time axis, clamped between 0 and 1; used only when Easing Curve is Cubic Bezier',
       type: {
         name: 'number'
       },
@@ -440,6 +466,7 @@ const AnimationNode: NodeDefinitionOptions = {
     cubicBezierP2Y: {
       displayName: 'P2 Y',
       group: 'Cubic Bezier',
+      description: 'Second control point along the value axis, where beyond 0 and 1 overshoots; used only when Easing Curve is Cubic Bezier',
       type: {
         name: 'number'
       },
@@ -454,12 +481,14 @@ const AnimationNode: NodeDefinitionOptions = {
     hasReachedStart: {
       type: 'signal',
       group: 'Signals',
-      displayName: 'Has Reached Start'
+      displayName: 'Has Reached Start',
+      description: 'Fires when a play towards the start values has finished'
     },
     hasReachedEnd: {
       type: 'signal',
       group: 'Signals',
-      displayName: 'Has Reached End'
+      displayName: 'Has Reached End',
+      description: 'Fires when a play towards the end values has finished'
     }
   },
   dynamicports: [

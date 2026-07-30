@@ -48,6 +48,7 @@ const Timer: NodeDefinitionOptions = {
   inputs: {
     start: {
       displayName: 'Start',
+      description: 'Starts the countdown, and does nothing while one is already running — use Restart to begin again',
       valueChangedToTrue: function (this: TimerInstance) {
         if (this._internal._animation._isRunning === false) {
           this._internal._animation.start();
@@ -56,6 +57,7 @@ const Timer: NodeDefinitionOptions = {
     },
     restart: {
       displayName: 'Restart',
+      description: 'Begins the countdown again from zero, whether or not one is already running',
       valueChangedToTrue: function (this: TimerInstance) {
         this._internal._animation.start();
       }
@@ -64,6 +66,7 @@ const Timer: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Duration',
       default: 0,
+      description: 'How long the countdown runs before Finished fires, in milliseconds',
       set: function (this: TimerInstance, value: number) {
         this._internal._animation.duration = value;
       }
@@ -72,12 +75,14 @@ const Timer: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Start Delay',
       default: 0,
+      description: 'How long to wait after Start before the countdown begins, in milliseconds',
       set: function (this: TimerInstance, value: number) {
         this._internal._animation.delay = value;
       }
     },
     stop: {
       displayName: 'Stop',
+      description: 'Abandons the countdown, so Finished never fires for it',
       valueChangedToTrue: function (this: TimerInstance) {
         this._internal._animation.stop();
       }
@@ -86,11 +91,13 @@ const Timer: NodeDefinitionOptions = {
   outputs: {
     timerStarted: {
       type: 'signal',
-      displayName: 'Started'
+      displayName: 'Started',
+      description: 'Fires when the countdown begins, once Start Delay has elapsed'
     },
     timerFinished: {
       type: 'signal',
-      displayName: 'Finished'
+      displayName: 'Finished',
+      description: 'Fires once Duration has elapsed, and not at all for a countdown that was stopped'
     }
   }
 };

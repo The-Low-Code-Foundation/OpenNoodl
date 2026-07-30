@@ -80,6 +80,7 @@ const ComponentState: NodeDefinitionOptions = {
       },
       displayName: 'Properties',
       group: 'Properties',
+      description: 'Names of the values this component keeps, each becoming a matching input and output',
       // Edit-only: the value is read from the node's parameters by `updatePorts`,
       // never at runtime, so the setter is deliberately empty.
       set() {}
@@ -87,6 +88,7 @@ const ComponentState: NodeDefinitionOptions = {
     store: {
       displayName: 'Set',
       group: 'Actions',
+      description: 'Writes the supplied property values into the component object',
       valueChangedToTrue(this: ComponentStateInstance) {
         this.scheduleStore();
       }
@@ -94,6 +96,7 @@ const ComponentState: NodeDefinitionOptions = {
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
+      description: 'Republishes every property; connecting this stops the outputs updating on their own',
       valueChangedToTrue(this: ComponentStateInstance) {
         this.scheduleFetch();
       }
@@ -103,17 +106,20 @@ const ComponentState: NodeDefinitionOptions = {
     changed: {
       type: 'signal',
       displayName: 'Changed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when any property is written, unless Fetch is connected'
     },
     fetched: {
       type: 'signal',
       displayName: 'Fetched',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once Fetch has republished every property'
     },
     stored: {
       type: 'signal',
       displayName: 'Stored',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once Set has written every property'
     }
   },
   methods: {

@@ -68,6 +68,12 @@ const TransitionNode: NodeDefinitionOptions = {
         self.sendSignalOnOutput('atTargetValue');
       }
     }) as TransitionTimer;
+
+    // NDA-012 (Animation), check H1. See the note in `animate-to-value.ts` — same defect,
+    // same fix; this is the deprecated half of that pair and leaks identically.
+    this.addDeleteListener(() => {
+      this._internal._animation.stop();
+    });
   },
   inputs: {
     targetValue: {
@@ -76,6 +82,7 @@ const TransitionNode: NodeDefinitionOptions = {
       },
       displayName: 'Target Value',
       group: 'Target Value',
+      description: 'Value to move towards; the first one to arrive is adopted outright rather than animated to',
       default: undefined, //default is undefined so transition initializes to the first input value
       set: function (this: TransitionNodeInstance, input: number | boolean) {
         let value: number;
@@ -116,6 +123,7 @@ const TransitionNode: NodeDefinitionOptions = {
       },
       group: 'Override Value',
       displayName: 'Override Value',
+      description: 'Value to jump straight to when Do fires, without animating',
       editorName: 'Value|Override Value',
       set: function (this: TransitionNodeInstance, value: number) {
         this._internal.overrideValue = value;
@@ -124,6 +132,7 @@ const TransitionNode: NodeDefinitionOptions = {
     'overrideCurrentValue.do': {
       group: 'Override Value',
       displayName: 'Do',
+      description: 'Jumps Current Value to Override Value and carries on towards Target Value from there',
       editorName: 'Do|Override Value',
       valueChangedToTrue: function (this: TransitionNodeInstance) {
         setCurrentNumber.call(this, this._internal.overrideValue);
@@ -133,6 +142,7 @@ const TransitionNode: NodeDefinitionOptions = {
       type: 'number',
       group: 'Parameters',
       displayName: 'Duration',
+      description: 'How long the move takes, in milliseconds',
       default: defaultDuration,
       set: function (this: TransitionNodeInstance, value: number) {
         this._internal._animation.duration = value;
@@ -142,6 +152,7 @@ const TransitionNode: NodeDefinitionOptions = {
       type: 'number',
       group: 'Parameters',
       displayName: 'Delay',
+      description: 'How long to wait before the move begins, in milliseconds',
       default: 0,
       set: function (this: TransitionNodeInstance, value: number) {
         this._internal._animation.delay = value;
@@ -160,6 +171,7 @@ const TransitionNode: NodeDefinitionOptions = {
       default: 'easeOut',
       displayName: 'Easing Curve',
       group: 'Parameters',
+      description: 'Shape of the movement between where the value is and Target Value',
       set: function (this: TransitionNodeInstance, value: string) {
         this._internal._animation.ease = EaseCurves[value];
       }
@@ -170,6 +182,7 @@ const TransitionNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Current Value',
       group: 'Current State',
+      description: 'Where the move has got to, updated every frame while it runs',
       getter: function (this: TransitionNodeInstance) {
         return this._internal.currentNumber;
       }
@@ -177,7 +190,8 @@ const TransitionNode: NodeDefinitionOptions = {
     atTargetValue: {
       type: 'signal',
       displayName: 'At Target Value',
-      group: 'Signals'
+      group: 'Signals',
+      description: 'Fires when the value settles on Target Value, and not at all if a new target interrupted it'
     }
   }
 };

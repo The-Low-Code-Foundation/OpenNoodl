@@ -386,6 +386,7 @@
             "name": "number"
           },
           "isSignal": false,
+          "description": "First control point along the time axis, clamped between 0 and 1; used only when Easing Curve is Cubic Bezier",
           "index": 11
         },
         {
@@ -397,6 +398,7 @@
             "name": "number"
           },
           "isSignal": false,
+          "description": "First control point along the value axis, where beyond 0 and 1 overshoots; used only when Easing Curve is Cubic Bezier",
           "index": 12
         },
         {
@@ -408,6 +410,7 @@
             "name": "number"
           },
           "isSignal": false,
+          "description": "Second control point along the time axis, clamped between 0 and 1; used only when Easing Curve is Cubic Bezier",
           "index": 13
         },
         {
@@ -419,6 +422,7 @@
             "name": "number"
           },
           "isSignal": false,
+          "description": "Second control point along the value axis, where beyond 0 and 1 overshoots; used only when Easing Curve is Cubic Bezier",
           "index": 14
         },
         {
@@ -431,6 +435,7 @@
           },
           "isSignal": false,
           "default": 300,
+          "description": "How long a play takes, in milliseconds",
           "index": 0
         },
         {
@@ -465,6 +470,7 @@
           },
           "isSignal": false,
           "default": "easeOut",
+          "description": "Shape of the movement between each value's start and end",
           "index": 10
         },
         {
@@ -477,6 +483,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
+          "description": "Sets every value to its end value with no animation",
           "index": 62
         },
         {
@@ -489,6 +496,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
+          "description": "Sets every value to its start value with no animation",
           "index": 61
         },
         {
@@ -502,6 +510,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
+          "description": "Animates every value from where it is now to its end value",
           "index": 20
         },
         {
@@ -515,6 +524,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
+          "description": "Animates every value from where it is now to its start value",
           "index": 21
         },
         {
@@ -528,6 +538,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
+          "description": "Animates every value from its start value to its end value, wherever it is now",
           "index": 22
         },
         {
@@ -541,6 +552,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
+          "description": "Animates every value from its end value to its start value, wherever it is now",
           "index": 23
         },
         {
@@ -553,6 +565,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
+          "description": "Abandons the play in progress, leaving every animated output unset",
           "index": 60
         }
       ],
@@ -565,7 +578,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a play towards the end values has finished"
         },
         {
           "name": "hasReachedStart",
@@ -575,7 +589,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a play towards the start values has finished"
         }
       ],
       "dynamicPorts": {
@@ -775,7 +790,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Text published on Current Value while Selector is false"
         },
         {
           "name": "input",
@@ -784,7 +800,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which of the two strings to publish; anything that is not true counts as false"
         },
         {
           "name": "trueString",
@@ -793,7 +810,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Text published on Current Value while Selector is true"
         }
       ],
       "outputs": [
@@ -805,7 +823,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "String for true or String for false, whichever Selector currently picks"
         },
         {
           "name": "inputChanged",
@@ -815,7 +834,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when Selector flips, after Current Value has been updated"
         }
       ],
       "dynamicPorts": null,
@@ -1999,6 +2019,7 @@
           },
           "isSignal": false,
           "default": "",
+          "description": "CSS added to the page for as long as this node exists, and removed with it",
           "index": 4005
         }
       ],
@@ -4893,7 +4914,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Republishes every property; connecting this stops the outputs updating on their own"
         },
         {
           "name": "properties",
@@ -4904,7 +4926,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the values this component keeps, each becoming a matching input and output"
         },
         {
           "name": "store",
@@ -4915,7 +4938,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Writes the supplied property values into the component object"
         }
       ],
       "outputs": [
@@ -4927,7 +4951,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when any property is written, unless Fetch is connected"
         },
         {
           "name": "fetched",
@@ -4937,7 +4962,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once Fetch has republished every property"
         },
         {
           "name": "stored",
@@ -4947,7 +4973,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once Set has written every property"
         }
       ],
       "dynamicPorts": {
@@ -5226,7 +5253,8 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "{year}-{month}-{date}"
+          "default": "{year}-{month}-{date}",
+          "description": "Template in which {year} {yearShort} {month} {monthShort} {date} {hours} {minutes} {seconds} are replaced and everything else is copied through"
         },
         {
           "name": "input",
@@ -5235,7 +5263,8 @@
           "type": {
             "name": "date"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The instant to render; a string arriving here is parsed as a date first"
         }
       ],
       "outputs": [
@@ -5247,7 +5276,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Date rendered through Format, or blank when the date could not be read"
         },
         {
           "name": "inputChanged",
@@ -5257,7 +5287,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires whenever a new Date arrives or Format changes, after Date String has been updated"
         },
         {
           "name": "onError",
@@ -5267,7 +5298,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the Date could not be read, leaving Date String blank"
         }
       ],
       "dynamicPorts": null,
@@ -6899,7 +6931,8 @@
             "allowEditOnly": true,
             "codeeditor": "javascript"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "JavaScript expression whose value becomes Result; every identifier in it becomes an input port"
         },
         {
           "name": "run",
@@ -6910,7 +6943,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Evaluates the expression; connecting this stops it evaluating whenever an input changes"
         }
       ],
       "outputs": [
@@ -6922,7 +6956,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Whether Result is truthy, for wiring straight to a boolean input"
         },
         {
           "name": "asNumber",
@@ -6932,7 +6967,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Result read as a number, falling back to 0 when it is not one"
         },
         {
           "name": "asString",
@@ -6942,7 +6978,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Result rendered as text, and blank when it is null or undefined"
         },
         {
           "name": "error",
@@ -6952,7 +6989,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The compile or evaluation error, in JavaScript's own words"
         },
         {
           "name": "failure",
@@ -6962,7 +7000,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the expression could not be compiled, or threw while being evaluated"
         },
         {
           "name": "isFalse",
@@ -6972,7 +7011,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Whether Result is falsy"
         },
         {
           "name": "isFalseEv",
@@ -6982,7 +7022,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires after an evaluation whose Result is falsy"
         },
         {
           "name": "isTrue",
@@ -6992,7 +7033,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Whether Result is truthy"
         },
         {
           "name": "isTrueEv",
@@ -7002,7 +7044,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires after an evaluation whose Result is truthy"
         },
         {
           "name": "result",
@@ -7012,7 +7055,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "What the expression evaluated to, or 0 when it could not be evaluated at all"
         }
       ],
       "dynamicPorts": {
@@ -12893,7 +12937,8 @@
             "allowEditOnly": true,
             "codeeditor": "javascript"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "JavaScript run when Run fires, reading Inputs.name and writing Outputs.name"
         },
         {
           "name": "run",
@@ -12904,7 +12949,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Runs the script; connecting this stops it running whenever an input changes"
         },
         {
           "name": "scriptInputs",
@@ -12914,7 +12960,8 @@
             "name": "proplist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the values the script reads from Inputs, each becoming an input port"
         },
         {
           "name": "scriptOutputs",
@@ -12924,7 +12971,8 @@
             "name": "proplist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the values the script writes to Outputs, each becoming an output port"
         }
       ],
       "outputs": [
@@ -12936,7 +12984,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "What the script went wrong with, in JavaScript's own words"
         },
         {
           "name": "failure",
@@ -12946,7 +12995,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the script threw while running, or could not be compiled at all"
         },
         {
           "name": "success",
@@ -12956,7 +13006,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the script has finished, waiting for an async script to resolve first"
         }
       ],
       "dynamicPorts": {
@@ -13056,7 +13107,8 @@
             "codeeditor": "javascript"
           },
           "isSignal": false,
-          "default": ""
+          "default": "",
+          "description": "The script, which declares its own ports through the define API"
         },
         {
           "name": "externalFile",
@@ -13067,7 +13119,8 @@
             "name": "source",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Where to load the script from; used only when Use External File is Yes"
         },
         {
           "name": "scriptInputs",
@@ -13077,7 +13130,8 @@
             "name": "proplist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the values the script reads, each becoming an input port"
         },
         {
           "name": "scriptOutputs",
@@ -13087,7 +13141,8 @@
             "name": "proplist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the values the script writes, each becoming an output port"
         },
         {
           "name": "useExternalFile",
@@ -13109,7 +13164,8 @@
             ]
           },
           "isSignal": false,
-          "default": "no"
+          "default": "no",
+          "description": "Whether the code is loaded from File Path instead of being typed into Code"
         }
       ],
       "outputs": [],
@@ -15960,7 +16016,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Comma-separated extensions or MIME types the dialog offers; leave blank to offer every file"
         },
         {
           "name": "capture",
@@ -15970,7 +16027,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Asks a mobile browser to open a camera or microphone instead of the file list — \"user\" for the front camera, \"environment\" for the rear"
         },
         {
           "name": "open",
@@ -15981,7 +16039,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Opens the browser file dialog"
         }
       ],
       "outputs": [
@@ -15993,7 +16052,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the dialog closed with nothing chosen, which is a legitimate outcome rather than a failure"
         },
         {
           "name": "error",
@@ -16003,7 +16063,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the dialog could not be opened"
         },
         {
           "name": "failure",
@@ -16013,7 +16074,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the dialog could not be opened at all, for example inside a sandboxed frame"
         },
         {
           "name": "file",
@@ -16023,7 +16085,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The chosen file itself, for passing on to an upload node"
         },
         {
           "name": "name",
@@ -16033,7 +16096,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "File name as the user chose it, extension included"
         },
         {
           "name": "path",
@@ -16043,7 +16107,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Absolute path of the chosen file, which only the desktop app can supply — blank in a browser"
         },
         {
           "name": "sizeInBytes",
@@ -16053,7 +16118,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Size of the chosen file, in bytes"
         },
         {
           "name": "success",
@@ -16063,7 +16129,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once a file has been chosen and every metadata output is up to date"
         },
         {
           "name": "type",
@@ -16073,7 +16140,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "MIME type the browser reports, which is blank for an extension it does not recognise"
         }
       ],
       "dynamicPorts": null,
@@ -18565,7 +18633,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Republishes every property from the parent; connecting this stops the outputs updating on their own"
         },
         {
           "name": "properties",
@@ -18576,7 +18645,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the parent values to expose, each becoming a matching input and output"
         },
         {
           "name": "store",
@@ -18587,7 +18657,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Writes the supplied property values into the parent component object"
         }
       ],
       "outputs": [
@@ -18599,7 +18670,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a property on the resolved parent is written, unless Fetch is connected"
         },
         {
           "name": "fetched",
@@ -18609,7 +18681,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once Fetch has republished every property"
         },
         {
           "name": "stored",
@@ -18619,7 +18692,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once Set has written every property"
         }
       ],
       "dynamicPorts": {
@@ -22314,7 +22388,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Width divided by Height, so anything wider than it is tall is greater than one"
         },
         {
           "name": "height",
@@ -22323,7 +22398,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Height of the browser viewport, in pixels"
         },
         {
           "name": "width",
@@ -22332,7 +22408,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Width of the browser viewport, in pixels"
         }
       ],
       "dynamicPorts": null,
@@ -23198,7 +23275,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the states this node can be in; the node starts in the first"
         },
         {
           "name": "toggle",
@@ -23209,7 +23287,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Moves to the next state in the list, wrapping round after the last"
         },
         {
           "name": "useTransitions",
@@ -23220,7 +23299,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Whether a state change animates its values or jumps straight to them"
         },
         {
           "name": "values",
@@ -23231,7 +23311,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the values that differ between states, each becoming an output"
         }
       ],
       "outputs": [
@@ -23243,7 +23324,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which state the node is in now"
         },
         {
           "name": "error",
@@ -23253,7 +23335,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which state was asked for and which ones this node actually has"
         },
         {
           "name": "failure",
@@ -23263,7 +23346,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a state was asked for that this node does not have, leaving it where it was"
         },
         {
           "name": "stateChanged",
@@ -23273,7 +23357,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires on every state change except entering the first, which is where the node starts"
         }
       ],
       "dynamicPorts": {
@@ -23692,6 +23777,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Published when Input String matches none of the numbered inputs",
           "index": 1000
         },
         {
@@ -23702,6 +23788,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "The string to look up among the numbered inputs",
           "index": 1
         }
       ],
@@ -23714,7 +23801,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The mapping paired with the input that matched, or Default when none did"
         }
       ],
       "dynamicPorts": {
@@ -23771,7 +23859,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Which of the numbered strings to publish, counting from zero and truncated to a whole number"
         }
       ],
       "outputs": [
@@ -23783,7 +23872,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The numbered string sitting at Index, or nothing when there is none"
         },
         {
           "name": "indexChanged",
@@ -23793,7 +23883,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when Index changes, after Current Value has been updated"
         }
       ],
       "dynamicPorts": {
@@ -26425,7 +26516,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "How long the countdown runs before Finished fires, in milliseconds"
         },
         {
           "name": "restart",
@@ -26435,7 +26527,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Begins the countdown again from zero, whether or not one is already running"
         },
         {
           "name": "start",
@@ -26445,7 +26538,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Starts the countdown, and does nothing while one is already running — use Restart to begin again"
         },
         {
           "name": "startDelay",
@@ -26455,7 +26549,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "How long to wait after Start before the countdown begins, in milliseconds"
         },
         {
           "name": "stop",
@@ -26465,7 +26560,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Abandons the countdown, so Finished never fires for it"
         }
       ],
       "outputs": [
@@ -26476,7 +26572,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once Duration has elapsed, and not at all for a countdown that was stopped"
         },
         {
           "name": "timerStarted",
@@ -26485,7 +26582,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the countdown begins, once Start Delay has elapsed"
         }
       ],
       "dynamicPorts": null,
@@ -26517,7 +26615,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "How long to wait before the move begins, in milliseconds"
         },
         {
           "name": "duration",
@@ -26528,7 +26627,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 300
+          "default": 300,
+          "description": "How long the move takes, in milliseconds"
         },
         {
           "name": "easingCurve",
@@ -26557,7 +26657,8 @@
             ]
           },
           "isSignal": false,
-          "default": "easeOut"
+          "default": "easeOut",
+          "description": "Shape of the movement between where the value is and Target Value"
         },
         {
           "name": "overrideCurrentValue.do",
@@ -26569,7 +26670,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Jumps Current Value to Override Value and carries on towards Target Value from there"
         },
         {
           "name": "overrideCurrentValue.value",
@@ -26580,7 +26682,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Value to jump straight to when Do fires, without animating"
         },
         {
           "name": "targetValue",
@@ -26590,7 +26693,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Value to move towards; the first one to arrive is adopted outright rather than animated to"
         }
       ],
       "outputs": [
@@ -26602,7 +26706,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the value settles on Target Value, and not at all if a new target interrupted it"
         },
         {
           "name": "currentValue",
@@ -26612,7 +26717,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Where the move has got to, updated every frame while it runs"
         }
       ],
       "dynamicPorts": null,
@@ -29233,7 +29339,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Republishes every property; connecting this stops the outputs updating on their own"
         },
         {
           "name": "properties",
@@ -29244,7 +29351,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the values this component keeps, each becoming a matching input and output"
         }
       ],
       "outputs": [
@@ -29256,7 +29364,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when any property is written, unless Fetch is connected"
         },
         {
           "name": "fetched",
@@ -29266,7 +29375,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once Fetch has republished every property"
         }
       ],
       "dynamicPorts": {
@@ -30250,7 +30360,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Republishes every property from the parent; connecting this stops the outputs updating on their own"
         },
         {
           "name": "properties",
@@ -30261,7 +30372,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the parent values to expose, each becoming a matching input and output"
         },
         {
           "name": "targetComponent",
@@ -30271,7 +30383,8 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which ancestor to read from; leave blank for the nearest one that has a Component Object"
         }
       ],
       "outputs": [
@@ -30283,7 +30396,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a property on the resolved parent is written, unless Fetch is connected"
         },
         {
           "name": "error",
@@ -30293,7 +30407,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which ancestor was looked for and why it was not found"
         },
         {
           "name": "failure",
@@ -30303,7 +30418,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when no parent Component Object could be found, so there is nothing to read"
         },
         {
           "name": "fetched",
@@ -30313,7 +30429,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once Fetch has republished every property"
         }
       ],
       "dynamicPorts": {
@@ -30991,7 +31108,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the values this node writes, each becoming an input to supply it"
         },
         {
           "name": "store",
@@ -31002,7 +31120,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Writes every supplied property value into the component object"
         }
       ],
       "outputs": [
@@ -31014,7 +31133,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once every property has been written"
         }
       ],
       "dynamicPorts": {
@@ -31077,7 +31197,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the values this node writes, each becoming an input to supply it"
         },
         {
           "name": "store",
@@ -31088,7 +31209,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Writes every supplied property value into the component object"
         },
         {
           "name": "targetComponent",
@@ -31098,7 +31220,8 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which ancestor to write to; leave blank for the nearest one that has a Component Object"
         }
       ],
       "outputs": [
@@ -31110,7 +31233,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which ancestor was looked for and why it was not found"
         },
         {
           "name": "failure",
@@ -31120,7 +31244,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when no parent Component Object could be found, so nothing was written"
         },
         {
           "name": "stored",
@@ -31130,7 +31255,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once every property has been written"
         }
       ],
       "dynamicPorts": {
@@ -32555,7 +32681,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "How long to wait before the move begins, in milliseconds"
         },
         {
           "name": "duration",
@@ -32566,7 +32693,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 300
+          "default": 300,
+          "description": "How long the move takes, in milliseconds"
         },
         {
           "name": "easingCurve",
@@ -32595,7 +32723,8 @@
             ]
           },
           "isSignal": false,
-          "default": "easeOut"
+          "default": "easeOut",
+          "description": "Shape of the movement between where the value is and Target Value"
         },
         {
           "name": "targetValue",
@@ -32605,7 +32734,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Value to move towards; the first one to arrive is adopted outright rather than animated to"
         }
       ],
       "outputs": [
@@ -32617,7 +32747,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the value settles on Target Value, and not at all if a new target interrupted it"
         },
         {
           "name": "currentValue",
@@ -32627,7 +32758,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Where the move has got to, updated every frame while it runs"
         }
       ],
       "dynamicPorts": null,
@@ -47358,7 +47490,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "Whether a request with no valid session token is allowed to run this function at all"
         },
         {
           "name": "params",
@@ -47368,7 +47501,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names to pull out of the request body, each becoming an output"
         }
       ],
       "outputs": [
@@ -47380,7 +47514,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Whether the request carried a session token that resolved to a user"
         },
         {
           "name": "receive",
@@ -47390,7 +47525,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a request arrives, after every parameter output has been updated"
         },
         {
           "name": "userId",
@@ -47400,7 +47536,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the user the session token resolved to, and blank for an unauthenticated request"
         }
       ],
       "dynamicPorts": {
@@ -47450,7 +47587,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Message returned to the caller; used only when Status is Failure"
         },
         {
           "name": "params",
@@ -47460,7 +47598,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names to return in the response body, each becoming an input to supply it"
         },
         {
           "name": "send",
@@ -47471,7 +47610,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Sends the response and ends the request, which can only happen once"
         },
         {
           "name": "status",
@@ -47492,7 +47632,8 @@
             ]
           },
           "isSignal": false,
-          "default": "success"
+          "default": "success",
+          "description": "Whether the caller gets a 200 carrying Parameters or a 400 carrying Error Message"
         }
       ],
       "outputs": [
@@ -47504,7 +47645,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the response could not be sent"
         },
         {
           "name": "failure",
@@ -47514,7 +47656,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the response could not be sent, because there is no request in scope or one was already answered"
         },
         {
           "name": "sent",
@@ -47524,7 +47667,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires as the response goes out, and before the request scope is torn down"
         }
       ],
       "dynamicPorts": {
@@ -47591,7 +47735,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Optional. Ignored when Template is set."
+          "description": "HTML body sent alongside Text Body; optional, and ignored when Template is set"
         },
         {
           "name": "send",
@@ -47602,7 +47746,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Sends the message"
         },
         {
           "name": "subject",
@@ -47613,7 +47758,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Ignored when Template is set."
+          "description": "Subject line of the message, and ignored when Template is set"
         },
         {
           "name": "template",
@@ -47638,7 +47783,8 @@
             ]
           },
           "isSignal": false,
-          "default": "none"
+          "default": "none",
+          "description": "Which stored template to render, or None to use Subject, Text Body and HTML Body instead"
         },
         {
           "name": "text",
@@ -47649,7 +47795,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Ignored when Template is set."
+          "description": "Plain-text body of the message, and ignored when Template is set"
         },
         {
           "name": "to",
@@ -47659,7 +47805,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Address the message goes to; the send fails outright when this is blank"
         },
         {
           "name": "variables",
@@ -47671,7 +47818,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": false,
-          "description": "Only used when Template is set. A plain object of {{variable}} values (e.g. from a Set Variables node)."
+          "description": "Values substituted into the template placeholders, and ignored when Template is None"
         }
       ],
       "outputs": [
@@ -47683,7 +47830,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the message could not be sent"
         },
         {
           "name": "failed",
@@ -47693,7 +47841,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the message could not be sent, including when no mail service is configured"
         },
         {
           "name": "sent",
@@ -47703,7 +47852,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the mail server has accepted the message for delivery"
         }
       ],
       "dynamicPorts": null,

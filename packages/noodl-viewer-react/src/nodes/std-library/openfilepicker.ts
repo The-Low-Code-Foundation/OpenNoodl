@@ -44,6 +44,7 @@ const OpenFilePicker: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Open',
       group: 'Actions',
+      description: 'Opens the browser file dialog',
       valueChangedToTrue(this: OpenFilePickerInstance) {
         const input = this._internal.inputElement;
 
@@ -141,6 +142,8 @@ const OpenFilePicker: NodeDefinitionOptions = {
       group: 'General',
       type: 'string',
       displayName: 'Accepted file types',
+      description:
+        'Comma-separated extensions or MIME types the dialog offers; leave blank to offer every file',
       set(this: OpenFilePickerInstance, value: string) {
         this._internal.acceptedFileTypes = value;
       }
@@ -149,6 +152,8 @@ const OpenFilePicker: NodeDefinitionOptions = {
       group: 'General',
       type: 'string',
       displayName: 'Capture',
+      description:
+        'Asks a mobile browser to open a camera or microphone instead of the file list — "user" for the front camera, "environment" for the rear',
       set(this: OpenFilePickerInstance, value: string) {
         this._internal.capture = value;
       }
@@ -159,6 +164,7 @@ const OpenFilePicker: NodeDefinitionOptions = {
       type: '*',
       displayName: 'File',
       group: 'General',
+      description: 'The chosen file itself, for passing on to an upload node',
       get(this: OpenFilePickerInstance) {
         return this._internal.file;
       }
@@ -167,6 +173,7 @@ const OpenFilePicker: NodeDefinitionOptions = {
       displayName: 'Path',
       group: 'Metadata',
       type: 'string',
+      description: 'Absolute path of the chosen file, which only the desktop app can supply — blank in a browser',
       get(this: OpenFilePickerInstance) {
         return this._internal.file && this._internal.file.path;
       }
@@ -175,6 +182,7 @@ const OpenFilePicker: NodeDefinitionOptions = {
       displayName: 'Name',
       group: 'Metadata',
       type: 'string',
+      description: 'File name as the user chose it, extension included',
       get(this: OpenFilePickerInstance) {
         return this._internal.file && this._internal.file.name;
       }
@@ -183,6 +191,7 @@ const OpenFilePicker: NodeDefinitionOptions = {
       displayName: 'Size in bytes',
       group: 'Metadata',
       type: 'number',
+      description: 'Size of the chosen file, in bytes',
       get(this: OpenFilePickerInstance) {
         return this._internal.file && this._internal.file.size;
       }
@@ -191,6 +200,7 @@ const OpenFilePicker: NodeDefinitionOptions = {
       displayName: 'Type',
       group: 'Metadata',
       type: 'string',
+      description: 'MIME type the browser reports, which is blank for an extension it does not recognise',
       get(this: OpenFilePickerInstance) {
         return this._internal.file && this._internal.file.type;
       }
@@ -198,22 +208,26 @@ const OpenFilePicker: NodeDefinitionOptions = {
     success: {
       type: 'signal',
       group: 'Events',
-      displayName: 'Success'
+      displayName: 'Success',
+      description: 'Fires once a file has been chosen and every metadata output is up to date'
     },
     cancelled: {
       type: 'signal',
       group: 'Events',
-      displayName: 'Cancelled'
+      displayName: 'Cancelled',
+      description: 'Fires when the dialog closed with nothing chosen, which is a legitimate outcome rather than a failure'
     },
     failure: {
       type: 'signal',
       group: 'Events',
-      displayName: 'Failure'
+      displayName: 'Failure',
+      description: 'Fires when the dialog could not be opened at all, for example inside a sandboxed frame'
     },
     error: {
       type: 'string',
       group: 'Events',
       displayName: 'Error',
+      description: 'Why the dialog could not be opened',
       get(this: OpenFilePickerInstance) {
         return this._internal.error;
       }

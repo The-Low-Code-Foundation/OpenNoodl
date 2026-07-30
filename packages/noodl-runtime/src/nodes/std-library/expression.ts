@@ -259,6 +259,7 @@ const ExpressionNode: NodeDefinitionOptions = {
         codeeditor: 'javascript'
       },
       displayName: 'Expression',
+      description: 'JavaScript expression whose value becomes Result; every identifier in it becomes an input port',
       set: function (this: ExpressionNodeInstance, value: string) {
         const internal = this._internal;
         internal.currentExpression = functionPreamble + 'return (' + value + ');';
@@ -325,6 +326,7 @@ const ExpressionNode: NodeDefinitionOptions = {
       group: 'Actions',
       displayName: 'Run',
       type: 'signal',
+      description: 'Evaluates the expression; connecting this stops it evaluating whenever an input changes',
       valueChangedToTrue: function (this: ExpressionNodeInstance) {
         this._scheduleEvaluateExpression();
       }
@@ -335,6 +337,7 @@ const ExpressionNode: NodeDefinitionOptions = {
       group: 'Result',
       type: '*',
       displayName: 'Result',
+      description: 'What the expression evaluated to, or 0 when it could not be evaluated at all',
       getter: function (this: ExpressionNodeInstance) {
         if (!this._internal.currentExpression) {
           return 0;
@@ -347,6 +350,7 @@ const ExpressionNode: NodeDefinitionOptions = {
       group: 'Result',
       type: 'boolean',
       displayName: 'Is True',
+      description: 'Whether Result is truthy',
       getter: function (this: ExpressionNodeInstance) {
         if (!this._internal.currentExpression) {
           return false;
@@ -359,6 +363,7 @@ const ExpressionNode: NodeDefinitionOptions = {
       group: 'Result',
       type: 'boolean',
       displayName: 'Is False',
+      description: 'Whether Result is falsy',
       getter: function (this: ExpressionNodeInstance) {
         if (!this._internal.currentExpression) {
           return true;
@@ -370,12 +375,14 @@ const ExpressionNode: NodeDefinitionOptions = {
     isTrueEv: {
       group: 'Events',
       type: 'signal',
-      displayName: 'On True'
+      displayName: 'On True',
+      description: 'Fires after an evaluation whose Result is truthy'
     },
     isFalseEv: {
       group: 'Events',
       type: 'signal',
-      displayName: 'On False'
+      displayName: 'On False',
+      description: 'Fires after an evaluation whose Result is falsy'
     },
     /**
      * NDA-004 §2. Both failure modes this node has — a malformed expression and one that throws
@@ -388,12 +395,14 @@ const ExpressionNode: NodeDefinitionOptions = {
     failure: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Failure'
+      displayName: 'Failure',
+      description: 'Fires when the expression could not be compiled, or threw while being evaluated'
     },
     error: {
       group: 'Events',
       type: 'string',
       displayName: 'Error',
+      description: 'The compile or evaluation error, in JavaScript\'s own words',
       getter: function (this: ExpressionNodeInstance) {
         return this._internal.lastError;
       }
@@ -403,6 +412,7 @@ const ExpressionNode: NodeDefinitionOptions = {
       group: 'Typed Results',
       type: 'string',
       displayName: 'As String',
+      description: 'Result rendered as text, and blank when it is null or undefined',
       getter: function (this: ExpressionNodeInstance) {
         const val = this._internal.cachedValue;
         return val !== undefined && val !== null ? String(val) : '';
@@ -412,6 +422,7 @@ const ExpressionNode: NodeDefinitionOptions = {
       group: 'Typed Results',
       type: 'number',
       displayName: 'As Number',
+      description: 'Result read as a number, falling back to 0 when it is not one',
       getter: function (this: ExpressionNodeInstance) {
         const val = this._internal.cachedValue;
         return typeof val === 'number' ? val : Number(val) || 0;
@@ -421,6 +432,7 @@ const ExpressionNode: NodeDefinitionOptions = {
       group: 'Typed Results',
       type: 'boolean',
       displayName: 'As Boolean',
+      description: 'Whether Result is truthy, for wiring straight to a boolean input',
       getter: function (this: ExpressionNodeInstance) {
         return !!this._internal.cachedValue;
       }

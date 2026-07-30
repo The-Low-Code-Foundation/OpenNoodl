@@ -1,170 +1,168 @@
 # Phase 30 — next session
 
-**Current to `74eda43d`** (Navigation audited). Written 2026-07-30.
+**Current to the commit that added this file.** Written 2026-07-30.
 
 Work on `cline-dev`, commit directly to it, **explicit pathspecs on every commit**. End commit
 messages with the Claude co-author line.
 
-⚠️ If HEAD has moved past `74eda43d`, read PROGRESS.md's newest three log entries instead of this
-file — they are always current; this file goes stale in one round. Two handovers running have opened
-with a warning that the previous one was stale, which is itself the argument for reading PROGRESS
-first.
+⚠️ If HEAD has moved past that commit, read PROGRESS.md's newest three log entries instead of this
+file — they are always current; this file goes stale in one round.
 
 ## §0 — the state in four numbers
 
 | | |
 |---|---|
-| NDA-012 | **10 of 17 categories, 52 of 155 nodes** |
-| Defects found | **71**, in 45 nodes |
-| Port documentation | **46.1%**, nodes at 0% **54** |
-| Gates at `74eda43d` | runtime jest 1,218 · viewer 367 · cloud 57 · editor jasmine 1,894/0 · 3 typechecks clean · both catalog gates green *on a clean checkout* |
+| NDA-012 | **15 of 17 categories, 79 of 155 nodes** |
+| Defects found | **110**, in 66 nodes |
+| Port documentation | **51.6%**, nodes at 0% **31** |
+| Gates | runtime jest 1,231 · viewer 367 · cloud 57 · editor jasmine 1,894/0 · 3 typechecks clean · both catalog gates green *against a clean checkout* |
 
-**The find rate is not declining.** Navigation scored **1.88 defects per node** — the highest of any
-category — and every one of its 8 nodes carried at least one. The Cloud Services dip (1.14) is
-explained and closed: five sibling nodes diluting an average, exactly as that entry argued. There is
-still no evidence for stopping.
+**Only Data (46) and Visual (29) are left**, and they are the two the spec ranked first and third by
+expected yield. Every small category is done.
+
+**The find rate has not declined after 79 nodes.** Animation set a record at 2.50 per node and
+CustomCode came second at 2.00; the running average is 1.39. The one low score, Component Utilities'
+0.63, has a *stated cause* — four of its eight nodes had already been remediated twice, by NDA-015
+and NDA-004 §2 — which is a different thing from exhaustion. See FINDINGS **SR-i**.
 
 ## §1 — do these, in this order
 
-### 1. Keep going on NDA-012 + NDA-005. Seven categories, 103 nodes left.
+### 1. **Data (46 nodes).** The last big one, and the highest-yield one.
 
-| Category | Nodes | at 0% docs |
-|---|---|---|
-| Data | 46 | 29 |
-| Visual | 29 | 1 |
-| Utilities | 9 | 7 |
-| Component Utilities | 8 | 6 |
-| CustomCode | 5 | 5 |
-| Animation | 4 | 4 |
-| Cloud | 3 | 2 |
+29 of its 46 nodes are at 0% documentation, so NDA-005's C1 work is nearly all still there. Run it
+as **one pass, not two** — NDA-012's C1 *is* NDA-005 — and read
+[`PORT-DESCRIPTION-STYLE.md`](../../reference/PORT-DESCRIPTION-STYLE.md) first; it is normative and
+settled.
 
-**Recommended next: the small remainder as one batch — Component Utilities, Utilities, CustomCode,
-Animation, Cloud (29 nodes).** Then Data (46), which the spec ranks highest-yield, then Visual (29)
-last: only 1 node is at 0% there, so its C1 work is nearly done and only the other eleven checks
-remain.
+It will not fit in one session. Split it by helper rather than alphabetically: `modelcrudbase`,
+`dbmodelcrudbase`, the Collection/Array family, the Object nodes, the Repeater. **Read the helper
+once and each node is minutes** — but record a helper defect *once* with its sites listed, or the
+register reports a usage count. This batch had four such shapes and the worksheets show the format.
 
-Run it as **one pass, not two**: NDA-012's check C1 *is* NDA-005. One read per node, verdict and port
-sentences written together — that batching is the only reason 8–22 nodes fit in a session. Read
-`PORT-DESCRIPTION-STYLE.md` before writing any description; it is normative and settled.
+Then **Visual (29)** last: only 1 node is at 0%, so its C1 work is nearly done and only the other
+eleven checks remain.
 
-**Ask "and what happens the second time?" on every stateful node.** That question is not in the
-twelve checks, and it is what found both of Navigation's latched actions. Nothing else would have.
+### 2. Three questions that earned their place, and are not in the twelve checks
 
-**Read the module's `setup`, not just the node definition.** Six of Navigation's fifteen defects were
-in editor-time dynamic-port code, and every one was invisible to the ordinary corpus because
-`graph-harness` does not call `setup`. FINDINGS **NV-v**.
+- **"And what happens the second time?"** Found `Animation`'s latched start value — the fourth site
+  of the one-shot shape, after Navigation's two.
+- **Read the module's `setup`.** [`test/corpus/setup-harness.ts`](../../../packages/noodl-runtime/test/corpus/setup-harness.ts)
+  now exists (NEXT-SESSION's item 2 last round, done): `driveSetup({module, type, nodes})` returns
+  `portNames()`, `warnings`, `setParameter()`. Read its `importComplete`/`announceNodes` notes before
+  concluding a node publishes nothing — a module that publishes nothing here has usually not been
+  driven, and the fix is a flag rather than a defect report.
+- **"Does a name in this port string round-trip?"** New this round, and it found two defects
+  independently in one day. Anywhere the library concatenates author-chosen names into a flat port
+  name and decodes with `split('-')`, a hyphen in the name breaks it. FINDINGS **SR-iii**.
 
-### 2. Consider promoting the `setup` harness to a shared fixture.
+### 3. The three copies of the `setup` harness are still there.
 
-NDA-009, NDA-010 and now NDA-012's Navigation file each hand-rolled the same fake graph model
-(`emitter()` + a `graphModel` with `components`/`getNodesWithType` + a recording `sendDynamicPorts`).
-Three copies. Given that this is where the defects are concentrating, promoting it beside
-`graph-harness.ts` would pay for itself inside one category. Not started.
+`setup-harness.ts` is written and used by the new corpus file, but NDA-009, NDA-010 and NDA-012's
+Navigation test still carry their own `emitter()` + fake graph model. Collapsing them is a
+mechanical change and would take twenty minutes; it was left out this round to keep the commit
+about the audit.
 
-### 3. Ten minutes on the Page Inputs property panel.
-
-Live QA showed the `Path Parameters` / `Query Parameters` headers with **no entries**, after setting
-the parameter *programmatically* rather than through the UI. That is as likely an artifact of
-bypassing the panel as a defect; the stringlist editor is untouched by this change, and
-`Navigate To Path` has carried a `displayName` on the same port type since before it. Click the `+`,
-type a name, check the model and ports update. **Do not write it up until that is done** — the
-phase's own rule is that an uncited ⚠️ is a suspicion.
-
-### 4. NDA-004 §3's last mute node: Logic Builder.
-
-**Check `git status` on `packages/noodl-runtime/src/nodes/std-library/logic-builder.ts` FIRST and skip
-if still dirty.** Blocked by another session's uncommitted rewrite for **eight** handovers now.
-
-### 5. NDA-017 §2 — only if Richard has decided §1.
+### 4. NDA-017 §2 — only if Richard has decided §1.
 
 Do not start from the spec body; §0's correction is written into the spec in place.
 
-## §2 — six things that need Richard, and are not coding tasks
+## §2 — what needs Richard. Surface it; do not decide it.
 
-Surface them; do not decide them. Only the first blocks anything.
+Only the first two block anything.
 
 1. **NDA-017 §1, which BLOCKS §2.** Never-arrived detection vs. an upstream-pending notion in the
    runtime vs. making NDA-004 §3's completion-signal sequencing discoverable. The spec recommends
-   A + C now, B separately; §0 added a constraint to A in place — the seed also reaches the graph with
-   no `Run` at all, which a control-signal check cannot see.
-2. **Two creatable nodes read "Delete Record"** — `DeleteDbModelProperties` (Parse-wire) vs
-   `noodl.byob.DeleteRecord` (BYOB). The defect also has a victim in our own tooling:
-   `scripts/node-audit/register.js` keyed preserved verdicts on the display name, so the ten
-   deprecated/replacement pairs collided. Fixed by keying on the rendered cell, but `Delete Record`
-   still collides because neither node is deprecated.
-3. **NDA-004 §2's ⏳ item 9, the deprecated five.** Four data points now and they do not agree.
-   `Script Downloader` does network I/O with no failure surface at all (easiest "yes"). `Number Blend`
-   is deprecated and is the *healthier* of its pair. The deprecated `Cloud Function` has a `Failure`
-   signal but no reason port anywhere on the graph. And now `Signal To Index` is deprecated, is a
-   perfectly reasonable node, and its one alleged defect turned out to be unobservable. **Deprecation
-   tracks age, not quality**, and whatever decides these dispositions must not assume otherwise.
-4. **NDA-010 §1 item 1** — should a popup's Component Outputs *be* its close results.
-5. **`Value Changed` cannot see an Object or Array being edited** — needs a decision, not a patch.
-6. **Two of BAK-004's three shipped auth nodes cannot be added to a graph.**
-   `net.noodl.user.SignInWith` and `net.noodl.user.RequestMagicLink` are absent from
-   `nodelibraryexport.ts`'s picker index (`:688-699`) while four *deprecated* auth nodes are listed,
-   and neither has a `docs` URL. "Which auth nodes should the picker offer" is a product question the
-   same size as the deprecated-five one.
+   A + C now, B separately; §0 added a constraint to A in place — the seed also reaches the graph
+   with no `Run` at all, which a control-signal check cannot see.
+2. ⚠️ **`Logic Builder` has been blocked for NINE handovers, and it is now costing more than the
+   node.** Another session holds `logic-builder.ts` uncommitted, plus an untracked
+   `logic-builder-io.ts` it imports and a modified `enrichment/logic-builder.json`. Consequences,
+   all confirmed this round:
+   - **NDA-004 §3 cannot close** (9 of 10; this is the tenth).
+   - **NDA-012's CustomCode category cannot close** (4 of 5).
+   - **Every catalog regeneration picks up their in-progress work.** This round it silently included
+     an `editorName: 'hidden'` removal — caught only by the strip-and-compare check in §3 — and
+     regenerating the catalog now requires copying three files aside, `git checkout`-ing them,
+     generating, and copying back.
 
-⚠️ **Item 6 gained a sibling this session, and the pair is worth raising as one thing.** `Page Inputs`
-was in the picker and had **no connectable ports at all**, since the initial commit. That is three
-distinct "a node in the library that an author cannot actually use" findings — CS-i, `On App Error`,
-and NV-i — each found by a different accident and none by any check this phase runs. **A
-picker-integrity check would have caught all three and does not exist.** Probably worth its own task.
+   This is a scheduling question, not a coding one: either that session lands its work or the file
+   is released.
+3. **Two creatable nodes read "Delete Record"** — `DeleteDbModelProperties` (Parse-wire) vs
+   `noodl.byob.DeleteRecord` (BYOB). Neither is deprecated, so the collision survives the fix that
+   keyed `register.js`'s preserved verdicts on the rendered cell.
+4. **NDA-004 §2's ⏳ item 9, the deprecated five. FIVE data points now and they still disagree.**
+   `Script Downloader` does network I/O with no failure surface (easiest "yes"). `Number Blend` is
+   deprecated and the healthier of its pair. The deprecated `Cloud Function` has a `Failure` signal
+   with no reason port anywhere. `Signal To Index` is deprecated and its one alleged defect was
+   unobservable. And now **`Index To String` is deprecated and its signal ordering is *correct*** —
+   more than several non-deprecated nodes manage. **Deprecation tracks age, not quality.**
+5. **NDA-010 §1 item 1** — should a popup's Component Outputs *be* its close results.
+6. **`Value Changed` cannot see an Object or Array being edited** — needs a decision, not a patch.
+7. **The picker-integrity question, which now has a fourth member.** `net.noodl.user.SignInWith` and
+   `net.noodl.user.RequestMagicLink` cannot be added to a graph while four *deprecated* auth nodes
+   can (CS-i); `On App Error` was registered and working but absent from the picker; `Page Inputs`
+   was in the picker with no connectable ports (NV-i, **live-verified fixed this round**). Each was
+   found by a different accident and **none by any check this phase runs.** A picker-integrity check
+   would have caught all of them and does not exist.
+8. **Three of the four dynamic-port mechanisms carry no documentation channel at all** (FINDINGS
+   **SR-ii**). `numberedInputs` writes no metadata entry, and the Port Editor panel writes none —
+   which means `Component Inputs` and `Component Outputs`, the nodes that define **every
+   component's public interface**, are undocumentable by any means the library has. NDA-005's
+   coverage number measures one mechanism of four. Whether that is a bug or a scope boundary is
+   Richard's call.
 
 ## §3 — carry these; they were learned the hard way
 
-- **A dismissal is a hypothesis, and so is an assertion handed to you.** `Signal To Index` arrived in
-  the handover as a confirmed defect "exactly as `Receive Event` did". It reordered cleanly and the
-  discrimination check then showed the reorder changes **nothing observable**, for a mechanical
-  reason worth knowing (FINDINGS **NV-ii**). Verify the premise even when the previous session was
-  confident — especially then.
-- **Whether signal-before-value is *visible* depends on `initialize`, not on ordering.** A receiver's
-  input queue is per port and is drained by `Object.keys` (`node.ts:531,543`); the first insertion
-  happens at connect time and only when the source value is not `undefined` (`node.ts:452`). A node
-  whose paired value port initialises to a real value masks its own defect for the life of the node.
-  **A sweep for this class cannot use "does a test catch it" as the test.**
-- **⚠️ Never `git checkout <path>` to undo a probe.** It reverted every edit made to `showpopup.ts`
-  this session, not just the two-line revert under test. Use a targeted `perl -0pi -e` or a `cp` from
-  a saved copy, and re-run the suite after restoring to prove the restore landed.
-- **The catalog substitution technique has a better form.** Instead of `git hash-object -w` +
-  `git update-index --cacheinfo` + a pathspec-less commit: **copy the three working-tree
-  logic-builder files to a temp dir, `git checkout` them, run the generators and both gates for real,
-  then copy back.** It uses the ordinary tooling, *proves* the gates green rather than inferring it,
-  and has no index surgery to get wrong. (The gates read the working tree, so they are red in this
-  tree by construction — say in the commit that you verified against a clean checkout.)
-- **Make the strong assertion, not the banked one.** Not "differs only in the ports I documented" but
-  *strip the fields I added and the result is byte-identical to HEAD*. It isolated the one legitimate
-  extra change this session — `PageInputs.parameterEncoding` flipping `known: false → true`, a
-  *consequence* of restoring its `setup`, which would otherwise have read as contamination.
-- **A port description written while a defect is open documents the defect.** Second instance:
-  `Signal To Index`'s `signalTriggered` said "*but before Index has been updated — read Index on the
-  next frame*". When you close a defect, check the description you wrote for it.
-- **Evals in the CDP console share one scope** — `var t` twice is a `SyntaxError`. Wrap every eval in
-  an IIFE.
-- **`node.type` in the editor's graph model is a bound type *object*, not a string.** `x.type === 'Foo'`
-  is silently always false and cost this session two wrong readings in a row. Use
-  `typeof x.type === 'string' ? x.type : x.type && x.type.name`.
-- **A find rate diluted by sibling nodes is not a find rate falling.** Count distinct defects, count
-  shared-helper defects once, and say so — the per-node number is a usage count.
-- Run each jest suite **from inside its package** (from the repo root it picks up node_modules and
-  reports ~5,600 suites). **Bash cwd persists across calls** — check where you are. The editor suite
-  takes ~6 minutes; run it in the background. A red suite may not be yours: check
-  `git status --porcelain` on the failing path first.
+- **⚠️ The catalog substitution dance, now proven rather than inferred.** Copy the three working-tree
+  logic-builder files to a temp dir → `git checkout` them → `node scripts/node-catalog/generate.js`
+  → `node scripts/node-catalog/merge.js` → `npm run catalog:check` and `npm run catalog:merge:check`
+  → copy back → **confirm with `git status` that their work is back**. Both gates exited 0 this
+  round. Say in the commit message that you verified against a clean checkout.
+- **Make the strong assertion.** Not "the catalog differs only in the ports I documented" but *strip
+  the fields I added and the result is byte-identical to HEAD*. It is what caught the logic-builder
+  contamination above, which read as an innocuous two-line diff.
+- **⚠️ Never `git checkout <path>` to undo a probe.** Copy the file aside first and `cp` it back,
+  then re-run the suite to prove the restore landed. Used four times this round without incident.
+- **A discrimination check should predict its own failures before it runs.** Reverting all five
+  fixes at once was expected to redden exactly 7 of 13 rows and leave 6 controls green; it did
+  exactly that, which is stronger evidence than reverting them one at a time would have been —
+  because the *controls* are the claim.
+- **`flagOutputDirty` on a signal output sends a value, not a pulse** (`node.ts:647-650`,
+  `outputproperty.ts:114-137`). It is silent, it typechecks, and it means the port never fires. Worth
+  a repo-wide grep: `flagOutputDirty` on any port declared `type: 'signal'`.
+- **A test that asserts on the sender's own signal log cannot tell a pulse from a value.** Wire the
+  port to a receiver with a signal input and count arrivals. That is why the `Date To String` rows
+  build a graph rather than using `node-harness`.
+- **A low find rate needs a cause before it is evidence.** Twice now: Cloud Services' dip was sibling
+  dilution, Component Utilities' was prior remediation. Neither was exhaustion, and neither could be
+  told apart from exhaustion by the number alone.
+- **A sweep aimed at named nodes does not cover the class those nodes belong to.** NDA-004 fixed
+  `Expression` and `Function` and never asked "what else hosts user code" — there were four, in
+  three packages. Same shape as CS-ii.
+- **A live suspicion can be pointed at the wrong component, not merely be wrong.** The Page Inputs
+  panel was fine; the *popup inside it* renders a code editor. Neither was distinguishable without
+  opening it.
+- **CDP:** `--target=editor` for the project window, `--target=dashboard` for the launcher.
+  `findNodeWithId` returns the **canvas view**, not the model — read `.model` for `parameters` and
+  `dynamicports`. `node.type` is a bound type *object*, not a string. Wrap every eval in an IIFE.
+  Never `cdp reload`.
+- Run each jest suite **from inside its package**. **Bash cwd persists across calls.** The editor
+  suite takes ~6 minutes; run it in the background.
 
 ## §4 — the tree carries another session's work. Never commit it.
 
-`logic-builder.ts` + untracked `logic-builder-io.ts` and its two test files — ⚠️ **those two test
-files sit in `packages/noodl-runtime/test/`, so `git add packages/noodl-runtime/test` sweeps them in.
-Use file-level pathspecs, and check `git diff --cached --name-only` before committing.**
+`logic-builder.ts` + untracked `logic-builder-io.ts` and **its two test files at
+`packages/noodl-runtime/test/logic-builder-{io,node}.test.ts`** — ⚠️ those sit in the runtime test
+directory, so `git add packages/noodl-runtime/test` sweeps them in. Use file-level pathspecs and
+check `git diff --cached --name-only` before every commit.
 
-Also: the whole `BlocklyEditor` directory (four untracked files),
-`docs/node-catalog/enrichment/logic-builder.json` + `examples/code-logic-builder-greeting.json`,
-`docs/research/`, icon assets + `scripts/generate-icons.js`, core-ui `Icon`/`Logo`/`PrimaryButton` +
-`icon-component/deploy.svg`, `CanvasTabs`, `EditorTopbar`, `main.js`, `ServiceSupervisor.js`,
-`nodegx-backend/src/cli.ts`, `dev-docs/reference/TYPE-ESCAPE-HATCHES.md`, the phase-25 screenshots,
-phase-18 PROGRESS/README + the untracked EXP-007 spec, and a dev-tooling set (`package.json`,
-`scripts/start.ts`, `scripts/devtools/*`, `.claude/skills/run-editor/SKILL.md`).
+Also: the whole `BlocklyEditor` directory, `docs/node-catalog/enrichment/logic-builder.json` +
+`examples/code-logic-builder-greeting.json`, `docs/research/`, icon assets +
+`scripts/generate-icons.js`, core-ui `Icon`/`Logo`/`PrimaryButton` + `icon-component/deploy.svg`,
+`CanvasTabs`, `EditorTopbar`, `main.js`, `ServiceSupervisor.js`, `nodegx-backend/src/cli.ts`,
+`dev-docs/reference/TYPE-ESCAPE-HATCHES.md`, the phase-25 screenshots, phase-18 PROGRESS/README +
+the untracked EXP-007 spec, and a dev-tooling set (`package.json`, `scripts/start.ts`,
+`scripts/devtools/*`, `.claude/skills/run-editor/SKILL.md`).
 
 Use the dev tooling freely — `npm run dev:debug`, `npm run dev:stop`, `npm run cdp` all work. Just
 never commit it.

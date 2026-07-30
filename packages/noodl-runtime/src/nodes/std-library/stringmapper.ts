@@ -64,6 +64,7 @@ const StringMapperNode: NodeDefinitionOptions = {
       },
       index: 1,
       displayName: 'Input String',
+      description: 'The string to look up among the numbered inputs',
       set: function (this: StringMapperNodeInstance, value: { toString(): string } | undefined) {
         this._internal.currentInputString = value !== undefined ? value.toString() : undefined;
         this.scheduleMapping();
@@ -74,6 +75,7 @@ const StringMapperNode: NodeDefinitionOptions = {
       displayName: 'Default',
       index: 1000,
       group: 'Mappings',
+      description: 'Published when Input String matches none of the numbered inputs',
       set: function (this: StringMapperNodeInstance, value: string) {
         this._internal.defaultMapping = value;
         this.scheduleMapping();
@@ -85,6 +87,7 @@ const StringMapperNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Mapped String',
       group: 'Value',
+      description: 'The mapping paired with the input that matched, or Default when none did',
       getter: function (this: StringMapperNodeInstance) {
         return this._internal.mappedString;
       }

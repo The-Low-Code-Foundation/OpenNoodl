@@ -75,11 +75,13 @@ const ComponentObject: NodeDefinitionOptions = {
       },
       displayName: 'Properties',
       group: 'Properties',
+      description: 'Names of the values this component keeps, each becoming a matching input and output',
       set() {}
     },
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
+      description: 'Republishes every property; connecting this stops the outputs updating on their own',
       valueChangedToTrue(this: ComponentObjectInstance) {
         this.scheduleFetch();
       }
@@ -89,12 +91,14 @@ const ComponentObject: NodeDefinitionOptions = {
     changed: {
       type: 'signal',
       displayName: 'Changed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when any property is written, unless Fetch is connected'
     },
     fetched: {
       type: 'signal',
       displayName: 'Fetched',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once Fetch has republished every property'
     }
   },
   methods: {
@@ -153,8 +157,25 @@ const ComponentObject: NodeDefinitionOptions = {
         return;
       }
 
-      const split = name.split('-');
-      const propertyName = split[split.length - 1];
+      /**
+       * NDA-012 (Component Utilities). This was `name.split('-')` and the **last** segment,
+       * while `registerInputIfNeeded` a few lines below strips the `value-` prefix properly.
+       * The two therefore disagreed the moment a property name contained a hyphen: with a
+       * property called `first-name`, the input wrote `first-name` into the record and the
+       * output read `name` out of it, so the port pair that exists to be the same piece of
+       * state was a writer and a reader of two different keys — `F-i′` one level down.
+       *
+       * `fetch()` and the model-change callback were already right, because both key off the
+       * record's own names, so the output was the only wrong reader.
+       *
+       * Property names without a hyphen are unaffected: for those the last segment *is* the
+       * whole name, which is why this survived.
+       */
+      const propertyName = name.startsWith('value-')
+        ? name.substring('value-'.length)
+        : name.startsWith('changed-')
+          ? name.substring('changed-'.length)
+          : name;
 
       this.registerOutput(name, {
         get(this: ComponentObjectInstance) {

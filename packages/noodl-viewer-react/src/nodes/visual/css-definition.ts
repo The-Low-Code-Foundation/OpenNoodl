@@ -51,6 +51,7 @@ const CSSDefinition: NodeDefinitionOptions = {
       displayName: 'Style',
       group: 'Content',
       default: '',
+      description: 'CSS added to the page for as long as this node exists, and removed with it',
 
       set: function (this: CssDefinitionInstance, value: string) {
         this.updateStyle(value);
