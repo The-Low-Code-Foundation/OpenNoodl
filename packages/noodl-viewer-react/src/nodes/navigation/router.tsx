@@ -563,11 +563,32 @@ const RouterNode = {
     navigate(args) {
       this._internal.asyncQueue.enqueue(this.navigateAsync.bind(this, args));
     },
+    /**
+     * NDA-004 §2. Both early returns were bare, and the second carried the author's own
+     * admission — `//TODO: send error to editor, "invalid page component name"`. A Navigate
+     * node pointed at a component that is not a page of this router did nothing and said
+     * nothing, in every runtime. The editor adapter's health warning
+     * (`RouterNavigateAdapter.evaluateHealth`) is the *edit-time* half and does not travel,
+     * and neither half gave the graph anything to sequence off.
+     *
+     * Reported through `args.hasFailed` for `navigation-stack`'s reason: the Router did not
+     * fail, the Navigate node did, and it owns the `Failure` port and the provenance.
+     */
     async navigateAsync(args: NavigateArgs) {
-      if (args.target === undefined) return;
+      if (args.target === undefined) {
+        args.hasFailed && args.hasFailed('navigate/no-target-page', 'No Target Page is set on this Navigate node');
+        return;
+      }
 
       const newPage = RouterHandler.instance.getPageInfoForComponent(args.target);
-      if (!newPage) return; //TODO: send error to editor, "invalid page component name"
+      if (!newPage) {
+        args.hasFailed &&
+          args.hasFailed(
+            'navigate/page-not-found',
+            `"${args.target}" is not a page of this Router — check the Target Page against the Router's Pages`
+          );
+        return;
+      }
 
       if (args.openInNewTab) {
         const url = this._getCompleteUrlToPage(newPage, args.params);

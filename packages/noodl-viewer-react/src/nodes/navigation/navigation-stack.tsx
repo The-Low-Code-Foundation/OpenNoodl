@@ -106,6 +106,8 @@ interface PageStackInstance extends ReactNodeInstance {
   _registerPageStack(): void;
   _deregisterPageStack(): void;
   _findPage(pageIdOrLabel: string): FoundPage | undefined;
+  /** NDA-004 §2 — hand a dropped navigation back to the node that asked for it. */
+  _reportNavigationFailure(args: StackNavigateArgs, code: string, message: string): void;
   /** NDA-008 §2 — whether this exact page-and-params is already the top of the stack. */
   _isAlreadyShowing(pageInfo: FoundPage, params: Record<string, unknown> | undefined): boolean;
   setPageOutputs(outputs: Record<string, unknown>): void;
@@ -315,6 +317,15 @@ const PageStack = {
     },
     _deregisterPageStack(this: PageStackInstance) {
       NavigationHandler.instance.deregisterPageStack(this._internal.name, this);
+    },
+    /**
+     * NDA-004 §2. Deliberately does *not* fall back to raising on this node when the caller
+     * supplied no `hasFailed`: the only such caller is a project's own JavaScript
+     * (`Noodl.Navigation`), and attributing its mistake to whichever Component Stack happened
+     * to receive it would put the diagnosis on a node the author did not write.
+     */
+    _reportNavigationFailure(this: PageStackInstance, args: StackNavigateArgs, code: string, message: string) {
+      args.hasFailed && args.hasFailed(code, message);
     },
     _findPage(this: PageStackInstance, pageIdOrLabel: string): FoundPage | undefined {
       if (this._internal.pageInfo[pageIdOrLabel]) {
@@ -680,12 +691,21 @@ const PageStack = {
      * `navigate.ts`.
      */
     async replaceAsync(this: PageStackInstance, args: StackNavigateArgs) {
+      // NDA-004 §2 — the same three, in the same order, for the same reason. See `navigateAsync`.
       if (this._internal.pages === undefined || this._internal.pages.length === 0) {
-        return;
+        return this._reportNavigationFailure(
+          args,
+          'push-component-stack/stack-has-no-components',
+          `The Component Stack "${this._internal.name || 'Main'}" has no components to show — its Components list is empty`
+        );
       }
 
       if (this._internal.isTransitioning) {
-        return;
+        return this._reportNavigationFailure(
+          args,
+          'push-component-stack/stack-transitioning',
+          'The Component Stack is still animating the previous navigation — this one was dropped'
+        );
       }
 
       const pageId = args.target || this._internal.pages[0].id;
@@ -694,7 +714,11 @@ const PageStack = {
       const pageInfo = this._findPage(pageId);
       if (pageInfo === undefined || pageInfo.component === undefined) {
         // No page was found
-        return;
+        return this._reportNavigationFailure(
+          args,
+          'push-component-stack/component-not-found',
+          `The Component Stack "${this._internal.name || 'Main'}" has no component "${pageId}" — check the Target Page against its Components list`
+        );
       }
 
       // NDA-008 §2 — as in `navigateAsync`, but with one extra condition that matters.
@@ -787,13 +811,34 @@ const PageStack = {
     navigate(this: PageStackInstance, args: StackNavigateArgs) {
       this._internal.asyncQueue.enqueue(this.navigateAsync.bind(this, args));
     },
+    /**
+     * NDA-004 §2 — the three bare returns below were the Pop node's three, unfixed.
+     *
+     * A push that lands on any of them does nothing and says nothing, which from the canvas
+     * is a dead button. The third is the one an author hits first: `target` is an *enum*
+     * input and a wire can feed an enum any string at all (the States lesson), so a page
+     * renamed in the editor while something upstream still spells it the old way silently
+     * stops navigating.
+     *
+     * Reported through `args.hasFailed` rather than raised here, for `back()`'s reason: this
+     * stack did not fail, the Push Component To Stack node was asked to act and could not,
+     * and it is the one carrying the `Failure` port and the provenance.
+     */
     async navigateAsync(this: PageStackInstance, args: StackNavigateArgs) {
       if (this._internal.pages === undefined || this._internal.pages.length === 0) {
-        return;
+        return this._reportNavigationFailure(
+          args,
+          'push-component-stack/stack-has-no-components',
+          `The Component Stack "${this._internal.name || 'Main'}" has no components to show — its Components list is empty`
+        );
       }
 
       if (this._internal.isTransitioning) {
-        return;
+        return this._reportNavigationFailure(
+          args,
+          'push-component-stack/stack-transitioning',
+          'The Component Stack is still animating the previous navigation — this one was dropped'
+        );
       }
 
       const pageId = args.target || this._internal.pages[0].id;
@@ -802,7 +847,11 @@ const PageStack = {
       const pageInfo = this._findPage(pageId);
       if (pageInfo === undefined || pageInfo.component === undefined) {
         // No page was found
-        return;
+        return this._reportNavigationFailure(
+          args,
+          'push-component-stack/component-not-found',
+          `The Component Stack "${this._internal.name || 'Main'}" has no component "${pageId}" — check the Target Page against its Components list`
+        );
       }
 
       // NDA-008 §2 — re-selecting the current page is a no-op, not a re-mount *and* a duplicate

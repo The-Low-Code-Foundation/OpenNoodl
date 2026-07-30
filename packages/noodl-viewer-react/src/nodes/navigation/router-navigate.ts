@@ -9,9 +9,12 @@ interface RouterNavigateInstance extends NodeInstance {
     router?: string;
     target?: string;
     hasScheduledNavigate?: boolean;
+    /** Message for the `Error` output; see NDA-004. */
+    lastError?: string;
   };
   scheduleNavigate(): void;
   navigate(): void;
+  reportFailure(code: string, message: string): void;
   setPageParam(param: string, value: NavigateArgs['params'][string]): void;
   setTargetPage(page: string): void;
   setRouter(value: string): void;
@@ -45,14 +48,36 @@ const RouterNavigate: NodeDefinitionOptions = {
       }
     }
   },
+  // NDA-004 §2: `Navigated` had no counterpart, so a Navigate node with no Target Page, or one
+  // pointing at a component the Router does not serve, was a dead button. The trigger is an
+  // author `Do` (`Navigate`, group `Actions`), so this port cannot fire on the boot path.
   outputs: {
     navigated: {
       type: 'signal',
       displayName: 'Navigated',
       group: 'Events'
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      getter: function (this: RouterNavigateInstance) {
+        return this._internal.lastError;
+      }
     }
   },
   methods: {
+    reportFailure(this: RouterNavigateInstance, code: string, message: string) {
+      this._internal.lastError = message;
+      this.raiseRuntimeError(code, message);
+      this.flagOutputDirty('error');
+      this.sendSignalOnOutput('failure');
+    },
     scheduleNavigate: function (this: RouterNavigateInstance) {
       const internal = this._internal;
       if (!internal.hasScheduledNavigate) {
@@ -72,6 +97,9 @@ const RouterNavigate: NodeDefinitionOptions = {
           this.scheduleAfterInputsHaveUpdated(() => {
             this.sendSignalOnOutput('navigated');
           });
+        },
+        hasFailed: (code, message) => {
+          this.reportFailure(code, message);
         }
       });
     },

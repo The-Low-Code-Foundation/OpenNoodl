@@ -14,6 +14,12 @@ export type NavigateArgs = {
    * own JavaScript never has, which is what made the required marking wrong.
    */
   hasNavigated?: () => void;
+  /**
+   * NDA-004 §2. The counterpart to `hasNavigated`, for the two ways `navigateAsync` drops a
+   * navigation — no target set, and a target that is not a page of this router. Optional for
+   * the same reason `hasNavigated` is: only the Navigate *node* supplies one.
+   */
+  hasFailed?: (code: string, message: string) => void;
 };
 
 export type ComponentPageInfo = {

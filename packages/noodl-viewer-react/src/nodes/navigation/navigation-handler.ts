@@ -11,6 +11,17 @@ export interface StackNavigateArgs {
   transition?: TransitionParams & { type?: string };
   backCallback?(action: string | undefined, results: Record<string, unknown>): void;
   hasNavigated?(): void;
+  /**
+   * NDA-004 §2. The counterpart to `hasNavigated`, for the three ways a push can be
+   * dropped on the floor. Optional for the same reason `hasNavigated` is: only the
+   * Push Component To Stack *node* supplies one, and it is the node that owns the
+   * `Failure` port and the provenance — the stack itself did not fail (NDA-008 §3,
+   * `back()`'s `StackBackResult`, same decision one call shape along).
+   *
+   * A callback rather than a return value because `navigate`/`replace` go through the
+   * stack's `asyncQueue`, so by the time the outcome is known the caller's frame is gone.
+   */
+  hasFailed?(code: string, message: string): void;
 }
 
 /** The subset of the Component Stack node the handler drives. */

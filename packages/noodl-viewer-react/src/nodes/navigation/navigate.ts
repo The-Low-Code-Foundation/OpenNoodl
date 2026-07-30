@@ -37,9 +37,12 @@ interface NavigateInstance extends NodeInstance {
     target?: string;
     transition?: string;
     hasScheduledNavigate?: boolean;
+    /** Message for the `Error` output; see NDA-004. */
+    lastError?: string;
   };
   scheduleNavigate(): void;
   navigate(): void;
+  reportFailure(code: string, message: string): void;
   setTransitionParam(param: string, value: unknown): void;
   setPageParam(param: string, value: unknown): void;
   getBackResult(param: string): unknown;
@@ -90,14 +93,37 @@ const Navigate: NodeDefinitionOptions = {
       }
     }
   },
+  // NDA-004 §2: `Navigated` had no counterpart, so a push that the stack dropped — no
+  // components configured, a Target Page that does not resolve, a navigation already
+  // animating — was indistinguishable from one that worked. The trigger is an author `Do`
+  // (`Navigate`, group `Actions`), so this port cannot fire on the boot path.
   outputs: {
     navigated: {
       type: 'signal',
       displayName: 'Navigated',
       group: 'Events'
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      getter: function (this: NavigateInstance) {
+        return this._internal.lastError;
+      }
     }
   },
   methods: {
+    reportFailure(this: NavigateInstance, code: string, message: string) {
+      this._internal.lastError = message;
+      this.raiseRuntimeError(code, message);
+      this.flagOutputDirty('error');
+      this.sendSignalOnOutput('failure');
+    },
     scheduleNavigate: function (this: NavigateInstance) {
       const _this = this;
       const internal = this._internal;
@@ -128,6 +154,9 @@ const Navigate: NodeDefinitionOptions = {
           },
           hasNavigated: () => {
             this.sendSignalOnOutput('navigated');
+          },
+          hasFailed: (code, message) => {
+            this.reportFailure(code, message);
           }
         });
       } else if (this._internal.navigationMode === 'replace') {
@@ -142,6 +171,9 @@ const Navigate: NodeDefinitionOptions = {
             this.scheduleAfterInputsHaveUpdated(() => {
               this.sendSignalOnOutput('navigated');
             });
+          },
+          hasFailed: (code, message) => {
+            this.reportFailure(code, message);
           }
         });
       }
