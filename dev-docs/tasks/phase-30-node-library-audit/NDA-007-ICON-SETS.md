@@ -60,29 +60,63 @@ requirement, and normalise it in the renderer where possible rather than making 
 not later — and note that the viewer already renders authored HTML elsewhere, so there may be an
 existing policy to match rather than invent.
 
-## §2 — One registration path
+## §2 — One registration path ✅ done 2026-07-30 (`899ab676`)
 
-An icon set should be declared once and become available to both the editor picker and the viewer.
-Today there is no such declaration.
+~~An icon set should be declared once and become available to both the editor picker and the viewer.
+Today there is no such declaration.~~
 
-Investigate first: the library/import pipeline (Phase 21, LIB-001…005) already installs content into a
-project, and the styles system (Phase 9) already has a project-level asset concept. **Prefer extending
-one of those to inventing a third mechanism** — this is exactly the kind of task that ends up as a
-parallel asset pipeline nobody maintains.
+**There is, and the "investigate first" instruction is what found it.** A module directory under
+`noodl_modules/` whose `manifest.json` carries `type: 'iconset'` *is* the declaration, LIB-003 already
+made `scanModuleManifests` the single scanner of that directory, and both consumers already read it —
+the picker through `ProjectModel`, the preview and deploy HTML through `injectIntoHtml`. So criterion 4
+was **nearly met before this task started**; what was missing is any way for a set to be something
+other than a font. The change is `iconSource: 'font' | 'sprite'` on the manifest plus one shaping
+layer (`shared/utils/iconsets.ts`) beside `toInjectModules`, not a new mechanism.
 
-## §3 — The picker
+The asymmetry that made §2 small, and the answer to the spec's worry about a third asset pipeline: a
+**font** set is only renderable once a stylesheet is in the *document*, which is exactly what the two
+pipelines exist for — but `{ kind: 'sprite', url, symbolId }` is self-describing, and `noodl_modules/`
+ships verbatim in a deploy. **Nothing is injected anywhere for a sprite to render in the app.** The
+value is the registration.
+
+## §3 — The picker ✅ done 2026-07-30 (`899ab676`)
 
 The editor's icon picker has to render whatever §1 allows, not just fonts. Check what it does today
 before designing: if it renders by injecting the set's stylesheet into the editor document, sprites
 and inline sets need a different path and the picker becomes the larger half of this task.
 
+It did inject the stylesheet, and sprites do need a different path — but the picker was not the larger
+half. Two things it did not predict:
+
+- **An external `<use href="file:///…#id">` renders nothing from the editor document and says
+  nothing about it.** The editor is a `file://` page and Chromium treats the reference as
+  cross-origin. Serving the sheet from the preview's web server is a different origin again. The
+  sheet is therefore inlined into the editor document with symbol ids namespaced by sheet URL, and
+  `LoadIconSets` awaits that before calling back — a `<use>` whose target is not in the document yet
+  draws nothing and does not retry.
+- **`IconType` was narrowing every picked value** to `{ class, code, codeAsClass }`. Even once the
+  picker could offer a sprite, the three fields that describe one were dropped one line later, by
+  code that reads like a copy.
+
+There is now one editor-side glyph renderer (`components/IconGlyphPreview.tsx`) for the picker cell
+and the property-panel thumbnail — two more copies of the font splat, on this side of the fence.
+
 ## Success criteria
 
-1. A custom SVG sprite set can be added to a project, appears in the picker, and renders in the app —
-   demonstrated end to end, in a deployed build as well as the editor.
-2. Existing font-based icons render byte-identically; the screenshot corpus proves it.
-3. `iconSize` and `iconColor` work for all three source kinds.
-4. Exactly one place registers a set.
+1. 🔵 A custom SVG sprite set can be added to a project, appears in the picker, and renders in the
+   app — **demonstrated end to end live in the editor** (`899ab676`): a set installed in a project
+   shows drawn previews in the picker, the pick stores `{kind:'sprite',url,symbolId}`, the thumbnail
+   renders it, and the app renders it at the authored size and colour. **A deployed build is still
+   owed**; `noodl_modules/` is not in the deploy ignore list, so the URL is expected to resolve, but
+   expected is not verified.
+2. ✅ Existing font-based icons render byte-identically. ⚠️ **Not** by the screenshot corpus, which
+   photographs editor chrome and cannot see this node — the wrong instrument. Verified instead by a
+   row pinning `iconValueForGlyph`'s exact key set (`class`, `code`, `codeAsClass`, **no `kind`**)
+   and live: a font set installed beside the sprite set emits that value, gets its stylesheet
+   injected from the same manifest, and renders in the app. 9 rows; editor jasmine 1,885 → **1,894**.
+3. ✅ `iconSize` and `iconColor` work for the two installable kinds, live, and the `inline` kind is
+   covered by §1's rows. Verified at 48px in `#ff9900` and `#33ccff`.
+4. ✅ Exactly one place registers a set — and it was already true; see §2.
 
 ## Out of scope
 

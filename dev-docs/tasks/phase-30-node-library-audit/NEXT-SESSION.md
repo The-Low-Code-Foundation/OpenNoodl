@@ -1,4 +1,4 @@
-# Phase 30 — next session handover (written for Opus, 2026-07-30)
+# Phase 30 — next session handover (rewritten for Opus, 2026-07-30, late)
 
 Work on branch `cline-dev`, commit directly to it, no task branches, no PRs. Use explicit pathspecs
 on every commit — the tree **still** carries another session's uncommitted work (Blockly editor and
@@ -11,8 +11,16 @@ that must never ride along. End commit messages with the Claude co-author line.
 **Tier 1 is done and live-verified.** NDA-001 corpus (`7a27e7c3`), NDA-013 (`0e96c93a`), NDA-002
 (`bd6632ca`…`825da393`), NDA-003 (`e707f0cc`…`b2032129`), NDA-014 (`61e8b3da`).
 
-**Tier 2 is close.** Complete: NDA-008 (all four sections), NDA-015 + class F, NDA-016, NDA-010 §2,
-NDA-014 §1–2. Since the last handover:
+**Tier 2 is all but done.** Complete: NDA-008 (all four sections), NDA-015 + class F, NDA-016,
+NDA-010 §2 and §3, NDA-014 §1–2, **NDA-006 (all four slices)**, **NDA-007 (all three sections)**,
+**NDA-011**, and **NDA-004 §2's criterion 4 for every node that is a coding task**.
+
+**Two sessions ran in parallel through 2026-07-30 and both finished their lists.** What is left of
+Tier 2 is listed under "The work, in order" below and it is short — the ⏳ list that dominated three
+handovers is closed. Read that section before anything else; several items you may remember as open
+are not.
+
+Since the last handover:
 
 - **The live-QA backlog is cleared** — three tasks' worth of code had passed jest and never been
   watched running. Five claims, one editor launch, **all pass**. Details in `PROGRESS.md`; the two
@@ -54,9 +62,10 @@ Six normative docs in `dev-docs/reference/`: `REACTIVITY-CONTRACT.md`, `EMPTY-VA
 resolves a target without a wire**: "How to obey it" names the helpers, and "The two walks" is a
 table you will otherwise get wrong.
 
-Gates as of `3b1beb48`: **1,119 runtime jest, 349 viewer jest, 1,885 editor jasmine (0 failures)**;
-cloud jest 52, unchanged and untouched since `d21154e1`. The editor suite was last run at `63f76b62`
-and nothing since has touched editor source. Both packages typecheck (`npx tsc --noEmit`) — but see
+Gates as of `899ab676`: **1,119 runtime jest, 359 viewer jest, 1,894 editor jasmine (0 failures)**;
+cloud jest 52, unchanged and untouched since `d21154e1`. The editor suite was run twice at
+`899ab676` — see the barrel trap below for why once was not enough. All three packages typecheck
+(`npx tsc --noEmit`) — but see
 the red-suite warning below, which applies to the typecheck too: `noodl-viewer-react/src/types.ts`
 and the `components/controls` files were mid-edit by another session and reported errors that were
 not this workstream's.
@@ -206,124 +215,89 @@ are a `pages` proplist of `{id,label}` plus a `pageComp-<id>` parameter each.
 
 ## The work, in order
 
-### 1. NDA-004 §2 — **done**, bar one policy question
+The ⏳ list is closed. **Do not start from a spec body in this phase without re-reading the
+mechanism** — the count of stale premises is now *thirteen*, and NDA-007 §2's was stale in the
+useful direction: the thing it said did not exist had existed for years, and finding that turned a
+"two asset pipelines have to agree" task into one manifest field.
 
-**Criterion 4 is met for every node that is a coding task** (2026-07-30). Every ⏳ entry in
-`NODE-REGISTER.md`'s triage is struck through except **item 9, the deprecated five**, which is a
-scope decision for Richard — whether deprecated nodes are in scope at all — and not something an
-implementer should settle. Closed this session:
+### 1. The two deployed-build legs, which are the same launch
 
-| What | Commit |
-|---|---|
-| Item 4 — Push Component To Stack / Navigate | `2f519c1d` |
-| FINDINGS B-iv — the user/auth eleven `setError` helpers | `2a448a45` |
-| FINDINGS B-iv — the last ten | `1579121f` |
-| Array Filter | `928531ce` |
-| Item 7 — Filter Records, State History, Stream Buffer, Set Variable, Repeater Item | `e442c9a1` |
-| Item 3 — Show Popup | `27184f12` |
-| The `hasOutput` top-up, and the Send Event defect it found | `674aee0f` |
+Both are the *last* clause of a criterion that is otherwise met, and both have been deferred by more
+than one session, which is how a criterion quietly becomes decorative.
 
-**The four questions still apply to any node you audit** and are unchanged — they are below,
-under "Four questions". What this session added to them:
+- **NDA-006 criterion 5** — masonry and the breakpoints in a **deployed** build. Row D7 pins the
+  unmeasured render through `react-dom/server`, and the editor is verified, but nobody has looked at
+  a real deploy. The interesting case is first paint: masonry renders as ragged top-aligned rows
+  until measured, deliberately, and that is what SSG output contains.
+- **NDA-007 criterion 1** — a sprite icon set in a **deployed** build. `noodl_modules/` is absent
+  from `build/ignore.ts`'s defaults so the project-relative URL is *expected* to resolve; expected is
+  not verified, and it is one Deploy To Folder away.
 
-1. **A grouping predicts nothing about the answers, and the register's own bullets are guesses.**
-   Item 7's five nodes had four different verdicts. Array Filter's "you will need a flag set by the
-   signal handlers" turned out to be already in the source, inverted, as
-   `isInputConnected('filter') === false`. Item 4's "a target page that does not resolve" named one
-   drop of **five**, none of them in the file the register cited.
-2. **The false-success shape is three registries deep** and the banked rule was too narrow. It is
-   not only create-on-read lookups: `Set Variable` did `Model.set(undefined, value)`, which makes
-   `undefined` a property name on the record every Variable node shares and then reports `Done`.
-   The general form is **any keyed operation whose key can be absent, where the absent case is
-   representable** — see FINDINGS B-ix.
-3. **A fix reported as done is a hypothesis too.** Send Event was ✅ from batch 1 on the strength of
-   a `Failure` signal and a raised code, and had **no `Error` port at all**. FINDINGS B-xi.
+Fixture and recipes: `scripts/nda-live-qa/` (committed — `make-fixture.js`, `make-iconsets.js`, and a
+README with the CDP measurements, including the two witnesses that are easy to get wrong).
 
-⚠️ **Read FINDINGS B-x before writing any control that asserts an absence.** Three controls written
-this session proved *nothing*, and all three were the same mistake: asserting silence in a state
-where the code under test never ran. An early-return dedup made a guard unreachable; a boot-path
-control never reached the scheduler; and two controls passed **vacuously** because `signalsFor` on
-a node that failed to construct returns `[]`. Make the control prove the code *did* run.
+### 2. NDA-004's remaining tails
 
-### 2. NDA-004's other tails — **this is where the remaining work is**
+- **⏳ item 9, the deprecated five** — an open *policy* question for Richard, not a coding task:
+  should a deprecated node gain a failure surface at all. The deprecated pair that already *had* one
+  was fixed under B-iv, so this is only about the ones that do not.
+- **`Logic Builder`, the last mute node** (§3, 9 of 10). Still blocked by the other session's
+  uncommitted rewrite. **Check `git status` on `logic-builder.ts` first and skip if it is dirty.**
+- **Criterion 2's cloud-runtime and export legs.** One raised error, observed in all four contexts.
+  Editor and browser are covered; cloud and export are not, and the spec predicted export is the one
+  that gets forgotten. It still is.
 
-- **Live QA. Owed, and now larger than the nine it used to be.** Nothing fixed on 2026-07-30 has
-  been watched running: batch 2's four, batch 3's five, and this session's **twelve more** (Push
-  Component To Stack, Navigate, Array Filter, Filter Records, Set Variable, Stream Buffer, Repeater
-  Item, Show Popup, State Snapshot, Undo/Redo, Subscribe To Changes, Send Event). All pass jest.
-  Three earn a launch on their own:
-  - **Open File Picker's `Cancelled`** — its rows stub `document`, and the real `cancel` event is
-    the one thing a stub cannot vouch for.
-  - **States** — the property panel must show two new static ports on a node whose port set is
-    otherwise entirely dynamic.
-  - **Show Popup's `show-popup/target-failed`** — the rows drive it through a rejected promise in
-    jest; what a real editor does with an unhandled-rejection-turned-raise is worth seeing once.
-  ⚠️ A dev editor and a webpack watch were running in this tree at the end of this session
-  (another workstream's). Check `ps aux | grep "[O]penNoodl/node_modules/electron/dist"` before
-  launching a second one, and remember that a dev launch rewrites the example project's
-  `project.json` on open *and* shutdown.
-- **`Logic Builder`, the last mute node.** Still blocked: `logic-builder.ts` was still dirty at the
-  end of this session. **Check `git status` first and skip if it is.**
-- **Criterion 2's cloud-runtime and export legs.** Unchanged and still owed. One raised error,
-  observed in all four contexts; editor and browser are covered, cloud and export are not, and the
-  spec predicts export is the one that gets forgotten. It still is. The `Response` work touched
-  `noodl-viewer-cloud`, so the cloud leg is the shorter of the two.
-- ~~**The 21 remaining `setError` helpers**~~ — **done**, `2a448a45` + `1579121f`. And **B-iv's own
-  table was wrong**, which is the part to carry: it counted twenty-two definitions and read them as
-  copies of one that posted to `sendWarning`. Fourteen do. **Six posted nowhere at all**, which is
-  worse rather than lesser, and three of those had no `Failure` port either. Corrected in place in
-  FINDINGS.
-- **Catalog regeneration**, still skipped — the tree is still dirty. The owed list has grown; on top
-  of everything the previous handover listed, add `Failure`/`Error` on **Push Component To Stack**,
-  **Navigate**, **Array Filter**, **Filter Records**, **Set Variable**, **Stream Buffer**, **Show
-  Popup**, **State Snapshot**, **Undo/Redo**, **Subscribe To Changes**, and `Error` on **Send
-  Event**. `nodelibraryexport.ts` reads the live register, so the editor picker and property panel
-  are already correct — only the generated JSON snapshot is stale. **`NODE-REGISTER.md`'s
-  `Mute?`/`Fail?` columns are wrong until this runs**; the hand-written Verdict column and the
-  triage section are the current truth.
-- **Show Popup's one residual**: `NodeContext.showPopup` opens with `if (!this.onShowPopup) return;`,
-  so a runtime with no popup host — an SSR render, a cloud function — resolves *successfully* having
-  done nothing. Distinguishing that needs a change in `nodecontext.ts`, which was another
-  workstream's file this session, so it was recorded rather than reached for.
+### 3. Catalog regeneration — now the largest single owed item
 
-### 3. Small residuals
+Still blocked on a clean tree, and the debt has grown for four more tasks. It owes, on top of
+everything the previous handover listed: **`packing`** (Columns, NDA-006 §4), **`sizing`**,
+**`mediumBreakpoint`/`mediumLayout`/`smallBreakpoint`/`smallLayout`** (NDA-006 §3), **`stackPolicy`**
+and **`Dismissed`** (Show Popup), and the six controls' `deprecated: true` (NDA-011). Read the
+five-consumers note under "Rules that will bite you" before running it.
 
-- **`Set Parent Component Object Properties` has no explicit target.** It shares the walk and the
-  type list now, so it can no longer disagree with its reader — but BINDING-CONTRACT §(a) is still
-  owed. It is the last ⚠️ row in that doc's table. Small, and the pattern is right there in
-  `parentcomponentobject.ts`.
-- **Two live checks left over from the QA pass**, both cheap once an editor is up: the **screenshot
-  corpus** (NDA-002 criterion 3; harness at `dev-docs/tasks/phase-23-visual-refresh/corpus/`,
-  `run.sh` wraps it) and the **object→Text DOM demo** (a Function node's `object` output wired to a
-  Text node showing JSON — the cast table is verified live, the wiring demo never was).
-- **Unfiled cosmetic:** with `useRoutes` on and no page paths set, the Component Stack's
-  `_updateUrlWithTopPage` pushes a bare `#` onto the URL.
+**`NODE-REGISTER.md`'s `Mute?`/`Fail?` columns are wrong until this runs.** Its hand-written Verdict
+column and the §2 triage section are the current truth.
+
+### 4. One new defect, filed and deliberately not fixed
+
+**Two creatable nodes read "Delete Record"** — `DeleteDbModelProperties` (the Parse-wire family) and
+`noodl.byob.DeleteRecord` (the BYOB family), same label, same category, neither deprecated. Found by
+checking NDA-011's criterion 3 against the *whole registry* rather than the six nodes its spec named:
+grouping all 156 registered types by picker label leaves eleven duplicated labels, ten of which are a
+deprecated node shadowing its replacement, and this is the only one with two live entries. The rest of
+the two record families were named to avoid exactly this ("Create New Record" vs "Create Record",
+"Query Records" vs "Query Data"); delete is where the disambiguating word ran out.
+
+**It needs Richard, not a patch:** either the Parse-wire or the BYOB family gives up the plain label,
+and which family is canonical is the question WF-007 left open. Written up in `FINDINGS.md`.
+
+### 5. Then Tier 3
+
+**NDA-005** (port docs — batch with NDA-012), **NDA-009 §1** (the editor-time Run Tasks template
+check), **NDA-010 §1** (re-scoped in place; do not start from the spec body), and **NDA-012**, which
+is 1 of 17 categories. NDA-012's Data and Cloud Services worksheets were the specced input to
+NDA-004 §2 — run them for the *other eleven* checks now, not for the failure question, which the
+triage covered.
 
 ## Parked / later
 
+Everything that was on this list is now either done or moved into "The work, in order" above. What
+remains parked:
+
 - **NDA-010 §1 — re-scoped, do not start from the spec body.** Its premise is partly stale:
-  `showpopup.ts:129-177` already derives typed `popupParam-*` from the target component's input ports
+  `showpopup.ts` already derives typed `popupParam-*` from the target component's input ports
   and `closeResult-*`/`closeAction-*` from its Close Popup nodes. The real gaps are the hand-typed
   `results`/`closeActions` on the *Close Popup* side and results being untyped (`*`). The correction
   is written into the spec in place.
-- ~~**NDA-010 §3**~~ — **done 2026-07-30 (`c8c26382`), so NDA-004 §2's Show Popup row is unblocked.**
-  One modal slot by default (`When A Popup Is Open` → `Replace It`), `Show On Top` as the opt-in.
-  The policy lives in `NodeContext.showPopup`, not on the node.
-- **NDA-005** (port docs — batch with NDA-012) and **NDA-009 §1** — the editor-time Run Tasks
-  template check, which catches F1's mistake earlier than the runtime backstop NDA-004 added.
-- **NDA-006 slice 4 (masonry)** — now unblocked; slices 1–3 landed 2026-07-30 (`b09b9785`,
-  `f3b0aba4`). Read the §3 ports first: `Column Sizing` (`Auto Fit`) and the container-width
-  breakpoints already exist, and masonry has to decide its ordering *against* them.
-- **NDA-007 §2–3** (registration path + editor picker) — the larger half, and the only part left.
-  §1's union is **implemented in the renderer** (`f85be46f`): one `IconGlyph.tsx` replaced six
-  copies of the font splat, so a `sprite`/`inline` value renders, sizes and colours correctly today.
-  What is missing is any way to *install* or *select* one. Build against `ICON-SOURCE-MODEL.md`,
-  whose "Implementation status" section says exactly what is and is not there.
-- ~~**NDA-011**~~ — **done 2026-07-30 (`069621be`).** REST deprecated, not deleted; six shadowing
-  control nodes taken out of the picker. See `NDA-011-CAPABILITY-COMPARISON.md`.
-- **NDA-012** is 1 of 17 categories. Its **Data** and **Cloud Services** worksheets are the specced
-  input to NDA-004 §2 and would sharpen the ⏳ list, but the triage now covers the same ground for
-  the failure question specifically — run them for the *other eleven* checks, not for this one.
+- **An `inline` icon set is declarable but not installable** (NDA-007). §1's union renders all three
+  kinds and §2/§3 install `font` and `sprite`; `inline` is deferred with a reason, not skipped —
+  previewing one means putting its markup into the *editor's own* document, which is a different
+  trust question from putting it in the app's. If it is picked up, the registration-time scrub that
+  `ICON-SOURCE-MODEL.md` calls for becomes possible for the first time, because an inline set is the
+  only installable kind that would *store* markup.
+
+Done since the last handover and struck from this list: ~~NDA-010 §3~~ (`c8c26382`), ~~NDA-011~~
+(`069621be`), ~~NDA-006 slice 4~~ (`b33b1b3e`), ~~NDA-007 §2–3~~ (`899ab676`).
 
 ## Executor guidance
 
@@ -375,6 +349,35 @@ Fence agent territories by file and forbid them `PROGRESS.md` — the coordinato
 `PROGRESS.md` and the `phase-30-node-library-audit` memory as tasks land, not at the end.
 
 ## Traps banked, cumulative
+
+- **The editor's jasmine suite is a barrel of explicit exports, so a new test file does not run.**
+  `tests/index.ts` → `tests/utils/index.ts` → `export * from './yourfile.test'`. Add a spec file
+  without registering it and the suite reports **the same total, 0 failures**, having executed none
+  of it. The detection rule is the reusable part: **a run that adds rows and does not move the total
+  is a discovery failure, not a passing suite.** Same shape as the phase's own "testing a helper is
+  not testing that anything calls it", one layer out — writing a test is not registering it.
+- **A banked measurement technique belongs to a *question*, not to a subject.** The per-instance
+  `input-<guid>` class is the right witness for "did this node survive" (NDA-008) and a **false pass**
+  for "did React re-mount this component" (NDA-006 §2): the guid is minted in the node's
+  `initialize()`, and a remount does not recreate the node. Reconciliation is only observable as **DOM
+  element identity** — capture references before the mutation and compare with `===`. Carrying a
+  technique to a neighbouring question is how you get a green that means nothing.
+- **An `<svg><use href>` that fails renders nothing and says nothing.** No console error, no network
+  entry to notice, just an empty box the size you asked for. Two ways to get there: the target id is
+  not in the document *yet* (it does not retry when it arrives), or the reference is external and the
+  document is a `file://` page, which Chromium treats as cross-origin. The only cheap witness that a
+  glyph actually painted is a **non-zero `svg.getBBox()`**.
+- **An early `return null` in a React component is a time bomb once the component grows hooks.**
+  `Columns` opened with `if (!props.children) return null;` ahead of every hook, so deleting a node's
+  last child changed the hook count and React threw — and live graph editing deletes children. It
+  reads as defensive code. Worth grepping for.
+- **A criterion about the *registry* has to be checked against the registry.** NDA-011 criterion 3
+  said no two nodes should read the same in the picker, and was verified against the six nodes its
+  spec named. One `reduce` over `NodeLibraryData.nodetypes` in the running editor finds eleven
+  duplicated labels and the one pair that is still live.
+- **Do not return a node view's `.type` from a CDP `eval`.** It serialises the entire node definition
+  *and the project graph reachable from its listeners* — tens of thousands of characters for what you
+  wanted to be one string.
 
 - **`Collection.get(undefined)` is the second instance of the create-on-read trap, so it is a
   pattern now.** `collection.ts:721-727` is the anonymous tier — a fresh, differently-named

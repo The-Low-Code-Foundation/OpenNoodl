@@ -53,9 +53,11 @@ injection today is CSS (`css-definition.ts`), which cannot carry script. Inline 
   referenced file in modern browsers), but sprite files installed through the registration path
   get the same scrub for defence in depth.
 
-## Implementation status (2026-07-30)
+## Implementation status (2026-07-30, updated after §2/§3)
 
-**The renderer implements this model in full**; registration and the picker do not exist yet.
+**The renderer implements this model in full, and a `font` or `sprite` set can now be installed and
+picked.** `inline` sets are declarable in the model but not installable as a *set*; see the last
+bullet.
 
 - `Noodl.Icon` is the union above (`viewer-react/src/types.ts`), and **one** component renders it:
   `components/visual/Icon/IconGlyph.tsx`. There were **six** copies of the font-triple splat before
@@ -68,14 +70,46 @@ injection today is CSS (`css-definition.ts`), which cannot carry script. Inline 
 - `sanitizeInlineIconSvg` is implemented and exported. It is **regex-based on purpose** — it runs
   under SSR and under `testEnvironment: node`, where there is no parser to borrow — so it is
   conservative by construction.
-- ⚠️ **The scrub currently happens at render time, not registration time**, because there is no
-  registration path to put it in. When §2 lands it moves there and the render-time call becomes
-  defence in depth. It is memo-free today; if that shows up in a profile before §2, that is the
-  reason.
-- ⚠️ **§2 and §3 are not done.** An author cannot install a sprite set or select one in the editor's
-  icon picker (`propertyeditor/iconpicker.jsx`, `DataTypes/IconType.ts`, `components/IconInput.tsx`
-  all still assume font semantics). A `sprite` or `inline` value reaching the node *renders*; getting
-  one there today means setting the port from script or by hand.
+- ⚠️ **The scrub still happens at render time, not registration time.** §2 landed without moving
+  it, and the reason is a correction to this document's own policy rather than an omission: the
+  installable kinds are `font` and `sprite`, and **neither stores markup** — a sprite set stores a
+  URL. So there is no *stored form* for a registration-time scrub to clean. The scrub is still the
+  right boundary for an `inline` value, and an `inline` value's only origin today is a wire or
+  project JSON, which registration never sees. When an `inline` *set* becomes installable, that is
+  when the move becomes possible; until then render time is the only boundary that exists.
+- ✅ **§2 — one registration path** (`shared/utils/iconsets.ts`). The path is the one that already
+  existed: a module directory under `noodl_modules/` whose `manifest.json` carries
+  `type: 'iconset'`, scanned by LIB-003's single `scanModuleManifests`. It gained
+  `iconSource: 'font' | 'sprite'` (absent means `font`) and, for sprites, `sprite: <module-relative
+  path>`. `toIconSets` is a shaping layer on that scanner, beside `toInjectModules` — not a second
+  read of the directory.
+  **Note the path convention it follows:** `sprite` is *module*-relative, like `main` and
+  `dependencies`. `browser.stylesheets` is *project*-relative, which is a pre-existing
+  inconsistency in the manifest and is left alone rather than widened.
+- ✅ **§3 — the picker** renders `sprite` sets as SVG with no stylesheet involved, and there is now
+  one editor-side glyph renderer (`propertyeditor/components/IconGlyphPreview.tsx`) shared by the
+  picker cell and the property-panel thumbnail. Those were two more independent copies of the font
+  splat, on this side of the fence.
+- **Why a sprite needs no registration in the app at all**, which is what made §2 small: a font set
+  is only renderable once its stylesheet is in the *document* — that is what the two asset pipelines
+  were for — while `{ kind: 'sprite', url, symbolId }` is self-describing and `noodl_modules/` ships
+  verbatim in a deploy (absent from `build/ignore.ts`'s defaults). Nothing is injected anywhere for
+  a sprite to render in the app. **The value is the registration.**
+- ⚠️ **An external `<use href>` does not work from the editor document, and fails silently.** The
+  editor is a `file://` page; Chromium treats an external `use` reference as cross-origin and
+  renders *nothing* — a picker of blank cells with no error in the console. The picker therefore
+  inlines a sprite sheet into its own document, with symbol ids namespaced by sheet URL, and awaits
+  that before rendering. The app has no equivalent problem: the viewer document and the sheet share
+  the project origin.
+- **Two sanitisers, deliberately, and not the six-copies mistake.** The viewer's
+  `sanitizeInlineIconSvg` is regex-based because it must run under SSR and `testEnvironment: node`,
+  where there is no parser. The editor's `scrubSvgTree` is `DOMParser`-based because it has one and
+  because that document is the privileged one. Same policy, different capabilities; the *shared*
+  part — which kind a value is, and what value a glyph makes — is in `shared/utils/iconsets.ts`.
+- ⚠️ **`inline` sets are declarable but not installable.** Previewing one in the picker means
+  putting its markup into the editor's own document, which is a materially different trust question
+  from putting it in the app's. Deferred with a reason rather than skipped. An `inline` *value*
+  reaching the node still renders.
 
 ## Constraints on §2/§3 (registration and picker)
 

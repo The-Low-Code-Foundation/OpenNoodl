@@ -65,6 +65,93 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-30 (NDA-007 §2 + §3 — registration and the picker)** — `899ab676`. **NDA-007 is
+  complete** bar criterion 1's deployed leg. 9 rows (editor jasmine 1,885 → **1,894**), live-verified
+  end to end in the editor.
+
+  **The spec's premise was wrong in the most useful direction, and its own "investigate first" is
+  what found it.** §2 said "an icon set should be declared once and become available to both the
+  editor picker and the viewer. Today there is no such declaration." There is, and it has been there
+  for years: a module directory under `noodl_modules/` whose `manifest.json` carries
+  `type: 'iconset'`. **LIB-003 already made `scanModuleManifests` the single scanner of that
+  directory**, and both consumers already read it — the picker through `ProjectModel`, the preview
+  and deploy HTML through `injectIntoHtml`. So criterion 4, *exactly one place registers a set*, was
+  **nearly met before the task started**; what was missing is any way for a set to be something
+  other than a font. The change is one manifest field (`iconSource`), one asset field (`sprite`) and
+  one shaping layer beside `toInjectModules` — not a new mechanism, which is what the spec's own
+  warning about "a parallel asset pipeline nobody maintains" was afraid of.
+
+  **The asymmetry that made §2 small, and it is the design result worth keeping.** A **font** set is
+  only renderable once a stylesheet and a font file are in the *document* — that is precisely why
+  "add a custom icon set" meant fighting two asset pipelines, and it is what `browser.stylesheets`
+  exists for. A **sprite** set is not: `{ kind: 'sprite', url, symbolId }` is self-describing, the
+  URL is an ordinary project asset, and `noodl_modules/` ships verbatim in a deploy (checked: absent
+  from `build/ignore.ts`'s defaults). **Nothing is injected anywhere for a sprite to render in the
+  app — the value is the registration.** The hard half of this task only ever existed for fonts.
+
+  **Two silent failures, one of them the reason §3 could have looked impossible.** An external
+  `<use href="file:///…#id">` renders **nothing** from the editor document — it is a `file://` page
+  and Chromium treats the reference as cross-origin — with no error in the console, so the picker
+  would have been a grid of blank cells with no clue why. Serving the sheet from the preview's web
+  server is a different origin again. The sheet is therefore inlined into the editor document with
+  symbol ids namespaced by sheet URL, and `LoadIconSets` **awaits** that before calling back, because
+  a `<use>` whose target is not in the document yet draws nothing and does not retry when it
+  arrives. The app has no equivalent problem, which is the same asymmetry again.
+
+  The second: **`IconType` narrowed every picked value** to `{ class, code, codeAsClass }`
+  (`IconType.ts`, in `onIconSelected`). Even with a picker that could offer a sprite set, the three
+  fields describing one were dropped one line later — by code that reads exactly like a copy. Worth
+  generalising: *a rebuild-the-object line is a schema assertion*, and it silently outvotes whatever
+  the union says.
+
+  **Two sanitisers now, and it is not §1's six-copies mistake repeated.** The viewer's
+  `sanitizeInlineIconSvg` is regex-based because it must run under SSR and `testEnvironment: node`,
+  where there is no parser to borrow. The editor's `scrubSvgTree` is `DOMParser`-based because it has
+  one, and because the editor document is the privileged one. Same policy, different capabilities —
+  and `noodl-editor` **cannot** import the viewer's anyway: the viewer is a built artefact the editor
+  loads, not a source dependency. The genuinely shared part (which kind a value is, and what value a
+  glyph makes) is one module, `shared/utils/iconsets.ts`. The test for "is this a duplicate" is
+  whether the two would have to change together; these would not.
+
+  **A correction to `ICON-SOURCE-MODEL.md`'s own sanitisation policy**, written into it in place.
+  The model said the scrub belongs at registration time and §2 would move it there. It cannot,
+  because the two *installable* kinds — `font` and `sprite` — **store no markup at all**; a sprite
+  set stores a URL. There is no stored form for a registration-time scrub to clean. Render time is
+  the only boundary that exists until an `inline` *set* becomes installable.
+
+  **`inline` sets stay declarable-but-not-installable**, deliberately. Previewing one means putting
+  its markup into the editor's own document, a materially different trust question from putting it
+  in the app's. An `inline` *value* reaching the node still renders (§1). Recorded with the reason
+  rather than left as an unexplained gap.
+
+  Also: one editor-side glyph renderer (`components/IconGlyphPreview.tsx`) now serves the picker cell
+  and the property-panel thumbnail — **two more copies of the font splat**, on this side of the
+  fence, which §1's count of six did not include. And a pre-existing manifest inconsistency left
+  alone rather than widened: `sprite` is *module*-relative (like `main`, `dependencies`) while
+  `browser.stylesheets` is *project*-relative.
+
+  **Live QA, both kinds, one project.** A sprite set and a font set installed side by side: the
+  picker lists both, draws the sprite previews (non-zero `getBBox()`, which is the only cheap witness
+  that a `<use>` resolved — a blocked one is `0x0` with no error), stores
+  `{kind:'sprite',url,symbolId}` for a sprite pick and exactly `{class,code,codeAsClass}` with **no
+  `kind`** for a font pick, the thumbnail renders both, and the app renders both at 48px in the
+  authored colour. The font set's stylesheet is injected into the app document by the pre-existing
+  `injectIntoHtml`, from the same manifest the picker read. ⚠️ **Criterion 1's deployed build is
+  still owed** — expected to work, not verified. ⚠️ Criterion 2's named instrument, the screenshot
+  corpus, **cannot photograph this node**; a row pinning the exact font key set does the job the
+  criterion wanted.
+
+  **The suite went green having never run the new file, and the spec count was the only tell.** The
+  editor's jasmine suite is a **barrel of explicit exports** (`tests/index.ts` →
+  `tests/utils/index.ts`), so a new `*.test.ts` is invisible until it is added to it: 1,885 specs,
+  0 failures, and 9 rows that had never executed. This is the banked spec-barrel trap re-hit, and
+  the useful part is the detection rule — **a run that adds rows and does not move the total is a
+  discovery failure, not a passing suite.** It is also the same shape as the phase's own lesson one
+  layer further out: testing a helper is not testing that anything calls it, and *writing* a test is
+  not registering it.
+
+  Fixture and the measurement recipes are committed at `scripts/nda-live-qa/`.
+
 - **2026-07-30 (NDA-006 slice 4 — masonry)** — `b33b1b3e`. **NDA-006 is complete**, four slices. 10
   corpus rows, 7 reverts each reddening only its own, viewer jest **359**, live-verified.
 
