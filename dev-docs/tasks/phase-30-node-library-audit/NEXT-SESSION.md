@@ -27,6 +27,11 @@ NDA-014 §1–2. Since the last handover:
   the thing to carry forward rather than the code: the family predicted to be "the cheapest
   remaining ✅s" contained the phase's worst class-B defect, and the node predicted to have one
   failure had two.
+- **NDA-004 §2's third batch landed 2026-07-30** — `2f7bc0cf` (Array mutators), `56de20b5` (States),
+  `f478123b` (Open File Picker). ⏳ items **6, 5 and 2** closed; 45 corpus rows, 16 reverts. Six ✅,
+  two 🔵. **The reusable half is four things the discrimination check found that no test failure
+  would have** — read "Harness facts" below before writing a single row, because two of them mean
+  rows you write can pin nothing at all while looking green.
 
 Six normative docs in `dev-docs/reference/`: `REACTIVITY-CONTRACT.md`, `EMPTY-VALUE-CONTRACT.md`,
 `FAILURE-CONTRACT.md`, `PORT-TYPE-CONTRACT.md`, `BINDING-CONTRACT.md`, `ICON-SOURCE-MODEL.md`.
@@ -34,9 +39,10 @@ Six normative docs in `dev-docs/reference/`: `REACTIVITY-CONTRACT.md`, `EMPTY-VA
 resolves a target without a wire**: "How to obey it" names the helpers, and "The two walks" is a
 table you will otherwise get wrong.
 
-Gates as of `88300a2a`: **1,095 runtime jest, 169 viewer jest, 52 cloud jest, 1,885 editor jasmine
+Gates as of `f478123b`: **1,095 runtime jest, 214 viewer jest, 52 cloud jest, 1,885 editor jasmine
 (0 failures)**. The editor suite was last run at `63f76b62` and nothing since has touched the editor.
-Batch 2 added 44 corpus rows (20 runtime, 24 viewer) and touched no editor source.
+Batch 3 added 45 viewer corpus rows and touched no runtime, cloud or editor source, which is why the
+runtime and cloud counts are unchanged.
 
 ## Rules that will bite you if skipped
 
@@ -86,6 +92,47 @@ data point worth chasing — do not assume it is the code you just wrote.
 
 `FINDINGS.md` has the defect evidence with `file:line` citations. Trust it over the task specs where
 they disagree — **twelve** spec claims have now fallen to implementation.
+
+## Harness facts — read before writing a corpus row
+
+Four things the 2026-07-30 third batch established. **Two of them mean a row can look green and pin
+nothing**, which is worse than a missing test, so they are not optional reading.
+
+1. **`graph.signalsFor` does not prove a port exists.** It records the port name *before* delegating,
+   and `Node.sendSignalOnOutput` on a name the node lacks only `console.log`s and returns. Deleting a
+   node's `failure` output leaves every `expect(signalsFor(id)).toContain('failure')` row **green** —
+   verified by doing it. Assert `node.hasOutput('failure')` as well whenever the *port* is part of
+   the claim. **The batch-1 and batch-2 §2 files have this gap and should be topped up.**
+2. **`undefined` cannot reach an input setter over a connection.** `Node.prototype.sendValue`
+   (`node.ts:635-637`) drops it at the sender. Any row that drives `undefined` down a wire pins
+   nothing. (`outputproperty.sendValue` does *not* filter, which is what makes this look reachable —
+   the filter is one layer up, in the method `flagOutputDirty` actually calls.) The only sender is a
+   **parameter reset**: `NodeModel.setParameter(name, undefined)` deletes the parameter and
+   `node.ts:871-882` queues the port's default.
+3. **No node↔node-model event is delivered in `noodl-viewer-react`'s jest at all**, so you cannot
+   drive a parameter edit there. `setNodeModel` registers with a *ref*, so its listeners live in
+   `EventSender.listenersWithRefs` — a `Map` that `emit` walks with `for…of` — and this package
+   compiles sibling-package sources at `target: "es5"` with no `downlevelIteration`, turning that
+   into an index loop over `map.length`: `undefined`, so **zero iterations, silently**. Ref-less
+   listeners on the same emitter work, which is why nothing had noticed. Rows needing a real
+   parameter edit belong in `noodl-runtime`'s half of the corpus. This **extends** the banked
+   pre-ES2015 trap rather than restating it — that one says the symptom is a loud `TS2802`, and here
+   there is no error at all, because a cross-package source is transpiled with these options but its
+   diagnostics are never surfaced.
+4. **No exception from any input setter is a crash.** `nodecontext.ts:220-228` wraps every node's
+   `update()` in a `catch` that only `console.error`s. So "the node throws" is not by itself evidence
+   of a crash, and a row asserting "it does not propagate" will pass with the fix removed. The cost is
+   still real and still worth reporting — `Node.update` rethrows to that catch, so the rest of that
+   node's pass (remaining queued inputs, after-update callbacks) is abandoned, and the sole diagnosis
+   is an unstructured console line with no code and no provenance. Pin the *structure* of the report
+   instead.
+
+There is also **no `jest-environment-jsdom` in this monorepo**. A node whose `initialize` touches
+`document` cannot be constructed under `testEnvironment: node`; stub what it reaches for, as
+`nda-004-open-file-picker.test.ts` stubs `document` and `nda-004-video-playback.test.tsx` stubs a
+media element. And a **mixin must merge into whichever method bag the node already uses**:
+`nodedefinition.ts:266` reads `opts.methods || opts.prototypeExtensions`, so handing a `methods` bag
+to a node that declares `prototypeExtensions` **deletes every method it had**.
 
 ## Driving the editor — the corrections that cost time
 
@@ -139,9 +186,21 @@ are a `pages` proplist of `{id,label}` plus a `pageComp-<id>` parameter each.
 ### 1. NDA-004 §2 — the largest remaining block, and it is now a list
 
 `NODE-REGISTER.md` has a **§2 triage of all 50**, split into **read** (binding) and **reasoned**
-(provisional). Criterion 4 is *not* met and the section says so. Its ⏳ list is ordered by expected
-yield; start at the top. Items 1 and 8 (Expression, the Component Object family) and Video are now
-struck through — **start at Open File Picker.**
+(provisional). Criterion 4 is *not* met and the section says so. Items 1, 2, 5, 6 and 8 and Video
+are now struck through. What is left on the ⏳ list:
+
+- **Item 3, Show Popup** — sequence it **after NDA-010 §3** (stack policy), not before.
+- **Item 4, Push Component To Stack / Navigate** — a target page that does not resolve;
+  `navigate.ts` already returns early on `_findPage` missing. Probably the highest yield left.
+- **Item 7** — Filter Records, State History, Stream Buffer, Set Variable, Repeater Item.
+- **`Array Filter`** — split out of item 6 deliberately. It is the family's genuinely *mixed* case:
+  `scheduleFilter` is reached from the `Filter`/`Refresh` signals **and** from the `enabled` setter
+  and the collection-change callback, so a raise there fires on the boot path. It needs the trigger
+  distinguished first (a flag set by the signal handlers is the obvious shape).
+- **Item 9, the deprecated five** — still an open policy question, not a coding task.
+
+Alternatively the **21 remaining `setError` helpers** (FINDINGS B-iv) are still the most contained
+high-value batch left; the user/auth eleven are near-identical and can go as one commit.
 
 Four questions to ask each node, in this order. Every one of them has now cost a batch to learn:
 
@@ -169,6 +228,13 @@ batch 2). Check both.
 
 ### 2. NDA-004's other tails
 
+- **Live QA of the nine nodes fixed on 2026-07-30, none of which has been watched running.** Batch
+  2's four (Set Parent Component Object Properties, Parent Component Object, Video, Expression) and
+  batch 3's five (Insert Object Into Array, Remove Object From Array, Clear Array, States, Open File
+  Picker). All nine passed jest and none has been seen in an editor. Two are worth the launch on
+  their own: **Open File Picker's `Cancelled`**, because its rows stub `document` and the real
+  `cancel` event is the one thing a stub cannot vouch for; and **States**, because the property panel
+  has to show the two new ports on a node whose port set is otherwise entirely dynamic.
 - **`Logic Builder`, the last mute node.** Still blocked by another session's uncommitted rewrite.
   **Check `git status` first and skip if `logic-builder.ts` is still dirty.** It was still dirty on
   2026-07-30.
@@ -186,7 +252,9 @@ batch 2). Check both.
   old hand-written key clears nothing and the node accumulates a warning it can never shed. Do the
   user/auth eleven as one batch — they are near-identical and the code namespace is obvious.
 - **Catalog regeneration**, still skipped for the same reason (the tree is still dirty). Now owed
-  for: `On App Error`; Parent Component Object's and Close Popup's `targetComponent`; Pop Component
+  for batch 3 as well: `Failure`/`Error` on **Insert Object Into Array**, **Remove Object From
+  Array**, **Clear Array** and **States**, and `Cancelled`/`Failure`/`Error` on **Open File
+  Picker**. And for: `On App Error`; Parent Component Object's and Close Popup's `targetComponent`; Pop Component
   Stack's `Popped`/`Failure`/`Error`; Navigate's transition ports in replace mode; **Response's**
   `Sent`/`Failure`/`Error`; **Set Object Properties'** `Failure`/`Error`; and `repeaterComponent` on
   seven node types — Object (`Model2`), Record (`DbModel2`), Set Object Properties, Set Record
@@ -277,6 +345,30 @@ Fence agent territories by file and forbid them `PROGRESS.md` — the coordinato
 `PROGRESS.md` and the `phase-30-node-library-audit` memory as tasks land, not at the end.
 
 ## Traps banked, cumulative
+
+- **`Collection.get(undefined)` is the second instance of the create-on-read trap, so it is a
+  pattern now.** `collection.ts:721-727` is the anonymous tier — a fresh, differently-named
+  collection on every call — exactly as `Model.get(undefined)` is at `model.ts:205-212`. Both made a
+  node bound to a throwaway and reporting `Done`. Batch 2 said "worth grepping for other
+  `Model.get(<maybe-undefined>)` call sites"; widen that to **any create-on-read lookup fed by a
+  value that can be absent**.
+- **On a port only a parameter can empty, `undefined` is a deletion, not an abstention.** The
+  Empty-Value Contract's "`undefined` abstains" is a statement about ports a *wire* can feed. Where
+  the runtime filters `undefined` at the sender (it does — see Harness facts 2), the only sender is
+  an author clearing the field, and honouring that as "no opinion" leaves the node acting on a target
+  the author has just removed from it. Same silence, different wrong target.
+- **A fix that only reports can leave the mechanism of the damage in place.** States' unknown-state
+  guard has to *refuse to move*: transitioning to a state whose values do not exist is what zeroed
+  every value. A revert that reports-but-still-transitions is the discrimination check that makes
+  that a tested decision rather than a preference.
+- **"The missing counterpart to Success" is not automatically a `Failure`.** Open File Picker's was a
+  cancelled dialog, which is a legitimate empty result — the contract lists it among the things that
+  must *not* raise, so it got a `Cancelled` **completion** signal that raises nothing. Ask which of
+  the contract's two clauses a gap falls under before reaching for `Failure`.
+- **Grouping nodes by the question they pose predicts nothing about the answers.** The three Array
+  mutators pose one question and had three different wrong answers to it (editor-only warning, total
+  silence, uncaught `TypeError`). The grouping is how you choose what to read next, and that is all
+  it is.
 
 - **A `Failure` port that can fire on the happy path is worse than no port.** The contract says so
   and the Object node is the worked example. The test is "who triggers this scheduler", not "does
