@@ -10,7 +10,12 @@ import type {
   NodeModule
 } from '@noodl/types';
 
-import { checkTemplateContract } from './runtasks-template-contract';
+import {
+  TEMPLATE_CONTRACT,
+  checkTemplateContract,
+  resolveTemplateContract,
+  type ResolvedTemplateContract
+} from './runtasks-template-contract';
 
 import type { RuntimeNode } from '../../internal';
 
@@ -28,16 +33,37 @@ interface TaskNode extends RuntimeNode {
       onOutputChanged(name: string, value: unknown, oldValue: unknown): void;
     };
   };
+  /**
+   * Which entry of `items` this task is running, so a failure can name it (§3).
+   *
+   * Carried on the node rather than in a side Map because the node is the only thing
+   * `itemOutputSignalTriggered` is handed besides the model, and a side Map would need
+   * clearing on every teardown path — including `_deleteAllTasks`, which is the one that
+   * already leaked once.
+   */
+  _runTaskIndex?: number;
+}
+
+/** One queued item, with the position it will be reported under. */
+interface QueuedTask {
+  item: unknown;
+  index: number;
 }
 
 /**
  * `this` inside the Run Tasks node.
  *
  * The node runs a component template once per item with bounded concurrency. Each task is
- * a real component instance created in this node's scope, driven by pulsing its `Do` input
- * and watched through `creatorCallbacks.onOutputChanged` — there is no port wiring between
- * the template and this node, which is why the signal names `'Success'` and `'Failure'`
- * are matched by string below.
+ * a real component instance created in this node's scope, driven by pulsing its start input
+ * and watched through `creatorCallbacks.onOutputChanged` — there is **no port wiring between
+ * the template and this node**, which is why the completion signals are matched by string.
+ *
+ * NDA-009 §2 made those four names *configuration* rather than literals: they come from
+ * `runtasks-template-contract.ts` through {@link RunTasksNodeInstance._contract}, default to
+ * `Do`/`Success`/`Failure`/`Error`, and the editor-time check reads the same table. The string
+ * match is still the mechanism — that is what the absence of a wire forces — but it is now a
+ * contract an author can see, change, and be warned about, rather than three literals buried
+ * in this file.
  */
 interface RunTasksNodeInstance extends NodeInstance {
   _internal: {
@@ -51,17 +77,26 @@ interface RunTasksNodeInstance extends NodeInstance {
     numTasks?: number;
     failedTasks?: number;
     completedTasks?: number;
-    queuedTasks?: unknown[];
+    queuedTasks?: QueuedTask[];
     runningTasks?: number;
     hasScheduledRun?: boolean;
     hasScheduledAbort?: boolean;
+    /** §2 — the configured port names. See {@link RunTasksNodeInstance._contract}. */
+    startInput?: string;
+    successOutput?: string;
+    failureOutput?: string;
+    errorOutput?: string;
   };
   /** On the instance, not in `_internal` — guards {@link _runQueueOperations}. */
   runningOperations?: boolean;
   scheduleRun(): void;
   scheduleAbort(): void;
-  createTaskComponent(item: unknown): Promise<TaskNode>;
-  startTask(task: unknown): Promise<void>;
+  /** The four port names this node will match against its template, defaults applied. */
+  _contract(): ResolvedTemplateContract;
+  createTaskComponent(entry: QueuedTask): Promise<TaskNode>;
+  startTask(entry: QueuedTask): Promise<void>;
+  /** §3 — reports one task's failure with the item that caused it. */
+  reportTaskFailure(model: ModelLike, itemNode: TaskNode): void;
   /** Ends a run that provably cannot finish, reporting `code` on the runtime error channel. */
   endRunAsFailed(code: string, message: string, detail?: unknown): void;
   run(): Promise<void>;
@@ -125,6 +160,64 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       group: 'General',
       set: function (this: RunTasksNodeInstance, value: string) {
         this._internal.template = value;
+      }
+    },
+    /**
+     * NDA-009 §2 — the template contract, as data rather than as string literals.
+     *
+     * **Static string ports, not the enums the spec asked for, and the reason is criterion 4.**
+     * Enums populated from the template's ports would have to arrive through
+     * `sendDynamicPorts`, which is what the catalog generator reads to decide a node has
+     * dynamic ports. The moment Run Tasks is a dynamic-port node, `nonexistentPort` stops
+     * reporting bad ports on it and merely *skips* them (`nonexistentPort.ts:73`) — so the
+     * change that was supposed to let the validator check this contract would have stopped it
+     * checking any of Run Tasks' ports at all. Static ports are also what the catalog carries,
+     * which is what makes the feature reachable by the AI authoring loop; the same trade-off
+     * NDA-006 §3 made for the breakpoint ports.
+     *
+     * The affordance the enum was for — "pick one of the ports the template actually has" —
+     * is delivered by `checkTemplateContract`, which lists them in its warning and also covers
+     * the case a dropdown could not: a port renamed on the *template* after this node was set up.
+     *
+     * `allowEditOnly` on all four: a connection driving a port name mid-run would change what
+     * completion means while tasks are in flight, and there is no reading of that which helps
+     * anyone.
+     */
+    taskStartInput: {
+      type: { name: 'string', allowEditOnly: true },
+      displayName: 'Start Input',
+      group: 'Template Contract',
+      default: TEMPLATE_CONTRACT.start.default,
+      set: function (this: RunTasksNodeInstance, value: string) {
+        this._internal.startInput = value;
+      }
+    },
+    taskSuccessOutput: {
+      type: { name: 'string', allowEditOnly: true },
+      displayName: 'Success Output',
+      group: 'Template Contract',
+      default: TEMPLATE_CONTRACT.success.default,
+      set: function (this: RunTasksNodeInstance, value: string) {
+        this._internal.successOutput = value;
+      }
+    },
+    taskFailureOutput: {
+      type: { name: 'string', allowEditOnly: true },
+      displayName: 'Failure Output',
+      group: 'Template Contract',
+      default: TEMPLATE_CONTRACT.failure.default,
+      set: function (this: RunTasksNodeInstance, value: string) {
+        this._internal.failureOutput = value;
+      }
+    },
+    /** Optional; see {@link TEMPLATE_CONTRACT.error}. Never warned about when absent. */
+    taskErrorOutput: {
+      type: { name: 'string', allowEditOnly: true },
+      displayName: 'Error Output',
+      group: 'Template Contract',
+      default: TEMPLATE_CONTRACT.error.default,
+      set: function (this: RunTasksNodeInstance, value: string) {
+        this._internal.errorOutput = value;
       }
     },
     run: {
@@ -191,8 +284,28 @@ const RunTasksDefinition: NodeDefinitionOptions = {
         });
       }
     },
-    async createTaskComponent(this: RunTasksNodeInstance, item: unknown) {
+    /**
+     * Resolved on every use rather than cached at run start.
+     *
+     * The four inputs are `allowEditOnly`, so the only writer is an author editing a field, and
+     * an edit mid-run is rare enough not to be worth a snapshot — while a cached copy would be
+     * a second source of truth to keep in step with `_internal`, which is exactly the drift
+     * this task exists to remove.
+     */
+    _contract(this: RunTasksNodeInstance): ResolvedTemplateContract {
       const internal = this._internal;
+      const values: Record<string, unknown> = {
+        [TEMPLATE_CONTRACT.start.parameter]: internal.startInput,
+        [TEMPLATE_CONTRACT.success.parameter]: internal.successOutput,
+        [TEMPLATE_CONTRACT.failure.parameter]: internal.failureOutput,
+        [TEMPLATE_CONTRACT.error.parameter]: internal.errorOutput
+      };
+      return resolveTemplateContract((parameter) => values[parameter]);
+    },
+    async createTaskComponent(this: RunTasksNodeInstance, entry: QueuedTask) {
+      const internal = this._internal;
+      const item = entry.item;
+      const contract = this._contract();
 
       // `nodeScope.modelScope` is the per-component model scope when there is one, and the
       // `Model` module itself otherwise — both answer `create`.
@@ -206,13 +319,15 @@ const RunTasksDefinition: NodeDefinitionOptions = {
         _forEachNode: this
       })) as unknown as TaskNode;
 
-      // This is needed to make sure any action connected to "Do"
+      // This is needed to make sure any action connected to the start input
       // is not run directly
       const _isInputConnected = itemNode.isInputConnected.bind(itemNode);
       itemNode.isInputConnected = (name: string) => {
-        if (name === 'Do') return true;
+        if (name === contract.start) return true;
         return _isInputConnected(name);
       };
+
+      itemNode._runTaskIndex = entry.index;
 
       // Set the Id as an input
       if (itemNode.hasInput('Id')) {
@@ -239,11 +354,12 @@ const RunTasksDefinition: NodeDefinitionOptions = {
 
       return itemNode;
     },
-    async startTask(this: RunTasksNodeInstance, task: unknown) {
+    async startTask(this: RunTasksNodeInstance, entry: QueuedTask) {
       const internal = this._internal;
+      const contract = this._contract();
 
       try {
-        const taskComponent = await this.createTaskComponent(task);
+        const taskComponent = await this.createTaskComponent(entry);
 
         // NDA-004 / corpus row F1. This node's whole contract with its template is three
         // string-matched port names, and the one an author actually gets wrong is the
@@ -259,20 +375,24 @@ const RunTasksDefinition: NodeDefinitionOptions = {
         // cannot react to. NDA-009 §1 additionally catches this at template-selection time
         // in the editor, which is earlier and better; this is the runtime backstop that also
         // holds in a deployed app.
-        if (!taskComponent.hasOutput('Success') && !taskComponent.hasOutput('Failure')) {
+        if (!taskComponent.hasOutput(contract.success) && !taskComponent.hasOutput(contract.failure)) {
           this.nodeScope.deleteNode(taskComponent);
           this.endRunAsFailed(
             'run-tasks/no-completion-output',
             'The task template "' +
               internal.template +
-              '" has no Success or Failure output, so a task can never report completion',
-            { template: internal.template, expectedOutputs: ['Success', 'Failure'] }
+              '" has no ' +
+              contract.success +
+              ' or ' +
+              contract.failure +
+              ' output, so a task can never report completion',
+            { template: internal.template, expectedOutputs: [contract.success, contract.failure] }
           );
           return;
         }
 
         internal.runningTasks++;
-        sendSignalOnInput(taskComponent, 'Do');
+        sendSignalOnInput(taskComponent, contract.start);
         internal.activeTasks.set(taskComponent.id, taskComponent);
       } catch (e) {
         // Something went wrong starting the task. Reported rather than logged: a task that
@@ -280,6 +400,7 @@ const RunTasksDefinition: NodeDefinitionOptions = {
         // surely as a mis-named output does.
         this.endRunAsFailed('run-tasks/task-start-failed', 'A task could not be started', {
           template: internal.template,
+          itemIndex: entry.index,
           error: e instanceof Error ? e.message : String(e)
         });
       }
@@ -341,7 +462,11 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       internal.numTasks = internal.items.length;
       internal.failedTasks = 0;
       internal.completedTasks = 0;
-      internal.queuedTasks = [].concat(internal.items);
+      // Wrapped with the position each item holds in `items`, so a failure can name *which*
+      // one (§3). The index is captured here rather than looked up later because `indexOf`
+      // would collapse duplicate items onto one position, and a list of fifty identical
+      // records is exactly the shape this node is for.
+      internal.queuedTasks = internal.items.map((item, index) => ({ item, index }));
       internal.runningTasks = 0;
 
       // No tasks
@@ -410,11 +535,19 @@ const RunTasksDefinition: NodeDefinitionOptions = {
         }
       };
 
-      if (name === 'Success') {
+      const contract = this._contract();
+
+      if (name === contract.success) {
         internal.completedTasks++;
         internal.runningTasks--;
         checkDone();
-      } else if (name === 'Failure') {
+      } else if (name === contract.failure) {
+        // §3 — report *before* `checkDone`, and before the node is torn down below. The
+        // aggregate `failure` signal `checkDone` may send says only that the batch failed;
+        // this says which item, and it has to be read while the task component still exists
+        // because the error output is read off it.
+        this.reportTaskFailure(model, itemNode);
+
         internal.completedTasks++;
         internal.failedTasks++;
         internal.runningTasks--;
@@ -423,6 +556,54 @@ const RunTasksDefinition: NodeDefinitionOptions = {
 
       internal.activeTasks.delete(itemNode.id);
       this.nodeScope.deleteNode(itemNode);
+    },
+    /**
+     * NDA-009 §3 — say which of fifty tasks failed, and why if the template can say.
+     *
+     * The aggregate `failure` output fires once for a run of any size, so an author with one
+     * bad record in fifty learned only that something went wrong. This raises one event per
+     * failing task on NDA-004's channel, carrying the item's position in `items` and its record
+     * id — the two things that let an author find the record again.
+     *
+     * **Why is optional and comes from the template, because the completion signal cannot
+     * carry it.** `Failure` is a bare signal. If the template has an output under the
+     * configured error name (`Error` by default), its value is attached; if it has none, the
+     * report carries identity alone rather than inventing a reason. A template that cannot
+     * explain its failures is a legitimate shape and gets no warning for it — see
+     * `TEMPLATE_CONTRACT.error`.
+     */
+    reportTaskFailure(this: RunTasksNodeInstance, model: ModelLike, itemNode: TaskNode) {
+      const internal = this._internal;
+      const contract = this._contract();
+
+      let error: unknown;
+      if (itemNode.hasOutput(contract.error)) {
+        try {
+          error = itemNode.getOutput(contract.error).value;
+        } catch (e) {
+          // The getter belongs to the author's component. A throw here would abandon the rest
+          // of the run over a diagnostic, which is the failure channel doing more damage than
+          // the failure it is reporting.
+          error = '<the ' + contract.error + ' output threw: ' + (e instanceof Error ? e.message : String(e)) + '>';
+        }
+      }
+
+      const index = itemNode._runTaskIndex;
+
+      this.raiseRuntimeError(
+        'run-tasks/task-failed',
+        'Task ' +
+          (index === undefined ? '' : index + 1 + ' of ' + internal.numTasks + ' ') +
+          'failed' +
+          (error === undefined || error === null || error === '' ? '' : ': ' + String(error)),
+        {
+          template: internal.template,
+          itemIndex: index,
+          itemId: model && typeof model.getId === 'function' ? model.getId() : undefined,
+          item: model ? model.data : undefined,
+          error
+        }
+      );
     },
     _queueOperation(this: RunTasksNodeInstance, op: () => void | Promise<void>) {
       this._internal.queuedOperations.push(op);

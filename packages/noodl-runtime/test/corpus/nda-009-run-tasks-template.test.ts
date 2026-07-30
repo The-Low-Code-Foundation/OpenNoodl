@@ -48,13 +48,13 @@ function aComponent(name: string, inputs: string[], outputs: string[]) {
   });
 }
 
-function aRunTasksNode(template: string | undefined) {
+function aRunTasksNode(template: string | undefined, contract: Record<string, unknown> = {}) {
   const base = emitter();
   return Object.assign(base, {
     id: 'runner',
     type: 'RunTasks',
     component: { name: '/root' },
-    parameters: { taskTemplate: template } as Record<string, unknown>
+    parameters: { taskTemplate: template, ...contract } as Record<string, unknown>
   });
 }
 
@@ -85,9 +85,13 @@ const currentWarning = (connection: ReturnType<typeof aConnection>) =>
   connection.warnings.find((w) => w.key === KEY);
 
 describe('NDA-009 §1: the template contract, at selection time', () => {
-  function check(template: string | undefined, component?: ReturnType<typeof aComponent>) {
+  function check(
+    template: string | undefined,
+    component?: ReturnType<typeof aComponent>,
+    contract: Record<string, unknown> = {}
+  ) {
     const connection = aConnection();
-    const node = aRunTasksNode(template);
+    const node = aRunTasksNode(template, contract);
     const graphModel = { components: component ? { [component.name]: component } : {} };
 
     checkTemplateContract(connection as never, node as never, graphModel as never);
@@ -147,6 +151,77 @@ describe('NDA-009 §1: the template contract, at selection time', () => {
   });
 
   test('I6 (control): a template that satisfies the contract produces no warning', () => {
+    const { warning } = check('/Task', aComponent('/Task', ['Do'], ['Success', 'Failure']));
+
+    expect(warning).toBeUndefined();
+  });
+
+  /**
+   * §2 — the check reads the *configured* names, or it would report a correctly-configured
+   * node as broken the moment §2 was used. This is the editor-side half of K1; the runtime
+   * half is in `nda-009-run-tasks-contract.test.ts`, and the two are separate rows because
+   * the whole point of a shared `TEMPLATE_CONTRACT` is that they cannot be assumed to agree.
+   */
+  test('I8: a template using its own port names is accepted when the node is told them', () => {
+    const { warning } = check('/Task', aComponent('/Task', ['Begin'], ['Finished', 'Broke']), {
+      taskStartInput: 'Begin',
+      taskSuccessOutput: 'Finished',
+      taskFailureOutput: 'Broke'
+    });
+
+    expect(warning).toBeUndefined();
+  });
+
+  /**
+   * The inverse, and the control that makes I8 mean something: configure a name the template
+   * does not have and the warning names *that* name, not the default. Without this row I8
+   * would pass equally well if the check had stopped looking at ports altogether.
+   */
+  test('I9: a configured name the template lacks is reported under the configured name', () => {
+    const { warning } = check('/Task', aComponent('/Task', ['Do'], ['Success', 'Failure']), {
+      taskSuccessOutput: 'Finished',
+      taskFailureOutput: 'Broke'
+    });
+
+    expect(warning).toBeDefined();
+    // The diagnosis names the configured pair, not the defaults.
+    expect(warning!.message).toContain('neither a "Finished" nor a "Broke" signal output');
+    // The defaults still appear — in the "it has" list, which is the point of I10. Asserting
+    // their absence anywhere in the message was this row's first mistake: the affordance and
+    // the diagnosis are two clauses, and only the diagnosis is about what is wrong.
+    expect(warning!.message).toContain('it has "Success", "Failure"');
+  });
+
+  /**
+   * §2's affordance, delivered as a message rather than a dropdown. The enum the spec asked
+   * for would have made Run Tasks a dynamic-port node, which turns off `nonexistentPort` for
+   * it; listing the ports here does the same job for the author and costs nothing.
+   */
+  test('I10: the warning lists the ports the template does have', () => {
+    const { warning } = check('/Task', aComponent('/Task', ['Do'], ['Done', 'Broke']));
+
+    expect(warning).toBeDefined();
+    expect(warning!.message).toContain('it has "Done", "Broke"');
+  });
+
+  /**
+   * A template with no ports at all reads as "none", not as an empty quoted list. Small, and
+   * it is the row that catches the join producing `it has ` with nothing after it.
+   */
+  test('I11: a template with no outputs at all says so in words', () => {
+    const { warning } = check('/Task', aComponent('/Task', ['Do'], []));
+
+    expect(warning).toBeDefined();
+    expect(warning!.message).toContain('it has none');
+  });
+
+  /**
+   * The optional fourth port must never produce a warning. A task component that cannot
+   * explain why it failed is a legitimate shape — this is the same judgement I3 makes about
+   * the missing counterpart, one port further out, and the row exists to stop a later sweep
+   * "completing the set" by making the error output required.
+   */
+  test('I12: a missing error output is never reported', () => {
     const { warning } = check('/Task', aComponent('/Task', ['Do'], ['Success', 'Failure']));
 
     expect(warning).toBeUndefined();

@@ -52,21 +52,49 @@ naming the missing port and what it is for.
 This is the minimum viable fix and it closes corpus row F1 on its own. Ship it first; it converts a
 silent dead end into a solvable problem.
 
-## §2 — Make the contract selectable
+## §2 — Make the contract selectable — **done 2026-07-30**
 
 Better than warning about three hardcoded names: let the author say which ports mean what. Default to
 `Do`/`Success`/`Failure` because that is the right default for a *new* task template — not to protect
-existing projects ([`COMPATIBILITY-POLICY.md`](../../reference/COMPATIBILITY-POLICY.md)). Three enum
-inputs populated from the template's actual ports.
+existing projects ([`COMPATIBILITY-POLICY.md`](../../reference/COMPATIBILITY-POLICY.md)). ~~Three enum
+inputs populated from the template's actual ports.~~
 
 That also removes the class-D smell rather than papering over it — the contract becomes data the
 validator can check, instead of a string literal buried in the runtime.
 
-## §3 — Report per-task failure
+> **Correction, written in place after building it: the enums are wrong, and criterion 4 is why.**
+> An enum whose options come from another component has to be sent with `sendDynamicPorts`, and that
+> is exactly what marks a node as having dynamic ports. `nonexistentPort.ts:73` then **skips** every
+> port check on that node rather than reporting it — so the change intended to let the validator
+> check this contract would have stopped it checking any of Run Tasks' ports at all. Static ports are
+> also what `node-catalog.json` carries, which is what makes the feature reachable by the AI
+> authoring loop; NDA-006 §3 made the same trade-off for the breakpoint ports.
+>
+> Shipped as **four static string inputs** — `taskStartInput`, `taskSuccessOutput`,
+> `taskFailureOutput` and `taskErrorOutput` (§3's, optional) — all `allowEditOnly`, resolved through
+> one `TEMPLATE_CONTRACT` table in `runtasks-template-contract.ts` that the runtime and the
+> editor-time check both read.
+>
+> **The affordance moved rather than being dropped.** `checkTemplateContract` lists the ports the
+> template actually has (`… it has "Done", "Broke"`), which does the dropdown's job and also covers
+> one it could not: the author who renames the port on the *template* afterwards, and is not looking
+> at the node they have broken.
+
+## §3 — Report per-task failure — **done 2026-07-30**
 
 Run Tasks aggregates. When one task in fifty fails, the author needs to know *which* and *why*, not
 just that the batch failed. With NDA-004's error channel in place, surface per-task errors with the
 item identity attached.
+
+> **Built, with one thing the spec could not have known: "why" cannot come from this node.** The
+> template's completion signal is a bare signal and carries no payload, so the only source of a
+> reason is the template itself. One `run-tasks/task-failed` is raised per failing task with
+> `itemIndex` and `itemId` (`Task 3 of 50 failed`), and the value of the template's `Error` output is
+> attached when it has one.
+>
+> **That fourth port is optional and never warned about**, on §1's own grading reasoning one port
+> further out: a task component that cannot explain its failures is a legitimate shape, and requiring
+> the port would be the "a `Failure` port on a node that cannot fail" mistake again.
 
 ## §4 — Make the coupling visible
 
@@ -80,8 +108,13 @@ found. Cheap, and it makes §1's warning redundant in the good case.
 
 ## Success criteria
 
-1. Corpus row F1 green — a mismatched template produces a warning naming the missing port.
-2. The QA fixture is green — updating the fixture is a legitimate part of this change if the default
-   moves.
-3. A failing task reports which item failed and why.
-4. The semantic validator can check the Run Tasks contract, which it cannot today.
+1. ✅ Corpus row F1 green — a mismatched template produces a warning naming the missing port.
+2. ✅ The QA fixture is green — updating the fixture is a legitimate part of this change if the
+   default moves. (The defaults did not move, so no fixture change was needed.)
+3. ✅ A failing task reports which item failed and why — identity always, reason when the template
+   has an output that can carry one.
+4. 🔄 **Built, not yet demonstrable.** The contract is four static ports, which is what the validator
+   reads — but `node-catalog.json` regeneration is blocked by a parallel session's uncommitted
+   changes, so the ports are not in the catalog yet and `nonexistentPort` cannot see them. The
+   design decision that makes this criterion reachable at all is recorded under §2; the remaining
+   work is one catalog run, not a code change.

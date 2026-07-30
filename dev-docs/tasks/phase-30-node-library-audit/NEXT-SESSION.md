@@ -237,6 +237,25 @@ mechanism** — the count of stale premises is now *thirteen*, and NDA-007 §2's
 useful direction: the thing it said did not exist had existed for years, and finding that turned a
 "two asset pipelines have to agree" task into one manifest field.
 
+### 0. What the 2026-07-30 late session did, and what it leaves
+
+- **The confirmatory live run is DONE** (`847c6282`). All three witnesses pass — masonry at authored
+  widths in the script-stripped SSG page, and the `[noodl] … [expression/compile-failed]` line in
+  both the SSG build's stdout and the deployed browser console. **Item 1 below is closed**; it is
+  kept for the recipe, which is still the way to drive a deploy headlessly. FINDINGS **H-iv**.
+  The fixture generator now creates the `Expression` this needs and the README records that the
+  *absence* of an `On App Error` node is load-bearing.
+- **NDA-009 §2 + §3 are done**, so **NDA-009 is complete bar §4** (a design question). See the
+  log entry; the reusable half is that *the spec's own criterion 4 ruled out the mechanism the spec
+  asked for* — enum ports mean `sendDynamicPorts` means a dynamic-port node means the validator
+  stops checking the node's ports altogether.
+- **Catalog regeneration and `Logic Builder` are still blocked** and were re-checked at 2026-07-30
+  late: `node-catalog.json`, `node-catalog-enriched.json` and `logic-builder.ts` are all still dirty
+  with the other session's work. **NDA-009 §2 added four more ports to the debt** —
+  `taskStartInput`, `taskSuccessOutput`, `taskFailureOutput`, `taskErrorOutput` on `RunTasks` — and
+  they are what makes NDA-009's criterion 4 demonstrable, so that criterion is *built but not
+  provable* until the catalog runs.
+
 ### 1. ~~The two deployed-build legs~~ — DONE 2026-07-30, and they found three defects
 
 `cc28a4be` (NDA-006 §5), `382894e4` (NDA-004 §2 criterion 2). **NDA-007 criterion 1 passed as
@@ -244,9 +263,12 @@ written.** Full account in `PROGRESS.md`'s newest log entry and FINDINGS **defec
 one-line version is that a criterion whose last clause names a build nobody runs is a criterion
 that grades the build everybody runs.
 
-**What is left of it is one confirmatory launch**, and it is the only live work this workstream
-owes. Every defect was measured live; none of the *fixes* has been. Both rebuilt deploy bundles
-were confirmed to contain both fixes, so this is confirmation, not diagnosis:
+~~**What is left of it is one confirmatory launch**~~ — **run 2026-07-30, all three witnesses pass**
+(`847c6282`, FINDINGS **H-iv**). The recipe below is kept because it is the reusable half, and
+because the *new* finding from running it is that **the deploy output is itself a fixture you can
+edit**: substituting `width:calc(100% + 0px)` → `width:calc(100% + (0px)` in the served HTML and
+reloading discriminates H-i in seconds, with no rebuild. Any defect whose evidence is a serialised
+attribute can be checked that way. The steps as run:
 
 1. `node scripts/nda-live-qa/make-fixture.js "<VerifyFix4>/project.json"` and `make-iconsets.js`
    (⚠️ `VerifyFix4` currently *holds* the fixture — the previous handover's "restored to Hello
@@ -330,8 +352,16 @@ this needs the other session to land or drop its catalog changes first.
 The debt has grown for four more tasks. It owes, on top of
 everything the previous handover listed: **`packing`** (Columns, NDA-006 §4), **`sizing`**,
 **`mediumBreakpoint`/`mediumLayout`/`smallBreakpoint`/`smallLayout`** (NDA-006 §3), **`stackPolicy`**
-and **`Dismissed`** (Show Popup), and the six controls' `deprecated: true` (NDA-011). Read the
-five-consumers note under "Rules that will bite you" before running it.
+and **`Dismissed`** (Show Popup), the six controls' `deprecated: true` (NDA-011), and — new
+2026-07-30 — **`taskStartInput`/`taskSuccessOutput`/`taskFailureOutput`/`taskErrorOutput`** on
+`RunTasks` (NDA-009 §2). Read the five-consumers note under "Rules that will bite you" before
+running it.
+
+⚠️ **The RunTasks four are not just debt, they are a criterion.** NDA-009's criterion 4 — "the
+semantic validator can check the Run Tasks contract" — is what those ports are *for*, and
+`nonexistentPort` reads the catalog. Until regeneration runs, that criterion is built and not
+provable. It is also the reason the ports are static rather than the enums the spec asked for; the
+whole argument is in the spec under §2 and in `runtasks.ts`'s comment on `taskStartInput`.
 
 **`NODE-REGISTER.md`'s `Mute?`/`Fail?` columns are wrong until this runs.** Its hand-written Verdict
 column and the §2 triage section are the current truth.
@@ -351,9 +381,10 @@ and which family is canonical is the question WF-007 left open. Written up in `F
 
 ### 5. Then Tier 3
 
-**NDA-005** (port docs — batch with NDA-012), ~~**NDA-009 §1**~~ (**done 2026-07-30**, `c598206e`;
-§2's selectable port names and §3 remain), **NDA-010 §1** (re-scoped in place; do not start from the
-spec body), and **NDA-012**, which is 1 of 17 categories. NDA-012's Data and Cloud Services worksheets were the specced input to
+**NDA-005** (port docs — batch with NDA-012), ~~**NDA-009 §1/§2/§3**~~ (**all done 2026-07-30**;
+only §4, a design question, remains — and it is now cheaper than the spec assumed, because §2 gave
+the node three named ports a card summary could render), **NDA-010 §1** (re-scoped in place; do not
+start from the spec body), and **NDA-012**, which is 1 of 17 categories. NDA-012's Data and Cloud Services worksheets were the specced input to
 NDA-004 §2 — run them for the *other eleven* checks now, not for the failure question, which the
 triage covered.
 
