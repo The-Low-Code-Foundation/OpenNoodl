@@ -1,4 +1,16 @@
-import type { ModelLike, ModelModule, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  ModelLike,
+  ModelModule,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule
+} from '@noodl/types';
+
+import { checkTemplateContract } from './runtasks-template-contract';
 
 import type { RuntimeNode } from '../../internal';
 
@@ -450,7 +462,70 @@ const RunTasksDefinition: NodeDefinitionOptions = {
 } as NodeDefinitionOptions;
 
 const RunTasksNodeModule: NodeModule = {
-  node: RunTasksDefinition
+  node: RunTasksDefinition,
+
+  setup: function (context: NodeContextLike, graphModel: GraphModelLike) {
+    if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
+      return;
+    }
+    const editorConnection: EditorConnectionLike = context.editorConnection;
+
+    function watch(node: GraphNodeModel) {
+      const recheck = () => checkTemplateContract(editorConnection, node, graphModel);
+
+      /**
+       * Re-check when the *template* changes, not only when the choice does.
+       *
+       * Renaming a task component's `Success` output is the other half of this defect and the
+       * more insidious one: the author is editing a component, not the Run Tasks node, so
+       * nothing draws their attention to the node they have just broken.
+       *
+       * Listeners are registered on each template this node ever points at and never removed,
+       * which is deliberate on two counts. `EventSender` has no `off` — only `on`,
+       * `removeListenersWithRef` and `removeAllListeners` — so unregistering would mean the
+       * ref-based path, and ref-registered listeners live in a `Map` that `emit` walks with
+       * `for…of` (the transpile trap banked in this phase: under a pre-ES2015 target that
+       * becomes an index loop over `map.length` and delivers nothing, silently). And a stale
+       * listener here is harmless: `recheck` re-reads `taskTemplate` from the node every time,
+       * so a port change on an abandoned template costs one redundant check that reaches the
+       * correct answer about the current one.
+       */
+      function trackComponent(name: string | undefined) {
+        if (!name) return;
+
+        const component = graphModel.components[name];
+        if (!component) return;
+
+        component.on('inputPortAdded', recheck);
+        component.on('inputPortRemoved', recheck);
+        component.on('outputPortAdded', recheck);
+        component.on('outputPortRemoved', recheck);
+      }
+
+      recheck();
+      trackComponent(node.parameters['taskTemplate'] as string | undefined);
+
+      node.on('parameterUpdated', function (event: { name: string }) {
+        if (event.name !== 'taskTemplate') return;
+
+        recheck();
+        trackComponent(node.parameters['taskTemplate'] as string | undefined);
+      });
+    }
+
+    // `editorImportComplete`, as Show Popup does, because this reads a *different* component's
+    // ports: at `nodeAdded` time the template may not have been imported yet, and the check
+    // would report every template as missing.
+    graphModel.on('editorImportComplete', () => {
+      graphModel.on('nodeAdded.RunTasks', function (node: GraphNodeModel) {
+        watch(node);
+      });
+
+      for (const node of graphModel.getNodesWithType('RunTasks')) {
+        watch(node);
+      }
+    });
+  }
 };
 
 export = RunTasksNodeModule;
