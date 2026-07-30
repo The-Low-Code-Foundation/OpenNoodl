@@ -114,6 +114,16 @@ for (const category of nodeLibrary.nodeIndex.coreNodes) {
 
 const catalog = buildCatalog(records, { typecasts, packageVersions, nodePickerTypes });
 
+// SUB-013 criterion 3 — the documented worked examples must still be authorable against the
+// encodings this run just derived. Checked here rather than in a separate script so that a
+// SCHEMA.md example cannot quietly stop being true while `catalog:check` stays green.
+const { checkExamples } = require('./lib/check-examples');
+const exampleFixture = require('./fixtures/parameter-encoding-examples.json');
+const exampleResult = checkExamples(exampleFixture, new Map(catalog.nodes.map((n) => [n.typeName, n])));
+if (exampleResult.failures.length) {
+  throw new Error(`Documented parameter examples no longer hold:\n  - ${exampleResult.failures.join('\n  - ')}`);
+}
+
 const outPath = process.env.NODE_CATALOG_OUT;
 if (!outPath) throw new Error('NODE_CATALOG_OUT must be set');
 fs.writeFileSync(outPath, JSON.stringify(catalog, null, 2) + '\n');

@@ -13,6 +13,13 @@
  *   node scripts/node-catalog/generate.js           regenerate artifacts
  *   node scripts/node-catalog/generate.js --check   fail if committed
  *                                                   artifacts are stale
+ *   node scripts/node-catalog/generate.js --out-dir <dir>
+ *                                                   write elsewhere, leaving the
+ *                                                   committed artifacts untouched
+ *
+ * `--out-dir` exists because regeneration is a whole-file rewrite of an artifact other work may
+ * be holding: it folds in every uncommitted node-source edit in the tree, so a generator change
+ * cannot be validated by running it in place without also publishing whatever else is dirty.
  *
  * Output is deterministic; the generator runs the extraction twice and
  * asserts byte-identical results before writing anything.
@@ -21,60 +28,11 @@ const { spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const esbuild = require('esbuild');
+const { bundleEntry } = require('./lib/bundle');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const OUT_JSON = path.join(REPO_ROOT, 'packages/noodl-types/src/node-catalog.json');
 const OUT_DTS = path.join(REPO_ROOT, 'packages/noodl-types/src/node-catalog.d.ts');
-
-async function bundleExtractor(workDir) {
-  const outfile = path.join(workDir, 'extractor.bundle.js');
-  await esbuild.build({
-    entryPoints: [path.join(__dirname, 'extractor-entry.js')],
-    bundle: true,
-    platform: 'node',
-    format: 'cjs',
-    outfile,
-    alias: { '@noodl/runtime': path.join(REPO_ROOT, 'packages/noodl-runtime') },
-    loader: {
-      '.css': 'empty',
-      '.svg': 'empty',
-      '.png': 'empty',
-      '.jpg': 'empty',
-      '.gif': 'empty',
-      '.woff': 'empty',
-      '.woff2': 'empty'
-    },
-    plugins: [
-      {
-        // noodl-viewer-react/src/types.ts exports only TS types, but a few
-        // modules import identifiers from it that also exist as runtime
-        // globals (`Noodl.*`), which esbuild cannot elide cross-file. Replace
-        // the module with recursive noop proxies; none of it runs during
-        // registration.
-        name: 'stub-type-only-modules',
-        setup(build) {
-          const typeModule = path.join(REPO_ROOT, 'packages/noodl-viewer-react/src/types.ts');
-          build.onResolve({ filter: /^\.\.?\/.*types$/ }, (args) => {
-            if (path.resolve(args.resolveDir, args.path) + '.ts' === typeModule) {
-              return { path: typeModule, namespace: 'type-stub' };
-            }
-            return null;
-          });
-          build.onLoad({ filter: /.*/, namespace: 'type-stub' }, () => ({
-            contents: `
-              const noop = new Proxy(function () {}, { get: () => noop, apply: () => noop });
-              module.exports = new Proxy({}, { get: () => noop });
-            `,
-            loader: 'js'
-          }));
-        }
-      }
-    ],
-    logLevel: 'warning'
-  });
-  return outfile;
-}
 
 function runExtractor(bundlePath, workDir, label) {
   const outPath = path.join(workDir, `catalog-${label}.json`);
@@ -168,6 +126,54 @@ export interface DynamicPortInfo {
   editorAdapter?: string;
 }
 
+/**
+ * One key formula in a node's \`parameters\` object (SUB-013).
+ *
+ * Every field is observed, not written by hand: the generator drives the node's real
+ * dynamic-port hook with seed parameters and records what it emits. \`example\` is a name the
+ * runtime actually produced.
+ */
+export interface ParameterPattern {
+  /** The key formula, with \`<variable>\` placeholders. E.g. \`value-<state>-<value>\`. */
+  pattern: string;
+  plug: 'input' | 'output' | 'input/output';
+  /** What each \`<variable>\` stands for, and which parameter it is drawn from. */
+  variables?: Record<string, string>;
+  /** The editor property group these ports appear under; may itself be templated. */
+  group?: string;
+  /**
+   * The port's value type. A literal type name when it is fixed, \`"varies"\` when it is not,
+   * or a sentence naming the parameter it follows — for \`States\`, the value type of
+   * \`value-<state>-<value>\` is chosen by the matching \`type-<value>\` parameter.
+   */
+  valueType?: string;
+  /** A real emitted port name, preferring one that shows verbatim interpolation. */
+  example: string;
+}
+
+/**
+ * How to write the keys of this node's \`parameters\` object (SUB-013).
+ *
+ * \`known: false\` is a deliberate statement, not a gap: the node's port names could not be
+ * determined without project context (a live component, a backend schema, user code), and
+ * \`reason\` says which. It is the same reasoning as the validator's \`DynamicPortSkipped\` —
+ * a check that was knowingly not performed beats silent absence.
+ *
+ * \`known: true\` with an empty \`patterns\` array means the node computes no names at all: its
+ * dynamism is visibility only, and every port it can have is already in \`inputs\`/\`outputs\`.
+ */
+export type ParameterEncoding =
+  | {
+      known: true;
+      /** Parameters whose values the keys are derived from. Empty when they are not. */
+      seededBy: string[];
+      /** Project metadata the keys come from instead, e.g. \`dbCollections\`. */
+      seededByProjectMetadata?: string[];
+      patterns: ParameterPattern[];
+      notes?: string;
+    }
+  | { known: false; reason: string };
+
 export interface CatalogNode {
   typeName: NodeTypeName;
   displayName: string;
@@ -199,6 +205,12 @@ export interface CatalogNode {
   inputs: CatalogPort[];
   outputs: CatalogPort[];
   dynamicPorts: DynamicPortInfo | null;
+  /**
+   * How to write the keys of this node's \`parameters\` object. Non-null for exactly the nodes
+   * with a \`dynamicPorts\` block — \`dynamicPorts\` says the ports exist, this says what they
+   * are called.
+   */
+  parameterEncoding: ParameterEncoding | null;
 }
 
 export interface Typecast {
@@ -220,10 +232,15 @@ export interface NodeCatalog {
 
 async function main() {
   const checkMode = process.argv.includes('--check');
+  const outDirIndex = process.argv.indexOf('--out-dir');
+  const outDir = outDirIndex === -1 ? null : process.argv[outDirIndex + 1];
+  if (outDirIndex !== -1 && !outDir) throw new Error('--out-dir needs a directory');
+  const targetJson = outDir ? path.join(outDir, path.basename(OUT_JSON)) : OUT_JSON;
+  const targetDts = outDir ? path.join(outDir, path.basename(OUT_DTS)) : OUT_DTS;
 
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'node-catalog-'));
   try {
-    const bundlePath = await bundleExtractor(workDir);
+    const bundlePath = await bundleEntry(path.join(__dirname, 'extractor-entry.js'), workDir);
 
     const first = runExtractor(bundlePath, workDir, 'run1');
     const second = runExtractor(bundlePath, workDir, 'run2');
@@ -234,14 +251,32 @@ async function main() {
     const catalog = JSON.parse(first);
     const dts = emitTypes(catalog);
 
+    const dynamic = catalog.nodes.filter((n) => n.dynamicPorts);
     console.log(
       `Catalog: ${catalog.nodes.length} node types, ` +
-        `${catalog.nodes.filter((n) => n.dynamicPorts).length} with dynamic ports, ` +
+        `${dynamic.length} with dynamic ports, ` +
         `${catalog.portTypeNames.length} port value types.`
+    );
+
+    // SUB-013 criterion 1 — no silent gaps. Every node with dynamic ports carries an encoding,
+    // either with patterns or with an explicit reason it has none. Asserted rather than
+    // reported: a missing block would otherwise read to a consumer exactly like "no encoding
+    // needed", which is the ambiguity the field exists to remove.
+    const missing = dynamic.filter((n) => !n.parameterEncoding).map((n) => n.typeName);
+    if (missing.length) {
+      throw new Error(`Nodes with dynamic ports but no parameterEncoding: ${missing.join(', ')}`);
+    }
+    const withPatterns = dynamic.filter((n) => n.parameterEncoding.known && n.parameterEncoding.patterns.length);
+    const visibilityOnly = dynamic.filter((n) => n.parameterEncoding.known && !n.parameterEncoding.patterns.length);
+    console.log(
+      `Parameter encodings: ${withPatterns.length} with key formulas, ` +
+        `${visibilityOnly.length} that compute no names, ` +
+        `${dynamic.length - withPatterns.length - visibilityOnly.length} recorded as not statically knowable.`
     );
 
     if (checkMode) {
       const stale = [];
+      // --check always compares against the committed artifacts; --out-dir is a write option.
       const current = { [OUT_JSON]: first, [OUT_DTS]: dts };
       for (const [file, expected] of Object.entries(current)) {
         const committed = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
@@ -256,9 +291,10 @@ async function main() {
       }
       console.log('Committed catalog is up to date.');
     } else {
-      fs.writeFileSync(OUT_JSON, first);
-      fs.writeFileSync(OUT_DTS, dts);
-      console.log(`Wrote ${path.relative(REPO_ROOT, OUT_JSON)} and ${path.relative(REPO_ROOT, OUT_DTS)}.`);
+      if (outDir) fs.mkdirSync(outDir, { recursive: true });
+      fs.writeFileSync(targetJson, first);
+      fs.writeFileSync(targetDts, dts);
+      console.log(`Wrote ${targetJson} and ${targetDts}.`);
     }
   } finally {
     fs.rmSync(workDir, { recursive: true, force: true });

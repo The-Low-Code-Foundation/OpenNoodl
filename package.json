@@ -56,6 +56,8 @@
     "catalog:generate": "node scripts/node-catalog/generate.js",
     "catalog:check": "node scripts/node-catalog/generate.js --check",
     "catalog:validate": "node scripts/node-catalog/validate-project.js",
+    "catalog:encoding:selftest": "node scripts/node-catalog/encoding-selftest.js",
+    "catalog:encoding:eval": "node scripts/node-catalog/encoding-eval.js",
     "catalog:merge": "node scripts/node-catalog/merge.js",
     "catalog:merge:check": "node scripts/node-catalog/merge.js --check --require-coverage",
     "catalog:examples": "ts-node -P ./scripts/tsconfig.json ./scripts/validate-examples.ts",

@@ -183,6 +183,127 @@ unknown port on a dynamic node → allowed (optionally warn)*. That rule plus
 this catalog reproduced ~5,000 connection-endpoint resolutions across the
 repo's real-project test corpus with zero false errors.
 
+## Parameter keys
+
+`dynamicPorts` says that extra ports exist. `parameterEncoding` says what they
+are **called** — which is what you need to write a node's `parameters` object.
+
+Every node with a `dynamicPorts` block has a non-null `parameterEncoding`. It is
+never absent, so "this node has no encoding recorded" and "this node needs no
+encoding" cannot be confused for one another.
+
+### When the keys follow a formula
+
+```jsonc
+"parameterEncoding": {
+  "known": true,
+  "seededBy": ["states", "values"],
+  "patterns": [
+    {
+      "pattern": "value-<state>-<value>",
+      "plug": "input",
+      "variables": {
+        "state": "one of the comma-separated entries in the `states` parameter",
+        "value": "one of the comma-separated entries in the `values` parameter"
+      },
+      "group": "<state> Values",
+      "valueType": "follows the matching `type-<value>` parameter",
+      "example": "value-Sb1-Vb sp"
+    }
+  ],
+  "notes": "Names are interpolated verbatim, including spaces — …"
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `seededBy` | The parameters the keys are derived from. **Write these first**, then derive the rest from them. Empty when the keys come from somewhere other than a parameter. |
+| `seededByProjectMetadata` | Present when the keys come from project context rather than the node — currently only `dbCollections`, the cloud database class schemas. |
+| `patterns[].pattern` | The key formula. `<name>` is a placeholder; `<N>` is a non-negative integer. |
+| `patterns[].variables` | What each placeholder stands for and which parameter supplies it. |
+| `patterns[].group` | The editor property group the port appears under. May itself be templated. |
+| `patterns[].valueType` | A port type name when fixed; `"varies"` when it is not; otherwise a sentence naming the parameter that decides it. |
+| `patterns[].example` | A key the runtime actually emitted for a seed parameterisation. |
+| `notes` | Facts that apply to the whole node. |
+
+`known: true` with an empty `patterns` array means the node computes no names at
+all. Its dynamism is *visibility* only: every port it can ever have is already in
+`inputs`/`outputs`, and `dynamicPorts.declaredPortGroups` says which parameter
+values reveal which. Most visual nodes are like this.
+
+### When they do not
+
+```jsonc
+"parameterEncoding": {
+  "known": false,
+  "reason": "Ports mirror the input ports of the template component chosen by the `template` parameter…"
+}
+```
+
+The node's keys could not be determined without project context — a live
+component, a backend schema, or user code. This is the same reasoning as the
+validator's `DynamicPortSkipped`: a determination knowingly not made is worth
+recording, because it is not the same as there being nothing to record.
+
+### Worked example — authoring a `States` node
+
+`States` is the hardest node in the library to author blind, and everything
+needed is in its `parameterEncoding`. Write the seeds first:
+
+```jsonc
+"parameters": {
+  "states": "true,false",
+  "values": "pos,bg color"
+}
+```
+
+Then apply each pattern to every combination you need. `type-<value>` chooses a
+value's type; `value-<state>-<value>` gives it a value per state; and because
+`value-<state>-<value>`'s `valueType` says it *follows the matching `type-<value>`
+parameter*, the type you choose there decides what you may write here:
+
+```jsonc
+"parameters": {
+  "states": "true,false",
+  "values": "pos,bg color",
+
+  "type-pos": "number",
+  "value-true-pos": 100,
+  "value-false-pos": 0,
+
+  "type-bg color": "color",
+  "value-true-bg color": "Primary",
+
+  "transitiondef-on": { "curve": [0, 0, 0.58, 1], "dur": 200, "delay": 0 }
+}
+```
+
+Note `value-true-bg color`. The value name is interpolated **raw, spaces and
+all** — the node's `notes` says so, and its `example` shows it. This is the case
+that pattern-matching from other projects reliably gets wrong, producing
+plausible keys such as `value-true-bgColor` or `pos-true` that the runtime
+silently ignores.
+
+### How these are produced, and what that guarantees
+
+Patterns are **observed, not written**. The generator drives each node's real
+dynamic-port hook with seed parameters and records the keys it emits. Nothing
+here is derived by reading node source, so — like the rest of the catalog — it
+cannot drift from the runtime.
+
+Three seed runs per node. Two differ in arity, and the formula falls out of the
+diff: that is what distinguishes a key that interpolates one name from one that
+interpolates two from one that interpolates none. The third is **held out**, and
+every pattern must reproduce it exactly — both that the pattern matches what the
+runtime emitted, and that the runtime emitted nothing the patterns miss. A
+pattern that fails is a generation failure, so it is caught by `catalog:check` in
+CI rather than being taken on trust.
+
+What this does *not* guarantee: that the pattern list is exhaustive for a node
+whose helper has a branch no seed reached. Seeds cover the shapes the ports are
+built from, not every conditional in the node. Treat `patterns` as sound but not
+provably complete.
+
 ## Guarantees and non-guarantees
 
 - Generated from the live registries; the committed artifact is regenerated

@@ -7,8 +7,11 @@
  */
 const { sanitize, normalizeType, tooltipToText, assignDefined } = require('./sanitize');
 const { NOTES, EDITOR_ADAPTER_TYPES } = require('./dynamic-port-notes');
+const { deriveEncoding } = require('./derive-encoding');
 
-const CATALOG_FORMAT_VERSION = '1.0.0';
+// 1.1.0 — SUB-013 adds `parameterEncoding` to every node with dynamic ports. Additive, so a
+// minor bump: a reader written against 1.0.0 sees an unknown key and is otherwise unaffected.
+const CATALOG_FORMAT_VERSION = '1.1.0';
 
 // A node *defining* these methods services ports that are not in its static
 // metadata (the runtime calls them when a connection targets an unknown port).
@@ -218,6 +221,10 @@ function buildCatalog(records, extras) {
     node.inputs = inputs;
     node.outputs = outputs;
     node.dynamicPorts = detectDynamism(typeName, metadata, rawDef);
+    // SUB-013 — what the dynamic ports are *called*. `dynamicPorts.description` says they exist;
+    // without this an author has prose and no way to write a key. Null for nodes with no dynamic
+    // ports; never absent for nodes that have them, so a gap cannot pass for "nothing to say".
+    node.parameterEncoding = deriveEncoding(typeName, metadata, rawDef, node.dynamicPorts);
 
     nodes.push(node);
   }
@@ -238,7 +245,8 @@ function buildCatalog(records, extras) {
     allowAsChild: true,
     inputs: [],
     outputs: [],
-    dynamicPorts: null
+    dynamicPorts: null,
+    parameterEncoding: null
   });
   nodes.sort((a, b) => (a.typeName < b.typeName ? -1 : a.typeName > b.typeName ? 1 : 0));
 
