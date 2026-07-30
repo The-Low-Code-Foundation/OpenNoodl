@@ -78,7 +78,11 @@ export class IconType extends TypeView {
       React.createElement(IconPicker, {
         value: this.value,
         onIconSelected: (icon: IconValue) => {
-          this.value = { class: icon.class, code: icon.code, codeAsClass: icon.codeAsClass };
+          // NDA-007 §3: stored as handed over. This used to rebuild the value as
+          // `{ class, code, codeAsClass }`, so even once the picker could offer a sprite set the
+          // three fields that describe one were dropped on the way to the parameter — a silent
+          // narrowing in a line that reads like a copy.
+          this.value = icon;
           this.parent.setParameter(this.name, this.value);
           this.isDefault = false;
           this.renderReact();

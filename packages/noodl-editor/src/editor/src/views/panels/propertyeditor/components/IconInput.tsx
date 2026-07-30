@@ -2,12 +2,15 @@ import React from 'react';
 
 import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 
-export interface IconValue {
-  class?: string;
-  code?: string;
-  /** Some icon sets (e.g. SVG-based) encode the glyph as a second class instead of text content */
-  codeAsClass?: boolean;
-}
+import type { IconSetValue } from '../../../../../../shared/utils/iconsets';
+import { IconGlyphPreview } from './IconGlyphPreview';
+
+/**
+ * A stored icon parameter. Structurally `Noodl.Icon` — NDA-007 §1's union — because that is what
+ * lands in project JSON and flows down the port. A font value carries no `kind`, which is how an
+ * existing project's parameters keep their exact shape.
+ */
+export type IconValue = IconSetValue;
 
 export interface IconInputProps {
   label: string;
@@ -26,13 +29,6 @@ export interface IconInputProps {
  * the currently selected icon and opens the icon picker popout.
  */
 export function IconInput({ label, value, isChanged, dataIdentifier, onOpenPicker, onReset }: IconInputProps) {
-  const thumbnailClass = value
-    ? value.codeAsClass
-      ? [value.class, value.code].filter(Boolean).join(' ')
-      : value.class
-    : undefined;
-  const thumbnailText = value && !value.codeAsClass ? value.code : '';
-
   return (
     <PropertyPanelRow label={label} isChanged={isChanged} onReset={onReset}>
       <div
@@ -52,9 +48,11 @@ export function IconInput({ label, value, isChanged, dataIdentifier, onOpenPicke
           onOpenPicker(e.currentTarget);
         }}
       >
-        <span className={thumbnailClass} style={{ color: 'white', fontSize: 20, display: 'inline-block' }}>
-          {thumbnailText}
-        </span>
+        {/* One renderer for the thumbnail and the picker cell — NDA-007 §3. This used to be a
+            third independent copy of the font splat, so a sprite value showed as an empty box. */}
+        <div style={{ color: 'white' }}>
+          <IconGlyphPreview value={value} size={20} />
+        </div>
       </div>
     </PropertyPanelRow>
   );

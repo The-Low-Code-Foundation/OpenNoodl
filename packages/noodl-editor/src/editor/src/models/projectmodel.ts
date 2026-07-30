@@ -7,12 +7,19 @@ import { verifyJsonFile } from '@noodl-utils/verifyJson';
 
 import Model from '../../../shared/model';
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
+import type { IconSetDescriptor } from '../../../shared/utils/iconsets';
 import Utils from '../utils/utils';
 import { ComponentModel } from './componentmodel';
 import LessonModel from './lessonmodel';
 import { NodeGraphModel, NodeGraphNode } from './nodegraphmodel';
 import { NodeLibrary } from './nodelibrary';
-import { listProjectModules, ProjectModule, ProjectModuleManifest, readProjectModules } from './projectmodel.modules';
+import {
+  listProjectIconSets,
+  listProjectModules,
+  ProjectModule,
+  ProjectModuleManifest,
+  readProjectModules
+} from './projectmodel.modules';
 import { VariantModel } from './VariantModel';
 import { projectStructureService, projectMigrator } from '../services/ProjectStructure';
 import type { PreflightReport, MigrationResult } from '../services/ProjectStructure';
@@ -937,6 +944,16 @@ export class ProjectModel extends Model {
       .catch((error) => {
         console.error(error);
         callback();
+      });
+  }
+
+  /** Installed icon sets, normalised — NDA-007 §2. See `shared/utils/iconsets`. */
+  listIconSets(callback: (sets: IconSetDescriptor[]) => void) {
+    listProjectIconSets(this)
+      .then(callback)
+      .catch((error) => {
+        console.error(error);
+        callback([]);
       });
   }
 

@@ -1,0 +1,10 @@
+{
+  "name": "Font Icons",
+  "type": "iconset",
+  "iconClass": "fi",
+  "codeAsClass": true,
+  "icons": ["fi-home", "fi-user"],
+  "browser": {
+    "stylesheets": ["assets/font-icons.css", "https://cdn.example.com/font-icons.css"]
+  }
+}

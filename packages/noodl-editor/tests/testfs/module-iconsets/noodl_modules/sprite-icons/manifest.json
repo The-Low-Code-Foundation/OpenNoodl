@@ -1,0 +1,7 @@
+{
+  "name": "Sprite Icons",
+  "type": "iconset",
+  "iconSource": "sprite",
+  "sprite": "./assets/sprite.svg",
+  "icons": ["home", "user"]
+}

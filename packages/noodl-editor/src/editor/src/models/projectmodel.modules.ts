@@ -1,5 +1,6 @@
 import { bugtracker } from '@noodl-utils/bugtracker';
 
+import { IconSetDescriptor, toIconSets } from '../../../shared/utils/iconsets';
 import { ModuleManifest, scanModuleManifests } from '../../../shared/utils/projectmodules';
 
 // The scanner itself lives in shared/utils/projectmodules — one implementation
@@ -26,6 +27,17 @@ export async function listProjectModules(project: TSFixme /* ProjectModel */): P
   return scanned
     .filter((s) => s.manifest !== null)
     .map((s) => ({ name: s.name, manifest: s.manifest as ModuleManifest }));
+}
+
+/**
+ * The project's icon sets — NDA-007 §2.
+ *
+ * A third shaping layer on the one scanner, beside `listProjectModules` and `toInjectModules`,
+ * rather than a second read of `noodl_modules`. The picker used to derive its sets from
+ * `listModules` inline and font-shaped; `toIconSets` is where that lives now.
+ */
+export async function listProjectIconSets(project: TSFixme /* ProjectModel */): Promise<IconSetDescriptor[]> {
+  return toIconSets(await scanModuleManifests(project._retainedProjectDirectory));
 }
 
 export async function readProjectModules(project: TSFixme /* ProjectModel */): Promise<ProjectModule[]> {

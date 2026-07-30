@@ -48,8 +48,22 @@ export interface ModuleManifest {
   name?: string;
   main?: string;
   type?: 'iconset';
+  /**
+   * Which of NDA-007 §1's icon kinds this set ships. Absent means `'font'`, which is what every
+   * set predating NDA-007 §2 is — the field is what lets a set be something other than a font
+   * without a second registration mechanism.
+   */
+  iconSource?: 'font' | 'sprite';
+  /** `sprite` sets only: module-relative path to the sheet, e.g. `"icons/sprite.svg"`. */
+  sprite?: string;
   icons?: string[];
   iconClass?: string;
+  /**
+   * Font sets where each glyph is its own class rather than a codepoint. Read by the icon picker
+   * since long before NDA-007 and never declared here — `additionalProperties: true` is why it
+   * worked.
+   */
+  codeAsClass?: boolean;
   dependencies?: string[];
   runtimes?: string[];
   browser?: ModuleBrowserManifest;
@@ -92,8 +106,11 @@ const manifestSchema = {
     name: { type: 'string' },
     main: { type: 'string' },
     type: { type: 'string', enum: ['iconset'] },
+    iconSource: { type: 'string', enum: ['font', 'sprite'] },
+    sprite: { type: 'string' },
     icons: { type: 'array', items: { type: 'string' } },
     iconClass: { type: 'string' },
+    codeAsClass: { type: 'boolean' },
     dependencies: { type: 'array', items: { type: 'string' } },
     runtimes: { type: 'array', items: { type: 'string' } },
     browser: {
