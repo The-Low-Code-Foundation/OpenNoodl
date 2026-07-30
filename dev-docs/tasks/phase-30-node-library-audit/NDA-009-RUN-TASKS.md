@@ -106,6 +106,29 @@ opening docs.
 Recommend a summary on the node card listing the three resolved port names and whether each was
 found. Cheap, and it makes §1's warning redundant in the good case.
 
+> ### ✅ Done 2026-07-30
+>
+> The recommendation, built. `checkTemplateContract` now also writes the node-card **sub-label** —
+> the slot NDA-015 §3 added and `resolvedtarget.ts` established the rules for — so a working Run
+> Tasks node reads `/Task: Do → Success / Failure` on the canvas. §2 is what made this cheap: the
+> three port names became node parameters resolved through one `TEMPLATE_CONTRACT` table, so there
+> was already a single place that knew what the node would look for.
+>
+> **Only on success**, which is `resolvedtarget.ts`'s decision applied unchanged: a node with a
+> problem gets no sub-label, because the warning channel is already reporting it and two reports of
+> one fact on one card is noise. Using the same slot as clause (b) of the Binding Contract means the
+> two features cannot disagree on a card.
+>
+> **The names are spelled out even at their defaults.** Suppressing them when nothing was customised
+> would hide the contract from the only author it is for — someone who has never read the docs does
+> not know there *is* one. The optional `Error` output is listed only when the template has it, since
+> naming an absent port would read as a problem and I12 already fixed that its absence is not one.
+>
+> Seven rows (L1–L7). L2 is the one that makes L1 mean anything — with defaults everywhere an author
+> who guessed the convention would be right regardless — and L7 pins that the sub-label is *cleared*
+> when a working template is broken, not merely not re-set, since a card advertising a contract it no
+> longer satisfies is worse than one that never showed one.
+
 ## Success criteria
 
 1. ✅ Corpus row F1 green — a mismatched template produces a warning naming the missing port.
@@ -113,8 +136,10 @@ found. Cheap, and it makes §1's warning redundant in the good case.
    default moves. (The defaults did not move, so no fixture change was needed.)
 3. ✅ A failing task reports which item failed and why — identity always, reason when the template
    has an output that can carry one.
-4. 🔄 **Built, not yet demonstrable.** The contract is four static ports, which is what the validator
-   reads — but `node-catalog.json` regeneration is blocked by a parallel session's uncommitted
-   changes, so the ports are not in the catalog yet and `nonexistentPort` cannot see them. The
-   design decision that makes this criterion reachable at all is recorded under §2; the remaining
-   work is one catalog run, not a code change.
+4. ✅ **Demonstrable as of 2026-07-30.** The catalog was regenerated and carries all four ports
+   (`taskStartInput`, `taskSuccessOutput`, `taskFailureOutput`, `taskErrorOutput`), so
+   `nonexistentPort` can check them — `RunTasks` reads `dynamicPorts: false` in the catalog, which is
+   the whole reason §2 chose static string ports over the enums the section originally asked for. It
+   was built-but-unprovable for one day. The design decision is recorded under §2.
+5. ✅ **§4 built** — the template contract is summarised on the node card when it is satisfied. See
+   the note under §4.

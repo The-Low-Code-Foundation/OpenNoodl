@@ -128,17 +128,42 @@ export function checkTemplateContract(
 ) {
   const clear = () => editorConnection.clearWarning(node.component.name, node.id, TEMPLATE_WARNING_KEY);
 
+  /**
+   * NDA-009 §4 — show the coupling on the card.
+   *
+   * Run Tasks and its template agree by *name*, with no wire between them, so the single most
+   * important fact about the node is invisible on the canvas: which component it drives and which
+   * three port names it will look for. §1's warning covers the broken case; this covers the working
+   * one, which is every case an author is actually looking at while building.
+   *
+   * **Only on success, deliberately.** `resolvedtarget.ts` settled this for clause (b) of the
+   * Binding Contract — a node that resolved nothing gets no sub-label, because the failure channel
+   * is already reporting it and two reports of one fact on one card is noise. The same reasoning
+   * applies here and the same slot is used, so the two features cannot disagree on a card.
+   *
+   * The names are always spelled out, even at their defaults. An author who has never read the docs
+   * is exactly the one who does not know there *is* a contract, and `Do -> Success / Failure` on the
+   * card is the cheapest way to say so; suppressing it when nothing was customised would hide it
+   * from the only person it is for.
+   */
+  const summarise = (label: string | undefined) => editorConnection.sendNodeSubLabel(node.id, label);
+  const clearAll = () => {
+    summarise(undefined);
+    return clear();
+  };
+
   const templateName = node.parameters['taskTemplate'] as string | undefined;
 
   // No template is already covered, at run time, by `run`'s own "No task template specified."
   // Duplicating it here would put two warnings on one node for one mistake.
-  if (!templateName) return clear();
+  if (!templateName) return clearAll();
 
   const component = graphModel.components[templateName];
 
   // A template naming a component that does not exist: `createNode` will throw and
   // `startTask` reports `run-tasks/task-start-failed`, but only once the author runs it.
   if (!component) {
+    summarise(undefined);
     return editorConnection.sendWarning(node.component.name, node.id, TEMPLATE_WARNING_KEY, {
       message: 'The task template "' + templateName + '" does not exist. Pick a component that does.'
     });
@@ -178,8 +203,24 @@ export function checkTemplateContract(
     );
   }
 
-  if (problems.length === 0) return clear();
+  if (problems.length === 0) {
+    // The optional fourth port is listed only when the template actually has it — naming a port
+    // that is absent would read as a problem, and its absence is explicitly not one (see I12).
+    const hasError = !!component.outputPorts[contract.error];
+    summarise(
+      templateName +
+        ': ' +
+        contract.start +
+        ' \u2192 ' +
+        contract.success +
+        ' / ' +
+        contract.failure +
+        (hasError ? ' / ' + contract.error : '')
+    );
+    return clear();
+  }
 
+  summarise(undefined);
   editorConnection.sendWarning(node.component.name, node.id, TEMPLATE_WARNING_KEY, {
     message:
       'The task template "' +

@@ -60,9 +60,15 @@ function aRunTasksNode(template: string | undefined, contract: Record<string, un
 
 function aConnection() {
   const warnings: Array<{ nodeId: string; key: string; message: string }> = [];
+  /** NDA-009 §4 — the node-card sub-label slot, latest per node id, as the canvas shows it. */
+  const subLabels: Record<string, string | undefined> = {};
   return {
     warnings,
+    subLabels,
     isRunningLocally: () => true,
+    sendNodeSubLabel(nodeId: string, subLabel: string | undefined) {
+      subLabels[nodeId] = subLabel;
+    },
     sendWarning(_component: string, nodeId: string, key: string, warning: { message: string }) {
       // The real `EditorConnection` de-duplicates by (nodeId, key) through `ActiveWarnings`;
       // replacing rather than appending is what makes "the current warning" a single readable
@@ -96,7 +102,7 @@ describe('NDA-009 §1: the template contract, at selection time', () => {
 
     checkTemplateContract(connection as never, node as never, graphModel as never);
 
-    return { connection, warning: currentWarning(connection) };
+    return { connection, warning: currentWarning(connection), subLabel: connection.subLabels[node.id] };
   }
 
   test('I1: a template with no Do input is reported, and the message says no task will start', () => {
@@ -338,5 +344,107 @@ describe('NDA-009 §1: the setup wiring that calls it', () => {
     expect(connection.warnings).toEqual([]);
     // And it did not register listeners it would then never use.
     expect(Object.keys(graphModel.listeners)).toEqual([]);
+  });
+});
+
+/**
+ * NDA-009 §4 — make the coupling visible.
+ *
+ * Run Tasks and its template agree by name with **no wire between them**, so the most important
+ * fact about the node — which component it drives and which three port names it will look for —
+ * was invisible on the canvas. §1's warning covers the broken case. These rows cover the working
+ * one, which is what an author is looking at the rest of the time.
+ *
+ * The slot is the node-card sub-label NDA-015 §3 added, so the decision `resolvedtarget.ts` already
+ * made applies unchanged: **no sub-label when there is a problem**, because the failure channel is
+ * reporting it and two reports of one fact on one card is noise.
+ */
+describe('NDA-009 §4: the contract on the node card', () => {
+  /** §1's `check` is scoped to its own describe; this is the same setup, returning the sub-label. */
+  function check(
+    template: string | undefined,
+    component?: ReturnType<typeof aComponent>,
+    contract: Record<string, unknown> = {}
+  ) {
+    const connection = aConnection();
+    const node = aRunTasksNode(template, contract);
+    const graphModel = { components: component ? { [component.name]: component } : {} };
+
+    checkTemplateContract(connection as never, node as never, graphModel as never);
+
+    return { connection, warning: currentWarning(connection), subLabel: connection.subLabels[node.id] };
+  }
+
+  test('L1: a satisfied contract summarises the template and its three port names', () => {
+    const { subLabel } = check('/Task', aComponent('/Task', ['Do'], ['Success', 'Failure']));
+
+    expect(subLabel).toBe('/Task: Do \u2192 Success / Failure');
+  });
+
+  /**
+   * The row that makes L1 mean something. Custom names are the case a card summary exists for —
+   * with defaults everywhere, an author who guessed the convention would be right anyway.
+   */
+  test('L2: custom port names are the ones shown, not the defaults', () => {
+    const { subLabel } = check('/Task', aComponent('/Task', ['Go'], ['Done', 'Broke']), {
+      taskStartInput: 'Go',
+      taskSuccessOutput: 'Done',
+      taskFailureOutput: 'Broke'
+    });
+
+    expect(subLabel).toBe('/Task: Go \u2192 Done / Broke');
+  });
+
+  /**
+   * The optional fourth port is listed only when the template has it. Naming an absent port would
+   * read as a problem on a card whose whole purpose here is to say there is none — and I12 already
+   * fixed the rule that its absence is never reported.
+   */
+  test('L3: the error output is listed when present and omitted when not', () => {
+    const withError = check('/Task', aComponent('/Task', ['Do'], ['Success', 'Failure', 'Error']));
+    const without = check('/Task', aComponent('/Task', ['Do'], ['Success', 'Failure']));
+
+    expect(withError.subLabel).toBe('/Task: Do \u2192 Success / Failure / Error');
+    expect(without.subLabel).toBe('/Task: Do \u2192 Success / Failure');
+  });
+
+  test('L4: a broken contract shows no sub-label, because the warning already says it', () => {
+    const { subLabel, warning } = check('/Task', aComponent('/Task', ['Do'], ['Done']));
+
+    expect(warning).toBeDefined();
+    expect(subLabel).toBeUndefined();
+  });
+
+  test('L5: a template naming a component that does not exist shows no sub-label', () => {
+    const { subLabel } = check('/Missing');
+
+    expect(subLabel).toBeUndefined();
+  });
+
+  test('L6: no template at all shows no sub-label', () => {
+    const { subLabel } = check(undefined);
+
+    expect(subLabel).toBeUndefined();
+  });
+
+  /**
+   * The sub-label has to be *cleared*, not merely not-set: a node that was correct and has since
+   * been broken would otherwise keep advertising a contract it no longer satisfies, which is worse
+   * than never having shown one.
+   */
+  test('L7: breaking a working template clears the sub-label it had', () => {
+    const connection = aConnection();
+    const node = aRunTasksNode('/Task');
+    const component = aComponent('/Task', ['Do'], ['Success', 'Failure']);
+    const graphModel = { components: { '/Task': component } };
+
+    checkTemplateContract(connection as never, node as never, graphModel as never);
+    expect(connection.subLabels[node.id]).toBe('/Task: Do \u2192 Success / Failure');
+
+    delete component.outputPorts['Success'];
+    delete component.outputPorts['Failure'];
+    checkTemplateContract(connection as never, node as never, graphModel as never);
+
+    expect(connection.subLabels[node.id]).toBeUndefined();
   });
 });
