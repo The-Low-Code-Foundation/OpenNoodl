@@ -98,6 +98,19 @@ const ComponentObject: NodeDefinitionOptions = {
     }
   },
   methods: {
+    /**
+     * NDA-004 §2 — **🔵 by evidence, twice over.**
+     *
+     * Neither half of the usual test is met. There is no walk to miss: `_internal.model` is
+     * `componentState<own instance id>`, built in `initialize` and never reassigned, and
+     * `Model.get` is create-on-read, so this node cannot be asked to write and find nothing to
+     * write to. And there is no `Do`: this is reached from a `value-…` input's setter, i.e. from
+     * any value arriving, which is the trap that stopped the Object node getting a `Failure` port
+     * in this same batch — a raise here would fire on the ordinary boot path.
+     *
+     * Contrast `parentcomponentobject.ts`, which walks and therefore can and does miss, and
+     * `setparentcomponentobjectproperties.ts`, which walked, missed, and reported `Done`.
+     */
     scheduleStore(this: ComponentObjectInstance) {
       if (this.hasScheduledStore) return;
       this.hasScheduledStore = true;

@@ -206,6 +206,27 @@ const VideoNode: ReactNodeDefinition = {
       type: 'signal',
       propPath: 'dom'
     },
+    /**
+     * NDA-004 §2. The register's triage predicted one failure here — `play()`'s rejected
+     * promise under the autoplay policy — and reading the node found a second: the `<video>`
+     * element's own `error` event had no listener at all, so a broken Source URL produced
+     * nothing whatsoever. Both report through this one pair, with distinct codes on the
+     * runtime channel (`video/play-rejected`, `video/media-error`).
+     *
+     * No `propPath`: these are called from `Video.tsx` rather than being DOM events forwarded
+     * straight through, because each one also has to reach the runtime error channel — a
+     * failure that only exists as a graph signal is invisible in a deployed app.
+     */
+    onPlaybackFailure: {
+      type: 'signal',
+      group: 'Events',
+      displayName: 'Playback Failure'
+    },
+    playbackError: {
+      type: 'string',
+      group: 'Events',
+      displayName: 'Error'
+    },
     onVideoElementCreated: {
       type: 'domelement',
       displayName: 'DOM Element'

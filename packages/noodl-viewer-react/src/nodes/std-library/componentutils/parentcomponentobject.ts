@@ -59,6 +59,8 @@ interface ParentComponentObjectInstance extends NodeInstance {
     resolutionIsLoud?: boolean;
     /** The last miss already raised, so a repeated resolution does not repeat the report. */
     lastMissCode?: string;
+    /** Message for the `Error` output; see NDA-004 §2. */
+    lastError?: string;
     onModelChangedCallback(args: ModelChangeEvent): void;
   };
   hasScheduledStore?: boolean;
@@ -208,6 +210,26 @@ const ParentComponentObject: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Fetched',
       group: 'Events'
+    },
+    /**
+     * NDA-004 §2. NDA-015 gave this node *raising* — the runtime error channel — but nothing an
+     * author could wire, so a graph could not branch on "my parent state never resolved". These
+     * fire from `reportMiss`, which is to say under exactly the two guards the raise already
+     * respects: never before the deferred first resolution (a miss during `initialize` is normal
+     * on a healthy graph), and never twice for one distinct miss.
+     */
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      getter(this: ParentComponentObjectInstance) {
+        return this._internal.lastError;
+      }
     }
   },
   methods: {
@@ -238,11 +260,10 @@ const ParentComponentObject: NodeDefinitionOptions = {
         if (!named) {
           this._internal.parentComponentName = undefined;
           resolvedTargets.report(this, undefined);
-          this.reportMiss(
-            'parent-component-object/target-not-found',
-            'No ancestor component named "' + wanted + '"',
-            { target: wanted, ancestors: componentAncestorNames(self) }
-          );
+          this.reportMiss('parent-component-object/target-not-found', 'No ancestor component named "' + wanted + '"', {
+            target: wanted,
+            ancestors: componentAncestorNames(self)
+          });
           return;
         }
 
@@ -262,6 +283,7 @@ const ParentComponentObject: NodeDefinitionOptions = {
 
         this._internal.parentComponentName = named.name;
         this._internal.lastMissCode = undefined;
+        this._internal.lastError = undefined;
         resolvedTargets.report(this, named.name);
         return 'componentState' + named.getInstanceId();
       }
@@ -275,16 +297,15 @@ const ParentComponentObject: NodeDefinitionOptions = {
         resolvedTargets.report(this, undefined);
         // Was a bare `return` — the node bound to nothing, emitted nothing and looked
         // identical to one whose parent simply had no data yet (contract §(c)).
-        this.reportMiss(
-          'parent-component-object/no-ancestor',
-          'No ancestor component has a Component Object node',
-          { ancestors: componentAncestorNames(self) }
-        );
+        this.reportMiss('parent-component-object/no-ancestor', 'No ancestor component has a Component Object node', {
+          ancestors: componentAncestorNames(self)
+        });
         return;
       }
 
       this._internal.parentComponentName = parent.name;
       this._internal.lastMissCode = undefined;
+      this._internal.lastError = undefined;
       resolvedTargets.report(this, parent.name);
 
       return 'componentState' + parent.getInstanceId();
@@ -303,7 +324,12 @@ const ParentComponentObject: NodeDefinitionOptions = {
       if (this._internal.lastMissCode === code) return;
 
       this._internal.lastMissCode = code;
+      this._internal.lastError = message;
       this.raiseRuntimeError(code, message, detail);
+      // NDA-004 §2: the same event, on the graph. Under `reportMiss`'s guards rather than beside
+      // them, so the port cannot become the noisy twin of a channel that is deliberately quiet.
+      this.flagOutputDirty('error');
+      this.sendSignalOnOutput('failure');
     },
     setModelId(this: ParentComponentObjectInstance, id: string | undefined) {
       this._internal.model && this._internal.model.off('change', this._internal.onModelChangedCallback);

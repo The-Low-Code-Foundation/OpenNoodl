@@ -279,9 +279,12 @@ describe('NDA-015 §2: the Component Object walk is one walk', () => {
     const readId = graph
       .node<ParentObjectInstance & { findParentComponentStateModelId(): string | undefined }>('parent-object')
       .findParentComponentStateModelId();
+    // NDA-004 §2 renamed `getComponentObjectId` to `resolveComponentObject`, which returns the
+    // miss reason alongside the id — the write half could previously only answer "nothing", and
+    // handed that `undefined` to `Model.get`, which silently minted a throwaway record.
     const writeId = graph
-      .node<NodeInstance & { getComponentObjectId(): string | undefined }>('set-parent-object')
-      .getComponentObjectId();
+      .node<NodeInstance & { resolveComponentObject(): { id?: string } }>('set-parent-object')
+      .resolveComponentObject().id;
 
     // The claim in one line: reading and writing "the parent component object" must mean the
     // same object. Before the shared walk these were two different components.

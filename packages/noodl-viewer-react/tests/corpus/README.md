@@ -20,6 +20,19 @@ row must be shown to discriminate before it is trusted.
 | `nda-015-explicit-binding.test.ts` | [Binding](../../../../dev-docs/reference/BINDING-CONTRACT.md) §(a)(b)(c) on Parent Component Object, **+ reader/writer agreement** | 11 |
 | `nda-010-close-popup-targeting.test.ts` | Binding §(a)(b)(c) on Close Popup — NDA-010 §2 | 7 |
 | `nda-015-repeater-item-binding.test.ts` | Binding §(a)(b)(c) on the current Repeater item (`_forEachModel`) — FINDINGS F-ii | 13 |
+| `nda-004-component-object-family.test.ts` | [Failure](../../../../dev-docs/reference/FAILURE-CONTRACT.md) §2 on the Component Object family, **incl. the two 🔵 verdicts** — FINDINGS B-i | 14 |
+| `nda-004-video-playback.test.tsx` | Failure §2 on Video — FINDINGS B-ii | 10 |
+
+Two of those rows pin an **absence**: `Set Component Object Properties` must keep having *no*
+`Failure` port, because it cannot miss, and `Component Object` must stay silent when values arrive.
+The contract is explicit that a port implying a failure mode that does not exist is worse than no
+port, so a later mechanical sweep "finishing the family off" is a regression, and these rows are
+what catch it.
+
+`nda-004-video-playback.test.tsx` drives the `Video` component class directly with a stub media
+element rather than mounting one: `testEnvironment: node` has no DOM to dispatch a real `error`
+event into. It reaches the error path through the handler on the element `render()` returns, which
+needs no mount. Recorded in the file header as a limitation, alongside `F2`/`F3`.
 
 The `_forEachModel` rows nest **two Repeaters**, for the same reason the Parent Component Object
 rows nest components: with one Repeater there is only one answer and the binding looks correct

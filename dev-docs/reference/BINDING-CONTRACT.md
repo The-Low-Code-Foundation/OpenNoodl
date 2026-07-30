@@ -9,8 +9,15 @@ wire.
 | `Parent Component Object` | ✅ obeys all three clauses |
 | `Close Popup` | ✅ obeys all three clauses |
 | "current Repeater item" (`_forEachModel`, 5 sites) | ✅ obeys all three clauses, via `foreachitem.ts` |
-| `Set Parent Component Object Properties` | ⚠️ shares the walk, has no explicit target yet |
+| `Set Parent Component Object Properties` | ✅ obeys all three clauses (NDA-004 §2) |
 | `Parent Component State` (deprecated) | ⚠️ shares the walk; type list deliberately narrower |
+
+The last ⚠️ on a non-deprecated node closed on 2026-07-30. `Set Parent Component Object Properties`
+took the same `targetComponent` input as its reader, spelled identically on purpose, and now reports
+its resolution to the node card and raises when it misses. Clause (c) was the urgent one there: the
+node did not merely fail quietly, it wrote into `Model.get(undefined)` — a fresh anonymous record per
+store — and emitted `Done`. **A walk that can return nothing must never hand that nothing to a
+create-on-read lookup**; the miss has to be a branch, not a value.
 
 ## The two walks
 

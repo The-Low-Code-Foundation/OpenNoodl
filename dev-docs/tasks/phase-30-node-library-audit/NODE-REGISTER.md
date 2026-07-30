@@ -38,6 +38,9 @@ of the five defects a careful read found:
 | Set Record Properties | `Store Type = local` was silent while `cloud` reported — two branches of one node disagreeing | `Missing Record Id` via `setError` |
 | Add Record Relation | `validateInputs` returned early without an editor connection, then two bare `return`s: **deployed, it validated nothing and did nothing** | via `setError` |
 | Remove Record Relation | twin of the above | via `setError` |
+| Set Parent Component Object Properties | the walk missed, `Model.get(undefined)` minted a throwaway record, the properties went into it and the node emitted **`Done`** | `set-parent-component-object-properties/*` |
+| Parent Component Object | NDA-015 gave it the raise; it had no port to wire, so a graph could not branch on "my parent state never resolved" | (ports on the existing `reportMiss`) |
+| Video | `play()`'s **rejected promise** dropped at all three call sites, and the element's `error` event had **no listener at all** | `video/play-rejected`, `video/media-error` |
 
 ### 🔵 Decided, on evidence (read)
 
@@ -46,16 +49,23 @@ of the five defects a careful read found:
 | **Object** | Its `Store` is not an action. There is no `Do` — `scheduleStore` is reached from *any* value arriving at a `prop-…` port, so an Object node whose Id has not arrived yet reaches the "no model" branch once per incoming value, on the ordinary boot path. The values are deliberately retained in `dirtyValues` and written when an object appears. A `Failure` here fires on the happy path, which the contract names as worse than no port. **This one looked exactly like the four above and is not** |
 | **Create New Object** | Builds its own object (`Model.get()` with no id), so it cannot fail to find one. Correctly does *not* get `addFailure`, and correctly does not get `repeaterComponent` either (`addModelId({ includeOutputs: true })` leaves `includeInputs` falsy) |
 | **Record** | Its `scheduleStore` is dead code — nothing calls it (`userInputSetter` writes `inputValues`, and `updatePorts` publishes `prop-` as *outputs*). Its `setModel` guard is the class-F path, already reported by `foreachitem.ts` |
+| **Component Object** | Fails *neither* half of the test. No walk to miss — its record is `componentState<own instance id>`, built in `initialize` and never reassigned — and no `Do` either: `scheduleStore` is reached from a `value-…` setter, the Object node's trap exactly |
+| **Set Component Object Properties** | Same record, same reason. `getInstanceId()` always returns one and `Model.get` is create-on-read, so there is no branch on which it can be asked to write and find nothing to write to. **Its near-identical sibling walked and was ✅** — the two live in one file and got opposite verdicts |
 
 ### 🔵 Reasoned — the smell is a false positive (not read)
 
-**Visual nodes (9):** Checkbox, Component Stack, Drag, Group, Page, Page Router, Text Input ×2,
-Video. Their "signal outputs" are DOM lifecycle and pointer events (`didMount`, `hoverStart`,
-`onClick`); their "signal input" is `mounted`. They are not action nodes. Two carry a caveat worth
-the next reader's time: **Video** takes a `play` action, and `HTMLMediaElement.play()` returns a
-*rejected promise* under browser autoplay policy — a real, common, currently-invisible failure, so
-this one is a likely ✅ once read. **Component Stack** genuinely acts, but NDA-008 §3 decided
-deliberately that the stack does not raise: the Pop/Navigate nodes own the port and the provenance.
+**Visual nodes (8 remaining):** Checkbox, Component Stack, Drag, Group, Page, Page Router, Text
+Input ×2. Their "signal outputs" are DOM lifecycle and pointer events (`didMount`, `hoverStart`,
+`onClick`); their "signal input" is `mounted`. They are not action nodes. **Component Stack**
+genuinely acts, but NDA-008 §3 decided deliberately that the stack does not raise: the Pop/Navigate
+nodes own the port and the provenance.
+
+**Video has moved to ✅** — and it is the group's warning. The prediction ("`play()` returns a
+rejected promise under autoplay policy") was right, and reading it found a *second* failure the
+category-level reasoning could not have: the `<video>` element's `error` event had **no listener at
+all**, so a 404 or undecodable source produced total silence. One read, two defects, in a node the
+triage had already classified. The other eight are still *reasoned*, which is to say still
+predictions.
 
 **Variables (4):** Boolean, Color, Number, String. Named by the spec itself as the 🔵 example.
 
@@ -81,10 +91,12 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
    Remove Object From Array) — the same "no collection bound" question the Object family just
    answered, and the same trap: check whether the trigger is an author `Do` or a value arriving.
 7. **Filter Records, State History, Stream Buffer, Set Variable, Repeater Item.**
-8. **Component Object / Parent Component Object / Set Component Object Properties / Set Parent
-   Component Object Properties** (4, plus 3 deprecated twins) — NDA-015 gave these *raising* but
-   not `Failure` **ports**. They are the cheapest remaining ✅s, because the resolution and the
-   message already exist.
+8. ~~**Component Object family** (4, plus 3 deprecated twins)~~ — **done 2026-07-30.** The
+   prediction was "the cheapest remaining ✅s, because the resolution and the message already
+   exist". It was half right: that described `Parent Component Object` exactly, and was wrong
+   about the other three. Two are 🔵 (no walk, no `Do`), and the fourth was not a cheap ✅ at all
+   — `Set Parent Component Object Properties` was reporting **success** for a write into a
+   throwaway record. The deprecated twins are still open, under item 9.
 9. **Deprecated (5):** Animation, Transition, Array, Object, Variable, Parent Component State,
    Script Downloader. Decide as a group whether deprecated nodes are in scope at all.
 
@@ -121,12 +133,12 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 29 | Verify Email _(deprecated)_ | Cloud Services | 3/3 |  |  | 0% | safe | browser |  |
 | 30 | Component Inputs | Component Utilities | 0/0 |  |  | 100% | safe | browser, cloud |  |
 | 31 | Component Object _(deprecated)_ | Component Utilities | 3/3 | ⚠️ |  | 0% | safe | browser |  |
-| 32 | Component Object | Component Utilities | 2/2 | ⚠️ |  | 0% | safe | browser |  |
+| 32 | Component Object | Component Utilities | 2/2 | ⚠️ |  | 0% | safe | browser | 🔵 NDA-004 §2 — no walk to miss (its record is its own component's) and no `Do` (`scheduleStore` runs off a `value-…` setter). Fails both halves of the test |
 | 33 | Component Outputs | Component Utilities | 0/0 |  |  | 100% | safe | browser, cloud |  |
 | 34 | Parent Component Object _(deprecated)_ | Component Utilities | 3/3 | ⚠️ |  | 0% | safe | browser |  |
-| 35 | Parent Component Object | Component Utilities | 2/2 | ⚠️ |  | 0% | safe | browser |  |
-| 36 | Set Component Object Properties | Component Utilities | 2/1 | ⚠️ |  | 0% | safe | browser |  |
-| 37 | Set Parent Component Object Properties | Component Utilities | 2/1 | ⚠️ |  | 0% | safe | browser |  |
+| 35 | Parent Component Object | Component Utilities | 2/2 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error` on the existing `reportMiss`, so they inherit its two guards (never before the deferred first resolution, never twice for one miss). NDA-015 had given it the raise but nothing to wire |
+| 36 | Set Component Object Properties | Component Utilities | 2/1 | ⚠️ |  | 0% | safe | browser | 🔵 NDA-004 §2 — writes to `componentState<own instance id>`, which always exists. Shares a file with row 37 and gets the opposite verdict; a corpus row pins the *absence* of the port |
+| 37 | Set Parent Component Object Properties | Component Utilities | 2/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — **it reported `Done` for a write that went nowhere.** The walk returned `undefined` and the base handed it to `Model.get`, whose `undefined` branch mints a fresh anonymous record per store. Also gains BINDING-CONTRACT §(a)'s explicit target, the last ⚠️ in that doc's table |
 | 38 | CSS Definition | CustomCode | 1/0 |  |  | 0% | safe | browser |  |
 | 39 | Expression | CustomCode | 2/8 | ⚠️ |  | 0% | safe | browser, cloud |  |
 | 40 | Function | CustomCode | 4/0 |  | ⚠️ | 0% | partial | browser, cloud | ✅ NDA-004 §3 — Success/Failure/Error added; built-ins are collision-free because author outputs are all `out-`prefixed |
@@ -244,4 +256,4 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 152 | Text | Visual | 43/14 |  |  | 14% | safe | browser |  |
 | 153 | Text Input | Visual | 55/21 | ⚠️ |  | 7% | safe | browser |  |
 | 154 | Text Input | Visual | 97/21 | ⚠️ |  | 4% | safe | browser |  |
-| 155 | Video | Visual | 66/21 | ⚠️ |  | 8% | safe | browser |  |
+| 155 | Video | Visual | 66/21 | ⚠️ |  | 8% | safe | browser | ✅ NDA-004 §2 — `Playback Failure`/`Error`. `play()`'s rejected promise was dropped at all three sites (`video/play-rejected`), and the element's `error` event had no listener (`video/media-error`). `AbortError` is deliberately **not** reported — a `Pause` superseding a `Play` rejects on a correct graph |

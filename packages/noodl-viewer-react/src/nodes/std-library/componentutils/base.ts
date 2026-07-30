@@ -1,6 +1,8 @@
 'use strict';
 
+import { Node } from '@noodl/runtime';
 import Model from '@noodl/runtime/src/model';
+import { ResolvedTargetReporter } from '@noodl/runtime/src/resolvedtarget';
 import type {
   EditorConnectionLike,
   GraphNodeModel,
@@ -10,6 +12,26 @@ import type {
   NodeInstance,
   NodeModule
 } from '@noodl/types';
+
+/**
+ * Where a Set …Component Object Properties node is going to write, or why it cannot.
+ *
+ * The `id` and the miss are mutually exclusive, and the miss carries a code *and* a message
+ * because the Failure Contract wants both: the code for tooling and tests, the message for the
+ * author reading it on the canvas.
+ */
+interface ComponentObjectResolution {
+  /** Id of the record to write into. Absent exactly when the walk found nothing. */
+  id?: string;
+  /** Name of the component whose record this is, for the node card (BINDING-CONTRACT §(b)). */
+  name?: string;
+  /** Set when nothing resolved: the stable code to raise. */
+  missCode?: string;
+  /** Set when nothing resolved: the human sentence. */
+  missMessage?: string;
+  /** Optional structured payload for the raise — the target asked for, the ancestors seen. */
+  missDetail?: unknown;
+}
 
 /**
  * `this` inside a Set …Component Object Properties node.
@@ -22,16 +44,18 @@ interface SetComponentObjectPropertiesInstance extends NodeInstance {
     /** Latest value of each `prop-…` input, keyed by the property name without the prefix. */
     inputValues: Record<string, unknown>;
     /**
-     * Written by the parent variant's `getComponentObjectId` as it walks up the tree.
-     * Nothing on this node reads it — the Parent Component Object node has a field of the
-     * same name that its inspector *does* read, and this looks like a copy of that walk
-     * which kept the assignment. Recorded rather than removed; see PLAT-003 NOTES §15.
+     * The `Parent Component` input on the parent variant: an ancestor named explicitly, or
+     * unset for "nearest ancestor that has a Component Object". Unused by the self variant,
+     * which has no such input.
      */
-    parentComponentName?: string;
+    targetComponent?: string;
+    /** Message for the `Error` output; see NDA-004. */
+    lastError?: string;
   };
   hasScheduledStore?: boolean;
-  getComponentObjectId(): string | undefined;
+  resolveComponentObject(): ComponentObjectResolution;
   scheduleStore(): void;
+  reportResolution(): void;
 }
 
 /**
@@ -43,14 +67,34 @@ interface SetComponentObjectPropertiesDef {
   displayName: string;
   docs: string;
   /**
-   * The id of the {@link ModelLike} to write into. Returning `undefined` — which the parent
-   * variant does when no enclosing component has a Component Object node — means there is
-   * nothing to store to.
+   * Which record to write into, and — when the answer is "none" — why.
+   *
+   * The self variant always resolves: its record is its own component instance's, which exists
+   * by definition. The parent variant walks, so it can miss.
    */
-  getComponentObjectId(this: SetComponentObjectPropertiesInstance): string | undefined;
+  resolveComponentObject(this: SetComponentObjectPropertiesInstance): ComponentObjectResolution;
+  /**
+   * Whether resolution can miss, which is what decides if this node gets `Failure`/`Error`
+   * ports at all.
+   *
+   * Not derived, declared: the Failure Contract is explicit that a port implying a failure
+   * mode that does not exist is worse than no port, and the self variant cannot fail to find
+   * its own component's record. It therefore keeps exactly the one `Done` output it had.
+   */
+  canFailToResolve?: boolean;
+  /** Extra static inputs — the parent variant's explicit target (BINDING-CONTRACT §(a)). */
+  inputs?: NodeDefinitionOptions['inputs'];
 }
 
 function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef): NodeModule {
+  /**
+   * BINDING-CONTRACT §(b): which component's record this node writes to, on the node card.
+   *
+   * One per node type rather than per instance, so a graph node used in several places reports
+   * one summary instead of whichever instance resolved last. See `resolvedtarget.ts`.
+   */
+  const resolvedTargets = new ResolvedTargetReporter();
+
   const SetComponentObjectProperties: NodeDefinitionOptions = {
     name: def.name,
     displayNodeName: def.displayName,
@@ -60,42 +104,113 @@ function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef
     initialize: function (this: SetComponentObjectPropertiesInstance) {
       this._internal.inputValues = {};
     },
-    inputs: {
-      properties: {
-        type: {
-          name: 'stringlist',
-          allowEditOnly: true
+    /**
+     * Report the resolved target as soon as the tree exists, not only when asked to store.
+     *
+     * Deferred for the reason `parentcomponentobject.ts` documents at length (NDA-015 §3): at
+     * `nodeScopeDidInitialize` the enclosing component's node-creation loop is still running,
+     * so the Component Object being looked for may not exist yet. `scheduleAfterUpdate` drains
+     * at the end of this update pass, by which time the walk has something to walk.
+     *
+     * Silent about misses on purpose. This runs on every graph, and a node whose ancestor has
+     * no Component Object *yet* is not a failure — it is a failure only when the author presses
+     * `Do`, which is where the raise lives.
+     */
+    nodeScopeDidInitialize: function (this: SetComponentObjectPropertiesInstance) {
+      if (!def.canFailToResolve) return;
+      this.context.scheduleAfterUpdate(() => {
+        this.reportResolution();
+      });
+    },
+    inputs: Object.assign(
+      {
+        properties: {
+          type: {
+            name: 'stringlist',
+            allowEditOnly: true
+          },
+          displayName: 'Properties',
+          group: 'Properties',
+          set() {}
         },
-        displayName: 'Properties',
-        group: 'Properties',
-        set() {}
-      },
-      store: {
-        type: 'signal',
-        group: 'Actions',
-        displayName: 'Do',
-        valueChangedToTrue(this: SetComponentObjectPropertiesInstance) {
-          this.scheduleStore();
+        store: {
+          type: 'signal',
+          group: 'Actions',
+          displayName: 'Do',
+          valueChangedToTrue(this: SetComponentObjectPropertiesInstance) {
+            this.scheduleStore();
+          }
         }
-      }
-    },
-    outputs: {
-      stored: {
-        type: 'signal',
-        group: 'Events',
-        displayName: 'Done'
-      }
-    },
+      },
+      def.inputs
+    ),
+    outputs: Object.assign(
+      {
+        stored: {
+          type: 'signal',
+          group: 'Events',
+          displayName: 'Done'
+        }
+      },
+      // NDA-004 §2. Only on the variant that can actually miss — see `canFailToResolve`.
+      def.canFailToResolve
+        ? {
+            failure: {
+              type: 'signal',
+              group: 'Events',
+              displayName: 'Failure'
+            },
+            error: {
+              type: 'string',
+              group: 'Events',
+              displayName: 'Error',
+              getter: function (this: SetComponentObjectPropertiesInstance) {
+                return this._internal.lastError;
+              }
+            }
+          }
+        : undefined
+    ),
     methods: {
-      getComponentObjectId: def.getComponentObjectId,
+      resolveComponentObject: def.resolveComponentObject,
+      reportResolution(this: SetComponentObjectPropertiesInstance) {
+        resolvedTargets.report(this, this.resolveComponentObject().name);
+      },
       scheduleStore(this: SetComponentObjectPropertiesInstance) {
         if (this.hasScheduledStore) return;
         this.hasScheduledStore = true;
 
         const internal = this._internal;
         this.scheduleAfterInputsHaveUpdated(() => {
-          const model: ModelLike = Model.get(this.getComponentObjectId());
           this.hasScheduledStore = false;
+
+          const resolution = this.resolveComponentObject();
+          if (def.canFailToResolve) resolvedTargets.report(this, resolution.name);
+
+          /**
+           * NDA-004 §2 — and this one was not merely mute.
+           *
+           * `getComponentObjectId` returned `undefined` when the walk found no ancestor with a
+           * Component Object, and the old code passed that straight to `Model.get`.
+           * `Model.get(undefined)` is the *anonymous* tier (`model.ts:205`): it mints a brand
+           * new record, on every store, that nothing else in the graph can name and nothing
+           * holds a reference to. So the node wrote every property into a throwaway and then
+           * emitted `Done`.
+           *
+           * That is worse than the silent failures elsewhere in this batch. Those looked like
+           * nothing happening; this actively reported success for a write that could never be
+           * read back, which is the one thing the contract says a completion signal must never
+           * do.
+           */
+          if (resolution.id === undefined) {
+            internal.lastError = resolution.missMessage;
+            this.raiseRuntimeError(resolution.missCode, resolution.missMessage, resolution.missDetail);
+            this.flagOutputDirty('error');
+            this.sendSignalOnOutput('failure');
+            return;
+          }
+
+          const model: ModelLike = Model.get(resolution.id);
 
           const properties = (this.model.parameters.properties as string) || '';
           const validProperties = properties.split(',');
@@ -107,6 +222,12 @@ function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef
           }
           this.sendSignalOnOutput('stored');
         });
+      },
+      _onNodeDeleted(this: SetComponentObjectPropertiesInstance) {
+        Node.prototype._onNodeDeleted.call(this);
+        // Not optional: the reporter holds instances strongly, so a Repeater churning its
+        // template would grow that map for the life of the session.
+        if (def.canFailToResolve) resolvedTargets.forget(this);
       },
       registerInputIfNeeded: function (this: SetComponentObjectPropertiesInstance, name: string) {
         if (this.hasInput(name)) {
@@ -207,3 +328,4 @@ function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef
 }
 
 export { extendSetComponentObjectProperties };
+export type { ComponentObjectResolution, SetComponentObjectPropertiesInstance };

@@ -143,6 +143,39 @@ missing log line; the node has nowhere to *put* the information. Where a node do
 it usually routes to `editorConnection.sendWarning`, which is **editor-only** — it does not exist in
 a deployed app, in cloud runtime, or in export.
 
+### B-i — a write that reported success and went nowhere (2026-07-30)
+
+`Set Parent Component Object Properties` is the worst instance of class B found so far, and it is
+not a silence. `setparentcomponentobjectproperties.ts` walked up for an ancestor owning a Component
+Object and returned `undefined` when there was none. The shared base at
+`componentutils/base.ts` passed that straight into `Model.get`, and `Model.get(undefined)` is the
+**anonymous tier** (`packages/noodl-runtime/src/model.ts:205-212`): it mints a fresh, unnamed record
+on every call, which nothing else in the graph can reach and nothing holds a reference to.
+
+So the node wrote every wired property into a throwaway and emitted `Done`. Every other class-B
+defect in this phase made a working node look broken. This one made a broken node look like it
+worked, which is the one thing the Failure Contract says a completion signal must never do.
+
+Generalised into the Binding Contract: **a walk that can return nothing must never hand that nothing
+to a create-on-read lookup.** The miss has to be a branch, not a value.
+
+### B-ii — the Video node's two invisible failures (2026-07-30)
+
+`HTMLMediaElement.play()` returns a promise, and `Video.tsx` dropped it at all three call sites
+(`play`, `restart`, and the deferred play in `onCanPlay`). Under the browsers' autoplay policy a
+`Play` on a page the user has not yet interacted with rejects with `NotAllowedError` and nothing
+happens: no warning, no signal, no console line. This is almost certainly the most-hit single defect
+in the phase, because it fires on every autoplaying video in every deployed app.
+
+The register's triage predicted that one from the node's category. Reading the file found a second
+it could not have: the `<video>` element's **`error` event had no listener at all**. A 404 source or
+an undecodable one never fires `canplay`, so a `Play` sets `wantToPlay` and waits for ever — exactly
+as if nobody had pressed it. `Image` has had an `On Error` port all along; `Video` never got one.
+
+The third finding is the one that constrains the fix: `AbortError` — `play()` superseded by a
+`pause()` or a new `src` — rejects on a graph that is working exactly as written. It is deliberately
+**not** reported, and `SILENT_PLAY_REJECTIONS` in `Video.tsx` is where that decision lives.
+
 ## Defect class C — 95% of ports are undocumented
 
 2,508 of 2,650 ports carry no `description`. 112 of 155 nodes have not a single documented port.
@@ -427,6 +460,17 @@ would have *moved* bindings rather than aligned them, which is written into the 
 Worth generalising: **"de-duplicated into one place" is a claim to re-check, not a fact to inherit.**
 The commit that created `componentwalk.ts` converted one of four call sites and described the job as
 done.
+
+**F-i″. And sharing the walk was still not the end of it (2026-07-30).** With all four sites on
+`componentwalk.ts` the reader and the writer could no longer *disagree*, but the writer still had no
+explicit target — the last ⚠️ row in `BINDING-CONTRACT.md`'s table — and, worse, no answer for the
+case where the shared walk returns nothing. That is B-i above: it handed the `undefined` to
+`Model.get` and reported `Done`. Closed 2026-07-30; `Set Parent Component Object Properties` now
+obeys all three clauses, with the same `targetComponent` input spelled identically to its reader's
+so the pair can be aimed together.
+
+The pattern across F-i, F-i′ and F-i″ is worth stating plainly: **each round of "this is now
+consistent" left a real defect behind, and each one was found by reading rather than by grep.**
 
 **F-ii. `_forEachModel` is the same defect class — five sites. ✅ Closed 2026-07-29.** All five now
 resolve through `noodl-runtime/src/foreachitem.ts`, which implements the three clauses once: an

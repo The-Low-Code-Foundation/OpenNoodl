@@ -10,7 +10,7 @@
 | NDA-002 Reactivity contract | 1 | ✅ **Built** `bd6632ca`…`825da393` | R1–R9 green unmarked; all suites green. **`items === arr` does NOT break** — `Collection.get`/`create` return a memoised Proxy, so identity holds and the raw array is simply unreachable. Mutating methods intercepted in the `get` trap (traps alone storm 3–4 changes per `splice`). Perf: only indexed reads regress (~0.3 µs/read Proxy floor; digit-leading fast path recovers 28%). ⚠️ `packages/noodl-editor/src/external/*` + `nodegx-backend/deploy/artifact/` embed stale `collection.ts` copies until rebuilt. Live QA + QA-fixture cyclic-warning check pending |
 | NDA-003 Empty-value contract | 1 | ✅ **Built** `e707f0cc`…`b2032129` | All E-rows green unmarked. Nullable Variables shipped with `Treat empty as` (String/Color: `null`/`''`; Number: `null`/`0`; Boolean: `null`/`false`); corpus E1/E8 expectations reconciled to the contract (`null`, not `''`). String `length` returns 0 on null store. httpnode normalised to one helper (both omit; JSON body keeps `null`-is-sent, documented). E5's null-clears-collection worked by accident — now explicit + tested. Enriched catalog needed the NDA-014 compatibility fix first (`61e8b3da`) |
 | NDA-013 Repeater Refresh | 1 | ✅ **Done** `0e96c93a` | `refresh()` resyncs from `items`; queue race handled by truncating the ops `set()` just appended (synchronous span, nothing interleaves). Full teardown kept deliberately, documented. Refresh added to Array Map; Array Filter's premise was wrong — its `Filter` signal always re-read fresh, `refresh` added as alias. 3 new corpus rows red→green. Live QA pending |
-| NDA-004 Failure contract | 2 | 🔄 §1 done, §3 **9 of 10**, §2 first batch | Channel at `packages/noodl-runtime/src/runtimeerror.ts`; `On App Error` node; F1/F1′ green. §3: only **Logic Builder** left, still blocked by another session's uncommitted rewrite — `Response` landed 2026-07-29 (it was hiding a `TypeError` out of an input setter *and* a silently-discarded second answer). §2 first batch: Set Object Properties, Set Record Properties, Add/Remove Record Relation. **Remaining: §2's ⏳ list in the register, criterion 2's cloud + export legs, catalog regeneration** |
+| NDA-004 Failure contract | 2 | 🔄 §1 done, §3 **9 of 10**, §2 two batches | Channel at `packages/noodl-runtime/src/runtimeerror.ts`; `On App Error` node; F1/F1′ green. §3: only **Logic Builder** left, still blocked by another session's uncommitted rewrite — `Response` landed 2026-07-29 (it was hiding a `TypeError` out of an input setter *and* a silently-discarded second answer). §2 batch 1: Set Object Properties, Set Record Properties, Add/Remove Record Relation. §2 batch 2 (2026-07-30): **Set Parent Component Object Properties** (reported `Done` for a write into a throwaway record — worst class-B defect so far), **Parent Component Object**, **Video** (×2 failures), plus Component Object and Set Component Object Properties 🔵 on evidence. **Remaining: §2's ⏳ list in the register, criterion 2's cloud + export legs, catalog regeneration** |
 | NDA-005 Port documentation | 2 | ⬜ Not started | Do the shared port definitions first and re-measure; batch with NDA-012 |
 | NDA-006 Columns | 2 | ⬜ Not started | Checked: `Columns.tsx` is the **only** file special-casing `ForEachComponent`. Slice 4 (Fable) is gated on slices 2–3 |
 | NDA-007 Icon sets | 2 | 🔄 §1 done | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked) |
@@ -64,6 +64,62 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-30 (NDA-004 §2 — the Component Object family and Video)** — two entries on the ⏳ list,
+  seven nodes read, and the triage's own predictions were wrong in both directions.
+
+  **The Component Object family: predicted "the cheapest remaining ✅s", delivered 2 ✅ and 2 🔵 —
+  one of them the worst class-B defect in the phase.** The prediction was that NDA-015 had given
+  these nodes the *raise* and they only wanted ports. That described `Parent Component Object`
+  exactly, and nothing else.
+
+  `Set Parent Component Object Properties` was not mute. Its walk returned `undefined` when no
+  ancestor owned a Component Object, and the shared base handed that to `Model.get` — whose
+  `undefined` branch (`model.ts:205-212`) is the **anonymous tier**, minting a fresh unnamed record
+  on every call. The node wrote every wired property into a throwaway and emitted **`Done`**. Every
+  other defect in this phase made a working node look broken; this one made a broken node look like
+  it worked. It also picked up BINDING-CONTRACT §(a)'s explicit target while the file was open,
+  which closes **the last ⚠️ row in that document's table** for a non-deprecated node.
+
+  The other two are 🔵 *on evidence*, and the pair is the phase's shape-versus-substance lesson at
+  its sharpest: `Set Component Object Properties` and `Set Parent Component Object Properties` are
+  the same file, parameterised, and they get opposite verdicts — the self variant's record is its
+  own component's, which exists by definition. `canFailToResolve` is opt-in in the base for exactly
+  that reason, so the self variant carries no vestigial `Failure` port. Two corpus rows pin the
+  **absence** of those ports, because "finish the family off" is precisely what a later mechanical
+  sweep would do.
+
+  **Video: the prediction was right and incomplete.** `HTMLMediaElement.play()`'s rejected promise
+  was dropped at all three call sites — the autoplay-policy failure the register named, and probably
+  the most-hit single defect in the phase, since it fires on every autoplaying video in every
+  deployed app. Reading the file found a second the category-level reasoning could not have: the
+  `<video>` element's **`error` event had no listener at all**, so a 404 or undecodable source
+  produced total silence. `Image` has had an `On Error` port all along.
+
+  The constraint on that fix is the interesting half. `AbortError` — a `play()` superseded by the
+  author's own `pause()` or a new `src` — rejects on a graph working exactly as written. Reporting
+  it would fire `Failure` on the happy path. `SILENT_PLAY_REJECTIONS` is where that lives, and it
+  was verified by emptying it and watching one row redden on its assertion while the rest stayed
+  green.
+
+  **24 corpus rows, all shown to discriminate**, in two files. Reverting the writer's failure branch
+  reddens 5 and leaves both pinned controls green; reverting the reader's ports reddens exactly 2;
+  the two Video reverts redden 5 and 1 respectively. Gates: viewer jest **169** (was 145), runtime
+  jest 1,081 unchanged (no runtime source touched), viewer typecheck clean.
+
+  **A banked trap was wrong and is corrected.** "The committed viewer bundles are stale —
+  `packages/noodl-editor/src/external/*` and `packages/nodegx-backend/deploy/artifact/` embed old
+  copies" — neither is committed. Both are **gitignored with zero tracked files**
+  (`.gitignore:187`, `nodegx-backend/.gitignore:9`), and a live webpack watch had already rebuilt
+  `external/` with this session's changes before the tests ran. The real risk is the opposite of the
+  one recorded: they are build output that is only stale when nothing is watching, not stale
+  artefacts frozen in git. Anything grading them is testing *whatever was last built*, which is
+  worth knowing before trusting or distrusting it.
+
+  **Owed from this batch:** catalog regeneration (still blocked — the tree still carries another
+  session's uncommitted node-source edits), now also for `Set Parent Component Object Properties`'
+  `targetComponent`/`Failure`/`Error`, `Parent Component Object`'s `Failure`/`Error`, and Video's
+  `Playback Failure`/`Error`. Live QA of all three nodes in a running editor.
 
 - **2026-07-29 (live QA of three tasks, NDA-004 §3's last reachable mute node, and §2's first
   batch)** — the biggest un-run instrument was run, and it found nothing wrong; the code work that
