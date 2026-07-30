@@ -1,0 +1,104 @@
+name: Bug report
+description: Something in the NodeGX editor, preview, or a deployed app behaves wrongly.
+labels: ['bug', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. NodeGX is in alpha and has **no automatic crash reporting** —
+        nothing is sent anywhere unless you type it here, so a report you take the time to
+        write is genuinely the only way we learn a thing is broken.
+
+        You do not need to fill in every field. A half-filled report beats a missing one.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what the app did instead of what you expected.
+      placeholder: |
+        I dragged a Text node onto the canvas and set its Text input. The canvas
+        showed the new label but the preview kept the old one until I reopened the project.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      description: Which part of NodeGX. Pick the one closest — we will re-file it if it belongs elsewhere.
+      options:
+        - The editor (canvas, panels, menus)
+        - Preview (the live app inside the editor)
+        - A deployed or exported app
+        - The backend (data, cloud functions, workflows)
+        - The AI features (authoring, explain, review)
+        - Install, launch, or auto-update
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: NodeGX version
+      description: 'Find it in the launcher footer, or the About window. If you built from source, paste the commit instead.'
+      placeholder: '0.1.0'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+        - Linux
+    validations:
+      required: true
+
+  - type: dropdown
+    id: fresh-project
+    attributes:
+      label: Does it happen in a brand-new project?
+      description: |
+        The single most useful thing you can tell us. A defect that survives into an empty
+        project is a NodeGX defect; one that does not is usually about your project's
+        specific graph, and we will ask for that instead.
+      options:
+        - "Yes — a new project does it too"
+        - "No — only my existing project"
+        - "Haven't tried"
+        - "Can't tell (the bug is about creating/opening projects)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered, starting from a state we can reach — "new project" or "open the attached project".
+      placeholder: |
+        1. New project from the Hello World template
+        2. Drag a Text node into the root component
+        3. Type into its Text input
+        4. Look at the preview pane
+
+  - type: textarea
+    id: errors
+    attributes:
+      label: Any error text
+      description: |
+        NodeGX does not write a log file yet, so there may be nothing to attach — that is
+        expected and not your fault. If you can, open the developer console
+        (**View → Toggle Developer Tools**, or ⌥⌘I / Ctrl+Shift+I), reproduce the bug, and
+        paste anything red. Screenshots of the editor are just as welcome.
+      render: text
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else
+      description: Screenshots, a zipped project, how often it happens, what you tried.

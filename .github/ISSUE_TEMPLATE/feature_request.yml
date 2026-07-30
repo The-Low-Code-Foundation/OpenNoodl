@@ -1,0 +1,39 @@
+name: Idea or feature request
+description: Something NodeGX should be able to do and cannot.
+labels: ['enhancement', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        NodeGX is in alpha with an opinionated roadmap, so the honest answer to many good
+        ideas will be "yes, later" or "not this product". Telling us what you were trying to
+        build is more useful than telling us what to build — the underlying need often has a
+        cheaper answer than the feature that comes to mind.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What were you trying to do
+      description: The thing you actually wanted to build, before you worked out NodeGX could not do it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: blocked
+    attributes:
+      label: Where you got stuck
+      description: What you tried, and how it fell short.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind (optional)
+      description: If you have a specific solution, describe it here. If you do not, leave it blank — that is fine.
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: How you worked around it (optional)
+      description: Even an ugly workaround tells us how urgent this is.
