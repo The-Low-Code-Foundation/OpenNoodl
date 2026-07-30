@@ -33,16 +33,28 @@ NDA-014 §1–2. Since the last handover:
   would have** — read "Harness facts" below before writing a single row, because two of them mean
   rows you write can pin nothing at all while looking green.
 
+- **A second session ran four tasks in parallel on 2026-07-30**, on files disjoint from NDA-004's
+  ⏳ list: **NDA-006** slices 1–3 (`b09b9785`, `f3b0aba4`), **NDA-010 §3** (`c8c26382`), **NDA-011**
+  (`069621be`), **NDA-007**'s renderer half (`f85be46f`). Two consequences for whoever picks this
+  up: NDA-004 §2's **Show Popup** row is unblocked, and NDA-006 slice 4 is unblocked. **Four of
+  those four tasks had a stale headline premise** — the pattern is now strong enough to plan for:
+  read the mechanism before trusting a spec's stated defect. Details in `PROGRESS.md`'s log.
+
 Six normative docs in `dev-docs/reference/`: `REACTIVITY-CONTRACT.md`, `EMPTY-VALUE-CONTRACT.md`,
 `FAILURE-CONTRACT.md`, `PORT-TYPE-CONTRACT.md`, `BINDING-CONTRACT.md`, `ICON-SOURCE-MODEL.md`.
 **`BINDING-CONTRACT.md`'s two added sections are worth reading before you touch anything that
 resolves a target without a wire**: "How to obey it" names the helpers, and "The two walks" is a
 table you will otherwise get wrong.
 
-Gates as of `f478123b`: **1,095 runtime jest, 214 viewer jest, 52 cloud jest, 1,885 editor jasmine
-(0 failures)**. The editor suite was last run at `63f76b62` and nothing since has touched the editor.
-Batch 3 added 45 viewer corpus rows and touched no runtime, cloud or editor source, which is why the
-runtime and cloud counts are unchanged.
+Gates as of `f3b0aba4`: **1,112 runtime jest, 340 viewer jest, 1,885 editor jasmine (0 failures)**;
+cloud jest 52, unchanged and untouched since `d21154e1`. The editor suite was last run at `63f76b62`
+and nothing since has touched editor source.
+
+⚠️ **A red runtime suite may not be yours.** Two sessions have been committing to this tree, and
+twice during 2026-07-30 a full run showed failures that were purely the *other* session's
+mid-edit files (`nda-004-user-auth-error-channel.test.ts`, then `signfileurl.test.ts` +
+`statehistory.test.ts`). Check `git status --porcelain` on the failing file's directory before
+believing a failure belongs to your diff.
 
 ## Rules that will bite you if skipped
 
@@ -189,7 +201,10 @@ are a `pages` proplist of `{id,label}` plus a `pageComp-<id>` parameter each.
 (provisional). Criterion 4 is *not* met and the section says so. Items 1, 2, 5, 6 and 8 and Video
 are now struck through. What is left on the ⏳ list:
 
-- **Item 3, Show Popup** — sequence it **after NDA-010 §3** (stack policy), not before.
+- **Item 3, Show Popup** — **unblocked**: NDA-010 §3 landed 2026-07-30 (`c8c26382`). Read
+  `showpopup.ts` again first, it grew a `stackPolicy` input and a `Dismissed` output. Note the
+  node's own unresolved-target case is still open — `show()` opens with
+  `if (this._internal.target == undefined) return;`, which is the shape §2 keeps finding.
 - **Item 4, Push Component To Stack / Navigate** — a target page that does not resolve;
   `navigate.ts` already returns early on `_findPage` missing. Probably the highest yield left.
 - **Item 7** — Filter Records, State History, Stream Buffer, Set Variable, Repeater Item.
@@ -285,12 +300,21 @@ batch 2). Check both.
   and `closeResult-*`/`closeAction-*` from its Close Popup nodes. The real gaps are the hand-typed
   `results`/`closeActions` on the *Close Popup* side and results being untyped (`*`). The correction
   is written into the spec in place.
-- **NDA-010 §3** (stack policy, corpus row F2) is untouched and unchanged. Sequence NDA-004 §2's
-  **Show Popup** row after it, not before.
-- **NDA-005** (port docs — batch with NDA-012), **NDA-006** (Columns; slices 1–2 Sonnet, slice 3
-  needs a breakpoint decision from Richard, slice 4 gated), **NDA-007 §2–3** (build against
-  `ICON-SOURCE-MODEL.md`), **NDA-011** (assessment first), **NDA-009 §1** — the editor-time Run Tasks
+- ~~**NDA-010 §3**~~ — **done 2026-07-30 (`c8c26382`), so NDA-004 §2's Show Popup row is unblocked.**
+  One modal slot by default (`When A Popup Is Open` → `Replace It`), `Show On Top` as the opt-in.
+  The policy lives in `NodeContext.showPopup`, not on the node.
+- **NDA-005** (port docs — batch with NDA-012) and **NDA-009 §1** — the editor-time Run Tasks
   template check, which catches F1's mistake earlier than the runtime backstop NDA-004 added.
+- **NDA-006 slice 4 (masonry)** — now unblocked; slices 1–3 landed 2026-07-30 (`b09b9785`,
+  `f3b0aba4`). Read the §3 ports first: `Column Sizing` (`Auto Fit`) and the container-width
+  breakpoints already exist, and masonry has to decide its ordering *against* them.
+- **NDA-007 §2–3** (registration path + editor picker) — the larger half, and the only part left.
+  §1's union is **implemented in the renderer** (`f85be46f`): one `IconGlyph.tsx` replaced six
+  copies of the font splat, so a `sprite`/`inline` value renders, sizes and colours correctly today.
+  What is missing is any way to *install* or *select* one. Build against `ICON-SOURCE-MODEL.md`,
+  whose "Implementation status" section says exactly what is and is not there.
+- ~~**NDA-011**~~ — **done 2026-07-30 (`069621be`).** REST deprecated, not deleted; six shadowing
+  control nodes taken out of the picker. See `NDA-011-CAPABILITY-COMPARISON.md`.
 - **NDA-012** is 1 of 17 categories. Its **Data** and **Cloud Services** worksheets are the specced
   input to NDA-004 §2 and would sharpen the ⏳ list, but the triage now covers the same ground for
   the failure question specifically — run them for the *other eleven* checks, not for this one.
