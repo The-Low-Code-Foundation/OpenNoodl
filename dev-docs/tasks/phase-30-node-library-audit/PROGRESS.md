@@ -65,6 +65,49 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-30 (NDA-004 §2 — the 21 remaining `setError` helpers)** — FINDINGS B-iv **closed**, in
+  two commits: `2a448a45` (the user/auth eleven) and `1579121f` (the last ten). 66 new corpus rows
+  plus assertions added to four existing ones. Runtime jest 1,109, viewer jest 298.
+
+  **B-iv's own table was wrong, and the correction is the finding.** It counted twenty-two
+  `setError` *definitions* and read them as copies of one that posted to
+  `editorConnection.sendWarning`. Fourteen do. **Six posted nowhere at all** — the message reached
+  the `Error` port and stopped — and that is *worse*, not lesser: an editor-only diagnosis at least
+  exists while an author is building; these had none in any runtime, the editor included. Three
+  nodes (Subscribe To Changes, State Snapshot, Undo/Redo) also had **no `Failure` port**, so they
+  failed both clauses of the contract at once and the register's `Fail?` column saw neither.
+
+  Generalised in FINDINGS: **a count of look-alike call sites is a hypothesis about them, not a
+  description.** That is the phase's fifth lesson applied to a finding *in our own notes* rather
+  than to source, and the third time a claim of ours has needed re-checking the way a spec premise
+  does.
+
+  On code namespaces: `record/storage-op-failed` is right where seven node types share one funnel
+  and the message distinguishes them; it is wrong where each node has its own funnel and the
+  *operation* is the distinguishing fact, so the user/auth eleven get `user/<operation>-failed`.
+  Same question, opposite answers, for a reason that is legible either way.
+
+  The deprecated pair moved despite ⏳ item 9 being open, because that question is whether
+  deprecated nodes should *gain* failure surfaces and these already had them. Deprecated
+  `dbcollectionnode` is the nicest outcome: its `_internal.err`-vs-`error` port bug stays (PLAT-003
+  §23.4 — fixing it changes behaviour), but the raise carries the message, so the contract's "a
+  `Failure` must be accompanied by a message" is met without touching the port.
+
+  **Two discrimination checks found problems, one of them in a control I had just written.**
+  Reverting only `clearWarnings` reddens exactly the eleven round-trip rows; reverting only the
+  raise reddens the channel rows and turns the round-trip rows back green — the pair is what shows
+  they pin the *pairing*. And the `message !== undefined` guard survived its first control:
+  `setError` opens with `if (this._internal.error === message) return`, so on a node that has never
+  failed the guard is unreachable. The path that reaches it is a clear following a **real** error —
+  the moment the node starts working again, which is precisely when an unguarded port would report
+  `Failure`. Banked: an early-return dedup can make a happy-path control unreachable.
+
+  Four existing `statehistory.test.ts` assertions read `expect(signals).toEqual([])` while being
+  named "reports an out-of-range jump" and "reports a store nothing is tracking" — they encoded the
+  defect, not the claim, and now assert `['failure']` and the raised code. Two other test harnesses
+  build a fake node by binding the definition's methods onto a plain object, so `raiseRuntimeError`
+  did not exist on them; both now record and assert it rather than stubbing it away.
+
 - **2026-07-30 (NDA-011 — REST → HTTP)** — an assessment task that closed on the first reading,
   because the thing it was written to evaluate does not exist.
 
