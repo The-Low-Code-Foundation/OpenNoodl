@@ -994,6 +994,73 @@ knew about. The check costs one `reduce` over `nodetypes` and would have caught 
 
 ---
 
+## Defect class G — a signal-driven node cannot tell a fresh input from a stale one (2026-07-30)
+
+**Reported by the Noodl community, not found by either pass.** Recorded in full, and specced as
+[NDA-017](./NDA-017-SIGNAL-INPUT-FRESHNESS.md):
+
+> The expression node, when its "Run" connected to some other node and it had ran successfully before
+> with a clear output of say an expression A + B (where values of A and B is coming from other nodes
+> like array or a func) it gives out the same previous output of A+B when its "Run" gets triggered
+> again but the values coming for A or B from other nodes gets failed to run/couldn't run on time so
+> it gives out the outdated value as an output which messed up the whole logic, so basically i was fed
+> up with the memory mess of nodes, had to use function node many times in places where even a simple
+> expression node would be suffice.
+
+The mechanism is confirmed from source. When a control signal is connected, the value setters go
+passive — `if (!this.isInputConnected('run')) this._scheduleEvaluateExpression()`
+([`expression.ts:123`](../../../packages/noodl-runtime/src/nodes/std-library/expression.ts#L123), and
+the same guard at [`:286`](../../../packages/noodl-runtime/src/nodes/std-library/expression.ts#L286),
+[`:312`](../../../packages/noodl-runtime/src/nodes/std-library/expression.ts#L312),
+[`:321`](../../../packages/noodl-runtime/src/nodes/std-library/expression.ts#L321)) — and `Run`
+evaluates whatever is in the scope object at that moment
+([`:328-330`](../../../packages/noodl-runtime/src/nodes/std-library/expression.ts#L328-L330)). The
+scope entry holds the last value that arrived, and nothing in the node or in `Node` distinguishes "the
+value the author meant" from "a value from a previous cycle" from "the seed".
+`scheduleAfterInputsHaveUpdated` ([`node.ts:767`](../../../packages/noodl-runtime/src/node.ts#L767))
+drains the *synchronous* pending queue, which is exactly why this is invisible for sync producers and
+unavoidable for async ones.
+
+Three distinct failures, and only the first is a first-run problem: the `0` seed
+([`expression.ts:117-118`](../../../packages/noodl-runtime/src/nodes/std-library/expression.ts#L117-L118))
+makes `A + B` evaluate to a plausible `0` before anything has produced; an async producer leaves the
+previous cycle's value in place, which is the reported case; and the unchanged-output gate re-flags
+`result` only when the value differs
+([`:133-139`](../../../packages/noodl-runtime/src/nodes/std-library/expression.ts#L133-L139)) while
+`On True`/`On False` pulse on **every** evaluation
+([`:140-141`](../../../packages/noodl-runtime/src/nodes/std-library/expression.ts#L140-L141)) — so a
+stale evaluation fires a signal downstream while the value port stays quiet. That third one is what
+"messed up the whole logic" describes.
+
+**The workaround in the report does not work.** The Function node carries the identical idiom
+([`simplejavascript.ts:156`](../../../packages/noodl-runtime/src/nodes/std-library/simplejavascript.ts#L156),
+[`:287`](../../../packages/noodl-runtime/src/nodes/std-library/simplejavascript.ts#L287)) and is *more*
+exposed, because `runScript` is `async` so its own outputs land a turn late by construction.
+
+**Twelve node families share the idiom**, grepped across the runtime and the viewer: Expression,
+Function, Condition (`eval`), User (`fetch`), Variable (`saveValue`), Record (`fetch`), Filter Records
+(`filter`), Query Records (`storageFetch`), Object (`fetch`), Text Input (`set`), Component Object and
+Parent Component Object (`fetch`). Full citation table in the spec. The idiom is not the defect — "fire
+when I say, not on every keystroke" is the point of a control signal. What is missing is any account of
+what a node should do when it is told to fire and its inputs are not ready.
+
+**Why neither pass found it.** Class A asked "does a mutation notify?" and class B asked "can a failure
+be reported?". This is neither: the notification arrives and nothing fails. It arrives *after* the
+signal that consumed the value. No check in the 12-check worksheet asks about ordering between a
+node's signal inputs and its value inputs — which is itself a finding about the worksheet.
+
+**It also cuts against a conclusion this document already drew.** B-iii's reasoning for why `Failure`
+is safe on Expression was that `registerInputIfNeeded` seeds every input to `0`, so "the values have
+not arrived yet" is not a state the node passes through
+([`expression.ts:154-158`](../../../packages/noodl-runtime/src/nodes/std-library/expression.ts#L154-L158)).
+That is true of the *reporting* question and false of the *evaluation* question — the seed is precisely
+what lets a not-yet-arrived input evaluate to a plausible number. Both readings are correct; they
+answer different questions, and the comment needs to say so.
+
+**Not reproduced.** Everything above is read from source. NDA-017 §0 is blocking for that reason.
+
+---
+
 ## What these passes did *not* cover
 
 - **142 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No

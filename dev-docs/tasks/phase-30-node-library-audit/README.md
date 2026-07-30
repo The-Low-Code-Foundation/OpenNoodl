@@ -83,6 +83,7 @@ Everything after it is measured against that corpus.
 | [NDA-014](./NDA-014-TYPE-DEAD-ENDS.md) | `object`/`array`/`color` are type dead ends | 2 | `object` casts to nothing and reaches 4 of 1,750 input ports; picking the right type is worse than leaving `*` |
 | [NDA-015](./NDA-015-EXPLICIT-BINDING.md) | Explicit targeting for scope-resolved nodes | 2 | Parent Component Object and Close Popup both bind to a nearest ancestor with no way to name it |
 | [NDA-016](./NDA-016-LAYOUT-SIZEMODE.md) | `Layout.size` has no unset-`sizeMode` branch | 2 | The Text width defect; one file, 29-node blast radius; **§0 blocking** |
+| [NDA-017](./NDA-017-SIGNAL-INPUT-FRESHNESS.md) | Signal-driven nodes evaluate stale inputs | 2 | Community report: `Run` on Expression re-emits the previous answer when an async input hasn't landed. Twelve node families share the idiom; **§0 blocking** |
 | [NDA-011](./NDA-011-REST-TO-HTTP.md) | REST → HTTP consolidation | 3 | Confirm `httpnode` is a superset; deprecate the DSL rather than improve it |
 | [NDA-012](./NDA-012-PER-NODE-AUDIT.md) | **Per-node audit — all 155, one at a time** | 3 (optional) | Twelve checks per node, pre-filled worksheets per category. The only thing that bounds the unknown |
 

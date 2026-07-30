@@ -2,7 +2,7 @@
 
 **Track O — Node Library Audit & Remediation**
 
-**All 16 tasks specced as of 2026-07-29.** None started.
+**All 16 tasks specced as of 2026-07-29.** NDA-017 added 2026-07-30 from a community report — 17.
 
 | Task | Tier | Status | Notes |
 |---|---|---|---|
@@ -20,6 +20,7 @@
 | NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green (1,026), editor suite green (1,885 specs incl. validator/catalog-index). Outstanding: live editor check of the 13 `object` outputs |
 | NDA-015 Explicit binding | 2 | ✅ **Done + live-verified**; class F tail closed | All three sections. Clause (b) ships as a node-card sub-label over a new `nodesublabel` message — **not** CAN-001/002, which are wire labels, and **not** `metadata.typeLabelOverride`, which is persisted. §3: the FIXME was load-bearing and its own comment described what `scheduleAfterUpdate` already does. **Class F tail closed 2026-07-29**: `_forEachModel`'s 5 sites now resolve through `runtime/src/foreachitem.ts` (FINDINGS F-ii), and the de-duplication this task claimed was **only 1 of 4 call sites** — the other three were still hand-rolled with divergent type lists, which had a *reader and a writer* of the same state landing on different components (FINDINGS F-i′). 34 corpus rows total |
 | NDA-016 `Layout.size` | 2 | ✅ **Done** | **§0 resolved: the spec's premise was wrong.** `sizeMode` is never unset — a fresh Text node carries `contentHeight`/`100%`, read live. The real defect is a stale `parentLayout`: children bake the parent's layout in at *their* render, `renderChildren` memoises them, and the Layout setter never invalidated the memo — so a layout change never reached the children, and the first child ate the row. Fixed with `setLayout` as the single writer. §1 built too, on its own terms (an abstaining *connection* can still unset the port). 10 regression tests; 15-node-type live blast-radius check. Criterion 4's screenshot corpus is an instrument mismatch — see the spec |
+| NDA-017 Signal input freshness | 2 | ⬜ **Not started — added 2026-07-30** | Community report, confirmed from source, **not reproduced**. With `Run` connected, Expression's value setters go passive and `Run` evaluates whatever is in scope — so an async producer that hasn't landed leaves the previous cycle's value, and `On True`/`On False` pulse downstream while `Result` stays quiet. The reporter's workaround (Function node) has the identical idiom and is *more* exposed. **Twelve node families**, not one. §0 reproduction is blocking; §1 is a decision for Richard (never-arrived detection vs. an upstream-pending notion in the runtime vs. making the completion-signal sequencing discoverable) |
 | NDA-011 REST → HTTP | 3 | ✅ **Done — §1, §2 decided, §3 already met** | Assessment at [`NDA-011-CAPABILITY-COMPARISON.md`](./NDA-011-CAPABILITY-COMPARISON.md). **There is no resource DSL**: REST is one path template plus two `new Function` scripts, and does *neither* of the things the spec lists as what a DSL is good for. HTTP Request wins every declarative row; REST wins two, both "run some JavaScript". So it is **not** a clean subset → **deprecated, not deleted**, with the conversion path left to LIB-006. §3 needed no work (NDA-003 already made the six guards one helper; `responseHeaders` became usable via NDA-014's `object → string` cast). **Criterion 3 was six nodes, not four** — and they held the *plain* names their modern replacements show via `displayName`, so the picker offered two entries reading "Button" and the deprecated one was as likely to be picked |
 | NDA-012 Per-node audit | 3 | ⬜ **1 of 17 categories** | Variables done (4/4) as the worked example. Opt-in, resumable, stop on find-rate decline |
 
@@ -31,7 +32,7 @@
 | Nodes with a pre-filled audit worksheet | 155 | ✅ `audit/`, 17 category files |
 | Nodes whose implementation has been read | 15 | 8 named by Richard + 5 from his second list + Boolean/Color |
 | Nodes fully audited against the 12 checks | **4** | Variables, as NDA-012's worked example |
-| Systemic defect classes identified | 6 | A reactivity, B failure, C documentation, D string contracts, **E type dead ends**, **F implicit binding** |
+| Systemic defect classes identified | 7 | A reactivity, B failure, C documentation, D string contracts, **E type dead ends**, **F implicit binding**, **G signal/value ordering** (G came from a community report, not from either pass) |
 | Findings live-verified in the running editor | Tier 1 + NDA-014 | 2026-07-29 pass: preview runs the new collection semantics (push/index/length notify once each, synchronous, `items` identity holds, `set` = one change); zero renderer exceptions; no cyclic warnings; editor's live typecast table carries the three new casts. Catalog page empty = expected (DB query, no local data, no repeater on it) |
 
 **Calibration:** the second pass found five real defects in six nodes. The structural sweep found
@@ -64,6 +65,19 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-30 (NDA-017 added — defect class G, from the community)** — spec only, no code. A Noodl
+  community report of the Expression node re-emitting its previous answer when `Run` fires before an
+  async input has landed. Checked against the phase's existing findings first: **it is not covered**.
+  Class A is "does a mutation notify?" and class B is "can a failure be reported?"; here the
+  notification arrives and nothing fails — it arrives *after* the signal that consumed the value. The
+  mechanism is confirmed from source (the `isInputConnected('run')` guard on every value setter) and
+  **the reporter's workaround is not one**: the Function node has the identical idiom and is worse,
+  since `runScript` is `async`. Twelve node families share it. Two smaller things fell out: the
+  unchanged-output gate means a stale evaluation pulses `On True`/`On False` downstream while `Result`
+  stays quiet, and NDA-004 B-iii's "no values-have-not-arrived window" reasoning is right about
+  reporting and wrong about evaluation — the `0` seed is what makes the stale answer plausible. §0
+  reproduction is blocking and §1 is a decision for Richard.
 
 - **2026-07-30 (NDA-007 §2 + §3 — registration and the picker)** — `899ab676`. **NDA-007 is
   complete** bar criterion 1's deployed leg. 9 rows (editor jasmine 1,885 → **1,894**), live-verified
