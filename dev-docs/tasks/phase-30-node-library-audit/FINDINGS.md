@@ -215,14 +215,55 @@ count in this document therefore *understates* the problem — these nodes all h
 ports, so the register's `Fail?` column passes them, and every one of them still sends its
 *diagnosis* to an editor-only channel.
 
-**`dbmodelcrudbase` is done** (2026-07-30) — it raises `record/storage-op-failed` on the bus, and
-the editor keeps exactly what it had because `createEditorWarningSubscriber` forwards to
-`sendWarning` with the identical `{ showGlobally: true, message }` payload. The other 21 are open.
+**CLOSED 2026-07-30, and the finding above is wrong in a way worth keeping.** It counted
+twenty-two `setError` *definitions* and read them as copies of one. They are not. Reading all
+twenty-two:
+
+| What `setError` actually did | Count | Which |
+|---|---|---|
+| `editorConnection.sendWarning` — the shape this finding describes | **14** | `dbmodelcrudbase`, the 11 user/auth, `dbmodelnode2`, deprecated `dbmodelnode` |
+| **Nothing at all** — the message reached the `Error` port and stopped | **6** | `dbcollectionnode2`, `signfileurl`, `uploadfile`, `cloudfunction2`, deprecated `dbcollectionnode`, and (with a `console.warn`) `byob-subscribe` |
+| Nothing, **and no `Failure` port either** | **3** of the above plus 2 | `byob-subscribe`, `statesnapshotnode`, `undonode` |
+
+The correction matters because the second row is **worse** than the first, not a lesser version
+of it. An editor-only diagnosis at least exists while an author is building; these had none
+anywhere — not in a deployed app, not in a cloud function, not on the canvas. And three nodes
+failed *both* clauses of the contract at once: no diagnosis and no signal, so an author could
+wire the success port and had nothing whatever to sequence off a failure, only an `Error` value
+to poll.
+
+Generalised: **a count of look-alike call sites is a hypothesis about them, not a description.**
+This is the fifth-lesson pattern ("five identical-looking call sites are not five instances of
+one defect") applied to a *finding in this document* rather than to source — and it is the third
+time in the phase that a claim in our own notes has needed re-checking the way a spec premise
+does.
+
+Landed in three commits: `dbmodelcrudbase` first, then the eleven user/auth as one batch
+(`user/<operation>-failed` per node — the family code is right where seven node types share one
+funnel, wrong where each node has its own and the *operation* is the distinguishing fact), then
+the remaining ten. The editor keeps exactly what it had throughout, because
+`createEditorWarningSubscriber` forwards to `sendWarning` with the identical
+`{ showGlobally: true, message }` payload.
 
 The trap that makes each one two changes rather than one: **the bus's editor subscriber keys its
 warning by the raised `code`**, not by a key the call site picks. Any `clearWarning` still naming
 the old hand-written key clears nothing, so the node accumulates a warning it can never shed. Raise
 and clear have to move together, every time.
+
+Two rows earned their place by *failing* a discrimination check:
+
+1. Reverting only the `clearWarnings` half reddens exactly the eleven round-trip rows; reverting
+   only the raise reddens the two channel rows per node and turns the round-trip rows back
+   **green**. That pair is what shows the rows pin the raise/clear *pairing* rather than either
+   half alone — a single revert would have looked like a pass for a test that only watched one end.
+2. The `message !== undefined` guard on `statesnapshotnode`/`undonode` (where `setError(undefined)`
+   is how every success path clears) survived its first control with the guard removed. `setError`
+   opens with `if (this._internal.error === message) return`, so on a node that has never failed,
+   `setError(undefined)` never reaches the guard at all. The reachable path is a clear that follows
+   a **real** error — the moment the node starts working again — which is where an unguarded port
+   would fire `Failure`. Worth generalising: **an early-return dedup at the top of a method can make
+   a happy-path control unreachable**, so a control for "does this fire when it should not" has to
+   drive the state the method actually gets called in.
 
 The node passes the "does a `Failure` port fire on the happy path" test for a specific reason worth
 recording, because it is the opposite of the Object node's: `registerInputIfNeeded` seeds every
