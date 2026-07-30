@@ -18,9 +18,12 @@ interface ShowPopupInstance extends NodeInstance {
     target?: string;
     hasScheduledShow?: boolean;
     stackPolicy?: PopupStackPolicy;
+    /** Message for the `Error` output; see NDA-004. */
+    lastError?: string;
   };
   scheduleShow(): void;
   show(): void;
+  reportFailure(code: string, message: string): void;
   setPopupParam(param: string, value: unknown): void;
   getCloseResult(param: string): unknown;
 }
@@ -67,6 +70,10 @@ const ShowPopupNode: NodeDefinitionOptions = {
       }
     }
   },
+  // NDA-004 §2 (register ⏳ item 3, sequenced after NDA-010 §3). Every outcome this node had
+  // was a *later* one — `Closed`, `Dismissed`, an author's close actions — so a popup that
+  // never opened was indistinguishable from one the user had not finished with yet. The
+  // trigger is an author `Do` (`Show`, group `Actions`), so this cannot fire on the boot path.
   outputs: {
     Closed: {
       type: 'signal'
@@ -75,9 +82,28 @@ const ShowPopupNode: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Dismissed',
       group: 'Events'
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      getter: function (this: ShowPopupInstance) {
+        return this._internal.lastError;
+      }
     }
   },
   methods: {
+    reportFailure: function (this: ShowPopupInstance, code: string, message: string) {
+      this._internal.lastError = message;
+      this.raiseRuntimeError(code, message);
+      this.flagOutputDirty('error');
+      this.sendSignalOnOutput('failure');
+    },
     setPopupParam: function (this: ShowPopupInstance, param: string, value: unknown) {
       this._internal.popupParams[param] = value;
     },
@@ -96,9 +122,29 @@ const ShowPopupNode: NodeDefinitionOptions = {
       }
     },
     show: function (this: ShowPopupInstance) {
-      if (this._internal.target == undefined) return;
+      if (this._internal.target == undefined) {
+        return this.reportFailure(
+          'show-popup/no-target',
+          'No Target component is set on this Show Popup node'
+        );
+      }
 
-      this.context.showPopup(this._internal.target, this._internal.popupParams, {
+      /**
+       * NDA-004 §2 — the returned promise was dropped, and it can **reject**.
+       *
+       * `NodeContext.showPopup` awaits `nodeScope.createNode(popupComponent)`, which for a
+       * component name that is not registered reaches `getComponentModel` and *throws*
+       * `Can't find component model for …`. Nothing awaited that here, so a Show Popup pointed
+       * at a deleted or renamed component produced an **unhandled promise rejection** — not
+       * even `nodecontext.ts`'s blanket catch, which only wraps `update()` — and no popup, with
+       * nothing whatever on the graph to say so.
+       *
+       * Catching here rather than reporting from `showPopup` deliberately: the failure belongs
+       * to the node that asked, which is the decision NDA-008 §3 settled for the Component
+       * Stack and this phase has followed since. It also covers the bundle-fetch case for free,
+       * because that rejects through the same promise.
+       */
+      const shown = this.context.showPopup(this._internal.target, this._internal.popupParams, {
         senderNode: this.nodeScope.componentOwner,
         stackPolicy: this._internal.stackPolicy ?? 'replace',
         // NDA-010 §3. Separate from `Closed` on purpose: this popup went away because
@@ -120,6 +166,18 @@ const ShowPopupNode: NodeDefinitionOptions = {
           else this.sendSignalOnOutput(action);
         }
       });
+
+      // `showPopup` is typed as returning a promise, but it is reached through the context
+      // interface and a host could hand back nothing; guarding costs one check and turns a
+      // `TypeError` on `.catch` into no report at all, which is the defect being fixed.
+      shown &&
+        shown.catch &&
+        shown.catch((e: unknown) => {
+          this.reportFailure(
+            'show-popup/target-failed',
+            'The popup "' + this._internal.target + '" could not be opened: ' + ((e as Error)?.message || String(e))
+          );
+        });
     },
     registerInputIfNeeded: function (this: ShowPopupInstance, name: string) {
       if (this.hasInput(name)) {
