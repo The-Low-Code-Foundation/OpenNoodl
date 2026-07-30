@@ -253,10 +253,27 @@ const ShowPopupModule: NodeModule = {
 
               if (_n.parameters['results'] !== undefined) {
                 (_n.parameters['results'] as string).split(',').forEach((p) => {
+                  /**
+                   * NDA-010 §1 (re-scoped). Params came out of the target's `inputPorts` carrying
+                   * their declared type; results were pushed as `'*'`, so **one direction of the
+                   * popup boundary type-checked and the other did not** — and `*` accepts every
+                   * connection, which is the type dead end class E is about, arrived at from the
+                   * other side.
+                   *
+                   * The names still come from Close Popup's hand-typed `results` stringlist; that
+                   * half is a design question and is written up in the spec. What is free is the
+                   * *type*: where the popup component declares an output port of the same name, use
+                   * it. `foreach.tsx:797-798` reads a target component's `outputPorts` the same way,
+                   * so this is an existing pattern rather than a new coupling.
+                   *
+                   * Falling back to `'*'` is deliberate — a result with no matching output port is
+                   * exactly as connectable as it was before, so no graph that works today stops.
+                   */
+                  const declared = c.outputPorts && c.outputPorts[p];
                   ports.push({
                     name: 'closeResult-' + p,
                     displayName: p,
-                    type: '*',
+                    type: (declared && declared.type) || '*',
                     plug: 'output',
                     group: 'Close Results'
                   });
@@ -275,6 +292,12 @@ const ShowPopupModule: NodeModule = {
 
         c.on('inputPortAdded', _updatePorts);
         c.on('inputPortRemoved', _updatePorts);
+
+        // NDA-010 §1. The target's *output* ports are now a type source for `closeResult-*`, so
+        // they have to be tracked too — otherwise adding the Component Output that gives a result
+        // its type leaves the port at `*` until something else happens to re-run this.
+        c.on('outputPortAdded', _updatePorts);
+        c.on('outputPortRemoved', _updatePorts);
 
         // Also track all close popups for changes
         for (const _n of c.getNodesWithType('NavigationClosePopup')) {

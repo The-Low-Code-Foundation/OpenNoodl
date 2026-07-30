@@ -74,6 +74,44 @@ cannot convert ([`COMPATIBILITY-POLICY.md`](../../reference/COMPATIBILITY-POLICY
 > Do not start §1 without re-reading `showpopup.ts` first. This is the phase's recurring lesson: six
 > spec claims have now fallen to implementation.
 
+> ### ✅ Item 2 done 2026-07-30 · ❌ item 3 answered "no, and it cannot be yes" · ⏳ item 1 is a decision
+>
+> **Item 2 — results are typed now.** `closeResult-<name>` takes its type from the popup component's
+> output port of the same name, falling back to `'*'` where there is none
+> ([`showpopup.ts`](../../../packages/noodl-viewer-react/src/nodes/navigation/showpopup.ts),
+> `_updatePorts`). `foreach.tsx:797-798` already reads a target component's `outputPorts` this way,
+> so it is an existing pattern rather than a new coupling. The `outputPortAdded`/`outputPortRemoved`
+> listeners had to be added alongside — only the *input* side was tracked, because until now nothing
+> read the outputs, so adding the Component Output that gives a result its type would have left the
+> port at `'*'`. Six rows in
+> [`nda-010-popup-result-types.test.ts`](../../../packages/noodl-runtime/test/corpus/nda-010-popup-result-types.test.ts);
+> the revert reddens exactly the three finding rows and leaves the three controls green. They are
+> `setup`-time rows, driven against a fake graph model in NDA-009's J-row style, because
+> `graph-harness` never calls a module's `setup`.
+>
+> **Item 3 — the validator still cannot check the popup contract, and typing the ports does not
+> change that.** Both `NavigationShowPopup` and `NavigationClosePopup` are dynamic-port nodes, and
+> `nonexistentPort.ts:74` **skips every port check on a dynamic-port node** rather than reporting it.
+> This is precisely what NDA-009 §2 ran into — but the remedy there is not available here. Run Tasks
+> could make its four contract ports *static*, because their names are fixed. A popup's params and
+> results are derived per target component and cannot be anything but dynamic. **So the answer is not
+> "not yet", it is "not through this rule"**: checking the popup boundary needs either a
+> `dynamicPortNote`-aware rule that consults the derivation, or the derived ports reaching the catalog
+> the way static ones do. Recorded rather than attempted — it is a validator design question, not a
+> popup one.
+>
+> **Item 1 — deriving the result *names* is a design question, not a gap.** Close Popup's `results`
+> stringlist still names them by hand. Deriving them from the popup component's output ports instead
+> would mean **redefining what a Component Output on a popup component is**: today those ports go
+> nowhere, because a popup instance is created by `showPopup` rather than wired into a parent, so the
+> proposal is really "make Component Outputs on a popup mean *close results*". That is coherent and
+> arguably the right model — it is what item 2 already leans on for types — but it is a semantic
+> change to an existing node type with a compatibility cost the typing fix does not have. **For
+> Richard**, and the three options are: (a) leave the names hand-declared and keep the type link that
+> now exists; (b) derive names from Component Outputs and deprecate the `results` stringlist;
+> (c) derive names *and* keep the stringlist as an override for results that are not component
+> outputs. This does not block anything else in NDA-010.
+
 ## §2 — Close Popup must know what it closes
 
 `Close Popup` does not find its popup — it waits to be *handed* a callback. `_setCloseCallback`
