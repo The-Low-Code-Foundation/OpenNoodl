@@ -46,6 +46,7 @@ of the five defects a careful read found:
 | Remove Object From Array | **two bare `return`s**: no diagnosis in any runtime at all, the editor included | `remove-from-array/no-array`, `/no-object-id` |
 | Clear Array | **no guard at all** — `collection.set([])` on `undefined` threw a `TypeError` out of a scheduled callback | `clear-array/no-array` |
 | States | a state name not in the list animated **every value to 0**, adopted the name on the `State` output and fired `stateChanged` — a transition that read as successful | `states/unknown-state` |
+| Open File Picker | a cancelled dialog was **unobservable**, and a `change` with an empty `FileList` fired `Success` with all five outputs `undefined` | `Cancelled` (no raise — not a failure); `open-file-picker/open-failed` |
 
 ### 🔵 Decided, on evidence (read)
 
@@ -90,7 +91,12 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
    nothing, it is *plausible*. The compile error also misreported itself — `_compileFunction`
    returned `undefined`, `_calculateExpression` called `.apply` on it, and the TypeError that
    produced was the only diagnosis that ever reached a deployed runtime.
-2. **Open File Picker** — has `success` and no counterpart; cancel and read-error are both real.
+2. ~~**Open File Picker**~~ — **done 2026-07-30, ✅.** Half the prediction held. Cancel is real
+   and **is not a failure** — a user declining a dialog is a legitimate empty result, so it is a
+   `Cancelled` *completion* signal and deliberately raises nothing. There is no read error at all
+   (the node never reads the file). And there was a third failure the prediction did not have: a
+   `change` with an empty `FileList` fired `Success` with all five outputs `undefined`, having
+   discarded the file already picked.
 3. **Show Popup** — a target component that does not resolve. Overlaps NDA-010 §3 (stack policy),
    so sequence it after that decision rather than before.
 4. **Push Component To Stack / Navigate** — a target page that does not resolve. `navigate.ts`
@@ -239,7 +245,7 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 117 | Delay | Utilities | 5/2 | ⚠️ |  | 0% | partial | browser |  |
 | 118 | Globals _(deprecated)_ | Utilities | 0/0 |  |  | 100% | safe | browser |  |
 | 119 | Index To String _(deprecated)_ | Utilities | 1/2 |  |  | 0% | safe | browser |  |
-| 120 | Open File Picker | Utilities | 3/6 | ⚠️ |  | 0% | client-only | browser |  |
+| 120 | Open File Picker | Utilities | 3/6 | ⚠️ |  | 0% | client-only | browser | ✅ NDA-004 §2 — `Cancelled` (a completion signal, deliberately **not** raised: declining a dialog is a legitimate empty result) plus `Failure`/`Error` for `click()` being refused, `open-file-picker/open-failed`. A `change` with an empty `FileList` fired `Success` with all five outputs `undefined`. No read error exists — the node never reads the file |
 | 121 | Screen Resolution | Utilities | 0/3 |  |  | 0% | client-only | browser |  |
 | 122 | String Mapper | Utilities | 2/1 |  |  | 0% | safe | browser, cloud |  |
 | 123 | Boolean | Variables | 2/3 | ⚠️ |  | 0% | safe | browser, cloud |  |

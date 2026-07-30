@@ -24,6 +24,7 @@ row must be shown to discriminate before it is trusted.
 | `nda-004-video-playback.test.tsx` | Failure §2 on Video — FINDINGS B-ii | 10 |
 | `nda-004-array-mutators.test.ts` | [Failure](../../../../dev-docs/reference/FAILURE-CONTRACT.md) §2 on the Array mutators, **incl. two 🔵 verdicts** — FINDINGS B-v | 23 |
 | `nda-004-states-unknown-state.test.ts` | Failure §2 on States — FINDINGS B-vi | 10 |
+| `nda-004-open-file-picker.test.ts` | Failure §2 on Open File Picker, **incl. `Cancelled` deliberately not raising** — FINDINGS B-vii | 12 |
 
 Four of those rows pin an **absence**: `Set Component Object Properties` must keep having *no*
 `Failure` port, because it cannot miss, `Component Object` must stay silent when values arrive, and
@@ -58,6 +59,12 @@ loud `TS2802`, and here there is no error at all, because a cross-package source
 these options but its diagnostics are never surfaced. A row that needs a real parameter edit — the
 editor's own `setParameter(name, undefined)`, which is how a cleared field reaches a node — belongs
 in `noodl-runtime`'s half of the corpus.
+
+`nda-004-open-file-picker.test.ts` makes the same call one step further out — it stubs `document`
+itself, because that node's `initialize` calls `createElement` and cannot be constructed at all
+without one. There is no `jest-environment-jsdom` in this monorepo. The boundary the node owns ends
+at `onchange` / `oncancel`; everything past it is the browser's file dialog, so driving those
+handlers is driving the node.
 
 `nda-004-video-playback.test.tsx` drives the `Video` component class directly with a stub media
 element rather than mounting one: `testEnvironment: node` has no DOM to dispatch a real `error`

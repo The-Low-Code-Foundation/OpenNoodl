@@ -65,6 +65,40 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-30 (NDA-004 §2 — Open File Picker)** — ⏳ item 2, one node, and the entry where a
+  prediction was wrong in a way that *improved* the fix.
+
+  The item read "has `success` and no counterpart; cancel and read-error are both real". Cancel is
+  real. **It is not a failure**, and that distinction is the whole design. A user declining a dialog
+  is a legitimate empty result, which the contract lists among the things that must not raise, so a
+  `Failure` there would fire on a graph working exactly as written — the Object node's rule again,
+  arrived at from the opposite direction. It gets a `Cancelled` *completion* signal instead, raising
+  nothing, and a row asserts the error channel stays empty on that path. The gap it closes is real
+  and total: with no `cancel` listener, "the user chose a file" and "the user changed their mind"
+  were the same observable — `Success` in one case and, for ever, nothing in the other.
+
+  **There is no read error.** The prediction assumed one; the node never reads the file. Recorded as
+  absent rather than invented, which is the third time this phase a predicted failure mode turned out
+  not to exist.
+
+  **There was a third failure the prediction did not have**, and it is the one that lied: `change`
+  can arrive with an empty `FileList`, and the node assigned `files[0]` unconditionally — discarding
+  the file already picked — then fired `Success` with all five outputs reading `undefined`.
+
+  **The correction worth more than the fix.** The first draft claimed an unguarded `click()` throw
+  "propagates out of an input setter", the shape §3 found in `Response`. The discrimination check
+  showed that row green with the `try`/`catch` removed: `nodecontext.ts:220-228` wraps every node's
+  `update()` in a `catch` that only `console.error`s. So no exception from any input setter in this
+  codebase is a crash — **"the node throws" is not by itself evidence of one.** The cost is still
+  worth reporting (`Node.update` rethrows, so the rest of that node's pass is abandoned, and the sole
+  diagnosis is an unstructured console line with no code or provenance), so the row was reshaped to
+  pin the contract clause that actually differs — structured, not a string — and it discriminates.
+
+  12 corpus rows, six reverts, each reddening only its own rows. Viewer jest **214** (was 202),
+  typecheck clean, no runtime source touched. Limitation recorded: no `jest-environment-jsdom`
+  exists here, so the rows stub `document` — the node's `initialize` calls `createElement` and cannot
+  be constructed otherwise. Same call as the Video rows' stub media element, one step further out.
+
 - **2026-07-30 (NDA-004 §2 — States)** — ⏳ item 5, one node, and the first entry in a while where
   the prediction was simply correct: `goToState` with a name that is not in the list. What the
   prediction could not say is which *class* of defect it is.

@@ -307,6 +307,46 @@ one line above, which is the boot path and what `states`'s own setter depends on
 pins that, and reverting just the falsy resolution reddens exactly that control — the Object node's
 lesson, checked rather than assumed.
 
+### B-vii — Open File Picker: the missing outcome was never a failure (2026-07-30)
+
+Register ⏳ item 2: *"has `success` and no counterpart; cancel and read-error are both real."* Half
+right, and the half it got wrong is the useful part.
+
+**Cancel is real and it is not a failure.** `<input type="file">` fires `cancel` when the dialog
+closes with nothing chosen (Chrome 113+, Safari 16.4+, Firefox 109+) and the node had no listener, so
+"the user chose a file" and "the user changed their mind" were the same observable: `Success` in one
+case and, for ever, nothing in the other. Anything an author put behind `Open` — a spinner, a
+disabled button, a queued upload — had no way back. But a user declining a dialog is a **legitimate
+empty result**, which the Failure Contract lists among the things that must not raise; a `Failure`
+there fires on a graph working exactly as written. So it is a `Cancelled` **completion** signal, and
+a corpus row asserts nothing reaches the error channel on that path.
+
+**There is no read error.** The prediction assumed one. The node never reads the file — it hands out
+the `File` object and five pieces of metadata, and reading is another node's job. Recorded rather
+than invented.
+
+**There was a third failure, and it is the one that reported success wrongly.** `change` can arrive
+with an empty `FileList` (a re-pick the user backed out of), and
+[`openfilepicker.ts:48`](../../../packages/noodl-viewer-react/src/nodes/std-library/openfilepicker.ts#L48)
+assigned `files[0]` unconditionally — discarding whatever file *had* been picked — then fired
+`Success` with all five outputs reading `undefined`.
+
+The `Failure` port it does get is for `input.click()` throwing, refused in a sandboxed frame without
+`allow-modals`.
+
+#### A correction worth more than the fix: the runtime's blanket catch
+
+The first draft claimed an unguarded throw there "propagates out of an input setter", the shape §3
+found in `Response`. The discrimination check showed that row green with the `try`/`catch` removed.
+[`nodecontext.ts:220-228`](../../../packages/noodl-runtime/src/nodecontext.ts#L220-L228) wraps every
+node's `update()` in a `catch` that only `console.error`s, so an exception out of any input setter is
+already swallowed. What it costs is still real and worth reporting — `Node.update` rethrows to that
+catch, so the rest of that node's pass (remaining queued inputs, after-update callbacks) is
+abandoned, and the sole diagnosis is an unstructured console line with no code and no provenance,
+invisible to `On App Error` and to every subscriber. **The blanket catch is why this class was never
+noticed, not a reason it did not need reporting** — and it means "the node throws" is not by itself
+evidence of a crash anywhere in this codebase.
+
 ## Defect class C — 95% of ports are undocumented
 
 2,508 of 2,650 ports carry no `description`. 112 of 155 nodes have not a single documented port.
