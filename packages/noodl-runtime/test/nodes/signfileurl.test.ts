@@ -20,8 +20,11 @@ interface FakeInstance {
   _internal: Record<string, unknown>;
   dirty: string[];
   signals: string[];
+  /** NDA-004 §2: what the node raises on the error bus, recorded. */
+  raised: Array<{ code: string; message: string; detail?: unknown }>;
   flagOutputDirty(name: string): void;
   sendSignalOnOutput(name: string): void;
+  raiseRuntimeError(code: string, message: string, detail?: unknown): void;
   scheduleAfterInputsHaveUpdated(cb: () => void): void;
   [key: string]: unknown;
 }
@@ -31,11 +34,18 @@ function makeInstance(): FakeInstance {
     _internal: {},
     dirty: [],
     signals: [],
+    raised: [],
     flagOutputDirty(name: string) {
       this.dirty.push(name);
     },
     sendSignalOnOutput(name: string) {
       this.signals.push(name);
+    },
+    // Real on any `Node`; this harness binds the definition's methods onto a plain object, so
+    // the runtime half has to be stood in for. Recorded rather than stubbed away, because
+    // NDA-004 §2's whole claim about this node is that the diagnosis now leaves the port.
+    raiseRuntimeError(code: string, message: string, detail?: unknown) {
+      this.raised.push({ code, message, detail });
     },
     scheduleAfterInputsHaveUpdated(cb: () => void) {
       cb();
@@ -70,6 +80,12 @@ describe('Sign File URL node', () => {
     expect(() => sign(instance)).not.toThrow();
     expect(instance.signals).toEqual(['failure']);
     expect(output(instance, 'error')).toBe('No file specified');
+
+    // NDA-004 §2 / FINDINGS B-iv. Before this the message reached the `Error` port and stopped —
+    // no diagnosis on any channel, in any runtime, the editor included.
+    expect(instance.raised).toEqual([
+      { code: 'sign-file-url/sign-failed', message: 'No file specified', detail: { status: 0 } }
+    ]);
   });
 
   test('setting a non-CloudFile value is ignored, exactly like the Cloud File node', () => {

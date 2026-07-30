@@ -87,6 +87,9 @@ interface DbModelNodeInstance extends NodeInstance {
   setModelInitCode(code: string): void;
 }
 
+/** NDA-004 §2 — the Record family's code, shared with `dbmodelcrudbase` and `dbmodelnode2`. */
+const STORAGE_OP_ERROR_CODE = 'record/storage-op-failed';
+
 const ModelNodeDefinition: NodeDefinitionOptions = {
   name: 'DbModel',
   docs: 'https://docs.noodl.net/nodes/cloud-services/model',
@@ -460,21 +463,29 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
 
       return true;
     },
+    /**
+     * NDA-004 §2 / FINDINGS B-iv — the Record family's third copy of one `setError`.
+     *
+     * Deprecated, and moved anyway: this is a channel change, not a new port, so it costs a
+     * deprecated node nothing, and leaving it behind would recreate the exact condition the
+     * finding is about — a helper that looks shared, copied, with one copy left un-migrated for
+     * a later reader to find. The deprecation policy question (register ⏳ item 9) is about
+     * whether these nodes should *gain* failure surfaces; this one already has them.
+     */
     setError: function (this: DbModelNodeInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
 
-      if (this.context.editorConnection) {
-        this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'storage-op-warning', {
-          message: err,
-          showGlobally: true
-        });
-      }
+      this.raiseRuntimeError(STORAGE_OP_ERROR_CODE, err);
     },
     clearWarnings(this: DbModelNodeInstance) {
       if (this.context.editorConnection) {
-        this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'storage-op-warning');
+        // Keyed by the raised `code`, plus the legacy key for an editor session that predates
+        // this change and would otherwise hold a warning nothing can remove.
+        const component = this.nodeScope.componentOwner.name;
+        this.context.editorConnection.clearWarning(component, this.id, STORAGE_OP_ERROR_CODE);
+        this.context.editorConnection.clearWarning(component, this.id, 'storage-op-warning');
       }
     },
     onRelationAdd: function (this: DbModelNodeInstance, key: string) {

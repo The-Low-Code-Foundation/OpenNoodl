@@ -881,8 +881,20 @@ interface Probe {
   signals: string[];
 }
 
+/**
+ * NDA-004 §2 — everything raised on the runtime error channel, in order, per context.
+ *
+ * The Undo and State Snapshot nodes used to write their `Error` port and stop there, so this
+ * list was empty by construction and there was nothing to record.
+ */
+const raised: Array<{ code: string; message: string }> = [];
+
 function createContext() {
+  raised.length = 0;
   const context = new NodeContext();
+  context.errorBus.subscribe((event: { code: string; message: string }) =>
+    raised.push({ code: event.code, message: event.message })
+  );
   context.nodeRegister.register(NodeDefinition.defineNode(GlobalStoreNodeModule.node));
   context.nodeRegister.register(NodeDefinition.defineNode(SetGlobalStoreModule.node));
   context.nodeRegister.register(NodeDefinition.defineNode(StateHistoryNodeModule.node));
@@ -1137,8 +1149,11 @@ describe('Undo / Redo node', () => {
     node.setInputValue('targetIndex', 42);
     node.update();
 
-    expect(signals).toEqual([]);
+    // NDA-004 §2: this used to assert `[]`, which encoded the defect rather than the claim —
+    // the node reported into its `Error` port and gave a graph nothing to sequence off.
+    expect(signals).toEqual(['failure']);
     expect(String(output(node, 'error'))).toContain('outside the history');
+    expect(raised).toEqual([{ code: 'undo/operation-failed', message: expect.stringContaining('outside the history') }]);
   });
 
   it('reports a store nothing is tracking', () => {
@@ -1149,18 +1164,33 @@ describe('Undo / Redo node', () => {
     node.setInputValue('undo', true);
     node.update();
 
-    expect(signals).toEqual([]);
+    expect(signals).toEqual(['failure']);
     expect(String(output(node, 'error'))).toContain('No State History node is tracking');
+    expect(raised).toEqual([
+      { code: 'undo/operation-failed', message: expect.stringContaining('No State History node is tracking') }
+    ]);
   });
 
-  it('clears the error once something works', () => {
+  /**
+   * ✅ The pinned control for NDA-004 §2's `message !== undefined` guard, and the one that
+   * actually discriminates.
+   *
+   * A first attempt at this control asserted on a *fresh* node's successful save and stayed
+   * green with the guard removed — `setError` opens with `if (this._internal.error === message)
+   * return`, so on a node that has never failed, `setError(undefined)` never reaches the guard
+   * at all. The reachable path is a clear that follows a **real** error, which is exactly the
+   * recovery an author cares about: without the guard, the node signals `Failure` at the moment
+   * it starts working again.
+   */
+  it('clears the error once something works, without signalling Failure on the way', () => {
     const context = createContext();
-    const { node } = createNode(context, 'net.noodl.StateHistory.Undo');
+    const { node, signals } = createNode(context, 'net.noodl.StateHistory.Undo');
 
     node.setInputValue('storeName', 'app');
     node.setInputValue('undo', true);
     node.update();
     expect(output(node, 'error')).toBeDefined();
+    expect(signals).toEqual(['failure']);
 
     tracked(context);
     store.setKey('app', 'a', 1);
@@ -1171,6 +1201,9 @@ describe('Undo / Redo node', () => {
     node.update();
 
     expect(output(node, 'error')).toBeUndefined();
+    // The clear must be silent. One `failure`, from the failure — not a second from the fix.
+    expect(signals).toEqual(['failure', 'undone']);
+    expect(raised).toHaveLength(1);
   });
 
   it('reports whether the restore it just made was complete', () => {
@@ -1263,8 +1296,11 @@ describe('State Snapshot node', () => {
     node.setInputValue('restore', true);
     node.update();
 
-    expect(signals).toEqual([]);
+    expect(signals).toEqual(['failure']);
     expect(String(output(node, 'error'))).toContain('no snapshot named');
+    expect(raised).toEqual([
+      { code: 'state-snapshot/operation-failed', message: expect.stringContaining('no snapshot named') }
+    ]);
   });
 
   it('reports a save with no name', () => {
@@ -1275,8 +1311,49 @@ describe('State Snapshot node', () => {
     node.setInputValue('save', true);
     node.update();
 
-    expect(signals).toEqual([]);
+    expect(signals).toEqual(['failure']);
     expect(String(output(node, 'error'))).toContain('name is required');
+    expect(raised).toEqual([
+      { code: 'state-snapshot/operation-failed', message: expect.stringContaining('name is required') }
+    ]);
+  });
+
+  /**
+   * ✅ Pinned control for NDA-004 §2's new `Failure` port.
+   *
+   * Every success path in both of these nodes calls `setError(undefined)` to *clear*, so the
+   * raise and the signal are guarded on a defined message. Without that guard the new port fires
+   * on every successful save, restore, undo and redo — the Object node's defect inverted, and a
+   * `Failure` on the happy path is what the contract calls worse than no port at all.
+   */
+  it('(pinned control) a successful save clears the error without signalling Failure', () => {
+    const context = createContext();
+    const { node, signals } = createNode(context, 'net.noodl.StateSnapshot');
+
+    store.setKey('app', 'a', 1);
+    node.setInputValue('storeName', 'app');
+    node.setInputValue('snapshotName', 'ok');
+    node.setInputValue('save', true);
+    node.update();
+
+    expect(signals).toEqual(['saved']);
+    expect(signals).not.toContain('failure');
+    expect(raised).toEqual([]);
+  });
+
+  /**
+   * `signalsFor`-style logs record a port name *before* delegating, and `sendSignalOnOutput` on
+   * a name the node lacks only logs — so deleting the port leaves every row above green.
+   */
+  it('(pinned control) both nodes actually carry the Failure port', () => {
+    const context = createContext();
+    const snapshot = createNode(context, 'net.noodl.StateSnapshot').node;
+    const undo = createNode(context, 'net.noodl.StateHistory.Undo').node;
+
+    expect(snapshot.hasOutput('failure')).toBe(true);
+    expect(snapshot.hasOutput('error')).toBe(true);
+    expect(undo.hasOutput('failure')).toBe(true);
+    expect(undo.hasOutput('error')).toBe(true);
   });
 
   it('surfaces the by-reference caveat for the snapshot it holds', () => {

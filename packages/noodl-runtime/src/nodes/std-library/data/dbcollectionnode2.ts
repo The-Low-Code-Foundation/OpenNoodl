@@ -24,6 +24,15 @@ import QueryUtils = require('../../../api/queryutils');
 import type { VisualSorting } from '../../../api/queryutils';
 import type { WhereClause } from '../../../api/adapters/types';
 
+/**
+ * NDA-004 §2 — see `setError`.
+ *
+ * Not the `'query-collection'` key this file already uses: that one belongs to `fetch`'s
+ * editor-time "no collection specified" notice, which is a different report about a different
+ * condition and is left where it is.
+ */
+const QUERY_ERROR_CODE = 'query-records/query-failed';
+
 const Model = ModelImport as unknown as ModelModule;
 const Collection = CollectionImport as unknown as CollectionModule;
 
@@ -356,10 +365,21 @@ const DbCollectionNode: NodeDefinitionOptions = {
     // `_internal.error`, so the port had never carried a message and only the `failure`
     // signal fired. §23.4 recorded exactly this in the *deprecated* `dbcollectionnode`;
     // it was the same bug in the node that replaced it (NOTES §27.3 item 1).
+    /**
+     * NDA-004 §2 / FINDINGS B-iv. This one is *not* the finding's shape and is worse than it.
+     *
+     * B-iv counted twenty-two `setError` definitions and read them as copies of one that posted
+     * to `editorConnection.sendWarning`. This one posts nowhere at all: the message reached the
+     * `Error` port and stopped. That is a node whose failure has no diagnosis in *any* runtime,
+     * the editor included — strictly worse than an editor-only one, and invisible to the same
+     * `Fail?` column for the same reason.
+     */
     setError: function (this: DbCollectionNodeInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
+
+      this.raiseRuntimeError(QUERY_ERROR_CODE, err);
     },
     scheduleFetch: function (this: DbCollectionNodeInstance) {
       const internal = this._internal;

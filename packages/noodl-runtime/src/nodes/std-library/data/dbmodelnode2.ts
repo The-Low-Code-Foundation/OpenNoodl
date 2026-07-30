@@ -23,6 +23,16 @@ import CloudStore = require('../../../api/cloudstore');
 
 const Model = ModelImport as unknown as ModelModule;
 
+/**
+ * NDA-004 §2 — the same constant `dbmodelcrudbase` raises, deliberately.
+ *
+ * One code for the Record family, because these two `setError`s are the same funnel written
+ * twice; the message is what distinguishes the cases and `nodeType` rides on the event. It is
+ * also the editor's warning key, since the bus's editor subscriber keys by `code` — see
+ * `clearWarnings`, which must name this or the warning can never be cleared.
+ */
+const STORAGE_OP_ERROR_CODE = 'record/storage-op-failed';
+
 /** One class in the project's `dbCollections` metadata. */
 interface DbCollectionMeta {
   name: string;
@@ -260,21 +270,30 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
         cb();
       });
     },
+    /**
+     * NDA-004 §2 / FINDINGS B-iv — the Record family's *second* `setError`.
+     *
+     * `dbmodelcrudbase` owns the funnel for Set/New/Delete Record Properties and the relation
+     * nodes, and moved to the bus first. This node kept its own byte-identical copy, which is
+     * the finding's whole point one layer down: a helper that looks shared, copied. Same
+     * family, same code, so a subscriber sees one kind of event with `nodeType` to separate
+     * them by.
+     */
     setError: function (this: DbModelNodeInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
 
-      if (this.context.editorConnection) {
-        this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'storage-op-warning', {
-          message: err,
-          showGlobally: true
-        });
-      }
+      this.raiseRuntimeError(STORAGE_OP_ERROR_CODE, err);
     },
     clearWarnings(this: DbModelNodeInstance) {
       if (this.context.editorConnection) {
-        this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'storage-op-warning');
+        // The bus's editor subscriber keys by the raised `code`, so the clear has to name it or
+        // this node accumulates a warning it can never shed. The legacy key goes too, for an
+        // editor session that was already open when this landed.
+        const component = this.nodeScope.componentOwner.name;
+        this.context.editorConnection.clearWarning(component, this.id, STORAGE_OP_ERROR_CODE);
+        this.context.editorConnection.clearWarning(component, this.id, 'storage-op-warning');
       }
     },
     scheduleFetch: function (this: DbModelNodeInstance) {

@@ -99,6 +99,9 @@ interface CloudFunction2Instance extends NodeInstance {
   doCall(): void;
 }
 
+/** NDA-004 §2 — see `setError`. Also the editor's warning key; the bus keys by `code`. */
+const CALL_ERROR_CODE = 'cloud-function/call-failed';
+
 const CloudFunctionNode: NodeDefinitionOptions = {
   name: 'CloudFunction2',
   displayName: 'Cloud Function',
@@ -147,10 +150,21 @@ const CloudFunctionNode: NodeDefinitionOptions = {
     }
   },
   methods: {
+    /**
+     * NDA-004 §2 / FINDINGS B-iv. Not the finding's shape: this posted nowhere at all, so a
+     * cloud function that failed had no diagnosis in any runtime, the editor included.
+     *
+     * `doCall`'s `'cloud-function-2'` warnings are a *different* report — they fire at call
+     * time for a missing endpoint or a missing function name, and they are editor-only. They
+     * stay where they are; both of those conditions also reach here as an `err`, which is now
+     * on the bus.
+     */
     setError: function (this: CloudFunction2Instance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
+
+      this.raiseRuntimeError(CALL_ERROR_CODE, err);
     },
     getResultsValue: function (this: CloudFunction2Instance, name: string) {
       return this._internal.resultsValues[name];

@@ -42,6 +42,9 @@ interface SignFileUrlInstance extends NodeInstance {
   setError(err: SignError | string): void;
 }
 
+/** NDA-004 §2 — see `setError`. Also the editor's warning key; the bus keys by `code`. */
+const SIGN_ERROR_CODE = 'sign-file-url/sign-failed';
+
 const SignFileUrl: NodeDefinitionOptions = {
   name: 'Sign File URL',
   docs: 'https://docs.noodl.net/nodes/data/cloud-data/sign-file-url',
@@ -154,6 +157,13 @@ const SignFileUrl: NodeDefinitionOptions = {
       this.flagOutputDirty('error');
       this.flagOutputDirty('errorStatus');
       this.sendSignalOnOutput('failure');
+
+      // NDA-004 §2 / FINDINGS B-iv: the message reached the `Error` port and stopped — no
+      // diagnosis in any runtime, the editor included. `detail` carries the status because
+      // the node distinguishes "no file specified" (0) from a backend refusal.
+      this.raiseRuntimeError(SIGN_ERROR_CODE, String(this._internal.error), {
+        status: this._internal.errorStatus
+      });
     }
   }
 };

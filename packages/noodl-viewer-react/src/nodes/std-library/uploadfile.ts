@@ -23,6 +23,9 @@ interface UploadFileInstance extends NodeInstance {
   setError(err: UploadError | string): void;
 }
 
+/** NDA-004 §2 — see `setError`. Also the editor's warning key; the bus keys by `code`. */
+const UPLOAD_ERROR_CODE = 'upload-file/upload-failed';
+
 const UploadFile: NodeDefinitionOptions = {
   name: 'Upload File',
   docs: 'https://docs.noodl.net/nodes/data/cloud-data/upload-file',
@@ -173,6 +176,12 @@ const UploadFile: NodeDefinitionOptions = {
       this.flagOutputDirty('error');
       this.flagOutputDirty('errorStatus');
       this.sendSignalOnOutput('failure');
+
+      // NDA-004 §2 / FINDINGS B-iv: the message reached the `Error` port and stopped — no
+      // diagnosis in any runtime, the editor included.
+      this.raiseRuntimeError(UPLOAD_ERROR_CODE, String(this._internal.error), {
+        status: this._internal.errorStatus
+      });
     }
   }
 };

@@ -36,6 +36,9 @@ interface SnapshotInstance extends NodeInstance {
   adopt(snapshot: StoreSnapshot): void;
 }
 
+/** NDA-004 §2 — see `setError`. Also the editor's warning key; the bus keys by `code`. */
+const SNAPSHOT_ERROR_CODE = 'state-snapshot/operation-failed';
+
 const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.StateSnapshot',
   displayNodeName: 'State Snapshot',
@@ -154,6 +157,11 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
       displayName: 'Restored',
       group: 'Events'
     },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
     error: {
       type: 'string',
       displayName: 'Error',
@@ -233,10 +241,29 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
       this.flagOutputDirty('byReferenceKeys');
     },
 
+    /**
+     * NDA-004 §2 / FINDINGS B-iv. Two defects, not the one B-iv predicted.
+     *
+     * The finding read all twenty-two `setError`s as copies of one that posted to
+     * `editorConnection.sendWarning`. This one posted **nowhere**, and the node had no
+     * `Failure` signal either — an author could wire the success signal and had nothing at all
+     * to sequence off a failure, only an `Error` string to poll. Both halves of the contract
+     * missed, in a node whose whole job is to be recoverable.
+     *
+     * `undefined` is a *clear*, not a failure: every success path calls `setError(undefined)`
+     * first. So the raise and the signal are guarded on a defined message — without that guard
+     * the new port fires on every successful operation, which is the Object node's defect
+     * inverted.
+     */
     setError: function (this: SnapshotInstance, message: string | undefined) {
       if (this._internal.error === message) return;
       this._internal.error = message;
       this.flagOutputDirty('error');
+
+      if (message !== undefined) {
+        this.sendSignalOnOutput('failure');
+        this.raiseRuntimeError(SNAPSHOT_ERROR_CODE, message);
+      }
     }
   }
 };

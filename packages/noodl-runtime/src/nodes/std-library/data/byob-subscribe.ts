@@ -83,6 +83,9 @@ interface SubscribeToChangesInstance extends NodeInstance {
   handleRealtimeEvent(event: string, data: unknown[]): void;
 }
 
+/** NDA-004 §2 — see `setError`. Also the editor's warning key; the bus keys by `code`. */
+const REALTIME_ERROR_CODE = 'subscribe-to-changes/realtime-failed';
+
 const SubscribeToChangesNode: NodeDefinitionOptions = {
   name: 'noodl.byob.SubscribeToChanges',
   displayNodeName: 'Subscribe To Changes',
@@ -135,6 +138,11 @@ const SubscribeToChangesNode: NodeDefinitionOptions = {
       getter: function (this: SubscribeToChangesInstance) {
         return this._internal.subscribed;
       }
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
     },
     error: {
       type: 'object',
@@ -281,10 +289,28 @@ const SubscribeToChangesNode: NodeDefinitionOptions = {
       }
     },
 
+    /**
+     * NDA-004 §2 / FINDINGS B-iv. Two defects, and neither is the one B-iv predicted.
+     *
+     * The finding read all twenty-two `setError`s as copies of one that posted to
+     * `editorConnection.sendWarning`. This one posted to `console.warn` — which does at least
+     * survive deployment, unlike the editor channel, but is unstructured, carries no code, and
+     * is invisible to `On App Error` and to every error subscriber. And the node had **no
+     * `Failure` signal at all**: a subscription that could not connect was observable only as an
+     * `Error` object appearing on a value port, which nothing downstream can sequence off.
+     *
+     * On whether the port is safe: `reconfigure` returns silently for the two unconfigured
+     * states — `enabled === false` and no collection — so `setError` is reached only once a
+     * collection has been asked for and the *backend* is missing or malformed, plus from the
+     * transport's own `onError`. Neither is a "values have not arrived yet" state, which is the
+     * question the Object node's trap poses to every node reached from a value setter.
+     */
     setError: function (this: SubscribeToChangesInstance, error: RealtimeError) {
-      console.warn('[BYOB Subscribe] Error:', error);
       this._internal.error = error;
       this.flagOutputDirty('error');
+      this.sendSignalOnOutput('failure');
+
+      this.raiseRuntimeError(REALTIME_ERROR_CODE, error.message || 'Realtime subscription failed', error);
     },
 
     /**

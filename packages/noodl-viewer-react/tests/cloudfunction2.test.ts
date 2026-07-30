@@ -21,6 +21,9 @@ interface FakeInstance {
   };
   context: { editorConnection?: unknown };
   signalsSent: string[];
+  /** NDA-004 §2: what the node raises on the error bus, recorded. */
+  raised: Array<{ code: string; message: string }>;
+  raiseRuntimeError(code: string, message: string): void;
   dirtyOutputs: string[];
   flagOutputDirty(name: string): void;
   sendSignalOnOutput(name: string): void;
@@ -37,9 +40,16 @@ function makeDeployShapedInstance(): FakeInstance {
     // Deployed app: no editor connection at all.
     context: {},
     signalsSent: [],
+    raised: [],
     dirtyOutputs: [],
     flagOutputDirty(name: string) {
       this.dirtyOutputs.push(name);
+    },
+    // Real on any `Node`; this harness binds the definition's methods onto a plain object, so
+    // the runtime half has to be stood in for. Recorded rather than stubbed away, because
+    // NDA-004 §2's claim about this node is that the diagnosis now leaves the port.
+    raiseRuntimeError(code: string, message: string) {
+      this.raised.push({ code, message });
     },
     sendSignalOnOutput(name: string) {
       this.signalsSent.push(name);
@@ -70,6 +80,14 @@ test('doCall with no editorConnection and no cloudServices does not throw and si
   expect(() => (instance.doCall as () => void)()).not.toThrow();
   expect(instance.signalsSent).toContain('failure');
   expect(instance.signalsSent).not.toContain('success');
+
+  // NDA-004 §2 / FINDINGS B-iv. Before this the message reached the `Error` port and stopped;
+  // `doCall`'s own `'cloud-function-2'` warning covers the same condition but is editor-only,
+  // and this test's name says it all — there is *no* editorConnection here, which is the
+  // ordinary case for a deployed app.
+  expect(instance.raised).toEqual([
+    { code: 'cloud-function/call-failed', message: 'No cloud services defined in this project.' }
+  ]);
   expect(instance._internal.lastCallResult?.status).toBe('failure');
   expect(instance._internal.error).toBeTruthy();
 });

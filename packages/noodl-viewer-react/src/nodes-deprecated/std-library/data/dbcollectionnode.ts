@@ -186,6 +186,9 @@ interface DbCollectionNodeInstance extends NodeInstance {
   getStorageSkip(): number | undefined;
 }
 
+/** NDA-004 §2 — see `setError`. Shared with the current Query Records node. */
+const QUERY_ERROR_CODE = 'query-records/query-failed';
+
 const DbCollectionNode: NodeDefinitionOptions = {
   name: 'DbCollection',
   docs: 'https://docs.noodl.net/nodes/cloud-services/collection',
@@ -322,6 +325,13 @@ const DbCollectionNode: NodeDefinitionOptions = {
       (this._internal as Record<string, unknown>).err = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
+
+      // NDA-004 §2 / FINDINGS B-iv. Worth noting what this deliberately does *not* do: the port
+      // bug above stays, because fixing it changes behaviour for existing projects. But the raise
+      // carries `err` itself, so the message an author could never read off the port is now on
+      // the error channel in every runtime — the contract's requirement that a `Failure` be
+      // accompanied by a message is met without touching the port at all.
+      this.raiseRuntimeError(QUERY_ERROR_CODE, err);
     },
     fetch: function (this: DbCollectionNodeInstance) {
       const internal = this._internal;

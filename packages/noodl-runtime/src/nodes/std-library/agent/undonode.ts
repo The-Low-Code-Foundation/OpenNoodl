@@ -33,6 +33,9 @@ interface UndoInstance extends NodeInstance {
   setError(message: string | undefined): void;
 }
 
+/** NDA-004 §2 — see `setError`. Also the editor's warning key; the bus keys by `code`. */
+const UNDO_ERROR_CODE = 'undo/operation-failed';
+
 const UndoNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.StateHistory.Undo',
   displayNodeName: 'Undo / Redo',
@@ -139,6 +142,11 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
         return this._internal.byReferenceKeys;
       }
     },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      group: 'Events'
+    },
     error: {
       type: 'string',
       displayName: 'Error',
@@ -206,10 +214,29 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
       this.sendSignalOnOutput(signal);
     },
 
+    /**
+     * NDA-004 §2 / FINDINGS B-iv. Two defects, not the one B-iv predicted.
+     *
+     * The finding read all twenty-two `setError`s as copies of one that posted to
+     * `editorConnection.sendWarning`. This one posted **nowhere**, and the node had no
+     * `Failure` signal either — an author could wire the success signal and had nothing at all
+     * to sequence off a failure, only an `Error` string to poll. Both halves of the contract
+     * missed, in a node whose whole job is to be recoverable.
+     *
+     * `undefined` is a *clear*, not a failure: every success path calls `setError(undefined)`
+     * first. So the raise and the signal are guarded on a defined message — without that guard
+     * the new port fires on every successful operation, which is the Object node's defect
+     * inverted.
+     */
     setError: function (this: UndoInstance, message: string | undefined) {
       if (this._internal.error === message) return;
       this._internal.error = message;
       this.flagOutputDirty('error');
+
+      if (message !== undefined) {
+        this.sendSignalOnOutput('failure');
+        this.raiseRuntimeError(UNDO_ERROR_CODE, message);
+      }
     }
   }
 };
