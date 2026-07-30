@@ -960,6 +960,40 @@ for `Try Remove`). Two things are worth recording anyway:
 
 ---
 
+## Two creatable nodes read "Delete Record" — NDA-011 criterion 3, one family over (2026-07-30)
+
+Found by the live-QA pass, not by reading a spec. NDA-011 criterion 3 fixed six deprecated control
+nodes that held the *plain* names their modern replacements supply via `displayName`, and the sting it
+recorded was the picker showing "two entries reading Button and no way to tell them apart". That is
+now true of exactly one other label, and this one is **not** a deprecated/modern pair — both entries
+are current, supported nodes in the same category:
+
+| `name` | label | category | deprecated |
+| --- | --- | --- | --- |
+| `DeleteDbModelProperties` | Delete Record | Data | no |
+| `noodl.byob.DeleteRecord` | Delete Record | Data | no |
+
+Enumerated live from `NodeLibraryData.nodetypes` in the running editor: grouping all 156 registered
+types by their picker label leaves **eleven** duplicated labels, ten of which are a deprecated node
+shadowing its replacement (the six controls plus Object/Component Object/Parent Component
+Object/Variable/Array/Cloud Function). `Delete Record` is the only one with two *creatable* entries.
+
+The rest of the two record families were named to avoid exactly this — `NewDbModelProperties` is
+"Create New Record" against BYOB's "Create Record", `SetDbModelProperties` is "Set Record Properties"
+against "Update Record", `DbCollection2` is "Query Records" against "Query Data". Delete is the one
+pair where the disambiguating word ran out, and nothing in the library checks for the collision, which
+is why it survived the sweep that was looking for it.
+
+**Not fixed here, because the fix is a naming decision and not a mechanical one:** either the
+Parse-wire family or the BYOB family has to give up the plain label, and which one is canonical is the
+question WF-007 left open rather than something to settle inside a QA pass. Recorded for Richard.
+
+Generalisable: **a criterion that says "no two nodes should read the same"** is a property of the
+*registry*, and checking it by reading the nodes one spec named will find only the instances that spec
+knew about. The check costs one `reduce` over `nodetypes` and would have caught all eleven.
+
+---
+
 ## What these passes did *not* cover
 
 - **142 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No

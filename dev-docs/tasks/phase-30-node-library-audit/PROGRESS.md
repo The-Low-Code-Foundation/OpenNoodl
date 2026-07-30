@@ -65,6 +65,61 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-30 (live QA of the parallel batch — NDA-006, NDA-010 §3, NDA-011)** — five claims, one
+  editor launch, **all five pass**, and the pass turned up one defect of its own. Nothing shipped in
+  that batch had been watched running.
+
+  **The Columns wrapper-key fix is verified, and it needed a witness the tests cannot have.** There
+  is no jsdom and no `react-test-renderer` in `noodl-viewer-react`, so B4 pins the precondition and
+  says so. In the editor: a Columns node whose **only authored child** is a Repeater over four
+  records; remove the record at index 1 from the Repeater's source collection; then compare the
+  surviving `.column-item` wrappers and their `<input>`s against **references captured before the
+  removal**. With the fix, `[0,2,3]` survive by strict `===` identity, the `data-qa-was` expandos set
+  on the original elements are still on them, hand-set `input.value`s on rows 2 and 3 are intact, and
+  `document.activeElement` is still row 2's input. With `key={child.key ?? i}` reverted to `key={i}`:
+  three wrappers survive but they are wrappers **0, 1, 2** — positions, not children — the inputs at
+  positions 1 and 2 are DOM elements that did not exist before, both typed values are back to their
+  `startValue`, and the focused input is **no longer in the document**. Exactly the described defect,
+  and the revert flips every one of the five measurements.
+
+  **What the right witness is, generalised.** The obvious instrument — the per-instance
+  `input-<guid>` class that NDA-008's state check used — proves *nothing* here, and would have
+  produced a false pass. That guid is minted in the node's `initialize()`, and a React
+  unmount/remount does not recreate the *node*; the class is identical under the bug. Reconciliation
+  is only observable as **DOM element identity**, so the measurement has to hold references across
+  the mutation. A banked technique is a technique *for a question*; carrying it to a neighbouring
+  question is how you get a green that means nothing.
+
+  **Columns + Repeater as the only child renders**, and the rows get column boxes: container 3 has
+  four `.column-item`s, each holding a distinct `input-<guid>`. **Auto Fit and both breakpoints are
+  right at four container widths**, measured by setting the wrapper's width and letting the node's own
+  `ResizeObserver` fire — 1200 / 900 / 700 / 450 px gives `1 1 1 1` → `1 1 1 1` → `1 1` → `1` for the
+  breakpoint node (medium 800, small 500) and 6 / 4 / 3 / 2 columns for Auto Fit (`minWidth` 200,
+  `marginX` 0). Small is reached before medium, as the row asserts.
+
+  **NDA-010 §3's stack policy holds on the real path.** Two Show Popup nodes wired from one Button's
+  `Click`, both on the default `Replace It`: one popup in the DOM (`POPUP-B`), `popupStack.length`
+  1, and the superseded node sent **exactly one signal — `Dismissed`**. No `Closed`, no `failure`.
+  That is the distinction the task argued for, observed rather than reasoned.
+
+  **NDA-011's picker claim holds**, and checking it properly found a defect the task missed. The
+  picker's search for "Button" returns three entries — Button, Radio Button, Radio Button Group —
+  and all six legacy controls carry `deprecated` while all six `net.noodl.controls.*` do not
+  (`Options`/`Range` never collided: their replacements are "Dropdown" and "Slider"). But grouping
+  **all 156** registered types by picker label — one `reduce` over `NodeLibraryData.nodetypes` —
+  leaves eleven duplicated labels, and one of them has two *creatable* entries:
+  `DeleteDbModelProperties` and `noodl.byob.DeleteRecord` both read **"Delete Record"** in category
+  **Data**. Filed in `FINDINGS.md`; deliberately **not** fixed, because it is a naming decision
+  between the Parse-wire and BYOB families rather than a mechanical one. **A criterion about the
+  registry has to be checked against the registry** — reading the nodes one spec named finds only
+  the instances that spec knew about.
+
+  NDA-007's renderer half was not exercised: a `sprite`/`inline` value renders, but §2/§3 are
+  unbuilt so there is no way to *get* one onto the port without hand-editing, and §1 already carries
+  15 rows plus a narrowing the compiler enforces. It belongs to the §2/§3 launch, not this one.
+
+  No code changed. Fixture and technique in `NEXT-SESSION.md`.
+
 - **2026-07-30 (NDA-004 §2 — criterion 4's last coding items: Array Filter, item 7, Show Popup)** —
   `928531ce`, `e442c9a1`, `27184f12`, plus `674aee0f`. **Criterion 4 is now met for every node
   that is a coding task**; the only ⏳ left in the register is item 9, the deprecated five, which
