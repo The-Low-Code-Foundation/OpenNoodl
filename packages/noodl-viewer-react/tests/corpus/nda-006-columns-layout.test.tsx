@@ -267,6 +267,35 @@ describe('NDA-006 §4: masonry', () => {
   const itemOrder = (markup: string) => (markup.match(/data-item="([^"]+)"/g) || []).map((m) => m.slice(11, -1));
   const widths = (markup: string) => (markup.match(/width:([^;"]+)/g) || []).map((m) => m.slice(6).trim());
 
+  /** The `style` attribute of the outer `.columns-container`, as a browser would receive it. */
+  const containerStyle = (markup: string) => {
+    const match = markup.match(/<div class="columns-container[^"]*" style="([^"]*)"/);
+
+    if (!match) throw new Error('no .columns-container in the markup');
+
+    return match[1];
+  };
+
+  /**
+   * Every block opened in the declaration list is closed.
+   *
+   * CSS's error handling is why this has to be checked rather than assumed: a parser reading a
+   * *value* in isolation closes an unterminated block at end-of-input, so the client path repairs
+   * exactly the mistake the server path is destroyed by.
+   */
+  const balanced = (style: string) => {
+    let depth = 0;
+
+    for (const char of style) {
+      if (char === '(') depth += 1;
+      else if (char === ')') depth -= 1;
+
+      if (depth < 0) return false;
+    }
+
+    return depth === 0;
+  };
+
   // Item `i` is in column `i % columnAmount`, and its `top` is the running total of the heights
   // already in that column. Nothing is reordered and nothing is balanced.
   test('D1: items round-robin across the columns, and stack within one', () => {
@@ -362,6 +391,43 @@ describe('NDA-006 §4: masonry', () => {
 
     expect(columnAmount).toBe(4);
     expect(computeMasonryOffsets([10, 10, 10, 10, 10], columnAmount).tops).toEqual([0, 0, 0, 0, 10]);
+  });
+
+  // Found by criterion 5's deployed leg, which is the only place it is visible. The container's
+  // `width` was `calc(100% + (${marginX}px)` — one parenthesis short. On the client React sets
+  // each property through the CSSOM, where a value is parsed on its own and CSS's end-of-input
+  // rule closes the unterminated block, so the width was correct and nothing looked wrong. A
+  // server render serialises the whole style object into one attribute, and there the unclosed
+  // block swallows the `;` and everything after it — `width` *and* `box-sizing` were dropped, the
+  // container fell back to shrink-to-fit as a flex item, and every percentage-width child
+  // computed to **zero**. Measured on a real Deploy To Folder → SSG build: every item 0px wide.
+  //
+  // The generalisable assertion is the balance check, not the literal: an inline style is a
+  // *declaration list* when it is serialised, so one unclosed block silently deletes its tail.
+  // Anything after `width` in the object is what gets lost, and that ordering is not stable.
+  test('D11: the container style attribute parses as a whole declaration list', () => {
+    const style = containerStyle(renderColumns(['a'].map(item), { marginX: '16px' }));
+
+    expect(balanced(style)).toBe(true);
+    // `box-sizing` follows `width` in the style object, so it is the declaration the unclosed
+    // block ate. Its presence is the cheap witness that the tail survived.
+    expect(style).toContain('box-sizing:border-box');
+  });
+
+  test('D12: the gutter width is the authored margin, and it is a value CSS accepts', () => {
+    expect(containerStyle(renderColumns(['a'].map(item), { marginX: '16px' }))).toContain('width:calc(100% + 16px)');
+    expect(containerStyle(renderColumns(['a'].map(item), { marginX: '0px' }))).toContain('width:calc(100% + 0px)');
+  });
+
+  // The reason D11/D12 are worth having at all: masonry's SSG output is supposed to be the
+  // unmeasured *rows* layout (D7), and rows are only visible if the container has a width for the
+  // percentages to resolve against. A collapsed container makes D7's markup assertions pass while
+  // the page paints nothing — the same "green that means nothing" shape as the rest of the phase.
+  test('D13: an unmeasured masonry container is sized, not shrink-to-fit', () => {
+    const style = containerStyle(renderColumns(['a', 'b'].map(item), { packing: 'masonry', marginX: '0px' }));
+
+    expect(balanced(style)).toBe(true);
+    expect(style).toContain('width:calc(100%');
   });
 
   // A `ForEachComponent` renders `null` and is not a layout participant (B1–B3). It must not take

@@ -426,7 +426,19 @@ export function Columns(props: ColumnsProps) {
         alignItems: masonry ? 'flex-start' : 'stretch',
         justifyContent: props.justifyContent,
         flexDirection: props.direction,
-        width: `calc(100% + (${parseFloat(props.marginX)}px)`,
+        // The negative-margin gutter's other half: the container starts `marginX` to the left,
+        // so it has to be `marginX` wider for its right edge to land back on the parent's.
+        //
+        // The parenthesis here used to be unbalanced (`calc(100% + (0px)`), and it survived
+        // because the two paths that consume this style disagree about what that means. React
+        // sets each property through the CSSOM on the client, where the value is parsed in
+        // isolation and CSS's end-of-input rule closes the block for you — so `width` was fine
+        // and nothing upstream ever looked wrong. A **server** render serialises the same object
+        // into one `style` attribute, and there the unclosed block swallows the `;` and every
+        // declaration after it: `width` and `box-sizing` both vanished, the container fell back
+        // to shrink-to-fit, and every percentage-width child computed to zero. The whole of an
+        // SSR/SSG page's Columns content was a zero-width strip until hydration replaced it.
+        width: `calc(100% + ${parseFloat(props.marginX)}px)`,
         boxSizing: 'border-box',
         // Every item is out of flow once packed, so the container has no content to size itself
         // from. `position: relative` is what the items' percentage `left` resolves against.
