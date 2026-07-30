@@ -65,6 +65,51 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-30 (NDA-004 §2 — criterion 4's last coding items: Array Filter, item 7, Show Popup)** —
+  `928531ce`, `e442c9a1`, `27184f12`, plus `674aee0f`. **Criterion 4 is now met for every node
+  that is a coding task**; the only ⏳ left in the register is item 9, the deprecated five, which
+  is a scope decision for Richard. Runtime jest 1,119, viewer jest 349.
+
+  **Array Filter** — the trigger flag the register asked me to invent was *already in the source*,
+  inverted: every value-arrival path is guarded by `isInputConnected('filter') === false`, so all
+  that was missing was a record of which kind of run the deferred callback is running. And the
+  triage predicted one failure where there are two: `applyFilter` builds a `RegExp` from the
+  author's `Value` port **per item**, so a malformed pattern throws out of a scheduled callback
+  into the blanket catch. Clear Array's shape, reached from a typo in a text field. The two are
+  gated differently on purpose — "no array yet" is a state the graph passes through, a pattern
+  that cannot compile never is.
+
+  **Item 7** — five nodes, four answers. **Set Variable** is the phase's worst shape in one of its
+  simplest nodes: `Model.set(undefined, value)` neither throws nor no-ops, it writes a key
+  literally named `undefined` on the shared variables record and fires `Done`. Third confirmed
+  false-success instance, reached by not filling in a field. **Repeater Item** was the **sixth**
+  hand-rolled `_forEachModel` read — NDA-015 converged five and recorded "one implementation now",
+  and the one it missed is the node *named after the mechanism*. **Filter Records** is Array
+  Filter's twin, read rather than assumed. **Stream Buffer** ✅ with a deliberate non-fix: an empty
+  `Flush` is a legitimate empty result. **State History** 🔵, in a family with two ✅ siblings.
+
+  **Show Popup** — sequenced after NDA-010 §3 as the register asked. Every outcome it had was an
+  outcome of a popup that *opened*, so "never opened" and "not finished with yet" were the same
+  observable. And the second failure is a crash: `showPopup` is `async`, `getComponentModel`
+  throws for an unregistered name, and the node dropped the promise — an **unhandled rejection**,
+  which is not even caught by `nodecontext.ts`'s blanket catch. Fixed from the node so as not to
+  touch `nodecontext.ts`, which another workstream held this session.
+
+  **The `hasOutput` top-up found a present defect, not a future one.** Retro-fitting those
+  assertions to the batch-1/2 files was meant to protect against regression; it found that
+  **Send Event has fired a `Failure` with no `Error` port since batch 1** — a raised code and
+  nothing an author can read on the canvas, which the contract calls out by name. The rows
+  written at the time asserted the signal and the code, so two batches went by.
+
+  **Three discrimination checks failed and were fixed, all the same way.** A control that was
+  supposed to prove "this does not fire on the happy path" stayed green with the guard removed,
+  three times: `setError`'s early-return dedup made the agent nodes' guard unreachable from a
+  fresh node; Array Filter's boot control set no parameters, so the scheduler was never reached;
+  and Filter Records' two controls passed **vacuously** because `signalsFor` on a node that failed
+  to construct returns `[]`. The generalisation is in FINDINGS: a "does this stay silent" control
+  has to drive the state the method is actually called in, and has to be able to tell *silent*
+  from *absent*.
+
 - **2026-07-30 (NDA-004 §2 — the 21 remaining `setError` helpers)** — FINDINGS B-iv **closed**, in
   two commits: `2a448a45` (the user/auth eleven) and `1579121f` (the last ten). 66 new corpus rows
   plus assertions added to four existing ones. Runtime jest 1,109, viewer jest 298.

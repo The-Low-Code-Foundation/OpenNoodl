@@ -436,6 +436,72 @@ the call a typo and a not-yet-mounted stack are indistinguishable, so there is n
 raise. That is the Component Stack's own 🔵 reasoning one level out, and it is the boundary of what
 this class of fix can reach.
 
+### B-ix — the false-success shape is now three registries deep (2026-07-30)
+
+`Set Variable` with no `Name` called `Model.set(undefined, value)`. That neither throws nor
+no-ops: it writes `data[undefined]` on the shared `--ndl--global-variables` record, notifies a
+change whose `name` is `undefined` so no Variable node can hear it, and fires **`Done`**.
+
+That is the third confirmed instance, in the third registry:
+
+| Node | Call | What it produced |
+|---|---|---|
+| Set Parent Component Object Properties | `Model.get(undefined)` | a fresh anonymous record per store |
+| Insert / Remove / Clear Array | `Collection.get(undefined)` | a fresh anonymous collection per call |
+| **Set Variable** | `Model.set(undefined, value)` | a key named `undefined` on the record every Variable node shares |
+
+The first two were *create-on-read* lookups; this one is a **write with an absent key**, which is
+a different mechanism reaching the same place. So the banked rule generalises past its original
+wording: it is not only "any create-on-read lookup fed by a value that can be absent" — it is
+**any keyed operation whose key can be absent, where the absent case is representable**. JavaScript
+will happily make `undefined` a property name, and every node in this class then reports success.
+
+The cheapest check for the class: ask what the *observable difference* is between the missing-input
+case and the working case. If the answer is "none, from inside the node", the node cannot be
+trusted to report and the guard has to be at the call site.
+
+### B-x — three controls that proved nothing, and what they had in common (2026-07-30)
+
+The phase's fourth lesson is "show your rows discriminate". Three separate controls written this
+session were shown, by that check, to pin **nothing**, and the shape is worth naming because a
+green control is more dangerous than a missing one.
+
+1. **An early-return dedup made the guard unreachable.** `statesnapshotnode`/`undonode` open with
+   `if (this._internal.error === message) return;`. A control asserting "a successful save does
+   not signal `Failure`" therefore never reached the new `message !== undefined` guard on a fresh
+   node, and stayed green with the guard removed. The reachable path is a clear that follows a
+   **real** error — the moment the node starts working again.
+2. **The scheduler was never reached.** Array Filter's boot-path control set no parameters, so
+   nothing ever called `scheduleFilter` and "raises nothing at boot" was true for the wrong
+   reason. It now drives two real boot paths: `enabled` as a *parameter*, whose setter runs at
+   construction, and an upstream `null` arriving on `Items` — what a Query Records node sends
+   before its first fetch.
+3. **The node did not exist.** Filter Records' two controls asserted `signalsFor('records')` was
+   empty — and `signalsFor` on an unknown id returns `[]`, so a node that failed to construct
+   (its `initialize` reaches `CloudStore.instance`) made them pass vacuously. The graph builder
+   now asserts the node exists before any row runs.
+
+All three are the same failure: **a control asserting an absence, in a state where the code under
+test never runs.** The rule that catches all three is to make the control prove the code *did* run
+— reach the state the method is actually called in, and assert something positive alongside the
+absence.
+
+This is harness fact 1 generalised. That one said `signalsFor` cannot tell "the port fired" from
+"the port does not exist"; these say a silence-assertion cannot tell "it stayed quiet" from "it
+never ran".
+
+### B-xi — a `hasOutput` top-up found a present defect, not a future one (2026-07-30)
+
+The batch-1 and batch-2 §2 corpus files asserted on `signalsFor` and the raised code, never on
+`hasOutput`. Retro-fitting those assertions was scoped as regression insurance. It found that
+**Send Event has fired a `Failure` signal with no `Error` port since batch 1** — a raised code and
+nothing an author can read on the canvas, which the Failure Contract names by itself: *"a bare
+signal reproduces 'no information' one level up"*.
+
+Worth carrying: **a fix reported as done is a hypothesis too.** Batch 1 recorded Send Event as ✅
+because the register's `Fail?` column and the corpus rows both agreed, and both were looking at
+the signal. The contract has two clauses and only one of them was checked.
+
 ## Defect class C — 95% of ports are undocumented
 
 2,508 of 2,650 ports carry no `description`. 112 of 155 nodes have not a single documented port.
