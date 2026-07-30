@@ -19,6 +19,7 @@ The corpus spans two packages, because the nodes do.
 | F1 | `packages/noodl-runtime/test/corpus/nda-001-failure-reporting.test.ts` |
 | NDA-004 §2 batch 1 — the Object/Record family (6 rows, not NDA-001) | `packages/noodl-runtime/test/corpus/nda-004-do-with-no-object.test.ts` |
 | NDA-004 §2 — Expression (8 rows, not NDA-001) | `packages/noodl-runtime/test/corpus/nda-004-expression-failure.test.ts` |
+| NDA-004 §2 — the Record family's failure *channel* (6 rows, not NDA-001) | `packages/noodl-runtime/test/corpus/nda-004-record-failure-channel.test.ts` |
 | Binding §(c) + laziness on `Component.RepeaterObject` (3 rows, not NDA-001) | `packages/noodl-runtime/test/corpus/nda-015-function-repeater-item.test.ts` |
 | R8, R9 | `packages/noodl-viewer-react/tests/corpus/nda-001-states-reactivity.test.ts` |
 | E7 | `packages/noodl-viewer-react/tests/corpus/nda-001-array-node-empty.test.ts` |

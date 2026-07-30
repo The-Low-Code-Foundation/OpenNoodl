@@ -196,6 +196,34 @@ Worth carrying forward: **when auditing a silent failure, ask what value it fall
 fallback that is indistinguishable from a legitimate result is a strictly worse defect than a
 fallback that is obviously wrong, and the register's `Fail?` column cannot see the difference.
 
+### B-iv — `setError` is 22 helpers, not one (2026-07-30)
+
+The standing note said *"`dbmodelcrudbase.setError` still uses `sendWarning` as its channel… fixing
+it is one helper"*. It is **22 separate `setError` definitions across 22 files**, each with its own
+copy of the same `sendWarning` call, reached from ~80 call sites:
+
+| Area | Files |
+|---|---|
+| Record CRUD (`dbmodelcrudbase`, `dbmodelnode2`, `dbcollectionnode2`, `signfileurl`, `byob-subscribe`) | 5 |
+| User / auth (`login`, `logout`, `signup`, `signinwith`, `resetpassword`, `requestpasswordreset`, `requestmagiclink`, `verifyemail`, `sendemailverification`, `user`, `setuserproperties`) | 11 |
+| Agent (`statesnapshotnode`, `undonode`) | 2 |
+| Other (`cloudfunction2`, `uploadfile`) | 2 |
+| Deprecated (`dbmodelnode`, `dbcollectionnode`) | 2 |
+
+This is the same shape as F-i, one layer down: a helper that looks shared, copied. The class-B
+count in this document therefore *understates* the problem — these nodes all have `failure`/`error`
+ports, so the register's `Fail?` column passes them, and every one of them still sends its
+*diagnosis* to an editor-only channel.
+
+**`dbmodelcrudbase` is done** (2026-07-30) — it raises `record/storage-op-failed` on the bus, and
+the editor keeps exactly what it had because `createEditorWarningSubscriber` forwards to
+`sendWarning` with the identical `{ showGlobally: true, message }` payload. The other 21 are open.
+
+The trap that makes each one two changes rather than one: **the bus's editor subscriber keys its
+warning by the raised `code`**, not by a key the call site picks. Any `clearWarning` still naming
+the old hand-written key clears nothing, so the node accumulates a warning it can never shed. Raise
+and clear have to move together, every time.
+
 The node passes the "does a `Failure` port fire on the happy path" test for a specific reason worth
 recording, because it is the opposite of the Object node's: `registerInputIfNeeded` seeds every
 discovered input to `0`, not `undefined`. There is no window in which the ports exist but hold

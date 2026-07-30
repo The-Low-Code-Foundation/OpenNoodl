@@ -42,6 +42,18 @@ const CloudStore = CloudStoreImport as {
  * the value object at the bottom.
  */
 
+/**
+ * The failure code every Record CRUD node raises — NDA-004 §2.
+ *
+ * One code for the family rather than one per node type, because `setError` is the family's
+ * single failure funnel and the message is what distinguishes the cases. `nodeType` rides on the
+ * event, so a subscriber that wants per-node granularity still has it.
+ *
+ * It is also the editor's warning key, since the bus's editor subscriber keys by `code` — see
+ * `clearWarnings`, which must name this same constant or the warning can never be cleared.
+ */
+const STORAGE_OP_ERROR_CODE = 'record/storage-op-failed';
+
 /** One class in the project's `dbCollections` metadata. */
 interface DbCollectionMeta {
   name: string;
@@ -102,21 +114,43 @@ function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: b
 
       return true;
     },
+    /**
+     * NDA-004 §2 — the Record family's failures reach every runtime now, not just the editor.
+     *
+     * The graph half of this was always right: `error` and `failure` are real ports and fire
+     * wherever the node runs. The *diagnosis* was not. It went straight to
+     * `editorConnection.sendWarning`, which is the exact pattern the Failure Contract names as
+     * the defect — a Record node that could not store said so in the editor and vanished into
+     * silence the moment the app shipped, invisible to `On App Error` and to a deployed console.
+     *
+     * Raising on the bus instead reaches all four contexts, and the editor keeps what it had:
+     * `createEditorWarningSubscriber` forwards to `sendWarning` with `{ showGlobally: true,
+     * message }` — the identical payload this used to build by hand.
+     */
     setError: function (this: DbCrudBaseInstance, err: string) {
       this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
 
-      if (this.context.editorConnection) {
-        this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'storage-op-warning', {
-          message: err,
-          showGlobally: true
-        });
-      }
+      this.raiseRuntimeError(STORAGE_OP_ERROR_CODE, err);
     },
+    /**
+     * The clear has to move with the raise, and that is the whole reason these two are one commit.
+     *
+     * The bus's editor subscriber keys its warning by the raised **`code`**, not by a key the
+     * call site chooses. So the moment `setError` raises, the warning the editor holds is filed
+     * under `STORAGE_OP_ERROR_CODE`, and a `clearWarning` still naming `'storage-op-warning'`
+     * would clear nothing — every Record node would accumulate a warning it could never shed.
+     *
+     * The legacy key is cleared as well, and deliberately: an editor session that was already
+     * open when this landed can be holding a warning filed under the old name, and nothing else
+     * will ever come along to remove it.
+     */
     clearWarnings(this: DbCrudBaseInstance) {
       if (this.context.editorConnection) {
-        this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'storage-op-warning');
+        const component = this.nodeScope.componentOwner.name;
+        this.context.editorConnection.clearWarning(component, this.id, STORAGE_OP_ERROR_CODE);
+        this.context.editorConnection.clearWarning(component, this.id, 'storage-op-warning');
       }
     }
   });

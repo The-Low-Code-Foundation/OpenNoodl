@@ -134,11 +134,35 @@ this table shows a category producing nothing new.
   safety of the port depends on it. 8 rows, discriminating (silencing the report reddens 4, all
   three pinned controls stay green). Runtime jest **1,089** (was 1,081).
 
+  **`dbmodelcrudbase.setError` moved to the bus — and "one helper" was 22.** The standing note
+  scoped this as a single helper. It is **22 separate `setError` definitions across 22 files**,
+  each with its own copy of the same `sendWarning` call, reached from ~80 call sites: 5 in Record
+  CRUD, 11 in user/auth, 2 agent, 2 other, 2 deprecated. Same shape as F-i one layer down — a
+  helper that looks shared, copied.
+
+  This also means **the class-B count understates the problem**: all 22 of those nodes *have*
+  `failure`/`error` ports, so the register's `Fail?` column passes them, while every one still
+  sends its *diagnosis* to a channel that does not exist outside the editor.
+
+  `dbmodelcrudbase` is done — it raises `record/storage-op-failed`, and the editor keeps exactly
+  what it had because the bus's subscriber forwards to `sendWarning` with the identical
+  `{ showGlobally: true, message }` payload it used to build by hand. The other **21 are open and
+  now enumerated in FINDINGS B-iv.** The trap that makes each one two changes: the bus's editor
+  subscriber keys its warning by the raised **`code`**, so any `clearWarning` still naming the old
+  hand-written key clears nothing and the node accumulates a warning it can never shed. 6 rows,
+  discriminating — reverting to `sendWarning` reddens the 3 bus rows and leaves the 3
+  "nothing regressed" rows green, which is the split that matters for criterion 3.
+
+  One of those 6 rows also cost a wrong first attempt worth recording: "give it a class name and
+  expect silence" is **not** a control, because with a class name the node gets past the guard
+  under test and into the *next* `setError` — which is the first §2 batch's fix working. The
+  fixture was too thin, not the code. It discriminates on the message instead.
+
   **Owed from this batch:** catalog regeneration (still blocked — the tree still carries another
   session's uncommitted node-source edits), now also for `Set Parent Component Object Properties`'
   `targetComponent`/`Failure`/`Error`, `Parent Component Object`'s `Failure`/`Error`, Video's
   `Playback Failure`/`Error`, and Expression's `Failure`/`Error`. Live QA of all four nodes in a
-  running editor.
+  running editor. The 21 remaining `setError` helpers.
 
 - **2026-07-29 (live QA of three tasks, NDA-004 §3's last reachable mute node, and §2's first
   batch)** — the biggest un-run instrument was run, and it found nothing wrong; the code work that
