@@ -27,6 +27,10 @@
 
 /* eslint-env jest */
 
+// The fake `EventEmitter` a module's `setup` subscribes through. Three suites each grew
+// their own byte-identical copy of this; it now lives in `setup-harness.ts` beside the
+// rest of the same apparatus.
+import { emitter } from './setup-harness';
 import ShowPopupModule from '../../../noodl-viewer-react/src/nodes/navigation/showpopup';
 
 interface RecordedPort {
@@ -38,17 +42,6 @@ interface RecordedPort {
 }
 
 /** The minimum of `EventEmitter` that `setup` reaches for. */
-function emitter() {
-  const listeners: Record<string, Array<(arg?: unknown) => void>> = {};
-  return {
-    on(event: string, cb: (arg?: unknown) => void) {
-      (listeners[event] = listeners[event] || []).push(cb);
-    },
-    emit(event: string, arg?: unknown) {
-      (listeners[event] || []).forEach((cb) => cb(arg));
-    }
-  };
-}
 
 /** A popup component with the given input ports, output ports and Close Popup nodes. */
 function aPopupComponent(

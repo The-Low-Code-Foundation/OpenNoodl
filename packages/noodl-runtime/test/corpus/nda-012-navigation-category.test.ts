@@ -49,6 +49,10 @@
 
 import type { NodeInstance, NodeModule } from '@noodl/types';
 
+// The fake `EventEmitter` a module's `setup` subscribes through. Three suites each grew
+// their own byte-identical copy of this; it now lives in `setup-harness.ts` beside the
+// rest of the same apparatus.
+import { emitter } from './setup-harness';
 import { createCorpusGraph, type CorpusGraph } from './graph-harness';
 
 import ClosePopupModule from '../../../noodl-viewer-react/src/nodes/navigation/closepopup';
@@ -65,17 +69,6 @@ interface RecordedPort {
 }
 
 /** The minimum of `EventEmitter` that a module's `setup` reaches for. */
-function emitter() {
-  const listeners: Record<string, Array<(arg?: unknown) => void>> = {};
-  return {
-    on(event: string, cb: (arg?: unknown) => void) {
-      (listeners[event] = listeners[event] || []).push(cb);
-    },
-    emit(event: string, arg?: unknown) {
-      (listeners[event] || []).forEach((cb) => cb(arg));
-    }
-  };
-}
 
 type SetupModule = { setup(context: unknown, graphModel: unknown): void };
 

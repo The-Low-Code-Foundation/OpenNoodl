@@ -19,6 +19,10 @@
 
 /* eslint-env jest */
 
+// The fake `EventEmitter` a module's `setup` subscribes through. Three suites each grew
+// their own byte-identical copy of this; it now lives in `setup-harness.ts` beside the
+// rest of the same apparatus.
+import { emitter } from './setup-harness';
 import { checkTemplateContract } from '../../src/nodes/std-library/runtasks-template-contract';
 
 import RunTasksNodeModule = require('../../src/nodes/std-library/runtasks');
@@ -26,18 +30,6 @@ import RunTasksNodeModule = require('../../src/nodes/std-library/runtasks');
 type Listener = (data?: unknown) => void;
 
 /** The smallest emitter with the two methods these models are used through. */
-function emitter() {
-  const listeners: Record<string, Listener[]> = {};
-  return {
-    listeners,
-    on(name: string, callback: Listener) {
-      (listeners[name] || (listeners[name] = [])).push(callback);
-    },
-    emit(name: string, data?: unknown) {
-      for (const callback of listeners[name] || []) callback(data);
-    }
-  };
-}
 
 function aComponent(name: string, inputs: string[], outputs: string[]) {
   const base = emitter();

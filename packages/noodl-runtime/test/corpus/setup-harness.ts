@@ -28,11 +28,18 @@
 export interface FakeEmitter {
   on(event: string, cb: (arg?: never) => void): void;
   emit(event: string, arg?: unknown): void;
+  /**
+   * Exposed so a row can assert on what a `setup` subscribed to — including the negative,
+   * `Object.keys(graphModel.listeners)` being empty, which is how NDA-009 §1 pins that a
+   * module gated on `isRunningLocally` wires nothing at all in a deployed build.
+   */
+  listeners: Record<string, Array<(arg?: never) => void>>;
 }
 
 export function emitter(): FakeEmitter {
   const listeners: Record<string, Array<(arg?: never) => void>> = {};
   return {
+    listeners,
     on(event, cb) {
       (listeners[event] = listeners[event] || []).push(cb);
     },
