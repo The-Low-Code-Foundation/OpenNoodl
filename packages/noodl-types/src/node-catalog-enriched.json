@@ -7480,7 +7480,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when an event arrives, but before the payload outputs have been updated — read them on the next frame"
+          "description": "Fires when an event arrives on Channel, once the payload outputs carry that event's values"
         }
       ],
       "dynamicPorts": {
@@ -17168,8 +17168,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0,
-          "description": "Value of Input Value that maps to Output Maximum; must differ from Input Minimum or the node reports a constant"
+          "default": 1,
+          "description": "Value of Input Value that maps to Output Maximum; set equal to Input Minimum and the result is pinned at Output Minimum for every input"
         },
         {
           "name": "maxOutputValue",
@@ -17193,7 +17193,7 @@
           },
           "isSignal": false,
           "default": 0,
-          "description": "Value of Input Value that maps to Output Minimum; leaving this equal to Input Maximum pins the result at Output Minimum"
+          "description": "Value of Input Value that maps to Output Minimum"
         },
         {
           "name": "minOutputValue",

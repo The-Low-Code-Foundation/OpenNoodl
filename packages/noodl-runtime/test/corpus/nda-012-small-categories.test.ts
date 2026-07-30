@@ -5,18 +5,29 @@
  * Everything else in those worksheets is answerable from the source. These two are not, and the
  * phase's rule is that an uncited ⚠️ is a suspicion.
  *
- * ## 1. `Receive Event` announces before its payload lands
+ * ## 1. `Receive Event` announces before its payload lands — **FIXED 2026-07-30**
  *
- * `handleEvent` sends `Received` and *then* flags the payload outputs dirty
- * (`eventreceiver.ts:106` before `:108-113`). So a node that acts on the pulse — a Function's `Run`,
- * a Set Object Properties' `Do` — reads the payload from the **previous** event, or nothing at all on
- * the first one. This is the exact inverse of what `onapperror.ts:142-148` does deliberately, and of
- * what NDA-004 §3 established on `Response`; the ordering rule already exists, this node predates it.
+ * `handleEvent` used to send `Received` and *then* flag the payload outputs dirty, so a node acting
+ * on the pulse — a Function's `Run`, a Set Object Properties' `Do` — read the payload from the
+ * **previous** event, or nothing at all on the first one. That was the exact inverse of what
+ * `onapperror.ts:142-148` does deliberately and of what NDA-004 §3 established on `Response`; the
+ * ordering rule already existed and this node predated it.
  *
- * It is the second instance in one batch — `Signal To Index` has the same shape
- * (`signaltoindex.ts:64` before `:71`, in the Logic worksheet) — which is what makes it a class
- * rather than an oversight. **Carrying a payload alongside a signal is the whole purpose of both
- * nodes**, so in each case the defect defeats the reason the node exists.
+ * The two rows below are kept as the regression guard, with the assertion inverted: what they now
+ * pin is that the values are queued *ahead* of the pulse. Restore the old statement order and the
+ * second row reddens on `[undefined]` while the control stays green.
+ *
+ * ⚠️ **`Signal To Index` still has the shape** (`signaltoindex.ts:64` before `:71`, Logic
+ * worksheet) and is deliberately not fixed here — a different category's worksheet, and it deserves
+ * its own discrimination check rather than riding along on this one. Two instances is what made it a
+ * class rather than an oversight; fixing one of them does not retire the class.
+ *
+ * ## 3. `Number Remapper`'s default configuration was a constant
+ *
+ * Both input endpoints defaulted to `0`, which is the degenerate branch, so `Remapped Value` was
+ * `Output Minimum` for every input — in the state every freshly dropped node was in. **FIXED
+ * 2026-07-30** by giving `initialize` an input maximum of 1; see the rows at the end of this file
+ * for why the fix could not live on the port's declared `default`.
  *
  * ## 2. A value port whose setter emits announces at page load
  *
@@ -40,6 +51,7 @@ import { createCorpusGraph, type CorpusGraph } from './graph-harness';
 import CounterNode = require('../../src/nodes/std-library/counter');
 
 import EventReceiverNode from '../../../noodl-viewer-react/src/nodes/std-library/eventreceiver';
+import NumberRemapperNode from '../../../noodl-viewer-react/src/nodes/std-library/numberremapper';
 import EventSenderNode from '../../../noodl-viewer-react/src/nodes/std-library/eventsender';
 
 interface TriggerInstance extends NodeInstance {
@@ -111,7 +123,7 @@ const WatcherModule: NodeModule = {
   }
 };
 
-describe('NDA-012 Events — Receive Event fires before its payload is updated', () => {
+describe('NDA-012 Events — Receive Event announces its payload, not the previous one', () => {
   async function eventGraph(): Promise<CorpusGraph> {
     return createCorpusGraph({
       modules: [
@@ -157,20 +169,23 @@ describe('NDA-012 Events — Receive Event fires before its payload is updated',
   });
 
   /**
-   * The finding. On the first event the watcher sees `undefined` where the sender said `7`, because
-   * the payload output has not been flagged dirty yet when `Received` propagates.
+   * ~~The finding.~~ **FIXED 2026-07-30** — `handleEvent` flags the payload outputs before it
+   * pulses, so a node acting on `Received` reads *this* event's data. The row is inverted rather
+   * than deleted: it is the regression guard, and the thing it guards is one statement's position.
+   *
+   * Restore the old order and this row reddens on `[undefined]` while the control above stays
+   * green, which is what makes it a test of the ordering rather than of the wiring.
    */
-  test('the payload is not yet readable when Received fires (eventreceiver.ts:106)', async () => {
+  test('the payload is readable the instant Received fires (eventreceiver.ts handleEvent)', async () => {
     const graph = await eventGraph();
     await graph.settle(3);
 
     graph.node<TriggerInstance>('trigger').go();
     await graph.settle(6);
 
-    // The event carried 7, and the receiver holds 7 by the end of the frame — but the node that
-    // acted on the pulse read the port before any of that happened.
     expect(graph.node('recv').getOutput('amount').value).toBe(7);
-    expect(graph.node<WatcherInstance>('watch').seen).toEqual([undefined]);
+    // The node that acted on the pulse saw the value the pulse was announcing.
+    expect(graph.node<WatcherInstance>('watch').seen).toEqual([7]);
   });
 });
 
@@ -199,5 +214,60 @@ describe('NDA-012 Math — Counter announces a count change at page load', () =>
     const graph = await counterGraph({ startValue: 5 });
 
     expect(graph.signalsFor('c')).toEqual(['countChanged']);
+  });
+});
+
+/**
+ * NDA-012 (Math) — Number Remapper's default configuration is no longer a constant.
+ *
+ * Both input endpoints defaulted to 0, which is `_calculateNewOutputValue`'s degenerate branch:
+ * `normalizedValue = 0`, so `Remapped Value` was `Output Minimum` for every input. Nothing warned,
+ * and it was the state every freshly dropped node was in.
+ *
+ * ⚠️ These rows drive the node with **no parameters at all**, which is the only configuration the
+ * defect lived in — and it is also why the fix had to be in `initialize` rather than on the port's
+ * `default`. A declared default does not run its setter at construction, so a row that set the
+ * parameters would exercise the setters and pass either way.
+ */
+describe('NDA-012 Math — Number Remapper', () => {
+  async function remapperGraph(parameters: Record<string, unknown>): Promise<CorpusGraph> {
+    const graph = await createCorpusGraph({
+      modules: [NumberRemapperNode as unknown as NodeModule],
+      rootComponent: '/root',
+      data: {
+        components: [
+          { name: '/root', nodes: [{ id: 'r', type: 'Number Remapper', parameters }], connections: [] }
+        ]
+      } as never
+    });
+    await graph.settle(4);
+    return graph;
+  }
+
+  const remapped = (graph: CorpusGraph) => graph.node('r').getOutput('remappedValue').value;
+
+  test('an unconfigured node passes its input through rather than reporting a constant', async () => {
+    const graph = await remapperGraph({});
+
+    graph.node('r').setInputValue('inputValue', 0.25);
+    await graph.settle(2);
+    expect(remapped(graph)).toBeCloseTo(0.25);
+
+    graph.node('r').setInputValue('inputValue', 0.75);
+    await graph.settle(2);
+    expect(remapped(graph)).toBeCloseTo(0.75);
+  });
+
+  /**
+   * The control, and the reason the row above is about the *default* and not about the maths: an
+   * author who deliberately collapses the input range still gets the documented constant. Without
+   * this, "returns Output Minimum for everything" would read as a bug rather than as a configuration.
+   */
+  test('an explicitly collapsed input range still pins the result at Output Minimum', async () => {
+    const graph = await remapperGraph({ minInputValue: 5, maxInputValue: 5, minOutputValue: 3 });
+
+    graph.node('r').setInputValue('inputValue', 99);
+    await graph.settle(2);
+    expect(remapped(graph)).toBe(3);
   });
 });

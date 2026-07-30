@@ -61,7 +61,7 @@ Source: [`numberremapper.ts`](../../../../packages/noodl-viewer-react/src/nodes/
 | E1 | ✅ no dead-end types | ✅ | |
 | F1 |  | n/a | |
 | H1 | declares `safe` | ⚠️ | `browser` only, and the file contains nothing but arithmetic |
-| — |  | ⚠️⚠️ | **An unconfigured node reports a plausible constant.** `Input Minimum` and `Input Maximum` both default to `0`; equal endpoints take the `normalizedValue = 0` branch (`:127-128`), so `Remapped Value` is `Output Minimum` for every input forever. Nothing warns. This is the *Expression-returns-`0`* shape from NDA-004 §2 — the failure value is indistinguishable from a legitimate answer — and it is the **default** configuration, so every freshly dropped Number Remapper is in it |
+| — |  | ✅ | ~~**An unconfigured node reports a plausible constant.**~~ **FIXED 2026-07-30** — both input endpoints defaulted to `0`, the degenerate branch (`:127-128`), so `Remapped Value` was `Output Minimum` for every input in the state every freshly dropped node was in. `initialize` now sets an input maximum of 1, so a fresh node passes its input through 0..1. **Reporting it would have been the wrong repair** — an unconfigured node is degenerate for the whole boot path, so a `Failure` would fire on a graph the author is still building. ⚠️ The fix had to be in `initialize`, not the port's `default`: a declared default does not run its setter at construction, and reverting only `initialize` reddens the row |
 
 **Verdict:** ⚠️ 3 defects — the degenerate default is the worst, because it is what the node ships in
 

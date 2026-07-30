@@ -99,7 +99,7 @@ The smell columns are *machine-derivable*, not verdicts.
 | 86 | Variable _(deprecated)_ | Data | 4/5 | ⚠️ |  | 0% | safe | browser |  |
 | 87 | Variable | Data | 3/4 | ⚠️ |  | 0% | safe | browser |  |
 | 88 | WebSocket | Data | 18/18 |  |  | 31% | client-only | browser, cloud |  |
-| 89 | Receive Event | Events | 3/1 |  |  | 100% | safe | browser |  |
+| 89 | Receive Event | Events | 3/1 |  |  | 100% | safe | browser | ✅ **FIXED 2026-07-30 (NDA-012 Events).** `handleEvent` flags the payload outputs dirty *before* pulsing `Received`, so a node acting on the signal reads this event's data rather than the previous one — the whole point of a node that carries a payload with a signal. Corpus row inverted, not deleted; restoring the statement order reddens it while the wiring control stays green. ⚠️ `Signal To Index` still has the shape and is deliberately unfixed |
 | 90 | Send Event | Events | 4/3 |  |  | 100% | safe | browser | ✅ NDA-004 — `Sent`/`Failure`; empty channel name reported rather than dispatched into the void |
 | 91 | Color Blend | Interpolation | 1/1 |  |  | 100% | safe | browser |  |
 | 92 | Number Blend _(deprecated)_ | Interpolation | 2/1 |  |  | 100% | safe | browser |  |
@@ -112,7 +112,7 @@ The smell columns are *machine-derivable*, not verdicts.
 | 99 | Switch | Logic | 4/4 | ⚠️ |  | 100% | safe | browser |  |
 | 100 | Value Changed | Logic | 1/1 |  |  | 100% | safe | browser |  |
 | 101 | Counter | Math | 7/2 | ⚠️ |  | 100% | safe | browser, cloud |  |
-| 102 | Number Remapper | Math | 6/1 |  |  | 100% | safe | browser |  |
+| 102 | Number Remapper | Math | 6/1 |  |  | 100% | safe | browser | ✅ **FIXED 2026-07-30 (NDA-012 Math).** Both input endpoints defaulted to `0` — the degenerate branch — so every freshly dropped node reported `Output Minimum` for every input, the Expression-returns-`0` shape sitting in the default configuration. `initialize` now uses an input maximum of 1, so an unconfigured node passes its input through 0..1. Reporting instead would fire on the boot path of a graph still being built. ⚠️ The fix is in `initialize`, not the port `default` — a declared default does not run its setter at construction |
 | 103 | Close Popup | Navigation | 4/3 |  |  | 0% | safe | browser | ✅ NDA-004 §2 — `Closed`/`Failure`/`Error`; no-popup-in-scope now reported. Targeting stays NDA-010 §2 / NDA-015 |
 | 104 | External Link | Navigation | 3/3 |  |  | 0% | safe | browser | ✅ NDA-004 — `Success`/`Failure`/`Error`; catches the popup-blocker case that made the button look dead |
 | 105 | Navigate | Navigation | 2/3 |  |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error`. `navigate/no-target-page` and `navigate/page-not-found`; the latter replaces a bare `return` that carried `//TODO: send error to editor`. The editor adapter's health warning is the edit-time half and does not travel |

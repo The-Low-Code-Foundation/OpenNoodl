@@ -82,7 +82,7 @@ const EventReceiver: NodeDefinitionOptions = {
     eventReceived: {
       displayName: 'Received',
       type: 'signal',
-      description: 'Fires when an event arrives, but before the payload outputs have been updated — read them on the next frame'
+      description: "Fires when an event arrives on Channel, once the payload outputs carry that event's values"
     }
   },
   prototypeExtensions: {
@@ -103,11 +103,26 @@ const EventReceiver: NodeDefinitionOptions = {
         }
       });
     },
+    /**
+     * NDA-012 (Events) — the payload lands *before* `Received` announces it.
+     *
+     * This used to pulse first and flag the payload outputs afterwards, so a node acting on the
+     * signal — a Function's `Run`, a Set Object Properties' `Do` — read the previous event's data,
+     * or nothing at all on the first one. Carrying data alongside a signal is this node's entire
+     * purpose, so the ordering defeated the reason it exists.
+     *
+     * Both `flagOutputDirty` and `sendSignalOnOutput` push into the receiving node's input queue
+     * (`outputproperty.ts:114,149`), so what settles this is program order and nothing else: the
+     * values are queued ahead of the pulse and drain ahead of it. `onapperror.ts:142-148` and
+     * `Response` (NDA-004 §3) already did it this way; the rule existed and this node predated it.
+     *
+     * `Signal To Index` has the same shape (`signaltoindex.ts:64`) and is filed, not fixed here —
+     * it is a different category's worksheet and deserves its own discrimination check.
+     */
     handleEvent: function (this: EventReceiverInstance, eventData: EventData) {
       if (this._internal._isEnabled === false) {
         return;
       }
-      this.sendSignalOnOutput('eventReceived');
 
       for (const name in eventData) {
         if (this.hasOutput(name)) {
@@ -115,6 +130,8 @@ const EventReceiver: NodeDefinitionOptions = {
           this.flagOutputDirty(name);
         }
       }
+
+      this.sendSignalOnOutput('eventReceived');
 
       return this._internal.consume === 'always';
     },

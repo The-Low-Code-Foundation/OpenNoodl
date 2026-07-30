@@ -22,7 +22,26 @@ const NumberRemapperNode: NodeDefinitionOptions = {
     internal._currentInputValue = 0;
     internal._remappedValue = 0;
     internal._minInputValue = 0;
-    internal._maxInputValue = 0;
+    /**
+     * NDA-012 (Math) — 1, not 0, and the port's declared `default` below has to agree.
+     *
+     * With both input endpoints at 0 the degenerate branch in `_calculateNewOutputValue` takes
+     * `normalizedValue = 0`, so `Remapped Value` was `Output Minimum` for every input, forever, and
+     * nothing said so. That is the Expression-returns-`0` shape — a failure value indistinguishable
+     * from a legitimate answer — sitting in the **default** configuration, so every freshly dropped
+     * node was in it.
+     *
+     * Reporting it instead would be the wrong repair: an unconfigured node is degenerate for the
+     * whole boot path, so a `Failure` here would fire on a graph the author is still building. The
+     * fix is a default that is not a lie — 0..1 onto the `Output Minimum`/`Output Maximum` defaults
+     * of 0..1, i.e. a fresh node passes its input through (clamped) rather than flatlining.
+     *
+     * ⚠️ `initialize` is what decides this, not the `default:` on the port. A declared default does
+     * not run its setter at construction (the control row in the Logic worksheet pins that), so the
+     * runtime value of an unset port is whatever this function put there. The two are set together
+     * only so the property panel and the running node agree.
+     */
+    internal._maxInputValue = 1;
     internal._minOutputValue = 0;
     internal._maxOutputValue = 1;
     internal._clampOutput = true;
@@ -54,7 +73,7 @@ const NumberRemapperNode: NodeDefinitionOptions = {
       },
       default: 0,
       displayName: 'Input Minimum',
-      description: 'Value of Input Value that maps to Output Minimum; leaving this equal to Input Maximum pins the result at Output Minimum',
+      description: 'Value of Input Value that maps to Output Minimum',
       set: function (this: NumberRemapperInstance, value: number) {
         this._internal._minInputValue = value;
         this._calculateNewOutputValue();
@@ -65,9 +84,10 @@ const NumberRemapperNode: NodeDefinitionOptions = {
       type: {
         name: 'number'
       },
-      default: 0,
+      default: 1,
       displayName: 'Input Maximum',
-      description: 'Value of Input Value that maps to Output Maximum; must differ from Input Minimum or the node reports a constant',
+      description:
+        'Value of Input Value that maps to Output Maximum; set equal to Input Minimum and the result is pinned at Output Minimum for every input',
       set: function (this: NumberRemapperInstance, value: number) {
         this._internal._maxInputValue = value;
         this._calculateNewOutputValue();

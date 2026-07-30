@@ -115,6 +115,43 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-30 (the two audit-driven fixes that needed no decision).** Both were written up with
+  citations by earlier NDA-012 batches and neither had been started.
+
+  **`Receive Event` announced before its payload landed.** `handleEvent` pulsed `Received` and *then*
+  flagged the payload outputs, so a node acting on the signal read the previous event's data — or
+  nothing at all on the first event. Carrying data alongside a signal is the node's entire purpose,
+  so the ordering defeated the reason it exists. The fix is one statement's position, and what
+  settles it is program order: both `flagOutputDirty` and `sendSignalOnOutput` push into the
+  receiving node's input queue, so the values now queue ahead of the pulse. **The existing corpus row
+  was inverted, not deleted** — it asserted the defect (`seen === [undefined]`) and is now the
+  regression guard for the fix (`seen === [7]`); restoring the old order reddens it while the wiring
+  control stays green. Its `Received` port description had to change too: it documented the defect
+  in as many words ("but before the payload outputs have been updated"), which is what a description
+  written during an audit will do. ⚠️ **`Signal To Index` still has the shape** and is deliberately
+  left — a different worksheet, and it deserves its own discrimination check rather than riding
+  along. Two instances made it a class; fixing one does not retire it.
+
+  **`Number Remapper`'s default configuration was a constant.** Both input endpoints defaulted to
+  `0`, which is `_calculateNewOutputValue`'s degenerate branch, so `Remapped Value` was
+  `Output Minimum` for every input — the Expression-returns-`0` shape, a failure value
+  indistinguishable from a legitimate answer, sitting in the state every freshly dropped node was
+  in. **Reporting it would have been the wrong repair**: an unconfigured node is degenerate for the
+  whole boot path, so a `Failure` here fires on a graph the author is still building — the banked
+  "a Failure port that can fire on the happy path" rule. The fix is a default that is not a lie: an
+  input maximum of 1, against the `Output Minimum`/`Output Maximum` defaults of 0..1, so a fresh
+  node passes its input through rather than flatlining.
+
+  ⚠️ **And the fix had to go in `initialize`, not on the port's `default`** — the banked fact
+  ("a declared `default` does not run its setter at construction") decides where a default-value fix
+  lives, not just how to write a control row. Reverting only `initialize` while leaving `default: 1`
+  reddens the row, which confirms the banked fact from the other direction. The two are set together
+  purely so the property panel and the running node agree.
+
+  Gates: runtime jest **1,200** (+2), viewer 367, editor jasmine 1,894/0, typechecks clean, both
+  catalog gates green. Catalog regenerated; the substituted blobs differ from HEAD in exactly three
+  ports — `Event Receiver.eventReceived`'s description and `Number Remapper`'s two input-range ports.
+
 - **2026-07-30 (NDA-012 + NDA-005: Cloud Services, and the dismissal that was written the same day
   as the finding it dismissed).** All 22 nodes, all twelve checks, run batched with NDA-005's C1 —
   **148 port descriptions, coverage 39.1% → 44.4% measured, nodes at 0% 83 → 62**. **25 new defects

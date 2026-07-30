@@ -37,7 +37,7 @@ Source: [`eventreceiver.ts`](../../../../packages/noodl-viewer-react/src/nodes/s
 |---|---|---|---|
 | A1 |  | ✅ | Every payload output is flagged dirty per event |
 | A2 |  | n/a | Events are pushed; nothing to re-read |
-| A3 |  | ⚠️⚠️ | **`Received` fires before the payload outputs are updated** — `sendSignalOnOutput` at `eventreceiver.ts:106`, `flagOutputDirty` at `:108-113`. A node that *acts* on the pulse reads the previous event's payload, or nothing on the first. Pinned, with a control proving the payload did arrive |
+| A3 |  | ✅ | ~~**`Received` fires before the payload outputs are updated**~~ **FIXED 2026-07-30** — `handleEvent` flags the payload dirty and *then* pulses, so a node acting on the signal reads this event's data. The corpus row is inverted, not deleted, and reddens on `[undefined]` if the statement order is restored. `Signal To Index` still has the shape and is not fixed here |
 | G1 |  | 🔵 | A payload key the sender omits leaves the output at its previous value rather than clearing. Arguable, and unchanged by this audit |
 | B1 | n/a — no action input | 🔵 | Receiving cannot fail |
 | B2 |  | n/a | |
