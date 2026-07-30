@@ -877,6 +877,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
         group: 'Advanced HTML',
         type: 'string',
         default: '',
+        description: 'Extra CSS class names to put on this element, for styling from a stylesheet you supply',
         set(value) {
           this.props.className = value;
           this.forceUpdate();
@@ -892,6 +893,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
           allowEditOnly: true
         },
         default: '/* background-color: red; */',
+        description: 'Raw CSS declarations applied to this element, overriding the styling ports above',
         set(value) {
           this.updateAdvancedStyle({ content: value });
         }
@@ -901,6 +903,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
       childIndex: {
         displayName: 'Child Index',
         type: 'number',
+        description: "This element's position among its parent's children, counting from 0",
         get() {
           return this.childIndex;
         }
@@ -908,6 +911,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
       this: {
         displayName: 'This',
         type: 'reference',
+        description: 'A reference to this node itself, for ports that take a node rather than a value',
         get() {
           return this;
         }
@@ -916,6 +920,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
         group: 'Bounding Box',
         displayName: 'Screen Position X',
         type: 'number',
+        description: "Distance in pixels from the left edge of the window to this element's left edge",
         get() {
           return this.clientBoundingRect.x;
         },
@@ -930,6 +935,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
         group: 'Bounding Box',
         displayName: 'Screen Position Y',
         type: 'number',
+        description: "Distance in pixels from the top edge of the window to this element's top edge",
         get() {
           return this.clientBoundingRect.y;
         },
@@ -944,6 +950,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
         group: 'Bounding Box',
         displayName: 'Width',
         type: 'number',
+        description: 'Width this element actually ended up with after layout, in pixels',
         get() {
           return this.clientBoundingRect.width;
         },
@@ -958,6 +965,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
         group: 'Bounding Box',
         displayName: 'Height',
         type: 'number',
+        description: 'Height this element actually ended up with after layout, in pixels',
         get() {
           return this.clientBoundingRect.height;
         },
@@ -971,12 +979,14 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
       didMount: {
         group: 'Mounted',
         displayName: 'Did Mount',
-        type: 'signal'
+        type: 'signal',
+        description: 'Fires once this element has been added to the page and can be measured'
       },
       willUnmount: {
         group: 'Mounted',
         displayName: 'Will Unmount',
-        type: 'signal'
+        type: 'signal',
+        description: 'Fires just before this element is removed from the page, while it still exists'
       }
     },
     methods: {

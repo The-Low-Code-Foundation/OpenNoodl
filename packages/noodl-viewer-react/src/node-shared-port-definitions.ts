@@ -127,6 +127,7 @@ export default {
         index: 200,
         group: 'Style',
         displayName: 'Opacity',
+        description: 'How opaque this element is, from 0 for invisible to 1 for solid',
         type: 'number',
         default: 1,
         allowVisualStates: true
@@ -135,6 +136,7 @@ export default {
         index: 201,
         group: 'Style',
         displayName: 'Blend Mode',
+        description: 'How this element\'s colours blend with whatever is painted behind it',
         type: {
           name: 'enum',
           enums: [
@@ -166,6 +168,7 @@ export default {
       visible: {
         index: 210,
         displayName: 'Visible',
+        description: 'Hides the element while keeping the space it occupies in the layout',
         group: 'Style',
         default: true,
         type: 'boolean',
@@ -180,6 +183,7 @@ export default {
       zIndex: {
         index: 211,
         displayName: 'zIndex',
+        description: 'Paint order among overlapping siblings; higher numbers paint on top',
         group: 'Style',
         type: 'number',
         allowVisualStates: true,
@@ -199,6 +203,7 @@ export default {
         index: 1,
         group: 'Margin and padding',
         displayName: 'Margin Left',
+        description: 'Space outside the element\'s left edge, between it and its neighbours',
         type: {
           name: 'number',
           units: ['px', '%'],
@@ -211,6 +216,7 @@ export default {
         index: 2,
         group: 'Margin and padding',
         displayName: 'Margin Right',
+        description: 'Space outside the element\'s right edge, between it and its neighbours',
         type: {
           name: 'number',
           units: ['px', '%'],
@@ -223,6 +229,7 @@ export default {
         index: 3,
         group: 'Margin and padding',
         displayName: 'Margin Top',
+        description: 'Space outside the element\'s top edge, between it and its neighbours',
         type: {
           name: 'number',
           units: ['px', '%'],
@@ -235,6 +242,7 @@ export default {
         index: 4,
         group: 'Margin and padding',
         displayName: 'Margin Bottom',
+        description: 'Space outside the element\'s bottom edge, between it and its neighbours',
         type: {
           name: 'number',
           units: ['px', '%'],
@@ -258,6 +266,7 @@ export default {
         default: defaults.paddingLeft || 0,
         applyDefault: false,
         displayName: 'Pad Left',
+        description: 'Space inside the element\'s left edge, between it and its content',
         type: {
           name: 'number',
           units: ['px'],
@@ -273,6 +282,7 @@ export default {
         default: defaults.paddingRight || 0,
         applyDefault: false,
         displayName: 'Pad Right',
+        description: 'Space inside the element\'s right edge, between it and its content',
         type: {
           name: 'number',
           units: ['px'],
@@ -286,6 +296,7 @@ export default {
         index: 66,
         group: 'Margin and padding',
         displayName: 'Pad Top',
+        description: 'Space inside the element\'s top edge, between it and its content',
         default: defaults.paddingTop || 0,
         applyDefault: false,
         type: {
@@ -301,6 +312,7 @@ export default {
         index: 67,
         group: 'Margin and padding',
         displayName: 'Pad Bottom',
+        description: 'Space inside the element\'s bottom edge, between it and its content',
         default: defaults.paddingBottom || 0,
         applyDefault: false,
         type: {
@@ -319,6 +331,7 @@ export default {
       transformX: {
         group: 'Placement',
         displayName: 'Pos X',
+        description: 'Moves the element right after layout, without moving its siblings',
         default: 0,
         index: 300,
         allowVisualStates: true,
@@ -336,6 +349,7 @@ export default {
       transformY: {
         group: 'Placement',
         displayName: 'Pos Y',
+        description: 'Moves the element down after layout, without moving its siblings',
         default: 0,
         index: 301,
         allowVisualStates: true,
@@ -354,6 +368,7 @@ export default {
         index: 302,
         group: 'Placement',
         displayName: 'Rotation',
+        description: 'Rotates the element clockwise in degrees, without affecting the layout',
         default: 0,
         allowVisualStates: true,
         type: {
@@ -371,6 +386,7 @@ export default {
         index: 303,
         group: 'Placement',
         displayName: 'Scale',
+        description: 'Scales the element about its transform origin; 1 leaves it unscaled',
         default: 1,
         allowVisualStates: true,
         type: {
@@ -386,6 +402,7 @@ export default {
         index: 304,
         group: 'Placement',
         displayName: 'Transform Origin X',
+        description: 'Horizontal point the element rotates and scales around, as a fraction of its width',
         allowVisualStates: true,
         type: {
           name: 'number',
@@ -402,6 +419,7 @@ export default {
         index: 305,
         group: 'Placement',
         displayName: 'Transform Origin Y',
+        description: 'Vertical point the element rotates and scales around, as a fraction of its height',
         allowVisualStates: true,
         type: {
           name: 'number',
@@ -452,6 +470,9 @@ export default {
       position: {
         index: 11,
         displayName: 'Position',
+        description:
+          'How the element is placed: In Layout follows its siblings, Absolute ignores them, Sticky ' +
+          'pins to the parent edge on overflow, Fixed stays put and takes no space',
         group: 'Layout',
         type: {
           name: 'enum',
@@ -466,6 +487,7 @@ export default {
         index: 5,
         group: 'Alignment',
         displayName: 'Align X',
+        description: 'Horizontal alignment of this element within the space its parent gives it',
         type: {
           name: 'enum',
           enums: [
@@ -480,6 +502,7 @@ export default {
         index: 6,
         group: 'Alignment',
         displayName: 'Align Y',
+        description: 'Vertical alignment of this element within the space its parent gives it',
         type: {
           name: 'enum',
           enums: [
@@ -499,6 +522,7 @@ export default {
       pointerEventsMode: {
         index: 403,
         displayName: 'Pointer Events Mode',
+        description: 'Whether pointer handling is inherited from the parent or set explicitly on this element',
         type: {
           name: 'enum',
           enums: [
@@ -523,6 +547,7 @@ export default {
       pointerEventsEnabled: {
         index: 404,
         displayName: 'Pointer Events Enabled',
+        description: 'When disabled, mouse and touch events pass through to whatever is behind this element',
         type: 'boolean',
         group: 'Pointer Events',
         default: true,
@@ -539,6 +564,7 @@ export default {
       blockTouch: {
         index: 450,
         displayName: 'Block Pointer Events',
+        description: 'Stops pointer events reaching elements underneath this one',
         group: 'Pointer Events',
         type: 'boolean'
       }
@@ -549,12 +575,14 @@ export default {
     addOutputProps(definition, {
       onClick: {
         displayName: 'Click',
+        description: 'Fires when this element is clicked or tapped',
         group: 'Events',
         type: 'signal',
         propPath: 'pointer'
       },
       pointerDown: {
         displayName: 'Pointer Down',
+        description: 'Fires when a mouse button is pressed or a finger touches this element',
         group: 'Pointer Events',
         type: 'signal',
         propPath: 'pointer',
@@ -569,6 +597,7 @@ export default {
       },
       pointerUp: {
         displayName: 'Pointer Up',
+        description: 'Fires when the mouse button is released or the finger lifts over this element',
         group: 'Pointer Events',
         type: 'signal',
         propPath: 'pointer',
@@ -586,6 +615,7 @@ export default {
       },
       pointerEnter: {
         displayName: 'Pointer Enter',
+        description: 'Fires when the pointer moves onto this element, not counting its children',
         group: 'Pointer Events',
         type: 'signal',
         propPath: 'pointer',
@@ -597,6 +627,7 @@ export default {
       },
       hoverStart: {
         displayName: 'Hover Start',
+        description: 'Fires when the pointer moves over this element or any of its children',
         group: 'Hover Events',
         type: 'signal',
         propPath: 'pointer',
@@ -609,6 +640,7 @@ export default {
       },
       hoverEnd: {
         displayName: 'Hover End',
+        description: 'Fires when the pointer leaves this element',
         group: 'Hover Events',
         type: 'signal',
         propPath: 'pointer',
@@ -686,6 +718,7 @@ export default {
         index: 11,
         group: 'Dimensions',
         displayName: 'Width',
+        description: 'Width of the element; how the value is read depends on Size Mode',
         type: {
           name: 'dimension',
           units: ['%', 'px', 'vw', 'vh'],
@@ -703,6 +736,7 @@ export default {
         index: 13,
         group: 'Dimensions',
         displayName: 'Height',
+        description: 'Height of the element; how the value is read depends on Size Mode',
         type: {
           name: 'dimension',
           units: ['%', 'px', 'vw', 'vh'],
@@ -727,6 +761,7 @@ export default {
           index: 400,
           group: 'Dimension Constraints',
           displayName: 'Min Width',
+          description: 'Smallest width the element may shrink to, taking priority over Width',
           allowVisualStates: true,
           type: {
             name: 'number',
@@ -738,6 +773,7 @@ export default {
           index: 401,
           group: 'Dimension Constraints',
           displayName: 'Max Width',
+          description: 'Largest width the element may grow to, taking priority over Width',
           allowVisualStates: true,
           type: {
             name: 'number',
@@ -749,6 +785,7 @@ export default {
           index: 402,
           group: 'Dimension Constraints',
           displayName: 'Min Height',
+          description: 'Smallest height the element may shrink to, taking priority over Height',
           allowVisualStates: true,
           type: {
             name: 'number',
@@ -760,6 +797,7 @@ export default {
           index: 403,
           group: 'Dimension Constraints',
           displayName: 'Max Height',
+          description: 'Largest height the element may grow to, taking priority over Height',
           allowVisualStates: true,
           type: {
             name: 'number',
@@ -998,6 +1036,7 @@ export default {
         index: 250,
         group: 'Box Shadow',
         displayName: 'Shadow Enabled',
+        description: 'Turns the drop shadow on',
         type: 'boolean',
         default: false,
         allowVisualStates: true,
@@ -1010,6 +1049,7 @@ export default {
         index: 251,
         group: 'Box Shadow',
         displayName: 'Offset X',
+        description: 'How far to the right the shadow is cast from the element',
         default: 0,
         type: {
           name: 'number',
@@ -1026,6 +1066,7 @@ export default {
         index: 252,
         group: 'Box Shadow',
         displayName: 'Offset Y',
+        description: 'How far down the shadow is cast from the element',
         default: 0,
         type: {
           name: 'number',
@@ -1042,6 +1083,7 @@ export default {
         index: 253,
         group: 'Box Shadow',
         displayName: 'Blur Radius',
+        description: 'How soft the shadow edge is; 0 gives a hard edge',
         default: 5,
         type: {
           name: 'number',
@@ -1058,6 +1100,7 @@ export default {
         index: 254,
         group: 'Box Shadow',
         displayName: 'Spread Radius',
+        description: 'How much larger than the element the shadow is drawn',
         default: 2,
         type: {
           name: 'number',
@@ -1074,6 +1117,7 @@ export default {
         index: 255,
         group: 'Box Shadow',
         displayName: 'Inset',
+        description: 'Draws the shadow inside the element instead of behind it',
         type: 'boolean',
         default: false,
         allowVisualStates: true,
@@ -1086,6 +1130,7 @@ export default {
         index: 256,
         group: 'Box Shadow',
         displayName: 'Shadow Color',
+        description: 'Colour of the shadow, including how transparent it is',
         type: 'color',
         default: '#00000033',
         allowVisualStates: true,
@@ -1172,6 +1217,7 @@ export default {
           type: 'boolean',
           group: 'Icon',
           displayName: 'Enable Icon',
+          description: 'Shows an icon on this element',
           default: defaults.useIcon,
           allowVisualStates: true,
           index: index
@@ -1197,6 +1243,7 @@ export default {
       iconIconSource: {
         type: 'icon',
         displayName: 'Icon Source',
+        description: 'Which glyph to show, picked from an installed icon set',
         group: 'Icon',
         allowVisualStates: true,
         index: index + 3
@@ -1207,6 +1254,7 @@ export default {
       iconImageSource: {
         type: 'image',
         displayName: 'Image Source',
+        description: 'Image file to show instead of an icon-set glyph',
         group: 'Icon',
         allowVisualStates: true,
         index: index + 2,
@@ -1221,6 +1269,7 @@ export default {
         iconSpacing: {
           group: 'Icon',
           displayName: 'Spacing',
+          description: 'Gap between the icon and the text beside it',
           default: 10,
           type: {
             name: 'number',
@@ -1251,6 +1300,7 @@ export default {
       iconSize: {
         group: 'Icon',
         displayName: 'Size',
+        description: 'Height of the icon',
         default: 16,
         type: {
           name: 'number',
@@ -1263,6 +1313,7 @@ export default {
       iconColor: {
         group: 'Icon',
         displayName: 'Color',
+        description: 'Colour of the icon',
         editorName: 'Icon Color',
         default: defaults.iconColor,
         type: 'color',
@@ -1303,12 +1354,14 @@ export default {
         index: 18,
         type: 'boolean',
         displayName: 'Enable Label',
+        description: 'Shows a text label on this element',
         group: 'Label',
         default: defaults.useLabel
       },
       label: {
         type: 'string',
         displayName: 'Label',
+        description: 'Text shown on this element',
         group: 'Label',
         default: 'Label'
       }
@@ -1318,6 +1371,7 @@ export default {
       addInputProps(definition, {
         labelSpacing: {
           displayName: 'Spacing',
+          description: 'Gap between the label and the edges around it',
           group: 'Label',
           type: {
             name: 'number',

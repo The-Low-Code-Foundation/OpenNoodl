@@ -65,7 +65,20 @@ function buildPort(name, portMeta, plug) {
     type,
     isSignal: type.name === 'signal',
     default: sanitize(portMeta.default),
-    description: tooltipToText(portMeta.tooltip),
+    /**
+     * NDA-005 — an authored `description` wins; a flattened tooltip is the fallback.
+     *
+     * The two fields answer different questions. `tooltip` is the editor's hover popup, so it
+     * opens with a heading that restates the display name and may carry image captions;
+     * `tooltipToText` strips the tags and joins what is left, which is how the library's 142
+     * "documented" ports came to read like *"Clip content Controls if elements that are too big
+     * to fit will be clipped Enabled Disabled"*. Usable as a last resort, and not what a port
+     * description should be.
+     *
+     * Keeping the fallback matters as much as adding the field: dropping it would take those
+     * 142 to zero on the way to improving them.
+     */
+    description: portMeta.description || tooltipToText(portMeta.tooltip),
     index: portMeta.index,
     allowVisualStates: portMeta.allowVisualStates || undefined,
     hiddenInEditor: portMeta.exportToEditor === false ? true : undefined

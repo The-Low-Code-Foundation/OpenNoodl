@@ -18,6 +18,30 @@
 
 Write a `description` for every port in the node library. 2,508 of 2,650 are blank.
 
+> **§0, 2026-07-30 — the premise was half right, and the wrong half was load-bearing.**
+>
+> `description` **was declared on both port types and copied nowhere.** `nodedefinition.ts` built
+> its metadata from `tooltip` and never looked at `description`; the catalog then derived its own
+> `description` by flattening that tooltip through `tooltipToText`. So the field this task tells an
+> author to write was **inert** — and three descriptions NDA-003 had already written, on the
+> Variables nodes, about the very contract that task established, reached no consumer at all.
+> Writing 2,508 more would have produced 2,508 more of the same.
+>
+> Fixed: `description` is carried into the compiled metadata for inputs **and outputs**, and the
+> catalog prefers an authored description over a flattened tooltip. The flattening survives as a
+> *fallback*, so the existing 142 do not go to zero on the way to being improved.
+>
+> **`tooltip` cannot serve as the description and never could.** It is the editor's hover popup — a
+> heading that legitimately restates the display name, paragraphs, sometimes image captions — which
+> is why the library's 142 "documented" ports read like *"Clip content Controls if elements that are
+> too big to fit will be clipped Enabled Disabled"*. It also **does not exist on output ports at
+> all**, so before this change roughly half the library could not be documented by any means.
+>
+> The house style is at [`PORT-DESCRIPTION-STYLE.md`](../../reference/PORT-DESCRIPTION-STYLE.md)
+> (criterion 3). Plumbing pinned by L1–L5 (runtime) and M1–M5 (viewer); the M-rows exist because
+> `createNodeFromReactComponent` moves visual ports across three routes, and this phase has already
+> been bitten once by a rebuild-the-object line silently dropping fields of a union.
+
 ## Why this is not a docs chore
 
 Three consumers read `description`, and all three are degraded today:
@@ -47,7 +71,29 @@ padding, transforms, text style and pointer events to most of the 29 Visual node
 shared definitions once covers a large fraction of the 2,508 — do those **first** and re-measure
 before touching anything per-node, because the remaining count will be much smaller than it looks.
 
+> **Measured 2026-07-30, and the premise holds harder than it was stated.** The 29 visual nodes
+> carry **1,767 of the 2,654 ports** (67%), averaging 61 each; **133 distinct port names account for
+> 1,861 instances — 70% of the entire library**, and 77 names account for 1,464.
+>
+> **Done 2026-07-30: 61 port names documented in two files, projected coverage 5.4% → 41.2%** (952
+> port instances newly covered). The two files are `react-component-node.ts`'s universal visual base
+> and `node-shared-port-definitions.ts`'s mixins.
+>
+> ⚠️ **Projected, not measured**, because `register.js` reads `node-catalog.json` and regeneration is
+> blocked by a parallel session. Nothing in the catalog, the validator or the AI loop sees any of
+> these sentences until it runs.
+>
+> **Criterion 2 needs the tail, and the shared pass barely moves it**: nodes at 0% went 112 → 106,
+> because the 126 non-visual nodes hold 887 ports of their own and share almost nothing. Only **2 of
+> 29 visual nodes** are still at 0%. So the remaining work is the per-node tail — which is exactly
+> what NDA-012's category pass is already reading each node for.
+
 ## House style (settle this before writing 2,508 of anything)
+
+**Settled 2026-07-30 at [`dev-docs/reference/PORT-DESCRIPTION-STYLE.md`](../../reference/PORT-DESCRIPTION-STYLE.md)**,
+with the three worked examples criterion 3 asks for, the `description`-vs-`tooltip` split, and the
+concentration table above. What follows is the proposal it was built from; the reference doc is
+normative where the two differ.
 
 Proposed:
 

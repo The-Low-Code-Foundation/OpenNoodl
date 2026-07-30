@@ -66,6 +66,17 @@ function registerInput(object: SharedInputs, metadata: NodeMetadata, name: strin
     exportToEditor: input.hasOwnProperty('exportToEditor') ? input.exportToEditor : true,
     inputPriority: input.inputPriority || 0,
     tooltip: input.tooltip,
+    // NDA-005. `description` and `tooltip` are two documents for two readers and neither can
+    // stand in for the other: `tooltip` is the editor's hover popup — a heading, paragraphs and
+    // sometimes images — while `description` is the one sentence the catalog, the semantic
+    // validator and the AI authoring loop read. Flattening the popup into a sentence is what
+    // `tooltipToText` does, and the result reads like a heading glued to prose ("Clip content
+    // Controls if elements that are too big to fit will be clipped Enabled Disabled").
+    //
+    // The field was **declared on both port types and copied nowhere**, so the three
+    // descriptions NDA-003 wrote on the Variables nodes — about the very contract that task
+    // established — reached no reader at all. Same shape as this phase's other inert fields.
+    description: input.description,
     tab: input.tab,
     popout: input.popout,
     allowVisualStates: input.allowVisualStates,
@@ -129,7 +140,10 @@ function registerOutputsMetadata(metadata: NodeMetadata, outputs: Record<string,
       group: output.group,
       type: output.type,
       index: output.index,
-      exportToEditor: output.hasOwnProperty('exportToEditor') ? output.exportToEditor : true
+      exportToEditor: output.hasOwnProperty('exportToEditor') ? output.exportToEditor : true,
+      /** NDA-005 — see the note on the input side. Outputs have no `tooltip` at all, so this
+       *  is the only documentation an output port can carry. */
+      description: output.description
     };
   });
 }

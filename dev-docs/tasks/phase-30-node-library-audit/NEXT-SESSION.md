@@ -249,6 +249,14 @@ useful direction: the thing it said did not exist had existed for years, and fin
   log entry; the reusable half is that *the spec's own criterion 4 ruled out the mechanism the spec
   asked for* — enum ports mean `sendDynamicPorts` means a dynamic-port node means the validator
   stops checking the node's ports altogether.
+- **NDA-005's §0 and its shared pass are done.** The premise was half right in a way that would have
+  wasted the whole task: **`description` was declared on both port types and copied nowhere**, so
+  the field the task tells you to write reached no reader — including three descriptions NDA-003 had
+  already written. Plumbing fixed, house style settled at
+  [`PORT-DESCRIPTION-STYLE.md`](../../reference/PORT-DESCRIPTION-STYLE.md), 61 shared port names
+  documented, projected coverage **5.4% → 41.2%**. **What is left is the per-node tail** — 106 nodes
+  still at 0%, almost all non-visual — and the spec's own advice is right: do it inside NDA-012's
+  category pass, because check C1 *is* this task and the node is already open.
 - **Catalog regeneration and `Logic Builder` are still blocked** and were re-checked at 2026-07-30
   late: `node-catalog.json`, `node-catalog-enriched.json` and `logic-builder.ts` are all still dirty
   with the other session's work. **NDA-009 §2 added four more ports to the debt** —
@@ -356,6 +364,12 @@ and **`Dismissed`** (Show Popup), the six controls' `deprecated: true` (NDA-011)
 2026-07-30 — **`taskStartInput`/`taskSuccessOutput`/`taskFailureOutput`/`taskErrorOutput`** on
 `RunTasks` (NDA-009 §2). Read the five-consumers note under "Rules that will bite you" before
 running it.
+
+⚠️ **NDA-005 raised the stakes on this too.** 61 port descriptions were written 2026-07-30 and
+**none of them is visible to the catalog, the semantic validator or the AI authoring loop until
+regeneration runs** — which is three of the four reasons NDA-005 exists. Coverage is 5.4% on paper
+and a projected 41.2% in the source. `scripts/node-audit/register.js` reads the catalog, so the
+number cannot move until then either.
 
 ⚠️ **The RunTasks four are not just debt, they are a criterion.** NDA-009's criterion 4 — "the
 semantic validator can check the Run Tasks contract" — is what those ports are *for*, and

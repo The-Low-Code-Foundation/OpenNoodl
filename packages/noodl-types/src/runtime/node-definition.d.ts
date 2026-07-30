@@ -1115,6 +1115,12 @@ export interface InputPortMetadata {
   popout?: unknown;
   allowVisualStates?: boolean;
   nodeDoubleClickAction?: unknown;
+  /**
+   * NDA-005 — the one-sentence description read by the catalog, the semantic validator and the
+   * AI authoring loop. Distinct from {@link tooltip}, which is the editor's hover popup: a
+   * heading plus paragraphs, and sometimes images, none of which flattens into a sentence.
+   */
+  description?: string;
 }
 
 /** An output port as it appears in compiled {@link NodeMetadata}. */
@@ -1125,6 +1131,8 @@ export interface OutputPortMetadata {
   group?: string;
   index?: number;
   exportToEditor: boolean;
+  /** NDA-005. Outputs carry no `tooltip`, so this is their only documentation. */
+  description?: string;
 }
 
 /**
