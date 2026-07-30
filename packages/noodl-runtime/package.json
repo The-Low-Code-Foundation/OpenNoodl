@@ -1,6 +1,7 @@
 {
   "name": "@noodl/runtime",
   "version": "2.7.0",
+  "license": "MIT",
   "main": "noodl-runtime.ts",
   "scripts": {
     "build:types": "tsc -p tsconfig.types.json && node scripts/copy-handwritten-types.js",

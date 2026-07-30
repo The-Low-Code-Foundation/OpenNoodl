@@ -10,6 +10,7 @@
   "author": "The Low Code Foundation <contact@thelowcodefoundation.com>",
   "homepage": "https://learn-noodl.com",
   "version": "1.1.0",
+  "license": "GPL-3.0-only",
   "workspaces": [
     "packages/*"
   ],

@@ -1,6 +1,7 @@
 {
   "name": "@noodl/noodl-viewer-react",
   "version": "2.7.0",
+  "license": "MIT",
   "main": "noodl-viewer-react",
   "scripts": {
     "start": "webpack --config webpack-configs/webpack.dev.js",

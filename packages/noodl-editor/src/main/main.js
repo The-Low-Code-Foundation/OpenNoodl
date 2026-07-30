@@ -34,6 +34,7 @@ const StorageApi = require('./src/StorageApi');
 const { initializeGitHubOAuthHandlers } = require('./github-oauth-handler');
 
 const { handleProjectMerge } = require('./src/merge-driver');
+const { openLegalWindow } = require('./src/legal-window');
 
 //fixes problem with reloading the viewer when it's
 //running in a separate browser window (file:// cross origin warning)
@@ -559,14 +560,24 @@ function launchApp() {
 
   let submenu = [
     {
-      label: 'About Application',
+      label: 'About NodeGX',
       click: () => {
         require('about-window').default({
           icon_path: appPath + '/src/assets/images/icon.png',
-          copyright: 'Copyright (c) 2023 Future Platforms AB',
+          copyright: 'GPL-3.0. Forked from Noodl, © Future Platforms AB.',
           description: buildNumber ? 'Build ' + buildNumber : undefined
         });
       }
+    },
+    // ALPHA-005: a policy nobody can find is not a policy. These sit beside
+    // About because that is where people look for "what is this thing".
+    {
+      label: 'Privacy Policy',
+      click: () => openLegalWindow('privacy', resolveStartupTheme().resolved)
+    },
+    {
+      label: 'Alpha Terms',
+      click: () => openLegalWindow('terms', resolveStartupTheme().resolved)
     },
     { type: 'separator' }
   ];
@@ -627,7 +638,64 @@ function launchApp() {
     });
     // }
 
+    // ALPHA-005: on Windows and Linux the Application menu is not where anyone
+    // looks, so the legal documents get a Help menu of their own too.
+    template.push({
+      label: 'Help',
+      submenu: [
+        { label: 'Privacy Policy', click: () => openLegalWindow('privacy', resolveStartupTheme().resolved) },
+        { label: 'Alpha Terms', click: () => openLegalWindow('terms', resolveStartupTheme().resolved) }
+      ]
+    });
+
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  }
+
+  /**
+   * ALPHA-005: the first-run disclosure.
+   *
+   * Shown once, keyed off a flag in `<userData>/firstRunLegal.json`. It states
+   * the one fact a new user most needs — that nothing about their project
+   * leaves the machine unless they turn AI on — and offers both documents
+   * rather than burying them behind an "I agree" nobody reads.
+   *
+   * Deliberately not a blocking gate: this is an alpha of a GPL tool, not a
+   * signup flow, and a modal that must be dismissed before the app is usable
+   * would be the wrong trade for the amount of consent actually at stake.
+   */
+  function showFirstRunLegalNotice() {
+    jsonstorage.get('firstRunLegal', (stored) => {
+      if (stored && stored.shown) return;
+
+      jsonstorage.set('firstRunLegal', { shown: true, version: app.getVersion() });
+
+      dialog
+        .showMessageBox(win, {
+          type: 'info',
+          title: 'Welcome to NodeGX',
+          message: 'NodeGX is alpha software.',
+          detail:
+            'Expect bugs, and keep your work backed up — the project format will change ' +
+            'between alpha versions.\n\n' +
+            'Nothing about your projects leaves this machine unless you turn on the AI ' +
+            'features and supply your own API key. NodeGX has no account and no analytics ' +
+            'server.\n\n' +
+            'Both documents are always available under the Help menu.',
+          buttons: ['Get started', 'Read the privacy policy', 'Read the alpha terms'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true
+        })
+        .then(({ response }) => {
+          const theme = resolveStartupTheme().resolved;
+          if (response === 1) openLegalWindow('privacy', theme);
+          if (response === 2) openLegalWindow('terms', theme);
+        })
+        .catch((error) => {
+          // A disclosure that fails to render must not stop the app launching.
+          console.warn('[legal] Could not show the first-run notice.', error);
+        });
+    });
   }
 
   function forwardIpcEventsToEditorWindow(events) {
@@ -748,6 +816,8 @@ function launchApp() {
     setupMainWindowControlIpc();
 
     setupMenu();
+
+    showFirstRunLegalNotice();
 
     startServer(app, projectGetSettings, projectGetInfo, projectGetComponentBundleExport);
 
