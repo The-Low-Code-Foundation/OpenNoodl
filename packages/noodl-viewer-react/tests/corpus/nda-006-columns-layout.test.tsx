@@ -20,9 +20,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import {
   Columns,
+  calcAutoFit,
   calcAutofold,
   parseLayout,
   partitionColumnChildren,
+  pickBreakpointLayout,
   resolveColumnLayout
 } from '../../src/components/visual/Columns/Columns';
 import { ForEachComponent } from '../../src/nodes/std-library/data/foreach';
@@ -130,6 +132,64 @@ describe('NDA-006: autofold', () => {
   test('A6: a layout string with nothing usable in it falls back to one column', () => {
     expect(parseLayout('0')).toEqual([1]);
     expect(parseLayout('nonsense')).toEqual([1]);
+  });
+});
+
+describe('NDA-006 §3: responsive layout', () => {
+  // The whole responsive API used to be one layout string plus "pop columns off the end",
+  // with no way to say "3 up on desktop, 2 on tablet, 1 on mobile" — which is what every real
+  // layout asks for.
+  const breaks = {
+    mediumBreakpoint: '1024px',
+    mediumLayout: '1 1',
+    smallBreakpoint: '600px',
+    smallLayout: '1'
+  } as unknown as Parameters<typeof pickBreakpointLayout>[1];
+
+  test('C1: a wide container gets the base layout', () => {
+    expect(pickBreakpointLayout('1 2 1', breaks, 1400)).toBe('1 2 1');
+  });
+
+  test('C2: below the medium breakpoint the medium layout applies', () => {
+    expect(pickBreakpointLayout('1 2 1', breaks, 800)).toBe('1 1');
+  });
+
+  test('C3: below the small breakpoint the small layout wins over the medium one', () => {
+    // 500 is below both, and the narrower answer has to win — checking them in the other
+    // order returns '1 1' for a phone.
+    expect(pickBreakpointLayout('1 2 1', breaks, 500)).toBe('1');
+  });
+
+  test('C4: a breakpoint with no layout beside it is inert, not half-applied', () => {
+    const halfSet = { mediumBreakpoint: '1024px', mediumLayout: '', smallBreakpoint: '', smallLayout: '1' } as never;
+
+    expect(pickBreakpointLayout('1 2 1', halfSet, 800)).toBe('1 2 1');
+  });
+
+  test('C5: Auto Fit takes as many columns as will hold their minimum', () => {
+    // 3 × 200 + 2 gaps of 20 = 640 fits in 660; a fourth would need 880.
+    expect(calcAutoFit(200, 660, 20).columnAmount).toBe(3);
+    expect(calcAutoFit(200, 1000, 20).columnAmount).toBe(4);
+  });
+
+  test('C6: Auto Fit never returns zero columns', () => {
+    // A container narrower than one minimum column, and the degenerate "no minimum width"
+    // case — both of which produced NaN widths through the fold path.
+    expect(calcAutoFit(400, 100, 20).columnAmount).toBe(1);
+    expect(calcAutoFit(0, 800, 20).columnAmount).toBe(1);
+  });
+
+  test('C7: Auto Fit ignores the layout string entirely', () => {
+    const fitted = resolveColumnLayout('1 2 1', { ...breaks, sizing: 'autoFit', minWidth: '200px', marginX: '20px' } as never, 660);
+
+    expect(fitted.columnAmount).toBe(3);
+    expect(fitted.layout).toEqual([1, 1, 1]);
+  });
+
+  test('C8 (control): the default sizing still uses the authored fractions', () => {
+    const authored = resolveColumnLayout('1 2 1', { minWidth: '0px', marginX: '20px' } as never, 1400);
+
+    expect(authored.layout).toEqual([1, 2, 1]);
   });
 });
 

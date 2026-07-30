@@ -68,6 +68,43 @@ const ColumnsNode: ReactNodeDefinition = {
   },
 
   inputProps: {
+    // NDA-006 §3. Auto Fit is the one-input answer — "columns at least this wide, as many as
+    // fit" — and covers most real layouts without any breakpoint to manage. The breakpoint
+    // pair below covers the rest. Default stays `layoutString`, so nothing moves until asked.
+    sizing: {
+      group: 'Layout Settings',
+      displayName: 'Column Sizing',
+      type: {
+        name: 'enum',
+        enums: [
+          { label: 'Layout String', value: 'layoutString' },
+          { label: 'Auto Fit', value: 'autoFit' }
+        ]
+      },
+      default: 'layoutString'
+    },
+    // Container width, not viewport width — see `pickBreakpointLayout`. A breakpoint with no
+    // layout beside it does nothing, so half-configuring these is inert rather than surprising.
+    mediumBreakpoint: {
+      group: 'Breakpoints',
+      displayName: 'Medium Below',
+      type: { name: 'number', units: ['px'], defaultUnit: 'px' }
+    },
+    mediumLayout: {
+      group: 'Breakpoints',
+      displayName: 'Medium Layout',
+      type: 'string'
+    },
+    smallBreakpoint: {
+      group: 'Breakpoints',
+      displayName: 'Small Below',
+      type: { name: 'number', units: ['px'], defaultUnit: 'px' }
+    },
+    smallLayout: {
+      group: 'Breakpoints',
+      displayName: 'Small Layout',
+      type: 'string'
+    },
     marginX: {
       group: 'Layout Settings',
       displayName: 'Horizontal Gap',

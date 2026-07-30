@@ -12,6 +12,16 @@ export interface ColumnsProps extends Noodl.ReactProps {
   minWidth: string;
   layoutString: string;
 
+  /** `'layoutString'` uses the authored fractions; `'autoFit'` derives the count. */
+  sizing: 'layoutString' | 'autoFit';
+
+  /** Container width below which `mediumLayout` applies, if both are set. */
+  mediumBreakpoint: string;
+  mediumLayout: string;
+  /** Container width below which `smallLayout` applies, if both are set. */
+  smallBreakpoint: string;
+  smallLayout: string;
+
   children: Slot;
 }
 
@@ -111,12 +121,17 @@ function _calcAutofold(layout: number[], minWidth: number, containerWidth: numbe
  */
 export function resolveColumnLayout(
   columnLayout: string,
-  props: Pick<ColumnsProps, 'minWidth' | 'marginX'>,
+  props: Pick<
+    ColumnsProps,
+    'minWidth' | 'marginX' | 'sizing' | 'mediumBreakpoint' | 'mediumLayout' | 'smallBreakpoint' | 'smallLayout'
+  >,
   containerWidth: number | null
 ) {
-  const targetLayout = parseLayout(columnLayout);
+  const minWidth = toPixels(props.minWidth);
+  const marginX = toPixels(props.marginX);
 
   if (typeof containerWidth !== 'number') {
+    const targetLayout = parseLayout(columnLayout);
     return {
       layout: targetLayout,
       columnAmount: targetLayout.length,
@@ -124,7 +139,59 @@ export function resolveColumnLayout(
     };
   }
 
-  return calcAutofold(targetLayout, toPixels(props.minWidth), containerWidth, toPixels(props.marginX));
+  if (props.sizing === 'autoFit') {
+    return calcAutoFit(minWidth, containerWidth, marginX);
+  }
+
+  const targetLayout = parseLayout(pickBreakpointLayout(columnLayout, props, containerWidth));
+
+  return calcAutofold(targetLayout, minWidth, containerWidth, marginX);
+}
+
+/**
+ * Choose the authored layout string for this container width.
+ *
+ * **Container width, not viewport width** — NDA-006 §3. The editor has no breakpoint concept
+ * to extend (checked: nothing in the styles system or the models carries one), so this was
+ * going to invent something either way. Keying off the container the node already measures
+ * beats a project-level viewport set: the same Columns node then behaves correctly inside a
+ * sidebar, a modal or a repeater cell, where viewport width says nothing useful.
+ *
+ * Two named steps rather than an open list, because they are static ports: they appear in the
+ * picker, in the catalog, and to the AI authoring loop without any dynamic-port machinery, and
+ * "desktop / tablet / mobile" is the shape of the request. A breakpoint with no layout beside
+ * it (or the other way round) is ignored rather than half-applied.
+ */
+export function pickBreakpointLayout(
+  base: string,
+  props: Pick<ColumnsProps, 'mediumBreakpoint' | 'mediumLayout' | 'smallBreakpoint' | 'smallLayout'>,
+  containerWidth: number
+): string {
+  const small = toPixels(props.smallBreakpoint);
+  if (small > 0 && props.smallLayout && containerWidth < small) return props.smallLayout;
+
+  const medium = toPixels(props.mediumBreakpoint);
+  if (medium > 0 && props.mediumLayout && containerWidth < medium) return props.mediumLayout;
+
+  return base;
+}
+
+/**
+ * As many equal columns as will hold their minimum — CSS `repeat(auto-fit, minmax(…))`.
+ *
+ * The layout string is not consulted at all in this mode. `minWidth` of 0 would divide by
+ * zero, so it degrades to a single column, which is the honest answer to "fit columns of no
+ * minimum width".
+ */
+export function calcAutoFit(minWidth: number, containerWidth: number, marginX: number) {
+  const columnAmount =
+    minWidth > 0 ? Math.max(1, Math.floor((containerWidth + marginX) / (minWidth + marginX))) : 1;
+
+  return {
+    layout: new Array(columnAmount).fill(1) as number[],
+    columnAmount,
+    fractionSize: 100 / columnAmount
+  };
 }
 
 /**
