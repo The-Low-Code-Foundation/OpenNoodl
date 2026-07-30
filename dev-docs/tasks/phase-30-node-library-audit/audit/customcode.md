@@ -8,8 +8,9 @@ in [FINDINGS.md](../FINDINGS.md). The `Pre-filled` column is machine-derived fro
 everything else needs the source read. Verdicts: ✅ pass · ⚠️ defect · 🔵 by design, document it ·
 ⬜ not audited.
 
-**Audited 2026-07-30, batched with NDA-005's C1. 4 of 5 nodes — `Logic Builder` is blocked** (see
-its entry). 8 defects in 4 nodes, **2.00 per node: the highest rate of any category in the phase.**
+**Audited 2026-07-30, batched with NDA-005's C1. 4 of 5 nodes — `Logic Builder` was blocked and is
+now not** (`c5d5234f`; see its entry for the misdiagnosis that kept it blocked for nine handovers).
+8 defects in 4 nodes, **2.00 per node: the highest rate of any category in the phase.**
 
 That is not an accident of this category being messy. These are the library's escape hatches — the
 nodes an author reaches for when no other node will do — and **two of the three script hosts had no
@@ -118,18 +119,23 @@ Source: [`packages/noodl-runtime/src/nodes/std-library/logic-builder.ts`](../../
 | F1 |  | ⬜ | |
 | H1 | declares `safe` | ⬜ | |
 
-**Verdict:** ⬜ **BLOCKED — not audited.**
+**Verdict:** ⬜ not audited — **and no longer blocked, as of `c5d5234f`.**
 
-The file has carried another session's uncommitted rewrite for **nine handovers**, together with an
-untracked `logic-builder-io.ts` it imports and a modified `enrichment/logic-builder.json`. Auditing
-the version at HEAD would produce verdicts about code that is being replaced, and auditing the
-working-tree version would audit work that is not ours and may not land.
+⚠️ **The nine-handover blocker was a misdiagnosis, and it is worth recording why.** Every handover
+since 2026-07-22 described this file as another session's *uncommitted rewrite in progress*, to be
+stepped around. It was not in progress. `a2db2231` had landed the shared parser
+(`logic-builder-io.ts`), the Blockly editor and its tests **from a different worktree**, and left
+this one file behind in the primary checkout — so what looked like work someone was still doing was
+the missing half of a commit that had already gone in **partial**. At HEAD the commit titled *"port
+detection that both windows can reach"* had exactly one window reaching it, and the new module was
+imported by the editor and a test and by nothing that runs.
 
-**It is also actively costing this task.** Regenerating the catalog this session picked up their
-in-progress change (`editorName: 'hidden'` removed from `run` and `error`), which the
-strip-and-compare check caught — the substitution dance in NEXT-SESSION §3 exists solely because of
-this file. This needs raising with Richard: NDA-004 §3 and NDA-012's CustomCode category **cannot
-close** while that session holds it.
+The tell was there the whole time and nobody looked: `git log` on the path, and the fact that the
+working-tree mtime (22:34) *preceded* the commit (22:41). Landed after typecheck, both its suites,
+the editor suite and all three catalog gates.
+
+**The audit is now a ~30-minute job and is the next session's first item.** It closes NDA-004 §3
+(10 of 10) and this category (5 of 5).
 
 ---
 
