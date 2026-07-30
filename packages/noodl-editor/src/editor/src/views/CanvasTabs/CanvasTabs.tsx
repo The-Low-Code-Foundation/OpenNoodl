@@ -1,8 +1,16 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 
 import { useCanvasTabs } from '../../contexts/CanvasTabsContext';
-import { BlocklyWorkspace } from '../BlocklyEditor';
 import css from './CanvasTabs.module.scss';
+
+/**
+ * Blockly is ~1.1 MB before its message bundle, and the overwhelming majority of sessions
+ * never open a Logic Builder. Loading it on first tab open keeps it out of the renderer's
+ * main bundle entirely.
+ */
+const BlocklyWorkspace = lazy(() =>
+  import('../BlocklyEditor/BlocklyWorkspace').then((m) => ({ default: m.BlocklyWorkspace }))
+);
 
 export interface CanvasTabsProps {
   /** Callback when workspace changes */
@@ -93,7 +101,19 @@ export function CanvasTabs({ onWorkspaceChange }: CanvasTabsProps) {
       <div className={css['TabContent']}>
         {activeTab && (
           <div className={css['BlocklyContainer']}>
-            <BlocklyWorkspace initialWorkspace={activeTab.workspace || undefined} onChange={handleWorkspaceChange} />
+            <Suspense fallback={<div className={css['TabLoading']}>Loading the block editor…</div>}>
+              {/*
+                Keyed by tab id. BlocklyWorkspace injects its workspace once and never reloads
+                it from props, so without a key React would reuse one mounted workspace across
+                tabs: switching tabs would show the previous node's blocks and then save them
+                over the newly selected node.
+              */}
+              <BlocklyWorkspace
+                key={activeTab.id}
+                initialWorkspace={activeTab.workspace || undefined}
+                onChange={handleWorkspaceChange}
+              />
+            </Suspense>
           </div>
         )}
       </div>

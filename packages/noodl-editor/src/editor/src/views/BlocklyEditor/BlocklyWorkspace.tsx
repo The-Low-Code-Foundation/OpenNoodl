@@ -1,263 +1,180 @@
 /**
  * BlocklyWorkspace Component
  *
- * React wrapper for Google Blockly visual programming workspace.
- * Provides integration with Noodl's node system for visual logic building.
+ * React wrapper for the Google Blockly visual programming workspace, as used by the Logic
+ * Builder node. Owns one Blockly workspace for its lifetime: injection, persistence,
+ * language, theme and disposal.
+ *
+ * One instance is one node's blocks. Callers must key the element by node id — the workspace
+ * is injected once and deliberately never reloaded from props (see `initialWorkspace`), so a
+ * reused instance would show the wrong program and then save it over the right one.
  *
  * @module BlocklyEditor
  */
 
-import DarkTheme from '@blockly/theme-dark';
 import * as Blockly from 'blockly';
 import { javascriptGenerator } from 'blockly/javascript';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
+import { CanvasTheme } from '../nodegrapheditor/canvas/CanvasTheme';
+import { applyLanguage, currentLanguageCode } from './BlocklyLocale';
+import { buildBlocklyTheme, resolveBlocklyChrome } from './BlocklyTheme';
 import css from './BlocklyWorkspace.module.scss';
-import { initBlocklyIntegration } from './index';
+import { buildToolbox } from './BlocklyToolbox';
+import { initBlocklyIntegration } from './initialize';
+
+/** How long to coalesce edits before serialising and generating code. */
+const SAVE_DEBOUNCE_MS = 300;
 
 export interface BlocklyWorkspaceProps {
-  /** Initial workspace JSON (for loading saved state) */
+  /**
+   * Workspace JSON to open with. Read once, on mount — later changes are ignored, because
+   * this prop is fed by our own `onChange` and re-loading on it would fight the user's
+   * cursor. Key the component by node id to show a different program.
+   */
   initialWorkspace?: string;
-  /** Toolbox configuration */
-  toolbox?: Blockly.utils.toolbox.ToolboxDefinition;
-  /** Callback when workspace changes */
+  /** Called after every settled edit with the serialised workspace and the generated code. */
   onChange?: (workspace: Blockly.WorkspaceSvg, json: string, code: string) => void;
   /** Read-only mode */
   readOnly?: boolean;
-  /** Custom theme */
-  theme?: Blockly.Theme;
 }
 
-/**
- * BlocklyWorkspace - React component for Blockly integration
- *
- * Handles:
- * - Blockly workspace initialization
- * - Workspace persistence (save/load)
- * - Change detection and callbacks
- * - Cleanup on unmount
- */
-export function BlocklyWorkspace({
-  initialWorkspace,
-  toolbox,
-  onChange,
-  readOnly = false,
-  theme
-}: BlocklyWorkspaceProps) {
+export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false }: BlocklyWorkspaceProps) {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
-  const changeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Initialize Blockly workspace
+  // The change listener is registered once, so it must not close over `onChange` — a
+  // re-rendered parent would otherwise keep writing through the callback captured at mount.
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // Injection waits on the language bundle, so the toolbox is built with the right labels
+  // rather than being rebuilt a frame later.
+  const [failedToLoad, setFailedToLoad] = useState(false);
+
   useEffect(() => {
-    if (!blocklyDiv.current) return;
+    let disposed = false;
+    let workspace: Blockly.WorkspaceSvg | null = null;
+    const themeContext = {};
 
-    // Initialize custom Noodl blocks and generators before creating workspace
-    initBlocklyIntegration();
+    const flushSave = () => {
+      if (!workspace || !onChangeRef.current) return;
+      const json = JSON.stringify(Blockly.serialization.workspaces.save(workspace));
+      const code = javascriptGenerator.workspaceToCode(workspace);
+      onChangeRef.current(workspace, json, code);
+    };
 
-    console.log('🔧 [Blockly] Initializing workspace');
+    async function setup() {
+      // Custom blocks and generators must exist before the toolbox referencing them is built.
+      initBlocklyIntegration();
 
-    // Inject Blockly with dark theme
-    const workspace = Blockly.inject(blocklyDiv.current, {
-      toolbox: toolbox || getDefaultToolbox(),
-      theme: theme || DarkTheme,
-      readOnly: readOnly,
-      trashcan: true,
-      zoom: {
-        controls: true,
-        wheel: true,
-        startScale: 1.0,
-        maxScale: 3,
-        minScale: 0.3,
-        scaleSpeed: 1.2
-      },
-      grid: {
-        spacing: 20,
-        length: 3,
-        colour: '#ccc',
-        snap: true
+      const labels = await applyLanguage(currentLanguageCode());
+      if (disposed || !blocklyDiv.current) return;
+
+      const chrome = resolveBlocklyChrome();
+
+      workspace = Blockly.inject(blocklyDiv.current, {
+        toolbox: buildToolbox(labels),
+        theme: buildBlocklyTheme(),
+        readOnly,
+        trashcan: true,
+        zoom: {
+          controls: true,
+          wheel: true,
+          startScale: 1.0,
+          maxScale: 3,
+          minScale: 0.3,
+          scaleSpeed: 1.2
+        },
+        grid: {
+          spacing: 20,
+          length: 3,
+          colour: chrome.subtle,
+          snap: true
+        },
+        move: { scrollbars: true, drag: true, wheel: true }
+      });
+
+      workspaceRef.current = workspace;
+
+      if (initialWorkspace) {
+        try {
+          // Events off during load: deserialisation fires a BLOCK_CREATE per block, which
+          // would otherwise debounce into a save that writes the file back to itself.
+          Blockly.Events.disable();
+          Blockly.serialization.workspaces.load(JSON.parse(initialWorkspace), workspace);
+        } catch (error) {
+          console.error('[Blockly] Could not load the saved blocks', error);
+        } finally {
+          Blockly.Events.enable();
+        }
       }
-    });
 
-    workspaceRef.current = workspace;
+      workspace.addChangeListener(changeListener);
 
-    // Load initial workspace if provided
-    if (initialWorkspace) {
-      try {
-        const json = JSON.parse(initialWorkspace);
-        Blockly.serialization.workspaces.load(json, workspace);
-        console.log('✅ [Blockly] Loaded initial workspace');
-      } catch (error) {
-        console.error('❌ [Blockly] Failed to load initial workspace:', error);
-      }
+      // Follow the editor's light/dark setting (UIX-005 contract). The grid is not part of
+      // the theme object and Blockly's setter for it is private, so the grid colour is
+      // restyled from CSS instead (see `.blocklyGridPattern` in the stylesheet) — which
+      // re-resolves on a theme flip for free.
+      CanvasTheme.instance.on(() => {
+        if (!workspace) return;
+        workspace.setTheme(buildBlocklyTheme());
+      }, themeContext);
     }
 
-    // Listen for changes - filter to only respond to finished workspace changes,
-    // not UI events like dragging or moving blocks
-    const changeListener = (event: Blockly.Events.Abstract) => {
-      if (!onChange || !workspace) return;
+    /**
+     * Persist on anything that changed the program.
+     *
+     * `isUiEvent` is the whole filter: Blockly marks clicks, selections, viewport moves and
+     * drags as UI events, and everything else — create, delete, change, and crucially the
+     * BLOCK_MOVE that fires when two blocks are connected — as a real change. Enumerating UI
+     * event types by hand is what previously dropped block connections on the floor.
+     */
+    function changeListener(event: Blockly.Events.Abstract) {
+      if (!workspace || event.isUiEvent) return;
+      if (event.type === Blockly.Events.FINISHED_LOADING) return;
+      // Mid-drag intermediate states are not worth serialising; the drop fires its own event.
+      if (workspace.isDragging()) return;
 
-      // Ignore UI events that don't change the workspace structure
-      // These fire constantly during drags and can cause state corruption
-      if (event.type === Blockly.Events.BLOCK_DRAG) return;
-      if (event.type === Blockly.Events.BLOCK_MOVE && !event.isUiEvent) return; // Allow programmatic moves
-      if (event.type === Blockly.Events.SELECTED) return;
-      if (event.type === Blockly.Events.CLICK) return;
-      if (event.type === Blockly.Events.VIEWPORT_CHANGE) return;
-      if (event.type === Blockly.Events.TOOLBOX_ITEM_SELECT) return;
-      if (event.type === Blockly.Events.THEME_CHANGE) return;
-      if (event.type === Blockly.Events.TRASHCAN_OPEN) return;
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
+    }
 
-      // For UI events that DO change the workspace, debounce them
-      const isUiEvent = event.isUiEvent;
+    setup().catch((error) => {
+      console.error('[Blockly] Could not open the block editor', error);
+      if (!disposed) setFailedToLoad(true);
+    });
 
-      if (isUiEvent) {
-        // Clear any pending timeout for UI events
-        if (changeTimeoutRef.current) {
-          clearTimeout(changeTimeoutRef.current);
-        }
-
-        // Debounce UI-initiated changes (user editing)
-        changeTimeoutRef.current = setTimeout(() => {
-          const json = JSON.stringify(Blockly.serialization.workspaces.save(workspace));
-          const code = javascriptGenerator.workspaceToCode(workspace);
-          console.log('[Blockly] Generated code:', code);
-          onChange(workspace, json, code);
-        }, 300);
-      } else {
-        // Programmatic changes fire immediately (e.g., undo/redo, loading)
-        const json = JSON.stringify(Blockly.serialization.workspaces.save(workspace));
-        const code = javascriptGenerator.workspaceToCode(workspace);
-        console.log('[Blockly] Generated code:', code);
-        onChange(workspace, json, code);
-      }
-    };
-
-    workspace.addChangeListener(changeListener);
-
-    // Cleanup
     return () => {
-      console.log('🧹 [Blockly] Disposing workspace');
+      disposed = true;
 
-      // Clear any pending debounced calls
-      if (changeTimeoutRef.current) {
-        clearTimeout(changeTimeoutRef.current);
+      // A pending edit must not be lost to a tab close — flush it rather than drop it.
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+        flushSave();
       }
 
-      workspace.removeChangeListener(changeListener);
-      workspace.dispose();
+      CanvasTheme.instance.off(themeContext);
+
+      if (workspace) {
+        workspace.removeChangeListener(changeListener);
+        workspace.dispose();
+      }
+      workspace = null;
       workspaceRef.current = null;
     };
-  }, [toolbox, theme, readOnly]);
-
-  // NOTE: Do NOT reload workspace on initialWorkspace changes!
-  // The initialWorkspace prop changes on every save, which would cause corruption.
-  // Workspace is loaded ONCE on mount above, and changes are saved via onChange callback.
+    // Mount-only by design: see `initialWorkspace`. `readOnly` is fixed per tab, and the
+    // component is keyed by node id so a different program means a fresh mount.
+  }, []);
 
   return (
     <div className={css.Root}>
+      {failedToLoad ? (
+        <div className={css.LoadError}>The block editor could not be opened. See the developer console for details.</div>
+      ) : null}
       <div ref={blocklyDiv} className={css.BlocklyContainer} />
     </div>
   );
-}
-
-/**
- * Default toolbox with Noodl-specific blocks
- */
-function getDefaultToolbox(): Blockly.utils.toolbox.ToolboxDefinition {
-  return {
-    kind: 'categoryToolbox',
-    contents: [
-      // Noodl I/O Category
-      {
-        kind: 'category',
-        name: 'Noodl Inputs/Outputs',
-        colour: '230',
-        contents: [
-          { kind: 'block', type: 'noodl_define_input' },
-          { kind: 'block', type: 'noodl_get_input' },
-          { kind: 'block', type: 'noodl_define_output' },
-          { kind: 'block', type: 'noodl_set_output' }
-        ]
-      },
-      // Noodl Signals Category
-      {
-        kind: 'category',
-        name: 'Noodl Signals',
-        colour: '180',
-        contents: [
-          { kind: 'block', type: 'noodl_define_signal_input' },
-          { kind: 'block', type: 'noodl_define_signal_output' },
-          { kind: 'block', type: 'noodl_send_signal' }
-        ]
-      },
-      // Noodl Variables Category
-      {
-        kind: 'category',
-        name: 'Noodl Variables',
-        colour: '330',
-        contents: [
-          { kind: 'block', type: 'noodl_get_variable' },
-          { kind: 'block', type: 'noodl_set_variable' }
-        ]
-      },
-      // Noodl Objects Category
-      {
-        kind: 'category',
-        name: 'Noodl Objects',
-        colour: '20',
-        contents: [
-          { kind: 'block', type: 'noodl_get_object' },
-          { kind: 'block', type: 'noodl_get_object_property' },
-          { kind: 'block', type: 'noodl_set_object_property' }
-        ]
-      },
-      // Noodl Arrays Category
-      {
-        kind: 'category',
-        name: 'Noodl Arrays',
-        colour: '260',
-        contents: [
-          { kind: 'block', type: 'noodl_get_array' },
-          { kind: 'block', type: 'noodl_array_length' },
-          { kind: 'block', type: 'noodl_array_add' }
-        ]
-      },
-      // Standard Logic blocks (useful for conditionals)
-      {
-        kind: 'category',
-        name: 'Logic',
-        colour: '210',
-        contents: [
-          { kind: 'block', type: 'controls_if' },
-          { kind: 'block', type: 'logic_compare' },
-          { kind: 'block', type: 'logic_operation' },
-          { kind: 'block', type: 'logic_negate' },
-          { kind: 'block', type: 'logic_boolean' }
-        ]
-      },
-      // Standard Math blocks
-      {
-        kind: 'category',
-        name: 'Math',
-        colour: '230',
-        contents: [
-          { kind: 'block', type: 'math_number' },
-          { kind: 'block', type: 'math_arithmetic' },
-          { kind: 'block', type: 'math_single' }
-        ]
-      },
-      // Standard Text blocks
-      {
-        kind: 'category',
-        name: 'Text',
-        colour: '160',
-        contents: [
-          { kind: 'block', type: 'text' },
-          { kind: 'block', type: 'text_join' },
-          { kind: 'block', type: 'text_length' }
-        ]
-      }
-    ]
-  };
 }

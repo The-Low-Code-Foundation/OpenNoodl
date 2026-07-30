@@ -19,8 +19,6 @@ import { javascriptGenerator, Order } from 'blockly/javascript';
  * Initialize all Noodl code generators
  */
 export function initNoodlGenerators() {
-  console.log('🔧 [Blockly] Initializing Noodl code generators');
-
   // Input/Output generators
   initInputOutputGenerators();
 
@@ -32,8 +30,6 @@ export function initNoodlGenerators() {
 
   // Array generators
   initArrayGenerators();
-
-  console.log('✅ [Blockly] Noodl generators initialized');
 }
 
 /**
@@ -74,10 +70,16 @@ function initInputOutputGenerators() {
     return '';
   };
 
-  // Send Signal - generates: this.sendSignalOnOutput("name");
+  // Send Signal - generates: sendSignalOnOutput("name");
+  //
+  // Bare call, not `this.sendSignalOnOutput`. The runtime compiles this body with
+  // `new Function(...)` and invokes it with no receiver, so `this` is the global object in
+  // the resulting sloppy-mode scope and the method call throws. `sendSignalOnOutput` is one
+  // of the named parameters the runtime passes in, so calling it directly resolves through
+  // the function's own scope.
   javascriptGenerator.forBlock['noodl_send_signal'] = function (block) {
     const name = block.getFieldValue('NAME');
-    return `this.sendSignalOnOutput("${name}");\n`;
+    return `sendSignalOnOutput("${name}");\n`;
   };
 }
 

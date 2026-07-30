@@ -103,3 +103,14 @@
   overflow: hidden;
   background-color: var(--theme-color-bg-1);
 }
+
+/* Shown while the Blockly chunk is being fetched on first open. */
+.TabLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--theme-color-fg-muted);
+  font-size: 12px;
+}

@@ -17,8 +17,6 @@ import * as Blockly from 'blockly';
  * Initialize all Noodl custom blocks
  */
 export function initNoodlBlocks() {
-  console.log('🔧 [Blockly] Initializing Noodl custom blocks');
-
   // Input/Output blocks
   defineInputOutputBlocks();
 
@@ -30,8 +28,6 @@ export function initNoodlBlocks() {
 
   // Array blocks (basic - will expand later)
   defineArrayBlocks();
-
-  console.log('✅ [Blockly] Noodl blocks initialized');
 }
 
 /**

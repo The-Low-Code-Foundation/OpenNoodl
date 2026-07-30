@@ -248,3 +248,23 @@
     overflow-x: hidden !important;
   }
 }
+
+/* Blockly failed to inject — the container below stays empty, so say why. */
+.LoadError {
+  padding: 16px;
+  color: var(--theme-color-fg-muted);
+  font-size: 12px;
+}
+
+/**
+ * Grid colour.
+ *
+ * Blockly draws the grid as an SVG <pattern> whose lines carry a `stroke` presentation
+ * attribute set at injection time, and its setter is private. A CSS `stroke` beats a
+ * presentation attribute, so styling it here both overrides the injected colour and — being
+ * a token reference — re-resolves on its own when the editor theme flips.
+ */
+:global(#blocklyGridPattern) line,
+:global([id^='blocklyGridPattern']) line {
+  stroke: var(--theme-color-border-default);
+}
