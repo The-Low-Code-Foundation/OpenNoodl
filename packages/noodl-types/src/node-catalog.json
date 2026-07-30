@@ -14616,7 +14616,6 @@
         {
           "name": "run",
           "displayName": "Run",
-          "editorName": "hidden",
           "group": "Signals",
           "plug": "input",
           "type": {
@@ -14642,7 +14641,6 @@
         {
           "name": "error",
           "displayName": "Error",
-          "editorName": "hidden",
           "group": "Status",
           "plug": "output",
           "type": {

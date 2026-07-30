@@ -15786,7 +15786,6 @@
         {
           "name": "run",
           "displayName": "Run",
-          "editorName": "hidden",
           "group": "Signals",
           "plug": "input",
           "type": {
@@ -15812,7 +15811,6 @@
         {
           "name": "error",
           "displayName": "Error",
-          "editorName": "hidden",
           "group": "Status",
           "plug": "output",
           "type": {
@@ -15834,25 +15832,27 @@
       "enrichment": {
         "typeName": "Logic Builder",
         "summary": "Block-based (Blockly) logic: blocks compile to JavaScript that runs when a signal fires and writes the node's output ports.",
-        "description": "Logic Builder stores a visual block program (Google Blockly) in its `workspace` parameter; the editor generates plain JavaScript from the blocks into the hidden `generatedCode` parameter, and the runtime compiles and executes that code. Execution is strictly signal-driven: the logic runs when the `run` signal input (or a block-defined signal input) fires — changing an input value alone never executes it. The generated code runs with `Inputs`, `Outputs`, `Noodl`, `Variables`, `Objects`, `Arrays` and `sendSignalOnOutput` in scope, so blocks can read and write global Noodl Variables/Objects/Arrays. Every `Outputs[\"name\"] = ...` in the program becomes a value output that updates after each run; a runtime exception lands in the `error` string output.",
-        "whenToUse": "Reach for it when logic must be authorable without writing JavaScript. For anything beyond what the block set expresses — async work, loops over API data, library calls — use JavaScriptFunction (Function); for a one-line computation use Expression.",
+        "description": "Logic Builder stores a visual block program (Google Blockly) in its `workspace` parameter; the editor generates plain JavaScript from the blocks into the `generatedCode` parameter, and the runtime compiles and executes that code. Execution is strictly signal-driven: the logic runs when the `run` signal input (or a block-defined signal input) fires — changing an input value alone never executes it. The generated code runs with `Inputs`, `Outputs`, `Noodl`, `Variables`, `Objects`, `Arrays` and `sendSignalOnOutput` in scope, so blocks can read and write global Noodl Variables/Objects/Arrays as well as the node's own ports. A runtime exception lands in the `error` string output and clears on the next successful run. The block set covers the Noodl seam (ports, signals, Variables/Objects/Arrays) plus stock Blockly logic, loops, math, text, lists, workspace variables and user-defined functions.",
+        "whenToUse": "Reach for it when logic must be authorable without writing JavaScript, or when the imperative shape of the logic — a sequence, a loop, a local variable — is the point. For anything beyond what the block set expresses — async work, API calls, library use — use JavaScriptFunction (Function); for a one-line computation use Expression.",
         "ports": {
-          "run": "Signal input (connections only, hidden in the property panel); fires one execution of the block program.",
-          "workspace": "Edit-only Blockly workspace JSON, authored in the block editor — not written by hand.",
+          "run": "Signal input (connections only); fires one execution of the block program.",
+          "workspace": "Edit-only Blockly workspace JSON, authored in the block editor — not written by hand. This is the source of truth for the node's port set.",
           "generatedCode": "Edit-only JavaScript the editor generates from the blocks; the runtime executes exactly this text.",
           "error": "String value output holding the message of the last execution error, empty when the last run succeeded."
         },
-        "runtimeBehavior": "Ports are runtime-determined from the generated code: the editor scans `generatedCode` for `Outputs[\"name\"]` assignments and publishes a value output per name (it publishes ports only when at least one output is detected). Input, signal-input and signal-output detection is not currently implemented in the editor's port scan, so data must reach the program through Noodl Variables/Objects rather than input connections; the runtime would register input ports on demand, but the editor does not surface them. An authoring tool should treat `workspace`/`generatedCode` as editor-managed, wire signals to `run`, and read only outputs that appear as `Outputs[\"...\"]` in the generated code.",
+        "runtimeBehavior": "Ports are determined from the `workspace` parameter, not from the generated code. The editor parses the saved blocks and publishes: a value input per `Define input`/`get input` name (carrying the declared type, `*` when only used), a value output per `Define output`/`set output` name, a signal input per `Define signal input`, and a signal output per `Define signal output`/`send signal`. Ports are republished on every `workspace` change, including retraction when blocks are deleted. The runtime registers each port on demand as connections are made, using the same parse to decide signal versus value. An authoring tool should treat `workspace` and `generatedCode` as an editor-managed pair — never write one without the other, and never hand-edit either — wire execution to `run` or a block-declared signal input, and read the port names the blocks declare.",
         "examples": [
           "code-logic-builder-greeting"
         ],
         "patterns": [
-          "Button `onClick` → `run`, with an `Outputs[\"...\"]` value wired to a Text — the minimal block-program shape.",
-          "Blocks read and write `Noodl.Variables` to exchange state with the rest of the app instead of using input ports."
+          "Button `onClick` → `run`, a value into a block-declared input, and a block-declared output wired to a Text — the minimal block-program shape.",
+          "`send signal` blocks to fan out to different downstream nodes depending on what the program decided.",
+          "Blocks read and write `Noodl.Variables` to exchange state with the rest of the app when a port would be awkward."
         ],
         "antiPatterns": [
           "Expecting the logic to re-run when connected values change — nothing executes until a signal fires.",
-          "Hand-editing `generatedCode`; the block editor overwrites it from `workspace`."
+          "Hand-editing `generatedCode`; the block editor overwrites it from `workspace`.",
+          "Writing a `workspace` string without the matching `generatedCode` (or the reverse) — the first decides the ports, the second decides what runs, and they must come from the same block program."
         ],
         "relatedNodes": [
           "JavaScriptFunction",
@@ -54171,7 +54171,7 @@
     {
       "id": "code-logic-builder-greeting",
       "title": "Logic Builder: block-built logic with generated ports",
-      "description": "Logic Builder holds a visual block workspace (`workspace`) from which it generates JavaScript (`generatedCode`); the blocks' declared inputs and outputs become the node's ports, exactly like a Function node's script does. Here the generated logic turns a name into a greeting: the text input feeds the block-declared `name` input, `run` executes, and the block-declared `greeting` output lands in a Text. Use it where non-programmers must be able to read and edit the logic; use Function for anything a programmer maintains.",
+      "description": "Logic Builder holds a visual block workspace (`workspace`) from which the editor generates JavaScript (`generatedCode`); the inputs, outputs and signals the blocks declare or use become the node's ports. Here the block program turns a name into a greeting: the text input feeds the block-declared `name` input, `run` executes the program, and the block-declared `greeting` output lands in a Text. Both parameters are editor-managed — author the blocks, never hand-write either string. Use Logic Builder where non-programmers must be able to read and edit the logic; use Function for anything a programmer maintains.",
       "demonstrates": [
         "Logic Builder"
       ],
@@ -54219,7 +54219,11 @@
             {
               "id": "build_greeting",
               "type": "Logic Builder",
-              "label": "Build greeting"
+              "label": "Build greeting",
+              "parameters": {
+                "workspace": "{\"blocks\":{\"languageVersion\":0,\"blocks\":[{\"type\":\"noodl_define_input\",\"x\":20,\"y\":20,\"fields\":{\"NAME\":\"name\",\"TYPE\":\"string\"},\"next\":{\"block\":{\"type\":\"noodl_define_output\",\"fields\":{\"NAME\":\"greeting\",\"TYPE\":\"string\"},\"next\":{\"block\":{\"type\":\"noodl_set_output\",\"fields\":{\"NAME\":\"greeting\"},\"inputs\":{\"VALUE\":{\"block\":{\"type\":\"text_join\",\"extraState\":{\"itemCount\":2},\"inputs\":{\"ADD0\":{\"block\":{\"type\":\"text\",\"fields\":{\"TEXT\":\"Hello, \"}}},\"ADD1\":{\"block\":{\"type\":\"noodl_get_input\",\"fields\":{\"NAME\":\"name\"}}}}}}}}}}}}]}}",
+                "generatedCode": "Outputs[\"greeting\"] = 'Hello, ' + String(Inputs[\"name\"] ?? '');\n"
+              }
             }
           ],
           "connections": [
