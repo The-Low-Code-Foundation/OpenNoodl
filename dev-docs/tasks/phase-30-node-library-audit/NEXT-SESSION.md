@@ -69,7 +69,12 @@ below; the one-line version is that *a criterion whose last clause names a build
 criterion that grades the build everybody runs.* Gates after it: **runtime jest +19 from that
 workstream, viewer jest 362**, all three typechecks clean.
 
-Gates as of `899ab676`: **1,119 runtime jest, 359 viewer jest, 1,894 editor jasmine (0 failures)**;
+**Gates as of `6f166ccb` + the catalog correction: 1,194 runtime jest, 367 viewer jest, 1,894 editor
+jasmine (0 failures), all three typechecks clean, `catalog:merge:check` green.** ⚠️ `catalog:check` is
+red in a tree carrying the other session's generator work, and that is *their* pending commit, not a
+stale artifact — see the schema trap in §0.
+
+Older, kept for the notes around it — gates as of `899ab676`: **1,119 runtime jest, 359 viewer jest, 1,894 editor jasmine (0 failures)**;
 cloud jest 52, unchanged and untouched since `d21154e1`. The editor suite was run twice at
 `899ab676` — see the barrel trap below for why once was not enough. All three packages typecheck
 (`npx tsc --noEmit`) — but see
@@ -237,7 +242,102 @@ mechanism** — the count of stale premises is now *thirteen*, and NDA-007 §2's
 useful direction: the thing it said did not exist had existed for years, and finding that turned a
 "two asset pipelines have to agree" task into one manifest field.
 
-### 0. What the 2026-07-30 late session did, and what it leaves
+### 0. What the 2026-07-30 **final** session did — read this first
+
+**The catalog block is gone, and it was never real.** Both `node-catalog*.json` had been dirty with
+another session's Logic Builder work for four handovers and the standing instruction was to
+coordinate. But their hunks were *derivable* — the two `editorName` removals from `logic-builder.ts`,
+the whole enriched diff from the dirty `enrichment/logic-builder.json` and its example — so
+regeneration would **reproduce** their tree, not clobber it. That is a testable claim: back both files
+up twice (scratchpad *and* the git index), regenerate, diff. `Logic Builder` was not in the
+changed-node list at all. **The question is never "is it dirty", it is "does regeneration reproduce
+it"** — and one reversible experiment beat four sessions of waiting.
+
+Staging kept their work out by *constructing* the blob rather than filtering hunks in a 1.1 MB JSON:
+regenerated catalog with `HEAD`'s `Logic Builder` substituted back in, staged with `git hash-object -w`
++ `git update-index --cacheinfo`. `json.dumps(…, indent=2, ensure_ascii=False)` round-trips both files
+byte-identically to what `JSON.stringify(…, null, 2)` writes, so the substitution provably changes
+nothing else. **Their work is still dirty in the tree, untouched.**
+
+Landed this session (`7e2cdac9`, `4e4d1cf3`, `4be365a6`, `47f67846`, `6f166ccb`):
+
+- **Catalog regenerated.** NDA-009 criterion 4 and NDA-005 criterion 1 both stopped being
+  built-but-unprovable. Coverage **5.4% → 39.1% measured**; nodes at 0% **112 → 83**. ⚠️ The
+  projected 41.2% was optimistic — reported as measured, not reconciled away.
+- **`On App Error` was registered but not in the picker**, so the Failure Contract's catch-all half
+  could not be added to a graph; every measurement that found it working found it in a script-written
+  fixture. Criterion 2's own trap one level down. Fixed. Also wrote its enrichment entry, which
+  regeneration had turned into a **live CI failure** (`catalog:merge:check --require-coverage`).
+- **NDA-012 is 8 of 17 categories, 22 of 155 nodes**, run batched with NDA-005's C1. **31 new defects,
+  no find-rate decline.** Two shapes recur *across* categories, which the per-node reads could not
+  have shown — see the find-rate table in `PROGRESS.md`.
+- **NDA-010 §1** items 2 and 3 done, item 1 is a decision (in the spec). **NDA-009 §4 done — NDA-009
+  is complete.**
+
+**Still blocked, unchanged:** `Logic Builder` (NDA-004 §3's last mute node) — `logic-builder.ts` is
+still dirty with the other session's rewrite. Check `git status` on it first.
+
+⚠️⚠️ **The five-consumers note is not enough: catalog regeneration also folds in uncommitted
+changes to the *generator*, and those rewrite the artifact's schema across all 156 nodes.** The
+other session began SUB-013 (parameter encodings) mid-session — `scripts/node-catalog/generate.js`,
+`extractor-entry.js` and `lib/build-catalog.js` all dirty, plus a dozen untracked files — and a
+regeneration after that point added a `parameterEncoding` block to **every node**. It rode into
+`4be365a6` before it was caught, and was corrected in the following commit by stripping the key.
+
+**The node-level substitution that keeps another session's node work out cannot catch this**, and
+that is the lesson: it guards a *node*, and a generator change is a *schema* change. Two detections
+that do work, both cheap:
+
+- `npm run catalog:check` going red **when you have changed nothing** means the generator moved under
+  you, not that your artifact is stale. That is what surfaced this.
+- `git status --porcelain scripts/node-catalog/` before regenerating, and again before staging.
+
+The verification that made the fix safe is reusable: strip the new key, then assert the result differs
+from the last-known-good commit **only** in the ports you documented — node set identical, every
+node-level field identical, every port identical once `description` is removed. It came back as
+exactly the 11 nodes, which is what makes it a correction rather than a hope.
+
+⚠️ **New harness fact, and it cost a green row that pinned nothing.** `setInputValue` on a
+**runtime-discovered** port is a no-op: `registerInputIfNeeded` only runs when a *connection* targets
+the port, so the call logs `node doesn't have input <name>` and returns. A row driving Event Sender's
+payload that way measured nothing — and its control passed too, because `Received` fires regardless of
+payload. **A control that does not depend on the thing under test cannot detect that the thing never
+happened.** Drive dynamic ports over a wire, and assert the value actually arrived.
+
+### 0a. Decisions waiting on Richard — none of them is a coding task
+
+Consolidated here because they were scattered across four sections. **NDA-017 §1 is the only one that
+blocks anything.**
+
+1. **NDA-017 §1 — blocks §2, and it is the biggest.** Never-arrived detection (cheap, closes the seed
+   case) vs. an upstream-pending notion in the runtime (phase-sized, closes the case the community
+   actually reported) vs. making NDA-004 §3's completion-signal sequencing discoverable through docs
+   and the semantic validator. The spec recommends **A + C now, B separately**. §0 added a constraint
+   to A in place: the seed also reaches the graph with **no `Run` at all**, and a control-signal check
+   cannot see that route. Details in §2b.
+2. **Two creatable nodes read "Delete Record"** — `DeleteDbModelProperties` (Parse-wire) and
+   `noodl.byob.DeleteRecord` (BYOB). Either family gives up the plain label; which is canonical is the
+   question WF-007 left open. Details in §4, evidence in `FINDINGS.md`.
+3. **NDA-004 §2's ⏳ item 9, the deprecated five** — should a deprecated node gain a failure surface at
+   all. **2026-07-30 added the strongest data point yet**: `Script Downloader` does network I/O against
+   author-supplied URLs and has **no failure surface whatsoever** — no `onerror`, no raised code, no
+   console line of its own, so a 404 gives an author a `Loaded` that never fires and nothing to learn
+   from. The case for "yes" is easier here than for any of the others. The Javascript worksheet has it.
+   ⚠️ A second data point cuts the other way and is worth knowing before deciding: **`Number Blend` is
+   deprecated and is the *healthier* of its pair** — it does Color Blend's job over a type with neither
+   the format ambiguity nor the dead end. **Deprecation does not track quality here.**
+4. **NDA-010 §1 item 1 — should a popup's Component Outputs *be* its close results?** Close Popup still
+   names results by hand in a `results` stringlist. Deriving them from the component's output ports
+   instead would redefine what a Component Output on a popup means — today they go nowhere, since a
+   popup instance is created by `showPopup` rather than wired into a parent. Coherent, arguably right,
+   and a semantic change with a compatibility cost the typing fix (already landed) does not carry.
+   Three options are written into the spec. **Blocks nothing.**
+5. **`Value Changed` cannot see an Object or Array being edited**, and the fix needs a decision rather
+   than a patch: comparing aggregates by content would fire on every keystroke into a bound Object. The
+   options are a **Deep Compare** input, a documented limitation (done — the port sentence now says
+   it), or routing authors to the Object/Array change signals. Logic worksheet. **Blocks nothing.**
+
+### 0b. What the 2026-07-30 late session did, and what it leaves
 
 - **The confirmatory live run is DONE** (`847c6282`). All three witnesses pass — masonry at authored
   widths in the script-stripped SSG page, and the `[noodl] … [expression/compile-failed]` line in
@@ -348,7 +448,15 @@ check cannot see that route.
 terms and it is the difference between measuring the defect and reporting it absent: `update()` is
 synchronous, `settle()` yields, and a row written with `settle()` lets an async producer win the race.
 
-### 3. Catalog regeneration — now the largest single owed item, and **still blocked**
+### 3. ~~Catalog regeneration~~ — **DONE 2026-07-30** (`7e2cdac9`), see §0
+
+Kept below only for the five-consumers note, which is still the rule. The rest is historical: the
+debt is paid, both gates are green, and the "coordinate before running it" warning was resolved by
+testing whether regeneration reproduced the other session's work rather than by waiting for them.
+
+<details><summary>The original entry</summary>
+
+### 3-old. Catalog regeneration — now the largest single owed item, and **still blocked**
 
 ⚠️ **Checked 2026-07-30 16:00 and it is not safe to run.** Both
 `packages/noodl-types/src/node-catalog.json` and `node-catalog-enriched.json` are dirty with the
@@ -377,8 +485,10 @@ semantic validator can check the Run Tasks contract" — is what those ports are
 provable. It is also the reason the ports are static rather than the enums the spec asked for; the
 whole argument is in the spec under §2 and in `runtasks.ts`'s comment on `taskStartInput`.
 
-**`NODE-REGISTER.md`'s `Mute?`/`Fail?` columns are wrong until this runs.** Its hand-written Verdict
-column and the §2 triage section are the current truth.
+~~**`NODE-REGISTER.md`'s `Mute?`/`Fail?` columns are wrong until this runs.**~~ Regenerated
+2026-07-30; the columns are current.
+
+</details>
 
 ### 4. One new defect, filed and deliberately not fixed
 
