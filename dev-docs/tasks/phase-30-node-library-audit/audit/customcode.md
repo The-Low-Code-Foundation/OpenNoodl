@@ -8,14 +8,16 @@ in [FINDINGS.md](../FINDINGS.md). The `Pre-filled` column is machine-derived fro
 everything else needs the source read. Verdicts: ✅ pass · ⚠️ defect · 🔵 by design, document it ·
 ⬜ not audited.
 
-**Audited 2026-07-30, batched with NDA-005's C1. 4 of 5 nodes — `Logic Builder` was blocked and is
-now not** (`c5d5234f`; see its entry for the misdiagnosis that kept it blocked for nine handovers).
-8 defects in 4 nodes, **2.00 per node: the highest rate of any category in the phase.**
+**Audited 2026-07-30, batched with NDA-005's C1. Complete: 5 of 5 nodes**, `Logic Builder` last,
+after `c5d5234f` unblocked it — see its entry for the misdiagnosis that kept it blocked for nine
+handovers. **14 defects in 5 nodes, 2.80 per node: by a distance the highest rate of any category
+in the phase**, and the rate went *up* when the last node was added.
 
 That is not an accident of this category being messy. These are the library's escape hatches — the
-nodes an author reaches for when no other node will do — and **two of the three script hosts had no
-runtime failure surface at all**, so the place where user code is most likely to be wrong is the
-place that said least about it.
+nodes an author reaches for when no other node will do — and **three of the four script hosts had
+no runtime failure surface for a program that would not compile**, so the place where user code is
+most likely to be wrong is the place that said least about it. `Expression` was fixed by name, then
+`Function` by name, then `Logic Builder` by name. Nobody asked for the class until the third one.
 
 ---
 
@@ -100,26 +102,30 @@ Source: [`packages/noodl-runtime/src/nodes/std-library/simplejavascript.ts`](../
 
 ### Logic Builder  `Logic Builder`
 
-3 inputs / 1 outputs · 1 signal in / 0 signal out · docs 0% · SSR `safe` · browser, cloud
+3 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% → **100%** · SSR `safe` · browser, cloud
 
-Source: [`packages/noodl-runtime/src/nodes/std-library/logic-builder.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/logic-builder.ts) · Docs: [link](https://docs.noodl.net/nodes/logic/logic-builder)
+Source: [`packages/noodl-runtime/src/nodes/std-library/logic-builder.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/logic-builder.ts) · Parser: [`logic-builder-io.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/logic-builder-io.ts) · Rows: [`nda-012-logic-builder.test.ts`](../../../../packages/noodl-runtime/test/corpus/nda-012-logic-builder.test.ts) · Docs: [link](https://docs.noodl.net/nodes/logic/logic-builder)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ⚠️ **no signal out** | ⬜ | This is NDA-004 §3's last open item, 9 of 10 done |
-| C1 | ⚠️ **0%** (0/4) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | n/a | Holds no source anything else can mutate |
+| A2 |  | ✅ | `Run`, and the compile is invalidated by both `workspace.set` and `generatedCode.set` (`:330-340`), so a re-run after a block edit runs the *new* program |
+| A3 |  | ✅ | Every output the program wrote is flagged on every run, unconditionally (`:295-310`) — no change-guard to swallow a repeated value |
+| G1 |  | 🔵 | Inputs reach the block program exactly as they arrive; an input that has never been delivered reads `undefined` rather than a seeded `0`, which is the thing `Expression` gets wrong one file over |
+| B1 | ✅ has one | ⚠️ **FIXED** | **A block program that would not compile was mute — the third instance of this defect on the library's four script hosts.** `_compileFunction` swallowed the `SyntaxError` into a `console.error` and returned `null`, and `_executeLogic` shared one bare `return` between "there is no program" and "the program will not compile" (`:257-283`, `:165-171` before the fix). `error` stayed empty, no signal fired, and a graph sequenced behind the node stopped dead. NDA-004 §2 fixed exactly this on `Expression` and NDA-012 fixed it on `Function` **in the commit before this one**; neither pass asked what else compiles user code. Now `logic-builder/code-not-compiled` + `Failure` + the message on `Error`, with the no-program case still silent — row **L2** is the control that holds that shut |
+| B2 |  | ✅ | `raiseRuntimeError`, so a broken block program is diagnosable in a deployed build and not only in the editor. Deduplicated by message (row **L6**), because an author mid-edit re-runs the node constantly |
+| B3 | ⚠️ **no signal out** | ⚠️ **FIXED** | **NDA-004 §3's tenth and last mute node.** `Run` in, nothing out: no way to sequence anything after a block program, and a failure was visible only as a string somebody had to have thought to wire up. `Success`/`Failure` added, `Success` sent **after** every output the program wrote has been flagged, so a graph sequenced on it reads values that are already current (row **L3**) |
+| C1 | ⚠️ **0%** (0/4) | ✅ | 6/6 written this pass — the four static ports plus the two new signals |
+| D1 |  | ⚠️ **FIXED** | **A block-declared port name could silently collide with one of the node's own.** Block names are registered **verbatim** here, unlike `Function`'s `'out-' + name`, so `set output "error"` hit `registerOutputIfNeeded`'s early return and `_executeLogic` then flagged the *built-in* `error` output — whose getter returns the last execution error — and the program's value went nowhere with nothing said (row **L7**). On the input side a `Define input` named `run` was published as a **second** `run` port, so an author could wire a value into what is really the built-in signal (row **L9**). This is precisely the collision NDA-004 §3 predicted as the cost of giving a completion signal to a node whose ports are author-declared, and it was already live before the signal was added. Six names reserved (`:78-79`); a write to a reserved output raises `logic-builder/reserved-port-name`. ⚠️ **The read side cannot be detected** — a program reading `Inputs["run"]` gets `undefined` and nothing can see that it did |
+| E1 | ✅ no dead-end types | ✅ | The `TYPE` dropdown emits real Noodl type names (`NoodlBlocks.ts:45-52`), and an undeclared port falls back to `*` rather than to a guess. `object` and `array` are offered, and carry NDA-014's connectability caveat wherever they are chosen — a property of those types, not of this node |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | No timers, no listeners, no subscriptions to unwind. `setup` is `isRunningLocally`-gated, so the editor-side `parameterUpdated` handler never exists in a deployed build |
+| — |  | ⚠️ **FIXED** | **`__triggerSignal__` was built on every execution and never delivered.** `_createExecutionContext` assembled it and the comment said "for conditional logic", but `_compileFunction`'s parameter list stopped at `sendSignalOnOutput`, so it read `undefined` inside **every block program ever run** and a node with two signal inputs could not tell which had fired. Passed as the eighth parameter (row **L11**). A `this.sendSignalOnOutput` alias sat beside it and could never have worked either — a `new Function` body is sloppy-mode with no receiver — and is removed; `logic-builder-node.test.ts` already pinned that the qualified form throws |
+| — |  | ⚠️ **FIXED** | A bare-string `throw` reported the **empty string**: `error.message` on a non-`Error` is `undefined` and the getter turns that into `''`, so the node's only failure surface was blank for a failure that did happen (row **L5**). `simplejavascript.ts:327` had already made this choice |
+| — |  | ⚠️ | **Changing a block from `Define input` to `Define signal input` leaves the live port its old kind.** The `_io()` memo is *not* the problem — `workspace.set` clears both `ioSource` and `io` (`:334-336`) — but `registerInputIfNeeded` early-returns on a port that already exists (`:133-136`), and because the name is unchanged the editor does not retract the connection. The program simply never runs again until the graph is rebuilt. **Filed**: the repair means deregistering a port that may have connections, and `deregisterInput` throws on exactly that (`node.ts:399-401`). Row **L12**, `test.failing` |
+| — |  | 🔵 | `JavascriptNodeParser.createNoodlAPI` takes **no arguments** (`javascriptnodeparser.js:497-501`) and all three of `Expression`, `Function` and this node call it with one. It returns `window.Noodl` or `{}`, so where there is no `window.Noodl` the blocks' `Variables`/`Objects`/`Arrays` are `undefined`. Shared by three nodes, recorded **once** here rather than counted three times |
 
-**Verdict:** ⬜ not audited — **and no longer blocked, as of `c5d5234f`.**
+**Verdict:** ⚠️ 6 defects (5 fixed, 1 filed)
 
 ⚠️ **The nine-handover blocker was a misdiagnosis, and it is worth recording why.** Every handover
 since 2026-07-22 described this file as another session's *uncommitted rewrite in progress*, to be
@@ -131,11 +137,10 @@ detection that both windows can reach"* had exactly one window reaching it, and 
 imported by the editor and a test and by nothing that runs.
 
 The tell was there the whole time and nobody looked: `git log` on the path, and the fact that the
-working-tree mtime (22:34) *preceded* the commit (22:41). Landed after typecheck, both its suites,
-the editor suite and all three catalog gates.
+working-tree mtime (22:34) *preceded* the commit (22:41).
 
-**The audit is now a ~30-minute job and is the next session's first item.** It closes NDA-004 §3
-(10 of 10) and this category (5 of 5).
+**The estimate was ~30 minutes and the node carried six defects — the most of any node in this
+category.** Nine handovers of "blocked" cost more than the audit did.
 
 ---
 
@@ -169,14 +174,21 @@ Source: [`packages/noodl-viewer-react/src/nodes/std-library/javascript.ts`](../.
 
 | | |
 |---|---|
-| Nodes audited | 4 / 5 (`Logic Builder` blocked) |
-| Nodes with ≥1 defect | 4 |
-| New defects | **8** (3 fixed, 5 filed) |
-| Ports documented | 0% → **100%** on all four audited nodes |
+| Nodes audited | **5 / 5** |
+| Nodes with ≥1 defect | 5 |
+| New defects | **14** (8 fixed, 6 filed) |
+| Ports documented | 0% → **100%** on all five nodes |
 
-**Every audited node in this category carried at least one defect, at 2.00 per node.** The shape
-worth naming: `Expression` was given a runtime failure surface by NDA-004 §2 and `Function` by §3,
-and **neither pass looked at the third and fourth script hosts** — `Script`'s load path had no
-failure path at all, and its run path still has none. A sweep that fixes "the Expression node" and
-"the Function node" by name does not fix "nodes that host user code"; that is the same lesson as
-NDA-004 §2's criterion 2, which read as met because two of three packages were covered.
+**Every node in this category carried at least one defect, at 2.80 per node.** The shape worth
+naming: `Expression` was given a runtime failure surface by NDA-004 §2, `Function` by §3 and then
+again by this task, `Script`'s load path by this task and its run path by nobody yet — and
+`Logic Builder`, audited last, had the **same** compile-failure silence a third time. A sweep that
+fixes "the Expression node" and "the Function node" by name does not fix "nodes that host user
+code"; that is the same lesson as NDA-004 §2's criterion 2, which read as met because two of three
+packages were covered. Three passes found it three times, one node at a time, and the class was
+never written down until now.
+
+**The second thing this category is evidence for**: `Logic Builder` was left for last because it
+was believed blocked, and it turned out to hold **six defects — more than any other node here**.
+The lowest-information node was the highest-yield one, and the ordering heuristic had no way to
+know that.

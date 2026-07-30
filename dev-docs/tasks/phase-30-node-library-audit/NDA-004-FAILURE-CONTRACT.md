@@ -68,6 +68,8 @@ signal reproduces the current problem one level up.
 
 ## §3 — The mute 10
 
+✅ **COMPLETE — 10 of 10, closed 2026-07-30 by `Logic Builder`** (NDA-012's CustomCode pass).
+
 Ten nodes take an action and emit nothing. Each needs a completion signal at minimum, so downstream
 work can be sequenced. `Repeater` and `Function` are the two that matter most — a `Function` that
 cannot say "done" forces authors into timing hacks, and a `Repeater` that cannot say "rendered"
@@ -75,6 +77,19 @@ makes every list-then-scroll interaction guesswork.
 
 ⚠️ Adding an output to `Function` interacts with the type work in NDA-014: its outputs are
 author-declared, so a built-in completion signal needs a reserved name that cannot collide.
+
+**This warning was right, and it was right about the wrong node.** On `Function` it solved itself:
+every author-declared output there is registered as `'out-' + name`, so no author name can reach an
+unprefixed built-in. `Logic Builder` registers block-declared names **verbatim** — and the collision
+was therefore not a risk introduced by the completion signal but a defect that was **already live**,
+silently, against the node's existing `error` output and its `run` input. Six names are now reserved
+(`logic-builder.ts:78-79`) and a program that writes to one raises `logic-builder/reserved-port-name`
+instead of losing the value. The read side — a program *reading* `Inputs["run"]` — is undetectable
+and is recorded as such.
+
+The general lesson, for anything that adds a built-in port to a node with author-declared ports:
+**ask whether the collision is already possible before treating it as a cost of the change.** Here
+the "cost" was a pre-existing bug the change was what finally made someone look for.
 
 ## Success criteria
 

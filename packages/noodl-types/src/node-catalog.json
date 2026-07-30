@@ -14611,7 +14611,8 @@
             "allowEditOnly": true,
             "editorType": "logic-builder-hidden"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The JavaScript the block editor writes out of Logic Blocks and the runtime actually executes; it is overwritten on every block edit, so hand edits do not survive"
         },
         {
           "name": "run",
@@ -14622,7 +14623,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Runs the block program once; the blocks never run on their own, so a value arriving at an input changes nothing until this fires"
         },
         {
           "name": "workspace",
@@ -14634,7 +14636,8 @@
             "allowEditOnly": true,
             "editorType": "logic-builder-workspace"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The block program itself, authored in the block editor — it decides which ports this node has, so editing it adds and removes ports"
         }
       ],
       "outputs": [
@@ -14646,7 +14649,30 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "What the last run went wrong with, in JavaScript's own words; empty once a run succeeds"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the block program threw while running, or could not be compiled at all"
+        },
+        {
+          "name": "success",
+          "displayName": "Success",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the block program has run through without throwing and every output it wrote is up to date"
         }
       ],
       "dynamicPorts": {

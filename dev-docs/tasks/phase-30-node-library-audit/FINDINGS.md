@@ -1510,6 +1510,10 @@ place: the nodes an author reaches for when no other node will do.
 The lesson generalises CS-ii. A sweep that fixes *"the Expression node"* and *"the Function node"* by
 name does not fix *"nodes that host user code"* — and there were four of those, in three packages.
 
+⚠️ **Superseded in scale by SR-viii, written the same day.** Two corrections: the fourth script host
+had the same compile-failure defect too, and this section was written without checking it — and
+there are **five**, not four. `REST` (Data) is the fifth, and it is the worst of them.
+
 ### SR-v — `Date To String`'s only failure port had never fired, and a comment said so
 
 `_format`'s catch called `flagOutputDirty('onError')`. `flagOutputDirty` is
@@ -1561,6 +1565,76 @@ splits on `,` into ports.
 formed by driving the model programmatically was not merely unconfirmed, it was pointed at the wrong
 component: the panel was fine and the *editor* in the popup was not. Neither could have been told
 apart without opening it.
+
+## NDA-012 `Logic Builder` (2026-07-30) — 6 defects in the node that was believed blocked
+
+The fifth CustomCode node, audited last because nine consecutive handovers described it as another
+session's uncommitted work. It was not (see `audit/customcode.md`), and it carried more defects than
+any other node in the category.
+
+### SR-viii — the compile-failure silence was on *four* of five script hosts, and the fifth was found by finally running the grep
+
+SR-iv, written hours earlier, named `Expression` and `Function`, said the class was "nodes that host
+user code", and put the count at four. `Logic Builder` had the same defect, in the same shape, for
+the third time. **Then the grep this section was about to claim would have found them all was
+actually run, and it found a fifth nobody had counted.**
+
+| Node | Category | Compile failure was | Status |
+|---|---|---|---|
+| `Expression` | CustomCode | swallowed, node silent | fixed, NDA-004 §2 |
+| `Function` | CustomCode | `SyntaxError` → `console.log`, `Run` returned silently | fixed, NDA-012 CustomCode |
+| `Logic Builder` | CustomCode | `SyntaxError` → `console.error`, `_executeLogic` bare-returned | fixed, this pass |
+| `Script` | CustomCode | load path fixed; **run path** still `sendWarning`-only | open, filed |
+| **`REST`** (`REST2`) | **Data** | `catch (e) { console.log(e) }`, ×2 | **open, filed — new** |
+
+**`REST` is the worst of the five and was never in the frame**, because every pass so far looked at
+CustomCode and `REST` is filed under Data. `restnode.ts:178-184` and `:194-201` each compile an
+author script in an input setter and swallow the `SyntaxError` into a `console.log` — and because
+the assignment is inside the `try`, **`_internal.requestFunc` keeps the last script that did
+compile**. So a broken edit to the Request or Response script does not merely fail silently: the
+node goes on fetching with the *previous* script, and the author is watching a request they have
+already changed. Filed for the Data pass; not fixed here, because Data is a whole category and this
+commit is CustomCode.
+
+Four passes found the same defect four times, one node at a time, over two days. Each fix cited the
+previous one. The query that finds all five in one read is: *every call to `new Function` or `eval`
+whose `catch` does not end in a port.* It is a grep, it takes ten seconds, and it was written into
+this document as a rhetorical flourish before anybody ran it.
+
+The generalisation is not "look for script hosts". Two of them:
+
+1. **When a fix's own commit message says "the identical defect X had already fixed on Y", that
+   sentence is a query, and the query has not been run.** Two nodes named in one message is the
+   signal that a third exists.
+2. **A class named by its exemplars inherits their category.** "The script hosts" meant CustomCode
+   to four consecutive passes, and the fifth host had been sitting in Data the whole time. The
+   defining property was `new Function`, not the folder.
+
+### SR-ix — a reserved-name collision that a new port was blamed for, and predated it
+
+NDA-004 §3 warned that giving `Function` a completion signal needed "a reserved name that cannot
+collide", because its outputs are author-declared. On `Function` it solved itself — author outputs
+are registered as `'out-' + name`. On `Logic Builder`, which registers block-declared names
+verbatim, the collision was **already live and silent** against the node's existing ports: a block
+writing `set output "error"` had its value discarded by `registerOutputIfNeeded`'s early return,
+and a `Define input` named `run` was published as a second `run` port an author could wire a value
+into.
+
+So the risk the spec flagged as *a cost of the change* was a bug that had been there all along, and
+the change is what finally made someone look. **Before accepting a stated cost of a change, check
+whether it is already being paid.**
+
+### SR-x — a context field that was built on every call and never delivered
+
+`_createExecutionContext` assembled `__triggerSignal__` with a comment reading "for conditional
+logic", and `_compileFunction`'s parameter list stopped one short of it. It read `undefined` inside
+**every block program ever run**, so a node with two signal inputs could not tell which had fired.
+Beside it sat a `this.sendSignalOnOutput` alias that could never have worked at all — a
+`new Function` body is sloppy-mode and called with no receiver.
+
+Both were unreachable, both typechecked, and both had comments describing what they were *for*. The
+shape to carry: **a well-commented field is not an exercised one**, and the cheapest check is to
+count the parameters at the call site against the ones at the declaration.
 
 ## What these passes did *not* cover
 

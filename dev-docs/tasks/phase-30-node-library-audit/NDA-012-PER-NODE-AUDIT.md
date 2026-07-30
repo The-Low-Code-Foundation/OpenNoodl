@@ -74,7 +74,7 @@ nobody starts from a blank page. **It never overwrites an existing file** — de
 | [Navigation](./audit/navigation.md) | 8 | **8** |
 | [Utilities](./audit/utilities.md) | 8 | **8** |
 | [Logic](./audit/logic.md) | 7 | **7** |
-| [CustomCode](./audit/customcode.md) | 5 | **4** ⬜ `Logic Builder` blocked |
+| [CustomCode](./audit/customcode.md) | 5 | **5** |
 | [Animation](./audit/animation.md) | 4 | **4** |
 | [Variables](./audit/variables.md) | 4 | **4** |
 | [Cloud](./audit/cloud.md) | 3 | **3** |
@@ -86,12 +86,14 @@ nobody starts from a blank page. **It never overwrites an existing file** — de
 | [Sensors](./audit/sensors.md) | 1 | **1** |
 
 Variables was filled in first, from the first-pass findings, as the worked example of what a completed
-entry looks like. **15 of 17 categories are complete as of 2026-07-30 — 79 of 155 nodes.** The two
+entry looks like. **15 of 17 categories are complete as of 2026-07-30 — 80 of 155 nodes.** The two
 remaining are **Data (46)** and **Visual (29)**, which the suggested order below ranks first and
 third: the small tractable categories are done, and what is left is the bulk.
 
-⚠️ **One node is blocked, not audited**: `Logic Builder` (CustomCode). Another session has held the
-file uncommitted for nine handovers.
+**Nothing is blocked.** `Logic Builder` was the last one and was never really blocked — see
+[`audit/customcode.md`](./audit/customcode.md) for the misdiagnosis, and §3 of the handover for the
+rule it produced: read `git log --oneline -- <path>` before believing any claim about who owns a
+file.
 
 ## Suggested order
 

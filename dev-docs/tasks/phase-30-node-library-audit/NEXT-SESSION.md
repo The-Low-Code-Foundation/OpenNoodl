@@ -1,55 +1,51 @@
 # Phase 30 — next session
 
-**Current to `c5d5234f`.** Written 2026-07-30.
+**Current to the `Logic Builder` audit commit.** Written 2026-07-30.
 
 Work on `cline-dev`, commit directly to it, **explicit pathspecs on every commit**. End commit
 messages with the Claude co-author line.
 
-⚠️ If HEAD has moved past `c5d5234f`, read PROGRESS.md's newest three log entries instead of this
+⚠️ If HEAD has moved past that commit, read PROGRESS.md's newest three log entries instead of this
 file — they are always current; this file goes stale in one round.
 
 ## §0 — the state in four numbers
 
 | | |
 |---|---|
-| NDA-012 | **15 of 17 categories, 79 of 155 nodes** |
-| Defects found | **110**, in 66 nodes |
-| Port documentation | **51.6%**, nodes at 0% **31** |
-| Gates at `c5d5234f` | runtime jest 1,231 · viewer 367 · cloud 57 · editor jasmine 1,894/0 · 3 typechecks clean · `catalog:check`, `catalog:merge:check` and `catalog:examples` all exit 0 |
+| NDA-012 | **15 of 17 categories, 80 of 155 nodes** |
+| Defects found | **116**, in 67 nodes |
+| Port documentation | **51.8%**, nodes at 0% **30** |
+| Gates | runtime jest 1,243 · viewer 367 · cloud 57 · editor jasmine 1,894/0 · 3 typechecks clean · `catalog:check`, `catalog:merge:check` and `catalog:examples` all exit 0 |
 
 **Only Data (46) and Visual (29) are left**, and they are the two the spec ranked first and third by
-expected yield. Every small category is done.
+expected yield. **Every other category is complete and nothing is blocked.**
 
-**`Logic Builder` is no longer blocked.** The nine-handover blocker was a misdiagnosis and is written
-up in §1.1 — read it before you trust any other "another session is holding this file" claim.
+**NDA-004 §3 is CLOSED, 10 of 10.** `Logic Builder` was the last mute node in the library.
 
-**The find rate has not declined after 79 nodes.** Animation set a record at 2.50 per node and
-CustomCode came second at 2.00; the running average is 1.39. The one low score, Component
-Utilities' 0.63, has a *stated cause* — four of its eight nodes had already been remediated twice, by
-NDA-015 and NDA-004 §2 — which is a different thing from exhaustion. FINDINGS **SR-i**.
+**The find rate went up.** CustomCode now leads at 2.80 per node, Animation second at 2.50; the
+running average is 1.45 across 80 nodes. The one low score, Component Utilities' 0.63, has a *stated
+cause* — four of its eight nodes had already been remediated twice — which is a different thing from
+exhaustion. FINDINGS **SR-i**.
+
+⚠️ **Read FINDINGS SR-viii before starting Data.** It carries a defect this session filed and did
+not fix, in a Data node, and the reason it was missed for two days.
 
 ## §1 — do these, in this order
 
-### 1. `Logic Builder` — ~30 minutes, and it closes two things that have been open for weeks
+### 1. **`REST` (`REST2`), and it is a Data node — do it as the first slice of item 2**
 
-Unblocked by `c5d5234f`. Auditing it against the twelve checks closes **NDA-012's CustomCode
-category (5 of 5)** and **NDA-004 §3 (10 of 10)**, which is the last mute node in the library.
+Filed by the `Logic Builder` audit and **not fixed**, because it belongs to the category below.
+`restnode.ts:178-184` and `:194-201` each compile an author script with `new Function` inside an
+input setter and swallow the `SyntaxError` into a `console.log`. Worse than the three siblings that
+had the same defect, because **the assignment is inside the `try`**: a broken edit to the Request or
+Response script leaves the *previous* script installed and fetching, so the author watches a request
+they have already changed. The fix is settled by three precedents — `expression.ts:189-196`,
+`simplejavascript.ts:250-267`, `logic-builder.ts:271-283` — a `Failure` port, the message on an
+error output, and a deduplicated `raiseRuntimeError`.
 
-Everything you need is in place: `logic-builder-io.ts` is the shared parser, `logic-builder.ts` is
-the runtime node, `test/logic-builder-{io,node}.test.ts` are its 18 rows, and
-`docs/node-catalog/enrichment/logic-builder.json` describes the intended behaviour. Its four ports
-are at **0% documentation**, so write those in the same read (`workspace`, `generatedCode`, `run`,
-`error`). Two things to look at specifically:
-
-- **B3 is its open NDA-004 §3 item**: `run` goes in and *no* signal comes out. It has an `error`
-  string but no `Failure`, and no completion signal at all, so nothing downstream can sequence after
-  a block program finishes. Decide it the way §3 decided the other nine — read what a completion
-  signal would mean here before adding one.
-- **The ports are memoised on the workspace string** (`_io()`), so ask the second-time question:
-  what happens when the workspace changes to one that *removes* a port a connection is using?
-
-⚠️ **Do not repeat the mistake this file made.** Read `git log --oneline -- <path>` before
-concluding anything about who owns a file.
+⚠️ **It is the fifth script host, and four consecutive passes counted four.** FINDINGS **SR-viii**
+has the table and the two rules that fall out of it. Read it before you trust any other "the class
+is these N nodes" claim in this phase — including one written the same day by the same pass.
 
 ### 2. **Data (46 nodes).** The last big one, and the highest-yield one.
 
@@ -141,9 +137,12 @@ Only the first blocks anything.
   logic-builder delta in the first place, as a two-line diff that read as innocuous.
 - **⚠️ Never `git checkout <path>` to undo a probe.** Copy the file aside first and `cp` it back,
   then re-run the suite to prove the restore landed.
-- **A discrimination check should predict its own failures before it runs.** Reverting five fixes at
-  once was expected to redden exactly 7 of 13 rows and leave 6 controls green; it did exactly that,
-  which is stronger evidence than reverting one at a time — because the *controls* are the claim.
+- **A discrimination check should predict its own failures before it runs.** Twice now. Reverting
+  five fixes at once was expected to redden exactly 7 of 13 rows and leave 6 controls green; it did.
+  The `Logic Builder` pass predicted **L1, L5, L6, L7, L8, L9, L11** red and **L2, L3, L4, L10**
+  green from a six-part revert, and got exactly that. Stronger than reverting one at a time, because
+  the *controls* are the claim — and L2 there ("a node with no blocks stays silent") is the one that
+  stops the fix reporting failure on every unconfigured node in every project.
 - **`flagOutputDirty` on a signal output sends a value, not a pulse** (`node.ts:647-650`,
   `outputproperty.ts:114-137`). Silent, typechecks, and the port never fires. Worth a repo-wide grep:
   `flagOutputDirty` on any port declared `type: 'signal'`.
@@ -152,6 +151,28 @@ Only the first blocks anything.
 - **A low find rate needs a cause before it is evidence.** Twice now: Cloud Services' dip was sibling
   dilution, Component Utilities' was prior remediation. Neither was exhaustion, and neither was
   distinguishable from it by the number alone.
+- ⚠️ **When you write "it is a grep", run the grep in the same breath.** FINDINGS SR-viii was about
+  to claim a ten-second query would have caught the script-host class. Running it turned up a
+  **fifth** host — `REST`, in Data, the worst of them — that four consecutive passes had missed. A
+  rhetorical query is not a query, and the sentence had already been written twice.
+- **When a fix's own message says "the identical defect X had already fixed on Y", that sentence is
+  a query nobody has run.** Two nodes named in one commit message is the signal that a third exists.
+  It happened four times in this phase, one node at a time, over two days.
+- **A class named by its exemplars silently inherits their category.** "The script hosts" meant
+  CustomCode to four passes, because the first two examples lived there; the fifth had been sitting
+  in Data throughout. The defining property was `new Function`, not the folder.
+- **Before accepting a stated cost of a change, check whether it is already being paid.** NDA-004 §3
+  flagged a reserved-name collision as the price of adding a completion signal to `Logic Builder`.
+  The collision was already live and silent against the node's *existing* ports; the new signal is
+  simply what made someone look.
+- **A well-commented field is not an exercised one.** `__triggerSignal__` was assembled on every
+  execution, documented as "for conditional logic", and never passed to the compiled function — the
+  parameter list stopped one short. It typechecked. Count the arguments at the call site against the
+  parameters at the declaration.
+- **"Blocked" is a hypothesis with a cost.** Nine handovers deferred `Logic Builder`; it took under
+  an hour and held six defects, more than any other node in its category. The estimate that finally
+  scheduled it was "~30 minutes", and the ordering heuristic had no signal at all for the one node
+  nobody had read.
 - **A sweep aimed at named nodes does not cover the class those nodes belong to.** NDA-004 fixed
   `Expression` and `Function` and never asked "what else hosts user code" — there were four, in
   three packages. Same shape as CS-ii.
