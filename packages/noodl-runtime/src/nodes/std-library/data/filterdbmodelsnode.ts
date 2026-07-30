@@ -61,6 +61,12 @@ interface FilterDbModelsInstance extends NodeInstance {
     visualSorting?: VisualSorting[];
     collectionChangedCallback?: () => void;
     cloudStoreEvents?: (args: { collection?: string; objectId?: string }) => void;
+    /** Message for the `Error` output; see NDA-004 §2. */
+    lastError?: string;
+    /** Last message actually raised, so a repeat is not re-announced. */
+    lastReportedError?: string;
+    /** NDA-004 §2 — did an author *ask* for this run? See `scheduleFilter`. */
+    filterRequested?: boolean;
   };
   /** On the instance rather than in `_internal` — guards {@link scheduleFilter}. */
   collectionChangedScheduled?: boolean;
@@ -69,6 +75,8 @@ interface FilterDbModelsInstance extends NodeInstance {
   getLimit(): number | undefined;
   getSkip(): number | undefined;
   scheduleFilter(): void;
+  requestFilter(): void;
+  reportFailure(code: string, message: string, detail?: unknown): void;
   setCollectionName(name: string): void;
   setVisualFilter(value: unknown): void;
   setVisualSorting(value: unknown[]): void;
@@ -156,7 +164,7 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       group: 'Actions',
       displayName: 'Filter',
       valueChangedToTrue: function (this: FilterDbModelsInstance) {
-        this.scheduleFilter();
+        this.requestFilter();
       }
     }
   },
@@ -202,6 +210,20 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       group: 'Events',
       type: 'signal',
       displayName: 'Filtered'
+    },
+    // NDA-004 §2 — see `scheduleFilter`. Array Filter's twin, structurally and in its fix.
+    failure: {
+      group: 'Events',
+      type: 'signal',
+      displayName: 'Failure'
+    },
+    error: {
+      group: 'Events',
+      type: 'string',
+      displayName: 'Error',
+      getter: function (this: FilterDbModelsInstance) {
+        return this._internal.lastError;
+      }
     }
   },
   prototypeExtensions: {
@@ -267,13 +289,51 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       if (!filterSettings['filterEnableLimit']) return;
       else return (filterSettings['filterSkip'] as number) || 0;
     },
+    /**
+     * NDA-004 §2 — Array Filter's twin, read rather than assumed to be one.
+     *
+     * The register grouped these two, and the phase's own warning is that grouping predicts
+     * where to read next and nothing about the answers. Read: same six trigger paths, same
+     * `isInputConnected('filter') === false` guard on every value-arrival one, same bare
+     * `if (!this._internal.collection) return;`. It is genuinely the same defect, so it gets
+     * the same fix — the flag that records whether an author asked for this run.
+     */
+    requestFilter: function (this: FilterDbModelsInstance) {
+      this._internal.filterRequested = true;
+      this.scheduleFilter();
+    },
+    reportFailure: function (this: FilterDbModelsInstance, code: string, message: string, detail?: unknown) {
+      const internal = this._internal;
+      internal.lastError = message;
+      this.flagOutputDirty('error');
+
+      if (internal.lastReportedError === message) return;
+      internal.lastReportedError = message;
+
+      this.raiseRuntimeError(code, message, detail);
+      this.sendSignalOnOutput('failure');
+    },
     scheduleFilter: function (this: FilterDbModelsInstance) {
       if (this.collectionChangedScheduled) return;
       this.collectionChangedScheduled = true;
 
       this.scheduleAfterInputsHaveUpdated(() => {
         this.collectionChangedScheduled = false;
-        if (!this._internal.collection) return;
+
+        const requested = this._internal.filterRequested === true;
+        this._internal.filterRequested = false;
+
+        if (!this._internal.collection) {
+          // Silent unless an author asked: without this test the raise fires while the graph
+          // boots, on the `enabled` default landing before the records do.
+          if (requested) {
+            this.reportFailure(
+              'filter-records/no-items',
+              'Nothing to filter — no records are connected to the Items input'
+            );
+          }
+          return;
+        }
 
         // Apply filter and write to output collection
         let filtered: ModelLike[] = [].concat(this._internal.collection.items);
@@ -281,11 +341,26 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
         if (this._internal.enabled) {
           const _filter = this._internal.visualFilter;
           if (_filter !== undefined) {
-            const filter = QueryUtils.convertVisualFilter(_filter, {
-              queryParameters: this._internal.filterParameters,
-              collectionName: this._internal.collectionName
-            });
-            if (filter) filtered = filtered.filter((m) => QueryUtils.matchesQuery(m, filter));
+            let filter;
+            try {
+              filter = QueryUtils.convertVisualFilter(_filter, {
+                queryParameters: this._internal.filterParameters,
+                collectionName: this._internal.collectionName
+              });
+              if (filter) filtered = filtered.filter((m) => QueryUtils.matchesQuery(m, filter));
+            } catch (e) {
+              // Array Filter's second failure, in the same position: a filter that cannot be
+              // built or applied threw out of a *scheduled callback* into `nodecontext.ts`'s
+              // blanket catch — a console line with no code and no provenance, and the rest of
+              // this node's update pass abandoned. Not gated on `requested`, because a filter
+              // that cannot be applied is wrong whenever it arrives.
+              this.reportFailure(
+                'filter-records/filter-failed',
+                'The filter could not be applied: ' + ((e as Error).message || String(e)),
+                { collectionName: this._internal.collectionName }
+              );
+              return;
+            }
           }
 
           // `sort` is declared outside the `if` deliberately: the original relied on `var`
@@ -303,6 +378,9 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
           const limit = this.getLimit();
           if (limit) filtered = filtered.slice(0, limit);
         }
+
+        // A run that got here worked; re-arm the dedup.
+        this._internal.lastReportedError = undefined;
 
         this._internal.filteredCollection = Collection.create(filtered);
 

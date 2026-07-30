@@ -1345,6 +1345,30 @@ describe('State Snapshot node', () => {
    * `signalsFor`-style logs record a port name *before* delegating, and `sendSignalOnOutput` on
    * a name the node lacks only logs — so deleting the port leaves every row above green.
    */
+  /**
+   * ✅ NDA-004 §2 — State History is 🔵, and this row is what stops a later mechanical sweep
+   * "finishing the family off".
+   *
+   * Its `storeName` setter normalises `undefined`, `null` and `''` to `'app'`, so unlike its Undo
+   * and State Snapshot siblings — both of which gained a `Failure` port in this phase — there is
+   * no target it can be asked for and fail to find. Its one action, `Clear History`, always has a
+   * real store name, and `historyChanged` is a notification rather than an action completion.
+   *
+   * Three nodes in one file, two ✅ and one 🔵, is the same shape as Set Component Object
+   * Properties and its sibling: sharing a file predicts nothing about the verdict.
+   */
+  it('(pinned control) State History deliberately has no Failure port', () => {
+    const context = createContext();
+    const { node, signals } = createNode(context, 'net.noodl.StateHistory');
+
+    node.update();
+
+    expect(node.hasOutput('historyChanged')).toBe(true);
+    expect(node.hasOutput('failure')).toBe(false);
+    expect(signals).not.toContain('failure');
+    expect(raised).toEqual([]);
+  });
+
   it('(pinned control) both nodes actually carry the Failure port', () => {
     const context = createContext();
     const snapshot = createNode(context, 'net.noodl.StateSnapshot').node;

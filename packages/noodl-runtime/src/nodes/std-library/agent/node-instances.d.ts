@@ -131,11 +131,14 @@ export type BufferInternal = {
   /** Whatever `setTimeoutImpl` returned — a number in a browser, a Timeout in Node. */
   timer: unknown;
   seams: StreamBufferSeams;
+  /** Message for the `Error` output; see NDA-004 §2. */
+  lastError?: string;
 };
 
 export interface StreamBufferNodeInstance extends NodeInstance {
   _internal: BufferInternal;
 
+  reportFailure(code: string, message: string): void;
   addItem(): void;
   doFlush(): void;
   clearBuffer(): void;

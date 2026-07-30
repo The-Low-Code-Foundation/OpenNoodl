@@ -1,3 +1,5 @@
+import { Node } from '@noodl/runtime';
+import { forgetForEachItem, resolveForEachItem } from '@noodl/runtime/src/foreachitem';
 import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
 /** `this` inside the Repeater Item node. */
@@ -12,6 +14,7 @@ interface ForEachActionsInstance extends NodeInstance {
   getItemId(): string | undefined;
   signalAdded(): void;
   tryRemove(callback: () => void): void;
+  _onNodeDeleted(): void;
 }
 
 /**
@@ -60,9 +63,37 @@ const ForEachActionsDefinition: NodeDefinitionOptions = {
     }
   },
   prototypeExtensions: {
+    /**
+     * NDA-004 §2 / NDA-015 — the **sixth** hand-rolled `_forEachModel` read.
+     *
+     * NDA-015's sweep found five (`modelcrudbase`, `modelnode2`, `dbmodelcrudbase`,
+     * `dbmodelnode2`, `javascriptnodeparser._findForEachModel`) and converged them on
+     * `resolveForEachItem`. This one was missed, and it is the node *named after* the
+     * mechanism — which is the "a claim that something was cleaned up is a hypothesis too"
+     * lesson landing on the task that established it.
+     *
+     * Two things change by converging. It now takes the **scope chain** rather than reading
+     * `componentOwner` directly, so a Repeater Item one component deep inside a template
+     * resolves instead of silently returning `undefined` (BINDING-CONTRACT's two walks —
+     * ambient properties need `scopeChain`, which is what `resolveForEachItem` uses). And a
+     * node that is not inside a Repeater or Run Tasks template at all now *says so*, once,
+     * through `miss`'s per-node dedup, instead of handing out an `undefined` Item Id for ever.
+     *
+     * Safe from a getter for the reason banked in BINDING-CONTRACT: `extraProps` land at
+     * `nodecontext.ts:398-403`, **before** `setComponentModel` builds any inner node. So by
+     * the time this node exists inside a template, `_forEachModel` is already there — absence
+     * means "not in a template", which is permanent, not "not yet".
+     */
     getItemId(this: ForEachActionsInstance) {
-      const model = this.nodeScope.componentOwner._forEachModel;
+      const model = resolveForEachItem(this);
       return model && model.getId();
+    },
+    _onNodeDeleted(this: ForEachActionsInstance) {
+      // The base first — this is an override, and skipping it would drop the node's own
+      // teardown. `resolvedTargets` holds instances strongly, and a Repeater churning its
+      // template would otherwise grow that map for the life of the session.
+      Node.prototype._onNodeDeleted.call(this);
+      forgetForEachItem(this);
     },
     signalAdded: function (this: ForEachActionsInstance) {
       this.sendSignalOnOutput('added');

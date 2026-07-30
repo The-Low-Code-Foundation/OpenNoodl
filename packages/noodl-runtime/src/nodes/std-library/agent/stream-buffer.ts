@@ -190,13 +190,44 @@ const StreamBufferNode: NodeDefinitionOptions = {
 
     flushed: { type: 'signal', displayName: 'Flushed', group: 'Events' },
     overflowed: { type: 'signal', displayName: 'Overflowed', group: 'Events' },
-    cleared: { type: 'signal', displayName: 'Cleared', group: 'Events' }
+    cleared: { type: 'signal', displayName: 'Cleared', group: 'Events' },
+    // NDA-004 §2 — see `addItem`. `Add` is an author `Do` (group `Actions`), so this cannot
+    // fire on the boot path.
+    failure: { type: 'signal', displayName: 'Failure', group: 'Events' },
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      getter(this: StreamBufferNodeInstance) {
+        return internalOf(this).lastError;
+      }
+    }
   },
 
   methods: {
+    /**
+     * NDA-004 §2. `Add` with nothing on `Data` returned bare — no item buffered, no signal, no
+     * console line, nothing anywhere. From the canvas that is indistinguishable from a buffer
+     * that is working, right up until a `Flush` produces less than the author expected.
+     *
+     * `hasPendingData` is set by the `data` setter and never cleared, so this is only false
+     * before the *first* value has ever arrived: an `Add` wired ahead of its data, or a `Data`
+     * input left unconnected. Both are configuration mistakes, not states the graph passes
+     * through — `Add` is an author `Do`, so nothing here fires while the graph boots.
+     *
+     * Not reported: `Flush` on an empty buffer, and `Clear` on an empty buffer. Both are
+     * legitimate empty results — a timed flush with nothing to send is exactly what an idle
+     * buffer should do — and the contract lists those among the things that must *not* raise.
+     * Open File Picker's `Cancelled` question, asked and answered the other way.
+     */
     addItem(this: StreamBufferNodeInstance) {
       const internal = internalOf(this);
-      if (!internal.hasPendingData) return;
+      if (!internal.hasPendingData) {
+        return this.reportFailure(
+          'stream-buffer/no-data',
+          'Nothing to add — no value has arrived on the Data input'
+        );
+      }
 
       internal.buffer.push(internal.pendingData);
 
@@ -216,6 +247,13 @@ const StreamBufferNode: NodeDefinitionOptions = {
         return;
       }
       this.armTimer();
+    },
+
+    reportFailure(this: StreamBufferNodeInstance, code: string, message: string) {
+      internalOf(this).lastError = message;
+      this.raiseRuntimeError(code, message);
+      this.flagOutputDirty('error');
+      this.sendSignalOnOutput('failure');
     },
 
     doFlush(this: StreamBufferNodeInstance) {

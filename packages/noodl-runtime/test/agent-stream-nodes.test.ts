@@ -445,8 +445,52 @@ describe('net.noodl.StreamBuffer', () => {
       ['add', 'clear', 'data', 'flush', 'flushInterval', 'flushSize', 'maxSize'].sort()
     );
     expect(Object.keys(metadata.outputs).sort()).toEqual(
-      ['buffer', 'bufferSize', 'cleared', 'droppedItems', 'flushCount', 'flushed', 'flushedData', 'overflowed'].sort()
+      // NDA-004 §2 added `failure`/`error`: `Add` with nothing on `Data` used to return bare.
+      [
+        'buffer',
+        'bufferSize',
+        'cleared',
+        'droppedItems',
+        'error',
+        'failure',
+        'flushCount',
+        'flushed',
+        'flushedData',
+        'overflowed'
+      ].sort()
     );
+  });
+
+  /**
+   * NDA-004 §2. `Add` with nothing on `Data` returned bare — no item buffered, no signal, no
+   * console line. From the canvas that is indistinguishable from a working buffer, right up until
+   * a `Flush` produces less than the author expected.
+   */
+  it('reports an Add with no Data rather than dropping it silently', () => {
+    const { node, out, signals, pulse } = createBuffer();
+
+    pulse('add');
+
+    expect(signals).toEqual(['failure']);
+    expect(out('bufferSize')).toBe(0);
+    expect(String(out('error'))).toContain('Data input');
+  });
+
+  /**
+   * ✅ Pinned control, and the decision that goes with the fix.
+   *
+   * `Flush` on an empty buffer and `Clear` on an empty buffer are **legitimate empty results** —
+   * a timed flush with nothing to send is exactly what an idle buffer should do — and the Failure
+   * Contract lists those among the things that must not raise. Open File Picker's `Cancelled`
+   * question, asked here and answered the other way round.
+   */
+  it('(pinned control) flushing or clearing an empty buffer is not a failure', () => {
+    const { signals, pulse } = createBuffer();
+
+    pulse('flush');
+    pulse('clear');
+
+    expect(signals).not.toContain('failure');
   });
 
   it('buffers items and flushes on demand', () => {
