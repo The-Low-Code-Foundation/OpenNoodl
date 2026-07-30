@@ -233,7 +233,7 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 105 | Navigate | Navigation | 2/1 | ⚠️ |  | 0% | safe | browser |  |
 | 106 | Navigate To Path | Navigation | 4/0 |  | ⚠️ | 0% | safe | browser | ✅ NDA-004 — `Success`/`Failure`/`Error`; the `path === undefined` return is no longer silent |
 | 107 | Page Inputs | Navigation | 2/0 |  |  | 0% | safe | browser |  |
-| 108 | Pop Component Stack | Navigation | 3/0 |  | ⚠️ | 0% | safe | browser | ⏳ NDA-004 §3 pending |
+| 108 | Pop Component Stack | Navigation | 3/0 |  | ⚠️ | 0% | safe | browser | ✅ NDA-004 §3 — done in NDA-008 §3 (`0db1d770`), not pending: `Popped`/`Failure`/`Error` and `reportFailure` raising on the bus (`navigate-back.ts:63-80,133-138`). **This row said ⏳ until 2026-07-30** — the work landed under another task's commit and nobody came back to the register. A `void` return from `backCallback` counts as success on purpose |
 | 109 | Push Component To Stack | Navigation | 3/1 | ⚠️ |  | 0% | safe | browser |  |
 | 110 | Show Popup | Navigation | 2/1 | ⚠️ |  | 0% | safe | browser |  |
 | 111 | Device Orientation _(deprecated)_ | Sensors | 0/3 |  |  | 0% | client-only | browser |  |
