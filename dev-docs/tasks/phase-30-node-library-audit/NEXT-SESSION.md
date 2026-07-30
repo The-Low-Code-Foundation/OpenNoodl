@@ -62,6 +62,13 @@ Six normative docs in `dev-docs/reference/`: `REACTIVITY-CONTRACT.md`, `EMPTY-VA
 resolves a target without a wire**: "How to obey it" names the helpers, and "The two walks" is a
 table you will otherwise get wrong.
 
+**2026-07-30, later still: the deployed build was run for the first time, and it found three
+defects** — two of them in criteria already signed off. `cc28a4be` (NDA-006 §5), `382894e4`
+(NDA-004 §2 criterion 2), `c598206e` (NDA-009 §1). Read FINDINGS **defect class H** before item 1
+below; the one-line version is that *a criterion whose last clause names a build nobody runs is a
+criterion that grades the build everybody runs.* Gates after it: **runtime jest +19 from that
+workstream, viewer jest 362**, all three typechecks clean.
+
 Gates as of `899ab676`: **1,119 runtime jest, 359 viewer jest, 1,894 editor jasmine (0 failures)**;
 cloud jest 52, unchanged and untouched since `d21154e1`. The editor suite was run twice at
 `899ab676` — see the barrel trap below for why once was not enough. All three packages typecheck
@@ -220,24 +227,50 @@ mechanism** — the count of stale premises is now *thirteen*, and NDA-007 §2's
 useful direction: the thing it said did not exist had existed for years, and finding that turned a
 "two asset pipelines have to agree" task into one manifest field.
 
-### 1. The two deployed-build legs, which are the same launch
+### 1. ~~The two deployed-build legs~~ — DONE 2026-07-30, and they found three defects
 
-Both are the *last* clause of a criterion that is otherwise met, and both have been deferred by more
-than one session, which is how a criterion quietly becomes decorative.
+`cc28a4be` (NDA-006 §5), `382894e4` (NDA-004 §2 criterion 2). **NDA-007 criterion 1 passed as
+written.** Full account in `PROGRESS.md`'s newest log entry and FINDINGS **defect class H**; the
+one-line version is that a criterion whose last clause names a build nobody runs is a criterion
+that grades the build everybody runs.
 
-- **NDA-006 criterion 5** — masonry and the breakpoints in a **deployed** build. Row D7 pins the
-  unmeasured render through `react-dom/server`, and the editor is verified, but nobody has looked at
-  a real deploy. The interesting case is first paint: masonry renders as ragged top-aligned rows
-  until measured, deliberately, and that is what SSG output contains.
-- **NDA-007 criterion 1** — a sprite icon set in a **deployed** build. `noodl_modules/` is absent
-  from `build/ignore.ts`'s defaults so the project-relative URL is *expected* to resolve; expected is
-  not verified, and it is one Deploy To Folder away.
+**What is left of it is one confirmatory launch**, and it is the only live work this workstream
+owes. Every defect was measured live; none of the *fixes* has been. Both rebuilt deploy bundles
+were confirmed to contain both fixes, so this is confirmation, not diagnosis:
 
-Fixture and recipes: `scripts/nda-live-qa/` (committed — `make-fixture.js`, `make-iconsets.js`, and a
-README with the CDP measurements, including the two witnesses that are easy to get wrong). The
-`VerifyFix4` scratch project has been **restored byte-identical** to its Hello World state and its
-`noodl_modules/` removed; regenerate the fixture from the scripts rather than expecting it to be
-there.
+1. `node scripts/nda-live-qa/make-fixture.js "<VerifyFix4>/project.json"` and `make-iconsets.js`
+   (⚠️ `VerifyFix4` currently *holds* the fixture — the previous handover's "restored to Hello
+   World" is stale; the session scratchpad was cleared before it could be put back).
+2. Launch, open the project, and deploy from CDP — recipe below.
+3. **Masonry first paint**: strip every `<script>` from the SSG `dist/index.html`, serve it, and
+   the seven items should now be at their authored widths instead of 0px. Under the defect the
+   container measured 110px and every item 0.
+4. **The console line**: add an `Expression` with `expression: "1 +* "` to the graph. Expect
+   `[noodl] Expression (App): The expression could not be compiled … [expression/compile-failed]`
+   in the browser console *and* in the SSG build's stdout. Under the defect there was none in
+   either, while an `On App Error` node received it in both — which is exactly how the leg passed
+   review three times.
+
+**Driving a deploy headlessly, which is the reusable half.** `deployToFolder` is on no global and
+Node's `require` cannot reach it (webpack bundle), and the UI path is a native folder dialog CDP
+cannot answer. In dev the chunk ids are the source paths:
+
+```js
+let rq; self.webpackChunknoodl_editor.push([['qa'], {}, (r) => { rq = r; }]);
+const { createEditorCompilation } = rq('./src/editor/src/utils/compilation/compilation.editor.ts');
+const { ProjectModel } = rq('./src/editor/src/models/projectmodel.ts');   // exact path; a regex
+                                                                          // match finds Lessons* first
+await createEditorCompilation(ProjectModel.instance)
+  .deployToFolder('<dir>', { environment: undefined, runtimeType: 'ssr' }); // omit for CSR
+```
+
+Then `npm install && npm run build:ssg && npm run ssg` **inside the output folder**. Note the SSG
+reads its graph from the `{{#export#}}` splice in **`ssg.js`**, not from `public/index-<hash>.js` —
+patching the latter changes the hydrated page and nothing the prerender sees, which cost a full
+build to notice.
+
+Fixture and CDP measurement recipes: `scripts/nda-live-qa/` (`make-fixture.js`, `make-iconsets.js`,
+README).
 
 ### 2. NDA-004's remaining tails
 
@@ -245,14 +278,22 @@ there.
   should a deprecated node gain a failure surface at all. The deprecated pair that already *had* one
   was fixed under B-iv, so this is only about the ones that do not.
 - **`Logic Builder`, the last mute node** (§3, 9 of 10). Still blocked by the other session's
-  uncommitted rewrite. **Check `git status` on `logic-builder.ts` first and skip if it is dirty.**
-- **Criterion 2's cloud-runtime and export legs.** One raised error, observed in all four contexts.
-  Editor and browser are covered; cloud and export are not, and the spec predicted export is the one
-  that gets forgotten. It still is.
+  uncommitted rewrite — `logic-builder.ts` was still dirty at 2026-07-30 16:00, along with
+  `logic-builder-io.ts` and two untracked test files. **Check `git status` on it first and skip if
+  it is still dirty.**
+- ~~**Criterion 2's cloud-runtime and export legs.**~~ **Closed 2026-07-30** (`382894e4`) — and the
+  editor and browser legs it was measured against turned out to be uncovered too. See item 1.
 
-### 3. Catalog regeneration — now the largest single owed item
+### 3. Catalog regeneration — now the largest single owed item, and **still blocked**
 
-Still blocked on a clean tree, and the debt has grown for four more tasks. It owes, on top of
+⚠️ **Checked 2026-07-30 16:00 and it is not safe to run.** Both
+`packages/noodl-types/src/node-catalog.json` and `node-catalog-enriched.json` are dirty with the
+other session's Logic Builder work (`editorName: hidden` removed from two ports, the whole
+`logic-builder` enrichment block rewritten, and a `workspace`/`generatedCode` parameter pair added
+to `code-logic-builder-greeting`). Regenerating would clobber it. **Coordinate before running it** —
+this needs the other session to land or drop its catalog changes first.
+
+The debt has grown for four more tasks. It owes, on top of
 everything the previous handover listed: **`packing`** (Columns, NDA-006 §4), **`sizing`**,
 **`mediumBreakpoint`/`mediumLayout`/`smallBreakpoint`/`smallLayout`** (NDA-006 §3), **`stackPolicy`**
 and **`Dismissed`** (Show Popup), and the six controls' `deprecated: true` (NDA-011). Read the
@@ -276,9 +317,9 @@ and which family is canonical is the question WF-007 left open. Written up in `F
 
 ### 5. Then Tier 3
 
-**NDA-005** (port docs — batch with NDA-012), **NDA-009 §1** (the editor-time Run Tasks template
-check), **NDA-010 §1** (re-scoped in place; do not start from the spec body), and **NDA-012**, which
-is 1 of 17 categories. NDA-012's Data and Cloud Services worksheets were the specced input to
+**NDA-005** (port docs — batch with NDA-012), ~~**NDA-009 §1**~~ (**done 2026-07-30**, `c598206e`;
+§2's selectable port names and §3 remain), **NDA-010 §1** (re-scoped in place; do not start from the
+spec body), and **NDA-012**, which is 1 of 17 categories. NDA-012's Data and Cloud Services worksheets were the specced input to
 NDA-004 §2 — run them for the *other eleven* checks now, not for the failure question, which the
 triage covered.
 
@@ -352,6 +393,50 @@ Fence agent territories by file and forbid them `PROGRESS.md` — the coordinato
 `PROGRESS.md` and the `phase-30-node-library-audit` memory as tasks land, not at the end.
 
 ## Traps banked, cumulative
+
+- **An inline style is a *value* on the client and a *declaration list* on the server, and CSS
+  repairs one but not the other.** React sets each property through the CSSOM, where a value is
+  parsed in isolation and an unterminated block is closed at end-of-input — so
+  `calc(100% + (0px)` is valid, renders correctly, and serialises back looking fine. `renderToString`
+  emits the whole object as one `style` attribute, where the same unclosed block swallows the `;`
+  and **every declaration after it**. Which ones are lost depends on key order in the style object,
+  so the assertion to write is *parenthesis balance*, not the literal string. One character; the
+  whole of every Columns node's SSR/SSG output.
+- **`if (context.editorConnection)` is always true, in every runtime.** `NoodlRuntime` constructs one
+  unconditionally and its own comment says it "act[s] as a no-op" when deployed. Anything branching
+  on its *presence* has one live branch. The discriminators that work: `runningInEditor` (false in
+  deployed browser/SSR/SSG, but **true in a deployed cloud function**, which never passes
+  `runDeployed`), `editorConnection.isConnected()` (deterministically false with no socket), and
+  `editorConnection.runtimeType` (`'browser'` vs `'cloud'`). This is also the shape to check the next
+  time a comment claims something is inert when unused — that one was half true for years.
+- **A criterion can be met through a surface the author has to opt into.** NDA-004 criterion 2 asked
+  for a raised error to be observable in four runtimes. In the deployed browser build and in SSG it
+  *was* — through an `On App Error` node the fixture happened to contain. The default channel, which
+  is what an ordinary app has, produced nothing at all in either. Check a criterion through the path
+  a project gets **without doing anything**, not through the one your fixture was built to exercise.
+- **The SSG prerender reads its graph from `ssg.js`, not from `public/`.** The export JSON is
+  spliced into `ssg.js` at deploy time (`{{#export#}}`); `public/index-<hash>.js` is the *browser*
+  copy. Editing the latter to set up a prerender experiment changes the hydrated page and nothing
+  the prerender sees — and the run completes cleanly, so the only tell is that your change had no
+  effect.
+- **`EventSender` has no `off`.** It has `on`, `removeListenersWithRef` and `removeAllListeners`
+  only. Unregistering one callback means the ref-keyed path, whose listeners live in a `Map` that
+  `emit` walks with `for…of` — the banked silent-transpile trap. Prefer designing so a stale
+  listener is *harmless* (re-read the state on every call) over reaching for a removal that does not
+  exist.
+- **`graph-harness` never calls a node module's `setup`**, and says so in its own comment. Anything
+  in `setup` — every editor-time dynamic port and every editor-time warning in the library — is
+  untested by the corpus unless you drive `setup` yourself against a fake graph model. It is cheap;
+  NDA-009's J-rows are the worked example.
+- **Reaching editor internals from CDP: use the webpack chunk registry.** Nothing in the compilation
+  or project-model layer is on a global, and Node's `require` cannot load a webpack module. In dev
+  the module ids are source paths:
+  `self.webpackChunknoodl_editor.push([['x'],{},r => rq = r])`. Ask for modules by **exact path** —
+  a regex for `projectmodel` matches `LessonsProjectModel.ts` first.
+- ⚠️ **The session scratchpad can be cleared mid-session.** Backups of files you are about to revert
+  belong somewhere you control, or in a commit. This session lost the `VerifyFix4` Hello World
+  backup and three deploy trees that way; nothing important, because the code was already committed,
+  but the reverts would have been unrecoverable a few minutes earlier.
 
 - **The editor's jasmine suite is a barrel of explicit exports, so a new test file does not run.**
   `tests/index.ts` → `tests/utils/index.ts` → `export * from './yourfile.test'`. Add a spec file

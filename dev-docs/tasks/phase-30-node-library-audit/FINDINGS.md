@@ -1061,6 +1061,88 @@ answer different questions, and the comment needs to say so.
 
 ---
 
+## Defect class H — the deployed build was never looked at (2026-07-30)
+
+Two criteria in this phase end with the clause "…in a deployed build", and both had been deferred
+by more than one session. Running the deploy once — a real Deploy To Folder, driven from the
+editor, served over http and measured — found **three defects**, none of which any test in the
+repo could have caught, and two of which were in code the phase had already signed off.
+
+The generalisable finding is the shape, not the three: **a criterion whose last clause names a
+build nobody runs is a criterion that grades the build everybody runs.** The two legs that *were*
+verified were verified in the editor and the preview, which share a code path with each other and
+not with the artefact users receive.
+
+### H-i — an inline style is a declaration list, and CSS repairs one path but not the other
+
+`Columns.tsx` built the container width as `` `calc(100% + (${marginX}px)` `` — one parenthesis
+short — and had done since the node was written. It never showed up because the two consumers of
+that style object disagree about what an unterminated block means:
+
+- **Client.** React sets each property through the CSSOM, `element.style.width = '…'`. The value
+  is parsed *in isolation*, and CSS's end-of-input rule closes the unterminated block for you. The
+  declaration is valid, serialises back as `calc(100% + 0px)`, and looks correct in devtools.
+- **Server.** `renderToString` serialises the whole object into one `style` attribute, parsed as a
+  *declaration list*. The unclosed block swallows the `;` and everything after it — `width` **and**
+  `box-sizing` were both dropped.
+
+Measured on the SSG output with the scripts stripped, which is the first paint: the container fell
+back to shrink-to-fit as a flex item (110px), and every percentage-width child computed to **0**.
+The whole of a Columns node's pre-hydration content was a zero-width strip.
+
+Two things worth carrying:
+
+1. **Which declarations are lost depends on key order in the style object.** `box-sizing` was the
+   casualty because it happened to be written after `width`. That makes the failure mode unstable
+   under ordinary tidying, and it is why the corpus row asserts *balance* rather than the literal.
+2. **The comment three lines above the bug describes the bug.** Slice 1 removed
+   `visibility: hidden` because it "painted blank through the whole of SSR/SSG". SSR painted blank
+   anyway, for an unrelated reason, one line down. A fix that removes one cause of a symptom is not
+   evidence that the symptom is gone — and here the *comment recording the fix* was what made the
+   symptom look accounted for.
+
+### H-ii — `if (editorConnection)` was always true, so the console channel never existed
+
+`FAILURE-CONTRACT.md` and `nodecontext.ts`'s own comment both claimed that every runtime other
+than the editor gets a structured console line "so a failure is never fully silent". The selection
+was `if (this.editorConnection) … else console`. `NoodlRuntime` constructs an `EditorConnection`
+**unconditionally**, in every runtime, and says so in a comment at `noodl-runtime.ts:285-288`:
+"create an editor connection even if we're running deployed … it won't connect and act as a
+no-op". So the else branch was unreachable outside a directly-constructed context — that is, outside
+its own unit test.
+
+Measured, with an Expression that cannot compile, in a real deployed browser build and in a real
+SSG build: subscribers were `['editorWarningSubscriber']` plus whatever the graph had added, and
+**no console output was produced in either**. Every raised failure went to a websocket connected
+to nothing.
+
+Both contexts *did* deliver the event to an `On App Error` node, structured and complete — which
+is why the leg read as met. That is the trap: **criterion 2 was checked through the surface an
+author has to opt into, and passed.** An app with no On App Error node reported nothing at all.
+
+The right discriminator is not "is there a connection object" — there always is — but "is the
+editor's warning panel a surface someone is watching". Note the cloud runtime inverts the obvious
+test: it never passes `runDeployed`, so a *deployed* cloud function reports
+`runningInEditor: true`.
+
+### H-iii — the disconnected send queue grows for the life of the page
+
+Found underneath H-ii. `EditorConnection.send` batches: while a flush timer is armed, or while
+disconnected, the message is queued. The flush returned early when still disconnected **without
+clearing `sendTimer`**. After the first flush in a deployed build the handle stays truthy for ever,
+so the guard at the top of `send` takes the queue branch on every later call, `!this.sendTimer` is
+false so nothing re-arms, and `sendQueue` grows without bound.
+
+Every runtime warning goes down that path. So the leak was driven by exactly the diagnostics H-ii
+had already made undeliverable — a silent failure channel that also consumed memory in proportion
+to how much it had to say.
+
+**A "no-op when unused" claim is a hypothesis, like any other.** This one was written in a comment,
+believed for years, and was half true: the connection genuinely never connects, and genuinely does
+not no-op.
+
+---
+
 ## What these passes did *not* cover
 
 - **142 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No
