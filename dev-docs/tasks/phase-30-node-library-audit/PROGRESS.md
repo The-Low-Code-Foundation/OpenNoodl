@@ -20,7 +20,7 @@
 | NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green (1,026), editor suite green (1,885 specs incl. validator/catalog-index). Outstanding: live editor check of the 13 `object` outputs |
 | NDA-015 Explicit binding | 2 | ✅ **Done + live-verified**; class F tail closed | All three sections. Clause (b) ships as a node-card sub-label over a new `nodesublabel` message — **not** CAN-001/002, which are wire labels, and **not** `metadata.typeLabelOverride`, which is persisted. §3: the FIXME was load-bearing and its own comment described what `scheduleAfterUpdate` already does. **Class F tail closed 2026-07-29**: `_forEachModel`'s 5 sites now resolve through `runtime/src/foreachitem.ts` (FINDINGS F-ii), and the de-duplication this task claimed was **only 1 of 4 call sites** — the other three were still hand-rolled with divergent type lists, which had a *reader and a writer* of the same state landing on different components (FINDINGS F-i′). 34 corpus rows total |
 | NDA-016 `Layout.size` | 2 | ✅ **Done** | **§0 resolved: the spec's premise was wrong.** `sizeMode` is never unset — a fresh Text node carries `contentHeight`/`100%`, read live. The real defect is a stale `parentLayout`: children bake the parent's layout in at *their* render, `renderChildren` memoises them, and the Layout setter never invalidated the memo — so a layout change never reached the children, and the first child ate the row. Fixed with `setLayout` as the single writer. §1 built too, on its own terms (an abstaining *connection* can still unset the port). 10 regression tests; 15-node-type live blast-radius check. Criterion 4's screenshot corpus is an instrument mismatch — see the spec |
-| NDA-011 REST → HTTP | 3 | ⬜ Not started | First output is an assessment, not a change |
+| NDA-011 REST → HTTP | 3 | ✅ **Done — §1, §2 decided, §3 already met** | Assessment at [`NDA-011-CAPABILITY-COMPARISON.md`](./NDA-011-CAPABILITY-COMPARISON.md). **There is no resource DSL**: REST is one path template plus two `new Function` scripts, and does *neither* of the things the spec lists as what a DSL is good for. HTTP Request wins every declarative row; REST wins two, both "run some JavaScript". So it is **not** a clean subset → **deprecated, not deleted**, with the conversion path left to LIB-006. §3 needed no work (NDA-003 already made the six guards one helper; `responseHeaders` became usable via NDA-014's `object → string` cast). **Criterion 3 was six nodes, not four** — and they held the *plain* names their modern replacements show via `displayName`, so the picker offered two entries reading "Button" and the deprecated one was as likely to be picked |
 | NDA-012 Per-node audit | 3 | ⬜ **1 of 17 categories** | Variables done (4/4) as the worked example. Opt-in, resumable, stop on find-rate decline |
 
 ## Audit coverage
@@ -64,6 +64,58 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-30 (NDA-011 — REST → HTTP)** — an assessment task that closed on the first reading,
+  because the thing it was written to evaluate does not exist.
+
+  **There is no resource DSL.** §1 asked what "the REST node's resource DSL" expresses and listed
+  the things a DSL earns its keep with: multiple related endpoints declared once, shared auth and
+  headers across a resource. **REST does neither.** One node is one `resource` string; there is no
+  resource object and nothing is shared. What it actually has is a path template (`{name}`,
+  substituted at `restnode.ts:415-421`) and two `new Function` scripts. So "invest in the DSL or
+  replace it" was never the choice — and Richard's "cute little rest custom language" is, on
+  inspection, a `String.replace` loop and two script ports.
+
+  HTTP Request wins **every** declarative row of the comparison, several of them because REST has
+  no declarative surface at all: query parameters, headers, body and auth are *script-only* on REST.
+  REST wins exactly two rows, and they are the same capability twice — arbitrary JavaScript before
+  the request and after the response.
+
+  **That is why it is deprecated and not deleted.** §2's preference for deletion rests on REST being
+  a true subset, and it is not; the scripts have no HTTP Request equivalent and no *mechanical*
+  conversion. Deleting it would remove the one capability with nothing to convert it into, before
+  anything exists to convert the graphs that use it. `deprecated: true` takes it out of the picker
+  while existing graphs keep loading. Revisit once LIB-006's conversion report says what the scripts
+  were really used for — if it is all extraction, deletion becomes correct.
+
+  One templating difference worth keeping: **REST substitutes from the whole input bag**, so any
+  input named `id` rewrites any `{id}` in the path whether that was intended or not. HTTP Request
+  substitutes only from declared `path-*` ports.
+
+  **§3 was already done, by NDA-003** — the six inline empty-value guards are one helper with one
+  documented exception (JSON bodies, where `null` and omission genuinely differ). And
+  `responseHeaders` is usable despite still being `object`-typed, because NDA-014 §2's
+  `object → string` cast landed.
+
+  **Criterion 3 was six nodes, not four, and the count was the least of it.** `button`, `checkbox`,
+  `options`, `radiobutton`, `range` and `text-input` all sit in `nodes-deprecated/controls/`, are
+  all registered, and none carried the flag — and `deprecated: true` is exactly what makes a node
+  non-creatable (`componentmodel.ts:292-295`). The sting is the naming: the deprecated ones hold the
+  **plain** names (`name: 'Button'`) while their modern replacements are `net.noodl.controls.*` with
+  the same word supplied via `displayName`. The picker showed two entries reading "Button" and no
+  way to tell them apart. All six marked. Only two editor *test* fixtures use these types, and the
+  flag blocks creation rather than loading, so nothing that exists stops working.
+
+  ⚠️ Two defects in `restnode.ts` read and **deliberately left** (both already recorded verbatim in
+  the source from PLAT-003 §27.3): the `_xhr` handlers `delete` a property off the `XMLHttpRequest`
+  rather than the node, so a later Cancel can abort a finished request; and the default Request
+  script's help text is truncated by a `;` one line early. Fixing a node on its way out of the
+  picker is work with no user.
+
+  Runtime typecheck clean, viewer typecheck clean. ⚠️ Six runtime jest failures at the time of
+  writing are in `signfileurl.test.ts` and `statehistory.test.ts` — the **other session's**
+  uncommitted §2 item 7 batch (`statesnapshotnode.ts`, `undonode.ts`, `signfileurl.ts` all dirty),
+  not this work. Catalog regeneration owed, as everywhere in this phase.
 
 - **2026-07-30 (NDA-010 §3 — the popup stack policy)** — settled as the spec recommended, **one
   modal slot by default**, with `Show On Top` as a per-node opt-in. Done ahead of NDA-004 §2's ⏳

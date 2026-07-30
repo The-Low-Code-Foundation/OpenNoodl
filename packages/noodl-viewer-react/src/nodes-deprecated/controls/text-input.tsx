@@ -135,6 +135,12 @@ class TextFieldComponent extends React.Component<TextFieldProps, TextFieldState>
 
 const TextInput: ReactNodeDefinition = {
   name: 'Text Input',
+  // NDA-011 criterion 3. This node lives in `nodes-deprecated/` and has a modern
+  // replacement (`net.noodl.controls.textinput`), but carried no `deprecated` flag — so it stayed
+  // creatable, and it took the plain display name while the replacement's is set by
+  // `displayName`. The picker therefore offered two entries reading the same word, and
+  // the one an author was most likely to reach for was this one.
+  deprecated: true,
   docs: 'https://docs.noodl.net/nodes/visual/text-input',
   allowChildren: false,
   noodlNodeAsProp: true,

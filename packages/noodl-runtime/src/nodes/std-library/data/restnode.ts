@@ -89,6 +89,13 @@ const RestNode: NodeDefinitionOptions = {
   name: 'REST2',
   displayNodeName: 'REST',
   docs: 'https://docs.noodl.net/nodes/data/rest',
+  // NDA-011 §2. Hidden from the picker, not deleted, and the assessment
+  // (`NDA-011-CAPABILITY-COMPARISON.md`) is why: HTTP Request covers everything REST does
+  // *declaratively* and more, but REST's two `new Function` scripts have no equivalent
+  // anywhere in HTTP Request, so it is not the clean subset the task expected. Deleting it
+  // would strand the one capability that has no mechanical conversion. The conversion path
+  // belongs to LIB-006.
+  deprecated: true,
   category: 'Data',
   color: 'data',
   searchTags: ['http', 'request', 'fetch'],

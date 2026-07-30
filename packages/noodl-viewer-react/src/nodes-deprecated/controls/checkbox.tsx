@@ -88,6 +88,12 @@ function CheckBox(props: CheckBoxProps) {
 
 const CheckBoxNode: ReactNodeDefinition = {
   name: 'Checkbox',
+  // NDA-011 criterion 3. This node lives in `nodes-deprecated/` and has a modern
+  // replacement (`net.noodl.controls.checkbox`), but carried no `deprecated` flag — so it stayed
+  // creatable, and it took the plain display name while the replacement's is set by
+  // `displayName`. The picker therefore offered two entries reading the same word, and
+  // the one an author was most likely to reach for was this one.
+  deprecated: true,
   displayName: 'Checkbox',
   docs: 'https://docs.noodl.net/nodes/visual/checkbox',
   allowChildren: false,

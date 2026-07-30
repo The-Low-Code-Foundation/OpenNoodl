@@ -14,6 +14,24 @@
 | **Branch** | commit directly to `cline-dev` |
 | **Recommended executor** | 🟢 **Sonnet 5** |
 
+> **Status: §1 and §3 complete, §2 decided — 2026-07-30.** Assessment at
+> [`NDA-011-CAPABILITY-COMPARISON.md`](./NDA-011-CAPABILITY-COMPARISON.md).
+>
+> **The premise below is wrong in a way that makes the task easier: there is no resource DSL.**
+> REST is one path template plus two `new Function` scripts. It cannot declare multiple endpoints
+> once and it shares nothing across them — the two things §1 lists as what a DSL is good at. So the
+> only real difference from HTTP Request is *arbitrary JavaScript*, which is a Function node's job.
+>
+> HTTP Request wins every declarative row and REST wins two, both the same capability. That makes it
+> **not** the clean subset §2 assumed, so it is **deprecated, not deleted** — deleting it would
+> remove the one capability with no mechanical conversion, before anything exists to convert the
+> graphs using it. Revisit after LIB-006's conversion report.
+>
+> §3 needed no work: NDA-003 already collapsed the six empty-value guards to one helper. Criterion 3
+> was **six** nodes, not four, and they were not merely visible — they held the *plain* names
+> (`Button`, `Text Input`, …) that their modern replacements show via `displayName`, so the picker
+> offered two identical-looking entries and the deprecated one was as likely to be picked.
+
 ## Objective
 
 Confirm the HTTP Request node is a practical superset of the REST node, then **deprecate the REST
