@@ -1,4 +1,4 @@
-# Phase 30 — next session handover (written for Opus, 2026-07-29)
+# Phase 30 — next session handover (written for Opus, 2026-07-30)
 
 Work on branch `cline-dev`, commit directly to it, no task branches, no PRs. Use explicit pathspecs
 on every commit — the tree **still** carries another session's uncommitted work (Blockly editor and
@@ -21,6 +21,12 @@ NDA-014 §1–2. Since the last handover:
   silence. Only `Logic Builder` is left, still blocked.
 - **NDA-004 §2 has its first batch** (`70d3e2ce`) and a **triage of all 50** in the register
   (`6bd442c0`).
+- **NDA-004 §2's second batch landed 2026-07-30** — `84d2968a` (Component Object family + Video),
+  `187900ff` (Expression), `88300a2a` (the Record family's failure *channel*). Four ✅, two 🔵 on
+  evidence, 44 corpus rows. **The triage's predictions were wrong in both directions**, which is
+  the thing to carry forward rather than the code: the family predicted to be "the cheapest
+  remaining ✅s" contained the phase's worst class-B defect, and the node predicted to have one
+  failure had two.
 
 Six normative docs in `dev-docs/reference/`: `REACTIVITY-CONTRACT.md`, `EMPTY-VALUE-CONTRACT.md`,
 `FAILURE-CONTRACT.md`, `PORT-TYPE-CONTRACT.md`, `BINDING-CONTRACT.md`, `ICON-SOURCE-MODEL.md`.
@@ -28,8 +34,9 @@ Six normative docs in `dev-docs/reference/`: `REACTIVITY-CONTRACT.md`, `EMPTY-VA
 resolves a target without a wire**: "How to obey it" names the helpers, and "The two walks" is a
 table you will otherwise get wrong.
 
-Gates as of `6bd442c0`: **1,081 runtime jest, 145 viewer jest, 52 cloud jest, 1,885 editor jasmine
+Gates as of `88300a2a`: **1,095 runtime jest, 169 viewer jest, 52 cloud jest, 1,885 editor jasmine
 (0 failures)**. The editor suite was last run at `63f76b62` and nothing since has touched the editor.
+Batch 2 added 44 corpus rows (20 runtime, 24 viewer) and touched no editor source.
 
 ## Rules that will bite you if skipped
 
@@ -51,9 +58,15 @@ the validator/editor suite, and `docs/node-catalog/compatibility.json` (gates `c
 **Viewer ts-jest targets pre-ES2015.** `for…of` over a Map iterator in runtime source fails the
 entire viewer suite with TS2802 — use `forEach` into an array.
 
-**The committed viewer bundles are stale.** `packages/noodl-editor/src/external/*` and
-`packages/nodegx-backend/deploy/artifact/` embed old copies. Anything grading those artefacts is
-testing old code. The dev webpack watch does not dirty them.
+**~~The committed viewer bundles are stale.~~ CORRECTED 2026-07-30 — they are not committed at
+all.** `packages/noodl-editor/src/external` and `packages/nodegx-backend/deploy/artifact/` are
+**gitignored, with zero tracked files** (`.gitignore:187`, `packages/nodegx-backend/.gitignore:9`).
+`git status` cannot show them dirty because git does not track them, which is why the old note read
+them as frozen. They are ordinary build output: a live webpack watch *does* rebuild `external/`, and
+on 2026-07-30 it had already picked up that session's source edits before the tests ran. So the risk
+is the opposite of the one recorded — anything grading them is testing **whatever was last built**,
+which may be newer or older than your working tree depending on whether a watch is running. Check
+`ps aux | grep webpack` before trusting or distrusting them.
 
 **Three jest packages now, not two.** `noodl-runtime`, `noodl-viewer-react` and — since this session
 used it — `noodl-viewer-cloud` (`packages/noodl-viewer-cloud`, 52 tests). Run `npx jest` from
@@ -127,40 +140,51 @@ are a `pages` proplist of `{id,label}` plus a `pageComp-<id>` parameter each.
 
 `NODE-REGISTER.md` has a **§2 triage of all 50**, split into **read** (binding) and **reasoned**
 (provisional). Criterion 4 is *not* met and the section says so. Its ⏳ list is ordered by expected
-yield; start at the top. The two worth naming here:
+yield; start at the top. Items 1 and 8 (Expression, the Component Object family) and Video are now
+struck through — **start at Open File Picker.**
 
-- **Video** — `HTMLMediaElement.play()` returns a *rejected promise* under browser autoplay policy.
-  Real, common, and currently completely invisible. Likely the highest-value single ✅ left.
-- **The Component Object family** (Component Object, Parent Component Object, Set Component Object
-  Properties, Set Parent Component Object Properties) — NDA-015 gave these *raising* but never gave
-  them `Failure` **ports**. The resolution and the message already exist, so these are the cheapest
-  remaining ✅s.
+Four questions to ask each node, in this order. Every one of them has now cost a batch to learn:
 
-**Before adding any `Failure`, check whether the trigger is an author `Do` or a value arriving.**
-This is the lesson the first batch paid for: `Model2.scheduleStore` has the identical
-`if (!internal.model) return;` as the four nodes that were fixed, and it must stay silent — it has
-no `Do`, it is reached from `userInputSetter` on every `prop-…` value, so failing there fires on the
-ordinary boot path. The fix was built, tested, and reverted when the rows showed it. The Array
-family in the ⏳ list poses the same question.
+1. **Is the trigger an author `Do`, or a value arriving?** `Model2.scheduleStore` has the identical
+   `if (!internal.model) return;` as four nodes that were fixed, and must stay silent — it is
+   reached from `userInputSetter` on every `prop-…` value, so failing there fires on the ordinary
+   boot path. Built, tested, reverted when the rows showed it. The **Array family** in the ⏳ list
+   poses exactly this question. `Component Object` answered it the same way in batch 2.
+2. **Does the report already exist?** Raise in `explicit` mode only, fire the graph surface in both.
+   In `foreach` mode `foreachitem.ts` has already raised the precise reason, and a second vaguer
+   event on one root cause is the contract's own "two wordings of one failure".
+3. **What value does it fall back to?** New in batch 2, from Expression: both its failure modes
+   returned **`0`**. That is worse than silence, because `0` is *plausible* — `Is False` fires and
+   every downstream branch takes the path a legitimate zero would send it down. A fallback
+   indistinguishable from a real result is strictly worse than an obviously wrong one, **and the
+   register's `Fail?` column cannot see the difference.**
+4. **Where does the diagnosis go?** A node can have `failure`/`error` ports — so the register's
+   `Fail?` column passes it — and still send its *message* to `editorConnection.sendWarning`, which
+   does not exist outside the editor. That is 22 nodes (see §2 below), and the register cannot see
+   that either.
 
-**And check whether the report already exists.** The rule the batch settled on: raise in `explicit`
-mode only, fire the graph surface in both. In `foreach` mode `foreachitem.ts` has already raised the
-precise reason a binding missed, and a second vaguer event on one root cause is the contract's own
-"two wordings of one failure".
+⚠️ **The two failure modes are independent.** A node can be graph-observable and diagnostically
+mute (the Record family), or diagnostically loud and graph-mute (Parent Component Object before
+batch 2). Check both.
 
 ### 2. NDA-004's other tails
 
 - **`Logic Builder`, the last mute node.** Still blocked by another session's uncommitted rewrite.
-  **Check `git status` first and skip if `logic-builder.ts` is still dirty.**
+  **Check `git status` first and skip if `logic-builder.ts` is still dirty.** It was still dirty on
+  2026-07-30.
 - **Criterion 2's cloud-runtime and export legs.** One raised error, observed in all four contexts.
   Editor and browser are covered; cloud and export are not, and the spec itself predicts export is
   the one that gets forgotten. It still is. The `Response` work touched `noodl-viewer-cloud`, so the
   cloud leg is now the shorter of the two.
-- **`dbmodelcrudbase.setError` still uses `sendWarning` as its channel**, not the bus — so every
-  Record node's failure is graph-observable everywhere but invisible to `On App Error` and to a
-  deployed console. Fixing it is one helper, but `clearWarnings` clears the key `'storage-op-warning'`
-  and the bus subscriber keys warnings by `code`, so the two must move together. Contained and
-  worthwhile; deliberately not done in the same commit as the per-node work.
+- ~~**`dbmodelcrudbase.setError` still uses `sendWarning`**~~ — **done `88300a2a`**, and the note
+  above was wrong about the size. "Fixing it is one helper" turned out to be **22 `setError`
+  definitions across 22 files** (~80 call sites): 5 Record CRUD, 11 user/auth, 2 agent, 2 other, 2
+  deprecated. Same shape as FINDINGS F-i one layer down — a helper that looks shared, copied.
+  `dbmodelcrudbase` now raises `record/storage-op-failed`; **the other 21 are enumerated in FINDINGS
+  B-iv and open.** They are mechanical *individually* but each is two changes, not one: the bus's
+  editor subscriber keys its warning by the raised **`code`**, so a `clearWarning` still naming the
+  old hand-written key clears nothing and the node accumulates a warning it can never shed. Do the
+  user/auth eleven as one batch — they are near-identical and the code namespace is obvious.
 - **Catalog regeneration**, still skipped for the same reason (the tree is still dirty). Now owed
   for: `On App Error`; Parent Component Object's and Close Popup's `targetComponent`; Pop Component
   Stack's `Popped`/`Failure`/`Error`; Navigate's transition ports in replace mode; **Response's**
@@ -233,9 +257,21 @@ cheap, and it is the difference between a test and a decoration. It also catches
 too thin, and — new this session — it catches a fix that is **wrong**: the Object node's rows went
 green, and the control row showing `Failure` on the ordinary path is what stopped it shipping.
 
-**Fifth, new: five identical-looking call sites are not five instances of one defect.** The batch
+**Fifth: five identical-looking call sites are not five instances of one defect.** The batch
 found `if (!internal.model) return;` in five schedulers. Four were the defect and one was correct
 behaviour. Read what *reaches* each site before treating the shape as the diagnosis.
+
+**Sixth, new: the triage's own confidence grades are the thing to distrust, in both directions.**
+Batch 2 worked two ⏳ entries and a "reasoned" one. The family predicted to be "the cheapest
+remaining ✅s" contained the phase's **worst** class-B defect — a node reporting `Done` for a write
+that went nowhere — and two nodes that turned out to be 🔵. The node predicted to have one failure
+had two. A "reasoned" verdict is a prediction about where to spend the next read, exactly as the
+register says; treat a *read* verdict's neighbours as unread even when they share a file.
+
+**Seventh, new: a trap in this document can be wrong too.** The stale-bundles note was, for three
+sessions. It asserted that two build directories were committed and frozen; both are gitignored with
+zero tracked files, which is *why* `git status` never showed them dirty. Re-check a trap the same way
+you re-check a spec premise — especially one whose evidence is an absence.
 
 Fence agent territories by file and forbid them `PROGRESS.md` — the coordinator owns it. Update
 `PROGRESS.md` and the `phase-30-node-library-audit` memory as tasks land, not at the end.
@@ -244,7 +280,25 @@ Fence agent territories by file and forbid them `PROGRESS.md` — the coordinato
 
 - **A `Failure` port that can fire on the happy path is worse than no port.** The contract says so
   and the Object node is the worked example. The test is "who triggers this scheduler", not "does
-  this branch mean something went wrong".
+  this branch mean something went wrong". Batch 2 added the inverse case: Expression *can* safely
+  have one, because `registerInputIfNeeded` seeds its discovered inputs to `0` rather than
+  `undefined`, so it never passes through a "values have not arrived yet" state. **The seeding is
+  load-bearing for the port's safety, and a corpus row pins it.**
+- **A miss handed to a create-on-read lookup is a false success, not a silence.**
+  `Model.get(undefined)` mints a fresh anonymous record (`model.ts:205-212`), so `Set Parent
+  Component Object Properties` wrote every property into a throwaway and emitted `Done`. Anywhere a
+  walk can return nothing, the nothing must be a *branch*, not a value passed onward. Worth grepping
+  for other `Model.get(<maybe-undefined>)` call sites.
+- **Two nodes can be one file parameterised and still deserve opposite verdicts.** `Set Component
+  Object Properties` (🔵, its record is its own component's) and `Set Parent Component Object
+  Properties` (✅) share `componentutils/base.ts`. `canFailToResolve` is opt-in there so the self
+  variant carries no vestigial port, and **two corpus rows pin the absence of that port** — a later
+  mechanical sweep "finishing the family off" is the regression they exist to catch.
+- **Reverting a fix is not always a clean discrimination check.** Video's `AbortError` row reddens
+  under two different reverts for two different reasons: emptying `SILENT_PLAY_REJECTIONS` fails it
+  on its assertion (correct), while deleting the promise handling fails it as an *unhandled
+  rejection* (incidental). Run the revert that targets the specific decision, and read the failure
+  mode, not just the red.
 - **A completion signal can be impossible to fire after the work.** `Response`'s callback tears the
   request scope down synchronously before resolving, so `Sent` must fire *before* delivery, and the
   "can I still act" question has to be asked as a separate query (`_requestIsOpen()`) rather than
