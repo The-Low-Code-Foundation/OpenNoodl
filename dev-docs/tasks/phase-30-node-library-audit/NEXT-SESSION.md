@@ -234,7 +234,10 @@ than one session, which is how a criterion quietly becomes decorative.
   not verified, and it is one Deploy To Folder away.
 
 Fixture and recipes: `scripts/nda-live-qa/` (committed — `make-fixture.js`, `make-iconsets.js`, and a
-README with the CDP measurements, including the two witnesses that are easy to get wrong).
+README with the CDP measurements, including the two witnesses that are easy to get wrong). The
+`VerifyFix4` scratch project has been **restored byte-identical** to its Hello World state and its
+`noodl_modules/` removed; regenerate the fixture from the scripts rather than expecting it to be
+there.
 
 ### 2. NDA-004's remaining tails
 
