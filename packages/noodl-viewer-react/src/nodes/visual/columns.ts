@@ -1,5 +1,6 @@
 import { Columns } from '../../components/visual/Columns';
 import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
+import { createTooltip } from '../../tooltips';
 
 const ColumnsNode: ReactNodeDefinition = {
   name: 'net.noodl.visual.columns',
@@ -99,7 +100,28 @@ const ColumnsNode: ReactNodeDefinition = {
           { label: 'Masonry', value: 'masonry' }
         ]
       },
-      default: 'rows'
+      default: 'rows',
+      // Criterion 4 asks for the ordering to be documented. An author reading the panel is where
+      // that has to land, so it is here rather than only in a commit message.
+      tooltip: {
+        rows: {
+          standard: 'Every item in a row is as tall as the tallest one in it',
+          extended: createTooltip({
+            title: 'Rows',
+            body: 'Items fill left to right and wrap. Each row is as tall as its tallest item, so rows line up.'
+          })
+        },
+        masonry: {
+          standard: 'Items keep their own height and each column packs independently',
+          extended: createTooltip({
+            title: 'Masonry',
+            body:
+              'Items still fill left to right — item 1 goes in the first column, item 2 in the second, and so ' +
+              'on — but each column stacks its own items with no gaps, so nothing waits for the tallest item ' +
+              'in its row. Columns are not made equal in height; the reading order is kept instead.'
+          })
+        }
+      }
     },
     // Container width, not viewport width — see `pickBreakpointLayout`. A breakpoint with no
     // layout beside it does nothing, so half-configuring these is inert rather than surprising.

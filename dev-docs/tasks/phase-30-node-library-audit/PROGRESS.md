@@ -65,6 +65,59 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-30 (NDA-006 slice 4 — masonry)** — `b33b1b3e`. **NDA-006 is complete**, four slices. 10
+  corpus rows, 7 reverts each reddening only its own, viewer jest **359**, live-verified.
+
+  **The spec named the right trade-off and missed the deciding option.** It framed the choice as CSS
+  `columns` (cheap, reorders children column-major) versus a JS-measured absolute layout (preserves
+  order, needs measurement). There is a third, cheaper than both and not mentioned: **a `<div>` per
+  column with the items distributed into them**, which needs no measurement at all because the
+  browser stacks each strip. That is what I would have built. It is wrong for a reason that only
+  exists because of slice 2: inserting or removing one item shifts every later item's column, so an
+  item changes **parent**, and React unmounts and remounts it however it is keyed. That is the
+  remount storm slice 2 fixed — and masonry over a Repeater is the request, so **the one structure
+  that has to survive insert and remove is the one that would not.** Keeping a flat, stably-keyed
+  child list and moving items with `top`/`left` is what costs the measurement, and that is what buys.
+
+  Generalisable, and it is the ninth spec premise this phase has had to correct but a *new* shape:
+  **the cheapest implementation of a new slice can be excluded by a defect an earlier slice fixed.**
+  The exclusion is invisible from the spec, which was written before slice 2 knew what its defect was.
+  Re-read the slices you already landed before choosing between the options a later one offers.
+
+  **The ordering an author gets, decided and documented: row-major, as authored.** Item `i` is in
+  column `i % columnAmount` — the *same* assignment Rows mode already makes for the width — so
+  switching Rows → Masonry never moves an item to another column and never changes its width. It only
+  stops each wrap line aligning to its tallest item. That framing is why `Item Packing` is a separate
+  input from `Column Sizing` rather than a third value on it: packing is not a way of deciding how
+  many columns there are, so it composes with `Auto Fit` and the slice 3 breakpoints instead of
+  having to reinvent them.
+
+  **Balanced (shortest-column-first) packing is rejected on a feedback argument, not a cost one.**
+  With unequal fractions an item's width depends on which column it lands in, its height on its
+  width, and the packing on its height: no fixed point, and it oscillates on exactly the layouts
+  `'1 2 1'` was added for. Round-robin has stable widths. So columns are ragged, and that is on the
+  port's own tooltip — criterion 4 asks for the ordering to be *documented*, and an author reading
+  the property panel is where that has to land.
+
+  **A latent hooks-order bug in the same function, found by adding hooks to it.** `if
+  (!props.children) return null;` was the first statement, ahead of `useRef`/`useState`/`useEffect`.
+  A Columns node whose last child is deleted therefore renders fewer hooks than the previous pass and
+  React throws — and deleting a child while the app runs is what live graph editing *is*. Moved
+  below the hooks. Worth grepping for: an early `return null` in a component that later grew hooks is
+  a silent time bomb, and it reads as defensive code.
+
+  **Live QA, and one measurement that is only available live.** Seven boxes of known unequal heights
+  over three columns pack to the computed tops (`0,0,0,40,90,60,160`), lefts (`0/33.3/66.7%`) and a
+  container height of **230** — the tallest column, not the sum. Growing one box from 40 to 140 moves
+  the item below it to 140 and the next in that column to 260, container height 330, **and every
+  wrapper is still the same DOM element** — the flat-list guarantee, observed. That is the
+  `ResizeObserver` → offsets → `position: absolute` wiring, which no row in this package can reach.
+  The slice 2 key fix was re-checked after the restructure and still holds.
+
+  ⚠️ Criterion 5's **deployed** leg is still owed: row D7 pins the unmeasured render through
+  `react-dom/server`, but nobody has looked at masonry in a real deploy. Catalog regeneration owes
+  `packing` as well now.
+
 - **2026-07-30 (live QA of the parallel batch — NDA-006, NDA-010 §3, NDA-011)** — five claims, one
   editor launch, **all five pass**, and the pass turned up one defect of its own. Nothing shipped in
   that batch had been watched running.

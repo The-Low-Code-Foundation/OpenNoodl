@@ -81,7 +81,7 @@ explicit breakpoints cover the rest. The existing `minWidth` port is already hal
 Note the editor has no breakpoint concept today, so this may need a project-level breakpoint set
 rather than per-node values. Check what the styles system (Phase 9) already has before inventing one.
 
-## Slice 4 — Masonry
+## Slice 4 — Masonry ✅ done 2026-07-30 (`b33b1b3e`)
 
 Only after slices 2 and 3. Masonry over a repeater is the actual request, and it is meaningless while
 repeater children are not laid out at all.
@@ -91,10 +91,39 @@ each column, which is usually wrong for a list. A JS-measured absolute layout pr
 needs the `ResizeObserver` work from slice 1 to be solid. Decide explicitly and document which
 ordering an author gets.
 
+**Decided: JS-measured absolute layout, round-robin assignment, row-major order.** `Item Packing`
+(`Rows` | `Masonry`) on the *resolved* column set, so masonry composes with `Column Sizing` and the
+slice 3 breakpoints rather than competing with them. Item `i` is in column `i % columnAmount` — the
+same assignment Rows mode already makes for the width — so switching modes never moves an item to
+another column or changes its width; it only stops each wrap line aligning to its tallest item.
+
+The note above named the right trade-off and missed the deciding one. Between CSS `columns` and a
+JS layout there is a third option it does not mention and which is cheaper than both: **a `<div>` per
+column with the items distributed into them**, no measurement at all. It is rejected because it
+changes an item's *parent* whenever an earlier item is inserted or removed, which remounts the tail —
+slice 2's defect, in the one place slice 4 exists to serve. Keeping a flat, stably-keyed child list
+and moving items with `top`/`left` is what costs the measurement and what makes it worth paying.
+
+**Shortest-column-first (balanced) packing is not provided.** With unequal fractions an item's width
+depends on which column it lands in, its height on its width and the packing on its height — a
+feedback loop with no fixed point. Round-robin has stable widths. Columns are therefore ragged;
+documented on the port's own tooltip, not just in the commit.
+
+Before measurement — the first client frame, and the whole of a server render, which never gets a
+`ResizeObserver` callback — masonry renders as ragged top-aligned rows. Same deliberate reflow slice 1
+chose for autofold over painting blank.
+
 ## Success criteria
 
-1. Corpus row F3 green (Columns + Repeater children carry widths).
-2. `calcAutofold` does not mutate its argument; add a unit test.
-3. A layout can be expressed per breakpoint, verified in the screenshot corpus at ≥2 widths.
-4. Masonry over a repeater renders, with documented ordering.
-5. Live-verified in the editor and in a deployed build — the SSR/first-paint behaviour differs.
+1. ✅ Corpus row F3 green (Columns + Repeater children carry widths) — reconciled in slice 2; the row
+   asserted a mechanism that does not exist, and now asserts the widths a Repeater's siblings get.
+2. ✅ `calcAutofold` does not mutate its argument; row A3.
+3. ✅ A layout can be expressed per breakpoint. ⚠️ **Not** verified in the screenshot corpus, which
+   photographs editor chrome only and cannot see anything `noodl-viewer-react` renders — the wrong
+   instrument, so the check that does apply was run instead: measured live at four container widths
+   (1200/900/700/450), `8913a6fb`.
+4. ✅ Masonry over a repeater renders, ordering documented on the port tooltip and in
+   `computeMasonryOffsets`.
+5. 🔵 Live-verified in the editor (`b33b1b3e`: computed tops and container height match, and a height
+   change re-packs). **A deployed build is still owed** — the SSR/first-paint path is asserted by row
+   D7 through `react-dom/server` but has not been seen in a real deploy.
