@@ -45,6 +45,8 @@ Sequenced **after phase 13 (Revival Track A — Format & AI Substrate)**, becaus
 | EXP-003 | AI logic translation + trace harness | 6-8 wks | EXP-001, EXP-002 |
 | EXP-004 | Export report & honesty UX | 1 wk | EXP-002, EXP-003 |
 | EXP-005 | Multi-framework pipeline (Svelte/Vue) | 4-6 wks | EXP-002, EXP-003 |
+| EXP-006 | Export carries authoring intent | 1-1.5 wks | EXP-002 |
+| EXP-007 | Export provenance & regeneration safety | 1 wk | EXP-002 |
 
 EXP-001/002 are the mechanical ~70% (phase-7 CODE-001/002/003/005/006, updated). EXP-003 is the new hard part made tractable. EXP-004 keeps the honesty framing `dev-docs/future-projects/CODE-EXPORT-STUDY.md` was right about. EXP-005 dissolves the last lock-in objection.
 

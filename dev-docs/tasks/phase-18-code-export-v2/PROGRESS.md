@@ -1,7 +1,7 @@
 # Phase 18 Progress — Code Export v2
 
 **Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track F
-**Overall status:** 🔴 Not started — 0 / 6 tasks
+**Overall status:** 🔴 Not started — 0 / 7 tasks
 
 ## Status vocabulary
 
@@ -17,6 +17,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | EXP-004 | Export report & honesty UX | Not started | 1 wk | What exported clean, what is best-effort, what needs review |
 | EXP-005 | Multi-framework pipeline | Not started | 4–6 wks | AI ports the *exported React* to Svelte/Vue, same trace harness — not native multi-compilers |
 | [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) | Export carries authoring intent | Not started | 1–1.5 wks | Node comments, wire labels, authored titles and comment-box regions become comments and identifiers. Design is [CAN-005](../phase-28-canvas-legibility/CAN-005-EXPORT-AUTHORING-INTENT.md); rescues CODE-008 (F57). Blocked on EXP-002 |
+| [EXP-007](./EXP-007-EXPORT-PROVENANCE.md) | Export provenance & regeneration safety | Not started | 1 wk | Generated files carry node id, component, catalog/exporter version and a content hash, so a re-export knows what a human has edited. Harvests `FileChangeTracker` from the [Rise assessment](../../../docs/research/rise-assessment.md). Same injection point as EXP-006, different payload. Blocked on EXP-002 |
 
 ## Relationship to the original Phase 7
 
