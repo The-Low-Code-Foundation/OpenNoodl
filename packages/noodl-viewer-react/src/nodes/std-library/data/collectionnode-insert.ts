@@ -1,24 +1,18 @@
 'use strict';
 
-import Collection from '@noodl/runtime/src/collection';
 import Model from '@noodl/runtime/src/model';
-import type {
-  CollectionLike,
-  NodeDefinitionOptions,
-  NodeInstance,
-  NodeModule
-} from '@noodl/types';
+import type { CollectionLike, NodeDefinitionOptions, NodeModule } from '@noodl/types';
 
+import {
+  addCollectionFailure,
+  resolveCollectionId,
+  setCollectionIdInput,
+  type FailableCollectionInstance
+} from './collection-failure';
 
 /** `this` inside the Insert Object Into Array node. */
-interface CollectionInsertInstance extends NodeInstance {
-  _internal: {
-    collection?: CollectionLike;
-    /** Id of the record to insert. Arrives by connection only. */
-    modifyId?: string;
-  };
-  setCollectionID(id: string): void;
-  setCollection(collection: CollectionLike): void;
+interface CollectionInsertInstance extends FailableCollectionInstance {
+  setCollectionID(id: string | undefined): void;
 }
 
 const CollectionInsertNode: NodeDefinitionOptions = {
@@ -39,10 +33,7 @@ const CollectionInsertNode: NodeDefinitionOptions = {
       },
       displayName: 'Array Id',
       group: 'General',
-      set: function (this: CollectionInsertInstance, value: string | CollectionLike) {
-        if (value instanceof Collection) value = value.getId(); // Can be passed as collection as well
-        this.setCollectionID(value as string);
-      }
+      set: setCollectionIdInput
     },
     modifyId: {
       type: { name: 'string', allowConnectionsOnly: true },
@@ -59,27 +50,20 @@ const CollectionInsertNode: NodeDefinitionOptions = {
         const internal = this._internal;
 
         this.scheduleAfterInputsHaveUpdated(() => {
-          if (this.context.editorConnection) {
-            this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'insert-warning');
-          }
+          this._clearCollectionFailure();
 
+          // NDA-004 §2. Both branches used to be `sendWarning` and a bare `return`, behind an
+          // `if (this.context.editorConnection)` that does not exist outside the editor. The
+          // node told an author on the canvas exactly what was wrong and told a deployed app,
+          // a cloud function and an exported build nothing whatsoever — and there was no graph
+          // surface either way, so even in the editor nothing downstream could branch on it.
           if (internal.modifyId === undefined) {
-            if (this.context.editorConnection) {
-              this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'insert-warning', {
-                showGlobally: true,
-                message: 'No Object Id specified'
-              });
-            }
+            this._failNoObjectId('insert');
             return;
           }
 
           if (internal.collection === undefined) {
-            if (this.context.editorConnection) {
-              this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'insert-warning', {
-                showGlobally: true,
-                message: 'No Array Id specified'
-              });
-            }
+            this._failNoCollection('insert');
             return;
           }
 
@@ -98,10 +82,10 @@ const CollectionInsertNode: NodeDefinitionOptions = {
     }
   },
   prototypeExtensions: {
-    setCollectionID: function (this: CollectionInsertInstance, id: string) {
-      this.setCollection(Collection.get(id));
+    setCollectionID: function (this: CollectionInsertInstance, id: string | undefined) {
+      this.setCollection(resolveCollectionId(id));
     },
-    setCollection: function (this: CollectionInsertInstance, collection: CollectionLike) {
+    setCollection: function (this: CollectionInsertInstance, collection: CollectionLike | undefined) {
       this._internal.collection = collection;
     }
   }
@@ -110,5 +94,7 @@ const CollectionInsertNode: NodeDefinitionOptions = {
 const CollectionInsertModule: NodeModule = {
   node: CollectionInsertNode
 };
+
+addCollectionFailure(CollectionInsertNode, 'insert-into-array');
 
 export default CollectionInsertModule;

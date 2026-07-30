@@ -230,6 +230,57 @@ discovered input to `0`, not `undefined`. There is no window in which the ports 
 nothing, so this node never passes through a "values have not arrived yet" state on its way to
 working. A corpus row pins that seeding, because the safety of the port depends on it.
 
+### B-v — the Array mutators: three nodes, three different wrong answers (2026-07-30)
+
+The register's ⏳ item 6 grouped six Array nodes and warned that the family poses the Object node's
+question — is the trigger an author `Do`, or a value arriving? For the three mutators it is
+unambiguously a `Do` (`add` / `remove` / `clear` are `valueChangedToTrue` on ports the editor labels
+`Do`), so the port is safe. What the read found was not one defect three times:
+
+| Node | What "nothing to act on" did |
+|---|---|
+| `Insert Object Into Array` | `sendWarning` and a bare `return`, both behind `if (this.context.editorConnection)` — [`collectionnode-insert.ts:66-84`](../../../packages/noodl-viewer-react/src/nodes/std-library/data/collectionnode-insert.ts#L66-L84). Precise on the canvas, silent in a deployed app, a cloud function or an export, and no graph surface in any of them |
+| `Remove Object From Array` | **two bare `return`s** — [`collectionnode-remove.ts:62-63`](../../../packages/noodl-viewer-react/src/nodes/std-library/data/collectionnode-remove.ts#L62-L63). No warning, no signal, no console line, nowhere. Same shape as `Add`/`Remove Record Relation` in batch 1 |
+| `Clear Array` | **no guard at all**: `collection.set([])` on `undefined` threw a `TypeError` out of a scheduled callback — [`collectionnode-clear.ts:40-42`](../../../packages/noodl-viewer-react/src/nodes/std-library/data/collectionnode-clear.ts#L40-L42). Not silence — a crash, from a node whose Array Id had simply not been filled in |
+
+Underneath all three sat the **false-success** shape, the one `Set Parent Component Object
+Properties` was fixed for in batch 2. `setCollectionID` handed its id straight to `Collection.get`,
+and `Collection.get(undefined)` is the anonymous tier ([`collection.ts:721-727`](../../../packages/noodl-runtime/src/collection.ts#L721-L727))
+— a fresh, differently-named collection on every call. A missing id therefore did not leave the node
+unbound, it bound the node to a throwaway: the `=== undefined` guard passed, the mutation landed,
+and the node emitted **`Done`** for a write nothing in the graph could ever read. That is now the
+**second** confirmed instance of the banked trap, in a different registry, which promotes it from an
+anecdote to a pattern: grep any create-on-read lookup fed by a value that can be absent.
+
+Fixed as one mixin (`collection-failure.ts`) rather than three copies, per B-iv's lesson. Verdicts:
+Insert / Remove / Clear ✅; `Create New Array` 🔵 (builds its own collection, like `Create New
+Object`); `Array` 🔵 (its `Id` is a value arriving, not a `Do` — the Object node's answer). `Array
+Filter` is left ⏳ and is the family's genuinely mixed case: `scheduleFilter` is reached from the
+`Filter`/`Refresh` signals *and* from the `enabled` setter and the collection-change callback, so a
+raise there fires on the boot path. It needs the trigger distinguished first.
+
+#### Three premises that fell, two of them mine
+
+1. **`undefined` cannot reach an input setter over a connection.** `Node.prototype.sendValue`
+   ([`node.ts:635-637`](../../../packages/noodl-runtime/src/node.ts#L635-L637)) drops it at the
+   sender. The first draft of the corpus rows drove `undefined` down a wire and **two rows stayed
+   green with the fix removed** — the discrimination check earning its place again. (What made it
+   look reachable: `outputproperty.sendValue` does *not* filter, and that is the one I read. The
+   filter is one layer up, in the method `flagOutputDirty` actually calls.)
+2. **So the port's empty-value reading had to change.** The one sender that can pass `undefined` is
+   a parameter reset — `NodeModel.setParameter(name, undefined)` deletes the parameter and
+   `_onNodeModelParameterUpdated` queues the port default, which here is `undefined`
+   ([`node.ts:871-882`](../../../packages/noodl-runtime/src/node.ts#L871-L882)). `undefined` at this
+   port means exactly one thing, **an author cleared the Array Id field**, so honouring the
+   contract's default "no opinion" reading would leave the node writing to an array the author had
+   just removed from it — a stale target instead of a throwaway one, and no louder. Both empty
+   values unbind here. Worth generalising: *the Empty-Value Contract's "undefined abstains" is a
+   statement about ports a wire can feed; on a port only a parameter can empty, `undefined` is a
+   deletion and abstaining is a defect.*
+3. **`signalsFor` does not prove a port exists** — see the viewer corpus README. Removing the
+   `failure` output reddened **nothing** until three `hasOutput` rows were added. The existing §2
+   corpus files share the gap.
+
 ## Defect class C — 95% of ports are undocumented
 
 2,508 of 2,650 ports carry no `description`. 112 of 155 nodes have not a single documented port.

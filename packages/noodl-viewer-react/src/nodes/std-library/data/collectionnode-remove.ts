@@ -1,24 +1,18 @@
 'use strict';
 
-import Collection from '@noodl/runtime/src/collection';
 import Model from '@noodl/runtime/src/model';
-import type {
-  CollectionLike,
-  NodeDefinitionOptions,
-  NodeInstance,
-  NodeModule
-} from '@noodl/types';
+import type { CollectionLike, NodeDefinitionOptions, NodeModule } from '@noodl/types';
 
+import {
+  addCollectionFailure,
+  resolveCollectionId,
+  setCollectionIdInput,
+  type FailableCollectionInstance
+} from './collection-failure';
 
 /** `this` inside the Remove Object From Array node. */
-interface CollectionRemoveInstance extends NodeInstance {
-  _internal: {
-    collection?: CollectionLike;
-    /** Id of the record to remove. Arrives by connection only. */
-    modifyId?: string;
-  };
-  setCollectionID(id: string): void;
-  setCollection(collection: CollectionLike): void;
+interface CollectionRemoveInstance extends FailableCollectionInstance {
+  setCollectionID(id: string | undefined): void;
 }
 
 const CollectionRemoveNode: NodeDefinitionOptions = {
@@ -39,10 +33,7 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
       },
       displayName: 'Array Id',
       group: 'General',
-      set: function (this: CollectionRemoveInstance, value: string | CollectionLike) {
-        if (value instanceof Collection) value = value.getId(); // Can be passed as collection as well
-        this.setCollectionID(value as string);
-      }
+      set: setCollectionIdInput
     },
     modifyId: {
       type: { name: 'string', allowConnectionsOnly: true },
@@ -59,8 +50,22 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
         const internal = this._internal;
 
         this.scheduleAfterInputsHaveUpdated(() => {
-          if (internal.modifyId === undefined) return;
-          if (internal.collection === undefined) return;
+          this._clearCollectionFailure();
+
+          // NDA-004 §2. These were two bare `return`s — the most complete silence in the
+          // family. Insert at least warned the editor; this one told nobody, anywhere, in any
+          // runtime, and emitted no `Done` either, so the only evidence available to an author
+          // was that the array had not changed. Same shape as `Add Record Relation` and
+          // `Remove Record Relation`, fixed in the first §2 batch.
+          if (internal.modifyId === undefined) {
+            this._failNoObjectId('remove');
+            return;
+          }
+
+          if (internal.collection === undefined) {
+            this._failNoCollection('remove');
+            return;
+          }
 
           const model = Model.get(internal.modifyId);
           internal.collection.remove(model);
@@ -77,10 +82,10 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
     }
   },
   prototypeExtensions: {
-    setCollectionID: function (this: CollectionRemoveInstance, id: string) {
-      this.setCollection(Collection.get(id));
+    setCollectionID: function (this: CollectionRemoveInstance, id: string | undefined) {
+      this.setCollection(resolveCollectionId(id));
     },
-    setCollection: function (this: CollectionRemoveInstance, collection: CollectionLike) {
+    setCollection: function (this: CollectionRemoveInstance, collection: CollectionLike | undefined) {
       this._internal.collection = collection;
     }
   }
@@ -89,5 +94,7 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
 const CollectionRemoveModule: NodeModule = {
   node: CollectionRemoveNode
 };
+
+addCollectionFailure(CollectionRemoveNode, 'remove-from-array');
 
 export default CollectionRemoveModule;

@@ -65,6 +65,68 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-30 (NDA-004 §2 — the Array mutators)** — ⏳ item 6, five of six nodes decided, and the
+  interesting part is again not the code.
+
+  **The trigger question resolved cleanly and the framing was still wrong.** The register warned
+  that the Array family poses the Object node's question — author `Do`, or value arriving? It does,
+  and the answer separated the six neatly: the three *mutators* take a `Do` (✅), while `Array` (its
+  `Id` is a value arriving) and `Create New Array` (builds its own collection) are 🔵 for the two
+  reasons the Object family had already established. What "the same question" hid is that the three
+  mutators had **three different wrong answers** to it: `Insert` warned the editor and returned
+  behind an `if (this.context.editorConnection)`; `Remove` had two bare `return`s and told nobody,
+  anywhere; and `Clear` had no guard at all and threw an uncaught `TypeError` out of a scheduled
+  callback. Grouping nodes by the question is useful for *choosing* what to read and says nothing
+  about what a read will find.
+
+  **The `Model.get(undefined)` trap has a second instance, so it is a pattern now.**
+  `setCollectionID` handed its id straight to `Collection.get`, whose `undefined` branch is the
+  anonymous tier — a fresh, differently-named collection every call. A missing Array Id therefore
+  bound the node to a throwaway rather than leaving it unbound: the `=== undefined` guard passed,
+  the mutation landed, and the node reported **`Done`** for a write nothing in the graph could read.
+  Same shape as batch 2's `Set Parent Component Object Properties`, different registry. Batch 2
+  recommended grepping for other `Model.get(<maybe-undefined>)` sites; the recommendation should be
+  widened to any create-on-read lookup fed by a value that can be absent.
+
+  Fixed as **one mixin** (`collection-failure.ts`), not three copies, per B-iv. Two things that mixin
+  had to get right: `nodedefinition.ts:266` reads `opts.methods || opts.prototypeExtensions`, so
+  handing a `methods` bag to a node that declares `prototypeExtensions` **deletes** every method it
+  had (two of the three consumers use the old name); and raise and clear must name the same `code`,
+  because the editor subscriber keys by it.
+
+  **Three premises fell, two of them mine, and all three came from the discrimination check rather
+  than a failing test.** (1) `undefined` cannot reach an input setter over a connection —
+  `Node.prototype.sendValue` drops it at the sender, so the first draft's wire-driven rows pinned
+  nothing and stayed green with the fix removed. I had read `outputproperty.sendValue`, which does
+  not filter; the filter is one layer up, in the method `flagOutputDirty` actually calls. (2) That
+  forced the port's empty-value reading to change: the only sender that can pass `undefined` is a
+  parameter reset, so `undefined` here means *an author cleared the field*, and honouring the
+  contract's default "abstain" would leave the node writing to an array the author had just removed
+  from it — a stale target instead of a throwaway one, no louder. Both empty values unbind, and the
+  generalisation is worth keeping: **"undefined abstains" is a statement about ports a wire can
+  feed; on a port only a parameter can empty, `undefined` is a deletion.** (3) `signalsFor` does not
+  prove a port exists — deleting the `failure` output reddened *nothing* until three `hasOutput`
+  rows were added, because the harness records the port name before delegating and
+  `sendSignalOnOutput` on an unknown name only logs. The existing §2 corpus files share that gap.
+
+  **A harness limit worth knowing before the next batch: no node↔node-model event is delivered in
+  `noodl-viewer-react`'s jest at all.** `setNodeModel` registers its listeners *with a ref*, so they
+  live in a `Map` that `emit` walks with `for…of`; this package compiles sibling sources at
+  `target: "es5"` with no `downlevelIteration`, which becomes an index loop over `map.length` —
+  `undefined`, so zero iterations, **silently**. Ref-less listeners on the same emitter work, which
+  is why nothing had noticed. This extends the banked pre-ES2015 trap rather than restating it: that
+  trap says the symptom is a loud `TS2802`, and here there is no error, because a cross-package
+  source is transpiled with these options but never diagnosed. Rows needing a real parameter edit
+  belong in the runtime half of the corpus.
+
+  `Array Filter` is deliberately left ⏳ — it is the family's genuinely mixed case, reached from the
+  `Filter`/`Refresh` signals *and* from the `enabled` setter and the collection-change callback, so
+  a raise there fires on the boot path.
+
+  23 corpus rows, six reverts run, each reddening only its own rows with every pinned control green.
+  Viewer jest **192** (was 169), runtime jest 1,095 unchanged (no runtime source touched), viewer
+  typecheck clean. Catalog regeneration still owed and still blocked by the dirty tree.
+
 - **2026-07-30 (NDA-004 §2 — the Component Object family and Video)** — two entries on the ⏳ list,
   seven nodes read, and the triage's own predictions were wrong in both directions.
 

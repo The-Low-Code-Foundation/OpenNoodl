@@ -42,6 +42,9 @@ of the five defects a careful read found:
 | Parent Component Object | NDA-015 gave it the raise; it had no port to wire, so a graph could not branch on "my parent state never resolved" | (ports on the existing `reportMiss`) |
 | Video | `play()`'s **rejected promise** dropped at all three call sites, and the element's `error` event had **no listener at all** | `video/play-rejected`, `video/media-error` |
 | Expression | a malformed or throwing expression returned **`0`** and said nothing outside the editor — and the compile error reported itself as a `TypeError` about `.apply` | `expression/compile-failed`, `expression/threw` |
+| Insert Object Into Array | two `sendWarning` + bare `return` branches behind `if (this.context.editorConnection)` — right on the canvas, silent everywhere else, and no graph surface either way | `insert-into-array/no-array`, `/no-object-id` |
+| Remove Object From Array | **two bare `return`s**: no diagnosis in any runtime at all, the editor included | `remove-from-array/no-array`, `/no-object-id` |
+| Clear Array | **no guard at all** — `collection.set([])` on `undefined` threw a `TypeError` out of a scheduled callback | `clear-array/no-array` |
 
 ### 🔵 Decided, on evidence (read)
 
@@ -52,6 +55,8 @@ of the five defects a careful read found:
 | **Record** | Its `scheduleStore` is dead code — nothing calls it (`userInputSetter` writes `inputValues`, and `updatePorts` publishes `prop-` as *outputs*). Its `setModel` guard is the class-F path, already reported by `foreachitem.ts` |
 | **Component Object** | Fails *neither* half of the test. No walk to miss — its record is `componentState<own instance id>`, built in `initialize` and never reassigned — and no `Do` either: `scheduleStore` is reached from a `value-…` setter, the Object node's trap exactly |
 | **Set Component Object Properties** | Same record, same reason. `getInstanceId()` always returns one and `Model.get` is create-on-read, so there is no branch on which it can be asked to write and find nothing to write to. **Its near-identical sibling walked and was ✅** — the two live in one file and got opposite verdicts |
+| **Array** | Its `Id` is a value arriving, not a `Do` — the Object node's trap exactly. Its one action, `Fetch`, resolves to the node's *own* array when no id is set, which is a legitimate result for a node that owns an array (`_copySourceItems` already does this deliberately) |
+| **Create New Array** | Builds its own collection with `Collection.get()` and no name, so it cannot fail to find one — the `Create New Object` verdict, for the same reason |
 
 ### 🔵 Reasoned — the smell is a false positive (not read)
 
@@ -90,9 +95,15 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 4. **Push Component To Stack / Navigate** — a target page that does not resolve. `navigate.ts`
    already returns early on `_findPage` missing.
 5. **States** — `goToState` with a name that is not in the list.
-6. **Array family** (Array, Array Filter, Clear Array, Create New Array, Insert Object Into Array,
-   Remove Object From Array) — the same "no collection bound" question the Object family just
-   answered, and the same trap: check whether the trigger is an author `Do` or a value arriving.
+6. ~~**Array family**~~ — **done 2026-07-30**, five of six. The trigger question resolved cleanly:
+   the three *mutators* take an author `Do` and are ✅; `Array` and `Create New Array` are 🔵 for
+   the two different reasons the Object family established. But "the same question" was the wrong
+   frame — the three mutators had **three different wrong answers** to it (editor-only warning,
+   total silence, and an uncaught `TypeError`), and underneath all three sat the
+   `Collection.get(undefined)` false success: `Done` reported for a write into a throwaway. That is
+   the second confirmed instance of that trap in a second registry. **`Array Filter` remains ⏳**
+   and is the mixed case — its scheduler is reached from author signals *and* from a value setter,
+   so it needs the trigger distinguished before it can raise.
 7. **Filter Records, State History, Stream Buffer, Set Variable, Repeater Item.**
 8. ~~**Component Object family** (4, plus 3 deprecated twins)~~ — **done 2026-07-30.** The
    prediction was "the cheapest remaining ✅s, because the resolution and the message already
@@ -151,11 +162,11 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 44 | Action Handler | Data | 8/6 |  |  | 36% | safe | browser, cloud |  |
 | 45 | Add Record Relation | Data | 4/4 |  |  | 13% | safe | browser, cloud | ✅ NDA-004 §2 — `validateInputs` returned early with no editor connection, so **deployed it validated nothing** and the caller then hit two bare `return`s. Now returns the verdict and the caller fails through `setError` |
 | 46 | Array _(deprecated)_ | Data | 9/8 | ⚠️ |  | 0% | safe | browser |  |
-| 47 | Array | Data | 3/6 | ⚠️ |  | 0% | safe | browser |  |
-| 48 | Array Filter | Data | 3/4 | ⚠️ |  | 0% | safe | browser |  |
+| 47 | Array | Data | 3/6 | ⚠️ |  | 0% | safe | browser | 🔵 NDA-004 §2 — its `Id` input is a value arriving, not a `Do`; a `Failure` would fire on the boot path. Its only action, `Fetch`, yields the node's own array, which is a legitimate result. The Object node's answer |
+| 48 | Array Filter | Data | 3/4 | ⚠️ |  | 0% | safe | browser | ⏳ NDA-004 §2 — the family's mixed case. `scheduleFilter` is reached from the `Filter`/`Refresh` signals *and* from the `enabled` setter and the collection-change callback, so a raise there fires on the boot path. Needs the trigger distinguished first |
 | 49 | Array Map | Data | 2/3 |  |  | 0% | safe | browser |  |
-| 50 | Clear Array | Data | 2/1 | ⚠️ |  | 0% | safe | browser |  |
-| 51 | Create New Array | Data | 2/2 | ⚠️ |  | 0% | safe | browser |  |
+| 50 | Clear Array | Data | 2/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error`, `clear-array/no-array`. Had **no guard at all**: `collection.set([])` on `undefined` threw a `TypeError` out of a scheduled callback |
+| 51 | Create New Array | Data | 2/2 | ⚠️ |  | 0% | safe | browser | 🔵 NDA-004 §2 — builds its own collection (`Collection.get()` with no name), so it cannot fail to find one. Correctly carries no `Failure`, and a corpus row pins the absence |
 | 52 | Create New Object | Data | 2/2 | ⚠️ |  | 0% | safe | browser, cloud | 🔵 NDA-004 §2 — builds its own object, so it cannot fail to find one. Correctly gets neither `addFailure` nor `repeaterComponent` |
 | 53 | Create New Record | Data | 3/4 |  |  | 0% | safe | browser, cloud |  |
 | 54 | Create Record | Data | 1/6 |  |  | 0% | safe | browser |  |
@@ -164,14 +175,14 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 57 | Filter Records | Data | 3/4 | ⚠️ |  | 0% | safe | browser, cloud |  |
 | 58 | Global Store | Data | 4/6 |  |  | 0% | safe | browser, cloud |  |
 | 59 | HTTP Request | Data | 3/7 |  |  | 0% | safe | browser |  |
-| 60 | Insert Object Into Array | Data | 3/1 | ⚠️ |  | 0% | safe | browser |  |
+| 60 | Insert Object Into Array | Data | 3/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error`, `insert-into-array/no-array` and `/no-object-id`. Both branches were `sendWarning` + bare `return` behind an editor-only guard |
 | 61 | JSON Stream Parser | Data | 5/10 |  |  | 7% | safe | browser, cloud |  |
 | 62 | Object _(deprecated)_ | Data | 6/5 | ⚠️ |  | 0% | safe | browser |  |
 | 63 | Object | Data | 4/3 | ⚠️ |  | 0% | safe | browser, cloud | 🔵 NDA-004 §2 — **read and deliberately left silent.** Its `scheduleStore` has the same shape as Set Object Properties' but no `Do`: it is reached from any value arriving at a `prop-…` port, so failing would fire on the ordinary boot path. Values are retained and written when an object arrives |
 | 64 | Optimistic Update | Data | 10/12 |  |  | 18% | safe | browser, cloud |  |
 | 65 | Pattern Extractor | Data | 5/10 |  |  | 13% | safe | browser, cloud |  |
 | 66 | Query Data | Data | 1/8 |  |  | 0% | safe | browser |  |
-| 67 | Remove Object From Array | Data | 3/1 | ⚠️ |  | 0% | safe | browser |  |
+| 67 | Remove Object From Array | Data | 3/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error`, `remove-from-array/no-array` and `/no-object-id`. Two bare `return`s: no diagnosis in any runtime, including the editor |
 | 68 | Remove Record Relation | Data | 4/4 |  |  | 13% | safe | browser, cloud | ✅ NDA-004 §2 — twin of Add Record Relation |
 | 69 | Repeater Item | Data | 1/3 | ⚠️ |  | 0% | safe | browser |  |
 | 70 | REST | Data | 6/3 |  |  | 0% | safe | browser, cloud |  |

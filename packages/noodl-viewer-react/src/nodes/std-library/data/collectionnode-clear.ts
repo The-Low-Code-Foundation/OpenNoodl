@@ -1,14 +1,15 @@
-import Collection from '@noodl/runtime/src/collection';
-import type { CollectionLike, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type { CollectionLike, NodeDefinitionOptions, NodeModule } from '@noodl/types';
 
+import {
+  addCollectionFailure,
+  resolveCollectionId,
+  setCollectionIdInput,
+  type FailableCollectionInstance
+} from './collection-failure';
 
 /** `this` inside the Clear Array node. */
-interface CollectionClearInstance extends NodeInstance {
-  _internal: {
-    collection?: CollectionLike;
-  };
-  setCollectionID(id: string): void;
-  setCollection(collection: CollectionLike): void;
+interface CollectionClearInstance extends FailableCollectionInstance {
+  setCollectionID(id: string | undefined): void;
 }
 
 const CollectionClearNode: NodeDefinitionOptions = {
@@ -27,10 +28,7 @@ const CollectionClearNode: NodeDefinitionOptions = {
       },
       displayName: 'Array Id',
       group: 'General',
-      set: function (this: CollectionClearInstance, value: string | CollectionLike) {
-        if (value instanceof Collection) value = value.getId(); // Can be passed as collection as well
-        this.setCollectionID(value as string);
-      }
+      set: setCollectionIdInput
     },
     clear: {
       displayName: 'Do',
@@ -39,6 +37,16 @@ const CollectionClearNode: NodeDefinitionOptions = {
         this.scheduleAfterInputsHaveUpdated(() => {
           const collection = this._internal.collection;
 
+          // NDA-004 §2. This was `collection.set([])` with no guard at all — the only node in
+          // the family whose missing-array path was not silent but a **crash**: a `TypeError`
+          // thrown out of a scheduled callback, from a node whose Array Id an author had simply
+          // not filled in yet. Its two siblings at least returned.
+          if (collection === undefined) {
+            this._failNoCollection('clear');
+            return;
+          }
+
+          this._clearCollectionFailure();
           collection.set([]);
           this.sendSignalOnOutput('modified');
         });
@@ -53,10 +61,10 @@ const CollectionClearNode: NodeDefinitionOptions = {
     }
   },
   methods: {
-    setCollectionID: function (this: CollectionClearInstance, id: string) {
-      this.setCollection(Collection.get(id));
+    setCollectionID: function (this: CollectionClearInstance, id: string | undefined) {
+      this.setCollection(resolveCollectionId(id));
     },
-    setCollection: function (this: CollectionClearInstance, collection: CollectionLike) {
+    setCollection: function (this: CollectionClearInstance, collection: CollectionLike | undefined) {
       this._internal.collection = collection;
     }
   }
@@ -65,5 +73,7 @@ const CollectionClearNode: NodeDefinitionOptions = {
 const CollectionClearModule: NodeModule = {
   node: CollectionClearNode
 };
+
+addCollectionFailure(CollectionClearNode, 'clear-array');
 
 export default CollectionClearModule;

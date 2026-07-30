@@ -22,12 +22,41 @@ row must be shown to discriminate before it is trusted.
 | `nda-015-repeater-item-binding.test.ts` | Binding §(a)(b)(c) on the current Repeater item (`_forEachModel`) — FINDINGS F-ii | 13 |
 | `nda-004-component-object-family.test.ts` | [Failure](../../../../dev-docs/reference/FAILURE-CONTRACT.md) §2 on the Component Object family, **incl. the two 🔵 verdicts** — FINDINGS B-i | 14 |
 | `nda-004-video-playback.test.tsx` | Failure §2 on Video — FINDINGS B-ii | 10 |
+| `nda-004-array-mutators.test.ts` | [Failure](../../../../dev-docs/reference/FAILURE-CONTRACT.md) §2 on the Array mutators, **incl. two 🔵 verdicts** — FINDINGS B-v | 23 |
 
-Two of those rows pin an **absence**: `Set Component Object Properties` must keep having *no*
-`Failure` port, because it cannot miss, and `Component Object` must stay silent when values arrive.
-The contract is explicit that a port implying a failure mode that does not exist is worse than no
-port, so a later mechanical sweep "finishing the family off" is a regression, and these rows are
-what catch it.
+Four of those rows pin an **absence**: `Set Component Object Properties` must keep having *no*
+`Failure` port, because it cannot miss, `Component Object` must stay silent when values arrive, and
+`Create New Array` and `Array` must keep having none for the same two reasons respectively. The
+contract is explicit that a port implying a failure mode that does not exist is worse than no port,
+so a later mechanical sweep "finishing the family off" is a regression, and these rows are what
+catch it.
+
+## Two harness limits found while adding the Array rows (2026-07-30)
+
+Both were found by the discrimination check, not by a failing test, and both apply to every file
+here rather than to the rows that turned them up.
+
+**`signalsFor` does not prove a port exists.** It is a wrapper the shared harness installs over
+`sendSignalOnOutput`, and it records the port name **before** delegating; `Node.sendSignalOnOutput`
+on a name the node does not have only `console.log`s and returns. So deleting a node's `failure`
+output leaves every `expect(signalsFor(id)).toContain('failure')` row green. Verified by doing it —
+nothing failed. Assert `node.hasOutput('failure')` as well when the *port* is part of the claim; the
+existing §2 files have this gap.
+
+**No node↔node-model event is delivered in this package.** `Node.setNodeModel` registers its
+`parameterUpdated` / `variantUpdated` / `inputPortRemoved` / `outputPortRemoved` listeners *with a
+ref*, so they live in `EventSender.listenersWithRefs` — a `Map`, which `emit` walks with
+`for (const [ref, callbacks] of map)`. This package compiles sibling-package sources with
+`target: "es5"` and no `downlevelIteration`, turning that into an index loop over `map.length`:
+`undefined` on a `Map`, so **zero iterations, silently**. Ref-less listeners on the same emitter
+fire normally, which is why nothing else has noticed. Confirmed in both directions — `emit` reaches
+a ref listener under `noodl-runtime`'s jest and not under this one.
+
+This *extends* the banked pre-ES2015 trap rather than restating it: that trap says the symptom is a
+loud `TS2802`, and here there is no error at all, because a cross-package source is transpiled with
+these options but its diagnostics are never surfaced. A row that needs a real parameter edit — the
+editor's own `setParameter(name, undefined)`, which is how a cleared field reaches a node — belongs
+in `noodl-runtime`'s half of the corpus.
 
 `nda-004-video-playback.test.tsx` drives the `Video` component class directly with a stub media
 element rather than mounting one: `testEnvironment: node` has no DOM to dispatch a real `error`
