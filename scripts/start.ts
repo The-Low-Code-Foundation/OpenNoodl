@@ -4,29 +4,16 @@ import path from 'path';
 
 import { ConsoleColor, attachStdio } from './utils/process';
 
+// Finding and killing dev processes is shared with the watchdog and with
+// `npm run dev:stop`, so it lives in one module rather than three copies.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const devProcesses = require('./devtools/dev-processes');
+const { killGroup, removePidFile, sweep, writePidFile: writePids } = devProcesses;
+
 // Track all spawned processes for cleanup
 const childProcesses: ChildProcess[] = [];
 
 const CWD = path.join(__dirname, '..');
-
-// Records the process-group ids we spawn so a *future* run can reap them if this
-// one is hard-killed (SIGKILL, power loss, `killall node`) before cleanup fires.
-// That is what stopped the historic build-up of orphaned webpack-dev-servers.
-const PID_FILE = path.join(CWD, 'node_modules', '.cache', 'noodl-dev-pids.json');
-
-/**
- * Sends a signal to a whole process group. Children are spawned `detached`, so
- * each is a group leader (pgid === pid) and the negative-pid form reaches every
- * descendant — including the webpack-dev-server that retitles itself to plain
- * "webpack" and was otherwise impossible to target.
- */
-function killGroup(pgid: number, signal: NodeJS.Signals): void {
-  try {
-    process.kill(-pgid, signal);
-  } catch {
-    // Group already gone — that's fine.
-  }
-}
 
 /**
  * Kills a spawned child and its entire process tree.
@@ -46,69 +33,62 @@ function killProcessTree(proc: ChildProcess): void {
   killGroup(proc.pid, 'SIGTERM');
 }
 
-function readPidFile(): number[] {
-  try {
-    const raw = JSON.parse(fs.readFileSync(PID_FILE, 'utf8'));
-    return Array.isArray(raw) ? raw.filter((n) => typeof n === 'number') : [];
-  } catch {
-    return [];
-  }
-}
-
-function writePidFile(): void {
-  const pgids = childProcesses.map((p) => p.pid).filter((pid): pid is number => typeof pid === 'number');
-  try {
-    fs.mkdirSync(path.dirname(PID_FILE), { recursive: true });
-    fs.writeFileSync(PID_FILE, JSON.stringify(pgids));
-  } catch {
-    // Non-fatal: we just lose cross-session reaping for this run.
-  }
-}
-
-function removePidFile(): void {
-  try {
-    fs.rmSync(PID_FILE, { force: true });
-  } catch {
-    // Ignore.
-  }
-}
-
 /**
- * A leftover group is only reaped when its leader is still alive AND still looks
- * like one of our dev tools. The command check guards against the (rare) case of
- * a pid being recycled by an unrelated process after a reboot.
- */
-function looksLikeDevProcess(pid: number): boolean {
-  try {
-    const cmd = execSync(`ps -o command= -p ${pid}`, { stdio: ['ignore', 'pipe', 'ignore'] })
-      .toString()
-      .toLowerCase();
-    return /webpack|lerna|\bnpx\b|npm|node/.test(cmd);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * On startup, kill any dev process groups a previous run left behind (e.g. it was
- * SIGKILLed before it could clean up). Without this, every crashed session leaked
- * a webpack-dev-server that ran forever.
+ * Kill anything a previous run left behind before starting more.
+ *
+ * The sweep no longer trusts the pid file alone. A pid file is only written once
+ * the children exist, so a session killed during startup leaves orphans it never
+ * recorded; and a session whose `node_modules/.cache` was wiped (`npm run
+ * clean:cache`) loses the record entirely while the processes keep running. The
+ * shared sweep finds them from the live process table instead, and uses the pid
+ * file only as an extra source of process groups.
  */
 function reapPreviousSession(): void {
   if (process.platform === 'win32') return;
 
-  const stale = readPidFile();
-  let reaped = 0;
-  for (const pgid of stale) {
-    if (looksLikeDevProcess(pgid)) {
-      killGroup(pgid, 'SIGKILL');
-      reaped++;
-    }
-  }
-  if (reaped > 0) {
-    console.log(`> Reaped ${reaped} orphaned dev process group(s) from a previous session`);
+  const { killed } = sweep({ onLog: (line: string) => console.log(`> ${line}`) });
+  if (killed.length > 0) {
+    console.log(`> Reaped ${killed.length} orphaned dev process(es) from a previous session`);
   }
   removePidFile();
+}
+
+/**
+ * Starts the process that cleans up when *this* one dies without warning.
+ *
+ * Every handler below is useless against SIGKILL, and the children are detached
+ * precisely so they survive their parent — which means an unhandleable death
+ * leaks the whole stack until someone notices the fans. The watchdog is a
+ * detached poller that closes that hole; see dev-watchdog.js.
+ */
+function startWatchdog(): ChildProcess | null {
+  if (process.platform === 'win32') return null;
+
+  // dev-debug.js passes its own pid down: if it is killed, its stdout pipe dies
+  // under us and the stack is broken even though this process may linger.
+  const launchers = [process.pid];
+  const parentLauncher = Number(process.env.NOODL_DEV_LAUNCHER_PID);
+  if (parentLauncher) launchers.push(parentLauncher);
+
+  try {
+    const script = path.join(__dirname, 'devtools', 'dev-watchdog.js');
+    const watchdog = spawn(process.execPath, [script, ...launchers.map(String)], {
+      cwd: CWD,
+      detached: true,
+      stdio: 'ignore'
+    });
+    // Unref so a clean shutdown is never held open waiting for the watchdog.
+    watchdog.unref();
+    return watchdog;
+  } catch (err) {
+    console.warn('> Could not start the dev watchdog; orphaned processes will only be reaped on the next run.', err);
+    return null;
+  }
+}
+
+function writePidFile(watchdogPid?: number): void {
+  const pgids = childProcesses.map((p) => p.pid).filter((pid): pid is number => typeof pid === 'number');
+  writePids({ groups: pgids, launchers: [process.pid], watchdog: watchdogPid ?? null });
 }
 
 let cleaningUp = false;
@@ -245,8 +225,10 @@ const editorProcess = attachStdio(spawn('npx lerna exec --scope noodl-editor -- 
 });
 childProcesses.push(editorProcess);
 
-// Persist the group ids so the next run can reap them if we die uncleanly.
-writePidFile();
+// Persist the group ids so the next run can reap them if we die uncleanly, and
+// start the watchdog that reaps them *immediately* rather than next run.
+const watchdogProcess = startWatchdog();
+writePidFile(watchdogProcess?.pid);
 
 // cleanup() sends SIGTERM, then escalates to SIGKILL and exits on a short timer,
 // so these handlers must NOT call process.exit() themselves — that would cut the

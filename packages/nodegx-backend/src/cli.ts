@@ -110,6 +110,12 @@ function parseArgs(argv: string[]): ParsedArgs {
       case '--no-safety':
         extras.noSafety = true;
         break;
+      // Orphan guard: exit when the supervisor that spawned us is gone. Not a
+      // BackendServiceOptions field — it governs this process's lifetime, not
+      // the service's behaviour.
+      case '--parent-pid':
+        extras.parentPid = next();
+        break;
       default:
         if (arg.startsWith('--')) {
           process.stderr.write(`Unknown flag: ${arg}\n`);
@@ -240,13 +246,16 @@ Options:
                          to fake it.
   --no-admin             Do not serve the admin dashboard. The /_admin route is
                          not registered at all (404), not merely blocked.
+  --parent-pid <pid>     Exit when this process is gone. Set by a supervisor that
+                         wants the backend to die with it even when the
+                         supervisor itself is force-killed and cannot say so.
   --readonly-token <t>   Provision the READ-ONLY admin credential: it can read
                          everything the admin surface exposes and change
                          nothing. Never minted automatically — a backend has
                          this tier only if you ask for it.
 `;
 
-async function runServe(options: Partial<BackendServiceOptions>): Promise<void> {
+async function runServe(options: Partial<BackendServiceOptions>, parentPid?: number): Promise<void> {
   const service = new BackendService(options);
   const started = await service.start();
   const s = started.persistence.status;
@@ -332,6 +341,27 @@ async function runServe(options: Partial<BackendServiceOptions>): Promise<void> 
   };
   process.on('SIGINT', () => void shutdown('SIGINT'));
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
+
+  // Orphan guard. When the editor spawns us it is our parent, and a *graceful*
+  // editor shutdown stops us on the way out. A force-kill of the editor does
+  // not: we are reparented to init and keep the port, the cron schedules and the
+  // SSE loop alive with nobody left to talk to. Poll the supervisor and drain
+  // ourselves when it disappears.
+  if (parentPid) {
+    const guard = setInterval(() => {
+      try {
+        process.kill(parentPid, 0);
+      } catch (e) {
+        // EPERM means it exists under another user — still alive, keep serving.
+        if ((e as NodeJS.ErrnoException).code === 'EPERM') return;
+        clearInterval(guard);
+        process.stdout.write(`[nodegx-backend] supervisor ${parentPid} is gone — shutting down\n`);
+        void shutdown('parent exit');
+      }
+    }, 5000);
+    // Do not let the guard alone hold the process open once the server is down.
+    guard.unref();
+  }
 }
 
 async function runDoctor(options: Partial<BackendServiceOptions>): Promise<void> {
@@ -463,9 +493,11 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   const { command, positionals, options, extras } = parseArgs(argv);
 
   switch (command) {
-    case 'serve':
-      await runServe(options);
+    case 'serve': {
+      const parentPid = typeof extras.parentPid === 'string' ? parseInt(extras.parentPid, 10) : NaN;
+      await runServe(options, Number.isFinite(parentPid) && parentPid > 1 ? parentPid : undefined);
       break;
+    }
     case 'doctor':
       await runDoctor(options);
       break;

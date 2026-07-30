@@ -161,7 +161,13 @@ class ServiceSupervisor {
         '--backend-id',
         this.config.id,
         '--backend-name',
-        this.config.name
+        this.config.name,
+        // Orphan guard. stop() handles a graceful editor shutdown, but a
+        // force-quit or `pkill` never reaches it — and this child is not in a
+        // process group anyone reaps, so it kept the port and its cron schedules
+        // alive indefinitely. The service polls this pid and drains when it goes.
+        '--parent-pid',
+        String(process.pid)
       ];
       if (this.config.ephemeral) args.push('--ephemeral');
 

@@ -1,0 +1,363 @@
+/**
+ * Finding and killing everything a NodeGX dev session starts.
+ *
+ * The dev stack is four levels deep and every level is a different tool:
+ *
+ *   dev-debug.js → ts-node start.ts → sh → npx → lerna → npm → webpack-dev-server
+ *                                                                    └→ npm → electron → nodegx-backend
+ *
+ * `start.ts` spawns its three branches `detached`, which is what lets it kill a
+ * whole subtree by process group — but detaching also means the children are NOT
+ * killed when the launcher dies. Anything that takes the launcher out without
+ * running its handlers (`kill -9`, `pkill -f node`, a crashed terminal, a laptop
+ * that ran out of patience) therefore leaves the webpack watchers running
+ * forever. They keep recompiling on file changes, so they are not idle — this is
+ * the runaway-CPU leak.
+ *
+ * This module is the shared answer, used by three callers:
+ *
+ *   - scripts/start.ts       reaps leftovers at startup, before adding more
+ *   - scripts/devtools/dev-watchdog.js  reaps when the launcher dies unexpectedly
+ *   - scripts/devtools/stop-dev.js      `npm run dev:stop`, the manual escape hatch
+ *
+ * SAFETY. A sweep that guesses wrong kills the user's editor or the terminal it
+ * is running in. Two rules keep it honest:
+ *
+ *   1. A process is only a *seed* if its command line contains this repo's
+ *      absolute path AND names a known dev tool. Both, never either. That is
+ *      what keeps a sibling git worktree's dev stack — same tool names, different
+ *      path — out of the blast radius.
+ *   2. The caller's own process and every one of its ancestors are excluded, so
+ *      a sweep can never kill the shell, the terminal, or itself.
+ *
+ * Everything else killed is a *descendant* of a seed, discovered from the live
+ * process table, so the `sh -c npx lerna ...` wrappers and the webpack-dev-server
+ * that retitles itself to a bare "webpack" are both reached without having to
+ * match their command lines at all.
+ */
+const { execFileSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+const ROOT = path.join(__dirname, '..', '..');
+
+/**
+ * Records the pids of a running session so a *later* run — or the watchdog — can
+ * reap them if this one is hard-killed before its cleanup can fire.
+ */
+const PID_FILE = path.join(ROOT, 'node_modules', '.cache', 'noodl-dev-pids.json');
+
+const WINDOWS = process.platform === 'win32';
+
+/**
+ * Tool names that identify a dev-stack process. Matched only in combination with
+ * the repo path — `webpack` alone would match half the machine.
+ */
+const DEV_TOOL = /webpack|lerna|electron[/\\]dist|nodegx-backend|start-electron-dev|scripts[/\\]start\.ts|dev-debug\.js/;
+
+/**
+ * The launcher wrappers, which sit *above* the seeds rather than below them.
+ *
+ * They are invoked with relative paths — `npm exec ts-node -P ./scripts/tsconfig.json
+ * ./scripts/start.ts`, `node ./scripts/devtools/dev-debug.js` — so their command
+ * lines never contain the repo path and the seed rule cannot see them. They are
+ * identified instead by being an *ancestor of a confirmed seed*, which is a
+ * stronger signal than any name match: a process cannot be the parent of this
+ * checkout's webpack by coincidence.
+ */
+const DEV_LAUNCHER = /scripts[/\\]start\.ts|devtools[/\\]dev-debug\.js|run dev(:debug)?\b|lerna exec --scope/;
+
+// ---------------------------------------------------------------------------
+// Process table
+// ---------------------------------------------------------------------------
+
+/**
+ * The live process table as a Map<pid, {pid, ppid, command}>.
+ *
+ * Taken in one `ps` call rather than one per pid: a sweep walks it several times
+ * (seeds, then descendants, then survivors after SIGTERM) and a stale table
+ * between those passes would miss processes that were only just spawned.
+ */
+function snapshot() {
+  const table = new Map();
+  if (WINDOWS) return table;
+
+  let out;
+  try {
+    out = execFileSync('/bin/ps', ['-axo', 'pid=,ppid=,command='], {
+      maxBuffer: 16 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).toString();
+  } catch {
+    return table;
+  }
+
+  for (const line of out.split('\n')) {
+    const m = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line);
+    if (!m) continue;
+    table.set(Number(m[1]), { pid: Number(m[1]), ppid: Number(m[2]), command: m[3] });
+  }
+  return table;
+}
+
+/**
+ * The pids a sweep must never touch: always this process, and — for callers that
+ * are running *inside* a terminal — everything above it too.
+ *
+ * `includeAncestors` is not a formality. `stop-dev.js` and `start.ts` both run as
+ * descendants of the user's shell, so without it a sweep would kill the terminal
+ * it was typed into. The watchdog is the opposite case: its parent IS the dead
+ * launcher whose stack it was started to clean up, so protecting its ancestry
+ * would spare the very processes it exists to kill.
+ */
+function selfAndAncestors(table, includeAncestors = true) {
+  const protectedPids = new Set([0, 1, process.pid]);
+  if (!includeAncestors) return protectedPids;
+
+  let pid = process.pid;
+  // Bounded: a pid can only be visited once, and the table is finite.
+  const seen = new Set();
+  while (pid && !seen.has(pid)) {
+    seen.add(pid);
+    const proc = table.get(pid);
+    if (!proc) break;
+    protectedPids.add(proc.ppid);
+    pid = proc.ppid;
+  }
+  return protectedPids;
+}
+
+/**
+ * Climbs from each seed towards init, collecting the launcher wrappers above it.
+ *
+ * Stops at the first ancestor that does not look like a launcher, so the climb
+ * can never escape the dev stack into the shell or the terminal — and `protected`
+ * (this process and its own ancestors) is an absolute floor on top of that.
+ */
+function launcherAncestors(seeds, table, protectedPids) {
+  const found = new Set();
+  for (const seed of seeds) {
+    let pid = table.get(seed)?.ppid;
+    const visited = new Set();
+    while (pid && pid > 1 && !visited.has(pid) && !protectedPids.has(pid)) {
+      visited.add(pid);
+      const proc = table.get(pid);
+      if (!proc || !DEV_LAUNCHER.test(proc.command)) break;
+      found.add(pid);
+      pid = proc.ppid;
+    }
+  }
+  return found;
+}
+
+/** Every descendant of `roots`, plus the roots themselves. */
+function withDescendants(roots, table) {
+  const children = new Map();
+  for (const proc of table.values()) {
+    if (!children.has(proc.ppid)) children.set(proc.ppid, []);
+    children.get(proc.ppid).push(proc.pid);
+  }
+
+  const collected = new Set();
+  const queue = [...roots];
+  while (queue.length) {
+    const pid = queue.pop();
+    if (collected.has(pid) || !table.has(pid)) continue;
+    collected.add(pid);
+    for (const child of children.get(pid) || []) queue.push(child);
+  }
+  return collected;
+}
+
+// ---------------------------------------------------------------------------
+// Pid file
+// ---------------------------------------------------------------------------
+
+/**
+ * Reads the pid file, tolerating the bare-array format earlier versions wrote so
+ * an in-flight session from before this change is still reapable.
+ */
+function readPidFile() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(PID_FILE, 'utf8'));
+    if (Array.isArray(raw)) return { groups: raw.filter((n) => typeof n === 'number'), launchers: [], watchdog: null };
+    return {
+      groups: Array.isArray(raw.groups) ? raw.groups.filter((n) => typeof n === 'number') : [],
+      launchers: Array.isArray(raw.launchers) ? raw.launchers.filter((n) => typeof n === 'number') : [],
+      watchdog: typeof raw.watchdog === 'number' ? raw.watchdog : null
+    };
+  } catch {
+    return { groups: [], launchers: [], watchdog: null };
+  }
+}
+
+function writePidFile(record) {
+  try {
+    fs.mkdirSync(path.dirname(PID_FILE), { recursive: true });
+    fs.writeFileSync(PID_FILE, JSON.stringify({ ...readPidFile(), ...record }));
+  } catch {
+    // Non-fatal: we only lose cross-session reaping for this run.
+  }
+}
+
+function removePidFile() {
+  try {
+    fs.rmSync(PID_FILE, { force: true });
+  } catch {
+    // Ignore.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Killing
+// ---------------------------------------------------------------------------
+
+/**
+ * Signals a whole process group. `start.ts` spawns each branch `detached`, so
+ * each is a group leader (pgid === pid) and the negative-pid form reaches every
+ * descendant in one call — including processes that have already been reparented
+ * to launchd and so are no longer findable by walking down from the launcher.
+ */
+function killGroup(pgid, signal) {
+  try {
+    process.kill(-pgid, signal);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function killPid(pid, signal) {
+  try {
+    process.kill(pid, signal);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function alive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    // EPERM means it exists but belongs to someone else — still alive.
+    return err.code === 'EPERM';
+  }
+}
+
+/** Blocking sleep. The sweep is deliberately synchronous; see sweep(). */
+function sleepSync(seconds) {
+  try {
+    execFileSync('/bin/sleep', [String(seconds)], { stdio: 'ignore' });
+  } catch {
+    // Ignore — worst case we escalate to SIGKILL sooner than intended.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The sweep
+// ---------------------------------------------------------------------------
+
+/**
+ * Finds every process belonging to a NodeGX dev session in this checkout.
+ *
+ * Returns the processes, not just their pids, so callers can report what they
+ * killed — a sweep that prints nothing is indistinguishable from a sweep that
+ * silently did the wrong thing.
+ */
+function findDevProcesses({ protectAncestors = true } = {}) {
+  const table = snapshot();
+  if (table.size === 0) return [];
+
+  const offLimits = selfAndAncestors(table, protectAncestors);
+
+  const seeds = [];
+  for (const proc of table.values()) {
+    if (offLimits.has(proc.pid)) continue;
+    // Rule 1: repo path AND a known tool. The watchdog is excluded by name — it
+    // is the one process that must outlive the sweep it is running.
+    if (!proc.command.includes(ROOT)) continue;
+    if (proc.command.includes('dev-watchdog.js')) continue;
+    if (proc.command.includes('dev-processes.js') || proc.command.includes('stop-dev.js')) continue;
+    if (!DEV_TOOL.test(proc.command)) continue;
+    seeds.push(proc.pid);
+  }
+
+  // A recorded group leader is a seed even when its own command line gives
+  // nothing away: `sh -c npx lerna exec --scope ...` names no path at all.
+  for (const pid of readPidFile().groups) {
+    if (offLimits.has(pid) || !table.has(pid)) continue;
+    seeds.push(pid);
+  }
+
+  // Wrappers above the seeds, then everything below the two combined — so a
+  // stack whose middle was pkilled is still swept from both ends.
+  for (const pid of launcherAncestors(seeds, table, offLimits)) seeds.push(pid);
+
+  const all = withDescendants(seeds, table);
+  for (const pid of offLimits) all.delete(pid);
+
+  return [...all].map((pid) => table.get(pid)).filter(Boolean);
+}
+
+/**
+ * Kills every dev process from this checkout: SIGTERM, a grace period, then
+ * SIGKILL for whatever ignored it.
+ *
+ * Synchronous on purpose. Two of the three callers run at a point where the
+ * event loop cannot be relied on — `start.ts` sweeps during module evaluation,
+ * and the watchdog sweeps on the way out — and an async sweep that loses its
+ * timer to `process.exit()` is precisely the bug this file exists to fix.
+ *
+ * @returns {{killed: {pid: number, command: string}[], dryRun: boolean}}
+ */
+function sweep({ dryRun = false, onLog, protectAncestors = true } = {}) {
+  const log = onLog || (() => {});
+
+  if (WINDOWS) {
+    // The tree-kill path on Windows lives in start.ts (`taskkill /T /F`), which
+    // has no orphan problem: taskkill reaches the whole tree in one call.
+    return { killed: [], dryRun };
+  }
+
+  const targets = findDevProcesses({ protectAncestors });
+  const record = readPidFile();
+
+  if (targets.length === 0 && record.groups.length === 0) {
+    return { killed: [], dryRun };
+  }
+
+  if (dryRun) {
+    for (const proc of targets) log(`  would kill ${proc.pid}  ${proc.command.slice(0, 120)}`);
+    return { killed: targets, dryRun: true };
+  }
+
+  for (const proc of targets) log(`  killing ${proc.pid}  ${proc.command.slice(0, 120)}`);
+
+  // Groups first: one signal reaches descendants that have already been
+  // reparented, which the process-table walk cannot see.
+  for (const pgid of record.groups) killGroup(pgid, 'SIGTERM');
+  for (const proc of targets) killPid(proc.pid, 'SIGTERM');
+
+  sleepSync(1.5);
+
+  for (const pgid of record.groups) killGroup(pgid, 'SIGKILL');
+  for (const proc of targets) {
+    if (alive(proc.pid)) killPid(proc.pid, 'SIGKILL');
+  }
+
+  return { killed: targets, dryRun: false };
+}
+
+module.exports = {
+  ROOT,
+  PID_FILE,
+  alive,
+  findDevProcesses,
+  killGroup,
+  readPidFile,
+  removePidFile,
+  sweep,
+  writePidFile
+};

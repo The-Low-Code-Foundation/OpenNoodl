@@ -49,10 +49,17 @@ const banner =
 log.write(banner);
 if (!quiet) process.stdout.write(banner);
 
+// `detached: true` makes the launcher its own process-group leader, so shutdown()
+// below can signal the entire subtree with the negative-pid form. Without it the
+// child sits in *this* process's group, `kill(-pid)` fails with ESRCH, and the
+// fallback `child.kill()` reaches only ts-node — leaving every webpack behind.
+// NOODL_DEV_LAUNCHER_PID lets start.ts tell its watchdog to also watch this
+// process, so killing the outer wrapper takes the stack down too.
 const child = spawn('npx', ['ts-node', '-P', './scripts/tsconfig.json', './scripts/start.ts'], {
   cwd: ROOT,
-  env,
-  stdio: ['inherit', 'pipe', 'pipe']
+  env: { ...env, NOODL_DEV_LAUNCHER_PID: String(process.pid) },
+  stdio: ['inherit', 'pipe', 'pipe'],
+  detached: true
 });
 
 for (const stream of ['stdout', 'stderr']) {
@@ -164,6 +171,20 @@ function shutdown(signal) {
 
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
+// The terminal (or the VS Code integrated terminal) was closed. With no handler
+// this delivered nothing to the detached subtree at all, which is one of the
+// quieter ways a session used to leak its webpack watchers.
+process.on('SIGHUP', () => shutdown('SIGTERM'));
+
+// Last-resort synchronous sweep on any exit path — including an uncaught throw,
+// which reaches here but not the signal handlers above.
+process.on('exit', () => {
+  try {
+    process.kill(-child.pid, 'SIGKILL');
+  } catch {
+    // Already gone; the watchdog covers whatever this could not reach.
+  }
+});
 
 child.on('exit', (code) => {
   log.end();

@@ -27,6 +27,23 @@ sleep 30   # renderer bundle still has to load
 
 `npm run dev` also works and now behaves correctly, but has no CDP endpoint.
 
+## Stopping
+
+```bash
+npm run dev:stop            # kill the whole stack: webpack, lerna, Electron, backend
+npm run dev:stop -- --list  # show what is running, kill nothing
+```
+
+The stack cleans up after itself on every exit path, including `kill -9` of the
+launcher — a detached watchdog polls the launcher and reaps the stack when it
+dies, and `start.ts` sweeps leftovers before starting more. `dev:stop` is the
+manual escape hatch for when you just want to be certain.
+
+**Always stop the stack when you are done with it.** Three webpack watchers keep
+recompiling on every file change; a stack left running for hours is the reason
+this tooling exists. `dev:stop` only ever touches processes belonging to *this*
+checkout, so it is safe to run with a sibling worktree's stack up.
+
 ## Inspect
 
 ```bash
