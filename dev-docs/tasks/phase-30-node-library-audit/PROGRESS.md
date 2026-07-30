@@ -65,6 +65,44 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-30 (NDA-004 §2 — Push Component To Stack and Navigate)** — ⏳ item 4, both nodes, `2f519c1d`.
+  Two ✅, 14 corpus rows, viewer jest 228 (delta +14; the absolute count now also carries another
+  session's untracked Columns rows).
+
+  The prediction named **one** drop — "a target page that does not resolve" — and there were
+  **five**, none of them in `navigate.ts`, the file the register cited. Both nodes call a handler
+  which calls a collaborator which returns bare: three guards in `navigateAsync`, the *same three
+  copied* into `replaceAsync`, and two in `router.tsx`.
+
+  The reusable part is not the fix. **The transitioning guard is NDA-008 §3's own case, unfixed on
+  the other side.** That task fixed exactly this on the Pop node and wrote that it was "the one
+  authors actually hit, because a double-tapped back button used to lose its second tap without
+  trace". The push side has the identical guard, three functions above the code that was edited, in
+  the same file, in the same phase — because the fix was scoped by *node* rather than by the *shape*
+  it had found. Generalised in FINDINGS B-viii: when a fix is scoped to a node, check whether the
+  collaborator it corrected has other callers with the same need.
+
+  Second: **`target` is an enum input, and a wire can feed an enum any string at all** — B-vi's
+  States lesson turning up in an unrelated node a day later, which promotes it from an anecdote
+  about `States` to a property of enum ports.
+
+  New shape for the contract's "where does the report go" question: NDA-008 §3 settled *whose*
+  failure this is (the node that asked, not the stack), but `back()` is synchronous and returns a
+  result, while navigate/replace go through the stack's `asyncQueue` and outlive the caller's frame.
+  A `hasFailed` callback beside the existing `hasNavigated` is that same decision expressed for an
+  async call. Its optionality is load-bearing: `Noodl.Navigation.navigate` from a project's own
+  JavaScript reaches both handlers and supplies neither callback, and raising on the stack would
+  attribute a script's mistake to a node the author did not write.
+
+  Deliberately not fixed: a Stack or Router *name* matching nothing is queued for a stack that may
+  still mount, so at the instant of the call a typo and a not-yet-mounted stack are
+  indistinguishable. Nothing honest to raise.
+
+  Discrimination checked in three passes, and the middle one earned its keep: bare-returning
+  `navigateAsync` alone reddens its five rows and leaves the replace row **green**, which is what
+  pins that `replaceAsync`'s separate copy of the same three guards is independently held rather
+  than incidentally covered.
+
 - **2026-07-30 (NDA-004 §2 — Open File Picker)** — ⏳ item 2, one node, and the entry where a
   prediction was wrong in a way that *improved* the fix.
 

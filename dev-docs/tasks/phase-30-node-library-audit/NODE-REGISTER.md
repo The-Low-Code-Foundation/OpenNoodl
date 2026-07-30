@@ -47,6 +47,8 @@ of the five defects a careful read found:
 | Clear Array | **no guard at all** — `collection.set([])` on `undefined` threw a `TypeError` out of a scheduled callback | `clear-array/no-array` |
 | States | a state name not in the list animated **every value to 0**, adopted the name on the `State` output and fired `stateChanged` — a transition that read as successful | `states/unknown-state` |
 | Open File Picker | a cancelled dialog was **unobservable**, and a `change` with an empty `FileList` fired `Success` with all five outputs `undefined` | `Cancelled` (no raise — not a failure); `open-file-picker/open-failed` |
+| Push Component To Stack | three bare returns in `navigateAsync` **and a second copy of all three in `replaceAsync`** — no components configured, a navigation still animating, a Target Page that does not resolve | `push-component-stack/stack-has-no-components`, `/stack-transitioning`, `/component-not-found` |
+| Navigate | two bare returns, the second carrying the author's own `//TODO: send error to editor, "invalid page component name"` | `navigate/no-target-page`, `navigate/page-not-found` |
 
 ### 🔵 Decided, on evidence (read)
 
@@ -99,8 +101,12 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
    discarded the file already picked.
 3. **Show Popup** — a target component that does not resolve. Overlaps NDA-010 §3 (stack policy),
    so sequence it after that decision rather than before.
-4. **Push Component To Stack / Navigate** — a target page that does not resolve. `navigate.ts`
-   already returns early on `_findPage` missing.
+4. ~~**Push Component To Stack / Navigate**~~ — **done 2026-07-30, both ✅.** The prediction
+   named one drop and there were **five**, split across two files neither node ever heard back
+   from. The one the prediction missed matters most: the *transitioning* guard is the same case
+   NDA-008 §3 fixed on the Pop side and called "the one authors actually hit" — the push side had
+   the identical guard and was left silent, in the same file, in the same phase. Also confirmed
+   the enum-input hazard from States: `target` is an enum and a wire can feed an enum any string.
 5. ~~**States**~~ — **done 2026-07-30, ✅.** The prediction was right and the damage was the
    Expression class, not the silence class: the unknown state animated every value to **0**, took
    the bogus name onto its `State` output and fired `stateChanged`, so the transition read as
@@ -230,11 +236,11 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 102 | Number Remapper | Math | 6/1 |  |  | 0% | safe | browser |  |
 | 103 | Close Popup | Navigation | 3/0 |  | ⚠️ | 0% | safe | browser | ✅ NDA-004 §2 — `Closed`/`Failure`/`Error`; no-popup-in-scope now reported. Targeting stays NDA-010 §2 / NDA-015 |
 | 104 | External Link | Navigation | 3/0 |  | ⚠️ | 0% | safe | browser | ✅ NDA-004 — `Success`/`Failure`/`Error`; catches the popup-blocker case that made the button look dead |
-| 105 | Navigate | Navigation | 2/1 | ⚠️ |  | 0% | safe | browser |  |
+| 105 | Navigate | Navigation | 2/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error`. `navigate/no-target-page` and `navigate/page-not-found`; the latter replaces a bare `return` that carried `//TODO: send error to editor`. The editor adapter's health warning is the edit-time half and does not travel |
 | 106 | Navigate To Path | Navigation | 4/0 |  | ⚠️ | 0% | safe | browser | ✅ NDA-004 — `Success`/`Failure`/`Error`; the `path === undefined` return is no longer silent |
 | 107 | Page Inputs | Navigation | 2/0 |  |  | 0% | safe | browser |  |
 | 108 | Pop Component Stack | Navigation | 3/0 |  | ⚠️ | 0% | safe | browser | ✅ NDA-004 §3 — done in NDA-008 §3 (`0db1d770`), not pending: `Popped`/`Failure`/`Error` and `reportFailure` raising on the bus (`navigate-back.ts:63-80,133-138`). **This row said ⏳ until 2026-07-30** — the work landed under another task's commit and nobody came back to the register. A `void` return from `backCallback` counts as success on purpose |
-| 109 | Push Component To Stack | Navigation | 3/1 | ⚠️ |  | 0% | safe | browser |  |
+| 109 | Push Component To Stack | Navigation | 3/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error` for five drops: three guards in `navigateAsync` and the same three copied into `replaceAsync`. Reported via a `hasFailed` callback because the stack's `asyncQueue` outlives the caller's frame; the *node* owns the port, NDA-008 §3's decision for `back()` |
 | 110 | Show Popup | Navigation | 2/1 | ⚠️ |  | 0% | safe | browser |  |
 | 111 | Device Orientation _(deprecated)_ | Sensors | 0/3 |  |  | 0% | client-only | browser |  |
 | 112 | String Format | String Manipulation | 1/1 |  |  | 0% | safe | browser, cloud |  |

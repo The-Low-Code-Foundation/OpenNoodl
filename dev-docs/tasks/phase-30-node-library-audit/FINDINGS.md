@@ -347,6 +347,54 @@ invisible to `On App Error` and to every subscriber. **The blanket catch is why 
 noticed, not a reason it did not need reporting** — and it means "the node throws" is not by itself
 evidence of a crash anywhere in this codebase.
 
+### B-viii — the two navigation nodes: five drops, none of them the node's own line (2026-07-30)
+
+Register ⏳ item 4, predicted as *"a target page that does not resolve; `navigate.ts` already
+returns early on `_findPage` missing"*. The trigger question is unambiguous — both nodes' `Navigate`
+is `valueChangedToTrue` in group `Actions` — so the port is safe. What the read found was that the
+prediction named **one** drop of **five**, and that not one of them was in the file the register
+pointed at. Both nodes call a handler, which calls a collaborator, which returns bare.
+
+| Node | Where | What "could not navigate" did |
+|---|---|---|
+| Push Component To Stack | [`navigation-stack.tsx:790-806`](../../../packages/noodl-viewer-react/src/nodes/navigation/navigation-stack.tsx#L790-L806) | three bare `return`s: no components configured, a navigation still animating, a Target Page that does not resolve |
+| " | [`navigation-stack.tsx:682-698`](../../../packages/noodl-viewer-react/src/nodes/navigation/navigation-stack.tsx#L682-L698) | **the same three again**, `replaceAsync`'s own copy |
+| Navigate | [`router.tsx:566-570`](../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L566-L570) | two bare `return`s, the second carrying `//TODO: send error to editor, "invalid page component name"` |
+
+Two of the five are worth naming.
+
+**The transitioning guard is NDA-008 §3's own case, unfixed on the other side.** That task fixed
+exactly this on the Pop node and described it as "the one authors actually hit, because a
+double-tapped back button used to lose its second tap without trace". The push side has the
+identical guard, in the same file, and was left silent — the fix followed the *node* it was scoped
+to rather than the *shape* it had found. Worth generalising: **when a fix is scoped by node, check
+whether the collaborator it corrected has other callers with the same need.** The evidence was
+sitting three functions above the code that was edited.
+
+**`target` is an enum input, and a wire can feed an enum any string at all.** That is B-vi's States
+lesson, arriving in a second node a day later. A component renamed in the editor while something
+upstream still spells it the old way stops navigating and nothing anywhere says so.
+
+#### Where the report goes, when the outcome outlives the frame
+
+NDA-008 §3 settled *whose* failure this is — the stack did not fail, the node that asked it to act
+did, and that node owns the port and the provenance. The new part is the call shape: `back()` is
+synchronous and returns a `StackBackResult`, but `navigate`/`replace` go through the stack's
+`asyncQueue`, so by the time the outcome is known the caller's frame is gone. A `hasFailed`
+callback beside the existing `hasNavigated` is the same decision expressed for an async call.
+
+Its optionality is load-bearing, not politeness: a project's own JavaScript reaches both handlers
+(`api/navigation.ts` → `Noodl.Navigation.navigate`) and supplies neither callback. Falling back to
+raising on the *stack* would attribute a script's mistake to a node the author did not write.
+
+#### Not fixed, and why
+
+A Stack or Router **name** that matches nothing is *queued*, not dropped —
+`NavigationHandler._performNavigation` holds it for a stack that may still mount. At the instant of
+the call a typo and a not-yet-mounted stack are indistinguishable, so there is nothing honest to
+raise. That is the Component Stack's own 🔵 reasoning one level out, and it is the boundary of what
+this class of fix can reach.
+
 ## Defect class C — 95% of ports are undocumented
 
 2,508 of 2,650 ports carry no `description`. 112 of 155 nodes have not a single documented port.
