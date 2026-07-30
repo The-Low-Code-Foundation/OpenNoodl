@@ -199,6 +199,88 @@ describe('NodeContext wiring', () => {
   });
 });
 
+/**
+ * NDA-004 criterion 2 — the same error, observable in all four contexts.
+ *
+ * The row above ("no editor connection") described a context no shipping runtime ever builds.
+ * `NoodlRuntime` constructs an `EditorConnection` unconditionally and documents it as a no-op
+ * when deployed (`noodl-runtime.ts:285-288`), so the old `if (editorConnection) … else console`
+ * always took the first branch and the console subscriber was unreachable outside a
+ * directly-constructed context. Measured on a real Deploy To Folder: the deployed browser build
+ * and the SSG build each carried `editorWarningSubscriber` and nothing else, so a raised failure
+ * went to a socket connected to nothing and printed nowhere.
+ *
+ * These rows pin the discrimination the fix turns on, which is *not* "is there a connection
+ * object" — there always is — but "is the editor's warning panel the surface someone is
+ * watching". A subscriber-name assertion is used deliberately: asserting only that
+ * `console.error` fired would stay green if the editor subscriber were dropped instead.
+ */
+describe('NDA-004 criterion 2: the console channel in a deployed runtime', () => {
+  const subscriberNames = (context: InstanceType<typeof NodeContext>) =>
+    (context.errorBus as unknown as { _subscribers: { name: string }[] })._subscribers.map((s) => s.name);
+
+  const aConnection = () => ({ sendWarning: jest.fn(), on() {}, isConnected: () => false });
+
+  test('G1: a deployed browser app, SSR or export gets the console line as well', () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      // What `_hydrateDeployed` and the SSR server both build: `runDeployed: true`, hence
+      // `runningInEditor: false`, and an editor connection that will never open a socket.
+      const connection = aConnection();
+      const context = new NodeContext({ editorConnection: connection, runningInEditor: false });
+
+      expect(subscriberNames(context)).toEqual(['editorWarningSubscriber', 'consoleErrorSubscriber']);
+
+      context.errorBus.raise(anEvent());
+
+      expect(consoleError).toHaveBeenCalled();
+      // The editor half is kept, not swapped: it has to be armed before the socket opens or a
+      // boot-time warning is lost, and it is a no-op while disconnected.
+      expect(connection.sendWarning).toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  test("G2 (control): the editor's own preview still reports only to the warning panel", () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      const connection = { ...aConnection(), runtimeType: 'browser' };
+      const context = new NodeContext({ editorConnection: connection, runningInEditor: true });
+
+      expect(subscriberNames(context)).toEqual(['editorWarningSubscriber']);
+
+      context.errorBus.raise(anEvent());
+
+      expect(connection.sendWarning).toHaveBeenCalled();
+      // Criterion 3: `sendWarning` still shows what it showed before, and the editor console
+      // does not acquire a duplicate of every warning already in the panel.
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  test('G3: the cloud runtime gets the console line, because its console is the server log', () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      // `noodl-viewer-cloud/src/index.ts` never passes `runDeployed`, so a *deployed* cloud
+      // function reports `runningInEditor: true` while having no editor to report to. The
+      // runtime type is what tells the two apart.
+      const connection = { ...aConnection(), runtimeType: 'cloud' };
+      const context = new NodeContext({ editorConnection: connection, runningInEditor: true });
+
+      expect(subscriberNames(context)).toEqual(['editorWarningSubscriber', 'consoleErrorSubscriber']);
+
+      context.errorBus.raise(anEvent());
+
+      expect(consoleError).toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+});
+
 describe('Node.raiseRuntimeError', () => {
   function aNodeIn(context: InstanceType<typeof NodeContext>) {
     const definition = NodeDefinition.defineNode({

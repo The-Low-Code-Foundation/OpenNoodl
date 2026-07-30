@@ -288,7 +288,19 @@ EditorConnection.prototype.send = function (this: EditorConnection, data) {
     this.sendQueue.push(data);
     if (!this.sendTimer) {
       this.sendTimer = setTimeout(() => {
+        // Clear the timer handle *before* the connected check, or a disconnected flush leaves
+        // `sendTimer` truthy for ever: the guard at the top of `send` then takes the queue
+        // branch on every later call, `!this.sendTimer` is false so no replacement timer is
+        // armed, and `sendQueue` grows without bound for the life of the page. In a deployed
+        // build the socket is never connected (`noodl-runtime.ts:285-288` constructs one
+        // anyway), and every runtime warning goes down this path — so the queue was a slow leak
+        // driven by exactly the diagnostics that can never be delivered. Dropping the queue is
+        // right rather than merely cheap: these messages are editor telemetry, and an editor
+        // that connects later wants the current state, not a replay of everything since boot.
+        this.sendTimer = undefined;
+
         if (this.isConnected() === false) {
+          this.sendQueue = [];
           return;
         }
 

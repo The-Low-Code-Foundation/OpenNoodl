@@ -32,6 +32,13 @@ export interface RuntimeEditorConnection extends EditorConnectionLike {
   clientId?: string;
   debugInspectorsEnabled?: boolean;
 
+  /**
+   * `'browser'` or `'cloud'` — `NoodlRuntime.type`, forwarded at construction. Read when
+   * choosing the error channel's default subscribers: a deployed cloud function reports
+   * `runningInEditor: true` (it never passes `runDeployed`) yet has no editor to report to.
+   */
+  runtimeType?: string;
+
   isConnected(): boolean;
   on(eventName: string, callback: (data: any) => void): void;
   sendConnectionValue(connectionId: string, value: unknown): void;

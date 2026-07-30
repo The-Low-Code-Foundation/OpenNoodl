@@ -168,10 +168,30 @@ const NodeContext = function NodeContext(this: NodeContext, args?: NodeContextAr
   // the default subscriber for this context: the editor keeps the warning panel it always
   // had, and every other runtime — deployed app, cloud, SSR, export — gets a structured
   // console line so a failure is never fully silent.
+  //
+  // **The two subscribers are not alternatives, and choosing between them on `editorConnection`
+  // was wrong.** `NoodlRuntime` builds an `EditorConnection` in *every* runtime and says so at
+  // `noodl-runtime.ts:285-288` — "create an editor connection even if we're running deployed …
+  // it won't connect and act as a no-op" — so `if (this.editorConnection)` was always true and
+  // `createConsoleErrorSubscriber` was unreachable outside a directly-constructed context, i.e.
+  // outside tests. Measured on a real Deploy To Folder: the deployed browser app and the SSG
+  // build both carried `editorWarningSubscriber` and nothing else, so every raised failure went
+  // to a socket that connects to nothing and produced no console output anywhere. The clause
+  // above was true of the *bus* and false of every runtime that ships.
+  //
+  // So the editor subscriber stays unconditional — it is a no-op when disconnected, and it must
+  // be armed before the socket opens or a boot-time warning is lost — and the console subscriber
+  // is added everywhere the editor's warning panel is not the surface an author is watching.
+  // `runningInEditor` is the right discriminator for the browser (`noodl-runtime.ts:265` derives
+  // it from `runDeployed`, so it is true only in the editor's preview window), and the cloud
+  // runtime is added by name because it leaves `runDeployed` unset — a deployed cloud function
+  // reports `runningInEditor: true` while having no editor to report to, and its console *is*
+  // the server log.
   this.errorBus = new RuntimeErrorBus();
   if (this.editorConnection) {
     this.errorBus.subscribe(createEditorWarningSubscriber(this.editorConnection));
-  } else {
+  }
+  if (!this.editorConnection || !this.runningInEditor || this.editorConnection.runtimeType === 'cloud') {
     this.errorBus.subscribe(createConsoleErrorSubscriber());
   }
   // So failures raised where no node is in scope — `Collection`'s notification loop — have
