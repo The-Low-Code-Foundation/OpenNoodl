@@ -1,7 +1,7 @@
 # Phase 13: Format & AI Substrate — Progress Tracker
 
 **Created:** 2026-07-22 (from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md), Track A)
-**Last Updated:** 2026-07-24
+**Last Updated:** 2026-07-30
 **Overall Status:** 🟢 Complete (SUB-001..SUB-008; Gate G1 passed)
 
 ---
@@ -57,6 +57,7 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 | SUB-010 | External Authoring Demo (Claude + MCP → live preview → editor hand-off) | 4-7 days | 🟢 Complete — **verdict: GO** ([demo/ASSESSMENT.md](./demo/ASSESSMENT.md); video take not recorded, run repeatable from demo/SETUP.md) |
 | SUB-011 | Expression parameters — fixture half | 2-3 days | 🟢 **Fixture done 2026-07-28**; posture decision still open (deliberately not taken). See [BATCH-A-NOTES.md](./BATCH-A-NOTES.md). **No data loss exists** — round-trip is clean and the validator is silent in strict mode, so this is a guard, not a fix. Proven load-bearing rather than vacuous: injecting a plausible normalisation into `ProjectExporter` turns **8 of 15 specs red while all six pre-existing corpus projects stay green** — that blind spot was the point. An early "DIFFERS" reading was the author's own `_comment` key plus key *ordering* (`toEqual` is order-insensitive); a careless run would have reported false loss |
 | SUB-012 | Duplicate node ids pass both validators | half a day | 🟢 **Done 2026-07-28** ([BATCH-A-NOTES.md](./BATCH-A-NOTES.md)). Reproduced first (0 errors/0 warnings), then fixed in **both** gates; both read the flat node array, never the map. **Scope went against the task's "global" phrasing, and the corpus is why:** within a component → `error`; across components → `warning`, promoted by `--strict`, because `big-merge-test-mine` — a real project in the SUB-006 corpus — legitimately reuses **46 ids** between `/Search/refined search` and a backup copy of it, so a global error rule would have failed a known-good project on its first run. Reversible in one line if the stricter reading is wanted. Also fixed a **latent second bug**: `validate-project.js` resolved connection endpoints against one project-wide id map, so a cross-component collision resolved against whichever component was indexed last. Fail-first proven both sides (7/9 and 6/8 red when disabled); corpus 9/9, `catalog:check` + `catalog:examples` 49/49 strict green; new `--self-test` wired into `pr.yml`. ⚠️ The rule never met the project that motivated it — `project-examples/agent-chat` is already clean |
+| SUB-013 | Parameter encoding — the catalog decodes `parameters` | 1.5-2 wks | 🟢 **Built 2026-07-30** (`b8e7ebc9`). `parameterEncoding` on every one of the 89 dynamic-port types: **33 with key formulas, 20 that compute no names at all** (dynamism is visibility only — the names are already in `inputs`/`outputs`), **36 `known: false` with a reason**. No silent gaps; a missing block throws. Derived by **observation**, not parsing — the generator drives each module's real `setup` hook against a fake graph model and records what `sendDynamicPorts` receives, so the formulas inherit SUB-004's no-drift guarantee. Seeds are found by **port type** (`stringlist`/`proplist`), not a table of node names, which located `States`, the Function node, `Event Sender` and `Page Stack` without any being known in advance. Criterion 2 is a **held-out third seed run**: a pattern that fails to reproduce it fails generation, so it gates in CI via `catalog:check`. ⚠️ **Artifact regeneration was left to the phase-30 session** (see below). §4's result is recorded **including its negative half** — [SUB-013-EVAL-RESULT.md](./SUB-013-EVAL-RESULT.md) |
 
 ---
 
@@ -71,6 +72,53 @@ call sites** — they are exercised only from tests. Making them real is SUB-001
 ---
 
 ## Change Log
+
+- **2026-07-30** — **SUB-013 built: the catalog decodes `parameters`, not just describes it.**
+  89 node types had `dynamicPorts`; 9 carried any naming notation. They now all carry a
+  `parameterEncoding`. Facts worth not re-deriving:
+
+  - **Two dynamic-port hooks exist and only one is called `setup`.** Nodes declaring
+    `numberedInputs` never write a hook — `nodedefinition.ts` fits them with
+    `setupNumberedInputDynamicPorts` — and a harness driving only `setup` reports that whole
+    family as unobservable. They are driven in separate passes and unioned, because *within* one
+    hook a later emission replaces the earlier one (`sendDynamicPorts` sends a whole list) while
+    *across* hooks the lists are additive.
+  - **A node can have a genuinely bare pattern, and it breaks first-match-wins everywhere.**
+    `States` names its value *output* for the value itself, so `<value>` compiles to `^(.+)$` and
+    matches every port name there is. It defeated the verifier (every other pattern read as never
+    exercised), the `valueType` dependency lookup (pointed the author at the wrong parameter —
+    a plausible sentence naming a real port) and the example checker. Fixed once, as
+    `mostSpecificMatch`. **It got in three times before being made shared.**
+  - **Verification is set equality, not regex coverage.** Templating the held-out run's names and
+    comparing pattern *sets* is the strong check; matching names against pattern regexes is kept
+    only as a second, independent check that the published strings match concrete names. A
+    regex-only check reports total coverage while learning nothing, for the reason above.
+  - **Variable order must come from the pattern string, not the `variables` object.** Object key
+    order is insertion order from templating, and for `value-<state>-<value>` that pairs `state`'s
+    capture with `value`'s parameter — every *correct* key then reads as naming something that
+    does not exist.
+  - **The shipped `toggle-switch` prefab has eight orphaned keys** — `value-true-bg color` and
+    friends, when `values` is `pos` alone. Shape-valid, reaching nothing, silently ignored by the
+    runtime. Pinned in `fixtures/parameter-encoding-examples.json` as `expectedOrphans`, which
+    fails both ways: an unlisted orphan fails generation, and a listed one that starts resolving
+    fails too. **Detecting this is new capability; acting on it is SUB-006's call and explicitly
+    out of scope here.**
+  - **§4's first run read 0% in both conditions and was a fixture bug, not a result.** Five tasks
+    said "expose the properties `title` and `price`" while the scoring key demanded `prop-title`.
+    `{"properties": "title,price"}` is *correct* — the ports are generated from it; the `prop-`
+    keys only carry values, which the instruction never asked for. Generalisable: **an eval's task
+    text and its scoring key are two statements of one requirement and can disagree**; the tell
+    was a clean, short, plausible answer scoring zero.
+  - **`--repeats` at `temperature: 0` buys nothing** — 23 of 24 groups returned byte-identical
+    answers. Effective n was 12 per condition, not 36. Raise the temperature before claiming power.
+  - ⚠️ **Cross-session:** the generator change is live in a shared tree, so the *other* session's
+    `catalog:generate` produced `parameterEncoding` in `node-catalog.json` before this task
+    committed anything. That left the tracked `.json` and `.d.ts` inconsistent and
+    `catalog:check` red. The `.d.ts` was regenerated to match (the `.json` write was verified
+    byte-identical first, so it was a genuine no-op); **both artifacts are left uncommitted** for
+    the phase-30 session to publish with its own regeneration. Generalisable: **editing a
+    generator is editing every artifact anyone else regenerates**, which pathspec discipline does
+    not protect against. `generate.js` grew `--out-dir` for exactly this reason.
 
 - **2026-07-23** — **SUB-010 complete (optional spike) — verdict: GO on SUB-008 hardening + AIX-002.**
   The full external-authoring loop ran end to end against a **real production app**

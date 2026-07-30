@@ -54,6 +54,7 @@ These are proof-of-thesis prototypes, not part of the eight-task substrate spine
 | Task | Name | Description | Est. |
 |---------|------|-------------|--------|
 | SUB-011 | [Expression Parameters](./SUB-011-EXPRESSION-PARAMETERS.md) | Added 2026-07-24 from the [salvage audit](../../reviews/PRE-REVIVAL-SALVAGE-AUDIT.md) §3: the shipped inline-expression feature stores `{mode:'expression',…}` objects the substrate is blind to. Round-trip fixtures (unconditional), then a recorded embrace-vs-freeze posture decision | 2-3 days + decision | 🟢 Sonnet 5 / 🔵 Fable 5 |
+| SUB-013 | [Parameter Encoding](./SUB-013-PARAMETER-ENCODING.md) | Added 2026-07-30 from the [Rise assessment](../../../docs/research/rise-assessment.md): 89 of 155 node types have dynamic ports, but only 9 document the *naming formula* for their `parameters` keys — so an AI cannot author a `States` node from the catalog alone. **✅ Built 2026-07-30** (`b8e7ebc9`): `parameterEncoding` derived by driving each node's real `setup` hook — 33 types with key formulas, 20 that compute no names, 36 `known: false` with a reason, no silent gaps. A held-out seed run verifies every pattern in CI. §4 ran against a local 3B model and **is recorded including its negative half** ([SUB-013-EVAL-RESULT.md](./SUB-013-EVAL-RESULT.md)): every metric roughly doubles, and 17% is still not usable — the small-local-model claim is not demonstrated at 3B | 1.5-2 wks | 🔵 Fable 5 |
 
 ---
 
