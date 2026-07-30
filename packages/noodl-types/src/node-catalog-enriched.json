@@ -287,6 +287,29 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "relationProperty",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "relationProperty"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "AddDbModelRelation",
         "summary": "Add Record Relation: links a target record onto a named relation field of an owner record in the cloud database.",
@@ -356,6 +379,10 @@
             }
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
       },
       "enrichment": {
         "typeName": "And",
@@ -672,6 +699,10 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
+      },
       "enrichment": {
         "typeName": "Animation",
         "summary": "Deprecated keyframe animation player. Use States (with transitions) or Animate To Value in new graphs.",
@@ -778,6 +809,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Boolean",
         "summary": "Per-instance true/false holder: stores one boolean locally, optionally latching new values until a Set signal fires.",
@@ -879,6 +911,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Boolean To String",
         "summary": "Picks between two strings based on a boolean: outputs String for true or String for false.",
@@ -2047,6 +2080,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "Button",
         "summary": "Legacy button visual, hidden from the node picker — superseded by net.noodl.controls.button.",
@@ -2091,6 +2130,7 @@
       ],
       "outputs": [],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "CSS Definition",
         "summary": "Injects a raw CSS stylesheet into the app; visual nodes opt in via their cssClassName input.",
@@ -3056,6 +3096,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Checkbox",
         "summary": "Legacy checkbox visual, hidden from the node picker — superseded by net.noodl.controls.checkbox.",
@@ -3869,6 +3910,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "Circle",
         "summary": "An SVG circle or arc with fill, stroke and start/end angles — the quick way to dots, rings and progress arcs.",
@@ -3948,6 +3995,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Cloud File",
         "summary": "Unwraps a cloudfile value into its name and URL, for display or download links.",
@@ -4054,6 +4102,24 @@
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "params"
+        ],
+        "patterns": [
+          {
+            "pattern": "pm-<param>",
+            "plug": "input",
+            "variables": {
+              "param": "one of the comma-separated entries in the `params` parameter"
+            },
+            "group": "Parameters",
+            "valueType": "*",
+            "example": "pm-Sa1"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "Cloud Function",
         "summary": "Deprecated v1 caller of named server functions. Superseded by CloudFunction2 (also displayed as 'Cloud Function').",
@@ -4129,6 +4195,10 @@
         ],
         "description": "Input/output ports mirror the request/response ports of the targeted cloud function component (CloudFunctionAdapter).",
         "editorAdapter": "CloudFunctionAdapter"
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports are computed by the editor from the selected cloud function component's inputs and outputs (CloudFunctionAdapter)."
       },
       "enrichment": {
         "typeName": "CloudFunction2",
@@ -4360,6 +4430,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Collection",
         "summary": "Deprecated all-in-one shared array node. Use Collection2 (Array) plus the CollectionInsert/Remove/Clear/New action nodes.",
@@ -4488,6 +4559,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Collection2",
         "summary": "Array: binds to a shared client-side array by id — read its items and count, seed its contents, and react to changes made anywhere.",
@@ -4599,6 +4671,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "CollectionClear",
         "summary": "Clear Array: empties a shared array (removes all items) when Do fires.",
@@ -4704,6 +4777,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "CollectionInsert",
         "summary": "Insert Object Into Array: appends an existing object, referenced by its id, to a shared array when Do fires.",
@@ -4795,6 +4869,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "CollectionNew",
         "summary": "Create New Array: makes a fresh array with a generated id when Do fires, optionally copying an input array's contents into it.",
@@ -4906,6 +4981,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "CollectionRemove",
         "summary": "Remove Object From Array: removes an object, referenced by its id, from a shared array when Do fires.",
@@ -5024,6 +5100,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Color",
         "summary": "Per-instance color holder: stores one color locally so many visual inputs can share a single editable source.",
@@ -5108,6 +5185,10 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
+      },
       "enrichment": {
         "typeName": "Color Blend",
         "summary": "Interpolates between configured colors as blendValue moves 0→1, outputting the mixed color.",
@@ -5150,6 +5231,7 @@
       "inputs": [],
       "outputs": [],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Component Children",
         "summary": "Placeholder inside a component's visual tree marking where children given to an instance of that component are inserted.",
@@ -5197,6 +5279,10 @@
           "runtime-discovered"
         ],
         "description": "Output ports mirror the port names listed in this node's \"ports\" parameter; each becomes an input of the containing component and an output of this node."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports mirror the component input declarations the author makes on this node; the names are whatever they typed, with no prefix or transformation."
       },
       "enrichment": {
         "typeName": "Component Inputs",
@@ -5248,6 +5334,10 @@
           "runtime-discovered"
         ],
         "description": "Input ports mirror the port names listed in this node's \"ports\" parameter; each becomes an output of the containing component and an input of this node."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports mirror the component output declarations the author makes on this node; the names are whatever they typed, with no prefix or transformation."
       },
       "enrichment": {
         "typeName": "Component Outputs",
@@ -5357,6 +5447,34 @@
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          },
+          {
+            "pattern": "value-<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "value-Sa1"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "Component State",
         "summary": "Deprecated per-component-instance state store. Use Component Object (net.noodl.ComponentObject).",
@@ -5457,6 +5575,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Condition",
         "summary": "Boolean gate: routes an evaluation into On True / On False signals and holds Is True / Is False as readable booleans.",
@@ -5614,6 +5733,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Counter",
         "summary": "A number you step up and down with signals, with optional min/max limits and a reset.",
@@ -5715,6 +5835,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Date To String",
         "summary": "Formats a date into a string using {year}/{month}/{date}/{hours}-style tokens.",
@@ -5847,6 +5968,57 @@
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "storageEnableLimit",
+            "plug": "input",
+            "group": "Limit",
+            "valueType": "boolean",
+            "example": "storageEnableLimit"
+          },
+          {
+            "pattern": "storageFetch",
+            "plug": "input",
+            "group": "Storage",
+            "valueType": "signal",
+            "example": "storageFetch"
+          },
+          {
+            "pattern": "storageFilter",
+            "plug": "input",
+            "group": "Filter",
+            "valueType": "stringlist",
+            "example": "storageFilter"
+          },
+          {
+            "pattern": "storageFilterType",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "storageFilterType"
+          },
+          {
+            "pattern": "storageSort",
+            "plug": "input",
+            "group": "Sort",
+            "valueType": "stringlist",
+            "example": "storageSort"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "DbCollection",
         "summary": "Deprecated query node for cloud database classes; superseded by DbCollection2 (Query Records).",
@@ -5957,6 +6129,71 @@
         "description": "Filter/sort input ports are generated by the editor from the visual query (QueryRecordsAdapter) and the selected class schema.",
         "editorAdapter": "QueryRecordsAdapter"
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "search",
+            "plug": "input",
+            "group": "Search",
+            "valueType": "string",
+            "example": "search"
+          },
+          {
+            "pattern": "storageEnableCount",
+            "plug": "input",
+            "group": "Total Count",
+            "valueType": "boolean",
+            "example": "storageEnableCount"
+          },
+          {
+            "pattern": "storageEnableLimit",
+            "plug": "input",
+            "group": "Limit",
+            "valueType": "boolean",
+            "example": "storageEnableLimit"
+          },
+          {
+            "pattern": "storageFetch",
+            "plug": "input",
+            "group": "Actions",
+            "valueType": "signal",
+            "example": "storageFetch"
+          },
+          {
+            "pattern": "storageFilterType",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "storageFilterType"
+          },
+          {
+            "pattern": "visualFilter",
+            "plug": "input",
+            "group": "Filter",
+            "valueType": "query-filter",
+            "example": "visualFilter"
+          },
+          {
+            "pattern": "visualSort",
+            "plug": "input",
+            "group": "Sorting",
+            "valueType": "query-sorting",
+            "example": "visualSort"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "DbCollection2",
         "summary": "Query Records: fetches records of a cloud database class with filter/sort/limit, keeps results live, and outputs them as an array.",
@@ -6011,6 +6248,10 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports follow the database configuration schema fetched from the backend."
       },
       "enrichment": {
         "typeName": "DbConfig",
@@ -6238,6 +6479,51 @@
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "$ndlCollectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "$ndlCollectionName"
+          },
+          {
+            "pattern": "$ndlModelInitCode",
+            "plug": "input",
+            "group": "Scripts",
+            "valueType": "string",
+            "example": "$ndlModelInitCode"
+          },
+          {
+            "pattern": "<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "Sa1"
+          },
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "DbModel",
         "summary": "Deprecated cloud record node that mixed reading, writing and deleting in one node; superseded by DbModel2 and the dedicated write nodes.",
@@ -6396,6 +6682,42 @@
               "repeaterComponent"
             ],
             "name": "conditionalports/extended"
+          }
+        ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          },
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "prop-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Properties",
+            "valueType": "string",
+            "example": "prop-Sa1"
           }
         ]
       },
@@ -6568,6 +6890,22 @@
               "repeaterComponent"
             ],
             "name": "conditionalports/extended"
+          }
+        ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
           }
         ]
       },
@@ -6985,6 +7323,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Drag",
         "summary": "Makes its child subtree draggable along X and/or Y, reporting position and drag signals, with animated snap-to-position.",
@@ -7095,6 +7434,10 @@
           "runtime-discovered"
         ],
         "description": "Payload output ports mirror the payload schema of the channel selected via the \"channelName\" parameter (as defined by matching Event Sender nodes)."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Output ports mirror the payload of whatever `Event Sender` nodes publish on the channel named by the `channelName` parameter — they are derived from another node, not from this one."
       },
       "enrichment": {
         "typeName": "Event Receiver",
@@ -7247,6 +7590,24 @@
           "runtime-discovered"
         ],
         "description": "Payload input ports are defined by the \"ports\" parameter (the payload schema of the channel being sent on)."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "payload"
+        ],
+        "patterns": [
+          {
+            "pattern": "<payload>",
+            "plug": "input",
+            "variables": {
+              "payload": "one of the comma-separated entries in the `payload` parameter"
+            },
+            "group": "Payload",
+            "valueType": "*",
+            "example": "Sa1"
+          }
+        ]
       },
       "enrichment": {
         "typeName": "Event Sender",
@@ -7430,6 +7791,24 @@
           "runtime-discovered"
         ],
         "description": "Input ports are created for each free variable referenced in the \"expression\" parameter (e.g. the expression \"a + b\" yields number inputs named \"a\" and \"b\"). The \"result\" output and its type follow the expression."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "expression"
+        ],
+        "patterns": [
+          {
+            "pattern": "<expression>",
+            "plug": "input",
+            "variables": {
+              "expression": "a free variable referenced in the `expression` parameter"
+            },
+            "group": "Parameters",
+            "valueType": "*",
+            "example": "Sa1"
+          }
+        ]
       },
       "enrichment": {
         "typeName": "Expression",
@@ -8297,6 +8676,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "Field Set",
         "summary": "Legacy fieldset grouping container, hidden from the picker. Use a plain Group (or Form for submit semantics).",
@@ -8436,6 +8821,10 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports follow the filter script in the node parameters."
       },
       "enrichment": {
         "typeName": "Filter Collection",
@@ -8587,6 +8976,10 @@
         ],
         "description": "Filter input ports are generated by the editor from the visual filter definition (FilterRecordsAdapter) and the selected class schema.",
         "editorAdapter": "FilterRecordsAdapter"
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper could not be run headlessly — it needs project context this generator does not have (Cannot read properties of undefined (reading 'find'))."
       },
       "enrichment": {
         "typeName": "FilterDBModels",
@@ -8743,6 +9136,10 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Input ports mirror the input ports of the template component chosen by the `template` parameter, name for name. They cannot be derived from this node's own parameters."
+      },
       "enrichment": {
         "typeName": "For Each",
         "summary": "Repeater: instantiates a template component once per item of an input array, inserting the instances as children at its position.",
@@ -8837,6 +9234,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "For Each Actions",
         "summary": "Repeater Item: inside a repeater's item component, exposes this row's item id and its add/remove lifecycle.",
@@ -9708,6 +10106,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "Form",
         "summary": "Legacy HTML form container with an onSubmit signal, hidden from the picker. Use a Group and wire actions explicitly.",
@@ -9742,6 +10146,10 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports follow the global variables the project defines at runtime."
       },
       "enrichment": {
         "typeName": "Globals",
@@ -11785,6 +12193,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "Group",
         "summary": "The universal layout container: a flexbox div that stacks its children in a row or column and is the root of most components.",
@@ -11869,6 +12283,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Gyroscope",
         "summary": "Deprecated device-orientation sensor exposing rotation X/Y/Z. No direct successor; use a Function node over the DeviceOrientation API.",
@@ -13387,6 +13802,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "Image",
         "summary": "Displays an image from a project asset or URL, with fit control, srcSet support and load/error signals.",
@@ -13460,6 +13881,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Inverter",
         "summary": "Logical NOT: outputs the boolean opposite of its input.",
@@ -13588,6 +14010,65 @@
           "runtime-discovered"
         ],
         "description": "This is the Function node. Input and output ports are discovered from the user script in the \"functionScript\" parameter: reading \"Inputs.xyz\" creates input port \"xyz\", assigning \"Outputs.xyz\" creates output port \"xyz\". Signal outputs are created by calling \"Outputs.xyz()\"."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "scriptInputs",
+          "scriptOutputs",
+          "functionScript"
+        ],
+        "patterns": [
+          {
+            "pattern": "in-<functionScript>",
+            "plug": "inputs",
+            "variables": {
+              "functionScript": "a name read as `Inputs.<name>` or assigned as `Outputs.<name>` in the `functionScript` parameter"
+            },
+            "group": "Inputs",
+            "valueType": "*",
+            "example": "in-Ta1"
+          },
+          {
+            "pattern": "in-<scriptInput>",
+            "plug": "input",
+            "variables": {
+              "scriptInput": "the `label` of a row in the `scriptInputs` parameter"
+            },
+            "group": "Inputs",
+            "valueType": "string",
+            "example": "in-Sa1"
+          },
+          {
+            "pattern": "intype-<scriptInput>",
+            "plug": "input",
+            "variables": {
+              "scriptInput": "the `label` of a row in the `scriptInputs` parameter"
+            },
+            "valueType": "enum",
+            "example": "intype-Sa1"
+          },
+          {
+            "pattern": "out-<scriptOutput>",
+            "plug": "output",
+            "variables": {
+              "scriptOutput": "the `label` of a row in the `scriptOutputs` parameter"
+            },
+            "group": "Outputs",
+            "valueType": "follows the matching `outtype-<scriptOutput>` parameter",
+            "example": "out-Vb sp"
+          },
+          {
+            "pattern": "outtype-<scriptOutput>",
+            "plug": "input",
+            "variables": {
+              "scriptOutput": "the `label` of a row in the `scriptOutputs` parameter"
+            },
+            "valueType": "enum",
+            "example": "outtype-Vb sp"
+          }
+        ],
+        "notes": "Names are interpolated verbatim, including spaces — a value called `bg color` produces a port called `value-true-bg color`, not `value-true-bgColor`."
       },
       "enrichment": {
         "typeName": "JavaScriptFunction",
@@ -13728,6 +14209,54 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "scriptInputs",
+          "scriptOutputs"
+        ],
+        "patterns": [
+          {
+            "pattern": "<scriptInput>",
+            "plug": "input",
+            "variables": {
+              "scriptInput": "the `label` of a row in the `scriptInputs` parameter"
+            },
+            "group": "Inputs",
+            "valueType": "string",
+            "example": "Sa1"
+          },
+          {
+            "pattern": "<scriptOutput>",
+            "plug": "output",
+            "variables": {
+              "scriptOutput": "the `label` of a row in the `scriptOutputs` parameter"
+            },
+            "group": "Outputs",
+            "valueType": "*",
+            "example": "Vb sp"
+          },
+          {
+            "pattern": "intype-<scriptInput>",
+            "plug": "input",
+            "variables": {
+              "scriptInput": "the `label` of a row in the `scriptInputs` parameter"
+            },
+            "valueType": "enum",
+            "example": "intype-Sa1"
+          },
+          {
+            "pattern": "outtype-<scriptOutput>",
+            "plug": "input",
+            "variables": {
+              "scriptOutput": "the `label` of a row in the `scriptOutputs` parameter"
+            },
+            "valueType": "enum",
+            "example": "outtype-Vb sp"
+          }
+        ],
+        "notes": "Names are interpolated verbatim, including spaces — a value called `bg color` produces a port called `value-true-bg color`, not `value-true-bgColor`."
       },
       "enrichment": {
         "typeName": "Javascript2",
@@ -15091,6 +15620,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "Label",
         "summary": "Legacy text-label visual, hidden from the node picker — superseded by Text.",
@@ -15181,6 +15716,10 @@
           "runtime-discovered"
         ],
         "description": "Ports are generated from the visual logic program stored in the node parameters; each program variable/event becomes a port."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports follow the visual logic program stored in the node parameters."
       },
       "enrichment": {
         "typeName": "Logic Builder",
@@ -15295,6 +15834,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Map Collection",
         "summary": "Array Map: transforms each element of an input array with a map script, emitting a new array and leaving the source untouched.",
@@ -15464,6 +16004,34 @@
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "Sa1"
+          },
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "Model",
         "summary": "Deprecated all-in-one shared object node. Use Model2 (Object) plus NewModel and SetModelProperties.",
@@ -15616,6 +16184,34 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          },
+          {
+            "pattern": "prop-<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "prop-Sa1"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "Model2",
         "summary": "Object: binds to one client-side object by id and exposes its properties reactively; the shared store behind repeater items and app state.",
@@ -15744,6 +16340,36 @@
         ],
         "description": "Output ports mirror the close-result values declared by the popup being closed."
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "closeActions",
+          "results"
+        ],
+        "patterns": [
+          {
+            "pattern": "closeAction-<closeAction>",
+            "plug": "input",
+            "variables": {
+              "closeAction": "one of the comma-separated entries in the `closeActions` parameter"
+            },
+            "group": "Close Actions",
+            "valueType": "signal",
+            "example": "closeAction-Sa1"
+          },
+          {
+            "pattern": "result-<result>",
+            "plug": "input",
+            "variables": {
+              "result": "one of the comma-separated entries in the `results` parameter"
+            },
+            "group": "Results",
+            "valueType": "*",
+            "example": "result-Vb sp"
+          }
+        ],
+        "notes": "Names are interpolated verbatim, including spaces — a value called `bg color` produces a port called `value-true-bg color`, not `value-true-bgColor`."
+      },
       "enrichment": {
         "typeName": "NavigationClosePopup",
         "summary": "Close Popup: dismisses the popup this node lives in, sending named results and a close action back to the opener.",
@@ -15868,6 +16494,10 @@
           "runtime-discovered"
         ],
         "description": "Input ports mirror the component inputs of the target popup component; close-result outputs mirror its Component Outputs."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports mirror the input ports of the target popup component, and the results and close actions its `Close Popup` nodes declare."
       },
       "enrichment": {
         "typeName": "NavigationShowPopup",
@@ -15997,6 +16627,74 @@
         ],
         "description": "Property input ports follow the selected cloud database class schema."
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "accessControl"
+        ],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "acl-<accessControlId>-read",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "boolean",
+            "example": "acl-Sa1Id-read"
+          },
+          {
+            "pattern": "acl-<accessControlId>-target",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "enum",
+            "example": "acl-Sa1Id-target"
+          },
+          {
+            "pattern": "acl-<accessControlId>-userid",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "string",
+            "example": "acl-Sa1Id-userid"
+          },
+          {
+            "pattern": "acl-<accessControlId>-write",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "boolean",
+            "example": "acl-Sa1Id-write"
+          },
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Properties",
+            "valueType": "string",
+            "example": "prop-Sa1"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "NewDbModelProperties",
         "summary": "Create New Record: inserts a record into a cloud database class from its property inputs when Do is triggered.",
@@ -16096,6 +16794,34 @@
           "runtime-discovered"
         ],
         "description": "Property input ports are created from the \"properties\" parameter."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Values",
+            "valueType": "follows the matching `type-<property>` parameter",
+            "example": "prop-Sa1"
+          },
+          {
+            "pattern": "type-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Types",
+            "valueType": "enum",
+            "example": "type-Sa1"
+          }
+        ]
       },
       "enrichment": {
         "typeName": "NewModel",
@@ -16221,6 +16947,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Number",
         "summary": "Per-instance numeric holder: stores one number locally, optionally latching new values until a Set signal fires.",
@@ -16318,6 +17045,10 @@
             }
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
       },
       "enrichment": {
         "typeName": "Number Blend",
@@ -16437,6 +17168,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Number Remapper",
         "summary": "Linearly maps a number from one range to another, optionally clamped — e.g. 0–100 progress to 0–1 opacity.",
@@ -16573,6 +17305,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "On App Error",
         "summary": "App-wide error boundary: fires whenever any node reports a failure, with the code, message and the node it came from.",
@@ -16742,6 +17475,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Open File Picker",
         "summary": "Opens the browser's native file dialog on a signal and outputs the picked file plus its name, size and MIME type.",
@@ -17992,6 +18726,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "Options",
         "summary": "Legacy dropdown visual, hidden from the node picker — superseded by net.noodl.controls.options (Dropdown).",
@@ -18046,6 +18786,10 @@
             }
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
       },
       "enrichment": {
         "typeName": "Or",
@@ -18537,6 +19281,10 @@
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
       },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports follow the component the page renders."
+      },
       "enrichment": {
         "typeName": "Page",
         "summary": "The root visual node of a Router page component: declares the page's title, URL pattern and meta tags.",
@@ -18806,6 +19554,30 @@
         ],
         "description": "Per-page signal outputs and transition parameters are generated from the \"pages\" parameter."
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "pages"
+        ],
+        "patterns": [
+          {
+            "pattern": "pageComp-<pageId>",
+            "plug": "input",
+            "variables": {
+              "pageId": "the `id` of a row in the `pages` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "valueType": "component",
+            "example": "pageComp-Sa1Id"
+          },
+          {
+            "pattern": "startPage",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "startPage"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "Page Stack",
         "summary": "Component Stack: push/pop navigation container — pages stack on top of each other with transitions, ideal for wizards and drill-in flows.",
@@ -18880,6 +19652,10 @@
         ],
         "description": "Output ports are the path/query parameters declared on the containing page component (PageInputsAdapter).",
         "editorAdapter": "PageInputsAdapter"
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports are computed by the editor from the route that reaches the containing page component (PageInputsAdapter)."
       },
       "enrichment": {
         "typeName": "PageInputs",
@@ -19008,6 +19784,10 @@
         ],
         "description": "Input ports for target-page parameters are derived from the target page component of the containing Page Stack."
       },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports mirror the input ports of the target page component."
+      },
       "enrichment": {
         "typeName": "PageStackNavigate",
         "summary": "Push Component To Stack: pushes a chosen page onto a named Component Stack with a transition when triggered.",
@@ -19117,6 +19897,36 @@
           "runtime-discovered"
         ],
         "description": "Result ports depend on the \"backActions\" style parameters of the containing Page Stack."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "backActions",
+          "results"
+        ],
+        "patterns": [
+          {
+            "pattern": "backAction-<backAction>",
+            "plug": "input",
+            "variables": {
+              "backAction": "one of the comma-separated entries in the `backActions` parameter"
+            },
+            "group": "Back Actions",
+            "valueType": "signal",
+            "example": "backAction-Sa1"
+          },
+          {
+            "pattern": "result-<result>",
+            "plug": "input",
+            "variables": {
+              "result": "one of the comma-separated entries in the `results` parameter"
+            },
+            "group": "Results",
+            "valueType": "*",
+            "example": "result-Vb sp"
+          }
+        ],
+        "notes": "Names are interpolated verbatim, including spaces — a value called `bg color` produces a port called `value-true-bg color`, not `value-true-bgColor`."
       },
       "enrichment": {
         "typeName": "PageStackNavigateBack",
@@ -19238,6 +20048,24 @@
         ],
         "description": "Ports depend on the target page and its declared path parameters."
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "queryNames"
+        ],
+        "patterns": [
+          {
+            "pattern": "q-<queryName>",
+            "plug": "input",
+            "variables": {
+              "queryName": "one of the comma-separated entries in the `queryNames` parameter"
+            },
+            "group": "Query",
+            "valueType": "*",
+            "example": "q-Sa1"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "PageStackNavigateToPath",
         "summary": "Navigate To Path: jumps to an arbitrary URL path within the app, driving whichever routers match the path.",
@@ -19347,6 +20175,34 @@
           "runtime-discovered"
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "Sa1"
+          },
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          }
+        ]
       },
       "enrichment": {
         "typeName": "Parent Component State",
@@ -19512,6 +20368,10 @@
           "runtime-discovered"
         ],
         "description": "Input and output ports are parsed from the request/response scripts in the node parameters (custom headers, query parameters and response mappings become ports)."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports are parsed from the request and response scripts in the node parameters."
       },
       "enrichment": {
         "typeName": "REST2",
@@ -20471,6 +21331,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Radio Button",
         "summary": "Legacy radio-button visual, hidden from the node picker — superseded by net.noodl.controls.radiobutton.",
@@ -21332,6 +22193,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       },
       "enrichment": {
         "typeName": "Radio Button Group",
@@ -22322,6 +23189,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Range",
         "summary": "Legacy slider visual, hidden from the node picker — superseded by net.noodl.controls.range (Slider).",
@@ -22479,6 +23347,29 @@
               "repeaterComponent"
             ],
             "name": "conditionalports/extended"
+          }
+        ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "relationProperty",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "relationProperty"
           }
         ]
       },
@@ -22768,6 +23659,10 @@
         "description": "The \"pages\" parameter determines which pages exist; the editor (RouterAdapter) derives ports and navigation metadata from the page components.",
         "editorAdapter": "RouterAdapter"
       },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports are computed by the editor from the project's page components (RouterAdapter)."
+      },
       "enrichment": {
         "typeName": "Router",
         "summary": "Page Router: a visual region that shows one page component at a time, driven by the browser URL and Navigate nodes.",
@@ -22881,6 +23776,10 @@
         ],
         "description": "Ports are derived from the target router and the path parameters of the selected page component (RouterNavigateAdapter).",
         "editorAdapter": "RouterNavigateAdapter"
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports are computed by the editor from the target page component's parameters (RouterNavigateAdapter)."
       },
       "enrichment": {
         "typeName": "RouterNavigate",
@@ -23085,6 +23984,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "RunTasks",
         "summary": "Run Tasks: executes a worker component once per array element with bounded concurrency, firing done/failure when the batch completes.",
@@ -23161,6 +24061,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Screen Resolution",
         "summary": "Outputs the browser viewport's width, height and aspect ratio, updating live on every window resize.",
@@ -23255,6 +24156,10 @@
             "index": 3008
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports follow the script loaded at runtime."
       },
       "enrichment": {
         "typeName": "Script Downloader",
@@ -23391,6 +24296,10 @@
           "runtime-discovered"
         ],
         "description": "The value input type follows the selected variable type."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The `name` parameter selects which variable is written; it does not appear in any port name. The single dynamic port is `value`, whose *type* follows the `setWith` parameter."
       },
       "enrichment": {
         "typeName": "Set Variable",
@@ -23624,6 +24533,74 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "accessControl"
+        ],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "acl-<accessControlId>-read",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "boolean",
+            "example": "acl-Sa1Id-read"
+          },
+          {
+            "pattern": "acl-<accessControlId>-target",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "enum",
+            "example": "acl-Sa1Id-target"
+          },
+          {
+            "pattern": "acl-<accessControlId>-userid",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "string",
+            "example": "acl-Sa1Id-userid"
+          },
+          {
+            "pattern": "acl-<accessControlId>-write",
+            "plug": "input",
+            "variables": {
+              "accessControlId": "the `id` of a row in the `accessControl` parameter — an editor-generated identifier, not a name you choose"
+            },
+            "group": "<property> Access Rule",
+            "valueType": "boolean",
+            "example": "acl-Sa1Id-write"
+          },
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Properties",
+            "valueType": "string",
+            "example": "prop-Sa1"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "SetDbModelProperties",
         "summary": "Set Record Properties: writes property values to an existing cloud database record when Do is triggered.",
@@ -23806,6 +24783,34 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Values",
+            "valueType": "follows the matching `type-<property>` parameter",
+            "example": "prop-Sa1"
+          },
+          {
+            "pattern": "type-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Types",
+            "valueType": "enum",
+            "example": "type-Sa1"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "SetModelProperties",
         "summary": "Set Object Properties: writes declared property values onto an existing client-side object, chosen by id or from the repeater item.",
@@ -23951,6 +24956,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Sign File URL",
         "summary": "Mints a short-lived signed URL for a cloud file, for previewing or downloading files uploaded as private.",
@@ -24030,6 +25036,10 @@
             }
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
       },
       "enrichment": {
         "typeName": "Signal To Index",
@@ -24152,6 +25162,105 @@
           "runtime-discovered"
         ],
         "description": "Ports are generated from the \"states\" and \"values\" parameters: each value gets per-state value inputs and a current-value output, each state gets an activation signal input and reached/left signal outputs."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "states",
+          "values"
+        ],
+        "patterns": [
+          {
+            "pattern": "<value>",
+            "plug": "output",
+            "variables": {
+              "value": "one of the comma-separated entries in the `values` parameter"
+            },
+            "group": "Values",
+            "valueType": "number",
+            "example": "Vb sp"
+          },
+          {
+            "pattern": "at-<state>",
+            "plug": "output",
+            "variables": {
+              "state": "one of the comma-separated entries in the `states` parameter"
+            },
+            "group": "Current state",
+            "valueType": "boolean",
+            "example": "at-Sa1"
+          },
+          {
+            "pattern": "currentState",
+            "plug": "input",
+            "group": "States",
+            "valueType": "enum",
+            "example": "currentState"
+          },
+          {
+            "pattern": "reached-<state>",
+            "plug": "output",
+            "variables": {
+              "state": "one of the comma-separated entries in the `states` parameter"
+            },
+            "group": "Current state",
+            "valueType": "signal",
+            "example": "reached-Sa1"
+          },
+          {
+            "pattern": "to-<state>",
+            "plug": "input",
+            "variables": {
+              "state": "one of the comma-separated entries in the `states` parameter"
+            },
+            "group": "Go to state",
+            "valueType": "signal",
+            "example": "to-Sa1"
+          },
+          {
+            "pattern": "transition-<state>-<value>",
+            "plug": "input",
+            "variables": {
+              "state": "one of the comma-separated entries in the `states` parameter",
+              "value": "one of the comma-separated entries in the `values` parameter"
+            },
+            "group": "<state> Transitions",
+            "valueType": "curve",
+            "example": "transition-Sb1-Vb sp"
+          },
+          {
+            "pattern": "transitiondef-<state>",
+            "plug": "input",
+            "variables": {
+              "state": "one of the comma-separated entries in the `states` parameter"
+            },
+            "group": "<state> Transitions",
+            "valueType": "curve",
+            "example": "transitiondef-Sa1"
+          },
+          {
+            "pattern": "type-<value>",
+            "plug": "input",
+            "variables": {
+              "value": "one of the comma-separated entries in the `values` parameter"
+            },
+            "group": "Types",
+            "valueType": "enum",
+            "example": "type-Vb sp"
+          },
+          {
+            "pattern": "value-<state>-<value>",
+            "plug": "input",
+            "variables": {
+              "state": "one of the comma-separated entries in the `states` parameter",
+              "value": "one of the comma-separated entries in the `values` parameter"
+            },
+            "group": "<state> Values",
+            "valueType": "follows the matching `type-<value>` parameter",
+            "example": "value-Sb1-Vb sp"
+          }
+        ],
+        "notes": "Names are interpolated verbatim, including spaces — a value called `bg color` produces a port called `value-true-bg color`, not `value-true-bgColor`."
       },
       "enrichment": {
         "typeName": "States",
@@ -24296,6 +25405,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "Static Data",
         "summary": "Static Array: inline JSON or CSV authored in the editor, emitted as an array of objects.",
@@ -24428,6 +25543,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "String",
         "summary": "Per-instance text holder: stores one string locally, with a Length output and optional latch-until-Set behaviour.",
@@ -24508,6 +25624,23 @@
           "runtime-discovered"
         ],
         "description": "Input ports are created for each \"{tag}\" appearing in the \"format\" parameter string."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "format"
+        ],
+        "patterns": [
+          {
+            "pattern": "<format>",
+            "plug": "input",
+            "variables": {
+              "format": "a `{placeholder}` appearing in the `format` parameter"
+            },
+            "valueType": "string",
+            "example": "Sa1"
+          }
+        ]
       },
       "enrichment": {
         "typeName": "String Format",
@@ -24615,6 +25748,10 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
+      },
       "enrichment": {
         "typeName": "String Mapper",
         "summary": "Looks a string up in a configured key list and outputs the matching mapping — a wirable lookup table with a default.",
@@ -24707,6 +25844,10 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
+      },
       "enrichment": {
         "typeName": "String Selector",
         "summary": "Deprecated 'Index To String' lookup: outputs one of a numbered list of author-defined strings selected by a number index.",
@@ -24779,6 +25920,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Substring",
         "summary": "Extracts part of a string between a start index (inclusive) and end index (exclusive).",
@@ -24917,6 +26059,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Switch",
         "summary": "A remembered on/off boolean, driven by On / Off / Flip signals — the graph's toggle and one-bit memory.",
@@ -26085,6 +27228,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       },
       "enrichment": {
         "typeName": "Text",
@@ -27369,6 +28518,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "Text Input",
         "summary": "Legacy bare text field, hidden from the picker. Use the Text Input control (net.noodl.controls.textinput) in new graphs.",
@@ -27469,6 +28624,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Timer",
         "summary": "Delay: fires a Finished signal a set number of milliseconds after being started; restartable for debouncing.",
@@ -27627,6 +28783,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Transition",
         "summary": "Deprecated single-value tween. Use Animate To Value (net.noodl.animatetovalue) in new graphs.",
@@ -27691,6 +28848,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Unique Id",
         "summary": "Provides a random 10-character alphanumeric id, with a signal to generate a fresh one on demand.",
@@ -27855,6 +29013,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Upload File",
         "summary": "Uploads a browser file to cloud storage when triggered, reporting progress and yielding a cloudfile handle.",
@@ -27928,6 +29087,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Value Changed",
         "summary": "Turns value changes into events: fires a signal every time its input receives a different value.",
@@ -28069,6 +29229,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Variable",
         "summary": "Deprecated first-generation named app-wide variable node; superseded by Variable2 and Set Variable.",
@@ -28169,6 +29330,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "Variable2",
         "summary": "Reads and writes one named app-wide variable; every node bound to the same name sees the same value.",
@@ -29755,6 +30917,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "Video",
         "summary": "Plays video from a URL or MediaStream, with play/pause/restart/reset signals and playback-position output.",
@@ -30170,6 +31338,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.ActionDispatcher",
         "summary": "Action Dispatcher: executes actions a backend sent, restricted to a vocabulary this graph explicitly registered.",
@@ -30418,6 +31587,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.ActionHandler",
         "summary": "Action Handler: declares one action type a backend is allowed to trigger, and what happens when it does.",
@@ -30528,6 +31698,34 @@
           "runtime-discovered"
         ],
         "description": "Property ports are created from the \"properties\" parameter (the schema of the component object)."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          },
+          {
+            "pattern": "value-<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "value-Sa1"
+          }
+        ]
       },
       "enrichment": {
         "typeName": "net.noodl.ComponentObject",
@@ -30684,6 +31882,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.GlobalStore",
         "summary": "Declares a named observable store and outputs its state, so any component can read shared state without prop drilling.",
@@ -30828,6 +32027,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.GlobalStore.Set",
         "summary": "Writes a key into a named global store, optionally merging an object and optionally batching with other writes in the same frame.",
@@ -30946,6 +32146,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.GlobalStore.Subscribe",
         "summary": "Watches specific keys in a named global store and signals when they change, with the previous value alongside the new one.",
@@ -31114,6 +32315,10 @@
           "runtime-discovered"
         ],
         "description": "Input and output ports derive from node parameters: configured headers and query parameters become inputs; response mappings become outputs."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "Ports are parsed from the configured headers, query parameters and response mappings in the node parameters."
       },
       "enrichment": {
         "typeName": "net.noodl.HTTP",
@@ -31342,6 +32547,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.JSONStreamParser",
         "summary": "JSON Stream Parser: turns stream fragments into JSON values as NDJSON, concatenated values, or one whole document.",
@@ -31641,6 +32847,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.OptimisticUpdate",
         "summary": "Writes a store key immediately, then commits or rolls it back when the server answers — so the UI responds now, not after the round trip.",
@@ -31781,6 +32988,34 @@
           "runtime-discovered"
         ],
         "description": "Property ports mirror the parent component object's property schema."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "changed-<property>",
+            "plug": "output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Changed Events",
+            "valueType": "signal",
+            "example": "changed-Sa1"
+          },
+          {
+            "pattern": "value-<property>",
+            "plug": "input/output",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Properties",
+            "valueType": "*",
+            "example": "value-Sa1"
+          }
+        ]
       },
       "enrichment": {
         "typeName": "net.noodl.ParentComponentObject",
@@ -31989,6 +33224,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.PatternExtractor",
         "summary": "Pattern Extractor: pulls matches and capture groups out of text with a regular expression, without needing a Function node.",
@@ -32455,6 +33691,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.SSE",
         "summary": "Server-Sent Events: consumes a streaming HTTP endpoint, with connection state, retries and errors as graph outputs.",
@@ -32569,6 +33806,34 @@
         ],
         "description": "Property input ports follow the \"properties\" parameter."
       },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Values",
+            "valueType": "follows the matching `type-<property>` parameter",
+            "example": "prop-Sa1"
+          },
+          {
+            "pattern": "type-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Types",
+            "valueType": "enum",
+            "example": "type-Sa1"
+          }
+        ]
+      },
       "enrichment": {
         "typeName": "net.noodl.SetComponentObjectProperties",
         "summary": "Set Component Object Properties: writes declared values onto this component instance's own object when store fires.",
@@ -32676,6 +33941,34 @@
           "runtime-discovered"
         ],
         "description": "Property input ports follow the \"properties\" parameter."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "properties"
+        ],
+        "patterns": [
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Values",
+            "valueType": "follows the matching `type-<property>` parameter",
+            "example": "prop-Sa1"
+          },
+          {
+            "pattern": "type-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "one of the comma-separated entries in the `properties` parameter"
+            },
+            "group": "Property Types",
+            "valueType": "enum",
+            "example": "type-Sa1"
+          }
+        ]
       },
       "enrichment": {
         "typeName": "net.noodl.SetParentComponentObjectProperties",
@@ -32867,6 +34160,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.StateHistory",
         "summary": "Records a bounded history of a store's state so it can be undone, redone or stepped through, and reports what it cannot fully restore.",
@@ -33055,6 +34349,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.StateHistory.Undo",
         "summary": "Moves a store backwards, forwards, or to a specific point in the history recorded by a State History node.",
@@ -33237,6 +34532,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.StateSnapshot",
         "summary": "Saves a named snapshot of a store and restores it later — a checkpoint, rather than the moving history State History keeps.",
@@ -33487,6 +34783,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.StreamBuffer",
         "summary": "Stream Buffer: batches items arriving faster than the UI wants to react, flushing on a count, an interval, or on demand.",
@@ -33756,6 +35053,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.TextAccumulator",
         "summary": "Text Accumulator: collects stream fragments into growing text, and splits complete messages off a delimiter.",
@@ -34247,6 +35545,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.WebSocket",
         "summary": "Two-way WebSocket connection: send and receive text, JSON or binary, with connection state as graph outputs.",
@@ -34401,6 +35700,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.animatetovalue",
         "summary": "Animate To Value: tweens its output toward whatever targetValue currently is, with duration, delay and easing.",
@@ -36302,6 +37602,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "net.noodl.controls.button",
         "summary": "The standard clickable button control, with label, optional icon, and hover/pressed/focus states.",
@@ -38089,6 +39395,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       },
       "enrichment": {
         "typeName": "net.noodl.controls.checkbox",
@@ -40189,6 +41501,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "net.noodl.controls.options",
         "summary": "Dropdown control: selects one value from an items list, exposing the selection as a string value.",
@@ -41965,6 +43283,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       },
       "enrichment": {
         "typeName": "net.noodl.controls.radiobutton",
@@ -44061,6 +45385,12 @@
             ]
           }
         ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
       },
       "enrichment": {
         "typeName": "net.noodl.controls.range",
@@ -46286,6 +47616,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "net.noodl.controls.textinput",
         "summary": "Single-line or multi-line text entry control with label, icon, placeholder and focus handling; outputs the text as the user types.",
@@ -46402,6 +47738,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.externallink",
         "summary": "External Link: opens a URL outside the app — same tab or new tab — when its signal fires.",
@@ -46505,6 +47842,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.user.LogIn",
         "summary": "Logs a user into the cloud backend with username and password, establishing the session the User node reflects.",
@@ -46594,6 +47932,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.user.LogOut",
         "summary": "Ends the current user session on the cloud backend and clears it from the browser.",
@@ -46697,6 +48036,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.user.RequestMagicLink",
         "summary": "Asks the backend to email a one-click sign-in link. Succeeds identically whether or not the address has an account.",
@@ -46797,6 +48137,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.user.RequestPasswordReset",
         "summary": "Deprecated: asks the backend to email a password-reset link to the given address. Superseded by cloud-function-based flows.",
@@ -46895,6 +48236,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.user.ResetPassword",
         "summary": "Deprecated: completes a password reset using an emailed token. Superseded by cloud-function-based flows.",
@@ -46973,6 +48315,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.user.SendEmailVerification",
         "summary": "Deprecated: asks the backend to send a verification email to the given address. Superseded by cloud-function-based flows.",
@@ -47066,6 +48409,10 @@
           "runtime-discovered"
         ],
         "description": "Property inputs include one port per custom user property."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       },
       "enrichment": {
         "typeName": "net.noodl.user.SetUserProperties",
@@ -47192,6 +48539,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.user.SignInWith",
         "summary": "Signs a user in via an identity provider (Google, GitHub, any OpenID Connect issuer) configured on the backend. Redirects away.",
@@ -47320,6 +48668,10 @@
           "runtime-discovered"
         ],
         "description": "Property inputs include one port per custom user property."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       },
       "enrichment": {
         "typeName": "net.noodl.user.SignUp",
@@ -47468,6 +48820,10 @@
         ],
         "description": "Property outputs include one port per custom user property in addition to the built-in ones."
       },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
+      },
       "enrichment": {
         "typeName": "net.noodl.user.User",
         "summary": "Reads the currently signed-in user: id, username, email, custom properties, and an authenticated boolean, kept live across session changes.",
@@ -47580,6 +48936,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.user.VerifyEmail",
         "summary": "Deprecated: confirms a user's email address using an emailed token. Superseded by cloud-function-based flows.",
@@ -47952,6 +49309,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "net.noodl.visual.columns",
         "summary": "Responsive multi-column layout: distributes its children into columns whose relative widths come from a layout string.",
@@ -48710,6 +50068,12 @@
           }
         ]
       },
+      "parameterEncoding": {
+        "known": true,
+        "patterns": [],
+        "seededBy": [],
+        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+      },
       "enrichment": {
         "typeName": "net.noodl.visual.icon",
         "summary": "Displays a glyph from a project icon font, or an image, at a given size — tintable via color for font icons.",
@@ -48845,6 +50209,10 @@
         ],
         "description": "Property input ports are derived from the configured record schema."
       },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
+      },
       "enrichment": {
         "typeName": "noodl.byob.CreateRecord",
         "summary": "Create Record (BYOB): inserts a record into a self-hosted backend class, returning the new record and its id.",
@@ -48956,6 +50324,10 @@
           "runtime-discovered"
         ],
         "description": "Parameter ports are derived from the configured record identification."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       },
       "enrichment": {
         "typeName": "noodl.byob.DeleteRecord",
@@ -49103,6 +50475,10 @@
           "runtime-discovered"
         ],
         "description": "Filter/parameter ports are derived from the configured query definition."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       },
       "enrichment": {
         "typeName": "noodl.byob.QueryData",
@@ -49279,6 +50655,10 @@
         ],
         "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
       },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
+      },
       "enrichment": {
         "typeName": "noodl.byob.SubscribeToChanges",
         "summary": "Subscribe To Changes (BYOB): emits a signal with the changed record whenever a backend collection changes.",
@@ -49417,6 +50797,10 @@
         ],
         "description": "Property input ports are derived from the configured record schema."
       },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
+      },
       "enrichment": {
         "typeName": "noodl.byob.UpdateRecord",
         "summary": "Update Record (BYOB): writes changed property values onto an existing record in a self-hosted backend by id.",
@@ -49500,6 +50884,35 @@
           "runtime-discovered"
         ],
         "description": "Group/aggregate output ports are generated from the aggregation definition in the node parameters."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "aggregates"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "storageFetch",
+            "plug": "input",
+            "group": "Actions",
+            "valueType": "signal",
+            "example": "storageFetch"
+          },
+          {
+            "pattern": "storageFilterType",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "storageFilterType"
+          }
+        ]
       },
       "enrichment": {
         "typeName": "noodl.cloud.aggregate",
@@ -49603,6 +51016,24 @@
           "runtime-discovered"
         ],
         "description": "Output ports mirror the parameters declared for the cloud function (one output per request parameter)."
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "params"
+        ],
+        "patterns": [
+          {
+            "pattern": "pm-<param>",
+            "plug": "output",
+            "variables": {
+              "param": "one of the comma-separated entries in the `params` parameter"
+            },
+            "group": "Parameters",
+            "valueType": "*",
+            "example": "pm-Sa1"
+          }
+        ]
       },
       "enrichment": {
         "typeName": "noodl.cloud.request",
@@ -49755,6 +51186,24 @@
               "errorMessage"
             ],
             "name": "conditionalports/extended"
+          }
+        ]
+      },
+      "parameterEncoding": {
+        "known": true,
+        "seededBy": [
+          "params"
+        ],
+        "patterns": [
+          {
+            "pattern": "pm-<param>",
+            "plug": "input",
+            "variables": {
+              "param": "one of the comma-separated entries in the `params` parameter"
+            },
+            "group": "Parameters",
+            "valueType": "*",
+            "example": "pm-Sa1"
           }
         ]
       },
@@ -49926,6 +51375,7 @@
         }
       ],
       "dynamicPorts": null,
+      "parameterEncoding": null,
       "enrichment": {
         "typeName": "noodl.cloud.sendemail",
         "summary": "Sends an email through the backend's configured SMTP server from inside a cloud function or workflow.",

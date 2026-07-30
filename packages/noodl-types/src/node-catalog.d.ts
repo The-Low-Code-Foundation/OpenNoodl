@@ -263,6 +263,54 @@ export interface DynamicPortInfo {
   editorAdapter?: string;
 }
 
+/**
+ * One key formula in a node's `parameters` object (SUB-013).
+ *
+ * Every field is observed, not written by hand: the generator drives the node's real
+ * dynamic-port hook with seed parameters and records what it emits. `example` is a name the
+ * runtime actually produced.
+ */
+export interface ParameterPattern {
+  /** The key formula, with `<variable>` placeholders. E.g. `value-<state>-<value>`. */
+  pattern: string;
+  plug: 'input' | 'output' | 'input/output';
+  /** What each `<variable>` stands for, and which parameter it is drawn from. */
+  variables?: Record<string, string>;
+  /** The editor property group these ports appear under; may itself be templated. */
+  group?: string;
+  /**
+   * The port's value type. A literal type name when it is fixed, `"varies"` when it is not,
+   * or a sentence naming the parameter it follows — for `States`, the value type of
+   * `value-<state>-<value>` is chosen by the matching `type-<value>` parameter.
+   */
+  valueType?: string;
+  /** A real emitted port name, preferring one that shows verbatim interpolation. */
+  example: string;
+}
+
+/**
+ * How to write the keys of this node's `parameters` object (SUB-013).
+ *
+ * `known: false` is a deliberate statement, not a gap: the node's port names could not be
+ * determined without project context (a live component, a backend schema, user code), and
+ * `reason` says which. It is the same reasoning as the validator's `DynamicPortSkipped` —
+ * a check that was knowingly not performed beats silent absence.
+ *
+ * `known: true` with an empty `patterns` array means the node computes no names at all: its
+ * dynamism is visibility only, and every port it can have is already in `inputs`/`outputs`.
+ */
+export type ParameterEncoding =
+  | {
+      known: true;
+      /** Parameters whose values the keys are derived from. Empty when they are not. */
+      seededBy: string[];
+      /** Project metadata the keys come from instead, e.g. `dbCollections`. */
+      seededByProjectMetadata?: string[];
+      patterns: ParameterPattern[];
+      notes?: string;
+    }
+  | { known: false; reason: string };
+
 export interface CatalogNode {
   typeName: NodeTypeName;
   displayName: string;
@@ -294,6 +342,12 @@ export interface CatalogNode {
   inputs: CatalogPort[];
   outputs: CatalogPort[];
   dynamicPorts: DynamicPortInfo | null;
+  /**
+   * How to write the keys of this node's `parameters` object. Non-null for exactly the nodes
+   * with a `dynamicPorts` block — `dynamicPorts` says the ports exist, this says what they
+   * are called.
+   */
+  parameterEncoding: ParameterEncoding | null;
 }
 
 export interface Typecast {
