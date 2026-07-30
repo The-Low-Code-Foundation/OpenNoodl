@@ -76,11 +76,17 @@ eleven checks remain.
   independently in one day. Anywhere the library concatenates author-chosen names into a flat port
   name and decodes with `split('-')`, a hyphen in the name breaks it silently. FINDINGS **SR-iii**.
 
-### 4. The three copies of the `setup` harness are still there.
+### 4. ~~The three copies of the `setup` harness.~~ **Half done `12d6b5ae`.**
 
-`setup-harness.ts` is written and used by the newest corpus file, but NDA-009, NDA-010 and NDA-012's
-Navigation test still carry their own `emitter()` + fake graph model. Mechanical, ~20 minutes; left
-out to keep the audit commit about the audit.
+The triplicated `emitter()` is gone — `setup-harness.ts` owns it, and `FakeEmitter` gained
+`listeners` so NDA-009 §1 can keep asserting the negative (a module gated on `isRunningLocally`
+subscribes to nothing at all).
+
+**What remains is not mechanical, which is why it was left.** NDA-009, NDA-010 and NDA-012's
+Navigation test still build their own `graphModel` and `editorConnection` rather than going through
+`driveSetup`. Each has its own warning-recording shape that its rows assert against, so converting
+them changes what those rows *measure*. Do it as its own commit, one file at a time, and re-run each
+suite between.
 
 ### 5. NDA-017 §2 — only if Richard has decided §1.
 
