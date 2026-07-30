@@ -134,8 +134,9 @@ they disagree — **twelve** spec claims have now fallen to implementation.
 
 ## Harness facts — read before writing a corpus row
 
-Four things the 2026-07-30 third batch established. **Two of them mean a row can look green and pin
-nothing**, which is worse than a missing test, so they are not optional reading.
+Four things the 2026-07-30 third batch established, plus a fifth from NDA-017 §0. **Three of them
+mean a row can look green and pin nothing**, which is worse than a missing test, so they are not
+optional reading.
 
 1. **`graph.signalsFor` does not prove a port exists.** It records the port name *before* delegating,
    and `Node.sendSignalOnOutput` on a name the node lacks only `console.log`s and returns. Deleting a
@@ -165,6 +166,15 @@ nothing**, which is worse than a missing test, so they are not optional reading.
    node's pass (remaining queued inputs, after-update callbacks) is abandoned, and the sole diagnosis
    is an unstructured console line with no code and no provenance. Pin the *structure* of the report
    instead.
+5. **`update()` and `settle()` are not interchangeable, and picking the wrong one hides a whole
+   defect class** (added by NDA-017 §0). `graph.update()` is **synchronous** — it drains the dirty
+   list and the after-update callbacks without yielding — while `settle()` awaits the macrotask queue
+   between frames. So a producer that lands its value from a `setTimeout` **cannot** have landed
+   across an `update()`, and *can* across a `settle()`. Any row about a node acting on inputs that
+   have not arrived — the whole of NDA-017's twelve families — must use `update()` to hold the race
+   open. Written with `settle()`, the producer wins and the row reports the defect as **absent**,
+   green and meaningless. This is the timing half of harness fact 2: that one says which values can
+   reach a port, this one says *when*.
 
 There is also **no `jest-environment-jsdom` in this monorepo**. A node whose `initialize` touches
 `document` cannot be constructed under `testEnvironment: node`; stub what it reaches for, as
@@ -283,6 +293,30 @@ README).
   it is still dirty.**
 - ~~**Criterion 2's cloud-runtime and export legs.**~~ **Closed 2026-07-30** (`382894e4`) — and the
   editor and browser legs it was measured against turned out to be uncovered too. See item 1.
+
+### 2b. NDA-017 — §0 is done, §1 is Richard's and it blocks everything else
+
+Added by the parallel session on 2026-07-30 (`d6db6f39`, `47c80295`), after this handover's first
+draft — so it is absent from the sections above.
+
+**§0 reproduced all four claims and the spec's mechanism held**, which is the first §0 in this phase
+not to falsify its own task. Ten rows in
+[`nda-017-signal-input-freshness.test.ts`](../../../packages/noodl-runtime/test/corpus/nda-017-signal-input-freshness.test.ts),
+four `test.failing`. The one that matters is **row 4**: the Function node reproduces the
+previous-cycle defect too, so the reporter's stated workaround (abandon Expression for Function)
+bought nothing, and the remedy has to cover the whole twelve-family table.
+
+**Do not start §2.** §1 is a decision for Richard — never-arrived detection (cheap, closes the seed
+case) vs. an upstream-pending notion in the runtime (phase-sized, closes the *reported* case) vs.
+making NDA-004 §3's completion-signal sequencing discoverable through docs and the semantic
+validator. The spec recommends **A + C now, B as a separate decision**, and §0 added a constraint to
+A that is written into the spec in place: the seed also reaches the graph with **no `Run` at all**,
+by `connectInput` pushing `result`'s getter over the initial `cachedValue`, and a control-signal
+check cannot see that route.
+
+⚠️ **If you write rows anywhere in this class, read the frame note first** — it is in "Harness facts"
+terms and it is the difference between measuring the defect and reporting it absent: `update()` is
+synchronous, `settle()` yields, and a row written with `settle()` lets an async producer win the race.
 
 ### 3. Catalog regeneration — now the largest single owed item, and **still blocked**
 

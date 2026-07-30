@@ -66,6 +66,50 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-07-30 (NDA-017 §0 — reproduced, and the spec's mechanism survived)** — `d6db6f39`,
+  `47c80295`. Ten rows in
+  [`nda-017-signal-input-freshness.test.ts`](../../../packages/noodl-runtime/test/corpus/nda-017-signal-input-freshness.test.ts),
+  four `test.failing`. Runtime jest 1,148 / 0 failures; typecheck clean. **§1 is now the blocker and
+  it is Richard's decision, not a coding task.**
+
+  **This is the first §0 in the phase that did not falsify its own task.** NDA-008's, NDA-016's and
+  NDA-010 §1's premises all fell; this one held — the `connected control signal ⇒ passive setters`
+  idiom is exactly what the community reported, and every case the spec named reproduced. Worth
+  recording as a data point *against* over-generalising the phase's own lesson: a spec premise is a
+  hypothesis, and hypotheses are sometimes right. What changed is the cost of checking, not the
+  verdict.
+
+  **Row 4 is the one that changes the task's shape.** The reporter's stated workaround was to
+  abandon Expression for Function, and Function re-publishes the previous cycle's answer under
+  identical conditions. "Twelve families, not one node" is now measured rather than grepped, and the
+  remedy §1 chooses has to be applied across the table or the next report reads the same.
+
+  ⚠️ **The frame discipline decides whether this defect class is visible at all.** `graph.update()`
+  is synchronous — dirty list plus after-update callbacks, no yield — while `settle()` awaits the
+  macrotask queue between frames. A producer that lands its value from a `setTimeout` therefore
+  cannot have landed across an `update()`, which is exactly the real timing being modelled: `Run` on
+  one frame, the async answer some frames later. **A row written with `settle()` lets the producer
+  win the race and reports the defect as absent.** Anything else in this class needs the same care.
+
+  ⚠️ **The correction: the seed reaches the graph with no `Run` at all.** §0 predicted an early
+  `Run`. With the signal connected the node **never evaluates at boot** — `signalsFor` is empty for
+  the whole of it — yet a downstream node still receives a confident `0`, pushed by `connectInput`
+  from `result`'s getter over the initial `cachedValue`. Same shape as row 1, different route, and
+  **§1's option A as written cannot reach it** because no control signal is involved. Amended into
+  the spec in place rather than left for the builder, since the whole point of §1 is that the remedy
+  is chosen once for twelve families.
+
+  **Discrimination, run against the mechanism rather than a fix**, because a §0 has no fix to
+  revert. Dropping the `run` guard from Expression's two value setters reddens exactly the passivity
+  control and the "never corrects it" characterisation and moves neither Function row; dropping it
+  from `setScriptInputValue` reddens exactly the two Function rows and moves nothing in Expression.
+  That establishes both that the guard is the mechanism and that the two nodes are independent
+  measurements rather than one leaking into the other.
+
+  Row 3 measured: two `Run` pulses with nothing changed upstream deliver **two** signal pulses and
+  **one** value — observable only downstream. Left as a characterisation row rather than
+  `test.failing`, because whether the two ports should agree is §1's call.
+
 - **2026-07-30 (the deployed build, run at last — NDA-006 §5, NDA-007 §1, NDA-004 §2 criterion 2,
   and NDA-009 §1)** — `cc28a4be`, `382894e4`, `c598206e`. **Three defects, and the shape they share
   is the finding.** Runtime jest +19 rows from this workstream; viewer jest 359 → **362**; all
