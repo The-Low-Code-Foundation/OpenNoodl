@@ -44,16 +44,20 @@ const SendEmailVerificationNodeDefinition: NodeDefinitionOptions = {
   getInspectInfo(): InspectInfo | void {},
   outputs: {
     success: {
+      description: 'Fires once the request has been accepted, which does not mean the address exists',
       type: 'signal',
       displayName: 'Success',
       group: 'Events'
     },
     failure: {
+      description:
+        'Fires when the request could not be made, after the reason has been reported on the error channel',
       type: 'signal',
       displayName: 'Failure',
       group: 'Events'
     },
     error: {
+      description: 'Why the last request failed; empty until one does',
       type: 'string',
       displayName: 'Error',
       group: 'Error',
@@ -64,6 +68,7 @@ const SendEmailVerificationNodeDefinition: NodeDefinitionOptions = {
   },
   inputs: {
     send: {
+      description: 'Asks the backend to email a verification link to Email',
       displayName: 'Do',
       group: 'Actions',
       valueChangedToTrue: function (this: SendEmailVerificationInstance) {
@@ -71,6 +76,7 @@ const SendEmailVerificationNodeDefinition: NodeDefinitionOptions = {
       }
     },
     email: {
+      description: 'Address to send the verification link to',
       type: 'string',
       displayName: 'Email',
       group: 'General',

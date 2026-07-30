@@ -126,6 +126,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
   },
   outputs: {
     id: {
+      description: 'Id of the record this node is bound to, whether or not it has been read yet',
       type: 'string',
       displayName: 'Id',
       group: 'General',
@@ -134,41 +135,50 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       }
     },
     saved: {
+      description: 'Fires once the record has been written to the backend',
       type: 'signal',
       displayName: 'Saved',
       group: 'Events'
     },
     stored: {
+      description: 'Fires once the property inputs have been copied onto the record held in memory',
       type: 'signal',
       displayName: 'Stored',
       group: 'Events'
     },
     created: {
+      description: 'Fires once a new record has been created in the backend',
       type: 'signal',
       displayName: 'Created',
       group: 'Events'
     },
     fetched: {
+      description: 'Fires once the record has been read and the property outputs are up to date',
       type: 'signal',
       displayName: 'Fetched',
       group: 'Events'
     },
     changed: {
+      description: 'Fires when a property of the bound record changes, including a change another node made',
       type: 'signal',
       displayName: 'Changed',
       group: 'Events'
     },
     deleted: {
+      description: 'Fires once the record has been deleted from the backend',
       type: 'signal',
       displayName: 'Deleted',
       group: 'Events'
     },
     failure: {
+      description:
+        'Fires when the last action could not be completed, after the reason has been reported on the error channel',
       type: 'signal',
       displayName: 'Failure',
       group: 'Events'
     },
     error: {
+      description: 'Why the last action failed; empty until one does',
       type: 'string',
       displayName: 'Error',
       group: 'Events',
@@ -179,6 +189,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
   },
   inputs: {
     modelId: {
+      description: 'Id of the record to read and write',
       type: { name: 'string', allowConnectionsOnly: true },
       displayName: 'Id',
       group: 'General',
@@ -192,6 +203,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       }
     },
     properties: {
+      description: 'Names of the record properties to expose, each of which becomes an input and an output port',
       type: { name: 'stringlist', allowEditOnly: true },
       displayName: 'Properties',
       group: 'Properties',
@@ -199,6 +211,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       set: function () {}
     },
     fetch: {
+      description: 'Re-reads the record from the backend, replacing the copy held in memory',
       displayName: 'Fetch',
       group: 'Actions',
       valueChangedToTrue: function (this: DbModelNodeInstance) {
@@ -206,6 +219,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       }
     },
     store: {
+      description: 'Copies the property inputs onto the record held in memory without saving it',
       displayName: 'Set',
       group: 'Actions',
       valueChangedToTrue: function (this: DbModelNodeInstance) {
@@ -213,6 +227,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       }
     },
     save: {
+      description: "Writes the record's current values to the backend",
       displayName: 'Save',
       group: 'Actions',
       valueChangedToTrue: function (this: DbModelNodeInstance) {
@@ -220,6 +235,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       }
     },
     delete: {
+      description: 'Deletes the record from the backend',
       displayName: 'Delete',
       group: 'Actions',
       valueChangedToTrue: function (this: DbModelNodeInstance) {
@@ -227,6 +243,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       }
     },
     new: {
+      description: 'Creates a record in memory from the property inputs, without saving it',
       displayName: 'New',
       group: 'Actions',
       valueChangedToTrue: function (this: DbModelNodeInstance) {
@@ -234,6 +251,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       }
     },
     insert: {
+      description: 'Creates the record in the backend from the property inputs',
       displayName: 'Insert',
       group: 'Actions',
       valueChangedToTrue: function (this: DbModelNodeInstance) {

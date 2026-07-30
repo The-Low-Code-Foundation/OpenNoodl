@@ -17,14 +17,30 @@ const OUT = path.join(ROOT, 'dev-docs/tasks/phase-30-node-library-audit/NODE-REG
 const isSignal = (p) => p.isSignal === true;
 const matches = (ports, re) => ports.some((p) => re.test(p.name) || re.test(p.displayName || ''));
 
-/** Verdicts are hand-written; keep them keyed by display name across regenerations. */
+/**
+ * Verdicts are hand-written; keep them keyed across regenerations by the **rendered** node cell,
+ * suffix and all.
+ *
+ * It used to strip ` _(deprecated)_` and key on the bare display name, which made a deprecated node
+ * and its replacement one key — and the library has **ten** such pairs, because NDA-011 criterion 3
+ * found the deprecated ones holding the plain names their replacements show via `displayName`. So a
+ * verdict written against `Cloud Function` was silently copied onto the deprecated `Cloud Function`
+ * as well, and one of the two was lost on the next regeneration. NDA-012's Cloud Services pass hit
+ * it live: two nodes, two different verdicts, one survived.
+ *
+ * ⚠️ One collision remains and cannot be fixed here: `DeleteDbModelProperties` and
+ * `noodl.byob.DeleteRecord` both render as `Delete Record` with neither deprecated — the duplicate
+ * NDA-011 filed for Richard. Until that is decided, those two rows share a verdict cell. Keying on
+ * `typeName` would settle it, but the type name is not in the table and adding a column to a
+ * 156-row document to work around a defect that has a proper fix pending is the wrong trade.
+ */
 function readExistingVerdicts() {
   if (!fs.existsSync(OUT)) return {};
   const verdicts = {};
   for (const line of fs.readFileSync(OUT, 'utf8').split('\n')) {
     const cells = line.split('|');
     if (cells.length < 11) continue;
-    const name = cells[2].trim().replace(/ _\(deprecated\)_$/, '');
+    const name = cells[2].trim();
     const verdict = cells[10].trim();
     if (name && verdict) verdicts[name] = verdict;
   }
@@ -72,7 +88,7 @@ function main() {
     lines.push(
       `| ${i + 1} | ${name} | ${n.category || '—'} | ${ins.length}/${outs.length} | ${fail} | ${mute} | ` +
         `${doc}% | ${(n.ssr && n.ssr.compat) || '—'} | ${(n.availableIn || []).join(', ')} | ${
-          verdicts[n.displayName] || ''
+          verdicts[name] || ''
         } |`
     );
   });

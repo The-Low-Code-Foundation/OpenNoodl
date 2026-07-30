@@ -73,17 +73,20 @@ const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
     success: {
       type: 'signal',
       displayName: 'Success',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the user record has been written'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when the user record could not be written, after the reason has been reported on the error channel'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
+      description: 'Why the last write failed; empty until one does',
       getter: function (this: SetUserPropertiesNodeInstance) {
         return this._internal.error;
       }
@@ -93,6 +96,7 @@ const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
     store: {
       displayName: 'Do',
       group: 'Actions',
+      description: 'Writes the values below to the signed-in user; does nothing at all while nobody is signed in',
       valueChangedToTrue: function (this: SetUserPropertiesNodeInstance) {
         this.scheduleStore();
       }
@@ -101,6 +105,7 @@ const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
       displayName: 'Email',
       type: 'string',
       group: 'General',
+      description: 'New email address for the signed-in user; leave blank to keep the current one',
       set: function (this: SetUserPropertiesNodeInstance, value: string) {
         this._internal.email = value;
       }
@@ -109,6 +114,7 @@ const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
       displayName: 'Username',
       type: 'string',
       group: 'General',
+      description: 'New username for the signed-in user; leave blank to keep the current one',
       set: function (this: SetUserPropertiesNodeInstance, value: string) {
         this._internal.username = value;
       }

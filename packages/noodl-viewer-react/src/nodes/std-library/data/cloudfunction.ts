@@ -127,6 +127,7 @@ const CloudFunctionNode: NodeDefinitionOptions = {
   },
   inputs: {
     functionName: {
+      description: 'Name of the cloud function to run',
       type: 'string',
       displayName: 'Function Name',
       group: 'General',
@@ -135,6 +136,7 @@ const CloudFunctionNode: NodeDefinitionOptions = {
       }
     },
     params: {
+      description: 'Names of the parameters to send, each of which becomes an input port',
       group: 'Parameters',
       type: { name: 'stringlist', allowEditOnly: true },
       set: function (this: CloudFunctionInstance, value: string) {
@@ -185,6 +187,7 @@ const CloudFunctionNode: NodeDefinitionOptions = {
         }
     },*/
     call: {
+      description: 'Runs the named cloud function with the current parameter values',
       type: 'signal',
       displayName: 'Call',
       group: 'Actions',
@@ -204,16 +207,20 @@ const CloudFunctionNode: NodeDefinitionOptions = {
   },
   outputs: {
     success: {
+      description: 'Fires once the function has returned and Result is up to date',
       type: 'signal',
       displayName: 'Success',
       group: 'Signals'
     },
     failure: {
+      description:
+        'Fires when the call failed, and also when it succeeded without returning a result; this node carries no reason for either',
       type: 'signal',
       displayName: 'Failure',
       group: 'Signals'
     },
     result: {
+      description: 'Whatever the function returned, with records and arrays deserialised where they can be',
       type: '*',
       displayName: 'Result',
       group: 'Output',

@@ -222,6 +222,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
   inputs: {},
   outputs: {
     id: {
+      description: 'Name of the class being queried',
       type: 'string',
       displayName: 'Name',
       group: 'General',
@@ -230,6 +231,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
       }
     },
     items: {
+      description: 'Records the query matched; empty before the first query has run',
       type: 'array',
       displayName: 'Result',
       group: 'General',
@@ -238,6 +240,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
       }
     },
     firstItemId: {
+      description: 'Id of the first matched record',
       type: 'string',
       displayName: 'First Item Id',
       group: 'General',
@@ -259,6 +262,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
             }
         },  */
     count: {
+      description: 'How many records are in Result',
       type: 'number',
       displayName: 'Count',
       group: 'General',
@@ -267,21 +271,25 @@ const DbCollectionNode: NodeDefinitionOptions = {
       }
     },
     modified: {
+      description: 'Fires when a record joins or leaves Result after the query has run',
       group: 'Events',
       type: 'signal',
       displayName: 'Modified'
     },
     fetched: {
+      description: 'Fires once the query has returned and Result is up to date',
       group: 'Events',
       type: 'signal',
       displayName: 'Fetched'
     },
     failure: {
+      description: 'Fires when the query could not be run, after the reason has been reported on the error channel',
       group: 'Events',
       type: 'signal',
       displayName: 'Failure'
     },
     error: {
+      description: 'Why the last query failed; empty until one does',
       type: 'string',
       displayName: 'Error',
       group: 'Events',

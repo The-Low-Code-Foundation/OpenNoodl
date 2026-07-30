@@ -44,16 +44,20 @@ const RequestPasswordResetNodeDefinition: NodeDefinitionOptions = {
   getInspectInfo(): InspectInfo | void {},
   outputs: {
     success: {
+      description: 'Fires once the request has been accepted, which does not mean an account exists for that address',
       type: 'signal',
       displayName: 'Success',
       group: 'Events'
     },
     failure: {
+      description:
+        'Fires when the request could not be made, after the reason has been reported on the error channel',
       type: 'signal',
       displayName: 'Failure',
       group: 'Events'
     },
     error: {
+      description: 'Why the last request failed; empty until one does',
       type: 'string',
       displayName: 'Error',
       group: 'Error',
@@ -64,6 +68,7 @@ const RequestPasswordResetNodeDefinition: NodeDefinitionOptions = {
   },
   inputs: {
     send: {
+      description: 'Asks the backend to email a password-reset link to Email',
       displayName: 'Do',
       group: 'Actions',
       valueChangedToTrue: function (this: RequestPasswordResetInstance) {
@@ -71,6 +76,7 @@ const RequestPasswordResetNodeDefinition: NodeDefinitionOptions = {
       }
     },
     email: {
+      description: 'Address to send the reset link to',
       type: 'string',
       displayName: 'Email',
       group: 'General',

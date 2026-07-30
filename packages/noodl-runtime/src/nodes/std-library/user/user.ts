@@ -122,6 +122,7 @@ const UserNodeDefinition: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Id',
       group: 'General',
+      description: 'Id of the signed-in user record; empty while nobody is signed in',
       getter: function (this: UserNodeInstance) {
         return this._internal.model !== undefined ? this._internal.model.getId() : undefined;
       }
@@ -129,22 +130,26 @@ const UserNodeDefinition: NodeDefinitionOptions = {
     fetched: {
       type: 'signal',
       displayName: 'Fetched',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the user record has been re-read and the outputs below are up to date'
     },
     changed: {
       type: 'signal',
       displayName: 'Changed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when a property of the signed-in user changes, including a change another node made'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when the user record could not be read, after the reason has been reported on the error channel'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
+      description: 'Why the last read failed; empty until one does',
       getter: function (this: UserNodeInstance) {
         return this._internal.error;
       }
@@ -153,6 +158,7 @@ const UserNodeDefinition: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Username',
       group: 'General',
+      description: 'Username of the signed-in user; empty while nobody is signed in',
       getter: function (this: UserNodeInstance) {
         return this._internal.model !== undefined ? this._internal.model.get('username') : undefined;
       }
@@ -161,6 +167,7 @@ const UserNodeDefinition: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Email',
       group: 'General',
+      description: 'Email address of the signed-in user; empty while nobody is signed in',
       getter: function (this: UserNodeInstance) {
         return this._internal.model !== undefined ? this._internal.model.get('email') : undefined;
       }
@@ -169,6 +176,7 @@ const UserNodeDefinition: NodeDefinitionOptions = {
       type: 'boolean',
       displayName: 'Authenticated',
       group: 'General',
+      description: 'True while somebody is signed in on this device; a server render always sees false',
       getter: function (this: UserNodeInstance) {
         return this._internal.model !== undefined;
       }
@@ -193,6 +201,7 @@ const UserNodeDefinition: NodeDefinitionOptions = {
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
+      description: 'Re-reads the signed-in user from the backend, which is also how an expired session is discovered',
       valueChangedToTrue: function (this: UserNodeInstance) {
         this.scheduleFetch();
       }

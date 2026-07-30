@@ -3787,7 +3787,8 @@
           "type": {
             "name": "cloudfile"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Stored file to read, as an Upload File node or a record property produces it; any other value leaves the previous file in place"
         }
       ],
       "outputs": [
@@ -3799,7 +3800,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Original file name as it was uploaded, without the storage prefix"
         },
         {
           "name": "url",
@@ -3809,7 +3811,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Address the file can be fetched from; a private file needs a Sign File URL node before this link works"
         }
       ],
       "dynamicPorts": null,
@@ -3840,7 +3843,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Runs the named cloud function with the current parameter values"
         },
         {
           "name": "functionName",
@@ -3850,7 +3854,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of the cloud function to run"
         },
         {
           "name": "params",
@@ -3860,7 +3865,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the parameters to send, each of which becomes an input port"
         }
       ],
       "outputs": [
@@ -3872,7 +3878,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the call failed, and also when it succeeded without returning a result; this node carries no reason for either"
         },
         {
           "name": "result",
@@ -3882,7 +3889,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Whatever the function returned, with records and arrays deserialised where they can be"
         },
         {
           "name": "success",
@@ -3892,7 +3900,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the function has returned and Result is up to date"
         }
       ],
       "dynamicPorts": {
@@ -3945,7 +3954,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Runs the selected cloud function with the current input values"
         }
       ],
       "outputs": [
@@ -3957,7 +3967,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last call failed; empty until one does"
         },
         {
           "name": "failure",
@@ -3967,7 +3978,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the function could not be reached or answered with an error, after the reason has been reported on the error channel"
         },
         {
           "name": "success",
@@ -3977,7 +3989,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the function has returned and its result outputs are up to date"
         }
       ],
       "dynamicPorts": {
@@ -5285,7 +5298,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many records are in Result"
         },
         {
           "name": "error",
@@ -5295,7 +5309,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last query failed; empty until one does"
         },
         {
           "name": "failure",
@@ -5305,7 +5320,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the query could not be run, after the reason has been reported on the error channel"
         },
         {
           "name": "fetched",
@@ -5315,7 +5331,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the query has returned and Result is up to date"
         },
         {
           "name": "firstItemId",
@@ -5325,7 +5342,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the first matched record"
         },
         {
           "name": "id",
@@ -5335,7 +5353,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of the class being queried"
         },
         {
           "name": "items",
@@ -5345,7 +5364,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Records the query matched; empty before the first query has run"
         },
         {
           "name": "modified",
@@ -5355,7 +5375,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a record joins or leaves Result after the query has run"
         }
       ],
       "dynamicPorts": {
@@ -5442,7 +5463,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many records are in Items, which Limit caps — turn on Fetch total count for the uncapped figure"
         },
         {
           "name": "error",
@@ -5452,7 +5474,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last query failed; empty until one does"
         },
         {
           "name": "failure",
@@ -5462,7 +5485,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the query could not be run, after the reason has been reported on the error channel"
         },
         {
           "name": "fetched",
@@ -5472,7 +5496,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the query has returned and Items is up to date"
         },
         {
           "name": "firstItemId",
@@ -5482,7 +5507,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the first matched record, for feeding a Record node without going through a repeater"
         },
         {
           "name": "isEmpty",
@@ -5492,7 +5518,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True when the query matched nothing, and also true before the first query has run"
         },
         {
           "name": "items",
@@ -5502,7 +5529,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Records the query matched, in the order Sort asks for; empty before the first query has run"
         }
       ],
       "dynamicPorts": {
@@ -5633,7 +5661,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Deletes the record from the backend"
         },
         {
           "name": "fetch",
@@ -5644,7 +5673,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Re-reads the record from the backend, replacing the copy held in memory"
         },
         {
           "name": "insert",
@@ -5655,7 +5685,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Creates the record in the backend from the property inputs"
         },
         {
           "name": "modelId",
@@ -5666,7 +5697,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record to read and write"
         },
         {
           "name": "new",
@@ -5677,7 +5709,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Creates a record in memory from the property inputs, without saving it"
         },
         {
           "name": "properties",
@@ -5688,7 +5721,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names of the record properties to expose, each of which becomes an input and an output port"
         },
         {
           "name": "save",
@@ -5699,7 +5733,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Writes the record's current values to the backend"
         },
         {
           "name": "store",
@@ -5710,7 +5745,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Copies the property inputs onto the record held in memory without saving it"
         }
       ],
       "outputs": [
@@ -5722,7 +5758,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a property of the bound record changes, including a change another node made"
         },
         {
           "name": "created",
@@ -5732,7 +5769,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once a new record has been created in the backend"
         },
         {
           "name": "deleted",
@@ -5742,7 +5780,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the record has been deleted from the backend"
         },
         {
           "name": "error",
@@ -5752,7 +5791,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last action failed; empty until one does"
         },
         {
           "name": "failure",
@@ -5762,7 +5802,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the last action could not be completed, after the reason has been reported on the error channel"
         },
         {
           "name": "fetched",
@@ -5772,7 +5813,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the record has been read and the property outputs are up to date"
         },
         {
           "name": "id",
@@ -5782,7 +5824,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record this node is bound to, whether or not it has been read yet"
         },
         {
           "name": "saved",
@@ -5792,7 +5835,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the record has been written to the backend"
         },
         {
           "name": "stored",
@@ -5802,7 +5846,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the property inputs have been copied onto the record held in memory"
         }
       ],
       "dynamicPorts": {
@@ -5883,7 +5928,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Re-reads the record from the backend, replacing the copy held in memory"
         },
         {
           "name": "idSource",
@@ -5905,7 +5951,8 @@
             ]
           },
           "isSignal": false,
-          "default": "explicit"
+          "default": "explicit",
+          "description": "Whether the record is named by Id or taken from the repeater this node sits inside"
         },
         {
           "name": "modelId",
@@ -5916,7 +5963,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record to read; ignored unless Id Source is Specify explicitly"
         },
         {
           "name": "repeaterComponent",
@@ -5926,7 +5974,8 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which repeater to take the current item from when nesting makes the nearest one ambiguous; leave blank for the nearest, and ignored unless Id Source is From repeater"
         }
       ],
       "outputs": [
@@ -5938,7 +5987,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a property of the bound record changes, including a change another node made"
         },
         {
           "name": "error",
@@ -5948,7 +5998,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last read failed; empty until one does"
         },
         {
           "name": "failure",
@@ -5958,7 +6009,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the record could not be read, after the reason has been reported on the error channel"
         },
         {
           "name": "fetched",
@@ -5968,7 +6020,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the record has been read and the property outputs are up to date"
         },
         {
           "name": "id",
@@ -5978,7 +6031,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record this node is bound to, whether or not it has been read yet"
         }
       ],
       "dynamicPorts": {
@@ -22888,7 +22942,8 @@
           "type": {
             "name": "cloudfile"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Stored file to mint a link for, as an Upload File node or a record property produces it; any other value leaves the previous file in place"
         },
         {
           "name": "sign",
@@ -22899,7 +22954,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Mints a fresh link for File, refused for a caller who could not read the file directly"
         }
       ],
       "outputs": [
@@ -22911,7 +22967,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last signing attempt failed; empty until one does"
         },
         {
           "name": "errorStatus",
@@ -22921,7 +22978,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "HTTP status the backend refused with, or 0 when the request never left the app"
         },
         {
           "name": "expiresAt",
@@ -22931,7 +22989,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Moment Signed URL stops working, as an ISO 8601 timestamp"
         },
         {
           "name": "failure",
@@ -22941,7 +23000,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when no link could be minted — no file was set, or the backend refused the caller access — after the reason has been reported on the error channel"
         },
         {
           "name": "success",
@@ -22951,7 +23011,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once a link has been minted and Signed URL is up to date"
         },
         {
           "name": "ttlSeconds",
@@ -22961,7 +23022,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How long Signed URL stays valid from the moment it was minted, in seconds"
         },
         {
           "name": "url",
@@ -22971,7 +23033,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Link that can be fetched without a session, good until Expires At; empty until Sign has succeeded once"
         }
       ],
       "dynamicPorts": null,
@@ -26560,7 +26623,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The file to upload, as an Open File Picker node produces it"
         },
         {
           "name": "private",
@@ -26571,7 +26635,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "Restricts the stored file to whoever uploaded it, so reading it later needs a Sign File URL node"
         },
         {
           "name": "upload",
@@ -26582,7 +26647,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Starts uploading File, and fails straight away when no file has been set"
         }
       ],
       "outputs": [
@@ -26594,7 +26660,8 @@
           "type": {
             "name": "cloudfile"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The stored file, for wiring into a record property or a Cloud File node"
         },
         {
           "name": "error",
@@ -26604,7 +26671,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last upload failed; empty until one does"
         },
         {
           "name": "errorStatus",
@@ -26614,7 +26682,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "HTTP status the backend refused with, or 0 when the request never left the app"
         },
         {
           "name": "failure",
@@ -26624,7 +26693,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the file could not be stored, after the reason has been reported on the error channel"
         },
         {
           "name": "progressChanged",
@@ -26634,7 +26704,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires each time the byte counts below move during an upload"
         },
         {
           "name": "progressLoadedBytes",
@@ -26644,7 +26715,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How much of the file has been sent so far, in bytes"
         },
         {
           "name": "progressLoadedPercent",
@@ -26654,7 +26726,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How much of the file has been sent so far, from 0 to 100"
         },
         {
           "name": "progressTotalBytes",
@@ -26664,7 +26737,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Size of the file being uploaded, in bytes"
         },
         {
           "name": "success",
@@ -26674,7 +26748,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the file is stored and Cloud File is up to date"
         }
       ],
       "dynamicPorts": null,
@@ -44367,7 +44442,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Attempts to sign in with Username and Password"
         },
         {
           "name": "password",
@@ -44377,7 +44453,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Password to sign in with"
         },
         {
           "name": "username",
@@ -44387,7 +44464,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Username to sign in as"
         }
       ],
       "outputs": [
@@ -44399,7 +44477,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last sign-in failed; empty until one does"
         },
         {
           "name": "failure",
@@ -44409,7 +44488,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the sign-in was refused, after the reason has been reported on the error channel"
         },
         {
           "name": "success",
@@ -44419,7 +44499,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the sign-in succeeded and a session has been stored"
         }
       ],
       "dynamicPorts": null,
@@ -44450,7 +44531,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Signs the current user out and clears the stored session"
         }
       ],
       "outputs": [
@@ -44462,7 +44544,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last sign-out failed; empty until one does"
         },
         {
           "name": "failure",
@@ -44472,7 +44555,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the sign-out was refused, after the reason has been reported on the error channel"
         },
         {
           "name": "success",
@@ -44482,7 +44566,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the session has been ended"
         }
       ],
       "dynamicPorts": null,
@@ -44512,7 +44597,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Address to send the sign-in link to"
         },
         {
           "name": "redirect",
@@ -44522,7 +44608,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Page the link should return to; leave blank to come back to the page the request was made from"
         },
         {
           "name": "send",
@@ -44533,7 +44620,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Asks the backend to email a one-click sign-in link to Email"
         }
       ],
       "outputs": [
@@ -44545,7 +44633,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last request failed; empty until one does"
         },
         {
           "name": "failure",
@@ -44555,7 +44644,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the request itself failed — no backend, no network, or rate limited — never because the address is unknown"
         },
         {
           "name": "success",
@@ -44565,7 +44655,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the request has been accepted, which never means an account exists for that address"
         }
       ],
       "dynamicPorts": null,
@@ -44595,7 +44686,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Address to send the reset link to"
         },
         {
           "name": "send",
@@ -44606,7 +44698,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Asks the backend to email a password-reset link to Email"
         }
       ],
       "outputs": [
@@ -44618,7 +44711,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last request failed; empty until one does"
         },
         {
           "name": "failure",
@@ -44628,7 +44722,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the request could not be made, after the reason has been reported on the error channel"
         },
         {
           "name": "success",
@@ -44638,7 +44733,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the request has been accepted, which does not mean an account exists for that address"
         }
       ],
       "dynamicPorts": null,
@@ -44668,7 +44764,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Password to set on the account"
         },
         {
           "name": "reset",
@@ -44679,7 +44776,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Sets the account password to New Password using the token from the reset email"
         },
         {
           "name": "token",
@@ -44689,7 +44787,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Reset token taken from the link in the email"
         },
         {
           "name": "username",
@@ -44699,7 +44798,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Username the reset link was issued for"
         }
       ],
       "outputs": [
@@ -44711,7 +44811,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last attempt failed; empty until one does"
         },
         {
           "name": "failure",
@@ -44721,7 +44822,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the token was rejected or the request could not be made, after the reason has been reported on the error channel"
         },
         {
           "name": "success",
@@ -44731,7 +44833,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the password has been changed"
         }
       ],
       "dynamicPorts": null,
@@ -44761,7 +44864,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Address to send the verification link to"
         },
         {
           "name": "send",
@@ -44772,7 +44876,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Asks the backend to email a verification link to Email"
         }
       ],
       "outputs": [
@@ -44784,7 +44889,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last request failed; empty until one does"
         },
         {
           "name": "failure",
@@ -44794,7 +44900,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the request could not be made, after the reason has been reported on the error channel"
         },
         {
           "name": "success",
@@ -44804,7 +44911,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the request has been accepted, which does not mean the address exists"
         }
       ],
       "dynamicPorts": null,
@@ -44835,7 +44943,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "New email address for the signed-in user; leave blank to keep the current one"
         },
         {
           "name": "store",
@@ -44846,7 +44955,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Writes the values below to the signed-in user; does nothing at all while nobody is signed in"
         },
         {
           "name": "username",
@@ -44856,7 +44966,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "New username for the signed-in user; leave blank to keep the current one"
         }
       ],
       "outputs": [
@@ -44868,7 +44979,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last write failed; empty until one does"
         },
         {
           "name": "failure",
@@ -44878,7 +44990,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the user record could not be written, after the reason has been reported on the error channel"
         },
         {
           "name": "success",
@@ -44888,7 +45001,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the user record has been written"
         }
       ],
       "dynamicPorts": {
@@ -44926,7 +45040,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the sign-in provider to use, as the backend lists it"
         },
         {
           "name": "redirect",
@@ -44936,7 +45051,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Page the provider should return to; leave blank to come back to the page sign-in started from"
         },
         {
           "name": "signIn",
@@ -44947,7 +45063,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Hands over to the provider, which navigates the browser away — nothing downstream of this runs"
         }
       ],
       "outputs": [
@@ -44959,7 +45076,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last sign-in failed; empty until one does"
         },
         {
           "name": "failure",
@@ -44969,7 +45087,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the sign-in did not complete, after the reason has been reported on the error channel"
         },
         {
           "name": "notice",
@@ -44979,7 +45098,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Something the user should be told about a sign-in that nevertheless succeeded, such as an old password having been revoked"
         },
         {
           "name": "signingIn",
@@ -44989,7 +45109,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while a sign-in started on an earlier page load is still being exchanged"
         },
         {
           "name": "success",
@@ -44999,7 +45120,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires on the page the provider returned to, once the session has been established"
         }
       ],
       "dynamicPorts": null,
@@ -45029,7 +45151,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Email address for the new account; leave blank if the project does not ask for one"
         },
         {
           "name": "password",
@@ -45039,7 +45162,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Password for the new account"
         },
         {
           "name": "signup",
@@ -45050,7 +45174,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Creates an account from the values below and signs it in"
         },
         {
           "name": "username",
@@ -45060,7 +45185,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Username for the new account"
         }
       ],
       "outputs": [
@@ -45072,7 +45198,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last sign-up failed; empty until one does"
         },
         {
           "name": "failure",
@@ -45082,7 +45209,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the account could not be created, after the reason has been reported on the error channel"
         },
         {
           "name": "success",
@@ -45092,7 +45220,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the account has been created and signed in"
         }
       ],
       "dynamicPorts": {
@@ -45133,7 +45262,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Re-reads the signed-in user from the backend, which is also how an expired session is discovered"
         }
       ],
       "outputs": [
@@ -45145,7 +45275,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while somebody is signed in on this device; a server render always sees false"
         },
         {
           "name": "changed",
@@ -45155,7 +45286,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a property of the signed-in user changes, including a change another node made"
         },
         {
           "name": "email",
@@ -45165,7 +45297,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Email address of the signed-in user; empty while nobody is signed in"
         },
         {
           "name": "error",
@@ -45175,7 +45308,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last read failed; empty until one does"
         },
         {
           "name": "failure",
@@ -45185,7 +45319,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the user record could not be read, after the reason has been reported on the error channel"
         },
         {
           "name": "fetched",
@@ -45195,7 +45330,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the user record has been re-read and the outputs below are up to date"
         },
         {
           "name": "id",
@@ -45205,7 +45341,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the signed-in user record; empty while nobody is signed in"
         },
         {
           "name": "username",
@@ -45215,7 +45352,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Username of the signed-in user; empty while nobody is signed in"
         }
       ],
       "dynamicPorts": {
@@ -45253,7 +45391,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Verification token taken from the link in the email"
         },
         {
           "name": "username",
@@ -45263,7 +45402,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Username the verification link was issued for"
         },
         {
           "name": "verify",
@@ -45274,7 +45414,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Confirms the address using the token from the verification email"
         }
       ],
       "outputs": [
@@ -45286,7 +45427,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last attempt failed; empty until one does"
         },
         {
           "name": "failure",
@@ -45296,7 +45438,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the token was rejected or the request could not be made, after the reason has been reported on the error channel"
         },
         {
           "name": "success",
@@ -45306,7 +45449,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the address has been confirmed"
         }
       ],
       "dynamicPorts": null,
@@ -47035,6 +47179,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "description": "Names of the aggregates to compute, each of which gets its own property and operation inputs",
           "index": 100
         }
       ],
@@ -47047,7 +47192,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last aggregation failed; empty until one does"
         },
         {
           "name": "failure",
@@ -47057,7 +47203,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the aggregation could not be run, after the reason has been reported on the error channel"
         },
         {
           "name": "fetched",
@@ -47067,7 +47214,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the aggregation has returned and the aggregate outputs are up to date"
         }
       ],
       "dynamicPorts": {

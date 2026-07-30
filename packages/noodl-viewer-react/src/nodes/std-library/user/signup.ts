@@ -69,16 +69,20 @@ const SignUpNodeDefinition: NodeDefinitionOptions = {
   },
   outputs: {
     success: {
+      description: 'Fires once the account has been created and signed in',
       type: 'signal',
       displayName: 'Success',
       group: 'Events'
     },
     failure: {
+      description:
+        'Fires when the account could not be created, after the reason has been reported on the error channel',
       type: 'signal',
       displayName: 'Failure',
       group: 'Events'
     },
     error: {
+      description: 'Why the last sign-up failed; empty until one does',
       type: 'string',
       displayName: 'Error',
       group: 'Error',
@@ -89,6 +93,7 @@ const SignUpNodeDefinition: NodeDefinitionOptions = {
   },
   inputs: {
     signup: {
+      description: 'Creates an account from the values below and signs it in',
       displayName: 'Do',
       group: 'Actions',
       valueChangedToTrue(this: SignUpInstance) {
@@ -96,6 +101,7 @@ const SignUpNodeDefinition: NodeDefinitionOptions = {
       }
     },
     username: {
+      description: 'Username for the new account',
       displayName: 'Username',
       type: 'string',
       group: 'General',
@@ -104,6 +110,7 @@ const SignUpNodeDefinition: NodeDefinitionOptions = {
       }
     },
     password: {
+      description: 'Password for the new account',
       displayName: 'Password',
       type: 'string',
       group: 'General',
@@ -112,6 +119,7 @@ const SignUpNodeDefinition: NodeDefinitionOptions = {
       }
     },
     email: {
+      description: 'Email address for the new account; leave blank if the project does not ask for one',
       displayName: 'Email',
       type: 'string',
       group: 'General',

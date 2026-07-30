@@ -22,6 +22,7 @@ const CloudFileNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'URL',
       group: 'General',
+      description: 'Address the file can be fetched from; a private file needs a Sign File URL node before this link works',
       get(this: CloudFileNodeInstance) {
         return this._internal.cloudFile && this._internal.cloudFile.getUrl();
       }
@@ -30,6 +31,7 @@ const CloudFileNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Name',
       group: 'General',
+      description: 'Original file name as it was uploaded, without the storage prefix',
       get(this: CloudFileNodeInstance) {
         if (!this._internal.cloudFile) return;
 
@@ -45,6 +47,8 @@ const CloudFileNode: NodeDefinitionOptions = {
       type: 'cloudfile',
       displayName: 'Cloud File',
       group: 'General',
+      description:
+        'Stored file to read, as an Upload File node or a record property produces it; any other value leaves the previous file in place',
       set(this: CloudFileNodeInstance, value: unknown) {
         if (value instanceof CloudFile === false) {
           return;

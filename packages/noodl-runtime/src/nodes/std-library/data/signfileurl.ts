@@ -61,6 +61,8 @@ const SignFileUrl: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'File',
       type: 'cloudfile',
+      description:
+        'Stored file to mint a link for, as an Upload File node or a record property produces it; any other value leaves the previous file in place',
       set(this: SignFileUrlInstance, value: unknown) {
         if (value instanceof CloudFile === false) return;
         this._internal.cloudFile = value as CloudFile;
@@ -70,6 +72,7 @@ const SignFileUrl: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Sign',
       group: 'Actions',
+      description: 'Mints a fresh link for File, refused for a caller who could not read the file directly',
       valueChangedToTrue(this: SignFileUrlInstance) {
         this.scheduleAfterInputsHaveUpdated(() => {
           const cloudFile = this._internal.cloudFile;
@@ -100,6 +103,7 @@ const SignFileUrl: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'Signed URL',
       type: 'string',
+      description: 'Link that can be fetched without a session, good until Expires At; empty until Sign has succeeded once',
       get(this: SignFileUrlInstance) {
         return this._internal.url;
       }
@@ -108,6 +112,7 @@ const SignFileUrl: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'Expires At',
       type: 'string',
+      description: 'Moment Signed URL stops working, as an ISO 8601 timestamp',
       get(this: SignFileUrlInstance) {
         return this._internal.expiresAt;
       }
@@ -116,6 +121,7 @@ const SignFileUrl: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'TTL (Seconds)',
       type: 'number',
+      description: 'How long Signed URL stays valid from the moment it was minted, in seconds',
       get(this: SignFileUrlInstance) {
         return this._internal.ttlSeconds;
       }
@@ -123,17 +129,21 @@ const SignFileUrl: NodeDefinitionOptions = {
     success: {
       group: 'Events',
       displayName: 'Success',
-      type: 'signal'
+      type: 'signal',
+      description: 'Fires once a link has been minted and Signed URL is up to date'
     },
     failure: {
       group: 'Events',
       displayName: 'Failure',
-      type: 'signal'
+      type: 'signal',
+      description:
+        'Fires when no link could be minted — no file was set, or the backend refused the caller access — after the reason has been reported on the error channel'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
+      description: 'Why the last signing attempt failed; empty until one does',
       get(this: SignFileUrlInstance) {
         return this._internal.error;
       }
@@ -142,6 +152,7 @@ const SignFileUrl: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Error Status Code',
       group: 'Error',
+      description: 'HTTP status the backend refused with, or 0 when the request never left the app',
       get(this: SignFileUrlInstance) {
         return this._internal.errorStatus;
       }

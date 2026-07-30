@@ -42,6 +42,7 @@ const UploadFile: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'File',
       type: '*',
+      description: 'The file to upload, as an Open File Picker node produces it',
       set(this: UploadFileInstance, file: File) {
         this._internal.file = file;
       }
@@ -57,6 +58,7 @@ const UploadFile: NodeDefinitionOptions = {
       displayName: 'Private',
       type: 'boolean',
       default: false,
+      description: 'Restricts the stored file to whoever uploaded it, so reading it later needs a Sign File URL node',
       set(this: UploadFileInstance, value: boolean) {
         this._internal.private = value;
       }
@@ -65,6 +67,7 @@ const UploadFile: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Upload',
       group: 'Actions',
+      description: 'Starts uploading File, and fails straight away when no file has been set',
       valueChangedToTrue(this: UploadFileInstance) {
         this.scheduleAfterInputsHaveUpdated(() => {
           const file = this._internal.file;
@@ -105,6 +108,7 @@ const UploadFile: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'Cloud File',
       type: 'cloudfile',
+      description: 'The stored file, for wiring into a record property or a Cloud File node',
       get(this: UploadFileInstance) {
         return this._internal.cloudFile;
       }
@@ -112,17 +116,20 @@ const UploadFile: NodeDefinitionOptions = {
     success: {
       group: 'Events',
       displayName: 'Success',
-      type: 'signal'
+      type: 'signal',
+      description: 'Fires once the file is stored and Cloud File is up to date'
     },
     failure: {
       group: 'Events',
       displayName: 'Failure',
-      type: 'signal'
+      type: 'signal',
+      description: 'Fires when the file could not be stored, after the reason has been reported on the error channel'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
+      description: 'Why the last upload failed; empty until one does',
       get(this: UploadFileInstance) {
         return this._internal.error;
       }
@@ -131,6 +138,7 @@ const UploadFile: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Error Status Code',
       group: 'Error',
+      description: 'HTTP status the backend refused with, or 0 when the request never left the app',
       get(this: UploadFileInstance) {
         return this._internal.errorStatus;
       }
@@ -138,12 +146,14 @@ const UploadFile: NodeDefinitionOptions = {
     progressChanged: {
       type: 'signal',
       displayName: 'Progress Changed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires each time the byte counts below move during an upload'
     },
     progressTotalBytes: {
       type: 'number',
       displayName: 'Total Bytes',
       group: 'Progress',
+      description: 'Size of the file being uploaded, in bytes',
       get(this: UploadFileInstance) {
         return this._internal.progressTotal;
       }
@@ -152,6 +162,7 @@ const UploadFile: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Uploaded Bytes',
       group: 'Progress',
+      description: 'How much of the file has been sent so far, in bytes',
       get(this: UploadFileInstance) {
         return this._internal.progressLoaded;
       }
@@ -160,6 +171,7 @@ const UploadFile: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Uploaded Percent',
       group: 'Progress',
+      description: 'How much of the file has been sent so far, from 0 to 100',
       get(this: UploadFileInstance) {
         if (!this._internal.progressTotal) return 0;
         return (this._internal.progressLoaded / this._internal.progressTotal) * 100;

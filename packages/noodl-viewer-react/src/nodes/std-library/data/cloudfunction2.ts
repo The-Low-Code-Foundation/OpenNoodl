@@ -121,6 +121,7 @@ const CloudFunctionNode: NodeDefinitionOptions = {
   },
   inputs: {
     call: {
+      description: 'Runs the selected cloud function with the current input values',
       type: 'signal',
       displayName: 'Call',
       group: 'Actions',
@@ -131,16 +132,20 @@ const CloudFunctionNode: NodeDefinitionOptions = {
   },
   outputs: {
     success: {
+      description: 'Fires once the function has returned and its result outputs are up to date',
       type: 'signal',
       displayName: 'Success',
       group: 'Signals'
     },
     failure: {
+      description:
+        'Fires when the function could not be reached or answered with an error, after the reason has been reported on the error channel',
       type: 'signal',
       displayName: 'Failure',
       group: 'Signals'
     },
     error: {
+      description: 'Why the last call failed; empty until one does',
       type: 'string',
       displayName: 'Error',
       group: 'Error',

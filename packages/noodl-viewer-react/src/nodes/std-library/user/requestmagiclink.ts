@@ -66,16 +66,20 @@ const RequestMagicLinkNodeDefinition: NodeDefinitionOptions = {
   },
   outputs: {
     success: {
+      description: 'Fires once the request has been accepted, which never means an account exists for that address',
       type: 'signal',
       displayName: 'Success',
       group: 'Events'
     },
     failure: {
+      description:
+        'Fires when the request itself failed — no backend, no network, or rate limited — never because the address is unknown',
       type: 'signal',
       displayName: 'Failure',
       group: 'Events'
     },
     error: {
+      description: 'Why the last request failed; empty until one does',
       type: 'string',
       displayName: 'Error',
       group: 'Error',
@@ -86,6 +90,7 @@ const RequestMagicLinkNodeDefinition: NodeDefinitionOptions = {
   },
   inputs: {
     send: {
+      description: 'Asks the backend to email a one-click sign-in link to Email',
       displayName: 'Do',
       group: 'Actions',
       valueChangedToTrue(this: RequestMagicLinkInstance) {
@@ -93,6 +98,7 @@ const RequestMagicLinkNodeDefinition: NodeDefinitionOptions = {
       }
     },
     email: {
+      description: 'Address to send the sign-in link to',
       type: 'string',
       displayName: 'Email',
       group: 'General',
@@ -101,6 +107,7 @@ const RequestMagicLinkNodeDefinition: NodeDefinitionOptions = {
       }
     },
     redirect: {
+      description: 'Page the link should return to; leave blank to come back to the page the request was made from',
       type: 'string',
       displayName: 'Redirect',
       group: 'General',

@@ -8,554 +8,628 @@ in [FINDINGS.md](../FINDINGS.md). The `Pre-filled` column is machine-derived fro
 everything else needs the source read. Verdicts: ✅ pass · ⚠️ defect · 🔵 by design, document it ·
 ⬜ not audited.
 
+**Audited 2026-07-30. 22/22 complete. C1 closed for the whole category — 148/148 ports documented**
+(`Config` has no static ports at all; see the note below on why its 100% was never a measurement).
+**25 new defects in 17 of the 22 nodes** — the largest single-category haul in the phase. Five nodes
+are clean: `Log In`, `Log Out`, `Request Password Reset`, `Send Email Verification` and `Sign Up`,
+and all five are clean for the same recorded reason — they are the same twenty lines parameterised,
+over the one `UserService` method that has no HTML parsing, no missing-session branch and no cache.
+
+⚠️ **Per-node counts in the verdicts below add to 34, not 25.** Nine of these defects live in a
+shared helper or a shared index and are counted **once** here and cross-referenced from each node,
+per NDA-012's batching warning. The per-node number is a *usage* count and is the one to distrust.
+
+Two claims here are about runtime behaviour rather than about what the source says, and are pinned:
+[`nda-012-cloud-services-category.test.ts`](../../../../packages/noodl-runtime/test/corpus/nda-012-cloud-services-category.test.ts)
+(rows M1–M4, the Config fetch latch — three `test.failing`, one control) and
+[`nda-012-aggregate-records.test.ts`](../../../../packages/noodl-viewer-cloud/tests/nda-012-aggregate-records.test.ts)
+(rows C1–C5, the one defect this pass fixed).
+
+**One thing was fixed rather than filed, and the reason is the rule about criteria, not about
+size.** `Aggregate Records` carried both halves of a defect NDA-004 §2 signed off as closed across
+the whole family: it wrote its message to a field the port's getter does not read, and it raised
+nothing on the error channel. Leaving it would have left a signed-off criterion false in a third
+package. Everything else in this file is a verdict and a citation, as the task asks.
+
+## Category-level observations — record once, not per node
+
+| Observation | Scope | Citation |
+|---|---|---|
+| **Two of BAK-004's three shipped auth nodes cannot be added to a graph.** `Sign In With` and `Request Magic Link` are registered, carry SSR annotations and long explanatory headers, and are absent from the picker index — whose *own comment*, eleven lines below the User group, says "a node that is registered but not listed here is unreachable for an app author". The same group lists four **deprecated** nodes. This is the second instance of the `On App Error` shape found on 2026-07-30, and the first where the unreachable nodes are the *newest* in the category. | Sign In With, Request Magic Link | [`nodelibraryexport.ts:688-699`](../../../../packages/noodl-runtime/src/nodelibraryexport.ts#L688-L699) vs the comment at [`:704-707`](../../../../packages/noodl-runtime/src/nodelibraryexport.ts#L704-L707) |
+| **`Aggregate Records` is the node neither `setError` sweep opened, and it had both defects they were sweeping for.** It wrote `_internal.err` against a getter reading `_internal.error` — PLAT-003 NOTES §23.4 found that in the deprecated `dbcollectionnode`, §27.3 found it again in the node that replaced it, and this was the third live instance — and it raised nothing on the error channel, B-iv's condition. It lives in `noodl-viewer-cloud`; both sweeps covered `noodl-runtime` and `noodl-viewer-react`. **A criterion met over two packages is not met over three.** Fixed here, with a discrimination check on each half. | Aggregate Records | [`aggregatenode.js:97-103`](../../../../packages/noodl-viewer-cloud/src/nodes/data/aggregatenode.js#L97-L103); rows C1–C3 |
+| **A config fetch that fails once can never succeed again for the life of the page.** `getConfig` stores the in-flight promise in `configCachePending` and deletes it *after* the `await` — so a rejection skips the delete and every later caller is handed the same rejected promise, without reaching the transport. `clearCache()`, the only recovery the class offers and what the editor calls when the schema changes, deletes `configCache`, which a failed fetch never populated. Rows M1–M3 pin all three legs; M4 is the control that the first call really does reach the transport. | Config | [`configservice.ts:118-131`](../../../../packages/noodl-runtime/src/api/configservice.ts#L118-L131), [`dbconfig.ts:193-196`](../../../../packages/noodl-runtime/src/nodes/std-library/data/dbconfig.ts#L193-L196) |
+| **The Config node has no failure surface of any kind, and its one call site drops the rejection on the floor.** `initialize` calls `getConfig().then(…)` with no `catch`, so a failed fetch is an unhandled rejection and the node's only output simply never arrives. It has no `Failure` signal, no `Error` port, and raises nothing — the purest class-B node in the library. Together with the latch above, a backend that was briefly down at page load leaves every Config node blank and silent forever. | Config | [`dbconfig.ts:51-54`](../../../../packages/noodl-runtime/src/nodes/std-library/data/dbconfig.ts#L51-L54) |
+| **Two auth outcomes are decided by substring-matching an HTML page, and both matches are bare-truthy.** Parse's verify-email and reset-password endpoints answer with HTML, so `UserService` reads the outcome out of the page text. The success test is written correctly (`!== -1`); the *second* test on both is not — `response.indexOf('Invalid Verification Link')` is truthy whenever the phrase is **absent** and falsy exactly when it is at index 0. So every non-success reports "Invalid verification token", and the branch that would say anything else is reachable only when the page opens with the phrase. Same bug, same shape, two methods. This is check D1's textbook case and it is the same bare-pattern class SUB-013 hit on 2026-07-30. | Verify Email, Reset Password | [`userservice.ts:388`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/userservice.ts#L388), [`:428`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/userservice.ts#L428) |
+| **A password reset that fails in the unreachable branch says "Failed to verify email".** Copy-paste from `verifyEmail`, one line below the bug above. | Reset Password | [`userservice.ts:431`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/userservice.ts#L431) |
+| **`verifyEmail` interpolates a username and a token straight into a query string with no encoding**, while `signInWithProvider` in the same file encodes both of its interpolations. An address or username containing `&`, `#` or `+` silently changes the request. | Verify Email | [`userservice.ts:379-381`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/userservice.ts#L379-L381) vs [`:552-554`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/userservice.ts#L552-L554) |
+| **Set User Properties, triggered while signed out, signals nothing at all — ever.** The whole of `setUserProperties` is inside `if (_cu !== undefined)`, so with no session neither callback is called: no `Success`, no `Failure`, no `Error`, no console line, no raise. The node re-arms (`storeScheduled` is cleared before the call), so an author can press it forever and learn nothing. Every *other* node in the family reports a missing session, because the backend refuses the request and the error callback runs; this one never gets that far. | Set User Properties | [`userservice.ts:327-354`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/userservice.ts#L327-L354), [`setuserproperties.ts:138-155`](../../../../packages/noodl-runtime/src/nodes/std-library/user/setuserproperties.ts#L138-L155) |
+| **The User and Sign In With nodes leak a `UserService` listener per instance.** Both subscribe in `initialize` with anonymous closures; `User`'s `_onNodeDeleted` removes only its *model* listener, and `Sign In With` has no `_onNodeDeleted` at all. `EventSender` aside, this is a plain Node `EventEmitter` with no way to remove an un-held callback — and `setMaxListeners(100000)` in the service's constructor is the workaround already in place, which is the tell. A User node inside a Repeater template churns instances; every dead one still runs `setUserModel` and flags outputs on every sign-in. Same shape as the `'insert'`-vs-`'create'` leak PLAT-003 slice 13 fixed on Query Records. | User, Sign In With | [`user.ts:91-109`](../../../../packages/noodl-runtime/src/nodes/std-library/user/user.ts#L91-L109) + [`:202-205`](../../../../packages/noodl-runtime/src/nodes/std-library/user/user.ts#L202-L205), [`signinwith.ts:76`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/signinwith.ts#L76), [`userservice.ts:144`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/userservice.ts#L144) |
+| **A Javascript filter that will not parse abandons the update pass instead of failing the query.** `getStorageFilter` returns `undefined` on a parse failure and `fetch` immediately reads `f.where`. Per harness fact 4 this is not a propagating crash — `nodecontext.ts:220-228` catches it — but the rest of that node's pass is abandoned, no `Failure` fires, and the only diagnosis is a bare `console.log`. Two files, one shape. | Query Records, Aggregate Records | [`dbcollectionnode2.ts:495`](../../../../packages/noodl-runtime/src/nodes/std-library/data/dbcollectionnode2.ts#L495) + [`:408-417`](../../../../packages/noodl-runtime/src/nodes/std-library/data/dbcollectionnode2.ts#L408-L417), [`aggregatenode.js:201`](../../../../packages/noodl-viewer-cloud/src/nodes/data/aggregatenode.js#L201) |
+| **Query Records tells its consumers the count changed but not that the items did.** Its collection-`change` handler flags `count`, `firstItemId` and `isEmpty` and not `items` — while the node's *own* incremental patch path flags `items` at three separate sites with a comment saying exactly why ("Send the array again over the items output to trigger function nodes etc"). So a record inserted by a *different* node into the same collection updates the numbers and does not re-run a Function or a Repeater wired to `Items`. The node contradicts its own stated reasoning eighty lines apart. | Query Records | [`dbcollectionnode2.ts:140-145`](../../../../packages/noodl-runtime/src/nodes/std-library/data/dbcollectionnode2.ts#L140-L145) vs [`:193-198`](../../../../packages/noodl-runtime/src/nodes/std-library/data/dbcollectionnode2.ts#L193-L198) |
+| **Signal before value, fourth instance — and the replacement node deleted the signal instead of reordering it.** The deprecated Query Collection pulses `Modified` and *then* flags `count`/`firstItemId`, so a node acting on the pulse reads the previous counts. Query Records dropped `Modified` altogether rather than moving one line. Joins `Receive Event` and `Signal To Index` in the recurring shape; unlike those two it is in a deprecated node, so it is evidence about the *shape*, not a repair candidate. | Query Collection _(deprecated)_ | [`dbcollectionnode.ts:211-216`](../../../../packages/noodl-viewer-react/src/nodes-deprecated/std-library/data/dbcollectionnode.ts#L211-L216) |
+| **The three file-carrying inputs disagree about what they accept, and two of them cannot be cleared.** `Cloud File` and `Sign File URL` both `return` on anything that is not a `CloudFile` — so `null` sent down a wire to clear the port leaves the previous file bound, and a plainly wrong value (a URL string, say) is dropped with no report at all. `Upload File` types its input `*` and accepts anything. The Empty-Value Contract says `null` clears; here it abstains. | Cloud File, Sign File URL, Upload File | [`cloudfilenode.ts:51-54`](../../../../packages/noodl-runtime/src/nodes/std-library/data/cloudfilenode.ts#L51-L54), [`signfileurl.ts:67-69`](../../../../packages/noodl-runtime/src/nodes/std-library/data/signfileurl.ts#L67-L69), [`uploadfile.ts:41-49`](../../../../packages/noodl-viewer-react/src/nodes/std-library/uploadfile.ts#L41-L49) |
+| **`Record`'s `Id` input turns a cleared value into a brand-new empty record.** `typeof value === 'object'` is true for `null`, so a `null` arriving over a wire reaches `Model.create(null)` → `Model.get(undefined)` → the anonymous tier, and the node binds to a throwaway whose generated id it then reports on `Id`. Third instance of the create-on-read trap in this family, and the one the banked note predicted: *any* create-on-read lookup fed by a value that can be absent. | Record | [`dbmodelnode2.ts:195-205`](../../../../packages/noodl-runtime/src/nodes/std-library/data/dbmodelnode2.ts#L195-L205), [`model.ts:230-232`](../../../../packages/noodl-runtime/src/model.ts#L230-L232) |
+| **Availability follows the package, again — and this category splits one family across three.** `Aggregate Records` is cloud-only because it lives in `noodl-viewer-cloud`; nine auth nodes are browser-only because they live in `noodl-viewer-react`; `User` and `Set User Properties` — same family, same `UserService` — are in `noodl-runtime` and available in both. Nothing in any of their code decides this. Third recording of the observation after Variables (`Color`) and Logic. | whole category | package layout |
+
+## The `Config` 100%, and why it is not a measurement
+
+`Config` reports **100% documented with zero ports**. Its three real ports — `Parameter`, the local
+override pair, and `Value` — are all pushed from `setup`, so the catalog has nothing to measure and
+the ratio is `0/0`. Every other node in the category now genuinely reads 100%. Worth knowing before
+anyone reads a coverage table as a completeness signal: **a node with no static ports is indistinguishable
+from a fully documented one**, and this is the only node in the library in that state.
+
 ---
 
 ### Aggregate Records  `noodl.cloud.aggregate`
 
-1 inputs / 3 outputs · 0 signal in / 2 signal out · docs 0% · SSR `—` · cloud
+1 inputs / 3 outputs · 0 signal in / 2 signal out · docs **100%** · SSR `—` · cloud
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/cloud-functions/cloud-data/aggregate-records)
+Source: [`aggregatenode.js`](../../../../packages/noodl-viewer-cloud/src/nodes/data/aggregatenode.js) · Docs: [link](https://docs.noodl.net/nodes/cloud-functions/cloud-data/aggregate-records)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | n/a — no action input | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | n/a | ⬜ | |
-| C1 | ⚠️ **0%** (0/4) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `—` | ⬜ | |
+| A1 |  | ✅ | Every result path goes through `fetch`'s success callback |
+| A2 |  | ✅ | `Do` re-runs the aggregation; nothing is cached between runs |
+| A3 |  | ✅ | `scheduleFetch` coalesces within a frame, which is what the parameter setters want |
+| G1 |  | ⚠️ | `getAggregates` returns `{}` for an unset aggregate list, so an unconfigured node aggregates *nothing* and still fires `Success` |
+| B1 | n/a — no action input | ⚠️ | The `Do` signal is dynamic, so the pre-fill could not see it. It has `Failure`/`Error` — but see B2 |
+| B2 |  | ⚠️→✅ | **Fixed here.** Wrote `_internal.err` against a getter reading `_internal.error`, and raised nothing. Rows C1–C3 |
+| B3 | n/a | ✅ | `Do` → `Success` or `Failure` |
+| C1 | ⚠️ **0%** (0/4) | ✅ | **Closed 2026-07-30** — 4/4 |
+| D1 |  | ⚠️ | `validateAggNames` rejects only spaces while its message says "space and special characters", and the check is editor-only either way (`aggregatenode.js:117-123`) |
+| E1 | ✅ no dead-end types | ✅ | Aggregate outputs are typed `number`/`string` from the class schema |
+| F1 |  | n/a | Targets nothing |
+| H1 | declares `—` | ✅ | Cloud-only and correctly declared |
+| — |  | ⚠️ | `getAggregates` dereferences `defs[a].prop` for every listed aggregate name, and `defs[a]` is undefined until the matching `aggprop-` input is set — so "I added an aggregate and have not picked its property yet" throws out of a scheduler (`aggregatenode.js:231-233`) |
+| — |  | ⚠️ | A Javascript filter that will not parse leaves `getStorageFilter` returning `undefined` and `fetch` dereferencing it — see the category note |
+| — |  | ⚠️ | "No class specified" / "No aggregates specified" are `sendWarning` only, so they do not exist in a deployed cloud function (`aggregatenode.js:125-139`) |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 6 defects, 1 fixed — the worst node in the category, and the only one no earlier sweep opened
 
 ---
 
 ### Cloud File  `Cloud File`
 
-1 inputs / 2 outputs · 0 signal in / 0 signal out · docs 0% · SSR `safe` · browser, cloud
+1 inputs / 2 outputs · 0 signal in / 0 signal out · docs **100%** · SSR `safe` · browser, cloud
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/cloud-file)
+Source: [`cloudfilenode.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/data/cloudfilenode.ts) · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/cloud-file)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | n/a — no action input | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | n/a | ⬜ | |
-| C1 | ⚠️ **0%** (0/3) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | The single setter flags both outputs |
+| A2 |  | n/a | Holds no fetched state |
+| A3 |  | ✅ | |
+| G1 |  | ⚠️ | `null` cannot clear the port — see the category note on the three file inputs |
+| B1 | n/a — no action input | 🔵 | Nothing to fail; it is a projection of a value it is handed |
+| B2 |  | n/a | |
+| B3 | n/a | n/a | |
+| C1 | ⚠️ **0%** (0/3) | ✅ | **Closed 2026-07-30** — 3/3 |
+| D1 |  | 🔵 | `Name` is the stored name split on `_` and rejoined past the first segment, which is a bare-string contract with Parse's guid prefix — but it is a *display* value and a wrong split costs a cosmetic name, not a wrong record (`cloudfilenode.ts:36-39`) |
+| E1 | ✅ no dead-end types | ✅ | `cloudfile` casts to `string` and `image` (NDA-014) |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | Holds one reference and no listeners |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 1 defect (shared) — otherwise the simplest node in the category and clean
 
 ---
 
-### Cloud Function  `Cloud Function`
+### Cloud Function  `Cloud Function` _(deprecated)_
 
-3 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser · **deprecated** · not in picker
+3 inputs / 3 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `safe` · browser · **deprecated** · not in picker
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/cloud-function)
+Source: [`cloudfunction.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/cloudfunction.ts) · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/cloud-function)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/6) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | |
+| A2 |  | ✅ | `Call` always re-requests |
+| A3 |  | ✅ | `scheduleCall` coalesces per frame |
+| G1 |  | ✅ | |
+| B1 | ✅ has one | ⚠️ | It has a `Failure` *signal* and **no reason port at all** — the message lives only in `lastCallResult`, which is the inspector, plus one `console.log`. NDA-004 §2's fix gave this node a raise; it still has nowhere on the graph to say *what* went wrong |
+| B2 |  | ⚠️ | Same defect: `console.log('No cloud services defined in this project.')` is the whole deployed diagnosis for that branch (`cloudfunction.ts:262-263`) |
+| B3 | ✅ | ✅ | `Call` → `Success` or `Failure` |
+| C1 | ⚠️ **0%** (0/6) | ✅ | **Closed 2026-07-30** — 6/6 |
+| D1 |  | ✅ | The function name is encoded |
+| E1 | ✅ no dead-end types | 🔵 | `Result` is typed `*`, which is honest for "whatever the function returned" |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
+| — |  | ⚠️ | A call that **succeeds** and returns nothing fires `Failure` (`cloudfunction.ts:286-289`). The current node treats the same case as a success with an empty result, which is right |
+| — |  | 🔵 | **A data point for the deprecated-five question** (NDA-004 §2 ⏳ item 9). This node sits between the two on record: unlike `Script Downloader` it has *a* failure signal, and unlike `Number Blend` it is genuinely worse than its replacement. Deprecation still does not track quality — it tracks age |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 3 defects — all of them "the failure has no reason", all of them fixed in the node that replaced it
 
 ---
 
 ### Cloud Function  `CloudFunction2`
 
-1 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser
+1 inputs / 3 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/cloud-function)
+Source: [`cloudfunction2.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/cloudfunction2.ts) · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/cloud-function)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/4) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | |
+| A2 |  | ✅ | |
+| A3 |  | ✅ | Flags every `out-` port before pulsing `Success` — the *correct* order, and worth naming given the category's fourth signal-before-value instance |
+| G1 |  | ✅ | |
+| B1 | ✅ has one | ✅ | `Failure` + `Error`, raising `cloud-function/call-failed` (NDA-004 §2) |
+| B2 |  | ⚠️ | "No function specified" is `sendWarning` only, and `doCall` has no guard after it — so a deployed app POSTs to `/functions/undefined` and reports the backend's 404 instead (`cloudfunction2.ts:225-241`) |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/4) | ✅ | **Closed 2026-07-30** — 4/4 |
+| D1 |  | ✅ | |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
+| — |  | ⚠️ | `resultsValues` is never cleared between calls, so a second call returning fewer keys leaves the first call's values on those outputs and still fires `Success` (`cloudfunction2.ts:262-266`) |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 2 defects
 
 ---
 
 ### Config  `DbConfig`
 
-0 inputs / 0 outputs · 0 signal in / 0 signal out · docs 100% · SSR `safe` · browser, cloud
+0 inputs / 0 outputs · 0 signal in / 0 signal out · docs **100%** _(of zero — see above)_ · SSR `safe` · browser, cloud
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/config)
+Source: [`dbconfig.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/data/dbconfig.ts) · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/config)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | n/a — no action input | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | n/a | ⬜ | |
-| C1 | ✅ 100% | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | `setInternal` flags `value` on every parameter change |
+| A2 |  | ⚠️ | There is no refresh, and the cache the node reads through can latch — rows M1–M3 |
+| A3 |  | ✅ | |
+| G1 |  | 🔵 | An absent key yields `undefined`, which abstains — correct per the contract, though indistinguishable from "the fetch failed" |
+| B1 | n/a — no action input | ⚠️ | **No failure surface of any kind**: no `Failure`, no `Error`, no raise, and the one `.then` has no `.catch`. See the category note |
+| B2 |  | ⚠️ | Same defect. The editor-time warnings ("You need an active cloud service") are `sendWarning` only |
+| B3 | n/a | n/a | No signal ports |
+| C1 | ✅ 100% | 🔵 | **Vacuous, not met.** `0/0` — every real port is dynamic. Nothing to write here without the port-description plumbing reaching `sendDynamicPorts`, which NDA-005 §0 did not cover |
+| D1 |  | ✅ | |
+| E1 | ✅ no dead-end types | ✅ | `Value`'s type follows the schema entry, falling back to `*` |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 3 defects — and the only node in the library whose documentation coverage cannot be measured at all
 
 ---
 
 ### Log In  `net.noodl.user.LogIn`
 
-3 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser
+3 inputs / 3 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/user/log-in)
+Source: [`login.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/login.ts) · Docs: [link](https://docs.noodl.net/nodes/data/user/log-in)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/6) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | |
+| A2 |  | n/a | |
+| A3 |  | ✅ | `logInScheduled` coalesces a double-press within a frame |
+| G1 |  | 🔵 | A blank username/password is sent as-is and the backend refuses it, which is a legitimate failure rather than a silence |
+| B1 | ✅ has one | ✅ | `user/log-in-failed` (NDA-004 §2) |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/6) | ✅ | **Closed 2026-07-30** — 6/6 |
+| D1 |  | ✅ | |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | Holds no listeners; the session lives in `UserService` |
+| — |  | 🔵 | `UserService.logIn` calls the node's `success` **before** emitting `loggedIn`, so a graph wired `Success → Do` on something reading a `User` node's `Username` is racing the User node's own update. Not counted as new: the queue is per receiving node and the ordering between two *different* senders is not something this node decides. Worth a row if anyone reports it |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ✅ no defects
 
 ---
 
 ### Log Out  `net.noodl.user.LogOut`
 
-1 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser
+1 inputs / 3 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/user/log-out)
+Source: [`logout.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/logout.ts) · Docs: [link](https://docs.noodl.net/nodes/data/user/log-out)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/4) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | |
+| A2 |  | n/a | |
+| A3 |  | ✅ | |
+| G1 |  | n/a | No value inputs |
+| B1 | ✅ has one | ✅ | `user/log-out-failed` |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/4) | ✅ | **Closed 2026-07-30** — 4/4 |
+| D1 |  | ✅ | |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
+| — |  | 🔵 | Its `Do` port is internally named `login`, and the comment says why: the name is persisted in every project that uses the node. Documented, not a defect |
+| — |  | 🔵 | A sign-out whose request fails leaves the local session in place, so `Failure` means "still signed in" — which is right, and now the port sentence says so |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ✅ no defects
 
 ---
 
-### Model  `DbModel`
+### Model  `DbModel` _(deprecated)_
 
-8 inputs / 9 outputs · 6 signal in / 7 signal out · docs 0% · SSR `safe` · browser · **deprecated** · not in picker
+8 inputs / 9 outputs · 6 signal in / 7 signal out · docs **100%** · SSR `safe` · browser · **deprecated** · not in picker
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/cloud-services/model)
+Source: [`dbmodelnode.ts`](../../../../packages/noodl-viewer-react/src/nodes-deprecated/std-library/data/dbmodelnode.ts) · Docs: [link](https://docs.noodl.net/nodes/cloud-services/model)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/17) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | `onModelChangedCallback` flags the property output *then* pulses — the correct order |
+| A2 |  | ✅ | `Fetch` re-reads |
+| A3 |  | ✅ | `scheduleOnce` per action type |
+| G1 |  | ⚠️ | `setModelID` hands a possibly-undefined id to `Model.get`, the create-on-read tier — same shape as `Record`'s, and one layer earlier (`dbmodelnode.ts:246-248`) |
+| B1 | ✅ has one | ✅ | One `Failure`/`Error` pair for six actions, raising `record/storage-op-failed` (NDA-004 §2) |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | Every action has its own completion signal — the most thorough in the category |
+| C1 | ⚠️ **0%** (0/17) | ✅ | **Closed 2026-07-30** — 17/17, the largest single node in this pass |
+| D1 |  | ✅ | |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | Named by `Id` only; it predates the repeater binding |
+| H1 | declares `safe` | ✅ | Removes its model listener on delete |
+| — |  | 🔵 | Six actions and one shared `Error` port, so two failures in the same frame overwrite each other. Its replacement has fewer actions and the same shape; not counted as new |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 1 defect (shared with Record) — otherwise the healthiest deprecated node here, and better sequenced than its replacement
 
 ---
 
-### Query Collection  `DbCollection`
+### Query Collection  `DbCollection` _(deprecated)_
 
-0 inputs / 8 outputs · 0 signal in / 3 signal out · docs 0% · SSR `safe` · browser · **deprecated** · not in picker
+0 inputs / 8 outputs · 0 signal in / 3 signal out · docs **100%** · SSR `safe` · browser · **deprecated** · not in picker
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/cloud-services/collection)
+Source: [`dbcollectionnode.ts`](../../../../packages/noodl-viewer-react/src/nodes-deprecated/std-library/data/dbcollectionnode.ts) · Docs: [link](https://docs.noodl.net/nodes/cloud-services/collection)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | n/a — no action input | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | n/a | ⬜ | |
-| C1 | ⚠️ **0%** (0/8) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ⚠️ 1 object/array port(s): items | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ⚠️ | Its `change` handler pulses `Modified` before flagging the values the pulse is about — see the category note |
+| A2 |  | ✅ | |
+| A3 |  | ✅ | `collectionChangedScheduled` coalesces a burst into one report |
+| G1 |  | ✅ | |
+| B1 | n/a — no action input | ✅ | `Failure`/`Error`, raising `query-records/query-failed` (NDA-004 §2) |
+| B2 |  | ✅ | |
+| B3 | n/a | ✅ | |
+| C1 | ⚠️ **0%** (0/8) | ✅ | **Closed 2026-07-30** — 8/8 |
+| D1 |  | ✅ | |
+| E1 | ⚠️ 1 object/array port(s): items | ✅ | `array` casts to `collection` and `string` since NDA-014; the pre-fill predates that table |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
+| — |  | 🔵 | It has the `Modified` signal its replacement dropped, which is the more useful half of the pair — the ordering is what is wrong with it, not the existence |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 1 defect — the fourth signal-before-value instance in the phase
 
 ---
 
 ### Query Records  `DbCollection2`
 
-0 inputs / 7 outputs · 0 signal in / 2 signal out · docs 0% · SSR `safe` · browser, cloud
+0 inputs / 7 outputs · 0 signal in / 2 signal out · docs **100%** · SSR `safe` · browser, cloud
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/query-records)
+Source: [`dbcollectionnode2.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/data/dbcollectionnode2.ts) · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/query-records)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | n/a — no action input | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | n/a | ⬜ | |
-| C1 | ⚠️ **0%** (0/7) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ⚠️ 1 object/array port(s): items | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ⚠️ | A change made by *another* node updates `Count`/`First Record Id`/`Is Empty` and not `Items` — see the category note |
+| A2 |  | ✅ | `Do` re-queries; every setter re-queries when `Do` is unwired, which is the documented design |
+| A3 |  | ✅ | `scheduleFetch` and `collectionChangedScheduled` both coalesce correctly |
+| G1 |  | ✅ | An empty search term is a documented no-op rather than a coercion (BAK-008) |
+| B1 | n/a — no action input | ✅ | `Failure`/`Error`, raising `query-records/query-failed` |
+| B2 |  | ⚠️ | Two reports are still editor-only: "No collection specified for query" (`:396-404`) and every visual-filter conversion error (`:505-516`) |
+| B3 | n/a | ✅ | |
+| C1 | ⚠️ **0%** (0/7) | ✅ | **Closed 2026-07-30** — 7/7 |
+| D1 |  | ⚠️ | The Javascript filter is `Function.apply`'d from a parameter and its variables are found by regex; a parse failure is a `console.log` and then a dereference of `undefined` — see the category note |
+| E1 | ⚠️ 1 object/array port(s): items | ✅ | `array` casts since NDA-014 |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | Its three cloud-store listeners are removed on delete, and the comment records why the list must mirror `initialize` exactly |
+| — |  | 🔵 | Live-patches its own results against `currentQuery.where` rather than re-querying, except under a search term. Deliberate, documented, and the reason A1 above matters |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 3 defects
 
 ---
 
 ### Record  `DbModel2`
 
-3 inputs / 5 outputs · 1 signal in / 3 signal out · docs 0% · SSR `safe` · browser, cloud
+4 inputs / 5 outputs · 1 signal in / 3 signal out · docs **100%** · SSR `safe` · browser, cloud
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/record)
+Source: [`dbmodelnode2.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/data/dbmodelnode2.ts) · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/record)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/8) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | Flags `prop-<key>` then pulses `changed-<key>` then `changed` — correct order, and the counter-example to the category's fourth signal-before-value case |
+| A2 |  | ✅ | |
+| A3 |  | ✅ | |
+| G1 |  | ⚠️ | A `null` on `Id` binds the node to a fresh throwaway record — see the category note |
+| B1 | ✅ has one | ✅ | `record/storage-op-failed` |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/9) | ✅ | **Closed 2026-07-30** — 9/9 |
+| D1 |  | ✅ | |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 | | ✅ | `Repeater Component` names the target explicitly and `foreachitem.ts` reports a failed resolution — BINDING-CONTRACT §(a) |
+| H1 | declares `safe` | ✅ | Removes the model listener and calls `forgetForEachItem` |
+| — |  | 🔵 | `scheduleStore` and `userInputSetter` are dead — the `prop-` ports are published as *outputs* only. Already on record from NDA-004 §2, documented in place. Not counted as new |
+| — |  | 🔵 | `registerInputIfNeeded`'s `dynamicSignals` is an empty literal declared one line above the lookup that reads it, so the whole `EdgeTriggeredInput` branch is unreachable. On record from PLAT-003 §27.3. Not counted as new |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 1 defect (shared with Model)
 
 ---
 
 ### Request Magic Link  `net.noodl.user.RequestMagicLink`
 
-3 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `partial` · browser · not in picker · **no docs URL**
+3 inputs / 3 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `partial` · browser · **not in picker** · **no docs URL**
 
-Source: _(fill in)_ · Docs: **none**
+Source: [`requestmagiclink.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/requestmagiclink.ts) · Docs: **none**
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/6) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `partial` | ⬜ | |
+| A1 |  | ✅ | |
+| A2 |  | n/a | |
+| A3 |  | ✅ | |
+| G1 |  | ✅ | A blank redirect falls back to the current URL, deliberately |
+| B1 | ✅ has one | ✅ | `user/request-magic-link-failed` |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/6) | ✅ | **Closed 2026-07-30** — 6/6 |
+| D1 |  | ✅ | |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `partial` | ✅ | Honest: the request is a browser call |
+| — |  | ⚠️ | **Cannot be added to a graph** — see the category note |
+| — |  | ⚠️ | No `docs` URL, so the node card's help link is dead. Its own file header is the only documentation, and it is good; it just is not anywhere a user can reach |
+| — |  | ✅ | Clears `error` on success, which most of its siblings do not — the small thing this node gets right that the older ones do not |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 2 defects, both about reachability rather than behaviour
 
 ---
 
-### Request Password Reset  `net.noodl.user.RequestPasswordReset`
+### Request Password Reset  `net.noodl.user.RequestPasswordReset` _(deprecated)_
 
-2 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser · **deprecated**
+2 inputs / 3 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `safe` · browser · **deprecated**
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/user/request-password-reset)
+Source: [`requestpasswordreset.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/requestpasswordreset.ts) · Docs: [link](https://docs.noodl.net/nodes/data/user/request-password-reset)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/5) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | |
+| A2 |  | n/a | |
+| A3 |  | ✅ | |
+| G1 |  | ✅ | |
+| B1 | ✅ has one | ✅ | `user/request-password-reset-failed` |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/5) | ✅ | **Closed 2026-07-30** — 5/5 |
+| D1 |  | ✅ | JSON endpoint, unlike its two siblings |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
+| — |  | 🔵 | Success does not mean the address exists — the endpoint is anti-enumerating by design, and the port sentence now says so. **Deprecated and still in the picker**, while its modern replacement is not |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ✅ no defects
 
 ---
 
-### Reset Password  `net.noodl.user.ResetPassword`
+### Reset Password  `net.noodl.user.ResetPassword` _(deprecated)_
 
-4 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser · **deprecated**
+4 inputs / 3 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `safe` · browser · **deprecated**
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/user/reset-password)
+Source: [`resetpassword.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/resetpassword.ts) · Docs: [link](https://docs.noodl.net/nodes/data/user/reset-password)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/7) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | |
+| A2 |  | n/a | |
+| A3 |  | ✅ | |
+| G1 |  | ✅ | |
+| B1 | ✅ has one | ✅ | `user/reset-password-failed` |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/7) | ✅ | **Closed 2026-07-30** — 7/7 |
+| D1 |  | ⚠️ | Outcome decided by substring-matching an HTML page, with the bare-truthy `indexOf` — see the category note |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
+| — |  | ⚠️ | Its unreachable failure branch reports "Failed to verify email" |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 2 defects
 
 ---
 
-### Send Email Verification  `net.noodl.user.SendEmailVerification`
+### Send Email Verification  `net.noodl.user.SendEmailVerification` _(deprecated)_
 
-2 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser · **deprecated**
+2 inputs / 3 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `safe` · browser · **deprecated**
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/user/send-email-verification)
+Source: [`sendemailverification.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/sendemailverification.ts) · Docs: [link](https://docs.noodl.net/nodes/data/user/send-email-verification)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/5) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | |
+| A2 |  | n/a | |
+| A3 |  | ✅ | |
+| G1 |  | ✅ | |
+| B1 | ✅ has one | ✅ | `user/send-email-verification-failed` |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/5) | ✅ | **Closed 2026-07-30** — 5/5 |
+| D1 |  | ✅ | JSON endpoint |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ✅ no defects
 
 ---
 
 ### Set User Properties  `net.noodl.user.SetUserProperties`
 
-3 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser, cloud
+3 inputs / 3 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `safe` · browser, cloud
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/user/set-user-properties)
+Source: [`setuserproperties.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/user/setuserproperties.ts) · Docs: [link](https://docs.noodl.net/nodes/data/user/set-user-properties)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/6) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | |
+| A2 |  | n/a | |
+| A3 |  | ✅ | |
+| G1 |  | 🔵 | A blank `Email`/`Username` is dropped from the request body rather than written as empty, which is what "leave blank to keep the current one" needs — and the port sentences now say it |
+| B1 | ✅ has one | ⚠️ | It has the ports, and there is one path on which neither ever fires — see the category note. The most consequential defect in the auth family |
+| B2 |  | ✅ | On the paths that report at all, `user/set-properties-failed` reaches every runtime |
+| B3 | ✅ | ⚠️ | Same defect stated as sequencing: `Do` can terminate in nothing, so nothing downstream can sequence off it |
+| C1 | ⚠️ **0%** (0/6) | ✅ | **Closed 2026-07-30** — 6/6 |
+| D1 |  | ✅ | |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 1 defect — signed out, its `Do` is a black hole
 
 ---
 
 ### Sign File URL  `Sign File URL`
 
-2 inputs / 7 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser, cloud
+2 inputs / 7 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `safe` · browser, cloud
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/sign-file-url)
+Source: [`signfileurl.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/data/signfileurl.ts) · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/sign-file-url)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/9) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | Flags all three result outputs before pulsing `Success` |
+| A2 |  | ✅ | `Sign` always re-requests; a signed URL is deliberately not cached past its TTL |
+| A3 |  | ✅ | |
+| G1 |  | ⚠️ | `null` cannot clear `File` — see the category note. Sharper here than on Cloud File: with no file ever set the node reports "No file specified", which is misleading for an author who *did* wire something |
+| B1 | ✅ has one | ✅ | `sign-file-url/sign-failed` with the status on `detail` (NDA-004 §2) |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/9) | ✅ | **Closed 2026-07-30** — 9/9 |
+| D1 |  | ✅ | |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
+| — |  | ✅ | The only node in the category that distinguishes "the request never left" (status 0) from "the backend refused" on a port. Worth copying |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 1 defect (shared) — otherwise the reference node for this category
 
 ---
 
 ### Sign In With  `net.noodl.user.SignInWith`
 
-3 inputs / 5 outputs · 1 signal in / 2 signal out · docs 0% · SSR `partial` · browser · not in picker · **no docs URL**
+3 inputs / 5 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `partial` · browser · **not in picker** · **no docs URL**
 
-Source: _(fill in)_ · Docs: **none**
+Source: [`signinwith.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/signinwith.ts) · Docs: **none**
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/8) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `partial` | ⬜ | |
+| A1 |  | ✅ | `applyReturn` flags `signingIn`/`notice`/`error` before pulsing |
+| A2 |  | n/a | |
+| A3 |  | ✅ | Checks the current return state *as well as* subscribing, because the exchange can settle before the node exists — the right answer to a race most nodes here do not have |
+| G1 |  | ✅ | A blank redirect falls back to the current URL |
+| B1 | ✅ has one | ✅ | `user/sign-in-with-failed` |
+| B2 |  | ✅ | |
+| B3 | ✅ | 🔵 | `Do` navigates the browser away, so nothing downstream of it can run by design — the completion signals belong to the *return* leg. Documented on the port |
+| C1 | ⚠️ **0%** (0/8) | ✅ | **Closed 2026-07-30** — 8/8 |
+| D1 |  | ✅ | Provider and redirect are both encoded |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `partial` | ⚠️ | Subscribes to `UserService` in `initialize` and has no `_onNodeDeleted` — see the category note |
+| — |  | ⚠️ | **Cannot be added to a graph** — see the category note |
+| — |  | ⚠️ | No `docs` URL |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 3 defects — the best-reasoned node in the category and the least reachable
 
 ---
 
 ### Sign Up  `net.noodl.user.SignUp`
 
-4 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser
+4 inputs / 3 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/user/sign-up)
+Source: [`signup.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/signup.ts) · Docs: [link](https://docs.noodl.net/nodes/data/user/sign-up)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/7) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | |
+| A2 |  | n/a | |
+| A3 |  | ✅ | |
+| G1 |  | ✅ | |
+| B1 | ✅ has one | ✅ | `user/sign-up-failed` |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/7) | ✅ | **Closed 2026-07-30** — 7/7 |
+| D1 |  | ✅ | |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
+| — |  | 🔵 | `signUp` writes the local session from the *request* it sent merged over the response, so a column the backend rewrote on insert reads stale until a `Fetch` (`userservice.ts:308`). Cosmetic in practice; recorded because it is the kind of thing a support ticket starts with |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ✅ no defects
 
 ---
 
 ### Upload File  `Upload File`
 
-3 inputs / 9 outputs · 1 signal in / 3 signal out · docs 0% · SSR `safe` · browser
+3 inputs / 9 outputs · 1 signal in / 3 signal out · docs **100%** · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/upload-file)
+Source: [`uploadfile.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/uploadfile.ts) · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/upload-file)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/12) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | Progress flags all three counters before pulsing `Progress Changed` |
+| A2 |  | n/a | |
+| A3 |  | ✅ | |
+| G1 |  | 🔵 | Its `File` input is typed `*` and stores whatever arrives, including `null` — the *opposite* of its two siblings' silent rejection. Neither is right and they should agree; see the category note |
+| B1 | ✅ has one | ✅ | `upload-file/upload-failed` with the status on `detail` |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/12) | ✅ | **Closed 2026-07-30** — 12/12 |
+| D1 |  | ✅ | |
+| E1 | ✅ no dead-end types | ✅ | `cloudfile` casts to `string`/`image` |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
+| — |  | 🔵 | `Uploaded Percent` returns 0 rather than `NaN` when the total is unknown — the correct empty-value answer, and unusual in this category |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 1 defect (shared)
 
 ---
 
 ### User  `net.noodl.user.User`
 
-1 inputs / 8 outputs · 1 signal in / 3 signal out · docs 0% · SSR `partial` · browser, cloud
+1 inputs / 8 outputs · 1 signal in / 3 signal out · docs **100%** · SSR `partial` · browser, cloud
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/user/user-node)
-
-| Check | Pre-filled | Verdict | Note |
-|---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/9) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `partial` | ⬜ | |
-
-**Verdict:** ⬜ not audited
-
----
-
-### Verify Email  `net.noodl.user.VerifyEmail`
-
-3 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser · **deprecated**
-
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/user/verify-email)
+Source: [`user.ts`](../../../../packages/noodl-runtime/src/nodes/std-library/user/user.ts) · Docs: [link](https://docs.noodl.net/nodes/data/user/user-node)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/6) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | `setUserModel` flags every declared output plus each `prop-`; `onModelChangedCallback` flags before pulsing |
+| A2 |  | ✅ | `Fetch` re-reads, and is how an expired session is discovered |
+| A3 |  | ✅ | |
+| G1 |  | ✅ | Signed out is `undefined` on every output rather than `''`/`0`, which is the contract |
+| B1 | ✅ has one | ✅ | `user/fetch-failed` |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/9) | ✅ | **Closed 2026-07-30** — 9/9 |
+| D1 |  | ✅ | |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | The session is ambient by definition |
+| H1 | declares `partial` | ⚠️ | Four `UserService` subscriptions in `initialize`, none removed on delete — see the category note. The SSR declaration itself is honest and its note says why |
+| — |  | 🔵 | `loggedIn`/`loggedOut`/`sessionLost` exist only in the browser and are pushed from `setup`; the static declaration for them is commented out above `inputs`. So three of this node's most-used ports are invisible to the catalog, the validator and the AI loop — the same measurement hole as `Config`, in a node that otherwise reads 100% |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 1 defect
 
 ---
+
+### Verify Email  `net.noodl.user.VerifyEmail` _(deprecated)_
+
+3 inputs / 3 outputs · 1 signal in / 2 signal out · docs **100%** · SSR `safe` · browser · **deprecated**
+
+Source: [`verifyemail.ts`](../../../../packages/noodl-viewer-react/src/nodes/std-library/user/verifyemail.ts) · Docs: [link](https://docs.noodl.net/nodes/data/user/verify-email)
+
+| Check | Pre-filled | Verdict | Note |
+|---|---|---|---|
+| A1 |  | ✅ | |
+| A2 |  | n/a | |
+| A3 |  | ✅ | |
+| G1 |  | ✅ | |
+| B1 | ✅ has one | ✅ | `user/verify-email-failed` |
+| B2 |  | ✅ | |
+| B3 | ✅ | ✅ | |
+| C1 | ⚠️ **0%** (0/6) | ✅ | **Closed 2026-07-30** — 6/6 |
+| D1 |  | ⚠️ | Two defects, both class D: the outcome is a substring match on an HTML page with a bare-truthy `indexOf`, and the request interpolates username and token into a query string unencoded — see the category note |
+| E1 | ✅ no dead-end types | ✅ | |
+| F1 |  | n/a | |
+| H1 | declares `safe` | ✅ | |
+
+**Verdict:** ⚠️ 2 defects

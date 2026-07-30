@@ -84,16 +84,19 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
   },
   outputs: {
     success: {
+      description: 'Fires on the page the provider returned to, once the session has been established',
       type: 'signal',
       displayName: 'Success',
       group: 'Events'
     },
     failure: {
+      description: 'Fires when the sign-in did not complete, after the reason has been reported on the error channel',
       type: 'signal',
       displayName: 'Failure',
       group: 'Events'
     },
     signingIn: {
+      description: 'True while a sign-in started on an earlier page load is still being exchanged',
       type: 'boolean',
       displayName: 'Signing In',
       group: 'States',
@@ -102,6 +105,7 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
       }
     },
     error: {
+      description: 'Why the last sign-in failed; empty until one does',
       type: 'string',
       displayName: 'Error',
       group: 'Error',
@@ -110,6 +114,8 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
       }
     },
     notice: {
+      description:
+        'Something the user should be told about a sign-in that nevertheless succeeded, such as an old password having been revoked',
       type: 'string',
       displayName: 'Notice',
       group: 'General',
@@ -120,6 +126,7 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
   },
   inputs: {
     signIn: {
+      description: 'Hands over to the provider, which navigates the browser away — nothing downstream of this runs',
       displayName: 'Do',
       group: 'Actions',
       valueChangedToTrue(this: SignInWithInstance) {
@@ -127,6 +134,7 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
       }
     },
     provider: {
+      description: 'Id of the sign-in provider to use, as the backend lists it',
       type: 'string',
       displayName: 'Provider',
       group: 'General',
@@ -135,6 +143,7 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
       }
     },
     redirect: {
+      description: 'Page the provider should return to; leave blank to come back to the page sign-in started from',
       type: 'string',
       displayName: 'Redirect',
       group: 'General',

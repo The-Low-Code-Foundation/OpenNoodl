@@ -41,16 +41,19 @@ const LoginNodeDefinition: NodeDefinitionOptions = {
   color: 'data',
   outputs: {
     success: {
+      description: 'Fires once the sign-in succeeded and a session has been stored',
       type: 'signal',
       displayName: 'Success',
       group: 'Events'
     },
     failure: {
+      description: 'Fires when the sign-in was refused, after the reason has been reported on the error channel',
       type: 'signal',
       displayName: 'Failure',
       group: 'Events'
     },
     error: {
+      description: 'Why the last sign-in failed; empty until one does',
       type: 'string',
       displayName: 'Error',
       group: 'Error',
@@ -61,6 +64,7 @@ const LoginNodeDefinition: NodeDefinitionOptions = {
   },
   inputs: {
     login: {
+      description: 'Attempts to sign in with Username and Password',
       displayName: 'Do',
       group: 'Actions',
       valueChangedToTrue(this: LogInInstance) {
@@ -68,6 +72,7 @@ const LoginNodeDefinition: NodeDefinitionOptions = {
       }
     },
     username: {
+      description: 'Username to sign in as',
       displayName: 'Username',
       type: 'string',
       group: 'General',
@@ -76,6 +81,7 @@ const LoginNodeDefinition: NodeDefinitionOptions = {
       }
     },
     password: {
+      description: 'Password to sign in with',
       displayName: 'Password',
       type: 'string',
       group: 'General',

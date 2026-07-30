@@ -45,16 +45,20 @@ const VerifyEmailNodeDefinition: NodeDefinitionOptions = {
   getInspectInfo(): InspectInfo | void {},
   outputs: {
     success: {
+      description: 'Fires once the address has been confirmed',
       type: 'signal',
       displayName: 'Success',
       group: 'Events'
     },
     failure: {
+      description:
+        'Fires when the token was rejected or the request could not be made, after the reason has been reported on the error channel',
       type: 'signal',
       displayName: 'Failure',
       group: 'Events'
     },
     error: {
+      description: 'Why the last attempt failed; empty until one does',
       type: 'string',
       displayName: 'Error',
       group: 'Error',
@@ -65,6 +69,7 @@ const VerifyEmailNodeDefinition: NodeDefinitionOptions = {
   },
   inputs: {
     verify: {
+      description: 'Confirms the address using the token from the verification email',
       displayName: 'Do',
       group: 'Actions',
       valueChangedToTrue: function (this: VerifyEmailInstance) {
@@ -72,6 +77,7 @@ const VerifyEmailNodeDefinition: NodeDefinitionOptions = {
       }
     },
     token: {
+      description: 'Verification token taken from the link in the email',
       type: 'string',
       displayName: 'Token',
       group: 'General',
@@ -80,6 +86,7 @@ const VerifyEmailNodeDefinition: NodeDefinitionOptions = {
       }
     },
     username: {
+      description: 'Username the verification link was issued for',
       type: 'string',
       displayName: 'Username',
       group: 'General',

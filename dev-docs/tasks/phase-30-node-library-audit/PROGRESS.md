@@ -11,7 +11,7 @@
 | NDA-003 Empty-value contract | 1 | ✅ **Built** `e707f0cc`…`b2032129` | All E-rows green unmarked. Nullable Variables shipped with `Treat empty as` (String/Color: `null`/`''`; Number: `null`/`0`; Boolean: `null`/`false`); corpus E1/E8 expectations reconciled to the contract (`null`, not `''`). String `length` returns 0 on null store. httpnode normalised to one helper (both omit; JSON body keeps `null`-is-sent, documented). E5's null-clears-collection worked by accident — now explicit + tested. Enriched catalog needed the NDA-014 compatibility fix first (`61e8b3da`) |
 | NDA-013 Repeater Refresh | 1 | ✅ **Done** `0e96c93a` | `refresh()` resyncs from `items`; queue race handled by truncating the ops `set()` just appended (synchronous span, nothing interleaves). Full teardown kept deliberately, documented. Refresh added to Array Map; Array Filter's premise was wrong — its `Filter` signal always re-read fresh, `refresh` added as alias. 3 new corpus rows red→green. Live QA pending |
 | NDA-004 Failure contract | 2 | 🔄 §1 done, §3 **9 of 10**, §2 criterion 4 met; **criterion 2 closed** `382894e4` | Channel at `packages/noodl-runtime/src/runtimeerror.ts`; `On App Error` node; F1/F1′ green. §3: only **Logic Builder** left, still blocked by another session's uncommitted rewrite — `Response` landed 2026-07-29 (it was hiding a `TypeError` out of an input setter *and* a silently-discarded second answer). §2 batch 1: Set Object Properties, Set Record Properties, Add/Remove Record Relation. §2 batch 2 (2026-07-30): **Set Parent Component Object Properties** (reported `Done` for a write into a throwaway record — worst class-B defect so far), **Parent Component Object**, **Video** (×2 failures), plus Component Object and Set Component Object Properties 🔵 on evidence. **Criterion 2 closed 2026-07-30** — and it found that the two legs believed covered were not: `if (this.editorConnection)` is *always* true (`NoodlRuntime` builds one in every runtime and its own comment says so), so `createConsoleErrorSubscriber` was unreachable outside its unit test and a deployed browser build, SSR and SSG produced **no console output at all** for a raised failure. It read as met because both contexts *did* deliver to an `On App Error` node — a surface the author has to opt into. A second defect underneath: the disconnected send queue grew for the life of the page. FINDINGS **H-ii/H-iii**. **§1's catch-all was not creatable** — found 2026-07-30 by regenerating the catalog: `On App Error` was registered, working, and measured working in a deployed build, but absent from `nodelibraryexport.ts`'s curated picker index, so the only way to get one was to hand-write `project.json` — which is what every fixture that measured it did. Criterion 2's own trap one level down. Fixed, 3 corpus rows, ports documented 8/8. **Remaining: `Logic Builder` (§3), the deprecated-five policy question** |
-| NDA-005 Port documentation | 2 | 🔄 **§0 + the shared pass done 2026-07-30** | **The premise was half right and the wrong half was load-bearing: `description` was declared on both port types and copied nowhere.** `nodedefinition.ts` built metadata from `tooltip` and never read `description`; the catalog derived its own by *flattening* that tooltip. So the field this task tells an author to write was inert — and the three descriptions NDA-003 wrote on the Variables nodes, about the very contract that task established, reached no consumer. `tooltip` could never have served: it is a popup with a heading that restates the display name (hence the existing 142 reading like *"Clip content Controls if elements that are too big to fit will be clipped Enabled Disabled"*) and **it does not exist on output ports at all**, so half the library was undocumentable by any means. Plumbing fixed, flattened tooltip kept as fallback. House style at [`PORT-DESCRIPTION-STYLE.md`](../../reference/PORT-DESCRIPTION-STYLE.md) (criterion 3 ✅). **The concentration is greater than specced**: 133 port names = 1,861 instances = 70% of the library. 61 names documented in two files → **5.4% → 36.5%, now measured** (catalog regenerated 2026-07-30; the projected 41.2% was optimistic by ~3.5 points on its own denominator, reported as measured rather than reconciled away). Criterion 1 ✅. Criterion 2 needs the per-node tail: nodes at 0% fell 112 → **101**, of which exactly **1 is visual** — so the remainder is non-visual and per-node, which is NDA-012's pass |
+| NDA-005 Port documentation | 2 | 🔄 **§0 + the shared pass done 2026-07-30** | **The premise was half right and the wrong half was load-bearing: `description` was declared on both port types and copied nowhere.** `nodedefinition.ts` built metadata from `tooltip` and never read `description`; the catalog derived its own by *flattening* that tooltip. So the field this task tells an author to write was inert — and the three descriptions NDA-003 wrote on the Variables nodes, about the very contract that task established, reached no consumer. `tooltip` could never have served: it is a popup with a heading that restates the display name (hence the existing 142 reading like *"Clip content Controls if elements that are too big to fit will be clipped Enabled Disabled"*) and **it does not exist on output ports at all**, so half the library was undocumentable by any means. Plumbing fixed, flattened tooltip kept as fallback. House style at [`PORT-DESCRIPTION-STYLE.md`](../../reference/PORT-DESCRIPTION-STYLE.md) (criterion 3 ✅). **The concentration is greater than specced**: 133 port names = 1,861 instances = 70% of the library. 61 names documented in two files → **5.4% → 36.5%, now measured** (catalog regenerated 2026-07-30; the projected 41.2% was optimistic by ~3.5 points on its own denominator, reported as measured rather than reconciled away). Criterion 1 ✅. Criterion 2 needs the per-node tail: nodes at 0% fell 112 → **101**, of which exactly **1 is visual** — so the remainder is non-visual and per-node, which is NDA-012's pass. **The tail started 2026-07-30 inside NDA-012's Cloud Services pass: 148 ports over 21 node types, coverage 39.1% → 44.4% measured, nodes at 0% 83 → 62.** The whole category now reads 100% — with one caveat worth carrying, because it is a hole in the *instrument*: **`Config` reported 100% before this pass and still does, because it has no static ports at all** (`0/0`). Its three real ports are pushed from `setup`, and so are `User`'s three session signals, so a node can read fully documented while its most-used ports are invisible to the catalog, the validator and the AI loop. NDA-005 §0 fixed the plumbing for *declared* ports; `sendDynamicPorts` carries no `description` and nothing has asked it to |
 | NDA-006 Columns | 2 | 🔄 **Slices 1+2 done** | **Slice 2's premise was wrong**: a Repeater adds its items as *siblings* of its `ForEachComponent` (`foreach.tsx:472`), so they were always wrapped and sized — filtering the `ForEachComponent` out is *correct*, and F3's original expectation is reconciled, not satisfied. Seven real defects found instead, four of them worse: autofold was dead the moment an author set Horizontal Gap (a units port writes `'16px'`, and `number < string` is `NaN`); a Repeater that was a Columns node's **only** child was dropped from the tree entirely and never mounted; only the **first** of several Repeaters was rendered; wrappers were keyed by position, so a Repeater deleting one row remounted every row after it. Plus `calcAutofold` mutating its caller, folding to *zero* columns (`width: NaN%`), a double space in the layout string doing the same, and `visibility: hidden` painting blank through the whole of SSR. 11 corpus rows, 7 reverts, each reddening only its own. **Slice 3 done 2026-07-30** — Richard chose "both": `Column Sizing` → `Auto Fit` (one input, as many columns as hold their minimum) plus `Medium Below`/`Small Below` layout strings. **Container width, not viewport** — nothing in the editor or styles system has a breakpoint concept to extend (checked), and the node already measures its container, so the same node behaves correctly inside a sidebar or a repeater cell. Static ports, so no dynamic-port machinery and the AI loop sees them. 19 rows, 11 reverts. **Slice 4 (masonry) done** `b33b1b3e`. **Criterion 5's deployed leg run 2026-07-30** (`cc28a4be`): masonry itself is right in a real deploy (tops `0,0,0,40,90,60,160`, height 230), but the *first paint* was a **zero-width strip** — `width: calc(100% + (${marginX}px)` was one parenthesis short, which the CSSOM silently repairs on the client and a serialised `style` attribute does not, dropping `width` and `box-sizing` together. D7 stayed green throughout. See FINDINGS **H-i** |
 | NDA-007 Icon sets | 2 | 🔄 **§1 done + renderer built** | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked). **2026-07-30: the union is real in the renderer.** The font-triple splat existed in **six** components, each hard-wired to font semantics — widening the model meant widening it six times or once; now once, in `IconGlyph.tsx`. Criteria 2 and 3 met (font output byte-identical, `iconSize`/`iconColor` identical across kinds via `1em`+`currentColor`). 15 corpus rows. ⚠️ **§2 (registration) and §3 (picker) remain** — a sprite value renders but cannot yet be installed or selected, and the sanitiser runs at render time until §2 gives it a registration to live in. **§2+§3 done** `899ab676`; **criterion 1's deployed leg passed 2026-07-30** — `noodl_modules/` ships verbatim, the font stylesheet is injected, and the sprite `<use>` resolves over http with `getBBox()` 40×38; removing the asset gives `0×0` and no console error, so the witness discriminates |
 | NDA-008 Component Stack | 2 | ✅ **Done — all four sections** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). **Richard chose "Both" (2026-07-29): fix the box, keep the feature.** Applied as `overflow: clip` on the app root — `clip` creates no scroll container at all, where `hidden` creates one only the *browser* can scroll. `TextInput` keeps its plain `.focus()`, so a deliberate `Focus` still scrolls the nearest genuinely-scrollable ancestor. Measured live on the same element in one session: `hidden` 0 → **1762 px**, `clip` 0 → **0 px**. §1 done: replace animates through the same `Transitions` machinery, defaulting to `None` so no existing project starts moving; the `// Only push mode have transition` gate is gone. §3 done: `Popped`/`Failure`/`Error` and **three** codes, not two — the unbriefed one is `transition-in-progress`, i.e. a double-tapped back button used to lose its second tap. **§2 done 2026-07-29**: re-selecting the page already on top used to re-mount it in *both* modes, and push also pushed a duplicate entry (depth 1 → 2), so every click on the active tab lost its state and grew a stack Back had to walk back through. The no-op is **params-aware** — same component with different params is the master→detail idiom and must keep pushing — and replace additionally requires depth 1, since on a deeper stack it still has collapsing to do. `hasNavigated` still fires, or a re-selected tab would be a dead button. **NDA-008 is complete** |
@@ -22,7 +22,7 @@
 | NDA-016 `Layout.size` | 2 | ✅ **Done** | **§0 resolved: the spec's premise was wrong.** `sizeMode` is never unset — a fresh Text node carries `contentHeight`/`100%`, read live. The real defect is a stale `parentLayout`: children bake the parent's layout in at *their* render, `renderChildren` memoises them, and the Layout setter never invalidated the memo — so a layout change never reached the children, and the first child ate the row. Fixed with `setLayout` as the single writer. §1 built too, on its own terms (an abstaining *connection* can still unset the port). 10 regression tests; 15-node-type live blast-radius check. Criterion 4's screenshot corpus is an instrument mismatch — see the spec |
 | NDA-017 Signal input freshness | 2 | 🔄 **§0 done `d6db6f39`; §1 is Richard's** | Community report, **now reproduced** — 10 rows, 4 `test.failing`, including row 4 against the **Function** node, so the reporter's workaround is measured not to be one. The spec's mechanism survived §0 (unlike NDA-008/016). **One correction**: the seed also reaches the graph with *no* `Run` at all — with the signal connected the node never evaluates at boot, yet `connectInput` pushes a confident `0` downstream from `result`'s getter, so §1's option A as written closes three of four doors. Reusable: `update()` is synchronous and `settle()` yields, so a row written with `settle()` reports this whole defect class as absent. The confirmed mechanism: with `Run` connected the value setters go passive and `Run` evaluates whatever is in scope, so an async producer that hasn't landed leaves the previous cycle's value, and `On True`/`On False` pulse downstream while `Result` stays quiet. **Twelve node families**, not one. **§1 is now the blocker and it is a decision for Richard** (never-arrived detection vs. an upstream-pending notion in the runtime vs. making the completion-signal sequencing discoverable) |
 | NDA-011 REST → HTTP | 3 | ✅ **Done — §1, §2 decided, §3 already met** | Assessment at [`NDA-011-CAPABILITY-COMPARISON.md`](./NDA-011-CAPABILITY-COMPARISON.md). **There is no resource DSL**: REST is one path template plus two `new Function` scripts, and does *neither* of the things the spec lists as what a DSL is good for. HTTP Request wins every declarative row; REST wins two, both "run some JavaScript". So it is **not** a clean subset → **deprecated, not deleted**, with the conversion path left to LIB-006. §3 needed no work (NDA-003 already made the six guards one helper; `responseHeaders` became usable via NDA-014's `object → string` cast). **Criterion 3 was six nodes, not four** — and they held the *plain* names their modern replacements show via `displayName`, so the picker offered two entries reading "Button" and the deprecated one was as likely to be picked |
-| NDA-012 Per-node audit | 3 | 🔄 **8 of 17 categories, 22 of 155 nodes** | Variables (4/4) as the worked example; **Logic, Math, Events, String Manipulation, Interpolation, Javascript and Sensors added 2026-07-30**, run batched with NDA-005's C1 so each node is read once. **31 new defects in 22 nodes and no find-rate decline.** Two shapes recurred *across* categories, which the per-node reads could not have shown: **signal-before-value** (`Receive Event`, `Signal To Index` — in both, carrying data with a signal is the node's whole purpose) and **a value port whose setter emits**, announcing a change at page load once authored (`Switch`'s `State`, `Counter`'s `Start Value`). Two nodes are clean and both for a recorded reason. See the find-rate table |
+| NDA-012 Per-node audit | 3 | 🔄 **9 of 17 categories, 44 of 155 nodes** | Variables (4/4) as the worked example; **Logic, Math, Events, String Manipulation, Interpolation, Javascript and Sensors added 2026-07-30**, run batched with NDA-005's C1 so each node is read once. **31 new defects in 22 nodes and no find-rate decline.** Two shapes recurred *across* categories, which the per-node reads could not have shown: **signal-before-value** (`Receive Event`, `Signal To Index` — in both, carrying data with a signal is the node's whole purpose) and **a value port whose setter emits**, announcing a change at page load once authored (`Switch`'s `State`, `Counter`'s `Start Value`). Two nodes are clean and both for a recorded reason. **Cloud Services added 2026-07-30 — all 22 nodes, 25 new defects, the largest single-category haul in the phase**, and it corrected this file's own dismissal of two nodes as picker-exempt: **`Sign In With` and `Request Magic Link` cannot be added to a graph at all**, while four deprecated nodes in the same picker group can (FINDINGS **CS-i**). The other headline is **CS-ii**: `Aggregate Records` carried both defects NDA-004 §2 and PLAT-003 had already swept for, because it is the one Cloud Services node in `noodl-viewer-cloud` and both sweeps covered two packages. Fixed; everything else is a verdict. **The per-node rate dipped for the first time (1.41 → 1.14) and the cause is five sibling nodes, not exhaustion** — read the find-rate table before treating it as a stop signal. A **third** cross-category shape joined the two: a create-on-read lookup fed by a value that can be absent. See the find-rate table |
 
 ## Audit coverage
 
@@ -30,9 +30,9 @@
 |---|---|---|
 | Nodes with a machine-derived smell row | 155 | ✅ `NODE-REGISTER.md` |
 | Nodes with a pre-filled audit worksheet | 155 | ✅ `audit/`, 17 category files |
-| Nodes whose implementation has been read | 15 | 8 named by Richard + 5 from his second list + Boolean/Color |
-| Nodes fully audited against the 12 checks | **4** | Variables, as NDA-012's worked example |
-| Systemic defect classes identified | 7 | A reactivity, B failure, C documentation, D string contracts, **E type dead ends**, **F implicit binding**, **G signal/value ordering** (G came from a community report, not from either pass) |
+| Nodes whose implementation has been read | **44** | 8 named by Richard + 5 from his second list + Boolean/Color, then NDA-012's nine categories |
+| Nodes fully audited against the 12 checks | **44** | 9 of 17 categories: Variables, Logic, Math, Events, String Manipulation, Interpolation, Javascript, Sensors, **Cloud Services** |
+| Systemic defect classes identified | 8 | A reactivity, B failure, C documentation, D string contracts, **E type dead ends**, **F implicit binding**, **G signal/value ordering** (G came from a community report, not from either pass), **H the deployed build nobody ran** |
 | Findings live-verified in the running editor | Tier 1 + NDA-014 | 2026-07-29 pass: preview runs the new collection semantics (push/index/length notify once each, synchronous, `items` identity holds, `set` = one change); zero renderer exceptions; no cyclic warnings; editor's live typecast table carries the three new casts. Catalog page empty = expected (DB query, no local data, no repeater on it) |
 
 **Calibration:** the second pass found five real defects in six nodes. The structural sweep found
@@ -65,12 +65,35 @@ All three gating decisions were put to Richard on 2026-07-29 and he confirmed th
 | Interpolation | 2 / 2 | 2 | 4 |
 | Javascript | 1 / 1 | 1 | 4 |
 | Sensors | 1 / 1 | 1 | 1 |
-| **8 of 17 categories** | **22 / 155** | **20** | **31** |
+| Cloud Services | 22 / 22 | 17 | 25 |
+| **9 of 17 categories** | **44 / 155** | **37** | **56** |
 
-**No decline, over eight categories and 22 nodes.** The rate is ~1.4 new defects per node and it has
-not moved between the simplest category in the library and the small utility ones. Two nodes are clean
-(`Inverter`, `Unique Id`) and both are clean for a recorded reason: Inverter is the only node in its
-category with a correct empty-value policy, and Unique Id was fixed by NDA-004 §3 three days ago.
+**No decline in absolute terms — Cloud Services is the largest single-category haul in the phase —
+but the per-node rate moved for the first time**, from ~1.41 over the first eight categories to
+**1.14** over Cloud Services. That is worth reading carefully rather than as a stop signal, because
+the cause is structural and is visible in the data: **five of the 22 nodes are clean, and all five
+are the same twenty lines parameterised** (`Log In`, `Log Out`, `Request Password Reset`,
+`Send Email Verification`, `Sign Up` — one `UserService` method each, over the methods that have no
+HTML parsing, no missing-session branch and no cache). A category with sibling nodes dilutes the
+per-node rate without saying anything about how much is left in the library. The stop rule is a
+category producing **nothing new**, and this one produced 25.
+
+⚠️ **The per-node verdicts in the Cloud Services worksheet add to 34, not 25.** Nine defects live in
+a shared helper or the shared picker index and are counted once, per NDA-012's batching warning. This
+table reports distinct defects; the per-node figure is a usage count.
+
+Two nodes were clean in earlier categories for recorded reasons (`Inverter`, `Unique Id`).
+
+**Three shapes have now recurred across category boundaries**, up from two:
+
+- **Signal before value** — `Receive Event`, `Signal To Index`, and now the deprecated
+  `Query Collection`, which pulses `Modified` and *then* flags the counts the pulse is about. The
+  node that replaced it deleted the signal rather than moving one line.
+- **A value port whose setter emits** — `Switch`'s `State`, `Counter`'s `Start Value`.
+- **A create-on-read lookup fed by a value that can be absent** — `Model.get(undefined)` /
+  `Collection.get(undefined)`, and now `Record`'s `Id` input, where `typeof null === 'object'` routes
+  a cleared value into `Model.create(null)` and binds the node to a throwaway record. The banked note
+  predicted this one in as many words.
 
 **Two defect shapes recurred across category boundaries**, which is the first structural result this
 protocol has produced that the per-node reads could not:
@@ -91,6 +114,104 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-30 (NDA-012 + NDA-005: Cloud Services, and the dismissal that was written the same day
+  as the finding it dismissed).** All 22 nodes, all twelve checks, run batched with NDA-005's C1 —
+  **148 port descriptions, coverage 39.1% → 44.4% measured, nodes at 0% 83 → 62**. **25 new defects
+  in 17 nodes**, the largest single-category haul in the phase. Worksheet:
+  [`audit/cloud-services.md`](./audit/cloud-services.md); the three findings that reach outside the
+  category are FINDINGS **CS-i…CS-v**.
+
+  **The headline is a correction to `FINDINGS.md` itself.** Last session's `On App Error` entry
+  found four non-deprecated types absent from the picker with one catalog query — a good query — and
+  then explained three of them away in a sentence. Two of those three explanations were invented:
+  there is no "sign-in flow" that creates `net.noodl.user.SignInWith` or
+  `net.noodl.user.RequestMagicLink`, and one grep across the editor, the runtime and the viewer
+  returns nothing outside the nodes' own definition files. So **two of the three nodes BAK-004
+  shipped cannot be added to a graph**, while the same picker group offers four *deprecated* auth
+  nodes — an author looking for passwordless sign-in finds the superseded password flow instead.
+  Neither has a `docs` URL either. `Page`, the third, really is created by `RouterAdapter`. The
+  lesson generalises the banked one about traps by one step: **a dismissal is a hypothesis too**, and
+  checking this one cost a single grep.
+
+  **One defect was fixed rather than filed, and the rule is about criteria rather than size.**
+  `Aggregate Records` wrote its failure message to `_internal.err` against a getter reading
+  `_internal.error` — the **third** live instance of a shape PLAT-003 fixed in `dbcollectionnode`
+  (§23.4) and again in `dbcollectionnode2` (§27.3) — *and* raised nothing on the error channel, which
+  is B-iv's condition that NDA-004 §2 reported closed for the family. Both sweeps covered
+  `noodl-runtime` and `noodl-viewer-react`; this node is the only Cloud Services node in
+  `noodl-viewer-cloud`. **A criterion met over two packages is not met over three.** Rows C1–C5 in
+  [`nda-012-aggregate-records.test.ts`](../../../packages/noodl-viewer-cloud/tests/nda-012-aggregate-records.test.ts),
+  each half reverted separately and reddening only its own row. The reusable half is that **C1
+  asserts through the output's getter and never through `_internal`**: the defect *is* a
+  writer/reader field mismatch, so an assertion on either field alone cannot see it.
+
+  ⚠️ Getting that row to run at all needed `DOM` and `ES2021.WeakRef` libs in
+  `packages/noodl-viewer-cloud/tsconfig.tests.json`. Before this, any test in that package that
+  `require`d one of its own **node modules** died compiling `@noodl/runtime` with
+  `TS2304: Cannot find name 'location'` — so the package could test its plain modules and not its
+  nodes, which is a large part of *why* its one node was never swept. Worth checking the same way
+  wherever a package's node coverage looks thin.
+
+  **The sharpest new defect is deliberately left red.** `ConfigService.getConfig` deletes its
+  in-flight-promise field *after* the `await`, so a rejection latches it: every later caller is
+  handed the same rejected promise without reaching the transport, and `clearCache()` — the only
+  recovery, and what the editor calls on a schema change — clears the *other* field. Under it, the
+  `Config` node has no `Failure`, no `Error`, no raise and a `.then` with no `.catch`. A backend
+  briefly down at page load leaves every Config node blank and silent for the life of the page.
+  Three `test.failing` rows plus a control in
+  [`nda-012-cloud-services-category.test.ts`](../../../packages/noodl-runtime/test/corpus/nda-012-cloud-services-category.test.ts);
+  a candidate `try`/`finally` fix reddens all three and leaves the control green, so they are known
+  to discriminate. Not fixed, because unlike the Aggregate case no signed-off criterion is false
+  while it stands — NDA-012 produces verdicts.
+
+  **Defect class D got its textbook case, twice in one file.** Parse's verify-email and
+  reset-password endpoints answer with HTML, and `UserService` reads the outcome out of the page.
+  The success test is `indexOf(…) !== -1`; the *second* test on both is a bare
+  `if (response.indexOf('Invalid …'))`, which is truthy exactly when the phrase is **absent**. So
+  `Verify Email` and `Reset Password` report "Invalid verification token" for a network failure and
+  a rate limit alike, and Reset Password's unreachable branch says "Failed to verify email". Same
+  bare-pattern class SUB-013 hit the same day in the catalog generator; two independent instances is
+  enough to make it a grep. `verifyEmail` also interpolates username and token into a query string
+  unencoded, forty lines above a method that encodes both of its interpolations.
+
+  **And one node's `Do` is a black hole.** `UserService.setUserProperties` wraps its whole body in
+  `if (_cu !== undefined)`, so `Set User Properties` triggered while signed out calls neither
+  callback: no `Success`, no `Failure`, no `Error`, no console line, and it re-arms. Every sibling
+  reports a missing session because the backend refuses the request; this one never gets that far.
+  It is the Failure Contract as *sequencing* — a signal input whose terminating signal is
+  conditional is, on that condition, a mute node.
+
+  **The find rate dipped for the first time (1.41 → 1.14 per node) and it is not exhaustion.** Five
+  of the 22 nodes are clean and all five are the same twenty lines parameterised over the one
+  `UserService` method with no HTML parsing, no missing-session branch and no cache. A category with
+  sibling nodes dilutes a per-node rate without saying anything about the library. The stop rule is a
+  category producing *nothing new*; this one produced 25. A **third** cross-category shape also
+  joined the two on record — a create-on-read lookup fed by a value that can be absent, here
+  `Record`'s `Id` input, where `typeof null === 'object'` routes a cleared value into
+  `Model.create(null)` and binds the node to a throwaway record whose generated id it then reports.
+  The banked note predicted that one in as many words.
+
+  ⚠️ **A coverage number can be 100% and mean nothing.** `Config` read 100% *before* this pass and
+  still does: it has `0/0` static ports, because all three of its real ports are pushed from `setup`.
+  `User`'s three session signals are the same. So a node can read fully documented while its
+  most-used ports are invisible to the catalog, the validator and the AI loop. NDA-005 §0 fixed the
+  plumbing for *declared* ports; `sendDynamicPorts` carries no `description` and nothing has asked it
+  to. That is the next real question for NDA-005's criterion 2, and it is bigger than the tail.
+
+  **And the audit's own tooling had the defect NDA-011 filed.** `register.js` preserved hand-written
+  verdicts across regenerations keyed on the bare display name, *stripping* the ` _(deprecated)_`
+  suffix — so a deprecated node and its replacement were one key. The library has **ten** such pairs,
+  precisely because NDA-011 criterion 3 found the deprecated nodes holding the plain names their
+  replacements show through `displayName`. Writing two different verdicts for the two Cloud Function
+  nodes is what surfaced it: one was silently copied onto the other and the loser vanished on the
+  next run. Keyed on the rendered cell now. One collision survives on purpose — `Delete Record`,
+  where both nodes are live and neither is deprecated, which is the decision waiting on Richard;
+  the comment says so rather than adding a column to work around a defect that has a proper fix
+  pending. **A defect filed against the product had a second victim in the instrument measuring it.**
+
+  Gates: runtime jest **1198** (+4), viewer jest 367 (unchanged), **cloud jest 57** (+5, and the
+  package can now test its nodes), all three typechecks clean, `catalog:merge:check` green.
 
 - **2026-07-30 (NDA-012 + NDA-005: seven categories, 18 nodes, and two shapes that cross category
   lines)** — runtime jest 1,172 → **1,181** (+9, two new corpus files), viewer **367** unchanged,

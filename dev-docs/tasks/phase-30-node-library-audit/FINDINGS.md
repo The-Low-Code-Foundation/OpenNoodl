@@ -1191,9 +1191,10 @@ rather than through a fixture.
 
 **It took a catalog regeneration to become visible**, and only as a derived field: `inNodePicker` comes
 from `coreNodes` (`build-catalog.js:186`), and one query over the regenerated catalog lists four
-non-deprecated types reading `false`. The other three are legitimate — `Page` is created through the
+non-deprecated types reading `false`. ~~The other three are legitimate — `Page` is created through the
 Router flow, `net.noodl.user.RequestMagicLink` and `net.noodl.user.SignInWith` through the sign-in
-flow. That is a reusable query, and it is the registry-side companion to NDA-011 criterion 3's
+flow.~~ **CORRECTED 2026-07-30 by NDA-012's Cloud Services pass: only `Page` is legitimate.** See the
+next section. That is a reusable query, and it is the registry-side companion to NDA-011 criterion 3's
 duplicate-label sweep: **ask the catalog which nodes exist and cannot be created, and which can be
 created and read the same.**
 
@@ -1204,6 +1205,124 @@ the revert reddens the first and leaves both controls green. The control matters
 `toContain` over a list of ~130 names passes for almost anything, so a second row asserts a registered
 type that is *deliberately* absent (the deprecated `Cloud Function`) — without it the row cannot tell
 "the index offers this node" from "the index offers everything", which is exactly the defect.
+
+---
+
+## NDA-012 Cloud Services (2026-07-30) — 25 defects, and three of them are corrections to this file
+
+The category worksheet is [`audit/cloud-services.md`](./audit/cloud-services.md) and carries all 22
+nodes with citations. Recorded here are only the ones that change something outside the category.
+
+### CS-i — the picker dismissal above was wrong, and it was written the same day
+
+The `On App Error` entry ends by naming three other non-deprecated types absent from the picker and
+declaring all three legitimate: `Page` "created through the Router flow",
+`net.noodl.user.RequestMagicLink` and `net.noodl.user.SignInWith` "through the sign-in flow".
+
+**There is no sign-in flow.** Grepping every source directory in the editor, the runtime and the
+viewer for either type name returns nothing outside the two nodes' own definition files — no
+adapter, no template, no creation path of any kind. `Page` really is created by
+[`RouterAdapter.ts`](../../../packages/noodl-editor/src/editor/src/models/NodeTypeAdapters/RouterAdapter.ts);
+the other two were an assumption written next to a fact, in a sentence whose first clause is true.
+
+So **two of the three nodes BAK-004 shipped cannot be added to a graph**, and the group that omits
+them lists four *deprecated* nodes: `Verify Email`, `Send Email Verification`, `Reset Password` and
+`Request Password Reset` ([`nodelibraryexport.ts:688-699`](../../../packages/noodl-runtime/src/nodelibraryexport.ts#L688-L699)).
+An author looking for passwordless sign-in finds the superseded password flow and not the thing
+built to replace it. Neither node has a `docs` URL either, so its node card's help link is dead —
+the only documentation is each file's (good, long) header comment.
+
+The generalisation is the one this document already states about traps, aimed one step earlier:
+**a dismissal is a hypothesis too.** The query that found the four types was reusable and correct;
+what was not checked was the sentence explaining away three of its results. Checking it cost one
+grep.
+
+### CS-ii — a criterion met over two packages is not met over three
+
+`Aggregate Records` had **both** defects the phase had already swept for, and neither sweep had
+opened it:
+
+- It wrote its message to `_internal.err` while the `Error` output's getter reads `_internal.error`,
+  so the port had never carried anything and only `Failure` ever fired. PLAT-003 NOTES §23.4 recorded
+  exactly this in the deprecated `dbcollectionnode`; §27.3 found it again in `dbcollectionnode2`,
+  the node that replaced it. This was the **third** live instance.
+- It raised nothing on the runtime error channel — B-iv's condition, which NDA-004 §2 closed across
+  twenty-two `setError` helpers and reported as met for the family.
+
+Both sweeps covered `noodl-runtime` and `noodl-viewer-react`. This file is in `noodl-viewer-cloud`,
+the third package that registers nodes, and it is the only Cloud Services node that lives there.
+
+Fixed, with a discrimination check on each half separately —
+[`nda-012-aggregate-records.test.ts`](../../../packages/noodl-viewer-cloud/tests/nda-012-aggregate-records.test.ts),
+rows C1–C5. **Row C1 asserts through the output's getter, never through `_internal`**: the defect is
+precisely that the writer and the reader named different fields, and an assertion on either field
+alone cannot see a mismatch between them. That is the reusable half.
+
+⚠️ Getting a row to run at all required `packages/noodl-viewer-cloud/tsconfig.tests.json` to gain
+`DOM` and `ES2021.WeakRef` libs. Before that, any test in this package that `require`d one of its own
+*node modules* died compiling `@noodl/runtime` (`TS2304: Cannot find name 'location'`) — so the
+package could test its plain modules and not its nodes, which is a large part of why its nodes were
+never swept.
+
+### CS-iii — a config fetch that fails once can never succeed again
+
+`ConfigService.getConfig` stores the in-flight promise in `configCachePending` and deletes it *after*
+the `await`, so a rejection skips the delete
+([`configservice.ts:118-131`](../../../packages/noodl-runtime/src/api/configservice.ts#L118-L131)).
+Every later caller is handed the same rejected promise without reaching the transport, and
+`clearCache()` — the only recovery the class offers, and what the editor calls when the config schema
+changes ([`dbconfig.ts:193-196`](../../../packages/noodl-runtime/src/nodes/std-library/data/dbconfig.ts#L193-L196))
+— deletes `configCache`, which a failed fetch never populated.
+
+Underneath it, the `Config` node has **no failure surface of any kind**: no `Failure` signal, no
+`Error` port, no raise, and its one call site is a `.then` with no `.catch`
+([`dbconfig.ts:51-54`](../../../packages/noodl-runtime/src/nodes/std-library/data/dbconfig.ts#L51-L54)).
+So a backend that is briefly unreachable at page load leaves every Config node in the app blank and
+silent for the life of the page, with an unhandled rejection as the only trace.
+
+Pinned as three `test.failing` rows plus a control in
+[`nda-012-cloud-services-category.test.ts`](../../../packages/noodl-runtime/test/corpus/nda-012-cloud-services-category.test.ts).
+Deliberately **not fixed** — NDA-012 produces verdicts, and unlike CS-ii there is no signed-off
+criterion this falsifies. A candidate fix (`try`/`finally` around the `await`) reddens all three rows
+and leaves the control green, so the rows are known to discriminate.
+
+### CS-iv — defect class D has its textbook case, twice in one file
+
+Parse's verify-email and reset-password endpoints answer with **HTML**, so `UserService` reads the
+outcome out of the page text. The success test is written correctly (`indexOf(…) !== -1`). The second
+test on both is not:
+
+```ts
+} else if (response.indexOf('Invalid Verification Link')) {   // userservice.ts:388
+} else if (response.indexOf('Invalid Link')) {                // userservice.ts:428
+```
+
+`indexOf` returns `-1` when the phrase is **absent**, which is truthy — and `0` when it is at the very
+start, which is falsy. So the branch fires for every response that is not a success, and the `else`
+below it is reachable only when the page opens with the phrase. `Verify Email` and `Reset Password`
+therefore report "Invalid verification token" for a network failure, a rate limit and an expired token
+alike; and `Reset Password`'s unreachable branch says **"Failed to verify email"**.
+
+Same file, same method family: `verifyEmail` interpolates the username and token straight into a query
+string with no encoding ([`userservice.ts:379-381`](../../../packages/noodl-viewer-react/src/nodes/std-library/user/userservice.ts#L379-L381)),
+while `signInWithProvider` forty lines further down encodes both of its interpolations.
+
+This is the same bare-pattern class SUB-013 hit on 2026-07-30 in the catalog generator. Two
+independent instances in one day is enough to make it worth a grep: **a truthiness test on the result
+of `indexOf`, `search` or `findIndex` is a bug unless the target really is at index 0.**
+
+### CS-v — `Set User Properties`, signed out, is a black hole
+
+`UserService.setUserProperties` wraps its entire body in `if (_cu !== undefined)`
+([`userservice.ts:327-354`](../../../packages/noodl-viewer-react/src/nodes/std-library/user/userservice.ts#L327-L354)),
+so with no session **neither callback is called**. The node's `Do` produces no `Success`, no
+`Failure`, no `Error`, no console line and no raise, and it re-arms — so an author can press it
+forever and learn nothing. Every other node in the family reports a missing session, because the
+backend refuses the request and the error callback runs; this one never gets that far.
+
+It is the Failure Contract's condition stated as sequencing rather than as diagnosis: a signal input
+whose terminating signal is *conditional* is, on that condition, a mute node. Worth checking for
+wherever a service method guards its whole body rather than branching.
 
 ---
 

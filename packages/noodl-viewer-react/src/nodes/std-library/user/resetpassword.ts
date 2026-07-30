@@ -46,16 +46,20 @@ const ResetPasswordNodeDefinition: NodeDefinitionOptions = {
   getInspectInfo(): InspectInfo | void {},
   outputs: {
     success: {
+      description: 'Fires once the password has been changed',
       type: 'signal',
       displayName: 'Success',
       group: 'Events'
     },
     failure: {
+      description:
+        'Fires when the token was rejected or the request could not be made, after the reason has been reported on the error channel',
       type: 'signal',
       displayName: 'Failure',
       group: 'Events'
     },
     error: {
+      description: 'Why the last attempt failed; empty until one does',
       type: 'string',
       displayName: 'Error',
       group: 'Error',
@@ -66,6 +70,7 @@ const ResetPasswordNodeDefinition: NodeDefinitionOptions = {
   },
   inputs: {
     reset: {
+      description: 'Sets the account password to New Password using the token from the reset email',
       displayName: 'Do',
       group: 'Actions',
       valueChangedToTrue: function (this: ResetPasswordInstance) {
@@ -73,6 +78,7 @@ const ResetPasswordNodeDefinition: NodeDefinitionOptions = {
       }
     },
     token: {
+      description: 'Reset token taken from the link in the email',
       type: 'string',
       displayName: 'Token',
       group: 'General',
@@ -81,6 +87,7 @@ const ResetPasswordNodeDefinition: NodeDefinitionOptions = {
       }
     },
     username: {
+      description: 'Username the reset link was issued for',
       type: 'string',
       displayName: 'Username',
       group: 'General',
@@ -89,6 +96,7 @@ const ResetPasswordNodeDefinition: NodeDefinitionOptions = {
       }
     },
     newPassword: {
+      description: 'Password to set on the account',
       type: 'string',
       displayName: 'New Password',
       group: 'General',

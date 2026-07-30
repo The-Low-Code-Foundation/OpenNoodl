@@ -127,6 +127,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Id',
       group: 'General',
+      description: 'Id of the record this node is bound to, whether or not it has been read yet',
       getter: function (this: DbModelNodeInstance) {
         return this._internal.model ? this._internal.model.getId() : this._internal.modelId;
       }
@@ -134,22 +135,26 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
     fetched: {
       type: 'signal',
       displayName: 'Fetched',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the record has been read and the property outputs are up to date'
     },
     changed: {
       type: 'signal',
       displayName: 'Changed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when a property of the bound record changes, including a change another node made'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when the record could not be read, after the reason has been reported on the error channel'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
+      description: 'Why the last read failed; empty until one does',
       getter: function (this: DbModelNodeInstance) {
         return this._internal.error;
       }
@@ -168,6 +173,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       default: 'explicit',
       displayName: 'Id Source',
       group: 'General',
+      description: 'Whether the record is named by Id or taken from the repeater this node sits inside',
       set: function (this: DbModelNodeInstance, value: unknown) {
         this._internal.idSource = value;
         if (value === 'foreach') this.bindToRepeaterItem();
@@ -181,6 +187,8 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       type: 'component',
       displayName: 'Repeater Component',
       group: 'General',
+      description:
+        'Which repeater to take the current item from when nesting makes the nearest one ambiguous; leave blank for the nearest, and ignored unless Id Source is From repeater',
       set: function (this: DbModelNodeInstance, value: string) {
         this._internal.repeaterComponent = value || undefined;
         // Only re-resolve in the mode this input belongs to; in `explicit` mode the record
@@ -192,6 +200,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       type: { name: 'string', allowConnectionsOnly: true },
       displayName: 'Id',
       group: 'General',
+      description: 'Id of the record to read; ignored unless Id Source is Specify explicitly',
       set: function (this: DbModelNodeInstance, value: unknown) {
         if (value instanceof Model) value = (value as ModelLike).getId();
         // Can be passed as model as well
@@ -207,6 +216,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
+      description: 'Re-reads the record from the backend, replacing the copy held in memory',
       valueChangedToTrue: function (this: DbModelNodeInstance) {
         this.scheduleFetch();
       }

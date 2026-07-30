@@ -270,6 +270,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
       type: 'array',
       displayName: 'Items',
       group: 'General',
+      description: 'Records the query matched, in the order Sort asks for; empty before the first query has run',
       getter: function (this: DbCollectionNodeInstance) {
         return this._internal.collection;
       }
@@ -278,6 +279,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'First Record Id',
       group: 'General',
+      description: 'Id of the first matched record, for feeding a Record node without going through a repeater',
       getter: function (this: DbCollectionNodeInstance) {
         if (this._internal.collection) {
           const firstItem = this._internal.collection.get(0);
@@ -289,6 +291,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
       type: 'boolean',
       displayName: 'Is Empty',
       group: 'General',
+      description: 'True when the query matched nothing, and also true before the first query has run',
       getter: function (this: DbCollectionNodeInstance) {
         if (this._internal.collection) {
           return this._internal.collection.size() === 0;
@@ -300,6 +303,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Count',
       group: 'General',
+      description: 'How many records are in Items, which Limit caps — turn on Fetch total count for the uncapped figure',
       getter: function (this: DbCollectionNodeInstance) {
         return this._internal.collection ? this._internal.collection.size() : 0;
       }
@@ -307,17 +311,20 @@ const DbCollectionNode: NodeDefinitionOptions = {
     fetched: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Success'
+      displayName: 'Success',
+      description: 'Fires once the query has returned and Items is up to date'
     },
     failure: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Failure'
+      displayName: 'Failure',
+      description: 'Fires when the query could not be run, after the reason has been reported on the error channel'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
+      description: 'Why the last query failed; empty until one does',
       getter: function (this: DbCollectionNodeInstance) {
         return this._internal.error;
       }

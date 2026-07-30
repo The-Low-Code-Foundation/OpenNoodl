@@ -39,16 +39,19 @@ const LogOutNodeDefinition: NodeDefinitionOptions = {
   color: 'data',
   outputs: {
     success: {
+      description: 'Fires once the session has been ended',
       type: 'signal',
       displayName: 'Success',
       group: 'Events'
     },
     failure: {
+      description: 'Fires when the sign-out was refused, after the reason has been reported on the error channel',
       type: 'signal',
       displayName: 'Failure',
       group: 'Events'
     },
     error: {
+      description: 'Why the last sign-out failed; empty until one does',
       type: 'string',
       displayName: 'Error',
       group: 'Error',
@@ -61,6 +64,7 @@ const LogOutNodeDefinition: NodeDefinitionOptions = {
     // Named `login` rather than `logout`: the port name is persisted in every project that
     // uses this node, so it cannot be corrected without breaking them.
     login: {
+      description: 'Signs the current user out and clears the stored session',
       displayName: 'Do',
       group: 'Actions',
       valueChangedToTrue(this: LogOutInstance) {

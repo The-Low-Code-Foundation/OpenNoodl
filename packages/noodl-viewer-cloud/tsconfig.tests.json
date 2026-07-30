@@ -9,6 +9,16 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "types": ["node", "jest"],
+    // NDA-012: a test that `require`s one of this package's *node modules* reaches
+    // `@noodl/runtime`, whose entry point calls `location.reload()` on a hot reload. That is
+    // browser-only code the cloud runner never executes, but ts-jest still has to compile it,
+    // and without `DOM` here it fails the whole suite on `TS2304: Cannot find name 'location'`
+    // — so before this line the package could test its plain modules and not its nodes.
+    // Tests only; the production compile above still has no DOM lib.
+    // `ES2021.WeakRef` is the second half of the same story: `weak-registry.ts` feature-detects
+    // `WeakRef`/`FinalizationRegistry` at runtime and Node has had both since 14, but the type
+    // names still have to exist for the compile.
+    "lib": ["ES2019", "ES2020.String", "ES2021.WeakRef", "DOM"],
     "noEmit": true
   },
   "include": ["src", "tests"]
