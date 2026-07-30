@@ -142,6 +142,29 @@ function launchApp() {
 
   const appPath = app.getAppPath();
 
+  // macOS takes the dock icon from the running .app bundle, which in development is
+  // Electron's own Electron.app — so the dock shows the Electron logo no matter what
+  // the project ships. BrowserWindow's `icon` option cannot fix it either: that is
+  // Windows/Linux only and has no effect on the macOS dock. The dock has to be set
+  // explicitly, and only the main process can do it.
+  //
+  // Packaged builds are already correct — electron-builder generates the .icns from
+  // build/icon.png — so this is dev-only, and deliberately so: an .icns carries
+  // hand-tuned variants per size, and overwriting it with one flat PNG would be a
+  // downgrade in the one place the icon actually matters.
+  function setDevDockIcon() {
+    if (process.platform !== 'darwin' || app.isPackaged || !app.dock) return;
+
+    // build/ is deliberately absent from electron-builder's `files` list, so this
+    // path resolves only in a dev checkout — which is the only place it is needed.
+    const iconPath = path.join(appPath, 'build', 'icon.png');
+    if (!fs.existsSync(iconPath)) return;
+
+    const image = electron.nativeImage.createFromPath(iconPath);
+    // createFromPath returns an empty image rather than throwing on a bad file.
+    if (!image.isEmpty()) app.dock.setIcon(image);
+  }
+
   // App deep-link scheme (rebranded to NodeGX in REV-007). The GitHub OAuth
   // callback scheme stays `noodl://` (see github-oauth-handler.js) because it is
   // bound to the externally-registered OAuth app redirect URI.
@@ -261,10 +284,19 @@ function launchApp() {
   process.env.exePath = app.getPath('exe');
   let reopenWindow = false;
 
+  // Windows and Linux draw the window and taskbar icon from BrowserWindow; with no
+  // `icon` they fall back to Electron's default, in packaged builds as well as dev.
+  // macOS ignores this option entirely — its icon comes from the .app bundle, which
+  // is what setDevDockIcon() handles. `src/assets/images/` ships in packaged builds
+  // (electron-builder's `files` list includes `src`), so this resolves there too.
+  const WINDOW_ICON =
+    process.platform === 'darwin' ? undefined : path.join(appPath, 'src', 'assets', 'images', 'icon.png');
+
   function createWindow() {
     win = new BrowserWindow({
       width: 1368,
       height: 900,
+      icon: WINDOW_ICON,
       acceptFirstMouse: true,
       // Per-theme ground so there is no flash-of-dark when the saved/OS theme is
       // light (UIX-008). The frameless custom titlebar is DOM chrome and follows
@@ -696,6 +728,8 @@ function launchApp() {
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.
   app.on('ready', function () {
+    setDevDockIcon();
+
     createWindow();
 
     setupViewerIpc();

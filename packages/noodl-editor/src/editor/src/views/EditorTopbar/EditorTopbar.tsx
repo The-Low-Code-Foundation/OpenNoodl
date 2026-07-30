@@ -461,7 +461,7 @@ export function EditorTopbar({
         <span ref={deployButtonRef}>
           <PrimaryButton
             label={isSmall ? '' : 'Deploy'}
-            icon={IconName.Rocket}
+            icon={IconName.Deploy}
             isDisabled={deployIsDisabled}
             onClick={() => setIsDeployVisible(true)}
             UNSAFE_className={css['DeployButton']}

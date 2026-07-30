@@ -56,6 +56,7 @@ export enum IconName {
   Copy = 'copy',
   Columns = 'columns',
   Database = 'database',
+  Deploy = 'deploy',
   DeviceDesktop = 'device_desktop',
   DeviceLaptop = 'device_laptop',
   DevicePhone = 'device_phone',

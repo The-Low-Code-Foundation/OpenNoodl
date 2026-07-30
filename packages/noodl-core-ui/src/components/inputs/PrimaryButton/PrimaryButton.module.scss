@@ -179,6 +179,15 @@
 
 .Icon {
   margin-right: 4px;
+
+  // The `path { fill }` rules on each variant above exist for the legacy filled
+  // glyphs, whose paths carry no paint of their own. The house 16/1.5 glyphs do
+  // carry their own — they stroke, and rely on `fill="none"` — and a CSS `fill`
+  // beats that inherited presentation attribute, flooding every open shape (the
+  // Deploy tray, for one). Opt the stroked set back out; `color` still drives it.
+  svg[stroke='currentColor'] path {
+    fill: none;
+  }
 }
 
 .Spinner {

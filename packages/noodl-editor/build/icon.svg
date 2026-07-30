@@ -1,9 +1,17 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- NodeGX app icon master. Same monogram as core-ui Logo: node card → wire → port.
-       Rasterize: build/icon.png (1024) for electron-builder mac/win, and the
-       src/assets/images/icon*.png set for linux/window icons. -->
+  <!-- NodeGX app icon master. Same mark as the core-ui Logo: two ports, one wire —
+       an homage to Noodl, which is the one piece of the old identity worth keeping.
+
+       The mark is authored in a 32-unit box (see Logo.tsx) and mapped here so its
+       634-unit width lands at 62% of the 1024 canvas — the macOS icon grid's optical
+       fill. Bounding box is 195..829 x 233..791, centred on 512,512 in both axes.
+       Scale factor is 25.4 units per authoring unit.
+
+       Rasterise: build/icon.png (1024) for electron-builder mac/win, plus the
+       src/assets/images/icon{,128,48}.png set for linux and window icons:
+         rsvg-convert -w N -h N build/icon.svg -o <target>.png -->
   <defs>
-    <linearGradient id="wire" x1="620" y1="420" x2="880" y2="740" gradientUnits="userSpaceOnUse">
+    <linearGradient id="wire" x1="276" y1="314" x2="748" y2="710" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#4DA3FF"/>
       <stop offset="1" stop-color="#1570EF"/>
     </linearGradient>
@@ -14,20 +22,10 @@
   </defs>
   <rect width="1024" height="1024" rx="229" fill="url(#glow)"/>
   <rect x="6" y="6" width="1012" height="1012" rx="223" stroke="#232A33" stroke-width="12"/>
-  <!-- dot grid, faint -->
-  <g fill="#EEF2F6" opacity="0.05">
-    <circle cx="212" cy="212" r="8"/><circle cx="362" cy="212" r="8"/><circle cx="512" cy="212" r="8"/><circle cx="662" cy="212" r="8"/><circle cx="812" cy="212" r="8"/>
-    <circle cx="212" cy="362" r="8"/><circle cx="812" cy="362" r="8"/>
-    <circle cx="212" cy="512" r="8"/><circle cx="812" cy="512" r="8"/>
-    <circle cx="212" cy="662" r="8"/><circle cx="362" cy="662" r="8"/>
-    <circle cx="212" cy="812" r="8"/><circle cx="362" cy="812" r="8"/><circle cx="512" cy="812" r="8"/><circle cx="662" cy="812" r="8"/><circle cx="812" cy="812" r="8"/>
-  </g>
-  <!-- monogram: node card -->
-  <rect x="240" y="330" width="400" height="325" rx="96" stroke="#EEF2F6" stroke-width="58"/>
   <!-- wire -->
-  <path d="M640 492 C 762 492, 738 748, 848 748" stroke="url(#wire)" stroke-width="58" stroke-linecap="round"/>
+  <path d="M276 314C588 314 436 710 748 710" stroke="url(#wire)" stroke-width="66" stroke-linecap="round"/>
+  <!-- input port -->
+  <circle cx="276" cy="314" r="81" fill="#EEF2F6"/>
   <!-- output port (accent) -->
-  <circle cx="640" cy="492" r="68" fill="#4DA3FF"/>
-  <!-- target port -->
-  <circle cx="848" cy="748" r="58" fill="#EEF2F6"/>
+  <circle cx="748" cy="710" r="81" fill="#4DA3FF"/>
 </svg>
