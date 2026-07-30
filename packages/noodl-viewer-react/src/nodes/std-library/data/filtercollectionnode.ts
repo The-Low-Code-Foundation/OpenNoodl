@@ -110,6 +110,18 @@ interface FilterCollectionInstance extends NodeInstance {
      */
     filterSettings: Record<string, string | number | boolean | undefined>;
     collectionChangedCallback(): void;
+    /** Message for the `Error` output; see NDA-004. */
+    lastError?: string;
+    /** Last message actually raised, so a repeat is not re-announced. Expression's shape. */
+    lastReportedError?: string;
+    /**
+     * NDA-004 §2 — did an author *ask* for this run?
+     *
+     * Sticky across the coalescing window on purpose: if a value arrival schedules a run and a
+     * `Filter` pulse lands before the callback fires, the author did ask, and the run that
+     * happens is the one they asked for.
+     */
+    filterRequested?: boolean;
   };
   collectionChangedScheduled?: boolean;
   unbindCurrentCollection(): void;
@@ -119,6 +131,8 @@ interface FilterCollectionInstance extends NodeInstance {
   getLimit(): number | undefined;
   getSkip(): number | undefined;
   scheduleFilter(): void;
+  requestFilter(): void;
+  reportFailure(code: string, message: string, detail?: unknown): void;
 }
 
 const FilterCollectionNode: NodeDefinitionOptions = {
@@ -182,7 +196,7 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       group: 'Actions',
       displayName: 'Filter',
       valueChangedToTrue: function (this: FilterCollectionInstance) {
-        this.scheduleFilter();
+        this.requestFilter();
       }
     },
     // NDA-013: same signal as `filter` above, under the name the rest of the Array family
@@ -194,7 +208,7 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       group: 'Actions',
       displayName: 'Refresh',
       valueChangedToTrue: function (this: FilterCollectionInstance) {
-        this.scheduleFilter();
+        this.requestFilter();
       }
     }
   },
@@ -240,6 +254,19 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       group: 'Events',
       type: 'signal',
       displayName: 'Filtered'
+    },
+    failure: {
+      group: 'Events',
+      type: 'signal',
+      displayName: 'Failure'
+    },
+    error: {
+      group: 'Events',
+      type: 'string',
+      displayName: 'Error',
+      getter: function (this: FilterCollectionInstance) {
+        return this._internal.lastError;
+      }
     }
   },
   prototypeExtensions: {
@@ -303,23 +330,93 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       if (!filterSettings['filterEnableLimit']) return;
       else return (filterSettings['filterSkip'] as number) || 0;
     },
+    /**
+     * NDA-004 §2 — the family's genuinely mixed case, and what makes the `Failure` port safe.
+     *
+     * `scheduleFilter` is reached six ways: the `Filter` and `Refresh` signals, and — only when
+     * `filter` is *not* wired — the `items` setter, the `enabled` setter, any `filter…` setting
+     * arriving, and the source collection's own change callback. The last four are value
+     * arrivals, so failing in the scheduler would report on the ordinary boot path: this is the
+     * Object node's trap, in a node that also has a real `Do`.
+     *
+     * The distinction the register asked for therefore exists already, in inverted form — every
+     * value-arrival path is guarded by `isInputConnected('filter') === false`. What was missing
+     * was a record of *which* kind of run this is, and that is all `filterRequested` is.
+     */
+    requestFilter: function (this: FilterCollectionInstance) {
+      this._internal.filterRequested = true;
+      this.scheduleFilter();
+    },
+    reportFailure: function (this: FilterCollectionInstance, code: string, message: string, detail?: unknown) {
+      const internal = this._internal;
+      internal.lastError = message;
+      this.flagOutputDirty('error');
+
+      // Deduped by message, re-armed by the next good run — Expression's shape, and it matters
+      // more here: a `regex` value can be *wired*, so an author typing one produces a run per
+      // keystroke and most of the intermediate values are malformed.
+      if (internal.lastReportedError === message) return;
+      internal.lastReportedError = message;
+
+      this.raiseRuntimeError(code, message, detail);
+      this.sendSignalOnOutput('failure');
+    },
     scheduleFilter: function (this: FilterCollectionInstance) {
       if (this.collectionChangedScheduled) return;
       this.collectionChangedScheduled = true;
 
       this.scheduleAfterInputsHaveUpdated(() => {
         this.collectionChangedScheduled = false;
-        if (!this._internal.collection) return;
+
+        const requested = this._internal.filterRequested === true;
+        this._internal.filterRequested = false;
+
+        if (!this._internal.collection) {
+          // Silent unless an author asked. Without the `requested` test this fires while the
+          // graph boots, every time an `enabled` default or a filter setting lands before the
+          // array does — which is the whole reason this node was left ⏳ when its five siblings
+          // were decided.
+          if (requested) {
+            this.reportFailure(
+              'array-filter/no-items',
+              'Nothing to filter — no array is connected to the Items input'
+            );
+          }
+          return;
+        }
 
         // Apply filter and write to output collection
         let filtered: ModelLike[] = [].concat(this._internal.collection.items); // Make sure we clone the array
 
         if (this._internal.enabled) {
           const filter = this.getFilter();
-          if (filter) filtered = filtered.filter((m) => applyFilter(m.data, filter));
-
           const sort = this.getSort();
-          if (sort) filtered.sort(sorter.bind(sort));
+          try {
+            if (filter) filtered = filtered.filter((m) => applyFilter(m.data, filter));
+            if (sort) filtered.sort(sorter.bind(sort));
+          } catch (e) {
+            /**
+             * The failure the triage did not predict, and the more damaging of the two.
+             *
+             * `applyFilter` builds a `RegExp` from the author's `Value` port on every item, so a
+             * malformed pattern — `[`, a stray `(` — throws *out of this scheduled callback*. It
+             * lands in `nodecontext.ts`'s blanket catch, which only `console.error`s, so the rest
+             * of this node's update pass is abandoned and the sole diagnosis is an unstructured
+             * console line with no code and no provenance. Clear Array's shape (an uncaught
+             * `TypeError`), reachable here from an ordinary typo in a text field — and the Value
+             * port is connectable, so a wire can deliver one too.
+             *
+             * Not gated on `requested`: a pattern that cannot compile is wrong whenever it
+             * arrives, and unlike "no array yet" it is never a state the graph passes through on
+             * its way to working.
+             */
+            this.reportFailure(
+              'array-filter/filter-failed',
+              'The filter could not be applied: ' + ((e as Error).message || String(e)),
+              { filter, sort }
+            );
+            return;
+          }
 
           const skip = this.getSkip();
           if (skip) filtered = filtered.slice(skip, filtered.length);
@@ -327,6 +424,10 @@ const FilterCollectionNode: NodeDefinitionOptions = {
           const limit = this.getLimit();
           if (limit) filtered = filtered.slice(0, limit);
         }
+
+        // A run that got here worked. Re-arm the dedup so the *next* occurrence of the same
+        // message is announced again rather than swallowed as a repeat.
+        this._internal.lastReportedError = undefined;
 
         this._internal.filteredCollection = Collection.create(filtered);
 
