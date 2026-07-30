@@ -83,6 +83,24 @@ const ColumnsNode: ReactNodeDefinition = {
       },
       default: 'layoutString'
     },
+    // NDA-006 §4. Separate from `Column Sizing` on purpose: packing is not a way of deciding how
+    // many columns there are, it is what happens to the items once they have one. So masonry
+    // composes with `Auto Fit` and with the breakpoints below instead of competing with them —
+    // an item is in column `i % columnAmount` and is exactly as wide either way, and Masonry only
+    // stops each wrap line from aligning to the tallest item in it. Ordering stays row-major as
+    // authored; see `computeMasonryOffsets` for what that rules out.
+    packing: {
+      group: 'Layout Settings',
+      displayName: 'Item Packing',
+      type: {
+        name: 'enum',
+        enums: [
+          { label: 'Rows', value: 'rows' },
+          { label: 'Masonry', value: 'masonry' }
+        ]
+      },
+      default: 'rows'
+    },
     // Container width, not viewport width — see `pickBreakpointLayout`. A breakpoint with no
     // layout beside it does nothing, so half-configuring these is inert rather than surprising.
     mediumBreakpoint: {

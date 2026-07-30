@@ -22,6 +22,8 @@ import {
   Columns,
   calcAutoFit,
   calcAutofold,
+  computeColumnOffsets,
+  computeMasonryOffsets,
   parseLayout,
   partitionColumnChildren,
   pickBreakpointLayout,
@@ -233,11 +235,142 @@ describe('NDA-006: Repeaters among the children', () => {
   // rendered into markup, and reconciliation needs a DOM to observe: there is no jsdom and no
   // `react-test-renderer` in this package. What is pinned here is the fact the fix rests on
   // — that each child arrives carrying a stable key of its own, so `key={child.key ?? i}` has
-  // something to use. That the remount storm is gone is owed to live QA, and is recorded as
-  // owed in PROGRESS.md rather than quietly counted as covered.
+  // something to use.
+  // **The fix itself was live-verified 2026-07-30** (`8913a6fb`) by holding DOM references
+  // across a Repeater row removal in the running editor: with the fix the surviving wrappers
+  // and inputs are the same elements by `===`, and with `key={i}` restored the tail is
+  // replaced by elements that did not exist before. The per-instance `input-<guid>` class is
+  // *not* a usable witness — the guid is minted in the node's `initialize()`, and a React
+  // remount does not recreate the node.
   test('B4 (precondition): every wrapped child carries a stable key of its own', () => {
     const { children } = partitionColumnChildren([item('a'), item('b')]);
 
     expect(children.map((child) => child.key)).toEqual(['a', 'b']);
+  });
+});
+
+/**
+ * NDA-006 §4 — masonry.
+ *
+ * The packing itself needs measured heights, which `testEnvironment: node` cannot produce, so it is
+ * split the way the implementation is: `computeMasonryOffsets` and `computeColumnOffsets` are pure
+ * and asserted directly, and the render path is asserted for the things that *are* visible in
+ * markup — that the child list stays flat and in source order, that the widths are the ones Rows
+ * mode would give, and that the unmeasured pass is ragged rows rather than a blank or a pile of
+ * absolutely-positioned items at `top: 0`.
+ *
+ * ⚠️ **The wiring between them — `ResizeObserver` → offsets → `position: absolute` — is owed to
+ * live QA, and criterion 5 asks for it anyway.** Recorded rather than counted as covered, for the
+ * same reason B4 is.
+ */
+describe('NDA-006 §4: masonry', () => {
+  const itemOrder = (markup: string) => (markup.match(/data-item="([^"]+)"/g) || []).map((m) => m.slice(11, -1));
+  const widths = (markup: string) => (markup.match(/width:([^;"]+)/g) || []).map((m) => m.slice(6).trim());
+
+  // Item `i` is in column `i % columnAmount`, and its `top` is the running total of the heights
+  // already in that column. Nothing is reordered and nothing is balanced.
+  test('D1: items round-robin across the columns, and stack within one', () => {
+    // Three columns; heights 10..60 in source order.
+    const { tops } = computeMasonryOffsets([10, 20, 30, 40, 50, 60], 3);
+
+    // 0,1,2 open their columns; 3 sits under 0, 4 under 1, 5 under 2.
+    expect(tops).toEqual([0, 0, 0, 10, 20, 30]);
+  });
+
+  // The container has no in-flow children once packed, so its height has to be stated. The
+  // tallest column is the answer; the *sum* would leave a hole the height of the whole list under
+  // the node, and the average would clip it.
+  test('D2: the packed height is the tallest column, not the sum', () => {
+    const { height } = computeMasonryOffsets([10, 20, 30, 40, 50, 60], 3);
+
+    // Columns are 10+40, 20+50, 30+60.
+    expect(height).toBe(90);
+  });
+
+  // A single column is not a degenerate case to guard against — it is what the small breakpoint
+  // asks for (`smallLayout: '1'`), so the phone layout of every masonry node goes through here.
+  test('D3: one column stacks everything in source order', () => {
+    expect(computeMasonryOffsets([10, 20, 30], 1)).toEqual({ tops: [0, 10, 30], height: 60 });
+  });
+
+  // Out-of-flow items have to be told where they are horizontally. Rows mode never needs this
+  // because each wrap line puts an item after the last one, which is why getting it from anywhere
+  // other than the resolved layout would let the widths and the positions disagree.
+  test('D4: column offsets are the running total of the fractions before them', () => {
+    // '1 2 1' → 25% / 50% / 25%, so the columns start at 0, 25 and 75.
+    const { layout, fractionSize } = resolveColumnLayout('1 2 1', { sizing: 'layoutString' } as never, null);
+
+    expect(computeColumnOffsets(layout, fractionSize)).toEqual([0, 25, 75]);
+  });
+
+  // The design claim, in markup: switching Rows → Masonry does not move an item to a different
+  // column and does not change its width. Only the row alignment goes away.
+  test('D5: masonry gives an item the same width Rows mode gives it', () => {
+    const children = ['a', 'b', 'c', 'd'].map(item);
+
+    expect(widths(renderColumns(children, { layoutString: '1 2 1', packing: 'masonry' }))).toEqual(
+      widths(renderColumns(children, { layoutString: '1 2 1', packing: 'rows' }))
+    );
+  });
+
+  // The row that discriminates against the two implementations that were rejected. CSS `columns`
+  // and a `<div>` per column both emit the children column-major — a,d,b,e,c,f for three columns —
+  // and the second one also changes an item's parent when an earlier item is removed, which is the
+  // remount storm slice 2 fixed. A flat list in source order is what rules both out.
+  test('D6: the children stay one flat list, in source order', () => {
+    const markup = renderColumns(['a', 'b', 'c', 'd', 'e', 'f'].map(item), {
+      layoutString: '1 1 1',
+      packing: 'masonry'
+    });
+
+    expect(itemOrder(markup)).toEqual(['a', 'b', 'c', 'd', 'e', 'f']);
+    expect(markup).not.toContain('column-strip');
+  });
+
+  // A server render never gets a `ResizeObserver` callback, so masonry has no heights there — and
+  // neither does the first client frame. It renders as ragged top-aligned rows: the layout the
+  // node means without measurement. `visibility: hidden` until measured is what slice 1 removed
+  // for painting blank through the whole of SSR/SSG, and `position: absolute` with no offsets
+  // would pile every item at `top: 0`, which is worse than either.
+  test('D7: an unmeasured masonry render is top-aligned rows, not blank and not stacked at zero', () => {
+    const markup = renderColumns(['a', 'b'].map(item), { packing: 'masonry' });
+
+    expect(markup).toContain('align-items:flex-start');
+    expect(markup).not.toContain('position:absolute');
+    expect(markup).not.toContain('visibility:hidden');
+    expect(itemOrder(markup)).toEqual(['a', 'b']);
+  });
+
+  // Rows mode is what every existing project renders as, and `flex-start` there would silently
+  // stop wrap lines aligning — the change this row exists to catch.
+  test('D8 (control): Rows mode still stretches its wrap lines and stays in flow', () => {
+    const markup = renderColumns(['a', 'b'].map(item), { packing: 'rows' });
+
+    expect(markup).toContain('align-items:stretch');
+    expect(markup).not.toContain('position:relative');
+  });
+
+  // Masonry consumes the resolved column count rather than deciding one, which is what makes it
+  // compose with Auto Fit and the breakpoints instead of competing with them. Auto Fit at 900px
+  // over a 200px minimum is four columns, so a masonry pass over it round-robins across four.
+  test('D9: masonry packs whatever column count the sizing mode resolved', () => {
+    const { columnAmount } = resolveColumnLayout(
+      '1 2 1',
+      { sizing: 'autoFit', minWidth: '200px', marginX: '0px' } as never,
+      900
+    );
+
+    expect(columnAmount).toBe(4);
+    expect(computeMasonryOffsets([10, 10, 10, 10, 10], columnAmount).tops).toEqual([0, 0, 0, 0, 10]);
+  });
+
+  // A `ForEachComponent` renders `null` and is not a layout participant (B1–B3). It must not take
+  // a slot in the packing either, or every item after it is positioned one column over from the
+  // one whose width it was given.
+  test('D10: a Repeater takes no column in a masonry pack', () => {
+    const { children } = partitionColumnChildren([repeater('r'), item('a'), item('b')]);
+
+    expect(children.map((child) => child.key)).toEqual(['a', 'b']);
+    expect(itemOrder(renderColumns([repeater('r'), item('a'), item('b')], { packing: 'masonry' }))).toEqual(['a', 'b']);
   });
 });

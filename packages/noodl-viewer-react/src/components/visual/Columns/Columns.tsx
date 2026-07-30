@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback, isValidElement } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useCallback, isValidElement } from 'react';
 
 import { ForEachComponent } from '../../../nodes/std-library/data/foreach';
 import { Noodl, Slot } from '../../../types';
@@ -14,6 +14,9 @@ export interface ColumnsProps extends Noodl.ReactProps {
 
   /** `'layoutString'` uses the authored fractions; `'autoFit'` derives the count. */
   sizing: 'layoutString' | 'autoFit';
+
+  /** `'rows'` aligns each wrap line; `'masonry'` packs each column independently. */
+  packing: 'rows' | 'masonry';
 
   /** Container width below which `mediumLayout` applies, if both are set. */
   mediumBreakpoint: string;
@@ -227,8 +230,72 @@ export function partitionColumnChildren(slot: Slot): {
   };
 }
 
+/**
+ * Where each column starts, as a percentage — the running total of the fractions before it.
+ *
+ * Rows mode never needs this: the wrap lines put each item after the last one. Masonry takes the
+ * items out of flow, so their horizontal position has to be computed from the same resolved layout
+ * the widths come from, or the two disagree the moment a layout string is not all `1`s.
+ */
+export function computeColumnOffsets(layout: number[], fractionSize: number): number[] {
+  const lefts: number[] = [];
+  let fractionsSoFar = 0;
+
+  for (const fraction of layout) {
+    lefts.push(fractionsSoFar * fractionSize);
+    fractionsSoFar += fraction;
+  }
+
+  return lefts;
+}
+
+/**
+ * Masonry packing — NDA-006 slice 4. **Item `i` goes in column `i % columnAmount`.**
+ *
+ * That is the same assignment Rows mode makes (`layout[i % columnAmount]` sets the width), which is
+ * the whole design: switching Rows → Masonry never moves an item to a different column and never
+ * changes its width. It only stops each wrap line from aligning to the tallest item in it. So the
+ * ordering an author gets is **row-major, exactly as authored** — read left to right, wrap, repeat.
+ *
+ * Three alternatives were considered and rejected, each for a reason worth keeping:
+ *
+ * - **CSS `columns`** is the cheap answer and reorders the children *column-major* — items 1, 2, 3
+ *   run down the first column. For a list, which is what a Repeater produces, that is wrong.
+ * - **A `<div>` per column, with the items distributed into them**, needs no measurement at all and
+ *   was the obvious implementation. It reintroduces the defect slice 2 fixed: inserting or removing
+ *   one item shifts every later item's column, so an item changes *parent*, and React unmounts and
+ *   remounts it however it is keyed. Masonry over a Repeater is the request, a Repeater inserts and
+ *   removes, so the one structure that has to survive that is the one that would not. Keeping a flat
+ *   child list and moving items with `top`/`left` costs a measurement and keeps every item mounted.
+ * - **Shortest-column-first**, the balanced packing, makes an item's column depend on the heights
+ *   before it. With unequal fractions an item's width then depends on its column, its height on its
+ *   width, and the packing on its height — a feedback loop with no fixed point. Round-robin has
+ *   stable widths. The cost is that columns are **not** height-balanced, which is documented rather
+ *   than fixed.
+ *
+ * `heights` are the *outer* heights of the item wrappers, so each already carries its `marginY`
+ * gap as padding; the column totals therefore need no gap arithmetic of their own.
+ */
+export function computeMasonryOffsets(heights: number[], columnAmount: number) {
+  const columnHeights = new Array(Math.max(1, columnAmount)).fill(0) as number[];
+
+  const tops = heights.map((height, i) => {
+    const column = i % columnHeights.length;
+    const top = columnHeights[column];
+    columnHeights[column] = top + height;
+    return top;
+  });
+
+  return { tops, height: columnHeights.reduce((a, b) => Math.max(a, b), 0) };
+}
+
+function sameOffsets(a: { tops: number[]; height: number } | null, b: { tops: number[]; height: number }) {
+  return (
+    a !== null && a.height === b.height && a.tops.length === b.tops.length && a.tops.every((t, i) => t === b.tops[i])
+  );
+}
+
 export function Columns(props: ColumnsProps) {
-  if (!props.children) return null;
   let columnLayout = null;
 
   const containerRef = useRef(null);
@@ -257,6 +324,64 @@ export function Columns(props: ColumnsProps) {
     };
   }, []);
 
+  const { children, forEachComponents } = partitionColumnChildren(props.children);
+  const masonry = props.packing === 'masonry';
+
+  const itemElements = useRef<(HTMLDivElement | null)[]>([]);
+  // The resolved column count, for the measurement effect. It is derived below, after the hooks,
+  // because it depends on `containerWidth` — which is state, so it can only be read in render.
+  const columnAmountRef = useRef(1);
+  const [masonryOffsets, setMasonryOffsets] = useState<{ tops: number[]; height: number } | null>(null);
+
+  /**
+   * Measure the item wrappers and pack them.
+   *
+   * One `ResizeObserver` over every wrapper rather than one over the container: an item's height
+   * changes without the container's when an image finishes loading or text reflows, and that is
+   * exactly when a packed layout has to be recomputed. `useLayoutEffect` so the first packed frame
+   * lands before paint — the *unpacked* frame is still rendered, deliberately (see the fallback
+   * note in the render below), but it should not be visible for a frame longer than it must.
+   *
+   * Guarded by `sameOffsets` because setting the offsets re-renders, which re-runs this. Heights do
+   * not change between the unpacked and packed passes — `alignItems` is `flex-start` in masonry, so
+   * nothing was stretched to a row height in the first place — so the second reading equals the
+   * first and the loop stops there.
+   */
+  useLayoutEffect(() => {
+    if (!masonry) {
+      setMasonryOffsets(null);
+      return;
+    }
+
+    const measure = () => {
+      const elements = itemElements.current.slice(0, children.length);
+      if (elements.length !== children.length || elements.some((el) => !el)) return;
+
+      const next = computeMasonryOffsets(
+        elements.map((el) => el.offsetHeight),
+        columnAmountRef.current
+      );
+      setMasonryOffsets((previous) => (sameOffsets(previous, next) ? previous : next));
+    };
+
+    measure();
+
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(measure);
+    itemElements.current.slice(0, children.length).forEach((el) => el && observer.observe(el));
+
+    return () => observer.disconnect();
+    // `containerWidth` is a dependency because it is what can change `columnAmount`, and a
+    // different column count is a different packing of the same heights.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [masonry, children.length, containerWidth]);
+
+  // The node renders nothing without children. This used to be the first statement in the
+  // function, ahead of every hook — so a Columns node whose last child was deleted while the app
+  // was running changed its hook count and React threw. Live-editing a graph does exactly that.
+  if (!props.children) return null;
+
   switch (typeof props.layoutString) {
     case 'string':
       columnLayout = props.layoutString.trim();
@@ -275,8 +400,11 @@ export function Columns(props: ColumnsProps) {
   }
 
   const { layout, columnAmount, fractionSize } = resolveColumnLayout(columnLayout, props, containerWidth);
+  columnAmountRef.current = columnAmount;
 
-  const { children, forEachComponents } = partitionColumnChildren(props.children);
+  // Masonry needs the horizontal position too, because its items are out of flow.
+  const columnLefts = masonry ? computeColumnOffsets(layout, fractionSize) : null;
+  const packed = masonry && masonryOffsets !== null && masonryOffsets.tops.length === children.length;
 
   return (
     <div
@@ -291,33 +419,64 @@ export function Columns(props: ColumnsProps) {
         marginLeft: parseFloat(props.marginX) * -1,
         display: 'flex',
         flexWrap: 'wrap',
-        alignItems: 'stretch',
+        // Masonry's items must keep their natural height, both because that is the point and
+        // because the *unpacked* pass is what gets measured — `stretch` would report every item
+        // in a wrap line as being as tall as the tallest, and the packing would be built out of
+        // heights no item actually has.
+        alignItems: masonry ? 'flex-start' : 'stretch',
         justifyContent: props.justifyContent,
         flexDirection: props.direction,
         width: `calc(100% + (${parseFloat(props.marginX)}px)`,
         boxSizing: 'border-box',
+        // Every item is out of flow once packed, so the container has no content to size itself
+        // from. `position: relative` is what the items' percentage `left` resolves against.
+        ...(masonry ? { position: 'relative' as const } : null),
+        ...(packed ? { height: masonryOffsets.height } : null),
         ...props.style
       }}
     >
       {forEachComponents}
 
       {children.map((child, i) => {
+        const column = i % columnAmount;
+
         return (
           <div
-            className="column-item"
+            className={masonry ? 'column-item column-item--masonry' : 'column-item'}
             // The child's own key, not the index. Every visual node renders with a stable
             // `reactKey`; keying the wrapper by position discarded it, so a Repeater removing
             // or reordering one item made React re-key the whole tail — every following item
             // unmounted and remounted, losing focus, scroll, media playback and transitions.
             key={child.key ?? i}
+            // A flat, stably-keyed child list is why masonry moves items with `top`/`left`
+            // instead of distributing them into a `<div>` per column — see
+            // {@link computeMasonryOffsets}. The refs are only read in masonry mode.
+            ref={
+              masonry
+                ? (el: HTMLDivElement | null) => {
+                    itemElements.current[i] = el;
+                  }
+                : undefined
+            }
             style={{
               boxSizing: 'border-box',
               paddingTop: props.marginY,
               paddingLeft: props.marginX,
-              width: layout[i % columnAmount] * fractionSize + '%',
+              width: layout[column] * fractionSize + '%',
               flexShrink: 0,
               flexGrow: 0,
-              minWidth: props.minWidth
+              minWidth: props.minWidth,
+              // Until the heights are known — the first frame, and the whole of a server render,
+              // which never gets a `ResizeObserver` callback at all — masonry renders as ragged
+              // top-aligned rows. That is what the layout means without measurement, and it is the
+              // same deliberate reflow autofold makes rather than painting blank.
+              ...(packed
+                ? {
+                    position: 'absolute' as const,
+                    top: masonryOffsets.tops[i],
+                    left: columnLefts[column] + '%'
+                  }
+                : null)
               // maxWidths needs some more thought
               //maxWidth: getMinMaxInputValues(maxWidths, columnAmount, props.marginX, i)
             }}
