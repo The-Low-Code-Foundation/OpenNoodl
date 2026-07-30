@@ -26,9 +26,19 @@ const navigation: NavigationApi = {
   async showPopup(componentPath, params) {
     return new Promise((resolve) => {
       navigation._noodlRuntime.context.showPopup(componentPath, params, {
-        onClosePopup: (action: string, results: unknown) => {
+        // NDA-010 §3: a popup opened from script gets the same single-slot default as one
+        // opened from a Show Popup node. `Noodl.Navigation.showPopup` is awaited, so a
+        // dismissal has to settle the promise or the caller waits for ever.
+        onDismissPopup: () => {
+          resolve({ action: 'dismissed', parameters: {} });
+        },
+        onClosePopup: (action: string | undefined, results: unknown) => {
           resolve({
-            action: action.replace('closeAction-', ''),
+            // `action` is undefined for a plain close — only a Close Popup node with a named
+            // close action supplies one. `undefined.replace` threw a TypeError out of the
+            // close handler, so every scripted popup closed with the ordinary Close crashed
+            // here rather than resolving.
+            action: action ? action.replace('closeAction-', '') : '',
             parameters: results
           });
         }

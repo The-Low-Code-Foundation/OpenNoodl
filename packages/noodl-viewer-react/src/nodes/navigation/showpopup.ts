@@ -8,12 +8,16 @@ import type {
   NodeModule
 } from '@noodl/types';
 
+/** @see {@link NodeContext.showPopup} — the runtime owns the policy, this node selects it. */
+type PopupStackPolicy = 'replace' | 'stack';
+
 interface ShowPopupInstance extends NodeInstance {
   _internal: {
     popupParams: Record<string, unknown>;
     closeResults: Record<string, unknown>;
     target?: string;
     hasScheduledShow?: boolean;
+    stackPolicy?: PopupStackPolicy;
   };
   scheduleShow(): void;
   show(): void;
@@ -39,6 +43,21 @@ const ShowPopupNode: NodeDefinitionOptions = {
         this._internal.target = value;
       }
     },
+    stackPolicy: {
+      type: {
+        name: 'enum',
+        enums: [
+          { label: 'Replace It', value: 'replace' },
+          { label: 'Show On Top', value: 'stack' }
+        ]
+      },
+      displayName: 'When A Popup Is Open',
+      group: 'General',
+      default: 'replace',
+      set: function (this: ShowPopupInstance, value: PopupStackPolicy) {
+        this._internal.stackPolicy = value === 'stack' ? 'stack' : 'replace';
+      }
+    },
     show: {
       type: 'signal',
       displayName: 'Show',
@@ -51,6 +70,11 @@ const ShowPopupNode: NodeDefinitionOptions = {
   outputs: {
     Closed: {
       type: 'signal'
+    },
+    Dismissed: {
+      type: 'signal',
+      displayName: 'Dismissed',
+      group: 'Events'
     }
   },
   methods: {
@@ -76,6 +100,15 @@ const ShowPopupNode: NodeDefinitionOptions = {
 
       this.context.showPopup(this._internal.target, this._internal.popupParams, {
         senderNode: this.nodeScope.componentOwner,
+        stackPolicy: this._internal.stackPolicy ?? 'replace',
+        // NDA-010 §3. Separate from `Closed` on purpose: this popup went away because
+        // another one replaced it, which is not the user finishing with it. An author's
+        // `Closed` branch is where the save-or-commit work goes, and running it for an
+        // interaction that never happened is worse than the stacking this policy fixes.
+        // There are no close results, because nothing in the popup produced any.
+        onDismissPopup: () => {
+          this.sendSignalOnOutput('Dismissed');
+        },
         onClosePopup: (action: string | undefined, results: Record<string, unknown>) => {
           this._internal.closeResults = results;
 

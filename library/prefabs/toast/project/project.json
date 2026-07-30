@@ -102,6 +102,7 @@
                         "x": 81.5,
                         "y": -2.5,
                         "parameters": {
+                            "stackPolicy": "stack",
                             "target": "/Show Toast/Toast Component"
                         },
                         "ports": [],

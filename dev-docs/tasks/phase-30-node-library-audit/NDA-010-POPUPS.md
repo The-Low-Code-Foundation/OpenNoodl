@@ -111,6 +111,23 @@ popup node so that it actually works" — and it is the same defect class as Par
 
 ## §3 — A stack policy
 
+> **Status: §3 complete — 2026-07-30.** The recommendation below was adopted: one modal slot by
+> default (`When A Popup Is Open` → `Replace It`), `Show On Top` as the per-node opt-in. Three
+> things the section did not anticipate:
+>
+> 1. **The policy cannot live on the node.** Two Show Popup nodes cannot see each other, so the
+>    only place that can arbitrate is the `NodeContext` they share. NDA-001's F2 row asserted the
+>    opposite — that the second `context.showPopup` call never happens — and had to be reconciled.
+> 2. **The slot has to be claimed synchronously**, before `showPopup`'s first `await`. Two calls in
+>    one update pass both run to that point before either resumes, so any check made after
+>    `createNode` sees an empty stack in both and stacks them anyway.
+> 3. **A replaced popup gets `Dismissed`, not `Closed`.** `Closed` is where an author puts the
+>    save-or-commit work; firing it for a popup that was superseded runs that branch for an
+>    interaction that never happened. Same reasoning as NDA-004's `Cancelled` on Open File Picker.
+>
+> Migrated: the **toast** and **loading-spinner** prefabs opt into `Show On Top`. They are overlays,
+> not modals — with the new default, showing a spinner would have closed an open modal.
+
 `scheduleShow` coalesces within a single update pass
 ([`showpopup.ts:63-73`](../../../packages/noodl-viewer-react/src/nodes/navigation/showpopup.ts#L63-L73))
 but two passes, or two different Show Popup nodes, stack two popups. There is no "already showing"

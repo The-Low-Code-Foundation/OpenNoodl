@@ -65,6 +65,7 @@
                         "x": 301.9709826726816,
                         "y": 260.2677808484063,
                         "parameters": {
+                            "stackPolicy": "stack",
                             "target": "/Loading Spinner/Loader Component"
                         },
                         "ports": [],

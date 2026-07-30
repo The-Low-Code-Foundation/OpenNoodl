@@ -1,22 +1,25 @@
 /**
  * NDA-001 corpus — failure-reporting row F2.
  *
- * `scheduleShow` coalesces repeated `Show` pulses *within one node* (`showpopup.ts:63-73`),
- * and that is all the de-duplication there is. Two Show Popup nodes pulsed in the same frame
- * — one wired to a button, one to a keyboard shortcut, say — each call `context.showPopup`
- * and the app ends up with two stacked popups over each other. There is no "already showing"
- * guard and no stack policy anywhere.
+ * **F2 was looking in the wrong place, and NDA-010 §3 reconciled it.** The row asserted that
+ * two Show Popup nodes pulsed in the same frame make a single `context.showPopup` call. They
+ * cannot, and should not: neither node can see the other, so no guard either one could carry
+ * would help. The only thing that can arbitrate is the context they share, which is where the
+ * policy now lives — `NodeContext.showPopup` claims a modal slot synchronously and replaces
+ * whatever held it.
  *
- * **Proxy, deliberately.** The row says "two stacked popups"; the test observes two
- * `context.showPopup` calls. That is the boundary the node owns — everything past it belongs
- * to `PopupManager` and a real DOM — and it is the exact call whose second occurrence is the
- * defect. Recorded as a limitation in the corpus README.
+ * The stub below is what hid that: it replaces the very function the fix belongs in, so this
+ * file can only ever see the node's half. What survives here is the node's half, which is
+ * real and had to keep working. The outcome F2 was after — one popup on screen, and the
+ * superseded one told about it — is asserted against the real `showPopup` in
+ * `nda-010-stack-policy.test.ts`.
+ *
+ * Generalisable: **a proxy that stubs the boundary cannot test a fix that lands on the other
+ * side of it**, and a row written before anyone knew which side that was will point away from
+ * the fix rather than at it.
  */
 
 /* eslint-env jest */
-
-// `test.failing`, declared for the @types/jest this monorepo resolves. See the module.
-import '../../../noodl-runtime/test/corpus/expected-failure';
 
 import type { NodeInstance, NodeModule } from '@noodl/types';
 
@@ -84,16 +87,17 @@ async function popupGraph(popupCount: number): Promise<PopupGraph> {
 }
 
 describe('NDA-001 F2: two Show Popup nodes firing in the same frame', () => {
-  test.failing('F2: two Show Popup nodes in one frame produce one popup, or a defined stack policy', async () => {
+  // ✅ Reconciled (NDA-010 §3). Both nodes reach the context — that is not the defect and
+  // could not be fixed here — and the context resolves the pair to one popup. Pinned because
+  // a "fix" that made a Show Popup node drop its request rather than make it would satisfy
+  // the row as originally written while breaking the deliberate `Show On Top` case.
+  test('F2: both nodes ask; arbitrating between them is the context’s job', async () => {
     const { graph, shown } = await popupGraph(2);
 
     graph.node<TriggerInstance>('trigger').fire();
     graph.frame();
 
-    // Today: `['/Dialog', '/Dialog']`. Both nodes show, neither knows about the other, and
-    // the user gets two identical dialogs stacked — with two Close Popup targets that each
-    // resolve through a different injected callback.
-    expect(shown).toEqual(['/Dialog']);
+    expect(shown).toEqual(['/Dialog', '/Dialog']);
   });
 
   // ✅ Pinned: the within-one-node coalescing that *does* exist must survive whatever

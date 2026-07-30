@@ -81,8 +81,19 @@ interface NodeContext extends RuntimeNodeContext {
   setDebugInspectorsEnabled(enabled: boolean): void;
   sendGlobalEventFromEventSender(channelName: string, inputValues: unknown): void;
   setPopupCallbacks(callbacks: { onShow: (group: any) => void; onClose: (group: any) => void }): void;
+  /** Open popups, oldest first. At most one entry unless a node opts into `'stack'`. */
+  popupStack: PopupStackEntry[];
+  _dismissOpenPopups(): void;
   showPopup(popupComponent: string, params: Record<string, unknown>, args?: any): Promise<void>;
   setWarningTypes(warningTypes: Record<string, boolean>): void;
+}
+
+/** One open popup. `group` is unset until the popup has actually reached the viewer. */
+interface PopupStackEntry {
+  group?: any;
+  dismissed: boolean;
+  /** Close this popup implicitly, because something replaced it. */
+  dismiss(): void;
 }
 
 interface NodeContextArgs {
@@ -127,6 +138,8 @@ const NodeContext = function NodeContext(this: NodeContext, args?: NodeContextAr
   this.timerScheduler = new TimerScheduler(this.scheduleUpdate.bind(this));
 
   this.componentModels = {};
+  /** Open popups, oldest first. See {@link NodeContext.showPopup} and the stack policy. */
+  this.popupStack = [];
   this.debugInspectorsEnabled = false;
   this.connectionsToPulse = {};
   this.connectionsToPulseChanged = false;
@@ -561,12 +574,78 @@ NodeContext.prototype.setPopupCallbacks = function ({ onShow, onClose }) {
   this.onClosePopup = onClose;
 };
 
+/**
+ * Close every popup currently open, telling each one why.
+ *
+ * `dismiss` is the *implicit* path — a popup going away because another one replaced it,
+ * not because anything in its graph asked it to. It is reported separately from a real
+ * close for that reason: an author's `Closed` branch means "the user finished with this
+ * dialog", and firing it for a popup that was superseded (or that never got as far as being
+ * drawn) would run a save-or-commit branch for an interaction that did not happen.
+ */
+NodeContext.prototype._dismissOpenPopups = function () {
+  // Copy: each `dismiss` splices the entry it owns out of `popupStack`.
+  const open = this.popupStack.slice();
+  for (const entry of open) {
+    entry.dismiss();
+  }
+};
+
+/**
+ * Show a popup, subject to the stack policy.
+ *
+ * **The policy exists because there was none.** `scheduleShow` coalesces repeated pulses
+ * within one Show Popup node and that was the whole of the de-duplication: two Show Popup
+ * nodes pulsed in the same frame — a button and a keyboard shortcut, say — each landed here
+ * and the user got two identical dialogs stacked, each with its own close callback. NDA-010
+ * §3 settles it as **one modal slot by default** (`args.stackPolicy === 'replace'`), with
+ * `'stack'` as an explicit per-node opt-in for the cases that really do layer, such as a
+ * confirmation over an open editor.
+ *
+ * The slot is claimed **synchronously**, before the first `await`. Two calls in one update
+ * pass both run to that point before either resumes, so a check made after `createNode` would
+ * see an empty stack in both and stack them anyway — the exact defect, moved.
+ */
 NodeContext.prototype.showPopup = async function (popupComponent, params, args) {
   if (!this.onShowPopup) return;
 
   const nodeScope = this.rootComponent.nodeScope;
 
+  const entry = {
+    group: undefined,
+    dismissed: false,
+    dismiss: () => {
+      if (entry.dismissed) return;
+      entry.dismissed = true;
+
+      const index = this.popupStack.indexOf(entry);
+      if (index !== -1) this.popupStack.splice(index, 1);
+
+      // A popup dismissed before its group reached the viewer was never drawn; there is
+      // nothing to tear down but the node, and that is handled where the await resumes.
+      if (entry.group) {
+        this.onClosePopup(entry.group);
+        nodeScope.deleteNode(entry.group);
+      }
+
+      args && args.onDismissPopup && args.onDismissPopup();
+    }
+  };
+
+  if ((args?.stackPolicy ?? 'replace') === 'replace') {
+    this._dismissOpenPopups();
+  }
+  this.popupStack.push(entry);
+
   const popupNode = await nodeScope.createNode(popupComponent);
+
+  if (entry.dismissed) {
+    // Replaced while this one was still being built. Nothing was shown, so nothing is
+    // closed — but the node exists and would otherwise leak, along with everything its
+    // component scope created.
+    nodeScope.deleteNode(popupNode);
+    return;
+  }
   for (const inputKey in params) {
     popupNode.setInputValue(inputKey, params[inputKey]);
   }
@@ -602,6 +681,13 @@ NodeContext.prototype.showPopup = async function (popupComponent, params, args) 
       //avoid double callbacks
       if (!nodeScope.hasNodeWithId(group.id)) return;
 
+      // This popup is closing on its own terms, so it leaves the stack without being
+      // dismissed — `entry.dismissed` marks it spoken-for so a later replace does not also
+      // report it as superseded.
+      entry.dismissed = true;
+      const index = this.popupStack.indexOf(entry);
+      if (index !== -1) this.popupStack.splice(index, 1);
+
       this.onClosePopup(group);
       nodeScope.deleteNode(group);
       args && args.onClosePopup && args.onClosePopup(action, results);
@@ -620,6 +706,7 @@ NodeContext.prototype.showPopup = async function (popupComponent, params, args) 
     }
   }
 
+  entry.group = group;
   this.onShowPopup(group);
 
   requestAnimationFrame(() => {

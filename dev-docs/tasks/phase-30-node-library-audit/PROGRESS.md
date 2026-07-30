@@ -16,7 +16,7 @@
 | NDA-007 Icon sets | 2 | 🔄 §1 done | Model at [`ICON-SOURCE-MODEL.md`](../../reference/ICON-SOURCE-MODEL.md) — tagged union (`font`/`sprite`/`inline`), sanitise-at-registration policy decided (no existing viewer policy existed to match; checked) |
 | NDA-008 Component Stack | 2 | ✅ **Done — all four sections** | **The stack does not scroll** — zero `focus()` calls and zero px moved across navigate/replace/useRoutes, measured. The scroll is browser focus-scroll into the viewer's `overflow: hidden` app root (`viewer.jsx:344-353`), triggered by the library's only DOM focus, `TextInput` (`text-input.ts:211-214`). **Richard chose "Both" (2026-07-29): fix the box, keep the feature.** Applied as `overflow: clip` on the app root — `clip` creates no scroll container at all, where `hidden` creates one only the *browser* can scroll. `TextInput` keeps its plain `.focus()`, so a deliberate `Focus` still scrolls the nearest genuinely-scrollable ancestor. Measured live on the same element in one session: `hidden` 0 → **1762 px**, `clip` 0 → **0 px**. §1 done: replace animates through the same `Transitions` machinery, defaulting to `None` so no existing project starts moving; the `// Only push mode have transition` gate is gone. §3 done: `Popped`/`Failure`/`Error` and **three** codes, not two — the unbriefed one is `transition-in-progress`, i.e. a double-tapped back button used to lose its second tap. **§2 done 2026-07-29**: re-selecting the page already on top used to re-mount it in *both* modes, and push also pushed a duplicate entry (depth 1 → 2), so every click on the active tab lost its state and grew a stack Back had to walk back through. The no-op is **params-aware** — same component with different params is the master→detail idiom and must keep pushing — and replace additionally requires depth 1, since on a deeper stack it still has collapsing to do. `hasNavigated` still fires, or a re-selected tab would be a dead button. **NDA-008 is complete** |
 | NDA-009 Run Tasks | 2 | ⬜ Not started | §1 alone closes corpus F1 |
-| NDA-010 Popups | 2 | 🔄 **§2 done** | Close Popup now *pulls*: `showPopup` publishes `_popupCloseHandler` on the popup instance and the node walks up to it, so it works from anywhere in the popup's tree — 7 corpus rows, shown to discriminate. Criterion 2 met. **⚠️ §1's premise is partly stale**: `showpopup.ts:129-177` already derives typed `popupParam-*` from the target's input ports and `closeResult-*`/`closeAction-*` from its Close Popup nodes. The real gaps are the hand-typed `results`/`closeActions` on the *Close Popup* side and untyped (`*`) results — re-scoped in the spec. §3 (stack policy, corpus F2) untouched |
+| NDA-010 Popups | 2 | 🔄 **§2 done** | Close Popup now *pulls*: `showPopup` publishes `_popupCloseHandler` on the popup instance and the node walks up to it, so it works from anywhere in the popup's tree — 7 corpus rows, shown to discriminate. Criterion 2 met. **⚠️ §1's premise is partly stale**: `showpopup.ts:129-177` already derives typed `popupParam-*` from the target's input ports and `closeResult-*`/`closeAction-*` from its Close Popup nodes. The real gaps are the hand-typed `results`/`closeActions` on the *Close Popup* side and untyped (`*`) results — re-scoped in the spec. **§3 done 2026-07-30** — one modal slot by default (`When A Popup Is Open` → `Replace It`), `Show On Top` as the opt-in. The policy lives in `NodeContext.showPopup`, not on the node, because two Show Popup nodes cannot see each other — which is why **F2's expectation was reconciled, not satisfied**. The slot is claimed *before* the first `await` or the race just moves. A replaced popup gets a new **`Dismissed`** signal rather than `Closed`, on NDA-004's Open-File-Picker reasoning. Also fixed: `Noodl.Navigation.showPopup` called `undefined.replace` on every ordinary close. Criterion 1 met; **§1 remains**, and this unblocks NDA-004 §2's ⏳ item 3 (Show Popup) |
 | NDA-014 Type dead ends | 2 | 🔄 §1+§2 done | Decision at [`PORT-TYPE-CONTRACT.md`](../../reference/PORT-TYPE-CONTRACT.md) (A now, C direction). Table changed (`object`/`array`/`color` → `string`), JSON mirror added in `setInputValue`, catalog + register regenerated, runtime jest green (1,026), editor suite green (1,885 specs incl. validator/catalog-index). Outstanding: live editor check of the 13 `object` outputs |
 | NDA-015 Explicit binding | 2 | ✅ **Done + live-verified**; class F tail closed | All three sections. Clause (b) ships as a node-card sub-label over a new `nodesublabel` message — **not** CAN-001/002, which are wire labels, and **not** `metadata.typeLabelOverride`, which is persisted. §3: the FIXME was load-bearing and its own comment described what `scheduleAfterUpdate` already does. **Class F tail closed 2026-07-29**: `_forEachModel`'s 5 sites now resolve through `runtime/src/foreachitem.ts` (FINDINGS F-ii), and the de-duplication this task claimed was **only 1 of 4 call sites** — the other three were still hand-rolled with divergent type lists, which had a *reader and a writer* of the same state landing on different components (FINDINGS F-i′). 34 corpus rows total |
 | NDA-016 `Layout.size` | 2 | ✅ **Done** | **§0 resolved: the spec's premise was wrong.** `sizeMode` is never unset — a fresh Text node carries `contentHeight`/`100%`, read live. The real defect is a stale `parentLayout`: children bake the parent's layout in at *their* render, `renderChildren` memoises them, and the Layout setter never invalidated the memo — so a layout change never reached the children, and the first child ate the row. Fixed with `setLayout` as the single writer. §1 built too, on its own terms (an abstaining *connection* can still unset the port). 10 regression tests; 15-node-type live blast-radius check. Criterion 4's screenshot corpus is an instrument mismatch — see the spec |
@@ -64,6 +64,51 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-07-30 (NDA-010 §3 — the popup stack policy)** — settled as the spec recommended, **one
+  modal slot by default**, with `Show On Top` as a per-node opt-in. Done ahead of NDA-004 §2's ⏳
+  item 3, which is sequenced behind this decision; that item is now unblocked.
+
+  **Where the policy had to live, and why F2 pointed away from it.** NDA-001's F2 row asserted that
+  two Show Popup nodes pulsed in one frame make a *single* `context.showPopup` call. They cannot.
+  Neither node can see the other, so no guard either one carries would help — the only thing that
+  can arbitrate is the `NodeContext` they share. The row could not have found that, because its
+  proxy **stubs `context.showPopup`**, which is the function the fix belongs in. Generalisable:
+  *a proxy that stubs a boundary cannot test a fix on the other side of it*, and a row written
+  before anyone knew which side that was will point away from the fix rather than at it. F2 is
+  reconciled and now pins the node's half — both nodes ask — with the outcome asserted against the
+  real `showPopup` in `nda-010-stack-policy.test.ts`.
+
+  **The slot is claimed synchronously, before the first `await`,** and that is the whole
+  correctness argument. `showPopup` awaits `createNode`, so two calls in one update pass both run
+  to that point before either resumes; a check made after `createNode` sees an empty stack in
+  *both* and stacks them anyway. The revert that moves the `popupStack.push` three lines down
+  reddens exactly the two same-frame rows and leaves the two-frame row green — the race, isolated.
+
+  **A replaced popup gets `Dismissed`, not `Closed`.** `Closed` is where an author puts the
+  save-or-commit work, and firing it for a popup that was superseded — often before it was ever
+  drawn — runs that branch for an interaction that did not happen. Same shape as NDA-004's
+  `Cancelled` on Open File Picker: a legitimate non-failure outcome that already had a signal it
+  was being conflated with. A popup dismissed before its group reached the viewer also has its node
+  deleted on the way out, or the component scope it built leaks.
+
+  **A second defect on the same path, unrelated to stacking**: `Noodl.Navigation.showPopup` did
+  `action.replace('closeAction-', '')`, and `action` is `undefined` for an ordinary close — only a
+  *named* close action supplies one. So every scripted popup closed the normal way threw a
+  TypeError out of the close handler instead of resolving its promise. The awaited API never
+  returned. Guarded, and the dismissal path resolves too, or the caller waits for ever.
+
+  **Migration (criterion 4).** Four library prefabs use Show Popup, one node each, so the default
+  changes nothing for three of them. **Toast and loading-spinner opt into `Show On Top`** — they
+  are overlays, not modals, and under the new default showing a spinner would have closed an open
+  modal. That is the one case where "accidental stacking is the problem, deliberate stacking is
+  rare" does not hold, and it is worth remembering that the rare case was sitting in the library.
+
+  5 corpus rows, 5 reverts, each reddening only its own. Viewer jest **298**, runtime jest 1,105
+  passing. ⚠️ Two failures in `nda-004-user-auth-error-channel.test.ts` are the **other session's
+  uncommitted work**, not this: that file is untracked and `user.ts`/`setuserproperties.ts` are
+  mid-edit. Catalog regeneration still owed — `stackPolicy` and `Dismissed` are live in the register
+  but not in the generated JSON snapshot. Live QA owed.
 
 - **2026-07-30 (NDA-006 slices 1+2 — Columns)** — run alongside NDA-004 in a second session, on
   disjoint files. Seven defects in one 180-line component, and the task's own headline defect was
