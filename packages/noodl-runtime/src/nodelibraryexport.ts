@@ -609,7 +609,7 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike) {
         },
         {
           name: 'System',
-          items: ['Screen Resolution', 'Open File Picker']
+          items: ['Screen Resolution', 'Open File Picker', 'On App Error']
         },
         {
           name: 'Variables',

@@ -61,6 +61,8 @@ const OnAppErrorNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Filter',
       group: 'General',
+      description:
+        'Only errors whose Code starts with this text are reported; leave blank to catch every error in the app',
       // A code prefix, matched against the raised `code` — `'run-tasks'` catches every
       // failure Run Tasks can report, `'run-tasks/no-completion-output'` catches exactly
       // one. Empty means everything, which is the useful default for a boundary.
@@ -73,12 +75,14 @@ const OnAppErrorNode: NodeDefinitionOptions = {
     error: {
       type: 'signal',
       displayName: 'Error',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when an error passes the Filter, after every value output below has been updated to describe it'
     },
     message: {
       type: 'string',
       displayName: 'Message',
       group: 'General',
+      description: 'Human-readable account of what went wrong, safe to reword between releases — match on Code instead',
       getter: function (this: OnAppErrorNodeInstance) {
         return this._internal.last ? this._internal.last.message : undefined;
       }
@@ -87,6 +91,7 @@ const OnAppErrorNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Code',
       group: 'General',
+      description: 'Stable kebab-case identifier for this kind of error, namespaced by node type, as in run-tasks/task-failed',
       getter: function (this: OnAppErrorNodeInstance) {
         return this._internal.last ? this._internal.last.code : undefined;
       }
@@ -95,6 +100,7 @@ const OnAppErrorNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Node Id',
       group: 'Source',
+      description: 'Graph id of the node that raised the error, or <runtime> when it was raised outside any node',
       getter: function (this: OnAppErrorNodeInstance) {
         return this._internal.last ? this._internal.last.nodeId : undefined;
       }
@@ -103,6 +109,7 @@ const OnAppErrorNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Component Name',
       group: 'Source',
+      description: 'Component the failing node sits in, or <runtime> when the error was raised outside any node',
       getter: function (this: OnAppErrorNodeInstance) {
         return this._internal.last ? this._internal.last.componentName : undefined;
       }
@@ -111,6 +118,7 @@ const OnAppErrorNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Node Type',
       group: 'Source',
+      description: 'Kind of node that raised the error, or <runtime> when it was raised outside any node',
       getter: function (this: OnAppErrorNodeInstance) {
         return this._internal.last ? this._internal.last.nodeType : undefined;
       }
@@ -119,6 +127,7 @@ const OnAppErrorNode: NodeDefinitionOptions = {
       type: 'object',
       displayName: 'Error Object',
       group: 'General',
+      description: 'The whole error event as one record, for logging it or sending it to an error-reporting service',
       // The whole structured event, for authors who want to log it or send it somewhere.
       // Wireable to a string input thanks to NDA-014's object -> string cast, which renders
       // it as JSON (PORT-TYPE-CONTRACT.md). Named `Error Object` rather than the contract's

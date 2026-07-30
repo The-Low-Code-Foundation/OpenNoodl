@@ -68,6 +68,7 @@ export type NodeTypeName =
   | 'Number'
   | 'Number Blend'
   | 'Number Remapper'
+  | 'On App Error'
   | 'Open File Picker'
   | 'Options'
   | 'Or'

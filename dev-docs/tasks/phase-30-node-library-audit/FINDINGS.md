@@ -1170,6 +1170,43 @@ masonry tops `0,0,0,40,90,60,160`, container height **230** — exactly what the
 
 ---
 
+## `On App Error` was registered but not in the picker — found by regenerating the catalog (2026-07-30)
+
+**The catch-all half of the Failure Contract could not be added to a graph.** NDA-004 §1 built
+`On App Error`, Richard confirmed it as one of the contract's two halves, and criterion 2 measured it
+receiving structured events in a deployed browser build and in SSG. It was never in the editor's
+add-node picker, so the only way an author could get one was to hand-write `project.json`.
+
+`nodelibraryexport.ts`'s `coreNodes` is a **curated index, not a projection of the register**. The two
+are maintained separately, registering a node type does not offer it, and this one was only ever done
+on the register side. Every measurement in the phase that found the node working found it in a fixture
+whose graph a script had written — which is why nothing had noticed.
+
+This is the criterion-2 trap one level further down. That one said *a criterion can be met through a
+surface the author has to opt into*: the deployed-browser and SSG legs passed because the fixture
+happened to contain an `On App Error` node, while an ordinary app got nothing. Here the opt-in surface
+**could not be opted into at all**. The generalisation worth carrying: when a fix's user-facing half is
+"the author adds a node", check that the author can add the node, and check it through the picker
+rather than through a fixture.
+
+**It took a catalog regeneration to become visible**, and only as a derived field: `inNodePicker` comes
+from `coreNodes` (`build-catalog.js:186`), and one query over the regenerated catalog lists four
+non-deprecated types reading `false`. The other three are legitimate — `Page` is created through the
+Router flow, `net.noodl.user.RequestMagicLink` and `net.noodl.user.SignInWith` through the sign-in
+flow. That is a reusable query, and it is the registry-side companion to NDA-011 criterion 3's
+duplicate-label sweep: **ask the catalog which nodes exist and cannot be created, and which can be
+created and read the same.**
+
+Fixed by adding it to the `System` sub-category of `Logic & Utilities`, beside `Screen Resolution` and
+`Open File Picker`. Three rows in
+[`nda-004-on-app-error-reachable.test.ts`](../../../packages/noodl-runtime/test/corpus/nda-004-on-app-error-reachable.test.ts);
+the revert reddens the first and leaves both controls green. The control matters more than usual here:
+`toContain` over a list of ~130 names passes for almost anything, so a second row asserts a registered
+type that is *deliberately* absent (the deprecated `Cloud Function`) — without it the row cannot tell
+"the index offers this node" from "the index offers everything", which is exactly the defect.
+
+---
+
 ## What these passes did *not* cover
 
 - **142 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No
