@@ -84,6 +84,13 @@ predictions.
 
 **Utilities (1):** Delay. A timer that runs cannot fail.
 
+### ⏳ Not yet decided — one item left, and it is a policy question
+
+**Criterion 4 is met for every node that is a coding task.** As of 2026-07-30 the only entry not
+struck through is **item 9, the deprecated five**, which is a decision for Richard about whether
+deprecated nodes are in scope at all — not something an implementer should settle. Everything
+above it is ✅ or 🔵 on evidence.
+
 ### ⏳ Not yet decided (not read) — where the next pass should go
 
 Ordered by expected yield, highest first. Every one of these takes a signal and acts:
@@ -99,8 +106,12 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
    (the node never reads the file). And there was a third failure the prediction did not have: a
    `change` with an empty `FileList` fired `Success` with all five outputs `undefined`, having
    discarded the file already picked.
-3. **Show Popup** — a target component that does not resolve. Overlaps NDA-010 §3 (stack policy),
-   so sequence it after that decision rather than before.
+3. ~~**Show Popup**~~ — **done 2026-07-30, ✅**, after NDA-010 §3 landed. The prediction was
+   right and missed which *kind* of problem it is: `getComponentModel` **throws** for an
+   unregistered name, and `showPopup` is `async` with its promise dropped, so a Target pointing
+   at a deleted component was an **unhandled rejection**, not a silence. The deeper point is that
+   every outcome this node had — `Closed`, `Dismissed`, the close actions — was an outcome of a
+   popup that *opened*, so "never opened" and "not finished with yet" were the same observable.
 4. ~~**Push Component To Stack / Navigate**~~ — **done 2026-07-30, both ✅.** The prediction
    named one drop and there were **five**, split across two files neither node ever heard back
    from. The one the prediction missed matters most: the *transitioning* guard is the same case
@@ -117,10 +128,16 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
    frame — the three mutators had **three different wrong answers** to it (editor-only warning,
    total silence, and an uncaught `TypeError`), and underneath all three sat the
    `Collection.get(undefined)` false success: `Done` reported for a write into a throwaway. That is
-   the second confirmed instance of that trap in a second registry. **`Array Filter` remains ⏳**
-   and is the mixed case — its scheduler is reached from author signals *and* from a value setter,
-   so it needs the trigger distinguished before it can raise.
-7. **Filter Records, State History, Stream Buffer, Set Variable, Repeater Item.**
+   the second confirmed instance of that trap in a second registry. `Array Filter` was left ⏳ as
+   the mixed case and **closed 2026-07-30** — see the struck bullet below.
+7. ~~**Filter Records, State History, Stream Buffer, Set Variable, Repeater Item**~~ — **done
+   2026-07-30**: four ✅, one 🔵. Five nodes grouped only by "nobody has read these yet", with
+   four different answers. **Set Variable** is the phase's worst shape in one of its simplest
+   nodes — `Model.set(undefined, value)` wrote a key literally named `undefined` and fired
+   `Done`, the *third* confirmed false-success instance. **Repeater Item** was the **sixth**
+   hand-rolled `_forEachModel` read, missed by the NDA-015 sweep that converged the other five —
+   in the node named after the mechanism. **State History** is 🔵 because its `storeName` setter
+   normalises absent to `'app'`, and it shares a family with two ✅ siblings.
 8. ~~**Component Object family** (4, plus 3 deprecated twins)~~ — **done 2026-07-30.** The
    prediction was "the cheapest remaining ✅s, because the resolution and the message already
    exist". It was half right: that described `Parent Component Object` exactly, and was wrong
@@ -142,23 +159,23 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 8 | Aggregate Records | Cloud Services | 1/3 |  |  | 0% | — | cloud |  |
 | 9 | Cloud File | Cloud Services | 1/2 |  |  | 0% | safe | browser, cloud |  |
 | 10 | Cloud Function _(deprecated)_ | Cloud Services | 3/3 |  |  | 0% | safe | browser |  |
-| 11 | Cloud Function | Cloud Services | 1/3 |  |  | 0% | safe | browser |  |
+| 11 | Cloud Function | Cloud Services | 1/3 |  |  | 0% | safe | browser | ✅ NDA-004 §2 / FINDINGS B-iv — `setError` posted **nowhere**: the message reached the `Error` port and stopped. `cloud-function/call-failed`. `doCall`'s own warnings are a separate, editor-only report and stay |
 | 12 | Config | Cloud Services | 0/0 |  |  | 100% | safe | browser, cloud |  |
-| 13 | Log In | Cloud Services | 3/3 |  |  | 0% | safe | browser |  |
+| 13 | Log In | Cloud Services | 3/3 |  |  | 0% | safe | browser | ✅ NDA-004 §2 / FINDINGS B-iv — ports were always right, diagnosis was editor-only. Raises `user/log-in-failed`; ten sibling auth nodes moved in the same batch, each with its own `user/<operation>-failed` |
 | 14 | Log Out | Cloud Services | 1/3 |  |  | 0% | safe | browser |  |
 | 15 | Model _(deprecated)_ | Cloud Services | 8/9 |  |  | 0% | safe | browser |  |
 | 16 | Query Collection _(deprecated)_ | Cloud Services | 0/8 |  |  | 0% | safe | browser |  |
-| 17 | Query Records | Cloud Services | 0/7 |  |  | 0% | safe | browser, cloud |  |
+| 17 | Query Records | Cloud Services | 0/7 |  |  | 0% | safe | browser, cloud | ✅ NDA-004 §2 / FINDINGS B-iv — `setError` posted nowhere at all. `query-records/query-failed` |
 | 18 | Record | Cloud Services | 3/5 |  |  | 0% | safe | browser, cloud | 🔵 NDA-004 §2 — its `scheduleStore` is dead code (nothing calls it); its `setModel` guard is the class-F path, already reported by `foreachitem.ts` |
 | 19 | Request Magic Link | Cloud Services | 3/3 |  |  | 0% | partial | browser |  |
 | 20 | Request Password Reset _(deprecated)_ | Cloud Services | 2/3 |  |  | 0% | safe | browser |  |
 | 21 | Reset Password _(deprecated)_ | Cloud Services | 4/3 |  |  | 0% | safe | browser |  |
 | 22 | Send Email Verification _(deprecated)_ | Cloud Services | 2/3 |  |  | 0% | safe | browser |  |
 | 23 | Set User Properties | Cloud Services | 3/3 |  |  | 0% | safe | browser, cloud |  |
-| 24 | Sign File URL | Cloud Services | 2/7 |  |  | 0% | safe | browser, cloud |  |
+| 24 | Sign File URL | Cloud Services | 2/7 |  |  | 0% | safe | browser, cloud | ✅ NDA-004 §2 / FINDINGS B-iv — `setError` posted nowhere at all. `sign-file-url/sign-failed`, with the status on `detail` |
 | 25 | Sign In With | Cloud Services | 3/5 |  |  | 0% | partial | browser |  |
 | 26 | Sign Up | Cloud Services | 4/3 |  |  | 0% | safe | browser |  |
-| 27 | Upload File | Cloud Services | 3/9 |  |  | 0% | safe | browser |  |
+| 27 | Upload File | Cloud Services | 3/9 |  |  | 0% | safe | browser | ✅ NDA-004 §2 / FINDINGS B-iv — `setError` posted nowhere at all. `upload-file/upload-failed` |
 | 28 | User | Cloud Services | 1/8 |  |  | 0% | partial | browser, cloud |  |
 | 29 | Verify Email _(deprecated)_ | Cloud Services | 3/3 |  |  | 0% | safe | browser |  |
 | 30 | Component Inputs | Component Utilities | 0/0 |  |  | 100% | safe | browser, cloud |  |
@@ -179,7 +196,7 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 45 | Add Record Relation | Data | 4/4 |  |  | 13% | safe | browser, cloud | ✅ NDA-004 §2 — `validateInputs` returned early with no editor connection, so **deployed it validated nothing** and the caller then hit two bare `return`s. Now returns the verdict and the caller fails through `setError` |
 | 46 | Array _(deprecated)_ | Data | 9/8 | ⚠️ |  | 0% | safe | browser |  |
 | 47 | Array | Data | 3/6 | ⚠️ |  | 0% | safe | browser | 🔵 NDA-004 §2 — its `Id` input is a value arriving, not a `Do`; a `Failure` would fire on the boot path. Its only action, `Fetch`, yields the node's own array, which is a legitimate result. The Object node's answer |
-| 48 | Array Filter | Data | 3/4 | ⚠️ |  | 0% | safe | browser | ⏳ NDA-004 §2 — the family's mixed case. `scheduleFilter` is reached from the `Filter`/`Refresh` signals *and* from the `enabled` setter and the collection-change callback, so a raise there fires on the boot path. Needs the trigger distinguished first |
+| 48 | Array Filter | Data | 3/4 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error` and **two** failures where the triage predicted one. `array-filter/no-items` (a `Do` with nothing on Items) is gated on a `filterRequested` flag, because five of the scheduler's six callers are value arrivals; `array-filter/filter-failed` is not, because a `RegExp` built from the author's `Value` port threw out of a scheduled callback whenever it arrived. The trigger distinction the register asked for was **already in the source** as `isInputConnected('filter')` |
 | 49 | Array Map | Data | 2/3 |  |  | 0% | safe | browser |  |
 | 50 | Clear Array | Data | 2/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error`, `clear-array/no-array`. Had **no guard at all**: `collection.set([])` on `undefined` threw a `TypeError` out of a scheduled callback |
 | 51 | Create New Array | Data | 2/2 | ⚠️ |  | 0% | safe | browser | 🔵 NDA-004 §2 — builds its own collection (`Collection.get()` with no name), so it cannot fail to find one. Correctly carries no `Failure`, and a corpus row pins the absence |
@@ -188,7 +205,7 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 54 | Create Record | Data | 1/6 |  |  | 0% | safe | browser |  |
 | 55 | Delete Record | Data | 3/4 |  |  | 14% | safe | browser, cloud |  |
 | 56 | Delete Record | Data | 1/4 |  |  | 0% | safe | browser |  |
-| 57 | Filter Records | Data | 3/4 | ⚠️ |  | 0% | safe | browser, cloud |  |
+| 57 | Filter Records | Data | 3/4 | ⚠️ |  | 0% | safe | browser, cloud | ✅ NDA-004 §2 — Array Filter's twin, read rather than assumed to be one: same six trigger paths, same guard, same bare return. `filter-records/no-items` and `filter-records/filter-failed` |
 | 58 | Global Store | Data | 4/6 |  |  | 0% | safe | browser, cloud |  |
 | 59 | HTTP Request | Data | 3/7 |  |  | 0% | safe | browser |  |
 | 60 | Insert Object Into Array | Data | 3/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error`, `insert-into-array/no-array` and `/no-object-id`. Both branches were `sendWarning` + bare `return` behind an editor-only guard |
@@ -200,22 +217,22 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 66 | Query Data | Data | 1/8 |  |  | 0% | safe | browser |  |
 | 67 | Remove Object From Array | Data | 3/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error`, `remove-from-array/no-array` and `/no-object-id`. Two bare `return`s: no diagnosis in any runtime, including the editor |
 | 68 | Remove Record Relation | Data | 4/4 |  |  | 13% | safe | browser, cloud | ✅ NDA-004 §2 — twin of Add Record Relation |
-| 69 | Repeater Item | Data | 1/3 | ⚠️ |  | 0% | safe | browser |  |
+| 69 | Repeater Item | Data | 1/3 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 / NDA-015 — the **sixth** hand-rolled `_forEachModel` read, missed by the sweep that converged the other five. Now uses `resolveForEachItem`, so it takes the scope chain (a Repeater Item nested one component deep resolves) and raises `repeater-item/no-item-in-scope` once instead of handing out an undefined Item Id for ever |
 | 70 | REST | Data | 6/3 |  |  | 0% | safe | browser, cloud |  |
 | 71 | Run Tasks | Data | 6/4 |  |  | 0% | safe | browser, cloud | ✅ NDA-004 — raises `run-tasks/no-completion-output` and ends the run instead of hanging (corpus F1/F1′). NDA-009 §1 still owes the editor-time check |
 | 72 | Server-Sent Events | Data | 17/17 |  |  | 18% | client-only | browser, cloud |  |
 | 73 | Set Global Store | Data | 6/2 |  |  | 0% | safe | browser, cloud |  |
 | 74 | Set Object Properties | Data | 4/2 | ⚠️ |  | 0% | safe | browser, cloud | ✅ NDA-004 §2 — `Failure`/`Error` and `set-object-properties/no-object`. `Do` with no object bound wrote nothing and said nothing. Raises in `explicit` mode only; in `foreach` mode `foreachitem.ts` already raised the precise reason, and the graph surface fires either way |
 | 75 | Set Record Properties | Data | 6/4 |  |  | 10% | safe | browser, cloud | ✅ NDA-004 §2 — the two branches of `Store Type` disagreed: `cloud` answered a missing Id with `setError`, `local` returned silently. Same node, same author mistake, and whether they heard about it depended on an enum |
-| 76 | Set Variable | Data | 3/1 | ⚠️ |  | 0% | safe | browser |  |
-| 77 | State History | Data | 6/8 | ⚠️ |  | 29% | safe | browser, cloud |  |
-| 78 | State Snapshot | Data | 5/6 |  |  | 9% | safe | browser, cloud |  |
+| 76 | Set Variable | Data | 3/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — **it reported `Done` for a write nothing could read.** `Model.set(undefined, value)` neither throws nor no-ops: it writes a key literally named `undefined` on the shared variables record. Third confirmed instance of the false-success shape, reached by not filling in a field. `set-variable/no-name`, empty string included; refuses to write as well as reporting |
+| 77 | State History | Data | 6/8 | ⚠️ |  | 29% | safe | browser, cloud | 🔵 NDA-004 §2 — its `storeName` setter normalises absent/empty to `'app'`, so there is no target it can fail to find. Its one action always has a real store name and `historyChanged` is a notification, not an action completion. **Two ✅ siblings in the same family** (rows 78, 84); a corpus row pins the absence of the port |
+| 78 | State Snapshot | Data | 5/6 |  |  | 9% | safe | browser, cloud | ✅ NDA-004 §2 / FINDINGS B-iv — had *no* channel and *no* `Failure` port: an author could wire `Saved` and had nothing to sequence off a failure, only an `Error` string to poll. `state-snapshot/operation-failed`, guarded on a defined message because `setError(undefined)` is how every success path clears |
 | 79 | Static Array | Data | 3/2 |  |  | 0% | safe | browser |  |
-| 80 | Stream Buffer | Data | 7/8 | ⚠️ |  | 20% | partial | browser, cloud |  |
-| 81 | Subscribe To Changes | Data | 0/10 |  |  | 0% | client-only | browser |  |
+| 80 | Stream Buffer | Data | 7/8 | ⚠️ |  | 20% | partial | browser, cloud | ✅ NDA-004 §2 — `Add` with nothing on `Data` returned bare. `stream-buffer/no-data`. `Flush`/`Clear` on an empty buffer deliberately do **not** report: a timed flush with nothing to send is a legitimate empty result, Open File Picker's `Cancelled` question answered the other way |
+| 81 | Subscribe To Changes | Data | 0/10 |  |  | 0% | client-only | browser | ✅ NDA-004 §2 / FINDINGS B-iv — `console.warn` and **no `Failure` port**. Survives deployment, unlike the editor channel, but unstructured, no code, invisible to `On App Error`. Now `subscribe-to-changes/realtime-failed` plus the port |
 | 82 | Subscribe to Store | Data | 2/4 |  |  | 17% | safe | browser, cloud |  |
 | 83 | Text Accumulator | Data | 6/13 |  |  | 16% | safe | browser, cloud |  |
-| 84 | Undo / Redo | Data | 5/6 |  |  | 0% | safe | browser, cloud |  |
+| 84 | Undo / Redo | Data | 5/6 |  |  | 0% | safe | browser, cloud | ✅ NDA-004 §2 / FINDINGS B-iv — twin of row 78. `undo/operation-failed`. Four existing test assertions read `expect(signals).toEqual([])` while being named "reports an out-of-range jump"; they encoded the defect, not the claim |
 | 85 | Update Record | Data | 1/5 |  |  | 0% | safe | browser |  |
 | 86 | Variable _(deprecated)_ | Data | 4/5 | ⚠️ |  | 0% | safe | browser |  |
 | 87 | Variable | Data | 3/4 | ⚠️ |  | 0% | safe | browser |  |
@@ -241,7 +258,7 @@ Ordered by expected yield, highest first. Every one of these takes a signal and 
 | 107 | Page Inputs | Navigation | 2/0 |  |  | 0% | safe | browser |  |
 | 108 | Pop Component Stack | Navigation | 3/0 |  | ⚠️ | 0% | safe | browser | ✅ NDA-004 §3 — done in NDA-008 §3 (`0db1d770`), not pending: `Popped`/`Failure`/`Error` and `reportFailure` raising on the bus (`navigate-back.ts:63-80,133-138`). **This row said ⏳ until 2026-07-30** — the work landed under another task's commit and nobody came back to the register. A `void` return from `backCallback` counts as success on purpose |
 | 109 | Push Component To Stack | Navigation | 3/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — `Failure`/`Error` for five drops: three guards in `navigateAsync` and the same three copied into `replaceAsync`. Reported via a `hasFailed` callback because the stack's `asyncQueue` outlives the caller's frame; the *node* owns the port, NDA-008 §3's decision for `back()` |
-| 110 | Show Popup | Navigation | 2/1 | ⚠️ |  | 0% | safe | browser |  |
+| 110 | Show Popup | Navigation | 2/1 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §2 — every outcome it had was a *later* one, so a popup that never opened looked like one the user had not finished with. `show-popup/no-target`, and `show-popup/target-failed` for the **unhandled promise rejection**: `showPopup` is `async` and `getComponentModel` throws for an unregistered name, which the node dropped. Residual: a runtime with no popup host resolves successfully having done nothing |
 | 111 | Device Orientation _(deprecated)_ | Sensors | 0/3 |  |  | 0% | client-only | browser |  |
 | 112 | String Format | String Manipulation | 1/1 |  |  | 0% | safe | browser, cloud |  |
 | 113 | Substring | String Manipulation | 3/1 |  |  | 0% | safe | browser, cloud |  |
