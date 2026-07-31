@@ -22,7 +22,9 @@ adapter replaces**), and `on`/`off` (events, implemented once in `AdapterEvents`
 ### 1.2 There is no external Parse Server *(known — now resolved)*
 
 Step 5 demands a live pass against one and none existed in the repo or the rig. **Decision
-2026-07-31: stand one up.** A `parse` profile on the uba-e2e compose file — see §4.
+2026-07-31: stand one up.** `parseplatform/parse-server:7.3.0` on Mongo 7, a `parse` profile
+on the [uba-e2e compose file](../phase-16-runtime-deploy-health/uba-e2e/). It found three
+wrong descriptor cells and one defect in our own client — see §6.
 
 ### 1.3 ⚠️ The record-identity criterion points the wrong way *(found here)*
 
@@ -146,4 +148,140 @@ Every one of these is a candidate for a **separate** commit, deliberately not ta
 | Contract surface | 12 new tests in `test/backends/parse-wire-adapter.test.ts` |
 | Suites | Runtime 1255 passing / 13 skipped; contract 36 passing |
 
-**None of that is the live pass**, which is §6 and is not optional.
+**None of that is the live pass**, which is §6.
+
+---
+
+## 6. The live pass
+
+Two halves, because the two transports are different code and only one of them runs in Node.
+
+### 6.1 Headless, both wires — 40 checks
+
+[`bcn-002-parse-driver.ts`](../phase-16-runtime-deploy-health/uba-e2e/bcn-002-parse-driver.ts)
+bundles the **real `ParseWireAdapter`** from the runtime sources and drives it against
+`nodegx-backend` and upstream `parse-server:7.3.0`. Recorded run:
+[`BCN-002-PARSE-WIRE-OUTPUT.txt`](../phase-16-runtime-deploy-health/uba-e2e/BCN-002-PARSE-WIRE-OUTPUT.txt).
+
+This is the **fetch** branch — the cloud runtime's. It covers BCN-002 step 5's list (query
+with a filter, create, save, delete, addRelation, uploadFile, signFileUrl) plus count,
+distinct, aggregate, increment, fetch, the adapter events, and `records.js`.
+
+The four failures in the recorded run are all upstream Parse refusing things it documents
+itself as refusing. The `nodegx` column is clean.
+
+### 6.2 Browser XHR, in the real editor
+
+The driver cannot reach the XHR branch — Node has no `XMLHttpRequest` — and that branch is
+the one every viewer runs. So: the editor, the Backend Services panel, its own SQLite
+backend started from the panel, and the real `Noodl.Records` API driven in the preview
+window over CDP.
+
+```
+create              -> id ec34c950-…  title "browser xhr"
+query(equalTo)      -> 2 row(s)
+count(greaterThan)  -> 2
+save                -> title now "edited in the browser"
+increment           -> views=7
+aggregate(sum)      -> {"total":10}
+fetch               -> title="edited in the browser"
+delete              -> 0 row(s) remain
+```
+
+Every value propagated into the `Model` objects the nodes read, and the renderer logged no
+errors. That exercises project metadata → `CloudStore._handle()` → the XHR branch → the
+fourteen methods, in the real app.
+
+### 6.3 What the live pass does *not* establish
+
+Stated plainly, because a live pass that overclaims is worse than none.
+
+**Node signal ordering was not A/B'd against a pre-change build.** §6.2 drives the API the
+nodes call, not the nodes themselves, so "the Query Records node fires `fetched` at the same
+moment it used to" rests on the adapter being byte-faithful and on the runtime suite's node
+corpus, not on a before/after measurement. The right instrument exists — RUN-001's
+[corpus harness](../phase-16-runtime-deploy-health/corpus/) diffs probe event *ordering*,
+DOM and screenshots — but it compares runtime *versions*, not builds, and pointing it at two
+builds is a harness change this task did not make.
+
+**`noodl-preview` cannot host a data-node pass at all.** `loader.ts:205` passes
+`environment: null` deliberately, so a local preview never inherits a backend. Worth knowing
+before someone tries it: `probe-cloud-query` under `noodl-preview` issues
+`POST undefined/classes/Message` and renders its placeholder — which is correct behaviour,
+not a regression, and is what the old code did too.
+
+---
+
+## 7. Two defects found, both fixed in their own commits
+
+Per BCN-002's own rule that a behaviour-change commit inside a no-behaviour-change task
+destroys the only signal the task produces.
+
+### 7.1 A missing master key was sent as the four-letter string `undefined`
+
+`203469c7`. `Object.assign({'X-Parse-Master-Key': masterKey, …})` with no master key
+produces a property whose value is `undefined`. **`JSON.stringify` drops that; `new Headers()`
+keeps it**, as the literal text. So a cloud runtime with no baked `_noodl_cloudservices` —
+a configuration `globals.d.ts` describes explicitly — sent
+`X-Parse-Master-Key: undefined` on every request. `nodegx-backend` counts each as a failed
+credential attempt and **locks the caller out for 300 seconds**, so the symptom is not a 401
+on one call, it is a backend that stops answering.
+
+Pre-existing in `cloudstore.js`. Found on the live pass's *first run* and reachable by
+nothing else in the repo: every unit suite takes the XHR branch, and upstream Parse ignores
+a master key it does not recognise rather than rejecting it. **The one server that fails
+loudly here is our own.**
+
+The XHR branch had the same hole for a narrower input — `masterKey` is optional on
+`_noodl_cloudservices` — and is guarded too.
+
+### 7.2 The moved wire has to carry its own ambients
+
+`37d23adb`. Two viewer suites failed to *compile*: nine `TS2304`s on the `typeof` guards
+around the two runtime globals. `src/globals.d.ts` has always declared them, and that was
+enough while the wire was `.js` — never typechecked, and passed through untransformed by
+consumers' `ts-jest`. A `.ts` file is compiled by each consumer with *their* tsconfig, where
+this package's ambients are out of scope. `noodl-viewer-react/tsconfig.json` already carries
+a long comment about this exact failure; PLAT-003 slice 13 reverted seven modules to it.
+
+Fixed with a triple-slash reference so the file carries its own ambients. **Not** with
+`globalThis._noodl_cloudservices`, which would satisfy the compiler and quietly break the
+deploy bundles — webpack's DefinePlugin substitutes the *identifier*, and a property access
+is not a substitution site.
+
+Caught only by running **every** package suite. The runtime's own program was green
+throughout.
+
+---
+
+## 8. What the descriptor gained
+
+| Backend | Change |
+|---|---|
+| `parse` | Aggregate and distinct refusals **measured**, in the server's own words (`unauthorized: master key is required`), settling BCN-001 §0.2's separate-columns argument. Three file cells corrected (§1.4 of the phase notes and the commit). The rest of the data and relation cells upgraded from documented to probed |
+| `nodegx` | Thirteen cells from read-in-the-handler to driven-live. The six that were **not** driven — `data.acl`, `data.search`, the two pointer/relation reads, `files.private`, `files.progress` — keep their old evidence and say so |
+
+Contract suite 36 → 40, with the three corrected cells pinned by name.
+
+---
+
+## 9. Suites
+
+| Package | Result |
+|---|---|
+| `@noodl/runtime` | 1256 passed, 13 skipped |
+| `@noodl/backend-contract` | 40 passed |
+| `@noodl/nodegx-backend` | 728 passed, 10 skipped |
+| `@noodl/noodl-viewer-react` | 367 passed *(347 before — two suites could not run)* |
+| `@noodl/cloud-runtime` | 57 passed *(52 before)* |
+| `@noodl/preview` / `@noodl/noodl-core-ui` | 14 / 44 passed |
+| `noodl-editor` (Jasmine) | 1894 specs, 0 failures |
+
+⚠️ **`@noodl/mcp` fails one test** (`create_component validates, writes and updates the
+registry` — `validate_project` reports 3 errors where it expects 0). **Pre-existing**:
+verified by checking out the pre-BCN-002 tree for `noodl-runtime` and
+`nodegx-backend-contract` and re-running, which fails identically. Unowned.
+
+⚠️ **The TSFixme ratchet is RED** at `+26 TSFixme` / `+26 any`, inherited from other
+sessions' viewer and editor test work. None of the growing files are this task's, and it is
+**not** re-baselined.

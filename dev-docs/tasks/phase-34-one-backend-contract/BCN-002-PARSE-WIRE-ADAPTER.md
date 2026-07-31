@@ -14,6 +14,15 @@
 | **Branch** | commit directly to `cline-dev` |
 | **Recommended executor** | 🟠 **Opus 4.8** — a mostly-mechanical move, with a diagnosis step (the nine Parse-concept leaks) that is not |
 
+> ⚠️ **Four premises below are wrong. Read
+> [BCN-002-NOTES.md §1](./BCN-002-NOTES.md) before executing anything here.**
+> In short: the contract has **14** methods, not 18; the record-identity criterion
+> points the wrong way (the contract's neutral id name is `objectId`, and
+> normalisation runs *towards* it); the external Parse server the live pass needs
+> did not exist and was stood up as the rig's `parse` profile; and three of the
+> contract's own file-method shapes turned out to be wrong. **BCN-002 is complete
+> as of 2026-07-31** — this file is kept as the original brief.
+
 ## Objective
 
 Move the existing Parse-wire implementation behind `IDataAdapter` as `ParseWireAdapter`, with **zero
@@ -61,6 +70,7 @@ that must move into the adapter before another backend rides the same code path.
    Supabase and PocketBase return `id` under a schema-declared primary key. The contract exposes one
    name. This is the single highest-leverage normalisation in the phase and it belongs here, in the
    first adapter, where it can be proven against a backend that already works.
+   ⚠️ *Corrected:* that one name is **`objectId`**, not `id` — see NOTES §1.3.
 5. **No node file changes behaviour.** Import paths may change; port definitions, signal ordering and
    output shapes may not.
 
@@ -80,14 +90,23 @@ that must move into the adapter before another backend rides the same code path.
 
 ## Success Criteria
 
-- [ ] `ParseWireAdapter` implements the full 18-method contract; no second live copy of the request layer.
-- [ ] All nine Parse-concept references are triaged, with the disposition of each recorded.
-- [ ] Record identity is normalised at the boundary, and a test asserts a node sees `id` for a Parse
-      record whose wire payload said `objectId`.
-- [ ] **No node file's observable behaviour changed** — same ports, same signals, same output shapes.
-- [ ] Live pass green against `nodegx-backend` *and* an external Parse server.
-- [ ] Server-side `records.js` paths verified in the cloud runtime, not just the browser.
-- [ ] Runtime and editor suites green.
+- [x] `ParseWireAdapter` implements the full ~~18~~ **14**-method contract; no second live copy of the
+      request layer. *(`DATA_ADAPTER_METHODS` asserts the count; a test asserts the adapter's public
+      surface adds nothing beyond it and `currentUserId`.)*
+- [x] All nine Parse-concept references are triaged, with the disposition of each recorded.
+      *(Seven neutral, two moved — NOTES §3. A tenth leak was found and handed to BCN-003.)*
+- [x] Record identity is normalised at the boundary. ⚠️ **Criterion amended** — a node sees
+      **`objectId`**, which is what the contract shipped; the `id`→`objectId` direction BCN-004 needs
+      is tested too. NOTES §1.3.
+- [x] **No node file's observable behaviour changed** — same ports, same signals, same output shapes.
+      *Partially evidenced: the adapter is byte-faithful, no call site moved, `cloudstore-files.test.ts`
+      is untouched and passes, and every suite is green. Signal ordering was not A/B'd against a
+      pre-change build — NOTES §6.3 says so plainly.*
+- [x] Live pass green against `nodegx-backend` *and* an external Parse server — 40 checks, plus a
+      browser-XHR round trip in the real editor. NOTES §6.
+- [x] Server-side `records.js` paths verified in the cloud runtime, not just the browser.
+- [x] Runtime and editor suites green — and every other package's, which is what caught the second
+      defect. NOTES §9.
 
 ## Out of Scope
 
