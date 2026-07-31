@@ -1,5 +1,6 @@
 import NoodlRuntime from '@noodl/runtime';
 import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import { parseSessionStore } from '@noodl/runtime/src/api/backends/SessionStore';
 
 /**
  * The cloud services block of the project's metadata. See the note on the same interface
@@ -55,15 +56,16 @@ function _makeRequest(path: string, options: RequestOptions): void {
     xhr.setRequestHeader('x-noodl-cloud-version', cloudServices.deployVersion);
   }
 
-  // Check for current users
-  const _cu = localStorage['Parse/' + options.appId + '/currentUser'];
-  if (_cu !== undefined) {
-    try {
-      const currentUser = JSON.parse(_cu);
-      xhr.setRequestHeader('X-Parse-Session-Token', currentUser.sessionToken);
-    } catch (e) {
-      // Failed to extract session token
-    }
+  // Check for current users.
+  //
+  // BCN-006: through `SessionStore`, which is the same object the data wire and
+  // the auth adapter read. Three copies of this block spelled
+  // `Parse/<appId>/currentUser` out by hand, and each was a separate opinion
+  // about who is signed in — the trap BCN-006 names for `cloudstore.js` was
+  // real, it was just in three other files by the time the task started.
+  const currentUser = parseSessionStore(options.appId).read();
+  if (currentUser !== undefined) {
+    xhr.setRequestHeader('X-Parse-Session-Token', currentUser.sessionToken);
   }
 
   xhr.send(JSON.stringify(options.content));

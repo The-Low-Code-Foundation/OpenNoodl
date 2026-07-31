@@ -81,6 +81,7 @@
 
 import type {
   AdapterRecord,
+  AuthSession,
   AggregateOptions,
   BackendHandle,
   CountOptions,
@@ -99,6 +100,7 @@ import type {
 } from '@noodl/backend-contract';
 
 import { AdapterEvents } from './AdapterEvents';
+import { parseSessionStore } from './SessionStore';
 import { normalizeRecordIdentities, normalizeRecordIdentity } from './recordIdentity';
 
 /**
@@ -695,36 +697,23 @@ export class ParseWireAdapter extends AdapterEvents implements IDataAdapter {
   }
 }
 
-/** What `userservice.ts` stores. Only two of its fields are ever read back out. */
-interface StoredCurrentUser {
-  objectId?: string;
-  sessionToken?: string;
-}
-
 /**
- * The browser session seam, unchanged: `userservice.ts` writes the signed-in
- * user under `Parse/<appId>/currentUser`, and every request reads it back per
- * call — so a login or a logout takes effect on the next request without
- * anything having to be told.
+ * The browser session seam: `ParseAuthAdapter` writes the signed-in user under
+ * `Parse/<appId>/currentUser`, and every request reads it back per call — so a
+ * login or a logout takes effect on the next request without anything having to
+ * be told.
+ *
+ * **BCN-006 replaced the hand-spelled key with `SessionStore`**, which is the
+ * thing BCN-002 said this comment was waiting for. The behaviour is identical:
+ * one store per `publicToken`, the same key, the same read, and the same
+ * tolerance for an entry that will not parse.
  *
  * Returning the stored object rather than only its token preserves a detail
  * that matters: the caller can tell "no stored user" from "stored user with no
  * `sessionToken`", and the second case has always set the header to the literal
  * string `undefined`. Guarding that would be a fix, and a fix here would spend
- * the only signal this task produces.
- *
- * BCN-006 owns replacing all of it. Inventing a shared session store now would
- * be wrong before auth lands, which is why this is still a `localStorage` read
- * keyed by a Parse-shaped name.
+ * the only signal BCN-002 produced.
  */
-function readStoredCurrentUser(handle: BackendHandle): StoredCurrentUser | undefined {
-  const _cu = localStorage['Parse/' + handle.publicToken + '/currentUser'];
-  if (_cu === undefined) return undefined;
-
-  try {
-    return JSON.parse(_cu);
-  } catch (e) {
-    // Failed to extract session token
-    return undefined;
-  }
+function readStoredCurrentUser(handle: BackendHandle): AuthSession | undefined {
+  return parseSessionStore(handle.publicToken).read();
 }
