@@ -1,8 +1,9 @@
 /**
  * Backend Services Module
  *
- * BYOB (Bring Your Own Backend) system for connecting to external databases.
- * Supports Directus, Supabase, Pocketbase, and custom REST APIs.
+ * The backends a project can point at: the built-in one, a Parse server,
+ * Directus, Supabase, PocketBase, or a custom REST API — one union, six presets,
+ * and one statement per backend of what choosing it publishes.
  *
  * @module BackendServices
  * @since 1.2.0
@@ -12,3 +13,6 @@ export { BackendServices } from './BackendServices';
 export * from './types';
 export * from './presets';
 export * from './schemaParsers';
+export * from './security';
+export * from './securityFindings';
+export * from './backendList';

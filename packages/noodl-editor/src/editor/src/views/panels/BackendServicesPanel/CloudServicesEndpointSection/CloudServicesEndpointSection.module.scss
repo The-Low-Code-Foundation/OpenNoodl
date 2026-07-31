@@ -1,3 +1,80 @@
+/* BCN-009: the endpoint is a card in the one backend list now, so it takes the
+ * card frame the other two already share (PNL-004 established it). Same
+ * container query name, same elevation, same padding — the point of one list is
+ * that nothing in it looks like it came from a different product.
+ */
+.Root {
+  container-type: inline-size;
+  container-name: panel-body;
+
+  box-sizing: border-box;
+  min-width: 0;
+
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-primary);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.Header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 8px;
+}
+
+.Identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.IdentityText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.TypeIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: var(--theme-color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ActiveBadge {
+  flex: 0 0 auto;
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-fg-on-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.Status {
+  margin-bottom: 8px;
+  padding-top: 8px;
+  min-width: 0;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
 /* PNL-004: a configured endpoint is a URL of unknown length beside a status
  * icon, and the edit/disconnect pair is a non-wrapping `HStack`. Both overflow
  * the panel at 240px. No query needed for either.
@@ -16,10 +93,16 @@
   white-space: nowrap;
 }
 
-/* An app id or a type description wraps rather than widening the section. */
+/* An app id or a type description wraps rather than widening the card. */
 .EndpointMeta {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.Actions {
+  padding-top: 8px;
+  border-top: 1px solid var(--theme-color-border-default);
+  min-width: 0;
 }
 
 .ButtonRow {

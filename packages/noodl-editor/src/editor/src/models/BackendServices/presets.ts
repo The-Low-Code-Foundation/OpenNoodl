@@ -8,7 +8,32 @@
  * @since 1.2.0
  */
 
+import { BACKEND_DISPLAY_NAMES } from '@noodl/backend-contract';
+
+import { BackendSecurityDisclosure, securityFor } from './security';
 import { BackendAuthConfig, BackendEndpoints, BackendType, ResponseConfig } from './types';
+
+/**
+ * Which mechanism configures a backend of this type.
+ *
+ * BCN-009: the panel is one list, but underneath it there are still three
+ * places a backend binding can be written, and pretending otherwise is how a
+ * user ends up with a Parse endpoint configured twice in two shapes:
+ *
+ * - `rest-config` — a `BackendConfig` in the project's `backendServices`
+ *   metadata. URL, tokens, endpoint patterns. The REST backends.
+ * - `cloud-endpoint` — the project's `cloudservices` metadata, `{endpoint,
+ *   appId, type}`. One per project, and the only thing a Parse-wire backend
+ *   needs. Written by the Cloud Services Endpoint card.
+ * - `managed-process` — a `nodegx-backend` this editor starts and stops. Listed
+ *   over IPC, not stored in the project at all; it becomes the project's
+ *   backend by writing `cloudservices` when it starts.
+ *
+ * Converging those three metadata homes is BCN-009 step 2 and is deliberately
+ * *not* done here — this field is what lets one list dispatch to the right one
+ * in the meantime.
+ */
+export type BackendConfigurationRoute = 'rest-config' | 'cloud-endpoint' | 'managed-process';
 
 /**
  * Preset configuration for a backend type
@@ -30,7 +55,127 @@ export interface BackendPreset {
   adminKeyHelp: string;
   /** Detailed help for public API key (shown in popup) */
   publicKeyHelp: string;
+  /** Which of the three configuration mechanisms owns a backend of this type. */
+  configuredBy: BackendConfigurationRoute;
+  /**
+   * What this backend's security model means for the app the user is about to
+   * publish. Carried on the preset so that every surface which can name a
+   * backend can also say what choosing it publishes — see `./security.ts`.
+   */
+  security: BackendSecurityDisclosure;
 }
+
+/**
+ * "Built-in" — the backend that ships with NodeGX.
+ *
+ * BCN-009 step 1. The name is Richard's call, recorded in the phase's answered
+ * questions: **"Built-in"**, because it says the least and so ages the best.
+ * "SQLite" leaks an implementation detail that stops being true if the
+ * persistence layer ever changes, and "NodeGX Backend" reads as a separate
+ * thing you have to go and get.
+ *
+ * The endpoints below are the Parse REST paths this backend serves
+ * (`nodegx-backend/src/server/parse-wire.ts`). They are recorded for the same
+ * reason every other preset records them — so one table describes every
+ * backend — but nothing writes a `BackendConfig` of this type: a built-in
+ * backend is configured by starting one (`managed-process`), which writes the
+ * project's `cloudservices` metadata for it.
+ */
+export const nodegxPreset: BackendPreset = {
+  type: 'nodegx',
+  displayName: BACKEND_DISPLAY_NAMES.nodegx,
+  description: 'The backend that ships with NodeGX. Records, users, files, functions and realtime, with nothing to set up',
+  icon: 'database',
+  docsUrl: '',
+  urlPlaceholder: 'http://localhost:8577',
+  authHelpText: 'No keys to configure — a built-in backend is reached by its app id',
+  adminKeyHelp: `**Admin access (Built-in)**
+
+There is no admin key to paste. The editor talks to a built-in backend it started, over a channel that never leaves this machine, and to a deployed one through the app id on the Cloud Services Endpoint card.
+
+Who can read and write each collection is set in **Access**, on the backend's own card.`,
+  publicKeyHelp: `**Public access (Built-in)**
+
+There is no public key. Your published app carries the backend's **app id**, which names the server and opens nothing on its own.
+
+What a visitor may do is decided by the **Access** rules on each collection, and by any rule carried on an individual record. Both are checked by the backend on every request.`,
+  defaultAuth: {
+    method: 'none'
+  },
+  endpoints: {
+    list: '/classes/{table}',
+    get: '/classes/{table}/{id}',
+    create: '/classes/{table}',
+    update: '/classes/{table}/{id}',
+    delete: '/classes/{table}/{id}',
+    schema: '/schemas'
+  },
+  responseConfig: {
+    dataPath: 'results',
+    totalCountPath: 'count',
+    paginationType: 'offset',
+    offsetParam: 'skip',
+    limitParam: 'limit'
+  },
+  configuredBy: 'managed-process',
+  security: securityFor('nodegx')
+};
+
+/**
+ * Parse Server.
+ *
+ * A separate entry from `nodegx` **despite speaking the same wire**, which
+ * looked like duplication until BCN-001 read the handler and BCN-002 drove a
+ * real `parseplatform/parse-server:7.3.0`: our backend serves `/aggregate` and
+ * `/distinct` under an ordinary find permission and the read ACL, upstream
+ * Parse restricts the same route to the master key, and a stock Parse Server
+ * refuses file uploads outright. Same wire, different capabilities — which is
+ * the thing a user needs told, so they are two rows here and two columns in the
+ * capability descriptor.
+ *
+ * Configured through the Cloud Services Endpoint card, not through the REST
+ * form: a Parse-wire backend needs `{endpoint, appId}` and nothing else, and
+ * offering a second place to type them is the duplication this task removes.
+ */
+export const parsePreset: BackendPreset = {
+  type: 'parse',
+  displayName: BACKEND_DISPLAY_NAMES.parse,
+  description: 'A Parse Server you or someone else hosts, reached by its endpoint and application id',
+  icon: 'parse',
+  docsUrl: 'https://docs.parseplatform.org/parse-server/guide/',
+  urlPlaceholder: 'https://your-parse-server.example.com/parse',
+  authHelpText: 'A Parse server is reached by endpoint and application id — no keys are stored here',
+  adminKeyHelp: `**Admin access (Parse Server)**
+
+There is no admin key field, and that is deliberate: the master-key admin surface was retired along with the Parse management panel, and nothing left in NodeGX reads one.
+
+Schemas, permissions and ACLs are managed on the Parse server itself, usually through a Parse Dashboard run by whoever hosts it.`,
+  publicKeyHelp: `**Public access (Parse Server)**
+
+Your published app carries the server's **application id**. It is not a password — what it reaches is whatever your class-level permissions and per-record ACLs allow, checked by the server on every request.
+
+A master key is never published. If your server also requires a REST API key for client requests, that key would be published too, so treat it exactly like the application id and rely on permissions rather than on it being secret.`,
+  defaultAuth: {
+    method: 'none'
+  },
+  endpoints: {
+    list: '/classes/{table}',
+    get: '/classes/{table}/{id}',
+    create: '/classes/{table}',
+    update: '/classes/{table}/{id}',
+    delete: '/classes/{table}/{id}',
+    schema: '/schemas'
+  },
+  responseConfig: {
+    dataPath: 'results',
+    totalCountPath: 'count',
+    paginationType: 'offset',
+    offsetParam: 'skip',
+    limitParam: 'limit'
+  },
+  configuredBy: 'cloud-endpoint',
+  security: securityFor('parse')
+};
 
 /**
  * Directus preset configuration
@@ -84,7 +229,9 @@ export const directusPreset: BackendPreset = {
     paginationType: 'offset',
     offsetParam: 'offset',
     limitParam: 'limit'
-  }
+  },
+  configuredBy: 'rest-config',
+  security: securityFor('directus')
 };
 
 /**
@@ -143,7 +290,9 @@ The anon key works with Row Level Security (RLS) policies. Make sure to:
     paginationType: 'offset',
     offsetParam: 'offset',
     limitParam: 'limit'
-  }
+  },
+  configuredBy: 'rest-config',
+  security: securityFor('supabase')
 };
 
 /**
@@ -205,7 +354,9 @@ If you've configured API rules to allow anonymous access, you can leave this fie
     paginationType: 'page',
     offsetParam: 'page',
     limitParam: 'perPage'
-  }
+  },
+  configuredBy: 'rest-config',
+  security: securityFor('pocketbase')
 };
 
 /**
@@ -258,18 +409,37 @@ If your API supports unauthenticated or limited-access requests, configure:
     paginationType: 'offset',
     offsetParam: 'offset',
     limitParam: 'limit'
-  }
+  },
+  configuredBy: 'rest-config',
+  security: securityFor('custom')
 };
 
 /**
- * All available presets
+ * All available presets.
+ *
+ * Six, and the order is the order the user sees: the one that needs nothing set
+ * up first, then the hosted backends, then the escape hatch. `Record<BackendType,
+ * …>` means adding a seventh backend type to the contract fails to compile until
+ * somebody has written what it publishes.
  */
 export const backendPresets: Record<BackendType, BackendPreset> = {
+  nodegx: nodegxPreset,
+  parse: parsePreset,
   directus: directusPreset,
   supabase: supabasePreset,
   pocketbase: pocketbasePreset,
   custom: customPreset
 };
+
+/** The order the six appear in, everywhere they are listed. */
+export const BACKEND_PRESET_ORDER: readonly BackendType[] = Object.freeze([
+  'nodegx',
+  'parse',
+  'directus',
+  'supabase',
+  'pocketbase',
+  'custom'
+]);
 
 /**
  * Get a preset by type
@@ -282,12 +452,22 @@ export function getPreset(type: BackendType): BackendPreset {
  * Get all presets as an array (useful for UI)
  */
 export function getAllPresets(): BackendPreset[] {
-  return Object.values(backendPresets);
+  return BACKEND_PRESET_ORDER.map((type) => backendPresets[type]);
 }
 
 /**
- * Get presets excluding custom (for preset selection UI)
+ * The presets offered when adding a backend.
+ *
+ * BCN-009: this used to be three — Directus, Supabase, PocketBase — with Custom
+ * hardcoded as a fourth button in the dialog and the two Parse-wire backends
+ * absent entirely, which is precisely why the panel read as two unrelated
+ * products. It is all six now, and the dialog dispatches on `configuredBy`.
  */
 export function getPresetOptions(): BackendPreset[] {
-  return [directusPreset, supabasePreset, pocketbasePreset];
+  return getAllPresets();
+}
+
+/** The presets the REST configuration form can create a `BackendConfig` for. */
+export function getRestConfigurablePresets(): BackendPreset[] {
+  return getAllPresets().filter((preset) => preset.configuredBy === 'rest-config');
 }

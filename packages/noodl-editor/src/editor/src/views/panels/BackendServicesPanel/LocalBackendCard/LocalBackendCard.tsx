@@ -10,6 +10,7 @@
 
 import React, { useCallback, useState } from 'react';
 
+import { dataBrowserAvailability, securityFor } from '@noodl-models/BackendServices';
 import { SidebarModel } from '@noodl-models/sidebar';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -21,6 +22,7 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 import { useSidePanelLayoutContext } from '../../../../pages/EditorPage/useSidePanelLayout';
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
 import { LocalBackendInfo } from '../hooks/useLocalBackends';
+import { SecurityDisclosure } from '../SecurityDisclosure/SecurityDisclosure';
 import { CloudFunctionsSection } from './CloudFunctionsSection';
 import { BACKEND_SERVICES_PANEL_ID, BackendSurfaceKind, openBackendSurface } from './backendSurfaces';
 import css from './LocalBackendCard.module.scss';
@@ -73,6 +75,7 @@ export function LocalBackendCard({
   const [isOperating, setIsOperating] = useState(false);
   const statusDisplay = getStatusDisplay(backend);
   const layout = useSidePanelLayoutContext();
+  const dataBrowser = dataBrowserAvailability('nodegx', 'managed');
 
   /**
    * PNL-009: open a backend surface as a full panel.
@@ -196,8 +199,12 @@ export function LocalBackendCard({
           </div>
           <div className={css.IdentityText}>
             <Text textType={TextType.DefaultContrast}>{backend.name}</Text>
+            {/* BCN-009: "Built-in", not "Local SQLite". The name that describes
+                the technology dates the moment the technology changes, and this
+                is the same backend the preset list now names — one word in two
+                places is how a list stops reading as two products. */}
             <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
-              Local SQLite • Port {backend.port}
+              Built-in • Port {backend.port}
             </Text>
           </div>
         </div>
@@ -260,6 +267,10 @@ export function LocalBackendCard({
         </div>
       )}
 
+      {/* BCN-009: what choosing this backend publishes. Same component, same
+          words, on every card in the list. */}
+      <SecurityDisclosure disclosure={securityFor('nodegx')} testId={`backend-security-${backend.id}`} />
+
       {/* WFA-001: what this backend is serving, and how to push again. */}
       <CloudFunctionsSection
         backendId={backend.id}
@@ -304,12 +315,15 @@ export function LocalBackendCard({
 
         {backend.running && (
           <>
-            <div className={css.SecondaryAction}>
+            {/* BCN-009: the same gate the external cards ask, so the two
+                cannot disagree about who may open a record grid. */}
+            <div className={css.SecondaryAction} title={dataBrowser.reason}>
               <PrimaryButton
                 label="Data"
                 size={PrimaryButtonSize.Small}
                 variant={PrimaryButtonVariant.Muted}
                 onClick={() => openSurface('data')}
+                isDisabled={!dataBrowser.isAvailable}
                 isGrowing
                 testId={`open-data-${backend.id}`}
               />

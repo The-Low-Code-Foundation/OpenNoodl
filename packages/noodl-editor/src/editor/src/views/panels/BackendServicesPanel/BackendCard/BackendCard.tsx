@@ -9,16 +9,17 @@
 
 import React, { useCallback } from 'react';
 
-import { BackendConfig, ConnectionStatus } from '@noodl-models/BackendServices';
+import { BackendConfig, ConnectionStatus, dataBrowserAvailability, securityFor } from '@noodl-models/BackendServices';
 import { getPreset } from '@noodl-models/BackendServices/presets';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
-import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
+import { MenuDialogItem, MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
+import { SecurityDisclosure } from '../SecurityDisclosure/SecurityDisclosure';
 import css from './BackendCard.module.scss';
 
 export interface BackendCardProps {
@@ -59,22 +60,41 @@ export function BackendCard({
   const preset = getPreset(backend.type);
   const statusDisplay = getStatusDisplay(backend.status);
 
+  // BCN-009: the record grid is offered on every card now, and where it cannot
+  // be opened it says why rather than being absent — an absent button reads as
+  // "this backend has no data", which is the opposite of true. See
+  // `dataBrowserAvailability` for the two gates and why the transport one is
+  // still the binding constraint for anything but a locally-run backend.
+  const dataBrowser = dataBrowserAvailability(backend.type, 'external');
+
   // PNL-004: destructive actions belong behind the menu, not one mis-click away
   // from "Sync schema" in a row that used to scroll sideways.
   const handleShowMore = useCallback(() => {
-    showContextMenuInPopup({
-      items: [
-        {
-          label: 'Delete backend',
-          icon: IconName.Trash,
-          isDangerous: true,
-          onClick: onDelete,
-          testId: `delete-backend-${backend.id}`
-        }
-      ],
-      width: MenuDialogWidth.Default
-    });
-  }, [backend.id, onDelete]);
+    const items: (MenuDialogItem | 'divider')[] = [
+      // BCN-009: the record grid appears on every backend's menu, and where it
+      // cannot be opened it says why. Absent would read as "this backend has no
+      // records to browse", which is the opposite of true — the constraint is
+      // ours, not the backend's, and the sentence says so.
+      {
+        label: 'Browse records',
+        icon: IconName.Database,
+        isDisabled: !dataBrowser.isAvailable,
+        tooltip: dataBrowser.reason,
+        onClick: () => undefined,
+        testId: `open-data-${backend.id}`
+      },
+      'divider',
+      {
+        label: 'Delete backend',
+        icon: IconName.Trash,
+        isDangerous: true,
+        onClick: onDelete,
+        testId: `delete-backend-${backend.id}`
+      }
+    ];
+
+    showContextMenuInPopup({ items, width: MenuDialogWidth.Default });
+  }, [backend.id, dataBrowser.isAvailable, dataBrowser.reason, onDelete]);
 
   return (
     <div className={`${css.Root} ${isActive ? css.Active : ''}`} data-test={`backend-card-${backend.id}`}>
@@ -122,6 +142,11 @@ export function BackendCard({
           </Text>
         )}
       </div>
+
+      {/* BCN-009: what choosing this backend publishes. Every card carries one,
+          including the ones that publish nothing a visitor can use — an absent
+          disclosure would read as a claim, and it is not the same claim. */}
+      <SecurityDisclosure disclosure={securityFor(backend.type)} testId={`backend-security-${backend.id}`} />
 
       {/* Schema Info */}
       {backend.schema && backend.schema.collections.length > 0 && (

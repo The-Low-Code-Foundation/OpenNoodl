@@ -1,12 +1,14 @@
 /**
  * Backend Services Types
  *
- * Type definitions for the BYOB (Bring Your Own Backend) system.
- * Supports Directus, Supabase, Pocketbase, and custom REST APIs.
+ * Type definitions for the backends a project can point at: the built-in one,
+ * a Parse server, Directus, Supabase, PocketBase, or a custom REST API.
  *
  * @module BackendServices
  * @since 1.2.0
  */
+
+import type { BackendType } from '@noodl/backend-contract';
 
 import { IModel } from '@noodl-utils/model';
 
@@ -15,9 +17,20 @@ import { IModel } from '@noodl-utils/model';
 // ============================================================================
 
 /**
- * Supported backend types with preset configurations
+ * Supported backend types.
+ *
+ * BCN-009: this used to be a four-value union of its own —
+ * `'directus' | 'supabase' | 'pocketbase' | 'custom'` — which only ever
+ * described BYOB's REST backends and so had no name for the two Parse-wire
+ * backends the record nodes have been talking to all along. It is now the
+ * contract's union, re-exported, which is the reconciliation
+ * `@noodl/backend-contract`'s own comment asks this task for.
+ *
+ * Re-exported rather than aliased so that every existing
+ * `from '@noodl-models/BackendServices'` import keeps working, and so there is
+ * still exactly one union in the product.
  */
-export type BackendType = 'directus' | 'supabase' | 'pocketbase' | 'custom';
+export type { BackendType };
 
 /**
  * Authentication methods supported by backends
