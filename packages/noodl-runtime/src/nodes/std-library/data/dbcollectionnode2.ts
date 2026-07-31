@@ -21,7 +21,13 @@ import CollectionImport = require('../../../collection');
 import CloudStore = require('../../../api/cloudstore');
 import JavascriptNodeParser = require('../../../javascriptnodeparser');
 import QueryUtils = require('../../../api/queryutils');
+import type { AdapterEvent } from '@noodl/backend-contract';
 import type { VisualSorting } from '../../../api/queryutils';
+// BCN-002 triage: this reaches into the **server-side** persistence types
+// (`LocalSQLAdapter`'s layer), which is a genuine cross-layer leak — the type it
+// wants is the contract's `Filter`. Left in place because relocating the filter
+// model is BCN-003's, and moving half of it here would give that task two
+// starting points instead of one.
 import type { WhereClause } from '../../../api/adapters/types';
 
 /**
@@ -61,13 +67,16 @@ interface CurrentQuery {
   search?: string;
 }
 
-/** The payload of a `CloudStore` `save`/`create`/`delete` notification. */
-interface CloudStoreEventArgs {
-  type?: 'create' | 'save' | 'delete';
-  collection?: string;
-  objectId?: string;
-  object?: { objectId: string };
-}
+/**
+ * The payload of a `save`/`create`/`delete` notification.
+ *
+ * BCN-002: this was a hand-written copy of what is now the contract's
+ * `AdapterEvent`, and the two had already drifted — the local copy made `type`
+ * and `collection` optional, which they never are. Taking the contract's type
+ * directly is the point of there being one: a second backend that emits these
+ * cannot invent a different shape for them.
+ */
+type CloudStoreEventArgs = AdapterEvent;
 
 /**
  * `this` inside the Query Records node.

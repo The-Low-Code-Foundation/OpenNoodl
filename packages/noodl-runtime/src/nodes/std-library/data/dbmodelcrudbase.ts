@@ -29,7 +29,7 @@ import { forgetForEachItem, resolveForEachItem } from '../../../foreachitem';
 
 const Model = ModelImport as unknown as ModelModule;
 const CloudStore = CloudStoreImport as {
-  instance: { appId: string };
+  instance: { currentUserId(): string | undefined };
   invalidateCollections(): void;
 };
 
@@ -521,18 +521,16 @@ function _addRelationProperty(def: DbCrudNodeModule) {
 
 function _getCurrentUser(modelScope: ModelScopeLike | undefined): string | undefined {
   if (typeof _noodl_cloud_runtime_version === 'undefined') {
-    // We are running in browser, try to find the current user
-    // The `Parse/<appId>/currentUser` key is a legacy name, not legacy code: `userservice.ts`
-    // still writes the session there.
-    const _cu = localStorage['Parse/' + CloudStore.instance.appId + '/currentUser'];
-    if (_cu !== undefined) {
-      let cu: { objectId?: string } | undefined;
-      try {
-        cu = JSON.parse(_cu);
-      } catch (e) {}
-
-      return cu !== undefined ? cu.objectId : undefined;
-    }
+    // We are running in browser, try to find the current user.
+    //
+    // BCN-002: this used to read `localStorage['Parse/' + appId + '/currentUser']`
+    // and pick `objectId` out of it — node code that knew the storage key, its
+    // Parse-shaped name, and which singleton to get an `appId` from. It was the
+    // one genuine leak among the nine Parse-concept references this task
+    // triaged, and it now asks the adapter, which is the only layer entitled to
+    // know how a backend keeps a session. BCN-006 replaces the mechanism; this
+    // call site will not have to change again when it does.
+    return CloudStore.instance.currentUserId();
   } else {
     // Assume we are running in cloud runtime
     const request = modelScope.get('Request');

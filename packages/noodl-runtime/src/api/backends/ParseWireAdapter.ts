@@ -217,14 +217,9 @@ export class ParseWireAdapter extends AdapterEvents implements IDataAdapter {
       if (handle.sessionToken !== undefined) {
         xhr.setRequestHeader('X-Parse-Session-Token', handle.sessionToken);
       } else {
-        var _cu = localStorage['Parse/' + handle.publicToken + '/currentUser'];
+        var _cu = readStoredCurrentUser(handle);
         if (_cu !== undefined) {
-          try {
-            const currentUser = JSON.parse(_cu);
-            xhr.setRequestHeader('X-Parse-Session-Token', currentUser.sessionToken);
-          } catch (e) {
-            // Failed to extract session token
-          }
+          xhr.setRequestHeader('X-Parse-Session-Token', _cu.sessionToken);
         }
       }
 
@@ -632,6 +627,29 @@ export class ParseWireAdapter extends AdapterEvents implements IDataAdapter {
     });
   }
 
+  // ── Not contract, and deliberately so ────────────────────────────────────
+
+  /**
+   * The signed-in end user's id, from wherever this wire keeps the session.
+   *
+   * **Not an `IDataAdapter` method.** It is here because `dbmodelcrudbase.ts`'s
+   * `_getCurrentUser` used to read `localStorage['Parse/' + appId +
+   * '/currentUser']` itself and pick `objectId` out of it — node code that knew
+   * the storage key, the key's Parse-shaped name, and the singleton it needed
+   * an `appId` from. That is the one genuine leak among BCN-002's nine
+   * Parse-concept references, and the rule is that a leak moves into the adapter
+   * rather than being documented where it sits.
+   *
+   * It stops here rather than becoming a contract method because auth is
+   * BCN-006's and `IAuthAdapter` is where a real answer belongs. Adding a
+   * fifteenth data method for it would make the contract's shape a matter of
+   * whichever task needed something next.
+   */
+  currentUserId(handle: BackendHandle): string | undefined {
+    const currentUser = readStoredCurrentUser(handle);
+    return currentUser !== undefined ? currentUser.objectId : undefined;
+  }
+
   /** Users holding the master key are allowed to delete files. */
   deleteFile(handle: BackendHandle, options: DeleteFileOptions): void {
     this._makeRequest(handle, '/files/' + options.file.name, {
@@ -639,5 +657,39 @@ export class ParseWireAdapter extends AdapterEvents implements IDataAdapter {
       success: (response) => options.success(Object.assign({}, (options as { data?: unknown }).data, response)),
       error: (err) => options.error(err)
     });
+  }
+}
+
+/** What `userservice.ts` stores. Only two of its fields are ever read back out. */
+interface StoredCurrentUser {
+  objectId?: string;
+  sessionToken?: string;
+}
+
+/**
+ * The browser session seam, unchanged: `userservice.ts` writes the signed-in
+ * user under `Parse/<appId>/currentUser`, and every request reads it back per
+ * call — so a login or a logout takes effect on the next request without
+ * anything having to be told.
+ *
+ * Returning the stored object rather than only its token preserves a detail
+ * that matters: the caller can tell "no stored user" from "stored user with no
+ * `sessionToken`", and the second case has always set the header to the literal
+ * string `undefined`. Guarding that would be a fix, and a fix here would spend
+ * the only signal this task produces.
+ *
+ * BCN-006 owns replacing all of it. Inventing a shared session store now would
+ * be wrong before auth lands, which is why this is still a `localStorage` read
+ * keyed by a Parse-shaped name.
+ */
+function readStoredCurrentUser(handle: BackendHandle): StoredCurrentUser | undefined {
+  const _cu = localStorage['Parse/' + handle.publicToken + '/currentUser'];
+  if (_cu === undefined) return undefined;
+
+  try {
+    return JSON.parse(_cu);
+  } catch (e) {
+    // Failed to extract session token
+    return undefined;
   }
 }

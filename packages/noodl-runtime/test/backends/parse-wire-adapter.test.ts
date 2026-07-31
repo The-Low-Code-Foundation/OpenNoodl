@@ -102,7 +102,10 @@ describe('BCN-002 — the contract surface', () => {
       'emitAdapterEvent',
       '_makeRequest',
       'normalize',
-      'normalizeAll'
+      'normalizeAll',
+      // Not contract, and named here so it stays a deliberate exception rather
+      // than the first of several. BCN-006 takes it.
+      'currentUserId'
     ]);
 
     const own = Object.getOwnPropertyNames(ParseWireAdapter.prototype).filter((n) => !known.has(n));

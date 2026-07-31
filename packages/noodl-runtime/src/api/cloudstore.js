@@ -175,6 +175,17 @@ class CloudStore {
   deleteFile(options) {
     this._adapter.deleteFile(this._handle(), options);
   }
+
+  /**
+   * The signed-in end user's id — **not one of the fourteen**.
+   *
+   * Forwarded because `dbmodelcrudbase.ts`'s access-control mixin needs it and
+   * used to dig it out of `localStorage` itself. See the adapter's own note for
+   * why it stops at the adapter rather than becoming a contract method.
+   */
+  currentUserId() {
+    return this._adapter.currentUserId(this._handle());
+  }
 }
 
 function _isArrayOfObjects(a) {
