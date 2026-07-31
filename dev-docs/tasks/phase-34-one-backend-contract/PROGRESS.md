@@ -2,11 +2,11 @@
 
 **Track S — One Backend Contract**
 
-**All 10 tasks specced as of 2026-07-31. None started.**
+**All 10 tasks specced as of 2026-07-31. BCN-001 in progress — contract circulated, awaiting review.**
 
 | Task | Tier | Status | Notes |
 |---|---|---|---|
-| BCN-001 The adapter contract & capability descriptor | 1 | 📋 Specced | The descriptor is the deliverable, not the interface — the interface is transcription. Three matrix cells are unverified assumptions and this task resolves them |
+| BCN-001 The adapter contract & capability descriptor | 1 | 🔄 **Contract circulated** | Prose contract at [BCN-001-CONTRACT.md](./BCN-001-CONTRACT.md), no TypeScript yet by design. **Three spec corrections found (§0), one load-bearing.** 8 decisions + the `custom` question awaiting Richard |
 | BCN-002 Parse-wire behind the contract | 1 | 📋 Specced | Success condition is "nothing observable changed". The nine Parse-concept references in the record nodes are the audit list; only two have been examined |
 | BCN-003 The filter dialect | 1 | 📋 Specced | Largest per-backend surface, best precedent. **One translator per backend, shared editor+runtime** — two copies is how RUN-003 shipped a 403 |
 | BCN-004 REST data adapter & the end of BYOB | 2 | 📋 Specced | Retires 4 of the 5 BYOB types (realtime waits for BCN-008). Closes RUN-003's Supabase/PocketBase "believed to work" residuals |
@@ -36,14 +36,36 @@ makes granting it an improvement rather than a trade.
 
 ## Open questions for Richard
 
+### Answered 2026-07-31
+
+| # | Question | Answer |
+|---|---|---|
+| 1 | What is the built-in backend called in the preset list? | **"Built-in"** — says least, ages best |
+| 2 | Who writes the ~30 capability reason strings? | **Claude drafts, Richard reviews.** Six samples in [BCN-001-CONTRACT.md §5.4](./BCN-001-CONTRACT.md) await his reaction before the other ~24 are written |
+| 5 | Do we keep the Parse Server preset, or only the wire? | **Keep the preset.** Descriptor ships 6 backend types. Note BCN-001 §0.2 found `nodegx` and `parse` must be *separate columns* — same wire, different capabilities |
+
+### Still open
+
 | # | Question | Why it is his call |
 |---|---|---|
-| 1 | **What is the built-in backend called in the preset list?** "SQLite" leaks an implementation detail that stops being true if persistence changes. "NodeGX" is circular inside NodeGX. "Built-in" says least and ages best. | User-facing vocabulary that will appear in docs, lessons and every screenshot. |
-| 2 | **The capability reason strings — his voice or delegated with review?** Roughly 30 of them, each appearing on a disabled port in a beginner's editor. | The LEARN-002 precedent: he made this call for the curriculum. These are shorter but more numerous and more often read. |
 | 3 | **Does the phase ship before or after the alpha?** Tier 3 is what removes the duplicate nodes a stranger would see. Tier 1 alone is invisible to users. | Sequencing against Phase 33; the answer changes whether ALPHA-001's cold-install pass has to account for two record families. |
-| 4 | **Is `custom` really data-only?** The spec says yes, on the argument that a user-authored adapter API means supporting third-party token lifecycles and filter serialisers. He raised the "custom framework" idea and may weigh it differently. | It is the difference between a bounded phase and an open-ended platform commitment. |
-| 5 | **Do we keep the Parse Server preset at all, or only the wire?** Keeping it is nearly free; it is also a public statement that NodeGX supports Parse, which carries a support tail. | Product-surface decision, not an engineering one. |
+| 4 | **Is `custom` really data-only?** — **reopened by Richard 2026-07-31.** BCN-001 found a third option the spec did not offer: `custom` as a *declared* backend, where the user fills in the capability descriptor themselves. No plugin API, no versioned interface, near-zero cost because the descriptor must be data-driven anyway. **Recommended.** | It is the difference between a bounded phase and an open-ended platform commitment. |
 | 6 | **Are the four maturity levels the right gate for the security disclosure?** BCN-009 shows it always; OPS-001's Playing level shows nothing. A lesson project on a shared backend is the awkward case. | Cross-phase interaction between two of his own decisions. |
+
+## Spec corrections found by BCN-001
+
+Recorded so they are not re-derived. Full detail in [BCN-001-CONTRACT.md §0](./BCN-001-CONTRACT.md).
+
+1. **14 contract methods, not 18.** The count included `_makeRequest`, `_initCloudServices`, `on` and
+   `off` — none of which are contract material. BCN-001's success criterion is unsatisfiable as
+   written and should read 14.
+2. **`nodegx-backend` serves aggregate under ordinary ACLs, no master key** — README footnote 2
+   resolved. Upstream Parse is still master-key-only, which is why the two need separate columns.
+3. ⚠️ **The two filter models did not converge.** `byob-utils.ts::toDirectusFilter` does not exist —
+   the translator is in `byob-query-data.ts:706`, and the BYOB *saved model* stores Directus operator
+   names (`_eq`) verbatim in project data. BCN-003's "additive, not inventive" premise is half wrong:
+   the BYOB saved model needs re-targeting plus a migration. **BCN-003 should go from 1–1.5 wks to
+   ~2 wks.**
 
 ## Decisions already taken
 
