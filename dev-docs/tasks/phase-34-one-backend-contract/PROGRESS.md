@@ -9,13 +9,31 @@
 does not exist**, and none of them invented a second one. Their rows below say exactly which steps
 are done.
 
+**BCN-004 is the critical path and its evidence now exists.** The three REST wires were probed
+before any adapter code — [BCN-004-WIRE-FACTS.md](./BCN-004-WIRE-FACTS.md) — and the probe found
+that building the adapter the way the spec words it would ship a known bug: the Directus preset's
+`totalCountPath` points at the count that **ignores the filter**, which is the RUN-003 defect
+`pickTotalCount` already fixed. §3 of that document proposes the design consequence.
+
+### Live verification owed (2026-07-31)
+
+The three parallel agents could run none, because a worktree cannot drive the editor. One pass has
+now been made from the primary checkout and **stopped early**: two sessions cannot share one
+Electron instance, and another session was mid-BCN-003b live QA in the same checkout.
+
+| Owed | State |
+|---|---|
+| BCN-009 — the 11-step panel script | **Steps 1–2 pass.** First render of any of its UI; two of its §6.5 CSS questions answered. Steps 3–11 outstanding — [BCN-009-LIVE-QA-PARTIAL.md](./BCN-009-LIVE-QA-PARTIAL.md) |
+| BCN-006 — login → log out → sign up → reset password | **Not run.** The XHR branch every viewer runs is reached by no unit test |
+| BCN-007 — a real upload against a running backend | **Not run.** `contentType`/`size` are asserted from a literal fixture; no 201 has ever been observed |
+
 | Task | Tier | Status | Notes |
 |---|---|---|---|
 | BCN-001 The adapter contract & capability descriptor | 1 | ✅ **Complete** | Prose contract circulated first, then [`packages/nodegx-backend-contract`](../../../packages/nodegx-backend-contract/). **Four stale premises found (§0 + §9); the two unverified cells were probed, not deferred.** All 9 decisions answered |
 | BCN-002 Parse-wire behind the contract | 1 | ✅ **Complete** | `ParseWireAdapter` + a `CloudStore` reduced to resolution. **Four more stale premises, three wrong contract shapes, three wrong `parse` descriptor cells and two defects** — see [BCN-002-NOTES.md](./BCN-002-NOTES.md). A real Parse Server now runs in the rig |
 | BCN-003 The filter dialect | 1 | ✅ **Complete** | Five translators, gated by the descriptor. **`convertFilterOp` had no branch for eleven operators, so `contains` returned the whole collection.** Both built-in-backend defects fixed. 106 live checks, 0 failures — see [BCN-003-NOTES.md](./BCN-003-NOTES.md) |
 | BCN-003b One filter builder | 1 | ✅ **Complete** | `QueryEditor`'s filter half deleted; one builder for both ports. **The "no data-format change" premise was wrong** — the Parse saved format moves, so the runtime reads both shapes. ⚠️ **The live pass found the Parse filter builder has been unreachable in the editor since WF-007** — see [BCN-003b-NOTES.md](./BCN-003b-NOTES.md) §3 |
-| BCN-004 REST data adapter & the end of BYOB | 2 | 📋 Specced | Retires 4 of the 5 BYOB types (realtime waits for BCN-008). Closes RUN-003's Supabase/PocketBase "believed to work" residuals |
+| BCN-004 REST data adapter & the end of BYOB | 2 | 🔨 **Probed, not begun** | The three wires are **measured** — [BCN-004-WIRE-FACTS.md](./BCN-004-WIRE-FACTS.md). ⚠️ **The preset carries a wrong total**: Directus `meta.total_count` ignores the filter, which is the defect RUN-003 already fixed. Two more: PocketBase's `offsetParam: 'page'` is a 1-based page, and Supabase creates return an **empty body** without `Prefer: return=representation`. ⚠️ **Spec premise half wrong** — the *runtime* BYOB path is Directus-only, so Supabase and PocketBase transports are **written, not moved**. No adapter code yet |
 | BCN-005 Relations across five backends | 2 | 📋 Specced | Opens with RUN-003's recorded residual: O2M/M2M need `GET /relations`. Parse's junction-less `Relation` is what the contract shape must accommodate |
 | BCN-006 Auth & the token lifecycle | 2 | 🔨 **Steps 1–3 of 8** | The lifecycle designed in prose, `IAuthAdapter` + the Parse wire behind it, and refresh/single-flight/cross-tab under test on injected timers. ⚠️ **Exit criterion 4 cannot be claimed — nothing in the product refreshes a token yet.** One `SessionStore` replaced *four* separate opinions about who is signed in, three of them in no spec. Two more wrong contract shapes. Steps 4–8 need BCN-004 — see [BCN-006-NOTES.md](./BCN-006-NOTES.md) §6 |
 | BCN-007 Files across five backends | 2 | 🔨 **Step 1 of 7** | The normalised `FileRef` and the Parse wire behind it, plus step 4's contract half (`kind`) and step 5 for the two backends that could be evidenced. **A fourth wrong contract shape**: `UploadFileOptions.data` was required and nothing in the repo has ever set it. ⚠️ The normalised reference **stops meaning what the spec assumes one save later**. Steps 2, 3, 6, 7 need BCN-004 — see [BCN-007-NOTES.md](./BCN-007-NOTES.md) |
