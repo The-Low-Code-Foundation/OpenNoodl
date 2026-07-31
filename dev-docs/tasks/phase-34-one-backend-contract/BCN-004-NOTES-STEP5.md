@@ -337,3 +337,42 @@ A green run proves nothing on its own, so three mutations were run against the s
     storage, the id has to survive the conversion or every saved picker value pointing at it breaks.
 16. **1932 editor specs, where step 4 recorded 1931.** One more spec, zero failures, and no editor
     file was touched here. Not chased.
+
+---
+
+## 7. Orchestrator addendum — the picker, seen (2026-07-31)
+
+§6's headline gap was that **"the picker has never been seen"**, because a worktree cannot drive
+an editor. It has now been driven from the primary checkout at the merge commit, in a project with
+five backends configured.
+
+**It works, and the design decision this task turned on is visible in it.**
+
+A `DbCollection2` node added to a real graph reports **14 ports, zero duplicates**, one of which is:
+
+```
+backendId   input, group "General", type enum:
+  Active Backend            -> _active_
+  backend_ms94j6xso72rl     -> _endpoint_      <- the synthetic entry, first, as designed
+  Rig Directus              -> backend_1785513497528_ub5rjngl1
+  Rig Supabase              -> backend_1785513760702_vmk9icb84
+  Rig Custom                -> backend_1785513902083_utbtkqn09
+```
+
+The property panel renders it as **Backend → "Active Backend"**, the first row under GENERAL, above
+Class and Filter. The zero duplicates matter independently: it is RUN-003 slice 8's doubled-port fix
+holding on a **real node instance**, which is the check the catalog could never have been.
+
+⚠️ **One cosmetic finding: the `_endpoint_` entry is labelled with the raw app id.**
+`backend_ms94j6xso72rl` is what a user picks from the dropdown for the backend their record nodes
+already use — every other entry has a human name. The panel shows the same id, so this is
+consistent rather than wrong, but it is the one entry whose label is not a name.
+
+### Still not verified, even now
+
+- **`hideWhenSingleBackend`.** This project has five backends, so the picker is shown. The
+  hide-at-one branch is still unexercised — and §6 is right that it is the dangerous one.
+- **`objectId` as a `number`.** No Directus-backed record was fetched into a graph, so nothing here
+  says the Model store, a repeater binding or a wired `Record Id` input copes with `7` where
+  `'7'` used to arrive. This remains the likeliest place a real defect is hiding.
+- **No query was run.** The node was added and inspected, not fetched.
