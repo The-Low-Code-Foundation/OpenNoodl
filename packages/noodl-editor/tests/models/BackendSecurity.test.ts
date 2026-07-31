@@ -14,6 +14,7 @@
 
 import { BACKEND_TYPES, type BackendType } from '@noodl/backend-contract';
 
+import { ENDPOINT_BACKEND_ID } from '../../src/editor/src/models/BackendServices/activeBackend';
 import {
   buildBackendList,
   dataBrowserAvailability,
@@ -230,12 +231,45 @@ describe('BCN-009 — one list from three mechanisms', () => {
       managed: [{ id: 'local1', name: 'Local', port: 8577, running: true }],
       endpoint: { endpoint: 'http://localhost:8577', appId: 'local1', type: 'nodegx' },
       external: [backendFixture({ type: 'directus', id: 'ext1', name: 'Directus' })],
-      activeExternalId: undefined
+      activeBackendId: ENDPOINT_BACKEND_ID
     });
 
     expect(entries.length).toBe(3);
     expect(entries[0].isActive).toBe(true);
+    expect(entries[0].kind).toBe('endpoint');
     expect(entries.map((entry) => entry.type)).toContain('directus' as BackendType);
+  });
+
+  // ⚠️ The defect this list used to make visible, now pinned. Before BCN-009
+  // step 2 the endpoint entry was `isActive: true` unconditionally and the
+  // managed entry matched on the port, so one server and one Directus produced
+  // *three* active entries — and the panel drew two ACTIVE badges.
+  it('has at most one active entry, whatever the project holds', () => {
+    const sources = {
+      managed: [{ id: 'local1', name: 'Local', port: 8577, running: true }],
+      endpoint: { endpoint: 'http://localhost:8577', appId: 'local1', type: 'nodegx' },
+      external: [backendFixture({ type: 'directus', id: 'ext1', name: 'Directus' })]
+    };
+
+    for (const activeBackendId of [undefined, ENDPOINT_BACKEND_ID, 'ext1', 'gone']) {
+      const active = buildBackendList({ ...sources, activeBackendId }).filter((entry) => entry.isActive);
+      expect(active.length).toBeLessThan(2);
+    }
+  });
+
+  it('labels the endpoint entry with a name, not with an app id', () => {
+    const entries = buildBackendList({
+      managed: [],
+      endpoint: { endpoint: 'http://localhost:8577', appId: 'backend_ms94j6xso72rl', type: 'nodegx' },
+      external: [],
+      activeBackendId: ENDPOINT_BACKEND_ID
+    });
+
+    // The app id is identity, not a name. It belongs on the detail line, which
+    // is where a user looking for "which server" finds the URL anyway.
+    expect(entries[0].name).toBe('Built-in backend');
+    expect(entries[0].detail).toContain('backend_ms94j6xso72rl');
+    expect(entries[0].backendId).toBe(ENDPOINT_BACKEND_ID);
   });
 
   it('offers the record grid only where the editor can actually reach it, with a reason where it cannot', () => {
