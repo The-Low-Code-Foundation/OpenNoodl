@@ -43,17 +43,47 @@ Four workers were launched in worktrees for **BCN-005** (relations), **BCN-006 s
 keys). **All four were terminated part-way by an org monthly spend limit**, not by anything
 about the work.
 
-**None of them committed.** Their changes are uncommitted in their worktrees under the
-session scratchpad (`wt-bcn005`, `wt-bcn006`, `wt-bcn008`, `wt-bcn009`) and are **lost if
-those directories are cleaned**. Roughly: BCN-005 had touched the contract's `data.ts`,
-three descriptors, two translators and `ParseWireAdapter`; BCN-006 had touched
-`ParseAuthAdapter`, `TokenLifecycle` and `userservice.ts`; BCN-008 had a realtime driver
-plus a `realtime.ts` written to the wrong path (package root, not `src/`); BCN-009 had
-touched all four `BackendServices/` models and three panel components.
+None of them committed, so the orchestrator **preserved each one as a labelled WIP commit on
+its own branch** — the work is safe even though the scratchpad worktrees are not:
 
-Whoever resumes should **treat that work as a draft to review, not to trust** — none of it
-reached a test run, let alone a live pass, and this phase's own record is that roughly
-every second confident change turns out to rest on a stale premise.
+| Branch | Commit | Contents | State |
+|---|---|---|---|
+| `wt-bcn005` | `1ee878e7` | 15 files, +2795/−87 — a new contract `relations.ts` + tests, `data.ts`, three descriptors, two translators, `ParseWireAdapter`, `RestDataAdapter`, `restSerialize`, two live relation probes | **mid-implementation** |
+| `wt-bcn006` | `3cdbe12d` | 4 files, +1438/−45 — a new `RestAuthAdapter`, plus `ParseAuthAdapter`, `TokenLifecycle`, `userservice.ts` | **mid-implementation** |
+| `wt-bcn008` | `63241566` | 9 files, +2265 — a realtime driver and a new `api/backends/realtime/` tree. ⚠️ `realtime.ts` landed in the contract package **root**, not `src/` — wrong path, must move | **mid-implementation** |
+| `wt-bcn009` | `de312037` | 13 files, +1530/−89 — a new `activeBackend.ts`, all four `BackendServices/` models, three panel components, a new `BackendSelection` spec, and a 436-line notes doc | ✅ **essentially complete, with a 13-step live pass** |
+
+⚠️ **Do not treat these as equivalent.** The first three stopped part-way through
+implementation and reached no test run — draft to review, not work to trust, and this
+phase's record is that roughly every second confident change rests on a stale premise.
+
+**BCN-009 step 2 is different and is worth reading before anything else is decided.** Its
+`BCN-009-NOTES-STEP2.md` — **on the `wt-bcn009` branch, not on `cline-dev`**; read it with
+`git show wt-bcn009:dev-docs/tasks/phase-34-one-backend-contract/BCN-009-NOTES-STEP2.md` —
+records a full live pass in a real editor against a *legacy two-active-backend project*,
+and answers the phase's highest-risk question:
+
+- **`_endpoint_` survives because the convergence adopts it rather than replacing it.**
+  `backendServices.activeBackendId` is now allowed to hold the literal `'_endpoint_'`,
+  meaning what it already means to the runtime. **No node parameter changes value, ever** —
+  verified round-tripping through real project metadata (§6.4) and re-resolved by the
+  runtime (§6.5).
+- ⚠️ **A deliberate deviation from the spec**: the *selection* converged, the
+  *configuration* did not. `cloudservices` still holds the endpoint's URL and app id,
+  because that key is read or written in **eight places outside the task's territory**
+  (the exporter, the deploy build context, the project merger and its version-control UI),
+  and moving it is a cross-cutting change that must land with its runtime reader in one
+  commit. The defect is closed without it.
+- ⚠️ **It is not self-sufficient.** §8 lists three runtime follow-ups, with exact code. The
+  load-bearing one is `defaultBackendId`, which is still endpoint-first unconditionally —
+  so a user who switches the project to Directus in the panel gets **a badge that moves and
+  record nodes that do not**. §8.1's patch is gated on `backendServices.version >= 2`, and
+  applying it **ungated would move every Record node in every legacy project onto whichever
+  REST backend was added last**.
+- It also overturns a stale premise worth keeping: **an editor *can* be driven from a
+  worktree** (`npm run dev:debug` compiles the worktree's own sources; the `node_modules`
+  symlink affects where *packages* resolve, not where *sources* are read). BCN-009-NOTES §6.1
+  says otherwise and that cost the previous run its live pass.
 
 **Consequence for BCN-004:** step 7 is deliberately not done. It deletes four
 `noodl.byob.*` types and was gated on BCN-008 retiring the fifth so that `register-nodes`
@@ -70,7 +100,7 @@ and `nodelibraryexport.js` are touched once, with all five deletions landing tog
 | BCN-006 Auth & the token lifecycle | 2 | 🔨 **Steps 1–3 of 8** | The lifecycle designed in prose, `IAuthAdapter` + the Parse wire behind it, and refresh/single-flight/cross-tab under test on injected timers. ⚠️ **Exit criterion 4 cannot be claimed — nothing in the product refreshes a token yet.** One `SessionStore` replaced *four* separate opinions about who is signed in, three of them in no spec. Two more wrong contract shapes. Steps 4–8 need BCN-004 — see [BCN-006-NOTES.md](./BCN-006-NOTES.md) §6. **Live-verified in the preview window** ([BCN-006-007-LIVE-QA.md](./BCN-006-007-LIVE-QA.md)): sign-up/log-out/log-in all work through the XHR branch and a wrong password rejects with a string, but ⚠️ **`Current.email` is `undefined` after `signUp`** — so the "we sent a link to {email}" screen renders `undefined` — and ⚠️ **`emailVerified` never populates** |
 | BCN-007 Files across five backends | 2 | 🔨 **Step 1 of 7** | The normalised `FileRef` and the Parse wire behind it, plus step 4's contract half (`kind`) and step 5 for the two backends that could be evidenced. **A fourth wrong contract shape**: `UploadFileOptions.data` was required and nothing in the repo has ever set it. ⚠️ The normalised reference **stops meaning what the spec assumes one save later**. Steps 2, 3, 6, 7 need BCN-004 — see [BCN-007-NOTES.md](./BCN-007-NOTES.md). **Both of its unprobed claims are now measured** ([BCN-006-007-LIVE-QA.md](./BCN-006-007-LIVE-QA.md), [BCN-004-FILE-FACTS.md](./BCN-004-FILE-FACTS.md)): the 201 exists and carries `size`/`contentType`, and the Directus field map is right — but ⚠️ **`CloudFile` drops both fields**, so BCN-007 added fields to `FileRef` that no graph can read, and ⚠️ **Directus `/assets/{id}` 403s unauthenticated**, so the synthesised URL is a broken `<img>` |
 | BCN-008 Realtime across three transports | 2 | 🔨 **Contract + measurement done; no transport built** | `IRealtimeAdapter` with the lifecycle as its substance, and the `realtime.*` cells set from a probe of every backend the rig can reach — [BCN-008-NOTES.md](./BCN-008-NOTES.md). ⚠️ **The `onclose` trap is worse than recorded**: across four failure modes `close` never fired once, and a WS on a non-upgrading path fires *neither* `error` nor `close` — `byob-realtime.ts` has no connect deadline, so that case never connects and never reports. ⚠️ **Two descriptor probe paths would report `unsupported` on working servers** (Directus `/server/info`, Parse `/serverInfo`); both repointed at the handshake. ⚠️ **Supabase Realtime has never been in the rig** — every Supabase cell is `measured: false`; Parse LiveQuery was **measured absent**. `SubscribeToChanges` deliberately untouched |
-| BCN-009 One backend list, picker & disclosure | 3 | 🔨 **Steps 1, 3, 5, 6, 7 of 7** | One list from *three* mechanisms, one add flow, and **the security disclosure on every card — the deliverable**. **Step 7's live pass is now done in full — all eleven steps pass** ([BCN-009-LIVE-QA.md](./BCN-009-LIVE-QA.md)), including a real Directus connecting in 203ms. ⚠️ **Two ACTIVE badges at once**, because the endpoint card renders it unconditionally while the external card renders it on `activeBackendId` — the two-config-surface split this phase exists to end, still on screen. ⚠️ **OPS-003's findings store does not exist**, so step 6 could not mean what the spec says. Steps 2 (converging the metadata keys) and 4 (the per-node picker) not started — and **step 2 is what would fix the double badge** |
+| BCN-009 One backend list, picker & disclosure | 3 | 🔨 **Steps 1, 3, 5, 6, 7 of 7** | One list from *three* mechanisms, one add flow, and **the security disclosure on every card — the deliverable**. **Step 7's live pass is now done in full — all eleven steps pass** ([BCN-009-LIVE-QA.md](./BCN-009-LIVE-QA.md)), including a real Directus connecting in 203ms. ⚠️ **Two ACTIVE badges at once**, because the endpoint card renders it unconditionally while the external card renders it on `activeBackendId` — the two-config-surface split this phase exists to end, still on screen. ⚠️ **OPS-003's findings store does not exist**, so step 6 could not mean what the spec says. **Step 2 is BUILT AND LIVE-VERIFIED on `wt-bcn009` (`de312037`) but NOT merged** — see the batch note above. It closes all four symptoms of the two-active-backends defect with one converged *selection*, keeps `_endpoint_` by adopting it, and deliberately leaves the two *configuration* homes alone with an eight-site argument for why. ⚠️ **It needs three runtime follow-ups (its §8) that are not written**, the load-bearing one being `defaultBackendId` — until that lands, switching backend in the panel moves the badge but not the record nodes. Step 4 (the per-node picker) not started |
 | BCN-010 Capability gating & catalog reconciliation | 3 | 📋 Specced | **The task that makes the phase's claim true or false.** A merged family with silent gaps is worse than two honest ones. Unblocks phase 30 |
 
 ## The exit criterion
