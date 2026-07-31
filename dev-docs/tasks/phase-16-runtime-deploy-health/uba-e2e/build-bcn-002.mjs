@@ -27,12 +27,13 @@ await esbuild.build({
     {
       name: 'stub-noodl-runtime-singleton',
       setup(build) {
-        // The adapter does not require the runtime singleton — that is the
-        // seam BCN-002 introduced. If this ever fires, the adapter has grown a
-        // dependency it is not supposed to have, which is worth knowing loudly.
-        build.onResolve({ filter: /^(\.\.\/)+noodl-runtime$/ }, (args) => {
-          throw new Error(`ParseWireAdapter reached for the runtime singleton via ${args.path} — it must not.`);
-        });
+        // `cloudstore.js` and `records.js` read project metadata from the
+        // runtime singleton, so the driver injects one. The **adapter** does
+        // not — that is the seam BCN-002 introduced, and the driver asserts it
+        // by checking the bundle afterwards rather than by hoping.
+        build.onResolve({ filter: /^(\.\.\/)+noodl-runtime$/ }, () => ({
+          path: path.join(here, 'stub-noodl-runtime-cloudstore.js')
+        }));
       }
     }
   ]

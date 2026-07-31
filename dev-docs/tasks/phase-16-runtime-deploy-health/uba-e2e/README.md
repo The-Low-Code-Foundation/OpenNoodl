@@ -144,7 +144,8 @@ docker compose --profile parse down -v
 | File | What it is |
 |---|---|
 | `parse` (8092) + `parse-db` | `parseplatform/parse-server:7.3.0` on Mongo 7. 8092, not Parse's own 1337, so it stays out of a local instance's way |
-| `bcn-002-parse-driver.ts` + `build-bcn-002.mjs` | Drives the **real `ParseWireAdapter`**, bundled from `noodl-runtime` sources — 36 checks against both servers |
+| `bcn-002-parse-driver.ts` + `build-bcn-002.mjs` | Drives the **real `ParseWireAdapter`**, bundled from `noodl-runtime` sources — 40 checks against both servers, plus the real `records.js` |
+| `stub-noodl-runtime-cloudstore.js` | The runtime singleton `cloudstore.js` reads project metadata from. Separate from `stub-noodl-runtime.js`, which serves `byob-utils`' `backendServices` |
 | `BCN-002-PARSE-WIRE-OUTPUT.txt` | Recorded run |
 
 **Why both servers.** `nodegx-backend` answers the same Parse routes on the same
@@ -166,6 +167,11 @@ What the run found:
   **deleting a file needs the master key** (the cell said it did not), and
   **`GET /files/:name/sign` does not exist on Parse at all** — it is BAK-006's,
   ours, and Parse answers 403 code 119 with the master key as readily as without.
+- **`records.js` works through the shim**, in the cloud-runtime branch, with a
+  filter written in the neutral vocabulary. That is the one check here that
+  exercises `CloudStore` rather than the adapter, so it is the only one that
+  would catch the shim binding the wrong handle — and the only coverage the
+  four server-side `convertFilterOp` call sites have outside a cloud function.
 - **A defect in our own client**, found on the first run and reachable by nothing
   else in the repo. With no baked `_noodl_cloudservices`, the cloud-runtime
   branch sent `X-Parse-Master-Key: undefined` — `JSON.stringify` drops an

@@ -312,9 +312,62 @@ async function masterKeyProbes(target: Target) {
   }
 }
 
+/**
+ * BCN-002 success criterion: *"Server-side `records.js` paths verified in the
+ * cloud runtime, not just the browser."*
+ *
+ * `records.js` is the API cloud functions call. It builds its own `CloudStore`
+ * with a model scope, wraps every call in a promise, and runs each query's
+ * filter through `convertFilterOp` — the translator BCN-002 deliberately did
+ * **not** move. Four call sites, none of them reachable from a browser.
+ *
+ * This drives the real `records.js` against the real `CloudStore` against a
+ * running `nodegx-backend`, in the cloud-runtime branch. It is the only check
+ * in this file that exercises the shim rather than the adapter, which makes it
+ * the only one that would catch the shim forwarding to the wrong handle.
+ */
+async function recordsApi() {
+  hr('records.js — the server-side path, in the cloud runtime');
+
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const runtimeStub = require('./stub-noodl-runtime-cloudstore.js');
+  runtimeStub.instance.__setMeta('cloudservices', {
+    appId: NODEGX.handle.publicToken,
+    endpoint: NODEGX.handle.url
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const createRecordsAPI = require('../../../../packages/noodl-runtime/src/api/records.js');
+  const records = createRecordsAPI(undefined);
+
+  const collection = 'Bcn002Records';
+
+  try {
+    const created = await records.create(collection, { title: 'from records.js', views: 7 });
+    line(NODEGX, 'records.create', `OK   ${JSON.stringify(created && created.getId ? created.getId() : created)}`);
+
+    // The point of routing through records.js: this filter is written in the
+    // NEUTRAL vocabulary and `convertFilterOp` turns it into a Parse `where`.
+    // A shim forwarding to the wrong handle, or a translator broken by the
+    // move, both show up right here and nowhere in the wire probes above.
+    const found = await records.query(collection, { title: { equalTo: 'from records.js' } });
+    line(NODEGX, 'records.query (neutral filter)', `OK   ${Array.isArray(found) ? found.length : 0} row(s)`);
+
+    const counted = await records.count(collection, { views: { greaterThan: 5 } });
+    line(NODEGX, 'records.count (greaterThan)', `OK   ${JSON.stringify(counted)}`);
+
+    const missed = await records.query(collection, { title: { equalTo: 'no such title' } });
+    line(NODEGX, 'records.query (no match)', `OK   ${Array.isArray(missed) ? missed.length : 0} row(s)`);
+  } catch (e) {
+    line(NODEGX, 'records.js', `ERR  ${(e as Error).message}`);
+    differences.push('records.js threw');
+  }
+}
+
 async function main() {
   const nodegx = await probe(NODEGX);
   const parse = await probe(PARSE);
+  await recordsApi();
 
   hr('The delta — which is the whole reason the second server exists');
 
