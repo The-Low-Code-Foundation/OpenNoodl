@@ -4,28 +4,37 @@
 
 **11 tasks. TIER 1 IS COMPLETE — BCN-001, BCN-002, BCN-003 and BCN-003b. The contract exists, the first adapter is behind it, one translator per backend is proved against five live servers, and there is one filter builder.**
 
-**Three Tier 2/3 tasks are partially landed** from parallel sessions — BCN-006 (steps 1–3), BCN-007
-(step 1) and BCN-009 (steps 1, 3, 5, 6). All three stop at the same wall: **BCN-004's REST transport
-does not exist**, and none of them invented a second one. Their rows below say exactly which steps
-are done.
+**BCN-004's transport now exists.** `RestDataAdapter` implements all fourteen `IDataAdapter`
+methods for Directus, Supabase and PocketBase, on the measured wire profiles rather than the
+editor's `BackendPreset`, consuming BCN-003's translators with no second translator anywhere.
+45 unit tests and **42/42 live checks against all three real servers**. The schema-driven port
+generator is out of the BYOB nodes and into a shared module. `IRealtimeAdapter` exists and the
+`realtime.*` descriptor cells are set from measurement. See the rows below for what each still owes.
 
-**BCN-004 is the critical path and its evidence now exists.** The three REST wires were probed
-before any adapter code — [BCN-004-WIRE-FACTS.md](./BCN-004-WIRE-FACTS.md) — and the probe found
-that building the adapter the way the spec words it would ship a known bug: the Directus preset's
-`totalCountPath` points at the count that **ignores the filter**, which is the RUN-003 defect
-`pickTotalCount` already fixed. §3 of that document proposes the design consequence.
+**The live verification owed on 2026-07-31 has all been run.** Every item is closed; each one
+found something a unit test could not.
 
-### Live verification owed (2026-07-31)
+### Live verification — done (2026-07-31)
 
-The three parallel agents could run none, because a worktree cannot drive the editor. One pass has
-now been made from the primary checkout and **stopped early**: two sessions cannot share one
-Electron instance, and another session was mid-BCN-003b live QA in the same checkout.
-
-| Owed | State |
+| Owed | Result |
 |---|---|
-| BCN-009 — the 11-step panel script | **Steps 1–2 pass.** First render of any of its UI; two of its §6.5 CSS questions answered. Steps 3–11 outstanding — [BCN-009-LIVE-QA-PARTIAL.md](./BCN-009-LIVE-QA-PARTIAL.md) |
-| BCN-006 — login → log out → sign up → reset password | **Not run.** The XHR branch every viewer runs is reached by no unit test |
-| BCN-007 — a real upload against a running backend | **Not run.** `contentType`/`size` are asserted from a literal fixture; no 201 has ever been observed |
+| BCN-009 — the 11-step panel script | ✅ **All eleven steps pass**, incl. the switch dialog and the token-change line that proves it is not boilerplate. ⚠️ **Two cards say ACTIVE at once**; the endpoint badge is unconditional and also says ACTIVE for a *stopped* backend; the first external backend activates without the switch dialog — [BCN-009-LIVE-QA.md](./BCN-009-LIVE-QA.md) |
+| BCN-006 — login → log out → sign up → reset password | ✅ **Run in the preview window against a running backend** — the XHR branch, first time. ⚠️ **`Current.email` is `undefined` after `signUp`** and populated only after `logIn`; **`emailVerified` never populates at all**. `requestPasswordReset` is not on the public API — [BCN-006-007-LIVE-QA.md](./BCN-006-007-LIVE-QA.md) |
+| BCN-007 — a real upload against a running backend | ✅ **The 201 exists and carries `size` and `contentType`** — the assumption was right at the wire. ⚠️ **`CloudFile` throws both away**, so they are correct at the adapter boundary and unreachable from a graph |
+| BCN-007's Directus file field map (*"documented, not probed"*) | ✅ **Probed — the map is correct.** 16 checks, 0 failures. ⚠️ `/assets/{id}` **403s unauthenticated**, so the URL the adapter synthesises is a broken `<img>`; and 403 also means "never existed", so an adapter cannot tell a deleted file from a forbidden one — [BCN-004-FILE-FACTS.md](./BCN-004-FILE-FACTS.md) |
+
+### ⚠️ Two pieces of received wisdom about driving the editor are wrong
+
+Both cost time in this batch; recorded in [BCN-009-LIVE-QA.md](./BCN-009-LIVE-QA.md) §4.
+
+- **`BaseDialog` mounts a hidden *measuring* copy of every dialog**, so every `[data-test]` inside
+  one matches twice, permanently. `cdp click` uses `querySelector` and therefore always targets the
+  copy — harmless where the two overlay, silently wrong where they do not (the security disclosure's
+  copy sits 50px high). Scope selectors with
+  `[class*=VisibleDialog] > [class*=ChildContainer] …`. The partial run blamed *"two React trees
+  across a reload"*; there is no reload and it never goes away.
+- **`--target=dashboard` attaches to the preview window.** It is not a known needle in this
+  checkout's `cdp.js`, so it falls through to "the first page". **`--target=editor` is correct.**
 
 | Task | Tier | Status | Notes |
 |---|---|---|---|
@@ -33,12 +42,12 @@ Electron instance, and another session was mid-BCN-003b live QA in the same chec
 | BCN-002 Parse-wire behind the contract | 1 | ✅ **Complete** | `ParseWireAdapter` + a `CloudStore` reduced to resolution. **Four more stale premises, three wrong contract shapes, three wrong `parse` descriptor cells and two defects** — see [BCN-002-NOTES.md](./BCN-002-NOTES.md). A real Parse Server now runs in the rig |
 | BCN-003 The filter dialect | 1 | ✅ **Complete** | Five translators, gated by the descriptor. **`convertFilterOp` had no branch for eleven operators, so `contains` returned the whole collection.** Both built-in-backend defects fixed. 106 live checks, 0 failures — see [BCN-003-NOTES.md](./BCN-003-NOTES.md) |
 | BCN-003b One filter builder | 1 | ✅ **Complete** | `QueryEditor`'s filter half deleted; one builder for both ports. **The "no data-format change" premise was wrong** — the Parse saved format moves, so the runtime reads both shapes. ⚠️ **The live pass found the Parse filter builder has been unreachable in the editor since WF-007** — see [BCN-003b-NOTES.md](./BCN-003b-NOTES.md) §3 |
-| BCN-004 REST data adapter & the end of BYOB | 2 | 🔨 **Probed, not begun** | The three wires are **measured** — [BCN-004-WIRE-FACTS.md](./BCN-004-WIRE-FACTS.md). ⚠️ **The preset carries a wrong total**: Directus `meta.total_count` ignores the filter, which is the defect RUN-003 already fixed. Two more: PocketBase's `offsetParam: 'page'` is a 1-based page, and Supabase creates return an **empty body** without `Prefer: return=representation`. ⚠️ **Spec premise half wrong** — the *runtime* BYOB path is Directus-only, so Supabase and PocketBase transports are **written, not moved**. No adapter code yet |
+| BCN-004 REST data adapter & the end of BYOB | 2 | 🔨 **Steps 1–4 of 8** | Wires measured first — [BCN-004-WIRE-FACTS.md](./BCN-004-WIRE-FACTS.md) — then `RestDataAdapter` built on the **wire profiles, not the preset** (the preset's Directus total ignores the filter). **45 unit tests, 42/42 live across all three servers**, and the driver was mutation-tested to prove it discriminates. ⚠️ **The two obvious pagination checks pass under a broken implementation** — `limit=2, skip=2` makes a raw skip and `floor(skip/limit)+1` both `2`. Port generator moved to `schema-ports.ts`; ⚠️ **the catalog was never the doubled-port check** for this family (`parameterEncoding.known: false`). **Steps 5–8 remain**: repoint the six record nodes, live-pass the two Parse-family backends, delete the BYOB types, flip the cells — [BCN-004-NOTES-TRANSPORT.md](./BCN-004-NOTES-TRANSPORT.md), [BCN-004-NOTES-PORTGEN.md](./BCN-004-NOTES-PORTGEN.md) |
 | BCN-005 Relations across five backends | 2 | 📋 Specced | Opens with RUN-003's recorded residual: O2M/M2M need `GET /relations`. Parse's junction-less `Relation` is what the contract shape must accommodate |
-| BCN-006 Auth & the token lifecycle | 2 | 🔨 **Steps 1–3 of 8** | The lifecycle designed in prose, `IAuthAdapter` + the Parse wire behind it, and refresh/single-flight/cross-tab under test on injected timers. ⚠️ **Exit criterion 4 cannot be claimed — nothing in the product refreshes a token yet.** One `SessionStore` replaced *four* separate opinions about who is signed in, three of them in no spec. Two more wrong contract shapes. Steps 4–8 need BCN-004 — see [BCN-006-NOTES.md](./BCN-006-NOTES.md) §6 |
-| BCN-007 Files across five backends | 2 | 🔨 **Step 1 of 7** | The normalised `FileRef` and the Parse wire behind it, plus step 4's contract half (`kind`) and step 5 for the two backends that could be evidenced. **A fourth wrong contract shape**: `UploadFileOptions.data` was required and nothing in the repo has ever set it. ⚠️ The normalised reference **stops meaning what the spec assumes one save later**. Steps 2, 3, 6, 7 need BCN-004 — see [BCN-007-NOTES.md](./BCN-007-NOTES.md) |
-| BCN-008 Realtime across three transports | 2 | 📋 Specced | Retires the fifth BYOB type. Parse LiveQuery is the `conditional` case that justifies the whole four-state descriptor |
-| BCN-009 One backend list, picker & disclosure | 3 | 🔨 **Steps 1, 3, 5, 6 of 7** | One list from *three* mechanisms, one add flow, and **the security disclosure on every card — the deliverable**. Its prose is reproduced in [BCN-009-NOTES.md](./BCN-009-NOTES.md) §1 so Richard can mark it up without running the editor. ⚠️ **OPS-003's findings store does not exist**, so step 6 could not mean what the spec says. Steps 2 (converging the metadata keys), 4 (the per-node picker) and 7 (the live pass) not started |
+| BCN-006 Auth & the token lifecycle | 2 | 🔨 **Steps 1–3 of 8** | The lifecycle designed in prose, `IAuthAdapter` + the Parse wire behind it, and refresh/single-flight/cross-tab under test on injected timers. ⚠️ **Exit criterion 4 cannot be claimed — nothing in the product refreshes a token yet.** One `SessionStore` replaced *four* separate opinions about who is signed in, three of them in no spec. Two more wrong contract shapes. Steps 4–8 need BCN-004 — see [BCN-006-NOTES.md](./BCN-006-NOTES.md) §6. **Live-verified in the preview window** ([BCN-006-007-LIVE-QA.md](./BCN-006-007-LIVE-QA.md)): sign-up/log-out/log-in all work through the XHR branch and a wrong password rejects with a string, but ⚠️ **`Current.email` is `undefined` after `signUp`** — so the "we sent a link to {email}" screen renders `undefined` — and ⚠️ **`emailVerified` never populates** |
+| BCN-007 Files across five backends | 2 | 🔨 **Step 1 of 7** | The normalised `FileRef` and the Parse wire behind it, plus step 4's contract half (`kind`) and step 5 for the two backends that could be evidenced. **A fourth wrong contract shape**: `UploadFileOptions.data` was required and nothing in the repo has ever set it. ⚠️ The normalised reference **stops meaning what the spec assumes one save later**. Steps 2, 3, 6, 7 need BCN-004 — see [BCN-007-NOTES.md](./BCN-007-NOTES.md). **Both of its unprobed claims are now measured** ([BCN-006-007-LIVE-QA.md](./BCN-006-007-LIVE-QA.md), [BCN-004-FILE-FACTS.md](./BCN-004-FILE-FACTS.md)): the 201 exists and carries `size`/`contentType`, and the Directus field map is right — but ⚠️ **`CloudFile` drops both fields**, so BCN-007 added fields to `FileRef` that no graph can read, and ⚠️ **Directus `/assets/{id}` 403s unauthenticated**, so the synthesised URL is a broken `<img>` |
+| BCN-008 Realtime across three transports | 2 | 🔨 **Contract + measurement done; no transport built** | `IRealtimeAdapter` with the lifecycle as its substance, and the `realtime.*` cells set from a probe of every backend the rig can reach — [BCN-008-NOTES.md](./BCN-008-NOTES.md). ⚠️ **The `onclose` trap is worse than recorded**: across four failure modes `close` never fired once, and a WS on a non-upgrading path fires *neither* `error` nor `close` — `byob-realtime.ts` has no connect deadline, so that case never connects and never reports. ⚠️ **Two descriptor probe paths would report `unsupported` on working servers** (Directus `/server/info`, Parse `/serverInfo`); both repointed at the handshake. ⚠️ **Supabase Realtime has never been in the rig** — every Supabase cell is `measured: false`; Parse LiveQuery was **measured absent**. `SubscribeToChanges` deliberately untouched |
+| BCN-009 One backend list, picker & disclosure | 3 | 🔨 **Steps 1, 3, 5, 6, 7 of 7** | One list from *three* mechanisms, one add flow, and **the security disclosure on every card — the deliverable**. **Step 7's live pass is now done in full — all eleven steps pass** ([BCN-009-LIVE-QA.md](./BCN-009-LIVE-QA.md)), including a real Directus connecting in 203ms. ⚠️ **Two ACTIVE badges at once**, because the endpoint card renders it unconditionally while the external card renders it on `activeBackendId` — the two-config-surface split this phase exists to end, still on screen. ⚠️ **OPS-003's findings store does not exist**, so step 6 could not mean what the spec says. Steps 2 (converging the metadata keys) and 4 (the per-node picker) not started — and **step 2 is what would fix the double badge** |
 | BCN-010 Capability gating & catalog reconciliation | 3 | 📋 Specced | **The task that makes the phase's claim true or false.** A merged family with silent gaps is worse than two honest ones. Unblocks phase 30 |
 
 ## The exit criterion
@@ -266,6 +275,17 @@ Full detail in [BCN-001-CONTRACT.md §8](./BCN-001-CONTRACT.md). Rig extended, n
 | `CloudStore._handle()` still answers `nodegx` unconditionally, so the capability gate reads a floor rather than the truth | BCN-009 — **its step 4, unstarted** |
 | Promisifying the fourteen callback methods — deliberately not done, recorded as a follow-up | — |
 | `AdapterRegistry.createAdapter`'s `case 'parse'` still throws "not yet refactored". That stub is for a **server-side** Parse adapter, not the client one BCN-002 built | — |
+| ⚠️ **Two cards say ACTIVE at once.** `CloudServicesEndpointSection.tsx:178` renders the badge unconditionally; `BackendCard.tsx:115` renders it on `activeBackendId`. Same badge also says ACTIVE for a **stopped** backend | **BCN-009 step 2** — converging the metadata keys is the fix |
+| ⚠️ **The first external backend goes ACTIVE on creation**, skipping the switch dialog — the one change that takes a project from publishing nothing to publishing a token happens silently | BCN-009 |
+| ⚠️ **`Current.email` is `undefined` after `signUp`**, populated only after `logIn`; **`emailVerified` never populates at all** | BCN-006 step 4+ |
+| ⚠️ **`CloudFile` drops `contentType` and `size`.** The backend sends both on a 201 and `normalizeFileRef` preserves them; `new CloudFile(response)` destructures `{name, url}`. Either `CloudFile` grows them or `FileRef`'s two fields are adapter-internal — today it claims a capability the graph does not have | BCN-007 remainder |
+| ⚠️ **Directus `/assets/{id}` 403s unauthenticated**, so the URL an adapter synthesises is a broken `<img>`; and 403 also means "never existed", so **deleted and forbidden are indistinguishable** on that wire | BCN-007 step 2 |
+| ⚠️ **`byob-realtime.ts` has no connect deadline.** A WS on a non-upgrading path fires neither `error` nor `close`, so the subscription never connects and never reports. `REALTIME_TIMING` now requires one | BCN-008 |
+| ⚠️ **Parse schema introspection may be structurally impossible today** — upstream gates `/schemas` behind the master key and the preset has no admin-key field; our own backend serves `/api/_schema`, not `/schemas`, so the `nodegx` preset's `endpoints.schema` is wrong | BCN-004 step 6 |
+| `RestDataAdapter`'s `serializeObject` defaults to identity, so **RUN-003's JSON-column/date normalisation is not ported** and will double-encode unless the node layer passes the hook | BCN-004 step 5 |
+| Directus **system collections** (`directus_users` → `/users`) are a capability BYOB had and `RestDataAdapter` does not | BCN-004 |
+| The contract's `objectId?: string` should widen to `string \| number` — Directus and PostgREST hand back integers, and coercing only the PK breaks `author.objectId === article.author_id` | BCN-009/010 |
+| `wire.ts`'s `createRequestHeaders` is needed on **`PATCH`** too — a PostgREST `PATCH` without `Prefer: return=representation` answers 204 empty, so `save` would call `success` with nothing. Read through a helper; the field wants renaming | BCN-004 |
 
 ## Decisions already taken
 
