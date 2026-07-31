@@ -22,6 +22,7 @@ import type {
   GraphModelLike,
   GraphNodeModel,
   ModelLike,
+  ModelScopeLike,
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule,
@@ -81,6 +82,8 @@ export interface DbCrudBaseInstance extends NodeInstance {
   _internal: {
     error?: string;
     collectionId?: string;
+    /** The `Backend` picker's value: a backend id, `'_endpoint_'`, or `'_active_'`. */
+    backendId?: string;
     /** `scheduleOnce` writes `hasScheduled<Type>` flags here, one per operation kind. */
     [extra: string]: unknown;
   };
@@ -91,6 +94,38 @@ export interface DbCrudBaseInstance extends NodeInstance {
   /** Sets the `error` output, signals `failure`, and raises an editor warning. */
   setError(err: string): void;
   clearWarnings(): void;
+  /**
+   * The store bound to the backend this node's `Backend` input names (BCN-004 step 5).
+   *
+   * `undefined` when the graph names a backend the project does not have — the error has
+   * already been reported when that happens, so a caller only has to stop.
+   *
+   */
+  cloudStore(): DbCloudStoreLike | undefined;
+  /**
+   * The same, against an explicitly given scope — including `undefined`.
+   *
+   * For `deletedbmodelpropertiesnode`, whose documented `ModelScope` (capital M) defect
+   * means it hands over `undefined` deliberately. A default parameter could not tell that
+   * apart from "not passed" and would have fixed the defect as a side effect.
+   */
+  cloudStoreForScope(modelScope: ModelScopeLike | undefined): DbCloudStoreLike | undefined;
+}
+
+/**
+ * What the Record nodes call on the store they resolve.
+ *
+ * Deliberately the five methods this family uses rather than all fourteen: the surface a
+ * node is entitled to is the surface it is typed against, and a sixth appearing here is
+ * worth noticing.
+ */
+export interface DbCloudStoreLike {
+  create(options: Record<string, unknown>): void;
+  save(options: Record<string, unknown>): void;
+  delete(options: Record<string, unknown>): void;
+  addRelation(options: Record<string, unknown>): void;
+  removeRelation(options: Record<string, unknown>): void;
+  _fromJSON(item: Record<string, unknown>, collectionName?: string): ModelLike;
 }
 
 /** Contributed by either library's `addModelId` — the record this node points at. */

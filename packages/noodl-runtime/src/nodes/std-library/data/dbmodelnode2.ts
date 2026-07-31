@@ -21,6 +21,9 @@ import { forgetForEachItem, resolveForEachItem } from '../../../foreachitem';
 import ModelImport = require('../../../model');
 import CloudStore = require('../../../api/cloudstore');
 
+import { recordBackendPickerPorts, recordClassPorts, recordFieldPorts, recordSchemaContext } from './record-ports';
+import { sendSchemaPorts, staticPortNames } from './schema-ports';
+
 const Model = ModelImport as unknown as ModelModule;
 
 /**
@@ -32,14 +35,6 @@ const Model = ModelImport as unknown as ModelModule;
  * `clearWarnings`, which must name this or the warning can never be cleared.
  */
 const STORAGE_OP_ERROR_CODE = 'record/storage-op-failed';
-
-/** One class in the project's `dbCollections` metadata. */
-interface DbCollectionMeta {
-  name: string;
-  schema?: {
-    properties?: Record<string, { type?: string; [extra: string]: unknown }>;
-  };
-}
 
 /**
  * `this` inside the Record node.
@@ -63,6 +58,8 @@ interface DbModelNodeInstance extends NodeInstance {
     idSource?: unknown;
     /** The `Repeater Component` input: an item component named explicitly (BINDING-CONTRACT §a). */
     repeaterComponent?: string;
+    /** The `Backend` picker's value: a backend id, `'_endpoint_'`, or `'_active_'`. */
+    backendId?: string;
     /** `scheduleOnce` writes `hasScheduled<Type>` flags here. */
     [extra: string]: unknown;
   };
@@ -317,7 +314,14 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
           return;
         }
 
-        const cloudstore = CloudStore.forScope(_this.nodeScope.modelScope);
+        // BCN-004 step 5: the store the `Backend` input names, not the singleton. With
+        // nothing selected this resolves to exactly the store `forScope` used to return.
+        const cloudstore = CloudStore.forBackend(_this.nodeScope.modelScope, internal.backendId as string | undefined);
+        if (!cloudstore) {
+          _this.setError(`The backend this node is set to ("${internal.backendId}") is not configured in this project.`);
+          return;
+        }
+
         cloudstore.fetch({
           collection: internal.collectionId,
           objectId: internal.modelId, // Get the objectId part of the model id
@@ -390,7 +394,11 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
         });
 
       const dynamicSetters: Record<string, (value: unknown) => void> = {
-        collectionName: this.setCollectionID.bind(this)
+        collectionName: this.setCollectionID.bind(this),
+        // BCN-004 step 5. A dynamic port with no branch here silently drops its value.
+        backendId: (value: unknown) => {
+          this._internal.backendId = value as string;
+        }
       };
 
       if (dynamicSetters[name])
@@ -417,83 +425,38 @@ function userInputSetter(this: DbModelNodeInstance, name: string, value: unknown
   this._internal.inputValues[name] = value;
 }
 
+/**
+ * BCN-004 step 5: the Class dropdown and the property outputs come from the selected
+ * backend's introspected schema, through the shared generator, for every backend.
+ *
+ * The property ports are **outputs** here — a Record is read by this node and written by
+ * Set Record Properties — and each one still gets its `changed-<field>` signal beside it.
+ * `Relation` columns are still absent: they are reached through the Add/Remove Relation
+ * nodes rather than as a port.
+ */
 function updatePorts(
   nodeId: string,
   parameters: Record<string, unknown>,
   editorConnection: EditorConnectionLike,
   graphModel: GraphModelLike
 ) {
+  const ctx = recordSchemaContext(graphModel, parameters);
   const ports: RuntimeDiscoveredPort[] = [];
 
-  const dbCollections = graphModel.getMetaData('dbCollections') as DbCollectionMeta[] | undefined;
-  const systemCollections = graphModel.getMetaData('systemCollections') as DbCollectionMeta[] | undefined;
+  ports.push(...recordBackendPickerPorts(ctx));
+  ports.push(...recordClassPorts(ctx));
 
-  const _systemClasses = [
-    { label: 'User', value: '_User' },
-    { label: 'Role', value: '_Role' }
-  ];
-  ports.push({
-    name: 'collectionName',
-    displayName: 'Class',
-    group: 'General',
-    type: {
-      name: 'enum',
-      enums: _systemClasses.concat(
-        dbCollections !== undefined
-          ? dbCollections.map((c) => {
-              return { value: c.name, label: c.name };
-            })
-          : []
-      ),
-      allowEditOnly: true
-    },
-    plug: 'input'
-  });
-
-  if (parameters.collectionName && dbCollections) {
-    // Fetch ports from collection keys
-    let c = dbCollections.find((c) => c.name === parameters.collectionName);
-    if (c === undefined && systemCollections) c = systemCollections.find((c) => c.name === parameters.collectionName);
-    if (c && c.schema && c.schema.properties) {
-      const props = c.schema.properties;
-      for (const key in props) {
-        const p = props[key];
-        if (ports.find((_p) => _p.name === key)) continue;
-
-        if (p.type === 'Relation') {
-          // Relations are reached through the Add/Remove Relation nodes, not as a port here.
-        } else {
-          // Other schema type ports
-          const _typeMap: Record<string, string> = {
-            String: 'string',
-            Boolean: 'boolean',
-            Number: 'number',
-            Date: 'date'
-          };
-
-          ports.push({
-            type: {
-              name: _typeMap[p.type] ? _typeMap[p.type] : '*'
-            },
-            plug: 'output',
-            group: 'Properties',
-            name: 'prop-' + key,
-            displayName: key
-          });
-
-          ports.push({
-            type: 'signal',
-            plug: 'output',
-            group: 'Changed Events',
-            displayName: key + ' Changed',
-            name: 'changed-' + key
-          });
-        }
-      }
-    }
+  if (ctx.selectedCollection) {
+    ports.push(
+      ...recordFieldPorts(ctx, {
+        plug: 'output',
+        skipRelationColumns: true,
+        includeChangedSignals: true
+      })
+    );
   }
 
-  editorConnection.sendDynamicPorts(nodeId, ports);
+  sendSchemaPorts(editorConnection, nodeId, ports, { staticPorts: staticPortNames(ModelNodeDefinition) });
 }
 
 const DbModelNodeModule: NodeModule = {
@@ -517,6 +480,15 @@ const DbModelNodeModule: NodeModule = {
 
       graphModel.on('metadataChanged.systemCollections', function () {
         CloudStore.invalidateCollections();
+        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+      });
+
+      // The two keys the picker and the schema-driven ports actually read now.
+      graphModel.on('metadataChanged.backendServices', function () {
+        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+      });
+
+      graphModel.on('metadataChanged.cloudservices', function () {
         updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
       });
     }

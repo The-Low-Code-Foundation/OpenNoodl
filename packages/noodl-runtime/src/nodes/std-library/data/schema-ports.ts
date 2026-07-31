@@ -439,6 +439,30 @@ export interface ResolveSchemaPortContextOptions {
   backendIdParam?: string;
   /** The parameter naming the collection. `collection` for BYOB, `collectionName` for the Record family. */
   collectionParam?: string;
+  /**
+   * Backends that are not in `backendServices`, prepended to the list.
+   *
+   * ⚠️ **Added in BCN-004 step 5, and step 4's notes said no new parameter would be
+   * needed.** The reason it is: a project's backends do not all live in one metadata key.
+   * The editor's `backendList.ts` records that `cloudservices` binds the record/auth/file
+   * nodes while `backendServices.activeBackendId` binds the BYOB ones, so the Record
+   * family's picker has to be able to list — and select — a backend that has no entry in
+   * `backendServices` at all. Without this the hide-when-one rule would also be wrong in
+   * the harmful direction: a project with the built-in backend *and* one Directus would
+   * count one, hide the picker, and silently move every record node onto Directus.
+   *
+   * Empty by default, so the four BYOB nodes are untouched.
+   */
+  extraBackends?: BackendServiceEntry[];
+  /**
+   * What `_active_` resolves to, overriding `backendServices.activeBackendId`.
+   *
+   * The same two-actives finding: "active" means the BYOB active backend to a BYOB node
+   * and the project's `cloudservices` endpoint to a Record node, and neither is wrong.
+   * See `api/backends/resolveBackend.ts::defaultBackendId`, which is where the Record
+   * family's answer is computed.
+   */
+  activeBackendId?: string;
 }
 
 /**
@@ -458,11 +482,12 @@ export function resolveSchemaPortContext(options: ResolveSchemaPortContextOption
   const backendServices = (graphModel.getMetaData('backendServices') as BackendServicesMetaData) || {
     backends: []
   };
-  const backends = backendServices.backends || [];
+  const backends = (options.extraBackends || []).concat(backendServices.backends || []);
+  const activeBackendId = options.activeBackendId !== undefined ? options.activeBackendId : backendServices.activeBackendId;
 
   const backendIdParameter = parameters[backendIdParam];
   const selectedBackendId =
-    backendIdParameter === '_active_' || !backendIdParameter ? backendServices.activeBackendId : backendIdParameter;
+    backendIdParameter === '_active_' || !backendIdParameter ? activeBackendId : backendIdParameter;
   const selectedBackend = backends.find((b) => b.id === selectedBackendId);
 
   let collections = selectedBackend?.schema?.collections || [];
@@ -490,7 +515,7 @@ export function resolveSchemaPortContext(options: ResolveSchemaPortContextOption
 
   return {
     backends,
-    activeBackendId: backendServices.activeBackendId,
+    activeBackendId,
     selectedBackend,
     backendType,
     collections,

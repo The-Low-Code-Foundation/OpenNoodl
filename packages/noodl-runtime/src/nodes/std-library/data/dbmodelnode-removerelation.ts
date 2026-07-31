@@ -6,7 +6,6 @@ import type { DbCrudBaseInstance, DbCrudNodeModule, DbModelIdInstance, RelationP
 
 import ModelImport = require('../../../model');
 import DbModelCRUDBase = require('./dbmodelcrudbase');
-import CloudStore = require('../../../api/cloudstore');
 
 const Model = ModelImport as unknown as ModelModule;
 
@@ -84,7 +83,14 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
           const model = internal.model;
           const targetModelId = internal.targetModelId;
 
-          CloudStore.forScope(_this.nodeScope.modelScope).removeRelation({
+          // BCN-004 step 5: the store the `Backend` input names. This node shares
+          // `addBaseInfo` with the Record family, so it gets the picker port; resolving it
+          // here is what keeps the port honest. A REST backend refuses relation editing
+          // with the descriptor's own sentence (BCN-005 owns making it work).
+          const cloudstore = _this.cloudStore();
+          if (!cloudstore) return;
+
+          cloudstore.removeRelation({
             collection: internal.collectionId,
             objectId: model.getId(),
             key: internal.relationProperty,

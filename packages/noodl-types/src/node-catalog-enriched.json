@@ -9076,8 +9076,41 @@
         "editorAdapter": "FilterRecordsAdapter"
       },
       "parameterEncoding": {
-        "known": false,
-        "reason": "The port helper could not be run headlessly — it needs project context this generator does not have (Cannot read properties of undefined (reading 'find'))."
+        "known": true,
+        "seededBy": [],
+        "seededByProjectMetadata": [
+          "dbCollections"
+        ],
+        "patterns": [
+          {
+            "pattern": "collectionName",
+            "plug": "input",
+            "group": "General",
+            "valueType": "enum",
+            "example": "collectionName"
+          },
+          {
+            "pattern": "filterEnableLimit",
+            "plug": "input",
+            "group": "Limit",
+            "valueType": "boolean",
+            "example": "filterEnableLimit"
+          },
+          {
+            "pattern": "visualFilter",
+            "plug": "input",
+            "group": "Filter",
+            "valueType": "query-filter",
+            "example": "visualFilter"
+          },
+          {
+            "pattern": "visualSorting",
+            "plug": "input",
+            "group": "Sorting",
+            "valueType": "query-sorting",
+            "example": "visualSorting"
+          }
+        ]
       },
       "enrichment": {
         "typeName": "FilterDBModels",

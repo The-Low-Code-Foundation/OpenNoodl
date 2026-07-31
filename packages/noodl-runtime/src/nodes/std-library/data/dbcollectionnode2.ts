@@ -30,7 +30,16 @@ import type { VisualSorting } from '../../../api/queryutils';
 // of `convertVisualFilter`/`convertFilterOp`, so it is already *translated*, a
 // Parse `where` document on its way to `CloudStore.query`. The leak was a wrong
 // type as well as a misplaced one.
-import type { ParseWhere } from '@noodl/backend-contract/translators';
+import type { Filter, ParseWhere } from '@noodl/backend-contract/translators';
+
+import {
+  recordBackendPickerPorts,
+  recordClassPorts,
+  recordFilterBackendType,
+  recordFilterSchema,
+  recordSchemaContext
+} from './record-ports';
+import { sendSchemaPorts, staticPortNames } from './schema-ports';
 
 /**
  * NDA-004 §2 — see `setError`.
@@ -43,15 +52,6 @@ const QUERY_ERROR_CODE = 'query-records/query-failed';
 
 const Model = ModelImport as unknown as ModelModule;
 const Collection = CollectionImport as unknown as CollectionModule;
-
-/** One class in the project's `dbCollections` metadata. */
-interface DbCollectionMeta {
-  name: string;
-  schema?: {
-    properties?: Record<string, { type?: string; targetClass?: string; [extra: string]: unknown }>;
-    relations?: Record<string, { property: string }[]>;
-  };
-}
 
 /** A node in the editor's visual filter tree: either a group of rules or a leaf. */
 interface VisualFilterQuery {
@@ -79,6 +79,18 @@ interface CurrentQuery {
  * cannot invent a different shape for them.
  */
 type CloudStoreEventArgs = AdapterEvent;
+
+/**
+ * The store surface this node uses, named because there are two implementations behind it
+ * now (BCN-004 step 5) and `CloudStore` is still JavaScript.
+ */
+interface CloudStoreLike {
+  on(event: string, handler: (args: CloudStoreEventArgs) => void): void;
+  off(event: string, handler: (args: CloudStoreEventArgs) => void): void;
+  query(options: Record<string, unknown>): void;
+  /** True when the adapter behind this store wants a neutral filter, not a Parse `where`. */
+  usesNeutralFilter?: boolean;
+}
 
 /**
  * `this` inside the Query Records node.
@@ -111,15 +123,27 @@ interface DbCollectionNodeInstance extends NodeInstance {
     filterVariables?: string[];
     collectionChangedCallback?: () => void;
     cloudStoreEvents?: (args: CloudStoreEventArgs) => void;
+    /** The `Backend` picker's value: a backend id, `'_endpoint_'`, or `'_active_'`. */
+    backendId?: string;
+    /**
+     * The store this node's save/create/delete subscriptions are currently on.
+     *
+     * The node keeps its results live by patching its own collection when a record changes
+     * elsewhere, and those notifications come from *a* store — so the subscriptions have to
+     * follow the backend the picker names. `initialize` cannot know it (no input has been
+     * set yet), so the binding happens on the first query and moves if the picker does.
+     */
+    boundStore?: CloudStoreLike;
   };
   setCollectionName(name: string): void;
+  bindStoreEvents(store: CloudStoreLike | undefined): void;
   setCollection(collection: CollectionLike): void;
   unbindCurrentCollection(): void;
   bindCollection(collection: CollectionLike | undefined): void;
   setError(err: string): void;
   scheduleFetch(): void;
   fetch(): void;
-  getStorageFilter(): { where?: ParseWhere; sort?: string | string[] } | undefined;
+  getStorageFilter(): { where?: ParseWhere; neutralWhere?: Filter; sort?: string | string[] } | undefined;
   getStorageLimit(): number | undefined;
   getStorageSkip(): number | undefined;
   getStorageFetchTotalCount(): boolean;
@@ -255,10 +279,12 @@ const DbCollectionNode: NodeDefinitionOptions = {
 
     // Listening to cloud store events is only for the global model scope, only valid in browser
     // in cloud runtime its a nop
-    const cloudstore = CloudStore.forScope(this.nodeScope.modelScope);
-    cloudstore.on('save', this._internal.cloudStoreEvents);
-    cloudstore.on('create', this._internal.cloudStoreEvents);
-    cloudstore.on('delete', this._internal.cloudStoreEvents);
+    //
+    // BCN-004 step 5: bound here to the legacy store, exactly as before, and re-bound by
+    // `bindStoreEvents` on the first query once the `Backend` input has told us which
+    // store to watch. Binding here and never moving would leave a node pointed at Directus
+    // listening to the built-in backend's notifications.
+    this.bindStoreEvents(CloudStore.forScope(this.nodeScope.modelScope));
 
     this._internal.storageSettings = {};
   },
@@ -365,18 +391,38 @@ const DbCollectionNode: NodeDefinitionOptions = {
       this._internal.collection = collection;
       collection && collection.on('change', this._internal.collectionChangedCallback);
     },
+    /**
+     * Move the save/create/delete subscriptions onto `store`, off whatever they were on.
+     *
+     * The three names must mirror each other exactly. Until PLAT-003 slice 13 the
+     * unsubscribe named `'insert'` — a name nothing emits — so the `'create'` listener
+     * survived the node, and because it closes over the instance the deleted node stayed
+     * reachable and kept patching a collection nobody reads (NOTES §27.3 item 3). One
+     * function owning both halves is what stops that returning now that there are two
+     * places a store can come from.
+     */
+    bindStoreEvents: function (this: DbCollectionNodeInstance, store: CloudStoreLike | undefined) {
+      const previous = this._internal.boundStore;
+      if (previous === store) return;
+
+      if (previous) {
+        previous.off('create', this._internal.cloudStoreEvents);
+        previous.off('delete', this._internal.cloudStoreEvents);
+        previous.off('save', this._internal.cloudStoreEvents);
+      }
+
+      this._internal.boundStore = store;
+      if (!store) return;
+
+      store.on('save', this._internal.cloudStoreEvents);
+      store.on('create', this._internal.cloudStoreEvents);
+      store.on('delete', this._internal.cloudStoreEvents);
+    },
     _onNodeDeleted: function (this: DbCollectionNodeInstance) {
       Node.prototype._onNodeDeleted.call(this);
       this.unbindCurrentCollection();
 
-      const cloudstore = CloudStore.forScope(this.nodeScope.modelScope);
-      // These three must mirror `initialize`'s three subscriptions exactly. Until PLAT-003
-      // slice 13 the first was `'insert'` — a name nothing emits — so the `'create'`
-      // listener survived the node, and because it closes over `_this` the deleted node
-      // stayed reachable and kept patching a collection nobody reads (NOTES §27.3 item 3).
-      cloudstore.off('create', this._internal.cloudStoreEvents);
-      cloudstore.off('delete', this._internal.cloudStoreEvents);
-      cloudstore.off('save', this._internal.cloudStoreEvents);
+      this.bindStoreEvents(undefined);
     },
     // The field written here must be the one the `error` output's getter reads. Until
     // PLAT-003 slice 13 this wrote `_internal.err` against a getter reading
@@ -421,6 +467,16 @@ const DbCollectionNode: NodeDefinitionOptions = {
         }
       }
 
+      // BCN-004 step 5: the store the `Backend` input names, not the singleton.
+      const cloudstore = CloudStore.forBackend(this.nodeScope.modelScope, this._internal.backendId);
+      if (!cloudstore) {
+        this.setError(
+          `The backend this node is set to ("${this._internal.backendId}") is not configured in this project.`
+        );
+        return;
+      }
+      this.bindStoreEvents(cloudstore);
+
       const _c = Collection.get();
       const f = this.getStorageFilter();
       const limit = this.getStorageLimit();
@@ -431,6 +487,13 @@ const DbCollectionNode: NodeDefinitionOptions = {
       // search path (still composed with `where`/sort/limit/ACL — see
       // cloudstore.js's query()).
       const search = this._internal.search || undefined;
+      // ⚠️ `currentQuery.where` stays the **Parse** document even against a REST backend.
+      // It is not the query that is sent — it is what `matchesQuery` evaluates locally when
+      // a record is created or edited elsewhere, and that matcher reads `$eq`/`$gte`. The
+      // wire gets `f.neutralWhere`, which `RestDataAdapter` translates into the backend's
+      // own dialect with BCN-003's translator. Handing it `f.where` would be translating an
+      // already-translated filter, which is how RUN-003's second Directus converter came to
+      // emit a key a live server answers with a 403.
       this._internal.currentQuery = {
         where: f.where,
         sort: f.sort as string[],
@@ -438,9 +501,9 @@ const DbCollectionNode: NodeDefinitionOptions = {
         skip: skip,
         search: search
       };
-      CloudStore.forScope(this.nodeScope.modelScope).query({
+      cloudstore.query({
         collection: this._internal.name,
-        where: f.where,
+        where: cloudstore.usesNeutralFilter ? f.neutralWhere : f.where,
         sort: f.sort,
         limit: limit,
         skip: skip,
@@ -479,13 +542,18 @@ const DbCollectionNode: NodeDefinitionOptions = {
         // cached schema produced `className: undefined`). Reported on the node
         // through the same channel the JSON filter path below uses.
         let _where: ParseWhere | undefined;
+        let _neutral: Filter | undefined;
         if (this._internal.visualFilter !== undefined) {
           try {
-            _where = QueryUtils.convertVisualFilter(this._internal.visualFilter, {
+            const filterOptions = {
               queryParameters: this._internal.queryParameters,
               collectionName: this._internal.name,
               valuePortPrefix: 'qp-'
-            });
+            };
+            // Both halves of the same conversion: the neutral filter goes on the wire when
+            // the backend is a REST one, the Parse document drives the local matcher.
+            _neutral = QueryUtils.convertVisualFilterToNeutral(this._internal.visualFilter, filterOptions);
+            _where = QueryUtils.convertVisualFilter(this._internal.visualFilter, filterOptions);
           } catch (e) {
             this.context.editorConnection.sendWarning(
               this.nodeScope.componentOwner.name,
@@ -503,6 +571,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
 
         return {
           where: _where,
+          neutralWhere: _neutral,
           sort: _sort
         };
       } else if (storageSettings['storageFilterType'] === 'json') {
@@ -528,12 +597,18 @@ const DbCollectionNode: NodeDefinitionOptions = {
         if (!this._internal.filterFunc) return;
 
         let _filter: unknown = {},
+          _neutralFilter: Filter | undefined,
           _sort: unknown = [];
         const _this = this;
 
         // Collect filter variables
         // `f` is whatever the user's filter script passed to `where(…)`/`filter(…)`.
         const _filterCb = function (f: Record<string, unknown>) {
+          // ⚠️ The script's own vocabulary *is* the neutral one — `convertFilterOp` takes
+          // `{price: {greaterThan: 1}}` and lowers it onto Parse. So a REST backend wants
+          // what the script wrote, untranslated, and the translation below is only for the
+          // Parse wire and the local matcher.
+          _neutralFilter = f as Filter;
           _filter = QueryUtils.convertFilterOp(f, {
             collectionName: _this._internal.name,
             error: function (err: string) {
@@ -572,7 +647,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
           console.log('Error while running filter script: ' + e);
         }
 
-        return { where: _filter, sort: _sort };
+        return { where: _filter, neutralWhere: _neutralFilter, sort: _sort };
       }
     },
     getStorageLimit: function (this: DbCollectionNodeInstance) {
@@ -649,7 +724,13 @@ const DbCollectionNode: NodeDefinitionOptions = {
         collectionName: this.setCollectionName.bind(this),
         visualFilter: this.setVisualFilter.bind(this),
         visualSort: this.setVisualSorting.bind(this),
-        search: this.setSearch.bind(this)
+        search: this.setSearch.bind(this),
+        // BCN-004 step 5. Without the branch the picker's value would fall through to
+        // `userInputSetter` and land in `storageSettings`, where nothing reads it.
+        backendId: ((value: string) => {
+          this._internal.backendId = value;
+          if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
+        }) as (value: never) => void
       };
 
       if (dynamicSetters[name])
@@ -687,30 +768,12 @@ function updatePorts(
 ) {
   const ports: RuntimeDiscoveredPort[] = [];
 
-  const dbCollections = graphModel.getMetaData('dbCollections') as DbCollectionMeta[] | undefined;
-  const systemCollections = graphModel.getMetaData('systemCollections') as DbCollectionMeta[] | undefined;
-
-  const _systemClasses = [
-    { label: 'User', value: '_User' },
-    { label: 'Role', value: '_Role' }
-  ];
-  ports.push({
-    name: 'collectionName',
-    type: {
-      name: 'enum',
-      enums: _systemClasses.concat(
-        dbCollections !== undefined
-          ? dbCollections.map((c) => {
-              return { value: c.name, label: c.name };
-            })
-          : []
-      ),
-      allowEditOnly: true
-    },
-    displayName: 'Class',
-    plug: 'input',
-    group: 'General'
-  });
+  // BCN-004 step 5: the Backend picker (hidden when the project has one backend) and a
+  // Class dropdown built from the selected backend's introspected schema, for every
+  // backend rather than only the Parse wire's legacy `dbCollections` metadata.
+  const ctx = recordSchemaContext(graphModel, parameters);
+  ports.push(...recordBackendPickerPorts(ctx));
+  ports.push(...recordClassPorts(ctx));
 
   ports.push({
     name: 'storageFilterType',
@@ -802,28 +865,12 @@ function updatePorts(
   // Simple query
   if (parameters['storageFilterType'] === undefined || parameters['storageFilterType'] === 'simple') {
     if (parameters.collectionName !== undefined) {
-      let c = dbCollections && dbCollections.find((c) => c.name === parameters.collectionName);
-      if (c === undefined && systemCollections) c = systemCollections.find((c) => c.name === parameters.collectionName);
-      if (c && c.schema && c.schema.properties) {
-        const schema = JSON.parse(JSON.stringify(c.schema)) as DbCollectionMeta['schema'];
-
-        // Find all records that have a relation with this type
-        function _findRelations(c: DbCollectionMeta) {
-          if (c.schema !== undefined && c.schema.properties !== undefined)
-            for (const key in c.schema.properties) {
-              const p = c.schema.properties[key];
-              if (p.type === 'Relation' && p.targetClass === parameters.collectionName) {
-                if (schema.relations === undefined) schema.relations = {};
-                if (schema.relations[c.name] === undefined) schema.relations[c.name] = [];
-
-                schema.relations[c.name].push({ property: key });
-              }
-            }
-        }
-
-        dbCollections && dbCollections.forEach(_findRelations);
-        systemCollections && systemCollections.forEach(_findRelations);
-
+      // The filter builder reads either shape — `{properties, relations}` for the Parse
+      // wire, `{collection, fields}` for a REST backend — and `recordFilterSchema` picks.
+      // `null` means there is nothing to build a filter from, and the port is not declared
+      // at all rather than declared empty.
+      const schema = recordFilterSchema(ctx);
+      if (schema) {
         ports.push({
           name: 'visualFilter',
           plug: 'input',
@@ -832,8 +879,10 @@ function updatePorts(
             schema: schema,
             allowEditOnly: true,
             // BCN-003b: the builder greys out what this backend cannot express,
-            // using the same descriptor cell the translator refuses on.
-            backend: QueryUtils.backendType(),
+            // using the same descriptor cell the translator refuses on. BCN-004 step 5:
+            // and it is *this node's* backend now, not the singleton's — a Query Records
+            // node pointed at Directus was being offered the Parse operator list.
+            backend: recordFilterBackendType(ctx, QueryUtils.backendType()),
             valuePortPrefix: 'qp-'
           },
           displayName: 'Filter',
@@ -908,7 +957,7 @@ function updatePorts(
     }
   }
 
-  editorConnection.sendDynamicPorts(nodeId, ports);
+  sendSchemaPorts(editorConnection, nodeId, ports, { staticPorts: staticPortNames(DbCollectionNode) });
 }
 
 const DbCollectionNodeModule: NodeModule = {
@@ -922,7 +971,14 @@ const DbCollectionNodeModule: NodeModule = {
       updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
 
       node.on('parameterUpdated', function (event: { name: string }) {
-        if (event.name.startsWith('storage') || event.name === 'visualFilter' || event.name === 'collectionName') {
+        if (
+          event.name.startsWith('storage') ||
+          event.name === 'visualFilter' ||
+          event.name === 'collectionName' ||
+          // BCN-004 step 5: changing the backend changes the Class list and the filter
+          // schema, so this one has to redraw as well.
+          event.name === 'backendId'
+        ) {
           updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
         }
       });
@@ -939,6 +995,12 @@ const DbCollectionNodeModule: NodeModule = {
 
       graphModel.on('metadataChanged.cloudservices', function () {
         CloudStore.instance._initCloudServices();
+        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+      });
+
+      // The key the picker and the schema-driven ports read now.
+      graphModel.on('metadataChanged.backendServices', function () {
+        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
       });
     }
 

@@ -27,9 +27,25 @@ import CloudStoreImport = require('../../../api/cloudstore');
 
 import { forgetForEachItem, resolveForEachItem } from '../../../foreachitem';
 
+import {
+  recordBackendPickerPorts,
+  recordClassPorts,
+  recordFieldPorts,
+  recordRelationPorts,
+  recordSchemaContext
+} from './record-ports';
+import { sendSchemaPorts, staticPortNames } from './schema-ports';
+
 const Model = ModelImport as unknown as ModelModule;
+
+/** What this file reaches for on `CloudStore`. See `api/cloudstore.js`. */
+interface CloudStoreLike {
+  currentUserId(): string | undefined;
+}
 const CloudStore = CloudStoreImport as {
-  instance: { currentUserId(): string | undefined };
+  instance: CloudStoreLike;
+  forScope(modelScope: ModelScopeLike | undefined): CloudStoreLike;
+  forBackend(modelScope: ModelScopeLike | undefined, backendId: string | undefined): CloudStoreLike | undefined;
   invalidateCollections(): void;
 };
 
@@ -53,14 +69,6 @@ const CloudStore = CloudStoreImport as {
  * `clearWarnings`, which must name this same constant or the warning can never be cleared.
  */
 const STORAGE_OP_ERROR_CODE = 'record/storage-op-failed';
-
-/** One class in the project's `dbCollections` metadata. */
-interface DbCollectionMeta {
-  name: string;
-  schema?: {
-    properties?: Record<string, { type?: string; [extra: string]: unknown }>;
-  };
-}
 
 function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: boolean; includeRelations?: boolean }) {
   const _includeInputProperties = opts === undefined || opts.includeInputProperties;
@@ -93,6 +101,24 @@ function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: b
 
   // Methods
   Object.assign(def.node.methods, {
+    /**
+     * The `Backend` picker's setter — BCN-004 step 5.
+     *
+     * Declared on the *base* rather than in each node so that every member of the family
+     * that gets the port also gets the setter; a dynamic port with no `registerInput`
+     * branch silently drops its value. The mixins applied after this one snapshot and
+     * chain to it, which is why `addBaseInfo` must stay the first call in each node file.
+     */
+    registerInputIfNeeded: function (this: DbCrudBaseInstance, name: string) {
+      if (this.hasInput(name)) return;
+
+      if (name === 'backendId')
+        this.registerInput(name, {
+          set: (value: unknown) => {
+            this._internal.backendId = value as string;
+          }
+        });
+    },
     scheduleOnce: function (this: DbCrudBaseInstance, type: string, cb: () => void) {
       const _this = this;
       const _type = 'hasScheduled' + type;
@@ -113,6 +139,45 @@ function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: b
       }
 
       return true;
+    },
+    /**
+     * The store this node writes through — BCN-004 step 5.
+     *
+     * `CloudStore.forScope` resolved nothing and always spoke the Parse wire; this resolves
+     * the `Backend` input (or `_active_`, which is what an unset one means) and hands back
+     * a store bound to that backend's adapter. With no picker set and no `backendServices`
+     * metadata, resolution lands back on the same singleton these nodes have always used.
+     *
+     * `undefined` means the graph names a backend the project no longer has. Reporting that
+     * rather than falling back is the point: a silent fallback writes the record to a
+     * different backend than the one the graph says.
+     */
+    cloudStore: function (this: DbCrudBaseInstance): CloudStoreLike | undefined {
+      return (this as unknown as { cloudStoreForScope(s: ModelScopeLike | undefined): CloudStoreLike | undefined })
+        .cloudStoreForScope(this.nodeScope.modelScope);
+    },
+    /**
+     * The same resolution against an explicitly given scope — including `undefined`.
+     *
+     * It exists for exactly one caller: `deletedbmodelpropertiesnode` reads
+     * `nodeScope.ModelScope` (capital M, a documented defect left verbatim since PLAT-003)
+     * and therefore hands over `undefined` on purpose. A default parameter could not tell
+     * that apart from "not passed", and would have quietly fixed the defect as a side
+     * effect of this task.
+     */
+    cloudStoreForScope: function (
+      this: DbCrudBaseInstance,
+      modelScope: ModelScopeLike | undefined
+    ): CloudStoreLike | undefined {
+      const store = CloudStore.forBackend(modelScope, this._internal.backendId as string | undefined);
+
+      if (!store) {
+        this.setError(
+          `The backend this node is set to ("${this._internal.backendId}") is not configured in this project.`
+        );
+      }
+
+      return store;
     },
     /**
      * NDA-004 §2 — the Record family's failures reach every runtime now, not just the editor.
@@ -163,92 +228,36 @@ function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: b
       }
 
       function _managePortsForNode(node: GraphNodeModel) {
+        /**
+         * BCN-004 step 5: the Class dropdown and the property ports come from the selected
+         * backend's introspected schema, through the shared generator, for every backend —
+         * not from the legacy `dbCollections` metadata, which has had nothing writing it
+         * since WF-007 gutted `schemahandler.ts`. A Parse-wire backend with no cached
+         * schema still finds that metadata (`resolveSchemaPortContext`'s fallback), so a
+         * project holding it keeps its ports.
+         */
         function _updatePorts() {
+          const ctx = recordSchemaContext(graphModel, node.parameters);
           const ports: RuntimeDiscoveredPort[] = [];
 
-          const dbCollections = graphModel.getMetaData('dbCollections') as DbCollectionMeta[] | undefined;
-          const systemCollections = graphModel.getMetaData('systemCollections') as DbCollectionMeta[] | undefined;
+          ports.push(...recordBackendPickerPorts(ctx));
+          ports.push(...recordClassPorts(ctx));
 
-          const _systemClasses = [
-            { label: 'User', value: '_User' },
-            { label: 'Role', value: '_Role' }
-          ];
-
-          const parameters = node.parameters;
-
-          ports.push({
-            name: 'collectionName',
-            displayName: 'Class',
-            group: 'General',
-            type: {
-              name: 'enum',
-              enums: _systemClasses.concat(
-                dbCollections !== undefined
-                  ? dbCollections.map((c) => {
-                      return { value: c.name, label: c.name };
-                    })
-                  : []
-              ),
-              allowEditOnly: true
-            },
-            plug: 'input'
-          });
-
-          if (_includeRelations && parameters.collectionName && dbCollections) {
-            // Fetch ports from collection keys
-            let c = dbCollections.find((c) => c.name === parameters.collectionName);
-            if (c === undefined && systemCollections)
-              c = systemCollections.find((c) => c.name === parameters.collectionName);
-            if (c && c.schema && c.schema.properties) {
-              const props = c.schema.properties;
-              const enums = Object.keys(props)
-                .filter((key) => props[key].type === 'Relation')
-                .map((key) => ({ label: key, value: key }));
-
-              ports.push({
-                name: 'relationProperty',
-                displayName: 'Relation',
-                group: 'General',
-                type: { name: 'enum', enums: enums, allowEditOnly: true },
-                plug: 'input'
-              });
-            }
+          if (_includeRelations && ctx.selectedCollection) {
+            ports.push(...recordRelationPorts(ctx));
           }
 
-          if (_includeInputProperties && parameters.collectionName && dbCollections) {
-            const _typeMap: Record<string, string> = {
-              String: 'string',
-              Boolean: 'boolean',
-              Number: 'number',
-              Date: 'date'
-            };
-
-            // Fetch ports from collection keys
-            let c = dbCollections.find((c) => c.name === parameters.collectionName);
-            if (c === undefined && systemCollections)
-              c = systemCollections.find((c) => c.name === parameters.collectionName);
-            if (c && c.schema && c.schema.properties) {
-              const props = c.schema.properties;
-              for (const key in props) {
-                const p = props[key];
-                if (ports.find((_p) => _p.name === key)) continue;
-
-                ports.push({
-                  type: {
-                    name: _typeMap[p.type] ? _typeMap[p.type] : '*'
-                  },
-                  plug: 'input',
-                  group: 'Properties',
-                  name: 'prop-' + key,
-                  displayName: key
-                });
-              }
-            }
+          if (_includeInputProperties && ctx.selectedCollection) {
+            ports.push(...recordFieldPorts(ctx, { plug: 'input' }));
           }
 
           def._additionalDynamicPorts && def._additionalDynamicPorts(node, ports, graphModel);
 
-          context.editorConnection.sendDynamicPorts(node.id, ports);
+          // The family's `_additionalDynamicPorts` hook pushes ports too, so the dedupe has
+          // to cover the whole list rather than the generated half — see `sendSchemaPorts`.
+          sendSchemaPorts(context.editorConnection, node.id, ports, {
+            staticPorts: staticPortNames(def.node)
+          });
         }
 
         _updatePorts();
@@ -264,6 +273,15 @@ function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: b
 
         graphModel.on('metadataChanged.systemCollections', function () {
           CloudStore.invalidateCollections();
+          _updatePorts();
+        });
+
+        // The two keys the picker and the schema-driven ports actually read now.
+        graphModel.on('metadataChanged.backendServices', function () {
+          _updatePorts();
+        });
+
+        graphModel.on('metadataChanged.cloudservices', function () {
           _updatePorts();
         });
       }

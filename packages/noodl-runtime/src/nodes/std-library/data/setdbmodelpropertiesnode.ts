@@ -11,7 +11,6 @@ import type {
 } from './crud-mixins';
 
 import DbModelCRUDBase = require('./dbmodelcrudbase');
-import CloudStore = require('../../../api/cloudstore');
 
 /**
  * `this` inside Set Record Properties — the intersection of every mixin the file applies.
@@ -115,7 +114,11 @@ const SetDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
             model.set(key, internal.inputValues[key], { resolve: true });
           }
 
-          CloudStore.forScope(_this.nodeScope.modelScope).save({
+          // BCN-004 step 5: the store the `Backend` input names, not the singleton.
+          const cloudstore = _this.cloudStore();
+          if (!cloudstore) return;
+
+          cloudstore.save({
             collection: internal.collectionId,
             objectId: model.getId(), // Get the objectId part of the model id
             data: internal.storeProperties === 'all' ? model.data : internal.inputValues, // Only store input values by default, if not explicitly specified
