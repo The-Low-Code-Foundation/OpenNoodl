@@ -7,6 +7,14 @@
  * @module adapters/local-sql/QueryBuilder
  */
 
+import {
+  EARTH_RADIUS_KM,
+  KM_PER_MILE,
+  SQL_DISTANCE_KM,
+  SQL_POINT_IN_POLYGON,
+  SQL_REGEXP
+} from './sqlFunctions';
+
 /** The caller's row-level access context (BAK-003). */
 export interface AclContext {
   access: 'read' | 'write';
@@ -278,8 +286,16 @@ export function buildWhereClause(
     }
 
     // Handle Parse operators
+    //
+    // Two operators are *modifiers* rather than conditions: `$options` carries
+    // the regex flags for `$regex`, and the three `$maxDistanceIn…` keys carry
+    // the radius for `$nearSphere`. They sit beside the operator they modify in
+    // the same condition object, so the whole object is passed down — reading
+    // them as standalone operators is how a set of flags would become a
+    // condition of its own.
+    const siblings = condition as Record<string, unknown>;
     for (const [op, value] of Object.entries(condition)) {
-      const sqlCondition = translateOperator(col, op, value, params, schema);
+      const sqlCondition = translateOperator(col, op, value, params, schema, siblings);
       if (sqlCondition) {
         conditions.push(sqlCondition);
       }
@@ -287,6 +303,18 @@ export function buildWhereClause(
   }
 
   return conditions.join(' AND ');
+}
+
+/** The three spellings Parse accepts for a `$nearSphere` radius, in kilometres. */
+function maxDistanceKm(siblings: Record<string, unknown> | undefined): number | null {
+  if (!siblings) return null;
+  const miles = siblings.$maxDistanceInMiles;
+  if (typeof miles === 'number') return miles * KM_PER_MILE;
+  const km = siblings.$maxDistanceInKilometers;
+  if (typeof km === 'number') return km;
+  const radians = siblings.$maxDistanceInRadians;
+  if (typeof radians === 'number') return radians * EARTH_RADIUS_KM;
+  return null;
 }
 
 /**
@@ -297,6 +325,8 @@ export function buildWhereClause(
  * @param value - Comparison value
  * @param params - Parameters array to push values to
  * @param schema - Optional schema
+ * @param siblings - The whole condition object, for operators whose argument is
+ *   split across sibling keys ($regex/$options, $nearSphere/$maxDistanceIn…).
  * @returns SQL condition or null
  */
 function translateOperator(
@@ -304,7 +334,8 @@ function translateOperator(
   op: string,
   value: unknown,
   params: unknown[],
-  schema?: unknown
+  schema?: unknown,
+  siblings?: Record<string, unknown>
 ): string | null {
   // Convert special types
   const convertedValue = convertDateValue(convertPointerValue(value));
@@ -364,13 +395,20 @@ function translateOperator(
       return value ? `${col} IS NOT NULL` : `${col} IS NULL`;
 
     case '$regex':
-      // SQLite doesn't have native regex, use LIKE with % wildcards
-      // This is a simplification - only handles basic patterns
-      params.push(`%${value}%`);
-      return `${col} LIKE ?`;
+      // BCN-003. This was `LIKE '%value%'`, with the code's own comment
+      // conceding "only handles basic patterns" — so `^Ada$` searched for that
+      // literal text, matched nothing, and reported no error. Anchors,
+      // character classes and groups were all silently inert.
+      //
+      // SQLite still has no native REGEXP, but `node:sqlite` can call back into
+      // JavaScript, so the pattern is now evaluated by the same engine the
+      // user's browser would use. `$options` is read from the sibling key
+      // rather than as an operator of its own.
+      params.push(String(value), typeof siblings?.$options === 'string' ? siblings.$options : '');
+      return `${SQL_REGEXP}(?, ?, ${col}) = 1`;
 
     case '$options':
-      // This is used with $regex, ignore here
+      // A modifier on $regex, consumed above. Not a condition.
       return null;
 
     case '$text': {
@@ -390,16 +428,89 @@ function translateOperator(
       params.push(`%${convertedValue}%`);
       return `${col} LIKE ?`;
 
-    // Geo queries - not fully supported in SQLite without extensions
-    case '$nearSphere':
-    case '$within':
-    case '$geoWithin':
-      console.warn(`Geo query operator ${op} not supported in SQLite adapter`);
+    // ── Geo ────────────────────────────────────────────────────────────────
+    //
+    // All three used to `console.warn` and return null, and a null condition is
+    // simply not added to the WHERE clause — so a "within 5 km" query returned
+    // every record in the collection and nothing in the app could tell. BCN-001
+    // found it; Richard assigned it here on 2026-07-31.
+    //
+    // A GeoPoint is stored as its Parse tagged object, JSON-encoded in a TEXT
+    // column, which is why the box test reads through `json_extract` and the
+    // other two hand the raw column to a function. None of the three can use an
+    // index — that is the cost, and it is what the descriptor now says out loud
+    // rather than what it used to imply by saying nothing.
+
+    case '$nearSphere': {
+      const centre = value as { latitude?: number; longitude?: number } | null;
+      if (!centre || typeof centre.latitude !== 'number' || typeof centre.longitude !== 'number') {
+        return null;
+      }
+      const radiusKm = maxDistanceKm(siblings);
+      if (radiusKm === null) {
+        // Parse reads a bare `$nearSphere` as "sort by proximity" rather than
+        // as a filter. Sorting is explicitly out of BCN-003's scope, so the
+        // honest translation of the *filter* is the one that narrows nothing —
+        // but it still excludes rows with no usable point, which is what the
+        // distance comparison below would do anyway.
+        params.push(centre.latitude, centre.longitude);
+        return `${SQL_DISTANCE_KM}(${col}, ?, ?) IS NOT NULL`;
+      }
+      params.push(centre.latitude, centre.longitude, radiusKm);
+      return `${SQL_DISTANCE_KM}(${col}, ?, ?) <= ?`;
+    }
+
+    case '$maxDistanceInMiles':
+    case '$maxDistanceInKilometers':
+    case '$maxDistanceInRadians':
+      // Modifiers on $nearSphere, consumed above.
       return null;
 
+    case '$within': {
+      // `{$box: [southwest, northeast]}` — two opposite corners, so this is a
+      // pair of ordinary range comparisons on the stored coordinates and the
+      // only geo operator here that a plain index could ever help.
+      const box = (value as { $box?: Array<{ latitude?: number; longitude?: number }> } | null)?.$box;
+      if (!Array.isArray(box) || box.length !== 2) return null;
+      const [southwest, northeast] = box;
+      if (
+        typeof southwest?.latitude !== 'number' ||
+        typeof southwest?.longitude !== 'number' ||
+        typeof northeast?.latitude !== 'number' ||
+        typeof northeast?.longitude !== 'number'
+      ) {
+        return null;
+      }
+      params.push(
+        Math.min(southwest.latitude, northeast.latitude),
+        Math.max(southwest.latitude, northeast.latitude),
+        Math.min(southwest.longitude, northeast.longitude),
+        Math.max(southwest.longitude, northeast.longitude)
+      );
+      return (
+        `json_extract(${col}, '$.latitude') BETWEEN ? AND ? ` +
+        `AND json_extract(${col}, '$.longitude') BETWEEN ? AND ?`
+      );
+    }
+
+    case '$geoWithin': {
+      const polygon = (value as { $polygon?: unknown[] } | null)?.$polygon;
+      if (!Array.isArray(polygon) || polygon.length < 3) return null;
+      params.push(JSON.stringify(polygon));
+      return `${SQL_POINT_IN_POLYGON}(${col}, ?) = 1`;
+    }
+
     default:
-      console.warn(`Unknown query operator: ${op}`);
-      return null;
+      // Reaching here means the query asked for something this translator has
+      // no branch for, and returning null would drop the condition and widen
+      // the result set — the failure class BCN-003 exists to close. The filter
+      // translators refuse an operator the descriptor does not declare, so an
+      // unknown one arriving at the SQL layer is a defect rather than a user
+      // error, and it should be loud.
+      throw new Error(
+        `The built-in backend received a filter operator it cannot translate: ${op}. ` +
+          'Refusing rather than dropping it, because a dropped condition returns more rows than the filter asked for.'
+      );
   }
 }
 

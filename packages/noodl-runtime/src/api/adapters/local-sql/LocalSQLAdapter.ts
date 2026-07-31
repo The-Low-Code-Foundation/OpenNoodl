@@ -9,6 +9,7 @@
  */
 
 import { resolveEngine, type EngineDatabase, type ResolvedEngine } from './engine';
+import { registerSqlFunctions } from './sqlFunctions';
 import type { AclContext } from './QueryBuilder';
 
 import EventEmitter = require('../../../events');
@@ -235,6 +236,11 @@ class LocalSQLAdapter {
   _loadError: (Error & { code?: string }) | null;
   _usingMock: boolean;
   _engineName: string | null;
+  /**
+   * BCN-003: whether REGEXP and the two geometry predicates are registered on
+   * this connection. False only for the in-memory mock, which runs no SQL.
+   */
+  _sqlFunctionsAvailable: boolean;
   _resolveEngine: () => ResolvedEngine | null | undefined;
   _collections: Record<string, CollectionConfig>;
   _mockData?: Record<string, Record<string, AdapterRecord>>;
@@ -280,6 +286,7 @@ class LocalSQLAdapter {
     // Name of the resolved SQLite engine ('node:sqlite' | 'better-sqlite3' |
     // null before connect / on failure). Reported by getPersistenceStatus().
     this._engineName = null;
+    this._sqlFunctionsAvailable = false;
 
     // Test/embedding seam: callers (and the standalone backend package) may
     // inject a pre-resolved engine ({ name, open(dbPath) }) instead of letting
@@ -327,6 +334,13 @@ class LocalSQLAdapter {
 
       // Enable WAL mode for better concurrent access
       this.db.pragma('journal_mode = WAL');
+
+      // BCN-003: REGEXP and the two geometry predicates. Registered per
+      // connection, before any query can be prepared against it — a query
+      // referring to a function this connection does not have fails loudly at
+      // prepare time, which is the behaviour we want if this ever stops
+      // running.
+      this._sqlFunctionsAvailable = registerSqlFunctions(this.db);
 
       // Initialize schema manager
       this.schemaManager = new SchemaManager(this.db);

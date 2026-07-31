@@ -139,23 +139,25 @@ export const supabaseDescriptor: BackendDescriptor = {
       'PostgREST fts/plfts/phfts operators.'
     ),
 
-    // PostGIS is available on Supabase but is an extension the user enables,
-    // and the geometry column type has to exist. Conditional rather than
-    // unsupported, because unlike Directus the answer really can be yes.
-    nearSphere: conditional(
-      'Location filters need the PostGIS extension enabled in your Supabase database, and the field has to be a geography column.',
-      { method: 'GET', path: '/rpc/postgis_version', expect: '200 with a version string' },
-      'PostGIS is available on Supabase but off unless enabled.'
+    // ⚠️ These three were `conditional` on a `/rpc/postgis_version` probe.
+    // BCN-003 corrected them, and the correction is an instance of this
+    // package's own rule #1 — *probe the exact thing*. Whether PostGIS is
+    // installed is a real question with a real answer, but it is **not the
+    // question**: PostgREST's filter grammar has no distance or containment
+    // operator either way, so a distance query has to be a database function
+    // reached through `/rpc`. The old probe would have reported `supported` on
+    // an instance where the filter still could not be written.
+    nearSphere: unsupported(
+      "Location filters aren't available on Supabase from here. Even with PostGIS installed, a distance search has to be written as a database function.",
+      'PostgREST exposes no geo operator in its filter grammar; PostGIS reaches the query only through /rpc. BCN-003.'
     ),
-    withinBox: conditional(
-      'Location filters need the PostGIS extension enabled in your Supabase database.',
-      { method: 'GET', path: '/rpc/postgis_version', expect: '200 with a version string' },
-      'PostGIS is available on Supabase but off unless enabled.'
+    withinBox: unsupported(
+      "Location filters aren't available on Supabase from here. Compare latitude and longitude as numbers instead.",
+      'PostgREST exposes no geo operator in its filter grammar. BCN-003.'
     ),
-    withinPolygon: conditional(
-      'Location filters need the PostGIS extension enabled in your Supabase database.',
-      { method: 'GET', path: '/rpc/postgis_version', expect: '200 with a version string' },
-      'PostGIS is available on Supabase but off unless enabled.'
+    withinPolygon: unsupported(
+      "Location filters aren't available on Supabase from here. Even with PostGIS installed, a polygon search has to be written as a database function.",
+      'PostgREST exposes no geo operator in its filter grammar. BCN-003.'
     )
   })
 };

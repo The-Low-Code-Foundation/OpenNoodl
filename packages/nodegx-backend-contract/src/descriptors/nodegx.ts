@@ -84,49 +84,56 @@ export const nodegxDescriptor: BackendDescriptor = {
   }),
 
   filters: filterTable(supported(`translated to SQL — ${SQL}`), {
-    // ── The two silent-wrong-answer cells ──────────────────────────────────
+    // ── The two silent-wrong-answer cells, both closed by BCN-003 ──────────
     //
     // Both were found by reading the SQL translator during BCN-001, and both
-    // are worse than an unsupported operator because nothing fails: the query
-    // succeeds and returns the wrong rows.
+    // were worse than an unsupported operator because nothing failed: the
+    // query succeeded and returned the wrong rows. Richard assigned both here
+    // on 2026-07-31.
+    //
+    // What made them fixable rather than merely declarable is that
+    // `node:sqlite` exposes `db.function()`, so SQLite can call back into
+    // JavaScript. The regular expression is now the same engine the user's
+    // browser would use, and the geometry is ordinary JavaScript rather than
+    // an approximation in SQL.
 
-    // `$regex` becomes `LIKE '%value%'` (QueryBuilder.ts:366), with the code's
-    // own comment conceding "only handles basic patterns". A user who writes
-    // `^Ada$` gets a substring search for the literal text `^Ada$` and no
-    // error. Degraded rather than unsupported because plain-substring intent —
-    // which is most of what people type — does work.
-    matchesRegex: degraded(
-      "The built-in backend matches text by containment, not by full regular expressions. Anchors like ^ and $, character classes and groups are treated as literal characters.",
-      `${SQL}:366 — SQLite has no native REGEXP, so this lowers to LIKE '%…%'`
+    // Was `LIKE '%value%'` (QueryBuilder.ts:366), so `^Ada$` searched for that
+    // literal text. Now `nodegx_regexp(pattern, flags, column)`, a real
+    // RegExp, with `$options` read from its sibling key rather than as an
+    // operator of its own.
+    matchesRegex: supported(
+      `${SQL} — a registered SQL function evaluating a real RegExp; probed live in BCN-003, where ^Ada$ matched "Ada" and not "Adam"`
     ),
 
-    // Same lowering. Distinct from the `search` query option, which is real
-    // FTS5 ranking (BAK-008) and is `data.search`.
+    // Unchanged, and still honest. `$text` in a *filter* is a different thing
+    // from the `search` query option, which is real FTS5 ranking (BAK-008).
+    // Only the filter-operator form lowers to a contains match.
     textSearch: degraded(
       'Full-text search in a filter falls back to a plain contains match. For ranked search use the Search input on the Query node instead.',
-      `${SQL}:376 — $text lowers to LIKE; the ranked path is BAK-008's separate 'search' parameter`
+      `${SQL} — $text lowers to LIKE; the ranked path is BAK-008's separate 'search' parameter`
     ),
 
-    // ── Geo: dropped on the floor ──────────────────────────────────────────
+    // ── Geo: no longer dropped on the floor ────────────────────────────────
     //
-    // `translateOperator` warns to the console and returns null for all three
-    // (QueryBuilder.ts:394). A null condition is not added to the WHERE clause,
-    // so the filter does not narrow anything — a "within 5km" query returns
-    // every record in the collection, with nothing in the app to see.
+    // All three used to warn to the console and return null, and a null
+    // condition is never added to the WHERE clause — so a "within 5 km" query
+    // returned every record in the collection with nothing in the app to see.
     //
-    // Marked unsupported so BCN-010 gates the ports off. Fixing SQLite geo is
-    // out of scope for this phase; telling the truth about it is not.
-    nearSphere: unsupported(
-      'The built-in backend cannot filter by location. Store latitude and longitude as numbers and compare them, or use a backend with geo support.',
-      `${SQL}:394 — warns and drops the condition, so the query currently returns everything`
+    // A GeoPoint is stored as its Parse tagged object, JSON-encoded, which is
+    // why the box test reads through `json_extract` and the other two hand the
+    // column to a registered function. What we own by fixing rather than
+    // gating these is one performance characteristic — there is no spatial
+    // index, so all three scan — and that is stated rather than implied.
+
+    nearSphere: degraded(
+      'Distance filters work, but the results are not ordered by how close they are, and the whole collection is checked — so a large collection will be slow.',
+      `${SQL} — nodegx_distance_km(), haversine; Parse reads a bare $nearSphere as a proximity *sort*, and sorting is out of BCN-003's scope`
     ),
-    withinBox: unsupported(
-      'The built-in backend cannot filter by location. Store latitude and longitude as numbers and compare them, or use a backend with geo support.',
-      `${SQL}:394 — warns and drops the condition`
+    withinBox: supported(
+      `${SQL} — two range comparisons on json_extract'd coordinates; exact, but unindexed`
     ),
-    withinPolygon: unsupported(
-      'The built-in backend cannot filter by location. Store latitude and longitude as numbers and compare them, or use a backend with geo support.',
-      `${SQL}:394 — warns and drops the condition`
+    withinPolygon: supported(
+      `${SQL} — nodegx_point_in_polygon(), ray casting. Planar, which is what Mongo's legacy $polygon is too, so this agrees with Parse rather than diverging from it`
     )
   })
 };

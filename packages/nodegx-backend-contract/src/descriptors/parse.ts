@@ -159,15 +159,15 @@ export const parseDescriptor: BackendDescriptor = {
     // LOWERED_OPERATORS — greying these out on a backend that can plainly
     // answer them would read as the product being broken.
     contains: supported('lowered to $regex'),
-    notContains: supported('lowered to $regex under $not'),
+    notContains: supported('lowered to an anchored $regex with a negative lookahead — Parse has no $not'),
     containsIgnoreCase: supported('lowered to $regex with the i option'),
     startsWith: supported('lowered to an anchored $regex'),
-    notStartsWith: supported('lowered to an anchored $regex under $not'),
+    notStartsWith: supported('lowered to an anchored $regex with a negative lookahead'),
     startsWithIgnoreCase: supported('lowered to an anchored $regex with the i option'),
     endsWith: supported('lowered to an anchored $regex'),
-    notEndsWith: supported('lowered to an anchored $regex under $not'),
+    notEndsWith: supported('lowered to an anchored $regex with a negative lookahead'),
     endsWithIgnoreCase: supported('lowered to an anchored $regex with the i option'),
-    between: supported('lowered to $gte + $lte under $and'),
+    between: supported('lowered to $gte + $lte on one field, which Parse allows'),
     notBetween: supported('lowered to $lt + $gt under $or'),
 
     // Parse has no operator for "empty string or empty array" as distinct from

@@ -144,6 +144,92 @@ describe('matchesFilter is the exact twin of the SQL WHERE clause', () => {
     return new Set(ids);
   }
 
+  /**
+   * The three operators BCN-003 turned from no-ops into real conditions.
+   *
+   * They are checked with named points rather than folded into the generator
+   * because the generator's collection has no GeoPoint column — and because the
+   * interesting property is not "the two agree" (they agreed before, on the
+   * wrong answer) but "they agree *and* the answer is right".
+   */
+  it('agrees with SQL on the geo operators, which used to be no-ops on both sides', async () => {
+    const cities: Array<{ city: string; lat: number; lng: number }> = [
+      { city: 'London', lat: 51.5074, lng: -0.1278 },
+      { city: 'Bristol', lat: 51.4545, lng: -2.5879 },
+      { city: 'Edinburgh', lat: 55.9533, lng: -3.1883 },
+      { city: 'Paris', lat: 48.8566, lng: 2.3522 }
+    ];
+    const placed: Rec[] = [];
+    for (const { city, lat, lng } of cities) {
+      await new Promise<void>((resolve, reject) => {
+        adapter.create({
+          collection: 'Place',
+          data: { city, at: { __type: 'GeoPoint', latitude: lat, longitude: lng } },
+          success: (rec: Rec) => {
+            placed.push(rec);
+            resolve();
+          },
+          error: (e: unknown) => reject(new Error(String(e)))
+        });
+      });
+    }
+
+    const london = { __type: 'GeoPoint', latitude: 51.5074, longitude: -0.1278 };
+    const cases: Array<{ filter: Where; expected: string[] }> = [
+      // Bristol is 171 km away: inside 250 km, outside 100 miles (161 km).
+      { filter: { at: { $nearSphere: london, $maxDistanceInKilometers: 250 } }, expected: ['London', 'Bristol'] },
+      { filter: { at: { $nearSphere: london, $maxDistanceInMiles: 100 } }, expected: ['London'] },
+      {
+        filter: {
+          at: {
+            $within: {
+              $box: [
+                { __type: 'GeoPoint', latitude: 50, longitude: -6 },
+                { __type: 'GeoPoint', latitude: 53, longitude: 1 }
+              ]
+            }
+          }
+        },
+        expected: ['London', 'Bristol']
+      },
+      {
+        filter: {
+          at: {
+            $geoWithin: {
+              $polygon: [
+                { __type: 'GeoPoint', latitude: 50, longitude: -2 },
+                { __type: 'GeoPoint', latitude: 53, longitude: -2 },
+                { __type: 'GeoPoint', latitude: 53, longitude: 1 },
+                { __type: 'GeoPoint', latitude: 50, longitude: 1 }
+              ]
+            }
+          }
+        },
+        expected: ['London']
+      }
+    ];
+
+    for (const { filter, expected } of cases) {
+      let viaSql: string[] = [];
+      adapter.query({
+        collection: 'Place',
+        where: filter,
+        success: (results: Rec[]) => {
+          viaSql = results.map((r) => r.city as string);
+        },
+        error: (e: unknown) => {
+          throw new Error(String(e));
+        }
+      });
+      const viaJs = placed
+        .filter((rec) => matchesFilter(filter, rec as unknown as Record<string, unknown>))
+        .map((rec) => rec.city as string);
+
+      expect(viaSql.sort()).toEqual([...expected].sort());
+      expect(viaJs.sort()).toEqual([...expected].sort());
+    }
+  });
+
   it('agrees with SQL membership across a large generated matrix', () => {
     const rng = makeRng(0xc0ffee);
     let comparisons = 0;

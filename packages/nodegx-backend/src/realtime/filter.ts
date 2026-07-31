@@ -22,20 +22,38 @@
  *     explicit NULL tests.
  *   - `$in`/`$nin` on empty arrays follow QueryBuilder's `'0'` (never) / `'1'`
  *     (always) shortcuts.
- *   - `$regex`/`$contains`/`$text` become an ASCII-case-insensitive substring
- *     test — SQLite's default `LIKE '%term%'` folds only ASCII A–Z.
- *   - Unknown / geo operators contribute no constraint in SQL (translateOperator
- *     returns null), so they contribute none here either (match = true).
+ *   - `$regex` is a **real regular expression**, evaluated by the same
+ *     `regexpMatch` the SQL side now registers as a SQLite function (BCN-003).
+ *     `$contains`/`$text` remain the ASCII-case-insensitive substring test,
+ *     because those two still lower to `LIKE '%term%'` in SQL.
+ *   - The three geo operators are real conditions too, evaluated by the same
+ *     `distanceKm` / `pointInPolygon` the SQL side calls (BCN-003).
+ *
+ * ⚠️ **BCN-003 changed three of these, and the property test is what said so.**
+ * `$regex` used to be `LIKE '%term%'` on both sides, so both agreed that `DA`
+ * matched `Date`. Fixing the SQL side to a real regex made the two disagree on
+ * the very first generated case, which is exactly what a twin with a property
+ * test is for. The geo operators used to contribute no constraint on either
+ * side — agreeing, and both wrong. Sharing the implementation rather than
+ * mirroring it a second time is what stops the next change re-opening this.
  *
  * Known limits (documented, and rejected at subscription time by
  * `assertFilterSupported` so they can never silently mis-match):
  *   - `$relatedTo` needs a junction-table subquery; it cannot be decided against
  *     a lone record and is refused for realtime filters.
- *   - Non-ASCII ordering/`LIKE` and `%`/`_` wildcards inside a `$regex` value
- *     can differ from SQLite; keep realtime filters to the documented subset.
+ *   - Non-ASCII ordering and `LIKE` collation can differ from SQLite; keep
+ *     realtime filters to the documented subset.
  *
  * @module nodegx-backend/realtime/filter
  */
+
+import {
+  distanceKm,
+  pointInPolygon,
+  regexpMatch,
+  EARTH_RADIUS_KM,
+  KM_PER_MILE
+} from '@noodl/runtime/src/api/adapters/local-sql/sqlFunctions';
 
 export type Where = Record<string, unknown>;
 
@@ -82,7 +100,21 @@ function order(field: unknown, value: unknown, op: (a: number | string, b: numbe
   return op(field as number | string, value as number | string);
 }
 
-function matchOperator(field: unknown, op: string, rawValue: unknown): boolean {
+/** The three spellings Parse accepts for a `$nearSphere` radius, in kilometres. */
+function maxDistanceKm(siblings: Record<string, unknown> | undefined): number | null {
+  if (!siblings) return null;
+  if (typeof siblings.$maxDistanceInMiles === 'number') return siblings.$maxDistanceInMiles * KM_PER_MILE;
+  if (typeof siblings.$maxDistanceInKilometers === 'number') return siblings.$maxDistanceInKilometers;
+  if (typeof siblings.$maxDistanceInRadians === 'number') return siblings.$maxDistanceInRadians * EARTH_RADIUS_KM;
+  return null;
+}
+
+function matchOperator(
+  field: unknown,
+  op: string,
+  rawValue: unknown,
+  siblings?: Record<string, unknown>
+): boolean {
   const value = convertValue(rawValue);
 
   switch (op) {
@@ -117,7 +149,16 @@ function matchOperator(field: unknown, op: string, rawValue: unknown): boolean {
     case '$exists':
       return rawValue ? !isNil(field) : isNil(field);
 
-    case '$regex':
+    // A real regular expression since BCN-003, evaluated by the same function
+    // the SQL side registers — not a second implementation of it. `$options`
+    // is read from the sibling key, as it is in the WHERE-clause builder.
+    case '$regex': {
+      if (isNil(field)) return false; // NULL never matches, as in SQL
+      const flags = typeof siblings?.$options === 'string' ? siblings.$options : '';
+      return regexpMatch(String(value ?? ''), flags, field) === 1;
+    }
+
+    // These two still lower to LIKE in SQL, so they still fold ASCII case here.
     case '$contains':
     case 'contains':
       return likeContains(field, String(value ?? ''));
@@ -133,13 +174,81 @@ function matchOperator(field: unknown, op: string, rawValue: unknown): boolean {
     }
 
     case '$options':
-      return true; // paired with $regex; contributes nothing on its own
+    case '$maxDistanceInMiles':
+    case '$maxDistanceInKilometers':
+    case '$maxDistanceInRadians':
+      return true; // modifiers, consumed by the operator they sit beside
 
-    // $nearSphere / $within / $geoWithin and any unknown operator: SQL
-    // translateOperator returns null (no clause), so they impose no constraint.
+    // ── Geo (BCN-003) ──────────────────────────────────────────────────────
+    //
+    // These used to return `true` here because SQL dropped the condition. Both
+    // sides agreed, and both were wrong: a "within 5 km" subscription received
+    // every change in the collection.
+
+    case '$nearSphere': {
+      const centre = value as { latitude?: number; longitude?: number } | null;
+      if (!centre || typeof centre.latitude !== 'number' || typeof centre.longitude !== 'number') return true;
+      const distance = distanceKm(field, centre.latitude, centre.longitude);
+      if (distance === null) return false; // no usable point → excluded, as in SQL
+      const radiusKm = maxDistanceKm(siblings);
+      return radiusKm === null ? true : distance <= radiusKm;
+    }
+
+    case '$within': {
+      const box = (value as { $box?: Array<{ latitude?: number; longitude?: number }> } | null)?.$box;
+      if (!Array.isArray(box) || box.length !== 2) return true;
+      const [sw, ne] = box;
+      if (
+        typeof sw?.latitude !== 'number' ||
+        typeof sw?.longitude !== 'number' ||
+        typeof ne?.latitude !== 'number' ||
+        typeof ne?.longitude !== 'number'
+      ) {
+        return true;
+      }
+      const point = readStoredPoint(field);
+      if (!point) return false;
+      return (
+        point.latitude >= Math.min(sw.latitude, ne.latitude) &&
+        point.latitude <= Math.max(sw.latitude, ne.latitude) &&
+        point.longitude >= Math.min(sw.longitude, ne.longitude) &&
+        point.longitude <= Math.max(sw.longitude, ne.longitude)
+      );
+    }
+
+    case '$geoWithin': {
+      const polygon = (value as { $polygon?: unknown[] } | null)?.$polygon;
+      if (!Array.isArray(polygon) || polygon.length < 3) return true;
+      return pointInPolygon(field, JSON.stringify(polygon)) === 1;
+    }
+
+    // An operator with no branch here would impose no constraint and deliver
+    // changes a paired query would exclude — the widening failure BCN-003 is
+    // about. The SQL side throws on an unknown operator now, so this refuses
+    // too, and `assertFilterSupported` catches it at subscribe time rather
+    // than on the first delivery.
     default:
-      return true;
+      throw new UnsupportedFilterError(
+        `"${op}" is not an operator a realtime filter can be matched against. ` +
+          'Refusing rather than ignoring it, because an ignored condition delivers changes the filter excluded.'
+      );
   }
+}
+
+/** A stored GeoPoint, as JSON text or an already-parsed object. */
+function readStoredPoint(raw: unknown): { latitude: number; longitude: number } | null {
+  let point = raw;
+  if (typeof point === 'string') {
+    try {
+      point = JSON.parse(point);
+    } catch {
+      return null;
+    }
+  }
+  if (!point || typeof point !== 'object') return null;
+  const { latitude, longitude } = point as { latitude?: unknown; longitude?: unknown };
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') return null;
+  return { latitude, longitude };
 }
 
 /**
@@ -187,8 +296,9 @@ export function matchesFilter(where: Where | null | undefined, record: Record<st
       continue;
     }
 
-    for (const [op, raw] of Object.entries(condition as Record<string, unknown>)) {
-      if (!matchOperator(fieldValue, op, raw)) return false;
+    const siblings = condition as Record<string, unknown>;
+    for (const [op, raw] of Object.entries(siblings)) {
+      if (!matchOperator(fieldValue, op, raw, siblings)) return false;
     }
   }
 
@@ -209,6 +319,48 @@ export function assertFilterSupported(where: Where | null | undefined): void {
     }
     if ((key === '$and' || key === '$or') && Array.isArray(condition)) {
       for (const sub of condition) assertFilterSupported(sub as Where);
+      continue;
+    }
+    // BCN-003: an operator with no branch in `matchOperator` used to impose no
+    // constraint, so a subscription carrying one silently received changes a
+    // paired query would have excluded. It throws now — and throwing at
+    // subscribe time is the difference between a clear refusal and a delivery
+    // loop that fails on whichever record happens to change first.
+    if (condition !== null && typeof condition === 'object' && !Array.isArray(condition)) {
+      for (const op of Object.keys(condition as Record<string, unknown>)) {
+        if (op.startsWith('$') && !SUPPORTED_OPERATORS.has(op)) {
+          throw new UnsupportedFilterError(`"${op}" is not supported in realtime subscription filters`);
+        }
+      }
     }
   }
 }
+
+/**
+ * Every operator `matchOperator` has a branch for.
+ *
+ * Kept beside `assertFilterSupported` rather than derived from the switch,
+ * because a `switch` cannot be enumerated at runtime — and the property test
+ * against a real database is what actually proves the two lists agree.
+ */
+const SUPPORTED_OPERATORS = new Set([
+  '$eq',
+  '$ne',
+  '$gt',
+  '$gte',
+  '$lt',
+  '$lte',
+  '$in',
+  '$nin',
+  '$exists',
+  '$regex',
+  '$options',
+  '$contains',
+  '$text',
+  '$nearSphere',
+  '$maxDistanceInMiles',
+  '$maxDistanceInKilometers',
+  '$maxDistanceInRadians',
+  '$within',
+  '$geoWithin'
+]);

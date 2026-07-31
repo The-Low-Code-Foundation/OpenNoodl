@@ -54,6 +54,21 @@ export interface EngineDatabase {
   pragma(source: string): unknown;
   transaction(fn: (...args: unknown[]) => unknown): (...args: unknown[]) => unknown;
   close(): void;
+  /**
+   * Register a scalar SQL function implemented in JavaScript.
+   *
+   * Added by BCN-003, and it is what makes two of the built-in backend's
+   * silent-wrong-answer defects fixable rather than merely declarable. SQLite
+   * has no `REGEXP` and no geometry, but both engines behind this seam can call
+   * back into JavaScript — so `matchesRegex` becomes a real regular expression
+   * and "within this polygon" becomes a real containment test, instead of a
+   * `LIKE '%…%'` and a dropped condition.
+   *
+   * Optional, because `_createMockDb` implements this interface too and runs no
+   * SQL at all. A caller must treat its absence as "this engine cannot do it"
+   * rather than assuming it is there.
+   */
+  registerFunction?(name: string, fn: (...args: never[]) => number | string | bigint | null): void;
 }
 
 export interface ResolvedEngine {
@@ -68,6 +83,12 @@ interface NodeSqliteDatabaseLike {
   prepare(sql: string): EngineStatement;
   exec(sql: string): void;
   close(): void;
+  /**
+   * `db.function(name, options, fn)`. Present since Node 22.13, alongside
+   * `DatabaseSync` itself — the workspace `@types/node` predates it, hence the
+   * hand-written signature.
+   */
+  function?(name: string, options: Record<string, unknown>, fn: (...args: never[]) => unknown): void;
 }
 
 /**
@@ -124,6 +145,16 @@ export function wrapNodeSqlite(db: NodeSqliteDatabaseLike): EngineDatabase {
         db.exec('PRAGMA ' + source);
         return undefined;
       }
+    },
+    /**
+     * `node:sqlite` spells this `function`, which cannot be a method name on
+     * the better-sqlite3-shaped handle without reading as a keyword.
+     * `deterministic` lets SQLite cache and index the result — all three
+     * functions BCN-003 registers are pure.
+     */
+    registerFunction(name, fn) {
+      if (typeof db.function !== 'function') return;
+      db.function(name, { deterministic: true, varargs: false }, fn);
     },
     /**
      * Single-level transaction shim matching `db.transaction(fn)()`.
@@ -202,8 +233,18 @@ export function tryBetterSqlite3(): ResolvedEngine | null {
   return {
     name: 'better-sqlite3',
     open(dbPath) {
-      // Already the shape the adapter expects.
-      return new Database(dbPath);
+      // Already the shape the adapter expects, bar the one method BCN-003
+      // added. better-sqlite3 spells it `function` too, with the same
+      // (name, options, fn) signature, so the adaptation is a rename.
+      const db = new Database(dbPath) as EngineDatabase & {
+        function?(name: string, options: Record<string, unknown>, fn: (...args: never[]) => unknown): void;
+      };
+      if (!db.registerFunction && typeof db.function === 'function') {
+        db.registerFunction = (name, fn) => {
+          db.function!(name, { deterministic: true, varargs: false }, fn);
+        };
+      }
+      return db;
     }
   };
 }
