@@ -35,6 +35,31 @@ export interface Callbacks<TSuccess> {
   error: (err?: string) => void;
 }
 
+/**
+ * What the three file methods hand their `error` callback.
+ *
+ * The eleven data methods unwrap the backend's error envelope and pass
+ * `res.error` — a string, which is what `Callbacks` describes. The file methods
+ * do not: they forward the envelope whole, and both node call sites
+ * (`uploadfile.ts`, `signfileurl.ts`) declare exactly this shape and pass it
+ * straight to `setError`, which reads `status` to tell a 403 from a 500.
+ *
+ * **Corrected in BCN-002.** BCN-001 gave all fourteen methods the string form.
+ * Putting the wire behind the contract was what surfaced it, which is the
+ * argument for doing that before five more adapters register against the shape.
+ */
+export interface FileError {
+  error?: string;
+  code?: number;
+  status?: number;
+}
+
+/** {@link Callbacks} for the file methods, whose errors are envelopes. */
+export interface FileCallbacks<TSuccess> {
+  success: TSuccess;
+  error: (err?: FileError) => void;
+}
+
 /** One record as it crosses the adapter boundary. Always carries at least its id. */
 export interface AdapterRecord {
   objectId?: string;
@@ -185,7 +210,7 @@ export interface RelationOptions extends Callbacks<(record: AdapterRecord) => vo
 
 // ── Files ──────────────────────────────────────────────────────────────────
 
-export interface UploadFileOptions extends Callbacks<(result: { name: string; url: string }) => void> {
+export interface UploadFileOptions extends FileCallbacks<(result: { name: string; url: string }) => void> {
   file: { name: string; type?: string };
   data: unknown;
   /**
@@ -203,12 +228,29 @@ export interface UploadFileOptions extends Callbacks<(result: { name: string; ur
   onUploadProgress?: (progress: { loaded: number; total: number }) => void;
 }
 
+/**
+ * `expiresAt` is an **ISO string**, not an epoch number.
+ *
+ * BCN-001 typed it `number`; `nodegx-backend`'s `FileRoutes.signUrl` sends an
+ * ISO timestamp and the Sign File URL node has always declared it a string and
+ * published it on a `string` port. Corrected in BCN-002 — a wrong type here
+ * would have had BCN-004's adapters minting epochs for a port that renders them
+ * verbatim.
+ */
 export interface SignFileUrlOptions
-  extends Callbacks<(result: { url: string; expiresAt?: number; ttlSeconds?: number }) => void> {
+  extends FileCallbacks<(result: { url: string; expiresAt?: string; ttlSeconds?: number }) => void> {
   name: string;
 }
 
-export interface DeleteFileOptions extends Callbacks<() => void> {
+/**
+ * `success` receives the backend's response, not nothing.
+ *
+ * Also a BCN-002 correction: `cloudstore.js:481` calls it with the merged
+ * response body and `noodl-viewer-cloud/src/api/files.js` accepts a `response`
+ * parameter, so the zero-argument form BCN-001 declared could not have been
+ * implemented without changing a caller.
+ */
+export interface DeleteFileOptions extends FileCallbacks<(response?: Record<string, unknown>) => void> {
   file: { name: string };
 }
 

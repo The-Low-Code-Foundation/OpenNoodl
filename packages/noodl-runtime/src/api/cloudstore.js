@@ -1,29 +1,57 @@
+/**
+ * `CloudStore` — resolution, and the Noodl `Model` glue. **The wire moved out.**
+ *
+ * BCN-002 put the Parse client behind `IDataAdapter` as
+ * [`ParseWireAdapter`](./backends/ParseWireAdapter.ts). What is left here is the
+ * two jobs that are not the wire's:
+ *
+ * 1. **Resolution.** The adapter takes a `BackendHandle` as its first argument;
+ *    this class is what produces one. Today that is "whatever `cloudservices`
+ *    metadata says", which is the singleton behaviour the runtime has always
+ *    had — see `_handle()` for why that is a floor rather than a design.
+ * 2. **The Model glue.** `_fromJSON`, `_deserializeJSON` and `_serializeObject`
+ *    convert between backend JSON and Noodl `Model`/`Collection` objects. They
+ *    stay because twenty-five nodes reach them through this class, and because
+ *    the serialiser is handed to the adapter as a hook rather than owned by it.
+ *
+ * Every one of the fourteen data methods is now a one-line forward. That is the
+ * point: there is exactly one live copy of the request layer, and the diff that
+ * proves it is this file getting shorter rather than a second one appearing.
+ *
+ * The class keeps its old *shape* deliberately — `query(options)`, not
+ * `query(handle, options)` — so no node call site changed in this task. Nothing
+ * about "no observable behaviour change" would be provable if the callers moved
+ * at the same time as the implementation. BCN-004 and BCN-009 are what repoint
+ * them at a resolver.
+ */
 const NoodlRuntime = require('../../noodl-runtime');
 const Model = require('../model');
 const Collection = require('../collection');
 const CloudFile = require('./cloudfile');
-const EventEmitter = require('../events');
-
-const _protectedFields = {
-  _common: ['_createdAt', '_updatedAt', 'objectId'],
-  _User: ['_email_verify_token']
-};
-
-function _removeProtectedFields(data, className) {
-  const _data = Object.assign({}, data);
-  _protectedFields._common.forEach((f) => delete _data[f]);
-  if (className && _protectedFields[className]) _protectedFields[className].forEach((f) => delete _data[f]);
-
-  return _data;
-}
+const { ParseWireAdapter } = require('./backends/ParseWireAdapter');
 
 class CloudStore {
   constructor(modelScope) {
     this._initCloudServices();
 
-    this.events = new EventEmitter();
-    this.events.setMaxListeners(10000);
     this.modelScope = modelScope;
+
+    this._adapter = new ParseWireAdapter({
+      // The module-scope serialiser, not the scope-bound `this._serializeObject`
+      // below — which is what `create` and `save` called before this move, so
+      // `modelScope` is ignored during serialisation exactly as it always was.
+      // Pre-existing and preserved; PLAT-006 records the sibling case in
+      // `_fromJSON`.
+      serializeObject: (data, collectionName) => _serializeObject(data, collectionName),
+      // Read per call rather than captured, because `_initCloudServices()` can
+      // re-run (`dbcollectionnode2.ts:913`) and change it under a live adapter.
+      getServerVersionMajor: () => this.dbVersionMajor
+    });
+
+    // The same emitter, reachable at the same property. The adapter owns it now
+    // — `AdapterEvents` implements the contract's event surface once for every
+    // adapter — but `cloudstore.events` is read by name in the wild.
+    this.events = this._adapter.events;
 
     this._fromJSON = (item, collectionName) => CloudStore._fromJSON(item, collectionName, modelScope);
     this._deserializeJSON = (data, type) => CloudStore._deserializeJSON(data, type, modelScope);
@@ -43,6 +71,31 @@ class CloudStore {
     this.dbVersionMajor = dbVersionMajor;
   }
 
+  /**
+   * The resolved backend the adapter is handed, built fresh on every call.
+   *
+   * Fresh because `_initCloudServices()` re-reads project metadata at runtime
+   * and a captured handle would go stale the moment it did.
+   *
+   * `type: 'nodegx'` is an assumption and is marked as one. This class cannot
+   * tell our backend from an upstream Parse Server — both answer the same wire
+   * on the same headers, which is exactly why BCN-001 gave them separate
+   * descriptor columns. Nothing in *this* task reads `type`; BCN-009's picker is
+   * what will make it a fact rather than a default, and BCN-010's gating is what
+   * will make being wrong about it matter.
+   */
+  _handle() {
+    return {
+      id: '_active_',
+      type: 'nodegx',
+      name: 'Built-in',
+      url: this.endpoint,
+      // The Parse Application Id is precisely what `publicToken` describes: the
+      // non-secret identifier that ships with a deployed app.
+      publicToken: this.appId
+    };
+  }
+
   on() {
     this.events.on.apply(this.events, arguments);
   }
@@ -51,436 +104,76 @@ class CloudStore {
     this.events.off.apply(this.events, arguments);
   }
 
+  /**
+   * Kept as a two-argument method so the handle-binding is the only difference
+   * from the old signature. `test/cloudstore-files.test.ts` drives it directly
+   * and is left untouched on purpose — a wire test that still passes against the
+   * moved wire is the cheapest evidence this task can produce.
+   */
   _makeRequest(path, options) {
-    if (typeof _noodl_cloud_runtime_version === 'undefined') {
-      // Running in browser
-      var xhr = new XMLHttpRequest();
-
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          var json;
-          try {
-            // In SSR, we dont have xhr.response
-            json = JSON.parse(xhr.response || xhr.responseText);
-          } catch (e) {}
-
-          if (xhr.status === 200 || xhr.status === 201) {
-            options.success(json);
-          } else options.error(json || { error: xhr.responseText, status: xhr.status });
-        }
-      };
-
-      xhr.open(options.method || 'GET', this.endpoint + path, true);
-
-      xhr.setRequestHeader('X-Parse-Application-Id', this.appId);
-      if (typeof _noodl_cloudservices !== 'undefined')
-        xhr.setRequestHeader('X-Parse-Master-Key', _noodl_cloudservices.masterKey);
-
-      // Check for current users
-      var _cu = localStorage['Parse/' + this.appId + '/currentUser'];
-      if (_cu !== undefined) {
-        try {
-          const currentUser = JSON.parse(_cu);
-          xhr.setRequestHeader('X-Parse-Session-Token', currentUser.sessionToken);
-        } catch (e) {
-          // Failed to extract session token
-        }
-      }
-
-      // BAK-006 follow-up: caller-supplied headers (e.g. the Upload File node's
-      // Private input setting `X-NodeGX-File-Private`). Never overrides the
-      // Parse/session headers above — a caller has no reason to, and none of
-      // this module's callers try to.
-      if (options.headers) {
-        for (var headerName in options.headers) {
-          if (options.headers[headerName] !== undefined) xhr.setRequestHeader(headerName, options.headers[headerName]);
-        }
-      }
-
-      if (options.onUploadProgress) {
-        xhr.upload.onprogress = (pe) => options.onUploadProgress(pe);
-      }
-
-      if (options.content instanceof File) {
-        xhr.send(options.content);
-      } else {
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.send(JSON.stringify(options.content));
-      }
-    } else {
-      // Running in cloud runtime
-      const endpoint = typeof _noodl_cloudservices !== 'undefined' ? _noodl_cloudservices.endpoint : this.endpoint;
-      const appId = typeof _noodl_cloudservices !== 'undefined' ? _noodl_cloudservices.appId : this.appId;
-      const masterKey = typeof _noodl_cloudservices !== 'undefined' ? _noodl_cloudservices.masterKey : undefined;
-
-      fetch(endpoint + path, {
-        method: options.method || 'GET',
-        headers: Object.assign(
-          {
-            'X-Parse-Application-Id': appId,
-            'X-Parse-Master-Key': masterKey,
-            'Content-Type': 'application/json'
-          },
-          options.headers || {}
-        ),
-        body: JSON.stringify(options.content)
-      })
-        .then((r) => {
-          if (r.status === 200 || r.status === 201) {
-            if (options.method === 'DELETE') {
-              options.success(undefined);
-            } else {
-              r.json()
-                .then((json) => options.success(json))
-                .catch((e) =>
-                  options.error({
-                    error: 'CloudStore: Failed to get json result.'
-                  })
-                );
-            }
-          } else {
-            if (options.method === 'DELETE') {
-              options.error({ error: 'Failed to delete.' });
-            } else {
-              r.json()
-                .then((json) => options.error(json))
-                .catch((e) => options.error({ error: 'Failed to fetch.' }));
-            }
-          }
-        })
-        .catch((e) => {
-          options.error({ error: e.message });
-        });
-    }
+    this._adapter._makeRequest(this._handle(), path, options);
   }
 
+  // ── The fourteen contract methods ────────────────────────────────────────
+  //
+  // Each one binds the resolved handle and forwards. Nothing else happens here:
+  // paths, headers, payload shaping, the `{_method: 'GET'}` tunnel and the
+  // adapter events all live in `ParseWireAdapter`, which is the only live copy.
+
   query(options) {
-    this._makeRequest('/classes/' + options.collection, {
-      method: 'POST',
-      content: {
-        _method: 'GET',
-        where: options.where,
-        limit: options.limit,
-        skip: options.skip,
-        include: Array.isArray(options.include) ? options.include.join(',') : options.include,
-        keys: Array.isArray(options.select) ? options.select.join(',') : options.select,
-        order: Array.isArray(options.sort) ? options.sort.join(',') : options.sort,
-        count: options.count,
-        // BAK-008: a non-empty search term switches the server from a plain
-        // query to an FTS5-ranked search (still composed with `where` and the
-        // caller's ACL). A dedicated `search` param, not Parse's `$text`
-        // operator — the ranking/snippet response shape doesn't fit inside a
-        // boolean WHERE predicate, and no runtime client ever emitted `$text`
-        // to preserve compatibility with. See BAK-008-NOTES.md.
-        search: options.search || undefined
-      },
-      success: function (response) {
-        options.success(response.results, response.count);
-      },
-      error: function () {
-        options.error();
-      }
-    });
+    this._adapter.query(this._handle(), options);
   }
 
   aggregate(options) {
-    const args = [];
-
-    if (!options.group) {
-      options.error('You need to provide group option.');
-      return;
-    }
-
-    if (options.limit) args.push('limit=' + options.limit);
-    if (options.skip) args.push('skip=' + options.skip);
-
-    const grouping = {};
-
-    Object.keys(options.group).forEach((k) => {
-      const _g = {};
-      const group = options.group[k];
-      if (group['avg'] !== undefined) _g['$avg'] = '$' + group['avg'];
-      else if (group['sum'] !== undefined) _g['$sum'] = '$' + group['sum'];
-      else if (group['max'] !== undefined) _g['$max'] = '$' + group['max'];
-      else if (group['min'] !== undefined) _g['$min'] = '$' + group['min'];
-      else if (group['distinct'] !== undefined) _g['$addToSet'] = '$' + group['distinct'];
-
-      grouping[k] = _g;
-    });
-
-    // I don't know which version the API was changed, lets just say above 4 for now.
-    if (this.dbVersionMajor && this.dbVersionMajor > 4) {
-      grouping._id = null;
-      
-      if (options.where) args.push('$match=' + encodeURIComponent(JSON.stringify(options.where)));
-
-      args.push('$group=' + JSON.stringify(grouping));
-    } else {
-      grouping.objectId = null;
-      
-      if (options.where) args.push('match=' + encodeURIComponent(JSON.stringify(options.where)));
-
-      args.push('group=' + JSON.stringify(grouping));
-    }
-
-    this._makeRequest('/aggregate/' + options.collection + (args.length > 0 ? '?' + args.join('&') : ''), {
-      success: function (response) {
-        const res = {};
-
-        if (!response.results || response.results.length !== 1) {
-          options.success({}); // No result
-          return;
-        }
-
-        Object.keys(options.group).forEach((k) => {
-          res[k] = response.results[0][k];
-        });
-
-        options.success(res);
-      },
-      error: function () {
-        options.error();
-      }
-    });
+    this._adapter.aggregate(this._handle(), options);
   }
 
   count(options) {
-    const args = [];
-
-    if (options.where) args.push('where=' + encodeURIComponent(JSON.stringify(options.where)));
-    args.push('limit=0');
-    args.push('count=1');
-
-    this._makeRequest('/classes/' + options.collection + (args.length > 0 ? '?' + args.join('&') : ''), {
-      success: function (response) {
-        options.success(response.count);
-      },
-      error: function () {
-        options.error();
-      }
-    });
+    this._adapter.count(this._handle(), options);
   }
 
   distinct(options) {
-    const args = [];
-
-    if (options.where) args.push('where=' + encodeURIComponent(JSON.stringify(options.where)));
-    args.push('distinct=' + options.property);
-
-    this._makeRequest('/aggregate/' + options.collection + (args.length > 0 ? '?' + args.join('&') : ''), {
-      success: function (response) {
-        options.success(response.results);
-      },
-      error: function () {
-        options.error();
-      }
-    });
+    this._adapter.distinct(this._handle(), options);
   }
 
   fetch(options) {
-    const args = [];
-
-    if (options.include)
-      args.push('include=' + (Array.isArray(options.include) ? options.include.join(',') : options.include));
-
-    this._makeRequest(
-      '/classes/' + options.collection + '/' + options.objectId + (args.length > 0 ? '?' + args.join('&') : ''),
-      {
-        method: 'GET',
-        success: (response) => {
-          options.success(response);
-          this.events.emit('fetch', {
-            type: 'fetch',
-            objectId: options.objectId,
-            object: response,
-            collection: options.collection
-          });
-        },
-        error: function (res) {
-          options.error(res.error);
-        }
-      }
-    );
+    this._adapter.fetch(this._handle(), options);
   }
 
   create(options) {
-    this._makeRequest('/classes/' + options.collection, {
-      method: 'POST',
-      content: Object.assign(
-        _removeProtectedFields(_serializeObject(options.data, options.collection), options.collection),
-        { ACL: options.acl }
-      ),
-      success: (response) => {
-        const _obj = Object.assign({}, options.data, response);
-        options.success(_obj);
-        this.events.emit('create', {
-          type: 'create',
-          objectId: options.objectId,
-          object: _obj,
-          collection: options.collection
-        });
-      },
-      error: function (res) {
-        options.error(res.error);
-      }
-    });
+    this._adapter.create(this._handle(), options);
   }
 
   increment(options) {
-    const data = {};
-
-    for (let key in options.properties) {
-      data[key] = { __op: 'Increment', amount: options.properties[key] };
-    }
-
-    this._makeRequest('/classes/' + options.collection + '/' + options.objectId, {
-      method: 'PUT',
-      content: data,
-      success: (response) => {
-        options.success(response);
-      },
-      error: function (res) {
-        options.error(res.error);
-      }
-    });
+    this._adapter.increment(this._handle(), options);
   }
 
   save(options) {
-    const _data = Object.assign({}, options.data);
-    delete _data.createdAt;
-    delete _data.updatedAt;
-
-    this._makeRequest('/classes/' + options.collection + '/' + options.objectId, {
-      method: 'PUT',
-      content: Object.assign(_removeProtectedFields(_serializeObject(_data, options.collection), options.collection), {
-        ACL: options.acl
-      }),
-      success: (response) => {
-        options.success(response);
-        this.events.emit('save', {
-          type: 'save',
-          objectId: options.objectId,
-          object: Object.assign({}, options.data, response),
-          collection: options.collection
-        });
-      },
-      error: function (res) {
-        options.error(res.error);
-      }
-    });
+    this._adapter.save(this._handle(), options);
   }
 
   delete(options) {
-    this._makeRequest('/classes/' + options.collection + '/' + options.objectId, {
-      method: 'DELETE',
-      success: () => {
-        options.success();
-        this.events.emit('delete', {
-          type: 'delete',
-          objectId: options.objectId,
-          collection: options.collection
-        });
-      },
-      error: function (res) {
-        options.error(res.error);
-      }
-    });
+    this._adapter.delete(this._handle(), options);
   }
 
   addRelation(options) {
-    const _content = {};
-    _content[options.key] = {
-      __op: 'AddRelation',
-      objects: [
-        {
-          __type: 'Pointer',
-          objectId: options.targetObjectId,
-          className: options.targetClass
-        }
-      ]
-    };
-    this._makeRequest('/classes/' + options.collection + '/' + options.objectId, {
-      method: 'PUT',
-      content: _content,
-      success: function (response) {
-        options.success(response);
-      },
-      error: function (res) {
-        options.error(res.error);
-      }
-    });
+    this._adapter.addRelation(this._handle(), options);
   }
 
   removeRelation(options) {
-    const _content = {};
-    _content[options.key] = {
-      __op: 'RemoveRelation',
-      objects: [
-        {
-          __type: 'Pointer',
-          objectId: options.targetObjectId,
-          className: options.targetClass
-        }
-      ]
-    };
-    this._makeRequest('/classes/' + options.collection + '/' + options.objectId, {
-      method: 'PUT',
-      content: _content,
-      success: function (response) {
-        options.success(response);
-      },
-      error: function (res) {
-        options.error(res.error);
-      }
-    });
+    this._adapter.removeRelation(this._handle(), options);
   }
 
   uploadFile(options) {
-    this._makeRequest('/files/' + options.file.name, {
-      method: 'POST',
-      content: options.file,
-      contentType: options.file.type,
-      // BAK-006 follow-up: the Upload File node's Private input. The backend
-      // reads this exact header (files.ts, case-insensitively) to ACL the
-      // upload to its owner instead of leaving it public.
-      headers: options.private ? { 'X-NodeGX-File-Private': 'true' } : undefined,
-      success: (response) => options.success(Object.assign({}, options.data, response)),
-      error: (err) => options.error(err),
-      onUploadProgress: options.onUploadProgress
-    });
+    this._adapter.uploadFile(this._handle(), options);
   }
 
-  /**
-   * BAK-006 follow-up: mint a short-TTL signed URL for a (typically private)
-   * file — `GET /files/:name/sign`. Gated server-side by the same row-ACL
-   * check reading the file itself would use; this call fails the same way an
-   * unauthorized read would if the caller cannot already read the file.
-   *
-   * @param {{ name: string; success: (result: { url: string; expiresAt: string; ttlSeconds: number }) => void; error: (err: unknown) => void }} options
-   */
   signFileUrl(options) {
-    this._makeRequest('/files/' + options.name + '/sign', {
-      method: 'GET',
-      success: (response) => options.success(response),
-      error: (err) => options.error(err)
-    });
+    this._adapter.signFileUrl(this._handle(), options);
   }
 
-  /**
-   * Users holding the master key are allowed to delete files
-   *
-   * @param {{
-   *    file: {
-   *      name: string;
-   *    }
-   * }} options
-   */
   deleteFile(options) {
-    this._makeRequest('/files/' + options.file.name, {
-      method: 'DELETE',
-      success: (response) => options.success(Object.assign({}, options.data, response)),
-      error: (err) => options.error(err)
-    });
+    this._adapter.deleteFile(this._handle(), options);
   }
 }
 

@@ -14,6 +14,7 @@
     "lodash.isequal": "^4.5.0"
   },
   "devDependencies": {
+    "@noodl/backend-contract": "file:../nodegx-backend-contract",
     "@noodl/types": "file:../noodl-types",
     "jest": "^29.7.0",
     "ts-jest": "^29.4.1",
