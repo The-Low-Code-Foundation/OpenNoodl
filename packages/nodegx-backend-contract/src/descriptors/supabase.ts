@@ -106,10 +106,23 @@ export const supabaseDescriptor: BackendDescriptor = {
     // The one place Supabase does something the built-in backend cannot.
     'auth.magicLink': supported('POST /auth/v1/otp — magic links are a first-class Supabase flow'),
 
+    // ⚠️ **The one realtime cell nothing has ever verified.** BCN-008 tried and
+    // could not: the rig's "Supabase" is one Postgres and one PostgREST
+    // container, and Supabase Realtime is a separate Elixir service that is not
+    // in docker-compose.yml at all. The probe established the absence rather
+    // than inventing a result — /realtime/v1/api/tenants/realtime/health is a
+    // plain 404 from PostgREST, ws://…/realtime/v1/websocket errors in 5ms, and
+    // ports 4000 and 54321 are silent.
+    //
+    // It stays `conditional` because that is what the product documentation
+    // describes and `conditional` is already the safe state — the editor treats
+    // it as unavailable until a probe says otherwise, so an unverified cell
+    // cannot promise anything. It must NOT be promoted to `supported` by anyone
+    // who has not run a real Supabase stack.
     'realtime.subscribe': conditional(
       'Live updates need Realtime turned on for this table in your Supabase dashboard.',
       { method: 'GET', path: '/realtime/v1/api/tenants/realtime/health', expect: 'a healthy response, plus the table being in the supabase_realtime publication' },
-      'Realtime is per-table opt-in via the publication, not a project-wide switch.'
+      'Realtime is per-table opt-in via the publication, not a project-wide switch. DOCUMENTED, NOT PROBED — BCN-008 confirmed only that no Realtime service exists in this rig to probe. The delete payload in particular (postgres_changes sends old_record with the primary key alone unless the table is REPLICA IDENTITY FULL) is unmeasured, and that is exactly the field RUN-003 got wrong on Directus by reading rather than asking.'
     )
   }),
 

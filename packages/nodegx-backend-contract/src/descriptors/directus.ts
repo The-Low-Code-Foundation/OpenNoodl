@@ -136,10 +136,20 @@ export const directusDescriptor: BackendDescriptor = {
       'No passwordless flow in the Directus auth API.'
     ),
 
+    // ⚠️ The probe moved from `/server/info` to the handshake itself, because
+    // BCN-008 measured what `/server/info` actually returns on an instance with
+    // `WEBSOCKETS_ENABLED=true`: `{data:{project:{…},setupCompleted:true}}` and
+    // no websocket section of any kind. The old probe would have reported
+    // `unsupported` on a server where realtime works perfectly.
     'realtime.subscribe': conditional(
       'Live updates need WebSockets enabled on your Directus instance. They are off by default.',
-      { method: 'GET', path: '/server/info', expect: 'a websocket section, or a successful ws:// handshake' },
-      'WEBSOCKETS_ENABLED defaults to false. RUN-003 ran with it on and found the socket never fired close — a defect BCN-008 inherits.'
+      {
+        method: 'GET',
+        path: '/websocket',
+        expect:
+          'a 101 upgrade. Nothing else settles it — /server/info says nothing about websockets even when they are on. Give up after a deadline: a Directus server that does not upgrade a path fires NEITHER error NOR close (measured silent for 20s).'
+      },
+      'BCN-008, live against Directus 11 with WEBSOCKETS_ENABLED=true: open in single-digit ms, auth ok, subscribe confirmed by an `init` frame. A delete on an INTEGER primary key arrives as data:["1"] — keys only, coerced to string. Server pings every 30s and closes a client that does not pong (measured at 60s, code 1005).'
     )
   }),
 

@@ -144,7 +144,13 @@ export const pocketbaseDescriptor: BackendDescriptor = {
       'OTP exists in recent versions but is a code-entry flow, not a link. Revisit if BCN-006 adds an OTP node.'
     ),
 
-    'realtime.subscribe': supported('GET /api/realtime is Server-Sent Events, on by default — the same transport shape as BAK-001')
+    // Supported, and measured — but read the second half of the evidence before
+    // reusing this cell to justify anything. PocketBase accepts a subscription
+    // it will never deliver, which is the same "a 200 is not a yes" shape
+    // BCN-001 found in its aggregate probe.
+    'realtime.subscribe': supported(
+      'GET /api/realtime is Server-Sent Events, on by default — the same transport shape as BAK-001. BCN-008 measured it live against 0.30.0, anonymously and with no token anywhere: `PB_CONNECT` carries a clientId, POST /api/realtime {clientId, subscriptions:["coll"]} answers 204, and events arrive under an SSE event name that is the COLLECTION NAME rather than "change", with data {action, record}. A delete carries the whole record. Nothing at all arrived on an idle stream in 130s, so there is no observed keepalive. ⚠️ Subscribing to a collection the caller cannot list is ALSO 204 — acceptance is not gated, delivery is, so a wrong subscription is silent rather than refused.'
+    )
   }),
 
   filters: filterTable(supported('native PocketBase filter expression'), {

@@ -145,10 +145,25 @@ export const parseDescriptor: BackendDescriptor = {
     // The cell that justifies the four-state model existing at all. A user
     // enables realtime, gets nothing, and there is no error anywhere because
     // the node never managed to connect.
+    // ⚠️ The `/serverInfo` half of the old probe does not work and has been
+    // dropped. Measured against Parse Server 7.3.0 with the master key:
+    // `/serverInfo` lists `globalConfig, hooks, cloudCode, logs, push, schemas,
+    // settings` and mentions LiveQuery nowhere at all — so it cannot tell an
+    // instance that runs LiveQuery from one that does not, and a probe built on
+    // it answers "no" on every Parse server in the world.
+    //
+    // The socket settles it, and settles it fast: 20ms to an `error` on this
+    // server. `conditional` costs almost nothing to resolve, which was BCN-001's
+    // argument for the four-state model and is now a number.
     'realtime.subscribe': conditional(
       'Live updates need a Parse LiveQuery server, which most Parse setups do not run. Check with whoever hosts yours.',
-      { method: 'GET', path: '/serverInfo', expect: 'a liveQueryServer entry, or a reachable ws:// endpoint' },
-      'LiveQuery is a separate process with its own port. Documented, not probed.'
+      {
+        method: 'GET',
+        path: '/',
+        expect:
+          'a 101 upgrade on the ws:// endpoint, followed by a {"op":"connected"} reply to a connect op. The HTTP API cannot answer this question. Deadline the attempt — an absent LiveQuery server is SILENT in every place a client would look.'
+      },
+      'BCN-008, live against Parse Server 7.3.0: /parse/serverInfo advertises no liveQuery of any kind; ws://…/parse errors in 20ms with "Received network error or non-101 status code" and `close` never fires. That is a measurement that LiveQuery is ABSENT here, not that the protocol was exercised — no NodeGX code has ever spoken to a running LiveQuery server.'
     )
   }),
 
