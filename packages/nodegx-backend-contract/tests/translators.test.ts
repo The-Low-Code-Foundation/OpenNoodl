@@ -476,6 +476,45 @@ describe('the saved formats', () => {
     ).toBeNull();
   });
 
+  it('sends a pre-BCN-003 saved filter to exactly the same Directus payload as before', () => {
+    // The migration's real acceptance criterion. Saved BYOB filters store
+    // Directus operator names verbatim in project data; the decision was to
+    // migrate rather than break. That is only true if a filter saved by the old
+    // builder, migrated and re-translated, produces the payload the old
+    // converter produced — otherwise "migrate" means "quietly change what the
+    // user's app asks for".
+    const savedByTheOldBuilder = {
+      id: 'root',
+      type: 'and' as const,
+      conditions: [
+        { id: 'c1', field: 'status', operator: '_eq', value: 'published' },
+        { id: 'c2', field: 'author.name', operator: '_contains', value: 'Ada' },
+        { id: 'c3', field: 'archived', operator: '_null', value: true },
+        { id: 'c4', field: 'views', operator: '_between', value: [10, 100] },
+        {
+          id: 'g1',
+          type: 'or' as const,
+          conditions: [
+            { id: 'c5', field: 'rating', operator: '_gte', value: 4 },
+            { id: 'c6', field: 'tags', operator: '_nempty', value: true }
+          ]
+        }
+      ]
+    };
+
+    const migrated = migrateSavedFilter(savedByTheOldBuilder);
+    const neutral = savedFilterToNeutral(migrated);
+    expect(toDirectusFilter(neutral, { backend: 'directus' })).toEqual({
+      _and: [
+        { status: { _eq: 'published' } },
+        { author: { name: { _contains: 'Ada' } } },
+        { archived: { _null: true } },
+        { views: { _between: [10, 100] } },
+        { _or: [{ rating: { _gte: 4 } }, { tags: { _nempty: true } }] }
+      ]
+    });
+  });
+
   it('maps exist / not exist without needing a value', () => {
     expect(visualQueryToNeutral({ property: 'email', operator: 'exist' })).toEqual({ email: { exists: true } });
     expect(visualQueryToNeutral({ property: 'email', operator: 'not exist' })).toEqual({ email: { exists: false } });

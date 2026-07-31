@@ -4,182 +4,268 @@
  * Defines available operators for each field type with human-readable labels.
  */
 
-import { FieldType, FilterOperator, OperatorDefinition } from './types';
+import { FieldType, OperatorDefinition } from './types';
 
 /**
  * All available operators with their definitions
  */
-export const ALL_OPERATORS: Record<FilterOperator, OperatorDefinition> = {
+/** The comparison set every numeric column gets. */
+function NUMERIC_OPERATORS(): string[] {
+  return [
+    'equalTo',
+    'notEqualTo',
+    'greaterThan',
+    'greaterThanOrEqualTo',
+    'lessThan',
+    'lessThanOrEqualTo',
+    'containedIn',
+    'notContainedIn',
+    'between',
+    'notBetween',
+    'notExists',
+    'exists'
+  ];
+}
+
+/** The same, minus set membership, for date and time columns. */
+function TEMPORAL_OPERATORS(): string[] {
+  return [
+    'equalTo',
+    'notEqualTo',
+    'greaterThan',
+    'greaterThanOrEqualTo',
+    'lessThan',
+    'lessThanOrEqualTo',
+    'between',
+    'notBetween',
+    'notExists',
+    'exists'
+  ];
+}
+
+export const ALL_OPERATORS: Record<string, OperatorDefinition> = {
   // Equality
-  _eq: { value: '_eq', label: 'equals', description: 'Exact match', valueCount: 1 },
-  _neq: { value: '_neq', label: 'does not equal', description: 'Not equal', valueCount: 1 },
+  equalTo: { key: 'equalTo', value: 'equalTo', label: 'equals', description: 'Exact match', valueCount: 1 },
+  notEqualTo: { key: 'notEqualTo', value: 'notEqualTo', label: 'does not equal', description: 'Not equal', valueCount: 1 },
 
   // Comparison
-  _gt: { value: '_gt', label: 'greater than', description: 'Greater than', valueCount: 1 },
-  _gte: { value: '_gte', label: 'greater than or equal', description: 'Greater than or equal', valueCount: 1 },
-  _lt: { value: '_lt', label: 'less than', description: 'Less than', valueCount: 1 },
-  _lte: { value: '_lte', label: 'less than or equal', description: 'Less than or equal', valueCount: 1 },
+  greaterThan: { key: 'greaterThan', value: 'greaterThan', label: 'greater than', description: 'Greater than', valueCount: 1 },
+  greaterThanOrEqualTo: {
+    key: 'greaterThanOrEqualTo',
+    value: 'greaterThanOrEqualTo',
+    label: 'greater than or equal',
+    description: 'Greater than or equal',
+    valueCount: 1
+  },
+  lessThan: { key: 'lessThan', value: 'lessThan', label: 'less than', description: 'Less than', valueCount: 1 },
+  lessThanOrEqualTo: {
+    key: 'lessThanOrEqualTo',
+    value: 'lessThanOrEqualTo',
+    label: 'less than or equal',
+    description: 'Less than or equal',
+    valueCount: 1
+  },
 
   // String
-  _contains: { value: '_contains', label: 'contains', description: 'Contains substring', valueCount: 1 },
-  _ncontains: { value: '_ncontains', label: 'does not contain', description: 'Does not contain', valueCount: 1 },
-  _icontains: {
-    value: '_icontains',
+  contains: { key: 'contains', value: 'contains', label: 'contains', description: 'Contains substring', valueCount: 1 },
+  notContains: {
+    key: 'notContains',
+    value: 'notContains',
+    label: 'does not contain',
+    description: 'Does not contain',
+    valueCount: 1
+  },
+  containsIgnoreCase: {
+    key: 'containsIgnoreCase',
+    value: 'containsIgnoreCase',
     label: 'contains (case-insensitive)',
     description: 'Contains (case-insensitive)',
     valueCount: 1
   },
-  _starts_with: { value: '_starts_with', label: 'starts with', description: 'Starts with', valueCount: 1 },
-  _nstarts_with: {
-    value: '_nstarts_with',
+  startsWith: { key: 'startsWith', value: 'startsWith', label: 'starts with', description: 'Starts with', valueCount: 1 },
+  notStartsWith: {
+    key: 'notStartsWith',
+    value: 'notStartsWith',
     label: 'does not start with',
     description: 'Does not start with',
     valueCount: 1
   },
-  _istarts_with: {
-    value: '_istarts_with',
+  startsWithIgnoreCase: {
+    key: 'startsWithIgnoreCase',
+    value: 'startsWithIgnoreCase',
     label: 'starts with (case-insensitive)',
     description: 'Starts with (case-insensitive)',
     valueCount: 1
   },
-  _ends_with: { value: '_ends_with', label: 'ends with', description: 'Ends with', valueCount: 1 },
-  _nends_with: { value: '_nends_with', label: 'does not end with', description: 'Does not end with', valueCount: 1 },
-  _iends_with: {
-    value: '_iends_with',
+  endsWith: { key: 'endsWith', value: 'endsWith', label: 'ends with', description: 'Ends with', valueCount: 1 },
+  notEndsWith: {
+    key: 'notEndsWith',
+    value: 'notEndsWith',
+    label: 'does not end with',
+    description: 'Does not end with',
+    valueCount: 1
+  },
+  endsWithIgnoreCase: {
+    key: 'endsWithIgnoreCase',
+    value: 'endsWithIgnoreCase',
     label: 'ends with (case-insensitive)',
     description: 'Ends with (case-insensitive)',
     valueCount: 1
   },
 
   // Array/In
-  _in: { value: '_in', label: 'is one of', description: 'Value is in list', valueCount: 1 },
-  _nin: { value: '_nin', label: 'is not one of', description: 'Value is not in list', valueCount: 1 },
+  containedIn: { key: 'containedIn', value: 'containedIn', label: 'is one of', description: 'Value is in list', valueCount: 1 },
+  notContainedIn: {
+    key: 'notContainedIn',
+    value: 'notContainedIn',
+    label: 'is not one of',
+    description: 'Value is not in list',
+    valueCount: 1
+  },
 
-  // Null
-  _null: { value: '_null', label: 'is null', description: 'Is null', valueCount: 0 },
-  _nnull: { value: '_nnull', label: 'is not null', description: 'Is not null', valueCount: 0 },
+  // Presence. One operator, two rows — see `OperatorDefinition`.
+  notExists: {
+    key: 'notExists',
+    value: 'exists',
+    presetValue: false,
+    label: 'is not set',
+    description: 'The field has no value',
+    valueCount: 0
+  },
+  exists: {
+    key: 'exists',
+    value: 'exists',
+    presetValue: true,
+    label: 'is set',
+    description: 'The field has a value',
+    valueCount: 0
+  },
 
   // Between
-  _between: { value: '_between', label: 'is between', description: 'Between two values', valueCount: 2 },
-  _nbetween: { value: '_nbetween', label: 'is not between', description: 'Not between two values', valueCount: 2 },
+  between: { key: 'between', value: 'between', label: 'is between', description: 'Between two values', valueCount: 2 },
+  notBetween: {
+    key: 'notBetween',
+    value: 'notBetween',
+    label: 'is not between',
+    description: 'Not between two values',
+    valueCount: 2
+  },
 
-  // Empty
-  _empty: { value: '_empty', label: 'is empty', description: 'Is empty string or array', valueCount: 0 },
-  _nempty: { value: '_nempty', label: 'is not empty', description: 'Is not empty', valueCount: 0 },
+  // Empty — a different question from "is not set". An empty string is a value.
+  isEmpty: { key: 'isEmpty', value: 'isEmpty', label: 'is empty', description: 'Is empty string or array', valueCount: 0 },
+  isNotEmpty: { key: 'isNotEmpty', value: 'isNotEmpty', label: 'is not empty', description: 'Is not empty', valueCount: 0 },
 
   // Regex
-  _regex: { value: '_regex', label: 'matches regex', description: 'Matches regular expression', valueCount: 1 }
+  matchesRegex: {
+    key: 'matchesRegex',
+    value: 'matchesRegex',
+    label: 'matches regex',
+    description: 'Matches regular expression',
+    valueCount: 1
+  }
 };
 
 /**
- * Operators available for each field type
+ * Operators available for each field type, by dropdown key.
  */
-const OPERATORS_BY_TYPE: Record<FieldType, FilterOperator[]> = {
+const OPERATORS_BY_TYPE: Record<FieldType, string[]> = {
   // String types - full text operators
   string: [
-    '_eq',
-    '_neq',
-    '_contains',
-    '_ncontains',
-    '_icontains',
-    '_starts_with',
-    '_nstarts_with',
-    '_istarts_with',
-    '_ends_with',
-    '_nends_with',
-    '_iends_with',
-    '_in',
-    '_nin',
-    '_null',
-    '_nnull',
-    '_empty',
-    '_nempty',
-    '_regex'
+    'equalTo',
+    'notEqualTo',
+    'contains',
+    'notContains',
+    'containsIgnoreCase',
+    'startsWith',
+    'notStartsWith',
+    'startsWithIgnoreCase',
+    'endsWith',
+    'notEndsWith',
+    'endsWithIgnoreCase',
+    'containedIn',
+    'notContainedIn',
+    'notExists',
+    'exists',
+    'isEmpty',
+    'isNotEmpty',
+    'matchesRegex'
   ],
   text: [
-    '_eq',
-    '_neq',
-    '_contains',
-    '_ncontains',
-    '_icontains',
-    '_starts_with',
-    '_nstarts_with',
-    '_ends_with',
-    '_nends_with',
-    '_null',
-    '_nnull',
-    '_empty',
-    '_nempty',
-    '_regex'
+    'equalTo',
+    'notEqualTo',
+    'contains',
+    'notContains',
+    'containsIgnoreCase',
+    'startsWith',
+    'notStartsWith',
+    'endsWith',
+    'notEndsWith',
+    'notExists',
+    'exists',
+    'isEmpty',
+    'isNotEmpty',
+    'matchesRegex'
   ],
 
   // Numeric types - comparison operators
-  integer: ['_eq', '_neq', '_gt', '_gte', '_lt', '_lte', '_in', '_nin', '_between', '_nbetween', '_null', '_nnull'],
-  float: ['_eq', '_neq', '_gt', '_gte', '_lt', '_lte', '_in', '_nin', '_between', '_nbetween', '_null', '_nnull'],
-  decimal: ['_eq', '_neq', '_gt', '_gte', '_lt', '_lte', '_in', '_nin', '_between', '_nbetween', '_null', '_nnull'],
+  integer: NUMERIC_OPERATORS(),
+  float: NUMERIC_OPERATORS(),
+  decimal: NUMERIC_OPERATORS(),
 
   // Boolean - simple equality
-  boolean: ['_eq', '_neq', '_null', '_nnull'],
+  boolean: ['equalTo', 'notEqualTo', 'notExists', 'exists'],
 
   // Date/Time types - comparison and between
-  date: ['_eq', '_neq', '_gt', '_gte', '_lt', '_lte', '_between', '_nbetween', '_null', '_nnull'],
-  datetime: ['_eq', '_neq', '_gt', '_gte', '_lt', '_lte', '_between', '_nbetween', '_null', '_nnull'],
-  time: ['_eq', '_neq', '_gt', '_gte', '_lt', '_lte', '_between', '_nbetween', '_null', '_nnull'],
-  timestamp: ['_eq', '_neq', '_gt', '_gte', '_lt', '_lte', '_between', '_nbetween', '_null', '_nnull'],
+  date: TEMPORAL_OPERATORS(),
+  datetime: TEMPORAL_OPERATORS(),
+  time: TEMPORAL_OPERATORS(),
+  timestamp: TEMPORAL_OPERATORS(),
 
-  // UUID - equality and null
-  uuid: ['_eq', '_neq', '_in', '_nin', '_null', '_nnull'],
+  // UUID - equality and presence
+  uuid: ['equalTo', 'notEqualTo', 'containedIn', 'notContainedIn', 'notExists', 'exists'],
 
   // JSON - limited operators
-  json: ['_null', '_nnull', '_empty', '_nempty'],
+  json: ['notExists', 'exists', 'isEmpty', 'isNotEmpty'],
 
   // CSV - limited operators
-  csv: ['_contains', '_ncontains', '_null', '_nnull', '_empty', '_nempty'],
+  csv: ['contains', 'notContains', 'notExists', 'exists', 'isEmpty', 'isNotEmpty'],
 
   // Hash - equality only
-  hash: ['_eq', '_neq', '_null', '_nnull'],
+  hash: ['equalTo', 'notEqualTo', 'notExists', 'exists'],
 
   // Alias - depends on target, default to string-like
-  alias: ['_eq', '_neq', '_null', '_nnull'],
+  alias: ['equalTo', 'notEqualTo', 'notExists', 'exists'],
 
   // Unknown - basic operators
-  unknown: ['_eq', '_neq', '_null', '_nnull']
+  unknown: ['equalTo', 'notEqualTo', 'notExists', 'exists']
 };
 
 /**
  * Get available operators for a field type
  */
 export function getOperatorsForType(type: FieldType): OperatorDefinition[] {
-  const operatorKeys = OPERATORS_BY_TYPE[type] || OPERATORS_BY_TYPE.unknown;
-  return operatorKeys.map((key) => ALL_OPERATORS[key]);
+  const keys = OPERATORS_BY_TYPE[type] || OPERATORS_BY_TYPE.unknown;
+  return keys.map((key) => ALL_OPERATORS[key]);
 }
 
-/**
- * Get operator definition by value
- */
-export function getOperatorDefinition(operator: FilterOperator): OperatorDefinition {
-  return ALL_OPERATORS[operator] || ALL_OPERATORS._eq;
+/** Get a dropdown row by its key. */
+export function getOperatorDefinition(key: string): OperatorDefinition {
+  return ALL_OPERATORS[key] || ALL_OPERATORS.equalTo;
 }
 
-/**
- * Get a friendly display label for an operator
- */
-export function getOperatorLabel(operator: FilterOperator): string {
-  return ALL_OPERATORS[operator]?.label || operator;
+/** Get a friendly display label for a dropdown row. */
+export function getOperatorLabel(key: string): string {
+  return ALL_OPERATORS[key]?.label || key;
 }
 
-/**
- * Check if operator requires a value input
- */
-export function operatorNeedsValue(operator: FilterOperator): boolean {
-  const def = ALL_OPERATORS[operator];
+/** Does this row need a value typed in? */
+export function operatorNeedsValue(key: string): boolean {
+  const def = ALL_OPERATORS[key];
   return def ? def.valueCount > 0 : true;
 }
 
-/**
- * Check if operator requires two values (between)
- */
-export function operatorNeedsTwoValues(operator: FilterOperator): boolean {
-  const def = ALL_OPERATORS[operator];
+/** Does this row need two values (between)? */
+export function operatorNeedsTwoValues(key: string): boolean {
+  const def = ALL_OPERATORS[key];
   return def ? def.valueCount === 2 : false;
 }

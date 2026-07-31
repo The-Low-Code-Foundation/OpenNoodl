@@ -15,13 +15,14 @@ import { Box } from '@noodl-core-ui/components/layout/Box';
 
 import css from './ByobFilterBuilder.module.scss';
 import { useDragContext } from './DragContext';
-import { getOperatorsForType, operatorNeedsValue, operatorNeedsTwoValues } from './operators';
+import { getOperatorDefinition, getOperatorsForType, operatorNeedsValue, operatorNeedsTwoValues } from './operators';
 import {
   FieldType,
   FilterCondition as FilterConditionType,
   FilterOperator,
   SchemaField,
-  generateFilterPortName
+  generateFilterPortName,
+  operatorKeyOf
 } from './types';
 
 export interface FilterConditionProps {
@@ -81,12 +82,12 @@ export function FilterCondition({ condition, fields, onChange, onDelete, parentG
 
       // Reset operator if not valid for new type
       const newOperators = getOperatorsForType(newType);
-      const isOperatorValid = newOperators.some((op) => op.value === condition.operator);
+      const isOperatorValid = newOperators.some((op) => op.key === operatorKeyOf(condition));
 
       const next = {
         ...condition,
         field: value,
-        operator: isOperatorValid ? condition.operator : ('_eq' as FilterOperator),
+        operator: isOperatorValid ? condition.operator : ('equalTo' as FilterOperator),
         value: '' // Reset value when field changes
       };
 
@@ -111,10 +112,10 @@ export function FilterCondition({ condition, fields, onChange, onDelete, parentG
 
   // Handle operator change
   const handleOperatorChange = useCallback(
-    (value: string) => {
-      const newOperator = value as FilterOperator;
-      const needsValue = operatorNeedsValue(newOperator);
-      const needsTwoValues = operatorNeedsTwoValues(newOperator);
+    (key: string) => {
+      const definition = getOperatorDefinition(key);
+      const needsValue = operatorNeedsValue(key);
+      const needsTwoValues = operatorNeedsTwoValues(key);
 
       let newValue = condition.value;
 
@@ -129,8 +130,10 @@ export function FilterCondition({ condition, fields, onChange, onDelete, parentG
 
       onChange({
         ...condition,
-        operator: newOperator,
-        value: newValue
+        operator: definition.value,
+        // The two presence rows are one operator carrying a boolean, so the
+        // row's own value wins over whatever was typed for the previous one.
+        value: definition.presetValue !== undefined ? definition.presetValue : newValue
       });
     },
     [condition, onChange]
@@ -161,8 +164,9 @@ export function FilterCondition({ condition, fields, onChange, onDelete, parentG
     [condition, onChange]
   );
 
-  const needsValue = operatorNeedsValue(condition.operator);
-  const needsTwoValues = operatorNeedsTwoValues(condition.operator);
+  const operatorKey = operatorKeyOf(condition);
+  const needsValue = operatorNeedsValue(operatorKey);
+  const needsTwoValues = operatorNeedsTwoValues(operatorKey);
   const isConnected = condition.valueSource === 'connected';
 
   // Enum fields get a value dropdown for single-value operators; booleans too
@@ -203,9 +207,11 @@ export function FilterCondition({ condition, fields, onChange, onDelete, parentG
 
   // Operator options for dropdown
   const operatorOptions = useMemo(() => {
+    // Keyed by the dropdown row rather than by the operator, because the two
+    // presence rows share one operator and differ only in the boolean they set.
     return availableOperators.map((op) => ({
       label: op.label,
-      value: op.value
+      value: op.key
     }));
   }, [availableOperators]);
 
@@ -239,7 +245,7 @@ export function FilterCondition({ condition, fields, onChange, onDelete, parentG
 
         {/* Operator Selector */}
         <Select
-          value={condition.operator}
+          value={operatorKey}
           options={operatorOptions}
           onChange={handleOperatorChange}
           colorTheme={SelectColorTheme.Dark}

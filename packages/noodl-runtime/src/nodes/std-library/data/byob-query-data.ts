@@ -21,6 +21,15 @@ import type {
   RuntimeDiscoveredPort
 } from '@noodl/types';
 
+import {
+  migrateSavedFilter,
+  needsOperatorMigration,
+  savedFilterToNeutral,
+  toDirectusFilter as translateToDirectus,
+  type SavedFilterGroup,
+  type SavedFilterItem
+} from '@noodl/backend-contract/translators';
+
 import type { BackendServicesMetaData, ResolvedBackend, SchemaCollection } from './byob-types';
 
 import Node = require('../../../node');
@@ -698,51 +707,43 @@ const QueryDataNode: NodeDefinitionOptions = {
 };
 
 /**
- * Convert the visual filter builder format to the Directus filter format.
- * Mirrors the editor-side converter (ByobFilterBuilder/converter.ts) — the
- * runtime re-converts at fetch time because connected port values are only
- * known here.
+ * Convert the builder's saved format to a Directus filter.
+ *
+ * ⚠️ **This used to be a second implementation**, mirroring the editor's
+ * converter by hand. RUN-003 shipped that pair and its runtime copy emitted a
+ * flat `"author.name"` key that live Directus rejects with a 403 — invisible to
+ * every unit test, because only a real fetch exercised this side. BCN-003's
+ * hard rule is that one backend never has two translators, so both copies are
+ * gone and this is the shared one.
+ *
+ * Three steps, and the middle one is the point:
+ *
+ * 1. **Migrate.** A filter saved before BCN-003 spells its operators the
+ *    Directus way (`_eq`), verbatim in project data. The editor migrates on
+ *    load, but a deployed app never opens the editor, so the runtime migrates
+ *    too. Idempotent, so a filter already neutral is untouched.
+ * 2. **To the neutral model**, which is what the translators take.
+ * 3. **To Directus**, gated by the Directus capability table — so an operator
+ *    Directus cannot express raises rather than vanishing from the query.
+ *
+ * The backend is `directus` unconditionally, and that is honest rather than
+ * lazy: this node builds a Directus-shaped URL and Directus-shaped parameters
+ * for every BYOB backend type. Making the other three real is BCN-004's, and
+ * pretending here by passing the resolved backend's type would gate operators
+ * against a table describing a request we do not send.
  */
 function toDirectusFilter(group: FilterGroup): unknown {
-  if (!group || !group.conditions || group.conditions.length === 0) {
-    return null;
-  }
+  if (!group || !group.conditions || group.conditions.length === 0) return null;
 
-  const combinator = group.type === 'or' ? '_or' : '_and';
-  const filterItems: unknown[] = [];
+  const migrated = needsOperatorMigration(group as unknown as SavedFilterItem)
+    ? migrateSavedFilter(group as unknown as SavedFilterGroup)
+    : (group as unknown as SavedFilterGroup);
 
-  for (const item of group.conditions) {
-    if (item.type === 'and' || item.type === 'or') {
-      // Nested group
-      const nestedFilter = toDirectusFilter(item);
-      if (nestedFilter) {
-        filterItems.push(nestedFilter);
-      }
-    } else {
-      // Condition - convert to Directus format
-      if (item.field && item.operator) {
-        // Null/empty checks take a literal true, not the (absent) value
-        const noValueOperators = ['_null', '_nnull', '_empty', '_nempty'];
-        const operatorValue = noValueOperators.includes(item.operator) ? true : item.value;
+  const neutral = savedFilterToNeutral(migrated);
+  if (!neutral) return null;
 
-        // Relation paths (author.name) must nest: { author: { name: { _eq: ... } } }.
-        // A flat "author.name" key is rejected by Directus (live 403, slice 6).
-        let condition: Record<string, unknown> = { [item.operator]: operatorValue };
-        const parts = item.field.split('.');
-        for (let i = parts.length - 1; i >= 0; i--) {
-          condition = { [parts[i]]: condition };
-        }
-        filterItems.push(condition);
-      }
-    }
-  }
-
-  if (filterItems.length === 0) return null;
-  if (filterItems.length === 1) return filterItems[0];
-
-  const result: Record<string, unknown> = {};
-  result[combinator] = filterItems;
-  return result;
+  const directus = translateToDirectus(neutral, { backend: 'directus' });
+  return Object.keys(directus).length === 0 ? null : directus;
 }
 
 /**

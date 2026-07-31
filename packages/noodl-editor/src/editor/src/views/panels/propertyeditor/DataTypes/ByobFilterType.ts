@@ -8,6 +8,8 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
+import { migrateSavedFilter, needsOperatorMigration, type SavedFilterGroup } from '@noodl/backend-contract/translators';
+
 import { FilterBuilderButton } from '../components/ByobFilterBuilder';
 import { fromDirectusFilter } from '../components/ByobFilterBuilder/converter';
 import { FilterGroup, SchemaCollection } from '../components/ByobFilterBuilder/types';
@@ -48,9 +50,19 @@ export class ByobFilterType extends TypeView {
           const parsed = JSON.parse(this.value as string);
           // Check if it's already our visual builder format (has 'conditions' array)
           if (parsed.conditions) {
-            return parsed as FilterGroup;
+            // BCN-003: filters saved before this task spell their operators the
+            // Directus way (`_eq`), because that is what the builder used to
+            // emit straight into project data. Migrated on the way in, and
+            // `needsOperatorMigration` keeps it idempotent — a filter already in
+            // the neutral vocabulary comes back the same object, so opening a
+            // project does not rewrite filters nobody touched.
+            return (
+              needsOperatorMigration(parsed) ? migrateSavedFilter(parsed as SavedFilterGroup) : parsed
+            ) as FilterGroup;
           } else {
-            // It's a legacy Directus format, convert it
+            // It's a raw Directus filter, from the JSON editing affordance or
+            // from before the builder existed. `fromDirectusFilter` reads it
+            // back in the neutral vocabulary.
             return fromDirectusFilter(parsed);
           }
         } catch (e) {
@@ -72,8 +84,6 @@ export class ByobFilterType extends TypeView {
           // Store the full visual builder format (with conditions array, IDs, etc.)
           // The runtime will convert to Directus format at fetch time
           const jsonString = JSON.stringify(filter);
-
-          console.log('[ByobFilterType] Saving filter:', jsonString);
 
           const undoArgs = { undo: true, label: 'filter changed', oldValue: this.value };
           this.value = jsonString;
