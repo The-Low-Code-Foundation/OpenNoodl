@@ -29,24 +29,57 @@ const Model = require('../model');
 const Collection = require('../collection');
 const CloudFile = require('./cloudfile');
 const { ParseWireAdapter } = require('./backends/ParseWireAdapter');
+const { RestDataAdapter } = require('./backends/RestDataAdapter');
+const { makeRestSerializer, filterSchemaFor } = require('./backends/restSerialize');
+const { resolveBackendFromRuntime, ACTIVE_BACKEND } = require('./backends/resolveBackend');
 
 class CloudStore {
-  constructor(modelScope) {
+  /**
+   * @param {import('@noodl/types').ModelScopeLike} [modelScope]
+   * @param {import('./backends/resolveBackend').ResolvedBackendTarget} [target]
+   *   The backend this store is bound to. Omitted for the legacy singleton, which
+   *   resolves `cloudservices` itself and is what every non-Record node still uses.
+   */
+  constructor(modelScope, target) {
     this._initCloudServices();
 
     this.modelScope = modelScope;
+    this._target = target;
 
-    this._adapter = new ParseWireAdapter({
-      // The module-scope serialiser, not the scope-bound `this._serializeObject`
-      // below — which is what `create` and `save` called before this move, so
-      // `modelScope` is ignored during serialisation exactly as it always was.
-      // Pre-existing and preserved; PLAT-006 records the sibling case in
-      // `_fromJSON`.
-      serializeObject: (data, collectionName) => _serializeObject(data, collectionName),
-      // Read per call rather than captured, because `_initCloudServices()` can
-      // re-run (`dbcollectionnode2.ts:913`) and change it under a live adapter.
-      getServerVersionMajor: () => this.dbVersionMajor
-    });
+    /**
+     * Does this store's adapter want a **neutral** filter rather than a Parse `where`?
+     *
+     * BCN-004 step 5. `queryutils.convertVisualFilter` translates all the way to Parse,
+     * which is right for `ParseWireAdapter` and wrong for `RestDataAdapter` — the REST
+     * adapter takes the neutral filter and runs BCN-003's translator for its own dialect.
+     * Handing it a Parse document would translate an already-translated filter. The nodes
+     * read this flag to decide which of the two they compute; see
+     * `queryutils.convertVisualFilterToNeutral`.
+     */
+    this.usesNeutralFilter = Boolean(target && !target.isParseWire);
+
+    this._adapter = this.usesNeutralFilter
+      ? new RestDataAdapter({
+          // ⚠️ The hook `RestDataAdapter` defaults to the identity, and whose absence its
+          // own notes flag as a live defect: without it a `json` column written from an
+          // object-typed port double-encodes, exactly as before RUN-003 fixed it.
+          serializeObject: makeRestSerializer({
+            collections: () => (this._target ? this._target.collections : []),
+            toJSON: _toJSON
+          }),
+          schemaFor: (collectionName) => filterSchemaFor(this._target ? this._target.collections : [], collectionName)
+        })
+      : new ParseWireAdapter({
+          // The module-scope serialiser, not the scope-bound `this._serializeObject`
+          // below — which is what `create` and `save` called before this move, so
+          // `modelScope` is ignored during serialisation exactly as it always was.
+          // Pre-existing and preserved; PLAT-006 records the sibling case in
+          // `_fromJSON`.
+          serializeObject: (data, collectionName) => _serializeObject(data, collectionName),
+          // Read per call rather than captured, because `_initCloudServices()` can
+          // re-run (`dbcollectionnode2.ts:913`) and change it under a live adapter.
+          getServerVersionMajor: () => this.dbVersionMajor
+        });
 
     // The same emitter, reachable at the same property. The adapter owns it now
     // — `AdapterEvents` implements the contract's event surface once for every
@@ -85,8 +118,15 @@ class CloudStore {
    * will make being wrong about it matter.
    */
   _handle() {
+    // BCN-004 step 5: a store bound to a resolved backend answers *that* backend. The
+    // legacy singleton keeps the shape below unchanged, including the `nodegx` assumption
+    // — `queryutils.backendType()` reads it to pick the filter builder's capability table
+    // and would narrow every pre-WF-007 project's operator list if this started guessing
+    // `parse`. See `resolveBackend.ts::endpointBackendType`.
+    if (this._target) return this._target.handle;
+
     return {
-      id: '_active_',
+      id: ACTIVE_BACKEND,
       type: 'nodegx',
       name: 'Built-in',
       url: this.endpoint,
@@ -94,6 +134,11 @@ class CloudStore {
       // non-secret identifier that ships with a deployed app.
       publicToken: this.appId
     };
+  }
+
+  /** The contract type of the backend this store talks to. */
+  backendType() {
+    return this._handle().type;
   }
 
   on() {
@@ -352,6 +397,8 @@ function _fromJSON(item, collectionName, modelScope) {
 CloudStore._fromJSON = _fromJSON;
 CloudStore._deserializeJSON = _deserializeJSON;
 CloudStore._serializeObject = _serializeObject;
+/** Exported for the REST serialiser, which has to unwrap a `Model`/`Collection` too. */
+CloudStore._toJSON = _toJSON;
 
 CloudStore.forScope = (modelScope) => {
   if (modelScope === undefined) return CloudStore.instance;
@@ -359,6 +406,64 @@ CloudStore.forScope = (modelScope) => {
 
   modelScope._cloudStore = new CloudStore(modelScope);
   return modelScope._cloudStore;
+};
+
+/**
+ * The store for one scope **and one backend** — BCN-004 step 5's resolver.
+ *
+ * `forScope` is the singleton path and is left exactly as it was: it resolves nothing,
+ * always speaks the Parse wire, and is what the twenty-odd nodes that have no backend
+ * picker still call. This is the path the six Record nodes take, and the only difference
+ * is that the backend is an argument.
+ *
+ * Three rules, all of them load-bearing:
+ *
+ * 1. **`_active_` and "unset" are the same request**, and both resolve through
+ *    `resolveBackend.ts::defaultBackendId` — which answers the project's `cloudservices`
+ *    endpoint when there is one. That is what makes this a no-op for every project that
+ *    exists today.
+ * 2. **A resolution that lands back on the legacy endpoint returns the legacy store.**
+ *    Not an equivalent one: `dbcollectionnode2` subscribes to save/create/delete events on
+ *    the store it queries through, and two stores for one backend would mean a record
+ *    created by one node never reaching the query node watching for it.
+ * 3. **A backend id that names nothing returns `undefined`**, so the caller can report a
+ *    sentence. Falling back to the default would write to a different backend than the one
+ *    the graph names, silently.
+ *
+ * @param {import('@noodl/types').ModelScopeLike} [modelScope]
+ * @param {string} [backendId] a `backendServices` id, `'_endpoint_'`, or `'_active_'`
+ * @returns {CloudStore | undefined}
+ */
+CloudStore.forBackend = (modelScope, backendId) => {
+  const target = resolveBackendFromRuntime(backendId);
+
+  // Nothing configured at all: a brand-new project, or a runtime with no metadata. The
+  // legacy store is the honest answer — it is what these nodes have always used, and it
+  // reads `cloudservices` for itself when the deploy injects it later.
+  if (!target) {
+    if (!backendId || backendId === ACTIVE_BACKEND) return CloudStore.forScope(modelScope);
+    return undefined;
+  }
+
+  if (target.isParseWire && target.entry.id === '_endpoint_') return CloudStore.forScope(modelScope);
+
+  const owner = modelScope || CloudStore;
+  if (owner._cloudStoresByBackend === undefined) owner._cloudStoresByBackend = {};
+  if (owner._cloudStoresByBackend[target.entry.id] === undefined) {
+    owner._cloudStoresByBackend[target.entry.id] = new CloudStore(modelScope, target);
+  } else {
+    // The metadata can change under a live store — a re-introspection, a new token — and
+    // the handle is read from `_target` on every call, so refreshing it is enough.
+    owner._cloudStoresByBackend[target.entry.id]._target = target;
+  }
+
+  return owner._cloudStoresByBackend[target.entry.id];
+};
+
+/** Drop the per-backend stores. Used by tests; harmless at runtime. */
+CloudStore.invalidateBackends = (modelScope) => {
+  const owner = modelScope || CloudStore;
+  owner._cloudStoresByBackend = undefined;
 };
 
 var _instance;

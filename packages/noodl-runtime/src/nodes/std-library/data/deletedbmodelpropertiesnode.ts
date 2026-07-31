@@ -5,7 +5,6 @@ import type { ModelScopeLike } from '@noodl/types';
 import type { DbCrudBaseInstance, DbCrudNodeModule, DbModelIdInstance } from './crud-mixins';
 
 import DbModelCRUDBase = require('./dbmodelcrudbase');
-import CloudStore = require('../../../api/cloudstore');
 
 /** `this` inside Delete Record. Note it applies neither `addInputProperties` nor `addAccessControl`. */
 interface DeleteDbModelPropertiesInstance extends DbCrudBaseInstance, DbModelIdInstance {
@@ -58,7 +57,12 @@ const DeleteDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
           // `NodeScopeLike` is typed, the compiler *proves* it — `ModelScope` reaches the
           // index signature rather than the declared `modelScope`, so it is `unknown`. The
           // cast keeps the behaviour verbatim rather than quietly fixing it here.
-          CloudStore.forScope(_this.nodeScope.ModelScope as ModelScopeLike).delete({
+          // BCN-004 step 5: the store the `Backend` input names, not the singleton. The
+          // scope override above the comment is what keeps the defect verbatim.
+          const cloudstore = _this.cloudStoreForScope(_this.nodeScope.ModelScope as ModelScopeLike);
+          if (!cloudstore) return;
+
+          cloudstore.delete({
             collection: internal.collectionId,
             objectId: internal.model.getId(), // Get the objectId part of the model id,
             success: function () {

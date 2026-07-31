@@ -12,7 +12,6 @@ import type {
 
 import ModelImport = require('../../../model');
 import DbModelCRUDBase = require('./dbmodelcrudbase');
-import CloudStore = require('../../../api/cloudstore');
 
 const Model = ModelImport as unknown as ModelModule;
 
@@ -76,7 +75,11 @@ const NewDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
             internal.inputValues
           );
 
-          const cloudstore = CloudStore.forScope(this.nodeScope.modelScope);
+          // BCN-004 step 5: the store the `Backend` input names, not the singleton. With
+          // nothing selected this resolves to exactly the store `forScope` used to return.
+          const cloudstore = this.cloudStore();
+          if (!cloudstore) return;
+
           cloudstore.create({
             collection: internal.collectionId,
             data: initValues,

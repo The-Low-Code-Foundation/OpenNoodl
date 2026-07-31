@@ -25,7 +25,12 @@ import {
   shouldShowField
 } from './schema-ports';
 
-import type { BackendServicesMetaData, DirectusListMeta, ResolvedBackend, SchemaField } from './byob-types';
+import { resolveBackendTarget } from '../../../api/backends/resolveBackend';
+// Moved out in BCN-004 step 5 so `RestDataAdapter`'s `serializeObject` hook can reach it
+// without `api/` importing `nodes/`. Same function, re-exported below under the same name.
+import { normalizeValue } from '../../../api/backends/restSerialize';
+
+import type { BackendServicesMetaData, DirectusListMeta, ResolvedBackend } from './byob-types';
 
 const NoodlRuntime = require('../../../../noodl-runtime');
 
@@ -55,6 +60,22 @@ const SYSTEM_ENDPOINTS: Record<string, string> = {
 
 /**
  * Resolve backend configuration from metadata
+ *
+ * **BCN-004 step 3: one resolver, not two.** The rules moved to
+ * `api/backends/resolveBackend.ts`, which serves every adapter; what is left here is the
+ * BYOB-shaped view of the answer, so the four `byob-*` nodes keep the fields they read.
+ *
+ * ⚠️ **Deliberately narrower than the general resolver: `cloudservices` is not passed
+ * in.** A BYOB node's `_active_` has always meant `backendServices.activeBackendId`, and
+ * a project that also has a `cloudservices` endpoint would otherwise see its BYOB nodes
+ * jump onto the Parse wire. The Record family's `_active_` means something different for
+ * the same reason, in the other direction — see the resolver's module docblock on the two
+ * actives.
+ *
+ * One behaviour *is* new, and it is the spec's own step 3: with exactly one configured
+ * backend and no `activeBackendId` recorded, that backend is the default. This used to
+ * return `null`.
+ *
  * @param {string} backendId - Backend ID or '_active_' for active backend
  * @returns {Object|null} Backend config with { url, token, type, endpoints } or null
  */
@@ -66,26 +87,19 @@ function resolveBackend(backendId: string): ResolvedBackend | null {
     return null;
   }
 
-  const backends = backendServices.backends || [];
-  let backend;
+  const target = resolveBackendTarget(backendId, { backendServices });
 
-  if (backendId === '_active_') {
-    backend = backends.find((b) => b.id === backendServices.activeBackendId);
-  } else {
-    backend = backends.find((b) => b.id === backendId);
-  }
-
-  if (!backend) {
+  if (!target) {
     console.log('[BYOB Utils] Backend not found:', backendId);
     return null;
   }
 
   return {
-    url: backend.url,
-    token: backend.auth?.publicToken || '',
-    type: backend.type,
-    endpoints: backend.endpoints,
-    collections: backend.schema?.collections || []
+    url: target.entry.url,
+    token: (target.entry.auth?.publicToken as string) || '',
+    type: target.entry.type,
+    endpoints: target.entry.endpoints,
+    collections: target.collections
   };
 }
 
@@ -157,64 +171,6 @@ function buildUrl(
   }
 
   return url;
-}
-
-/**
- * Normalize a value for API submission
- * Handles date conversion to ISO 8601 format, and JSON text for json/array columns
- * @param {*} value - The value to normalize
- * @param {Object} fieldSchema - Field schema information
- * @returns {*} Normalized value
- */
-function normalizeValue(value: unknown, fieldSchema: SchemaField | undefined): unknown {
-  if (value === null || value === undefined) {
-    return value;
-  }
-
-  // A json/array column's port is object-typed (getEnhancedFieldType), and object-typed
-  // ports are now editable in the property panel as a literal — so what arrives here for
-  // such a field may be the *text* the author typed. Sending that on would double-encode
-  // it: the column would hold the string `{"a":1}` rather than the object. Parsed here
-  // rather than in each node's setter because this is the one funnel every write path
-  // shares, and because the setter has no schema to consult.
-  //
-  // Text that does not parse is passed through untouched: a `json` column can legitimately
-  // hold a JSON string, and guessing is worse than sending what was asked for.
-  if (fieldSchema && (fieldSchema.type === 'json' || fieldSchema.type === 'array') && typeof value === 'string') {
-    const trimmed = value.trim();
-    if (trimmed === '') return value;
-    try {
-      return JSON.parse(trimmed);
-    } catch (e) {
-      return value;
-    }
-  }
-
-  // Handle date/datetime fields - convert to ISO 8601
-  if (
-    fieldSchema &&
-    (fieldSchema.type === 'dateTime' ||
-      fieldSchema.type === 'date' ||
-      fieldSchema.type === 'timestamp' ||
-      fieldSchema.type === 'time')
-  ) {
-    // If already an ISO string, return as-is
-    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-      return value;
-    }
-
-    // Try to parse as date
-    try {
-      const date = new Date(value as string | number | Date);
-      if (!isNaN(date.getTime())) {
-        return date.toISOString();
-      }
-    } catch (e) {
-      console.warn('[BYOB Utils] Failed to convert date value:', value);
-    }
-  }
-
-  return value;
 }
 
 /**

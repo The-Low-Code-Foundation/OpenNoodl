@@ -23,15 +23,22 @@ import CloudStore = require('../../../api/cloudstore');
 import QueryUtils = require('../../../api/queryutils');
 import type { VisualSorting } from '../../../api/queryutils';
 
+import {
+  recordBackendPickerPorts,
+  recordClassPorts,
+  recordFilterBackendType,
+  recordFilterSchema,
+  recordSchemaContext
+} from './record-ports';
+import { sendSchemaPorts, staticPortNames } from './schema-ports';
+
 const Collection = CollectionImport as unknown as CollectionModule;
 const Model = ModelImport as unknown as ModelModule;
 
-/** One class in the project's `dbCollections` metadata. */
-interface DbCollectionMeta {
-  name: string;
-  schema?: {
-    properties?: Record<string, { type?: string; [extra: string]: unknown }>;
-  };
+/** The store surface this node uses: one subscription, no requests. */
+interface FilterStoreLike {
+  on(event: string, handler: (args: { collection?: string; objectId?: string }) => void): void;
+  off(event: string, handler: (args: { collection?: string; objectId?: string }) => void): void;
 }
 
 /** A node in the editor's visual filter tree: either a group of rules or a leaf. */
@@ -67,11 +74,16 @@ interface FilterDbModelsInstance extends NodeInstance {
     lastReportedError?: string;
     /** NDA-004 §2 — did an author *ask* for this run? See `scheduleFilter`. */
     filterRequested?: boolean;
+    /** The `Backend` picker's value: a backend id, `'_endpoint_'`, or `'_active_'`. */
+    backendId?: string;
+    /** The store this node's `save` subscription is currently on. */
+    boundStore?: FilterStoreLike;
   };
   /** On the instance rather than in `_internal` — guards {@link scheduleFilter}. */
   collectionChangedScheduled?: boolean;
   unbindCurrentCollection(): void;
   bindCollection(collection: CollectionLike | undefined): void;
+  bindStoreEvents(store: FilterStoreLike | undefined): void;
   getLimit(): number | undefined;
   getSkip(): number | undefined;
   scheduleFilter(): void;
@@ -114,7 +126,11 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
         _this.scheduleFilter();
     };
 
-    CloudStore.instance.on('save', this._internal.cloudStoreEvents);
+    // BCN-004 step 5: bound to the legacy store here, exactly as before, and moved by
+    // `bindStoreEvents` when the `Backend` input names another one. A node watching the
+    // wrong backend's saves re-filters when nothing it holds has changed, and does not
+    // re-filter when something has.
+    this.bindStoreEvents(CloudStore.instance);
 
     this._internal.enabled = true;
     this._internal.filterSettings = {};
@@ -238,11 +254,20 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       this._internal.collection = collection;
       collection && collection.on('change', this._internal.collectionChangedCallback);
     },
+    /** Move the `save` subscription onto `store`, off whatever it was on. */
+    bindStoreEvents: function (this: FilterDbModelsInstance, store: FilterStoreLike | undefined) {
+      const previous = this._internal.boundStore;
+      if (previous === store) return;
+
+      if (previous) previous.off('save', this._internal.cloudStoreEvents);
+      this._internal.boundStore = store;
+      if (store) store.on('save', this._internal.cloudStoreEvents);
+    },
     _onNodeDeleted: function (this: FilterDbModelsInstance) {
       Node.prototype._onNodeDeleted.call(this);
       this.unbindCurrentCollection();
 
-      CloudStore.instance.off('save', this._internal.cloudStoreEvents);
+      this.bindStoreEvents(undefined);
     },
     /* getFilter: function () {
             const filterSettings = this._internal.filterSettings;
@@ -419,6 +444,16 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
           set: this.setCollectionName.bind(this)
         });
 
+      // BCN-004 step 5. Nothing is sent to this backend — the subscription is the only
+      // thing that moves, because the class this node filters lives there.
+      if (name === 'backendId')
+        return this.registerInput(name, {
+          set: (value: string) => {
+            this._internal.backendId = value;
+            this.bindStoreEvents(CloudStore.forBackend(this.nodeScope.modelScope, value) || CloudStore.instance);
+          }
+        });
+
       if (name === 'visualFilter')
         return this.registerInput(name, {
           set: this.setVisualFilter.bind(this)
@@ -447,30 +482,48 @@ function userInputSetter(this: FilterDbModelsInstance, name: string, value: unkn
   if (this.isInputConnected('filter') === false) this.scheduleFilter();
 }
 
+/**
+ * Drop the Parse property types this node's filter cannot ask questions about.
+ *
+ * Preserved verbatim from the loop it replaces (`_supportedTypes`), and only for the
+ * Parse-shaped schema: the builder's own `parseSchema.ts` drops the same set again on its
+ * side, and the BYOB-shaped `{collection, fields}` was never pruned here.
+ */
+function filterableSchema(schema: Record<string, unknown> | null): Record<string, unknown> | null {
+  if (!schema) return null;
+  const properties = schema.properties as Record<string, { type?: string }> | undefined;
+  if (!properties) return schema;
+
+  const supported: Record<string, boolean> = {
+    Boolean: true,
+    String: true,
+    Date: true,
+    Number: true,
+    Pointer: true
+  };
+
+  const kept: Record<string, { type?: string }> = {};
+  for (const key in properties) {
+    if (supported[properties[key]?.type]) kept[key] = properties[key];
+  }
+
+  return Object.assign({}, schema, { properties: kept });
+}
+
 function updatePorts(
   nodeId: string,
   parameters: Record<string, unknown>,
   editorConnection: EditorConnectionLike,
-  dbCollections: DbCollectionMeta[] | undefined
+  graphModel: GraphModelLike
 ) {
   const ports: RuntimeDiscoveredPort[] = [];
 
-  ports.push({
-    name: 'collectionName',
-    type: {
-      name: 'enum',
-      enums:
-        dbCollections !== undefined
-          ? dbCollections.map((c) => {
-              return { value: c.name, label: c.name };
-            })
-          : [],
-      allowEditOnly: true
-    },
-    displayName: 'Class',
-    plug: 'input',
-    group: 'General'
-  });
+  // BCN-004 step 5. This node filters an array it is *given*, in memory — the backend it
+  // names is what supplies the Class list and the schema the filter builder is drawn from,
+  // not a place it sends anything. It gets the picker for that reason and no other.
+  const ctx = recordSchemaContext(graphModel, parameters);
+  ports.push(...recordBackendPickerPorts(ctx));
+  ports.push(...recordClassPorts(ctx));
 
   ports.push({
     type: 'boolean',
@@ -500,27 +553,15 @@ function updatePorts(
     });
   }
 
-  // DEFECT (PLAT-003 NOTES §27.3), left verbatim: this guard tests only `collectionName`,
-  // while the `enums` above already established `dbCollections` may be `undefined` — so a
-  // Filter Records node that has a class selected throws a `TypeError` on `.find` whenever
-  // the metadata has not arrived. Every sibling (`dbmodelnode2`, `dbmodelcrudbase`) guards
-  // on both.
+  // DEFECT (PLAT-003 NOTES §27.3) — **fixed as a side effect of BCN-004 step 5**, and
+  // recorded rather than left silent. This guard tested only `collectionName` while the
+  // `enums` above had already established that the metadata may be absent, so a Filter
+  // Records node with a class selected threw a `TypeError` on `.find` whenever it had not
+  // arrived. `recordFilterSchema` answers `null` for that case instead of dereferencing,
+  // so the crash has nowhere left to happen.
   if (parameters.collectionName !== undefined) {
-    const c = dbCollections.find((c) => c.name === parameters.collectionName);
-    if (c && c.schema && c.schema.properties) {
-      const schema = JSON.parse(JSON.stringify(c.schema));
-
-      const _supportedTypes: Record<string, boolean> = {
-        Boolean: true,
-        String: true,
-        Date: true,
-        Number: true,
-        Pointer: true
-      };
-      for (const key in schema.properties) {
-        if (!_supportedTypes[schema.properties[key].type]) delete schema.properties[key];
-      }
-
+    const schema = filterableSchema(recordFilterSchema(ctx));
+    if (schema) {
       ports.push({
         name: 'visualFilter',
         plug: 'input',
@@ -529,8 +570,9 @@ function updatePorts(
           schema: schema,
           allowEditOnly: true,
           // BCN-003b: the builder greys out what this backend cannot express,
-          // using the same descriptor cell the translator refuses on.
-          backend: QueryUtils.backendType(),
+          // using the same descriptor cell the translator refuses on. BCN-004 step 5: and
+          // it is this node's own backend now rather than the singleton's.
+          backend: recordFilterBackendType(ctx, QueryUtils.backendType()),
           valuePortPrefix: 'fp-'
         },
         displayName: 'Filter',
@@ -652,7 +694,7 @@ function updatePorts(
         })
     }*/
 
-  editorConnection.sendDynamicPorts(nodeId, ports);
+  sendSchemaPorts(editorConnection, nodeId, ports, { staticPorts: staticPortNames(FilterDBModelsNode) });
 }
 
 const FilterDBModelsNodeModule: NodeModule = {
@@ -663,31 +705,21 @@ const FilterDBModelsNodeModule: NodeModule = {
     }
 
     graphModel.on('nodeAdded.FilterDBModels', function (node: GraphNodeModel) {
-      updatePorts(
-        node.id,
-        node.parameters,
-        context.editorConnection,
-        graphModel.getMetaData('dbCollections') as DbCollectionMeta[] | undefined
-      );
+      updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
 
       node.on('parameterUpdated', function () {
-        updatePorts(
-          node.id,
-          node.parameters,
-          context.editorConnection,
-          graphModel.getMetaData('dbCollections') as DbCollectionMeta[] | undefined
-        );
+        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
       });
 
-      graphModel.on('metadataChanged.dbCollections', function (data: DbCollectionMeta[]) {
-        CloudStore.invalidateCollections();
-        updatePorts(node.id, node.parameters, context.editorConnection, data);
-      });
-
-      graphModel.on('metadataChanged.systemCollections', function (data: DbCollectionMeta[]) {
-        CloudStore.invalidateCollections();
-        updatePorts(node.id, node.parameters, context.editorConnection, data);
-      });
+      // The four metadata keys the ports are now built from. `data` used to be threaded
+      // through as the collection list; the port builder reads the graph model itself, so
+      // a change to any of them redraws the same way.
+      for (const key of ['dbCollections', 'systemCollections', 'backendServices', 'cloudservices']) {
+        graphModel.on('metadataChanged.' + key, function () {
+          CloudStore.invalidateCollections();
+          updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+        });
+      }
     });
   }
 };

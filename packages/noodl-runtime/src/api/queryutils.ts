@@ -248,10 +248,23 @@ export function collectFilterParameters(
  * places. A published app whose filters stopped working the day its author
  * upgraded is not "migrate rather than break".
  */
-export function convertVisualFilter(
+/**
+ * The editor's visual filter tree as a **neutral** filter — the step before a dialect.
+ *
+ * BCN-004 step 5 needs this half on its own. `RestDataAdapter` takes a neutral filter and
+ * runs BCN-003's translator for Directus, PostgREST or PocketBase itself; handing it the
+ * Parse `where` {@link convertVisualFilter} produces would be translating an
+ * already-translated filter, which is how RUN-003's second Directus converter came to
+ * emit a flat `"author.name"` key that a live server answers with a 403.
+ *
+ * Both saved shapes are read here rather than in each caller, for the reason
+ * {@link convertVisualFilter} records: a deployed app never opens the editor, so the
+ * runtime is the only thing that will ever migrate the old one.
+ */
+export function convertVisualFilterToNeutral(
   query: VisualFilterQuery,
   options: VisualFilterOptions
-): ParseQuery | undefined {
+): Filter | undefined {
   const neutral = isVisualQueryFormat(query)
     ? visualQueryToNeutral(query, options.queryParameters)
     : savedFilterToNeutral(
@@ -261,7 +274,16 @@ export function convertVisualFilter(
         // supplies nothing does not narrow the query. Every graph relies on it.
         { dropUnresolvedConnected: true }
       );
-  if (neutral === null) return undefined;
+
+  return neutral === null ? undefined : neutral;
+}
+
+export function convertVisualFilter(
+  query: VisualFilterQuery,
+  options: VisualFilterOptions
+): ParseQuery | undefined {
+  const neutral = convertVisualFilterToNeutral(query, options);
+  if (neutral === undefined) return undefined;
 
   const where = toParseWhere(resolveRelatedClasses(neutral, undefined), {
     backend: backendType(),
