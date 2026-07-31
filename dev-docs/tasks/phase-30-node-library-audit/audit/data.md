@@ -62,7 +62,7 @@ Source: _(fill in)_ · Docs: **none**
 
 ### Add Record Relation  `AddDbModelRelation`
 
-4 inputs / 4 outputs · 1 signal in / 2 signal out · docs 13% · SSR `safe` · browser, cloud
+5 inputs / 4 outputs · 1 signal in / 2 signal out · docs 11% · SSR `safe` · browser, cloud
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/add-record-relation)
 
@@ -75,7 +75,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data
 | B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **13%** (1/8) | ⬜ | |
+| C1 | ⚠️ **11%** (1/9) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ✅ no dead-end types | ⬜ | |
 | F1 |  | ⬜ | |
@@ -112,7 +112,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array)
 
 ### Array  `Collection2`
 
-3 inputs / 6 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser
+3 inputs / 6 outputs · 1 signal in / 2 signal out · docs 11% · SSR `safe` · browser
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/array-node)
 
@@ -125,7 +125,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/arra
 | B1 | ⚠️ **none** | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/9) | ⬜ | |
+| C1 | ⚠️ **11%** (1/9) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ⚠️ 2 object/array port(s): items, items | ⬜ | |
 | F1 |  | ⬜ | |
@@ -137,7 +137,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/arra
 
 ### Array Filter  `Filter Collection`
 
-3 inputs / 4 outputs · 1 signal in / 1 signal out · docs 0% · SSR `safe` · browser
+4 inputs / 6 outputs · 2 signal in / 2 signal out · docs 0% · SSR `safe` · browser
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/array-filter)
 
@@ -147,10 +147,10 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/arra
 | A2 |  | ⬜ | |
 | A3 |  | ⬜ | |
 | G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
+| B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/7) | ⬜ | |
+| C1 | ⚠️ **0%** (0/10) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ⚠️ 2 object/array port(s): items, items | ⬜ | |
 | F1 |  | ⬜ | |
@@ -162,7 +162,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/arra
 
 ### Array Map  `Map Collection`
 
-2 inputs / 3 outputs · 0 signal in / 1 signal out · docs 0% · SSR `safe` · browser
+3 inputs / 3 outputs · 1 signal in / 1 signal out · docs 0% · SSR `safe` · browser
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/array-map)
 
@@ -172,10 +172,10 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/arra
 | A2 |  | ⬜ | |
 | A3 |  | ⬜ | |
 | G1 |  | ⬜ | |
-| B1 | n/a — no action input | ⬜ | |
+| B1 | ⚠️ **none** | ⬜ | |
 | B2 |  | ⬜ | |
-| B3 | n/a | ⬜ | |
-| C1 | ⚠️ **0%** (0/5) | ⬜ | |
+| B3 | ✅ | ⬜ | |
+| C1 | ⚠️ **0%** (0/6) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ⚠️ 2 object/array port(s): items, items | ⬜ | |
 | F1 |  | ⬜ | |
@@ -187,7 +187,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/arra
 
 ### Clear Array  `CollectionClear`
 
-2 inputs / 1 outputs · 1 signal in / 1 signal out · docs 0% · SSR `safe` · browser
+2 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/clear-array)
 
@@ -197,10 +197,10 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/clea
 | A2 |  | ⬜ | |
 | A3 |  | ⬜ | |
 | G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
+| B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/3) | ⬜ | |
+| C1 | ⚠️ **0%** (0/5) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ✅ no dead-end types | ⬜ | |
 | F1 |  | ⬜ | |
@@ -312,7 +312,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/byob/creat
 
 ### Delete Record  `DeleteDbModelProperties`
 
-3 inputs / 4 outputs · 1 signal in / 2 signal out · docs 14% · SSR `safe` · browser, cloud
+4 inputs / 4 outputs · 1 signal in / 2 signal out · docs 13% · SSR `safe` · browser, cloud
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/delete-record)
 
@@ -325,7 +325,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data
 | B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **14%** (1/7) | ⬜ | |
+| C1 | ⚠️ **13%** (1/8) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ✅ no dead-end types | ⬜ | |
 | F1 |  | ⬜ | |
@@ -362,7 +362,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/byob/delet
 
 ### Filter Records  `FilterDBModels`
 
-3 inputs / 4 outputs · 1 signal in / 1 signal out · docs 0% · SSR `safe` · browser, cloud
+3 inputs / 6 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser, cloud
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/filter-records)
 
@@ -372,10 +372,10 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data
 | A2 |  | ⬜ | |
 | A3 |  | ⬜ | |
 | G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
+| B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/7) | ⬜ | |
+| C1 | ⚠️ **0%** (0/9) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ⚠️ 2 object/array port(s): items, items | ⬜ | |
 | F1 |  | ⬜ | |
@@ -437,7 +437,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/http-reque
 
 ### Insert Object Into Array  `CollectionInsert`
 
-3 inputs / 1 outputs · 1 signal in / 1 signal out · docs 0% · SSR `safe` · browser
+3 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/insert-into-array)
 
@@ -447,10 +447,10 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/inse
 | A2 |  | ⬜ | |
 | A3 |  | ⬜ | |
 | G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
+| B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/4) | ⬜ | |
+| C1 | ⚠️ **0%** (0/6) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ✅ no dead-end types | ⬜ | |
 | F1 |  | ⬜ | |
@@ -512,7 +512,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/object)
 
 ### Object  `Model2`
 
-4 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser, cloud
+5 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser, cloud
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/object/object-node)
 
@@ -525,7 +525,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/object/obj
 | B1 | ⚠️ **none** | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/7) | ⬜ | |
+| C1 | ⚠️ **0%** (0/8) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ✅ no dead-end types | ⬜ | |
 | F1 |  | ⬜ | |
@@ -612,7 +612,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/byob/query
 
 ### Remove Object From Array  `CollectionRemove`
 
-3 inputs / 1 outputs · 1 signal in / 1 signal out · docs 0% · SSR `safe` · browser
+3 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/remove-from-array)
 
@@ -622,10 +622,10 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/remo
 | A2 |  | ⬜ | |
 | A3 |  | ⬜ | |
 | G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
+| B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/4) | ⬜ | |
+| C1 | ⚠️ **0%** (0/6) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ✅ no dead-end types | ⬜ | |
 | F1 |  | ⬜ | |
@@ -637,7 +637,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/remo
 
 ### Remove Record Relation  `RemoveDbModelRelation`
 
-4 inputs / 4 outputs · 1 signal in / 2 signal out · docs 13% · SSR `safe` · browser, cloud
+5 inputs / 4 outputs · 1 signal in / 2 signal out · docs 11% · SSR `safe` · browser, cloud
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/remove-record-relation)
 
@@ -650,7 +650,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data
 | B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **13%** (1/8) | ⬜ | |
+| C1 | ⚠️ **11%** (1/9) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ✅ no dead-end types | ⬜ | |
 | F1 |  | ⬜ | |
@@ -687,7 +687,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/ui-controls/rep
 
 ### REST  `REST2`
 
-6 inputs / 3 outputs · 2 signal in / 3 signal out · docs 0% · SSR `safe` · browser, cloud
+6 inputs / 3 outputs · 2 signal in / 3 signal out · docs 0% · SSR `safe` · browser, cloud · **deprecated** · not in picker
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/rest)
 
@@ -712,7 +712,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/rest)
 
 ### Run Tasks  `RunTasks`
 
-6 inputs / 4 outputs · 2 signal in / 4 signal out · docs 0% · SSR `safe` · browser, cloud
+10 inputs / 4 outputs · 2 signal in / 4 signal out · docs 0% · SSR `safe` · browser, cloud
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/run-tasks)
 
@@ -725,7 +725,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/run-tasks)
 | B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/10) | ⬜ | |
+| C1 | ⚠️ **0%** (0/14) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ⚠️ 1 object/array port(s): items | ⬜ | |
 | F1 |  | ⬜ | |
@@ -787,7 +787,7 @@ Source: _(fill in)_ · Docs: **none**
 
 ### Set Object Properties  `SetModelProperties`
 
-4 inputs / 2 outputs · 1 signal in / 1 signal out · docs 0% · SSR `safe` · browser, cloud
+5 inputs / 4 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser, cloud
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/object/set-object-properties)
 
@@ -797,10 +797,10 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/object/set
 | A2 |  | ⬜ | |
 | A3 |  | ⬜ | |
 | G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
+| B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/6) | ⬜ | |
+| C1 | ⚠️ **0%** (0/9) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ✅ no dead-end types | ⬜ | |
 | F1 |  | ⬜ | |
@@ -812,7 +812,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/object/set
 
 ### Set Record Properties  `SetDbModelProperties`
 
-6 inputs / 4 outputs · 1 signal in / 2 signal out · docs 10% · SSR `safe` · browser, cloud
+7 inputs / 4 outputs · 1 signal in / 2 signal out · docs 9% · SSR `safe` · browser, cloud
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data/set-record-properties)
 
@@ -825,7 +825,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data
 | B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **10%** (1/10) | ⬜ | |
+| C1 | ⚠️ **9%** (1/11) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ✅ no dead-end types | ⬜ | |
 | F1 |  | ⬜ | |
@@ -837,7 +837,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/cloud-data
 
 ### Set Variable  `Set Variable`
 
-3 inputs / 1 outputs · 1 signal in / 1 signal out · docs 0% · SSR `safe` · browser
+3 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/variable/set-variable)
 
@@ -847,10 +847,10 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/variable/s
 | A2 |  | ⬜ | |
 | A3 |  | ⬜ | |
 | G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
+| B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/4) | ⬜ | |
+| C1 | ⚠️ **0%** (0/6) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ✅ no dead-end types | ⬜ | |
 | F1 |  | ⬜ | |
@@ -887,7 +887,7 @@ Source: _(fill in)_ · Docs: **none**
 
 ### State Snapshot  `net.noodl.StateSnapshot`
 
-5 inputs / 6 outputs · 2 signal in / 2 signal out · docs 9% · SSR `safe` · browser, cloud · **no docs URL**
+5 inputs / 7 outputs · 2 signal in / 3 signal out · docs 8% · SSR `safe` · browser, cloud · **no docs URL**
 
 Source: _(fill in)_ · Docs: **none**
 
@@ -900,7 +900,7 @@ Source: _(fill in)_ · Docs: **none**
 | B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **9%** (1/11) | ⬜ | |
+| C1 | ⚠️ **8%** (1/12) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ⚠️ 2 object/array port(s): snapshotData, snapshot | ⬜ | |
 | F1 |  | ⬜ | |
@@ -937,7 +937,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/stat
 
 ### Stream Buffer  `net.noodl.StreamBuffer`
 
-7 inputs / 8 outputs · 3 signal in / 3 signal out · docs 20% · SSR `partial` · browser, cloud
+7 inputs / 10 outputs · 3 signal in / 4 signal out · docs 18% · SSR `partial` · browser, cloud
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/stream-buffer)
 
@@ -947,10 +947,10 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/stream-buf
 | A2 |  | ⬜ | |
 | A3 |  | ⬜ | |
 | G1 |  | ⬜ | |
-| B1 | ⚠️ **none** | ⬜ | |
+| B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **20%** (3/15) | ⬜ | |
+| C1 | ⚠️ **18%** (3/17) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ⚠️ 2 object/array port(s): buffer, flushedData | ⬜ | |
 | F1 |  | ⬜ | |
@@ -962,7 +962,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/stream-buf
 
 ### Subscribe To Changes  `noodl.byob.SubscribeToChanges`
 
-0 inputs / 10 outputs · 0 signal in / 4 signal out · docs 0% · SSR `client-only` · browser
+0 inputs / 11 outputs · 0 signal in / 5 signal out · docs 0% · SSR `client-only` · browser
 
 Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/byob/subscribe-to-changes)
 
@@ -975,7 +975,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/byob/subsc
 | B1 | n/a — no action input | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | n/a | ⬜ | |
-| C1 | ⚠️ **0%** (0/10) | ⬜ | |
+| C1 | ⚠️ **0%** (0/11) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ⚠️ 3 object/array port(s): changedRecord, changedRecords, error | ⬜ | |
 | F1 |  | ⬜ | |
@@ -1037,7 +1037,7 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/text-accum
 
 ### Undo / Redo  `net.noodl.StateHistory.Undo`
 
-5 inputs / 6 outputs · 3 signal in / 3 signal out · docs 0% · SSR `safe` · browser, cloud · **no docs URL**
+5 inputs / 7 outputs · 3 signal in / 4 signal out · docs 0% · SSR `safe` · browser, cloud · **no docs URL**
 
 Source: _(fill in)_ · Docs: **none**
 
@@ -1050,7 +1050,7 @@ Source: _(fill in)_ · Docs: **none**
 | B1 | ✅ has one | ⬜ | |
 | B2 |  | ⬜ | |
 | B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/11) | ⬜ | |
+| C1 | ⚠️ **0%** (0/12) | ⬜ | |
 | D1 |  | ⬜ | |
 | E1 | ✅ no dead-end types | ⬜ | |
 | F1 |  | ⬜ | |

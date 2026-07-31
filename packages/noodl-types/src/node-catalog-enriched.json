@@ -20447,7 +20447,7 @@
       "category": "Data",
       "isVisual": false,
       "isDeprecated": true,
-      "inNodePicker": true,
+      "inNodePicker": false,
       "availableIn": [
         "browser",
         "cloud"
@@ -48403,7 +48403,7 @@
       "category": "Cloud Services",
       "isVisual": false,
       "isDeprecated": true,
-      "inNodePicker": true,
+      "inNodePicker": false,
       "availableIn": [
         "browser"
       ],
@@ -48487,7 +48487,7 @@
       "category": "Cloud Services",
       "isVisual": false,
       "isDeprecated": true,
-      "inNodePicker": true,
+      "inNodePicker": false,
       "availableIn": [
         "browser"
       ],
@@ -48593,7 +48593,7 @@
       "category": "Cloud Services",
       "isVisual": false,
       "isDeprecated": true,
-      "inNodePicker": true,
+      "inNodePicker": false,
       "availableIn": [
         "browser"
       ],
@@ -49239,7 +49239,7 @@
       "category": "Cloud Services",
       "isVisual": false,
       "isDeprecated": true,
-      "inNodePicker": true,
+      "inNodePicker": false,
       "availableIn": [
         "browser"
       ],

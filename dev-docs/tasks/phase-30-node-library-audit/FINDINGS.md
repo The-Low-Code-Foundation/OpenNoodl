@@ -1237,6 +1237,13 @@ The generalisation is the one this document already states about traps, aimed on
 what was not checked was the sentence explaining away three of its results. Checking it cost one
 grep.
 
+⚠️ **Corrected by DA-i (2026-07-31), and the correction runs the same way this finding does.** The
+contrast above — two nodes that cannot be added *while four deprecated ones can* — is wrong in its
+second half. Those four are **listed** in the index and then dropped by the picker's creatability
+filter, so they are equally unreachable. The sentence "an author looking for passwordless sign-in
+finds the superseded password flow" describes something that cannot happen: they find neither. The
+substance of CS-i stands and gets worse; only the contrast was an inference from a listing.
+
 ### CS-ii — a criterion met over two packages is not met over three
 
 `Aggregate Records` had **both** defects the phase had already swept for, and neither sweep had
@@ -1635,6 +1642,80 @@ Beside it sat a `this.sendSignalOnOutput` alias that could never have worked at 
 Both were unreachable, both typechecked, and both had comments describing what they were *for*. The
 shape to carry: **a well-commented field is not an exercised one**, and the cheapest check is to
 count the parameters at the call site against the ones at the declaration.
+
+## NDA-012 Data — scope (2026-07-31), before the per-node pass
+
+### DA-i — "listed in the index" is not "offered by the picker", and three documents had conflated them
+
+Richard asked whether the Data nodes were waiting to be reprovisioned onto BYOB now that Parse is
+retired, and whether the pass could skip them. Answering it needed the picker question settled, and
+settling it corrected this document, the catalog, and the audit worksheets.
+
+**On the premise first**, because it is the reusable part: what WF-007 retired was the Parse
+*dashboard* and the hosted Parse *server*. The Parse **wire protocol** was deliberately kept —
+`nodegx-backend/src/server/parse-wire.ts` implements `/classes/:c` and `X-Parse-Application-Id`
+precisely because `api/cloudstore.js` speaks it, and every Record-family node goes through
+`cloudstore`. So the Record family is the front door to the *built-in* backend, not stranded legacy,
+and BYOB's five nodes are a **parallel** path for external backends rather than its replacement.
+Nothing in Data is awaiting reprovisioning. Two further corrections to the handover's family table
+fell out: the "legacy Object/Variable/Collection" family is not backend code at all (`Model2`,
+`Collection2`, `Variable2` are client-side state primitives), and the Record family is **split
+across two categories** — the verbs are `Data`, but `Record` itself, `Config`, `Cloud File` and
+`Sign File URL` are `Cloud Services`, so a Data pass documents the verbs and not the noun.
+
+**The picker finding.** The catalog's `inNodePicker` was reporting `true` for `REST2` and the four
+`net.noodl.user.*` password/verification nodes. It is derived in
+[`build-catalog.js`](../../../scripts/node-catalog/lib/build-catalog.js) from membership of the
+curated index in `nodelibraryexport.ts`. But the picker does not render that index — it builds
+through [`createnodeindex.ts`](../../../packages/noodl-editor/src/editor/src/utils/createnodeindex.ts),
+which puts every listed name, core and module alike, through `getCreateStatus`, and
+[`componentmodel.ts:292-295`](../../../packages/noodl-editor/src/editor/src/models/componentmodel.ts#L292-L295)
+returns `creatable: false` for anything deprecated. Five deprecated types are nonetheless listed.
+
+Measured live, in the running editor, against a real `ComponentModel`:
+
+| | |
+|---|---|
+| Curated index lists | 126 |
+| Picker offers | 121 |
+| Dropped by the filter | **5 — exactly the five deprecated-but-listed types, and nothing else** |
+
+Five non-deprecated controls (`net.noodl.HTTP`, `SignUp`, `LogIn`, `Group`, `DbModel2`) stayed
+`creatable: true`, so the filter's only effect is deprecation and the catalog can mirror it exactly.
+`inNodePicker` now ANDs with `!deprecated`; regenerating flips those five booleans and **nothing
+else — strip that one field and the catalog is byte-identical to HEAD.**
+
+**The consequence for the auth surface is larger than the flag.** Six nodes are unreachable from the
+picker by *two different mechanisms* with the same outcome: `SignInWith` and `RequestMagicLink` are
+creatable but **not listed** (CS-i), and the four password/verification nodes are **listed but not
+creatable** (this finding). So password reset and email verification have no picker presence at all
+— and BAK-002 shipped the server-side flows they would drive.
+
+Three lessons, and the first two are this phase's own rules pointed at its instruments:
+
+1. **A flag named after a user-visible fact is not that fact.** `inNodePicker` meant "in the curated
+   list" for the life of the catalog. It misled a handover (which planned 30 minutes of work on
+   `REST` because it was "in the picker"), CS-i, and `scripts/node-audit/worksheets.js`, which
+   stamps "not in picker" onto every worksheet the phase audits from.
+2. **A predicate with two filters cannot be mirrored by copying one of them.** The catalog copied
+   the listing and not the creatability check. The fix is not more data — it is applying the second
+   filter the editor already applies.
+3. **The diagnosis was wrong twice before it was right.** The first mechanism proposed for the five
+   was the `|| !!metadata.module` fallback clause, and a discrimination check appeared to confirm it
+   — 25 deprecated controls read `false`, 5 read `true`. The check passed for the wrong reason: all
+   five are in the curated index, so the module clause never fired. **A discrimination check
+   confirms a partition, not the mechanism you attribute it to** — the controls were consistent with
+   two different causes and only reading the index told them apart.
+
+### Scope decided
+
+Richard's call, 2026-07-31: **drop the deprecated nodes.** Data's pass covers **42 nodes / 471
+ports**, not 46 / 517. The four dropped (`Collection` 17 ports, `Model` 11, `REST2` 9, `Variable` 9)
+are 46 ports, 8.9% of the category, and **all four are at 0%**, so nothing already earned is lost
+and the coverage denominator changes rather than the numerator. `REST`'s compile-failure defect
+(SR-viii, the fifth script host) is **filed and not fixed**: it is real, but it fires only for a
+project that already contains a REST node, and the 2026-07-30 fresh-start decision puts legacy
+projects outside the design constraints.
 
 ## What these passes did *not* cover
 

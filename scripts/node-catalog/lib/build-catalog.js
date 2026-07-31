@@ -186,7 +186,16 @@ function buildCatalog(records, extras) {
       // legacy/superseded or created through specialised flows — valid to
       // read from old projects, wrong to author into new ones unless no
       // picker-visible alternative exists.
-      inNodePicker: extras.nodePickerTypes.has(typeName) || !!metadata.module,
+      //
+      // NDA-005: being *listed* in the curated index is not the same as being
+      // *offered*. The picker builds its index through `createnodeindex.ts`,
+      // which puts every listed name — core and module alike — through
+      // `getCreateStatus`, and `componentmodel.ts:292-295` returns
+      // `creatable: false` for anything deprecated. Five deprecated types are
+      // nonetheless listed in `nodelibraryexport.ts`'s index (`REST2` and the
+      // four `net.noodl.user.*` email nodes), so without this clause the
+      // catalog reported them as pickable and the audit worksheets repeated it.
+      inNodePicker: !metadata.deprecated && (extras.nodePickerTypes.has(typeName) || !!metadata.module),
       availableIn: [...environments].sort(),
       providedBy
     };
