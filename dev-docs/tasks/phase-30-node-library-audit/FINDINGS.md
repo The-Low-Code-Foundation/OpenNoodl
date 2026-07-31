@@ -1707,7 +1707,15 @@ Three lessons, and the first two are this phase's own rules pointed at its instr
    confirms a partition, not the mechanism you attribute it to** — the controls were consistent with
    two different causes and only reading the index told them apart.
 
-### Scope decided
+### Scope decided — and then the pass held
+
+🛑 **Held the same day.** Richard is mid-sprint **merging all backends into the same Data nodes**, so
+the per-node pass waits for it. The hold is about sequencing, not scope: NDA-012's checks and
+NDA-005's C1 are written *per port*, and the merge is a change to which ports exist. **Visual (29)
+is the unblocked category and goes next.** On resume, re-derive the inputs rather than inherit them
+(regenerate the catalog; `rm audit/data.md` first, since `worksheets.js` never overwrites; re-measure
+before planning) and **read the merge diff as an audit input** — new backend plumbing is where this
+phase's recurring shapes come back.
 
 Richard's call, 2026-07-31: **drop the deprecated nodes.** Data's pass covers **42 nodes / 471
 ports**, not 46 / 517. The four dropped (`Collection` 17 ports, `Model` 11, `REST2` 9, `Variable` 9)

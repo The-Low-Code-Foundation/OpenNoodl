@@ -17,8 +17,11 @@ file — they are always current; this file goes stale in one round.
 | Port documentation | **51.8%**, nodes at 0% **30** |
 | Gates | runtime jest 1,243 · viewer 367 · cloud 57 · editor jasmine 1,894/0 · 3 typechecks clean · `catalog:check`, `catalog:merge:check` and `catalog:examples` all exit 0 |
 
-**Only Data (46) and Visual (29) are left**, and they are the two the spec ranked first and third by
-expected yield. **Every other category is complete and nothing is blocked.**
+**Only Data and Visual (29) are left**, and they are the two the spec ranked first and third by
+expected yield. Every other category is complete.
+
+🛑 **Data is ON HOLD as of 2026-07-31** — Richard is mid-sprint merging all backends into the same
+Data nodes. **Start with Visual.** See §1.0 before reading a line of Data source.
 
 **NDA-004 §3 is CLOSED, 10 of 10.** `Logic Builder` was the last mute node in the library.
 
@@ -32,31 +35,58 @@ not fix, in a Data node, and the reason it was missed for two days.
 
 ## §1 — do these, in this order
 
-### 1. **`REST` (`REST2`), and it is a Data node — do it as the first slice of item 2**
+### 0. 🛑 **DATA IS ON HOLD. Do not audit it. Start with Visual.**
 
-Filed by the `Logic Builder` audit and **not fixed**, because it belongs to the category below.
-`restnode.ts:178-184` and `:194-201` each compile an author script with `new Function` inside an
-input setter and swallow the `SyntaxError` into a `console.log`. Worse than the three siblings that
-had the same defect, because **the assignment is inside the `try`**: a broken edit to the Request or
-Response script leaves the *previous* script installed and fetching, so the author watches a request
-they have already changed. The fix is settled by three precedents — `expression.ts:189-196`,
-`simplejavascript.ts:250-267`, `logic-builder.ts:271-283` — a `Failure` port, the message on an
-error output, and a deduplicated `raiseRuntimeError`.
+**Richard is mid-sprint merging all backends into the same Data nodes** (told to this session on
+2026-07-31). Auditing them now produces findings, port descriptions and corpus rows against node
+definitions that are about to be replaced — the most expensive kind of wasted work this phase can
+do, because C1 descriptions are written per port and the ports are what the merge changes.
 
-⚠️ **It is the fifth script host, and four consecutive passes counted four.** FINDINGS **SR-viii**
-has the table and the two rules that fall out of it. Read it before you trust any other "the class
-is these N nodes" claim in this phase — including one written the same day by the same pass.
+The sprint is **phase 34, `dev-docs/tasks/phase-34-one-backend-contract/`** — `BCN-001` the adapter
+contract, `BCN-002` the Parse-wire adapter. It was another session's uncommitted work when this was
+written: **read it, never commit it** (§4).
 
-### 2. **Data (46 nodes).** The last big one, and bigger than the node count suggests.
+**Do not start Data until Richard says the sprint has landed.** When it has, the audit's own inputs
+have to be **re-derived, not inherited** — every number and every family in the old §1.2 below was
+measured against the pre-merge library:
 
-**Measured 2026-07-30, before planning: 517 ports, 55 documented — 10.6%.** 29 of the 46 nodes are
-at 0%. Data alone is **~19% of the library's ports and holds ~5% of its documentation**, so this
-category is most of what remains of NDA-005 and will move the headline number more than the previous
-four passes combined. Run it as **one pass, not two** — NDA-012's C1 *is* NDA-005 — and read
+1. `npm run catalog:generate` — the node set, port counts and families all move.
+2. **`rm dev-docs/tasks/phase-30-node-library-audit/audit/data.md` before regenerating worksheets.**
+   `scripts/node-audit/worksheets.js` **never overwrites an existing file**, so skipping this leaves
+   a stale worksheet that looks freshly generated. This already caught one session.
+3. Re-measure ports/documented/0% and put the new numbers in PROGRESS.md *before* planning, the way
+   the 2026-07-30 entry did.
+4. **Re-read the merge diff first, as an audit input.** It is the newest code in the category and the
+   most likely to carry fresh instances of the phase's known classes — the create-on-read-lookup
+   shape (three registries deep already), one-shot latching state, and a `Failure` on a path driven
+   by a value arriving rather than an author `Do`.
+
+The scope decision below still stands and is unaffected: **deprecated nodes are out of scope**
+(Richard, 2026-07-31). If the merge deletes or supersedes `Collection`/`Model`/`Variable`/`REST2`,
+that is consistent with it rather than a change to it.
+
+⚠️ `REST` (`REST2`) is **filed, not fixed**, and stays that way — it is deprecated, unreachable from
+the picker, and the fresh-start decision puts legacy projects outside the design constraints. If the
+merge touches `restnode.ts`, re-check FINDINGS **SR-viii**: the compile-failure silence is a
+**five**-member class and `REST` is the open one.
+
+### 1. **Visual (29).** The unblocked category — do this one.
+
+Only **1 node is at 0%**, so C1 is nearly done here and the other eleven checks are the work. It was
+ranked third by expected yield, but it is now the only large category that is neither complete nor
+held.
+
+### 2. ~~**Data (46 nodes)**~~ — **HELD, see §1.0. The numbers below are pre-merge and are kept only as a record of how the category was scoped.**
+
+**Measured 2026-07-30: 517 ports, 55 documented — 10.6%**, 29 of 46 nodes at 0%. **Re-scoped
+2026-07-31 to 42 nodes / 471 ports** when Richard dropped the deprecated four (`Collection` 17
+ports, `Model` 11, `REST2` 9, `Variable` 9 — 46 ports, 8.9%, all at 0%, so the denominator moved and
+not the numerator). Run it as **one pass, not two** — NDA-012's C1 *is* NDA-005 — and read
 [`PORT-DESCRIPTION-STYLE.md`](../../reference/PORT-DESCRIPTION-STYLE.md) first; it is normative and
 settled.
 
-It will not fit in one session. Split it **by helper, not alphabetically**:
+⚠️ **The family table below predates the merge sprint and two of its rows were already wrong.** Kept
+for the shape of the approach, not the contents — re-derive per §1.0 before using any of it.
 
 | Family | Nodes | Members |
 |---|---|---|
@@ -66,25 +96,23 @@ It will not fit in one session. Split it **by helper, not alphabetically**:
 | Agent/stream (`net.noodl.*`) | ~15 | `SSE`, `WebSocket`, `TextAccumulator`, `StreamBuffer`, `JSONStreamParser`, `PatternExtractor`, `ActionDispatcher`/`Handler`, `OptimisticUpdate`, `StateHistory`/`Snapshot`/`Undo`, `GlobalStore` ×3 |
 | Misc | 3 | `RunTasks`, `net.noodl.HTTP`, `REST2` |
 
-**Do the legacy families first and the agent/stream nodes last.** The 29 nodes at 0% are almost
-entirely legacy; the `net.noodl.*` nodes are the newest code in the library — AIX-005 built them
-*with* descriptions — and are the only Data nodes already partly documented. Highest yield per hour
-is where the documentation is absent and the code is oldest.
+The two corrections, both found 2026-07-31 and both worth carrying into the re-derivation:
+
+- **The "legacy Object/Variable/Collection" family is not backend code at all.** `Model2`,
+  `Collection2` and `Variable2` are client-side state primitives. Whatever the merge does to the
+  backend paths, these are a different axis.
+- **The Record family is split across two categories.** The *verbs* are `Data`, but `Record` itself,
+  `Config`, `Cloud File` and `Sign File URL` are `Cloud Services` — so a Data pass documents the
+  verbs and not the noun. Cloud Services already reads **100%** and needs no C1 work, but if the
+  merge changes `Record`, that category's verdicts need revisiting too.
+
+**Order, when it is unheld:** legacy families first, agent/stream last. The `net.noodl.*` nodes are
+the newest code and the only Data nodes already partly documented (AIX-005 built them *with*
+descriptions); highest yield per hour is where documentation is absent and code is oldest.
 
 Read the helper once and each node is minutes — but record a helper defect **once** with its sites
-listed, or the register reports a usage count. This last batch had four such shapes and the
+listed, or the register reports a usage count. The last batch had four such shapes and the
 worksheets show the format.
-
-⚠️ **A scope question to settle before writing 37 descriptions, not after.** Three of the 46 are
-**deprecated *and* absent from the node picker** — `Collection` (Array, 17 ports), `Model` (Object,
-11) and `Variable` (9). That is **37 of the 517 ports, 7% of the job, on nodes nobody can add to a
-graph.** `REST2` is deprecated but *is* in the picker, so it stays in scope regardless. Decide
-whether C1 covers unpickable deprecated nodes and write the decision into PROGRESS.md either way,
-because it changes what the coverage percentage means. This is adjacent to §2 item 3 and is probably
-worth putting to Richard alongside it.
-
-Then **Visual (29)** last: only 1 node is at 0%, so its C1 work is nearly done and only the other
-eleven checks remain.
 
 ### 3. Three questions that earned their place, and are not in the twelve checks
 
