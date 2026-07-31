@@ -99,6 +99,7 @@ import type {
 } from '@noodl/backend-contract';
 
 import { AdapterEvents } from './AdapterEvents';
+import { normalizeFileRef, normalizeSignedFileUrl, PARSE_FILE_FIELDS } from './fileRef';
 import { normalizeRecordIdentities, normalizeRecordIdentity } from './recordIdentity';
 
 /**
@@ -634,13 +635,16 @@ export class ParseWireAdapter extends AdapterEvents implements IDataAdapter {
       // reads this exact header (files.ts, case-insensitively) to ACL the
       // upload to its owner instead of leaving it public.
       headers: options.private ? { 'X-NodeGX-File-Private': 'true' } : undefined,
-      // The wire hands back whatever the backend sent; the contract says a
-      // successful upload is `{ name, url }`. The adapter asserts that rather
-      // than proving it, which is the honest position — a backend that answered
-      // 200 with something else is a backend bug, not a shape this layer can
-      // usefully second-guess.
-      success: (response) =>
-        options.success(Object.assign({}, options.data, response) as unknown as { name: string; url: string }),
+      // BCN-007 step 1. This used to be
+      // `Object.assign({}, options.data, response)` cast to `{name, url}` —
+      // whatever the backend sent, spread over a caller-supplied object no
+      // caller has ever supplied, asserted to be the right shape. Now it is
+      // normalised, which on this wire is close to the identity: the four
+      // fields `nodegx-backend`'s `FileUploadResult` returns are the four the
+      // contract names, so `contentType` and `size` simply stop being discarded.
+      // Upstream Parse returns `{name, url}` only and both come out absent,
+      // which is the honest answer for that backend rather than a zero.
+      success: (response) => options.success(normalizeFileRef(response, PARSE_FILE_FIELDS)),
       error: (err) => options.error(err),
       onUploadProgress: options.onUploadProgress
     });
@@ -651,13 +655,20 @@ export class ParseWireAdapter extends AdapterEvents implements IDataAdapter {
    * file — `GET /files/:name/sign`. Gated server-side by the same row-ACL check
    * reading the file itself would use; this call fails the same way an
    * unauthorized read would if the caller cannot already read the file.
+   *
+   * **`kind` is `signed` unconditionally on this wire, and that is measured, not
+   * assumed.** This adapter serves two backend types. Ours mints
+   * `?exp=&sig=` — a real, self-proving, expiring URL. Upstream Parse has no
+   * route here at all: BCN-002 probed it and got 403 code 119 with the master
+   * key as well as without, and `parse`'s `files.sign` cell was corrected from
+   * `conditional` to `unsupported` on that evidence. So the only server that
+   * ever reaches this `success` callback is the one that signs, and stamping
+   * `signed` here cannot be wrong for want of a `parse` branch.
    */
   signFileUrl(handle: BackendHandle, options: SignFileUrlOptions): void {
     this._makeRequest(handle, '/files/' + options.name + '/sign', {
       method: 'GET',
-      // Same assertion as `uploadFile` — `FileRoutes.signUrl`'s 200 body.
-      success: (response) =>
-        options.success(response as unknown as { url: string; expiresAt?: string; ttlSeconds?: number }),
+      success: (response) => options.success(normalizeSignedFileUrl(response, 'signed')),
       error: (err) => options.error(err)
     });
   }

@@ -64,7 +64,28 @@ export const nodegxDescriptor: BackendDescriptor = {
 
     'files.upload': supported(`BAK-006 file storage v2${DRIVEN} with the app id alone, where a stock Parse Server refuses outright`),
     'files.sign': supported(`BAK-006: SigV4 presign, or a local signed URL${DRIVEN}, returning a url with exp and sig`),
-    'files.delete': supported(`BAK-006${DRIVEN} with the app id alone, where upstream Parse needs the master key`),
+    // BCN-007 step 5, for the one backend whose delete route is in this repo and
+    // could be read line by line. Three semantics, all from
+    // `nodegx-backend/src/server/files.ts`'s `delete`, and each one is something
+    // an app author would otherwise discover from a broken image:
+    //
+    //  - It is **permanent and immediate** — blob, `_Files` metadata row and
+    //    cached thumbnails all go. There is no trash and no restore.
+    //  - It is **idempotent**: an unknown stored name answers 200 `{}` rather
+    //    than 404, deliberately, matching WF-004. So a Delete File that reports
+    //    success is not evidence the file existed.
+    //  - It **does not touch records that point at the file**. A File-typed
+    //    property persists as `{__type:'File', url, name}` and nothing scans for
+    //    those, so the record keeps a link that now 404s. (The orphan sweep runs
+    //    the other way — blobs with no metadata row — and does not help here.)
+    //
+    // These stay `supported` rather than becoming `degraded`: none of them is a
+    // capability the backend lacks, and a `degraded` cell puts a warning in front
+    // of the user in BCN-010's gating, which would be wrong for behaviour that is
+    // both intended and normal.
+    'files.delete': supported(
+      `BAK-006${DRIVEN} with the app id alone, where upstream Parse needs the master key. Permanent (blob + _Files row + cached thumbnails), idempotent on an unknown name (200, not 404), and leaves File-typed record properties pointing at a URL that now 404s — files.ts delete()`
+    ),
     'files.private': supported('X-NodeGX-File-Private header — cloudstore.js:446, ours by construction'),
     'files.progress': supported('XHR upload path reports progress'),
 
