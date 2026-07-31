@@ -1,0 +1,67 @@
+
+========================================================================
+DIRECTUS 11 — via RestDataAdapter
+========================================================================
+  control: raw Directus meta on the filtered query is {"total_count":5,"filter_count":3}
+           — total_count says 5, filter_count says 3, so the check below discriminates.
+  PASS  query with a filter returns the 3 matching rows
+  PASS  ⚠️ the total is the FILTERED count (3), not the collection size (5)
+  PASS  page 1 of the filtered set
+  PASS  page 2 of the filtered set
+  PASS  row 3 of the filtered set — page 3, not page 2 (this is the one that catches skip-as-page)
+  PASS  count() over the filtered set
+  PASS  create hands back a record carrying its identity
+  PASS  save hands back the updated record
+  PASS  fetch by objectId round-trips
+  PASS  delete succeeds
+  PASS  the collection is back to 3 matching rows
+  PASS  distinct(tag)
+  PASS  aggregate over the filtered set
+
+========================================================================
+POSTGREST v12.2.3 as the Supabase wire — via RestDataAdapter
+========================================================================
+  rig mounted at http://127.0.0.1:63767/rest/v1/ (see the module comment)
+  PASS  query with a filter returns the 3 matching rows
+  PASS  ⚠️ the total is the FILTERED count (3), not the collection size (5)
+  PASS  page 1 of the filtered set
+  PASS  page 2 of the filtered set
+  PASS  row 3 of the filtered set — page 3, not page 2 (this is the one that catches skip-as-page)
+  PASS  count() over the filtered set
+  PASS  create hands back a record carrying its identity
+  PASS  save hands back the updated record
+  PASS  fetch by objectId round-trips
+  PASS  delete succeeds
+  PASS  the collection is back to 3 matching rows
+  PASS  aggregate refused while the conditional cell is unprobed
+          refused with: Totals and averages have to be switched on for your Supabase project. If this stays unavailable after connecti
+  PASS  aggregate matches the same rows counted and summed by hand (db-aggregates-enabled instance)
+  PASS  distinct refused
+          refused with: Supabase has no way to list the distinct values of a column from here. Make a database view for it, or fetch t
+
+========================================================================
+POCKETBASE 0.30.0 — via RestDataAdapter
+========================================================================
+  PASS  query with a filter returns the 3 matching rows
+  PASS  ⚠️ the total is the FILTERED count (3), not the collection size (5)
+  PASS  page 1 of the filtered set
+  PASS  page 2 of the filtered set
+  PASS  row 3 of the filtered set — page 3, not page 2 (this is the one that catches skip-as-page)
+  PASS  count() over the filtered set
+  PASS  create hands back a record carrying its identity
+  PASS  save hands back the updated record
+  PASS  fetch by objectId round-trips
+  PASS  delete succeeds
+  PASS  the collection is back to 3 matching rows
+  PASS  ⚠️ aggregate REFUSED rather than answered with wrong numbers
+          refused with: PocketBase can't total or average records on the server. Query the records and calculate in your app, or make 
+  PASS  distinct refused (PocketBase returns every row for ?distinct=)
+          refused with: PocketBase can't list the distinct values of a field. Query the records and reduce them in your app.
+  PASS  increment is atomic here (5 + 3)
+  PASS  ⚠️ a row offset that is not a whole page is REFUSED, not rounded
+          refused with: pocketbase pages results rather than taking a row offset, so it cannot start at row 1 with a page size of 2. U
+
+========================================================================
+RESULT
+========================================================================
+  42 passed, 0 failed
