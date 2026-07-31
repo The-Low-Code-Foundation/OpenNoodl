@@ -2,7 +2,7 @@
 
 **Track S — One Backend Contract**
 
-**11 tasks. BCN-001, BCN-002 and BCN-003 COMPLETE — the contract exists, the first adapter is behind it, and one translator per backend is proved against five live servers. BCN-003b (the filter-builder convergence, split out by Richard) is next, and is the last Tier 1 item.**
+**11 tasks. TIER 1 IS COMPLETE — BCN-001, BCN-002, BCN-003 and BCN-003b. The contract exists, the first adapter is behind it, one translator per backend is proved against five live servers, and there is one filter builder.**
 
 **Three Tier 2/3 tasks are partially landed** from parallel sessions — BCN-006 (steps 1–3), BCN-007
 (step 1) and BCN-009 (steps 1, 3, 5, 6). All three stop at the same wall: **BCN-004's REST transport
@@ -14,7 +14,7 @@ are done.
 | BCN-001 The adapter contract & capability descriptor | 1 | ✅ **Complete** | Prose contract circulated first, then [`packages/nodegx-backend-contract`](../../../packages/nodegx-backend-contract/). **Four stale premises found (§0 + §9); the two unverified cells were probed, not deferred.** All 9 decisions answered |
 | BCN-002 Parse-wire behind the contract | 1 | ✅ **Complete** | `ParseWireAdapter` + a `CloudStore` reduced to resolution. **Four more stale premises, three wrong contract shapes, three wrong `parse` descriptor cells and two defects** — see [BCN-002-NOTES.md](./BCN-002-NOTES.md). A real Parse Server now runs in the rig |
 | BCN-003 The filter dialect | 1 | ✅ **Complete** | Five translators, gated by the descriptor. **`convertFilterOp` had no branch for eleven operators, so `contains` returned the whole collection.** Both built-in-backend defects fixed. 106 live checks, 0 failures — see [BCN-003-NOTES.md](./BCN-003-NOTES.md) |
-| BCN-003b One filter builder | 1 | 📋 Specced | The UI half of BCN-003, **split out by Richard 2026-07-31**. No data-format change — BCN-003 already moved the saved vocabulary. Ends in live QA the parent task did not do |
+| BCN-003b One filter builder | 1 | ✅ **Complete** | `QueryEditor`'s filter half deleted; one builder for both ports. **The "no data-format change" premise was wrong** — the Parse saved format moves, so the runtime reads both shapes. ⚠️ **The live pass found the Parse filter builder has been unreachable in the editor since WF-007** — see [BCN-003b-NOTES.md](./BCN-003b-NOTES.md) §3 |
 | BCN-004 REST data adapter & the end of BYOB | 2 | 📋 Specced | Retires 4 of the 5 BYOB types (realtime waits for BCN-008). Closes RUN-003's Supabase/PocketBase "believed to work" residuals |
 | BCN-005 Relations across five backends | 2 | 📋 Specced | Opens with RUN-003's recorded residual: O2M/M2M need `GET /relations`. Parse's junction-less `Relation` is what the contract shape must accommodate |
 | BCN-006 Auth & the token lifecycle | 2 | 🔨 **Steps 1–3 of 8** | The lifecycle designed in prose, `IAuthAdapter` + the Parse wire behind it, and refresh/single-flight/cross-tab under test on injected timers. ⚠️ **Exit criterion 4 cannot be claimed — nothing in the product refreshes a token yet.** One `SessionStore` replaced *four* separate opinions about who is signed in, three of them in no spec. Two more wrong contract shapes. Steps 4–8 need BCN-004 — see [BCN-006-NOTES.md](./BCN-006-NOTES.md) §6 |
@@ -65,6 +65,44 @@ makes granting it an improvement rather than a trade.
 |---|---|---|
 | 3 | **Does the phase ship before or after the alpha?** Tier 3 is what removes the duplicate nodes a stranger would see. Tier 1 alone is invisible to users. | Sequencing against Phase 33; the answer changes whether ALPHA-001's cold-install pass has to account for two record families. |
 | 6 | **Are the four maturity levels the right gate for the security disclosure?** BCN-009 has now *written* the prose and shipped it always-on — it is reproduced in [BCN-009-NOTES.md](./BCN-009-NOTES.md) §1 for markup. Its §2 offers the concrete alternative: **disclosure always-on, only the `publicToken` finding gated**, which needs no new machinery. | Cross-phase interaction between two of his own decisions. |
+
+## What BCN-003b found
+
+Full detail in [BCN-003b-NOTES.md](./BCN-003b-NOTES.md).
+
+- ⚠️ **The Parse-family visual filter has been unreachable in the editor since WF-007, and so
+  has the class picker.** `SchemaHandler._fetch()` is a stub whose `haveCloudServices` is only
+  ever assigned `false`, so `dbCollections` metadata is wiped on every window focus — and both
+  Parse data nodes read that metadata to decide whether to declare their filter, sort and class
+  ports at all. Query Records currently has **no class dropdown, no visual filter and no visual
+  sort**. Verified from the source, the running editor and the saved project file. The Data
+  Browser still works because it asks the backend directly, which is why this is not obvious.
+  **Unowned; BCN-004 or BCN-009 is the natural home.**
+- ⚠️ **"A pure UI retirement, no data-format change" was wrong.** That was true of the BYOB
+  format BCN-003 moved, not of the Parse one this task retires. The saved shape changes in
+  project data, and the runtime reads it in *two* places beyond translation — `_collectInputs`
+  builds the dynamic `qp-`/`fp-` ports from it. Both shapes are read at runtime now, for the
+  same reason BCN-003 migrated in two places: a deployed app never opens the editor.
+- ⚠️ **`neutralToSavedFilter`, which the spec asks for, would have destroyed connected values.**
+  The neutral model *resolves* `input: 'term'` into a value, so the port's name is gone by the
+  time a filter is neutral. Round-tripping through it turns every connected rule into a stale
+  literal — and looks correct on any filter without one. The two saved formats convert directly.
+- **The port name is what this rewrite could have broken in silence.** `QueryEditor` stored a
+  parameter name and the node prefixed it; the builder stores the port name whole. Regenerating
+  it renames a port that may have a wire on it, and the connection is dropped without a word.
+  `valuePortPrefix` is therefore a required parameter, declared by the node beside the schema.
+- **`QueryEditor/` could not be deleted as the spec asks** — the sorting editor lives there and
+  sorting is explicitly out of scope. The filter half went; the directory is renamed
+  `QuerySorting/`.
+- **The two builders disagreed about an unresolved connected value and both were right.**
+  `QueryEditor` dropped the rule (that is how an optional filter port works); BYOB kept the last
+  literal. Made a parameter rather than a choice — picking one globally would have changed what
+  existing apps ask for.
+- **The live pass ran the whole chain**: a `QueryEditor`-format filter in a real project opened
+  in the new builder showing all four rules, kept `qp-SearchTerm` through a real save, and the
+  runtime sent `{"$and":[{"city":{"$eq":"London"}},{"$or":[{"age":{"$gt":40}},{"active":{"$ne":null}}]}]}`
+  to a live backend — with the unconnected rule correctly absent — returning exactly the two
+  Londoners.
 
 ## What BCN-003 found
 
@@ -200,7 +238,10 @@ Full detail in [BCN-001-CONTRACT.md §8](./BCN-001-CONTRACT.md). Rig extended, n
 | ~~Resolve Parse's documented-not-probed cells against a real Parse Server~~ | ✅ BCN-002 — one runs in the rig now |
 | ~~Built-in backend drops geo filters; `matchesRegex` is not a regex~~ | ✅ BCN-003 — both fixed with `node:sqlite` user-defined functions, driven live |
 | ~~`dbcollectionnode2.ts:25` imports `WhereClause` from the *server-side* persistence types~~ | ✅ BCN-003 — the type it wanted was `ParseWhere`, not `Filter` |
-| One filter builder; fold `QueryPointerRule` in; **live QA in the editor** | **BCN-003b** |
+| ~~One filter builder; fold `QueryPointerRule` in; **live QA in the editor**~~ | ✅ BCN-003b — done, and the live pass drove the whole chain to a real backend |
+| ⚠️ **`SchemaHandler` never populates `dbCollections`, so Query Records has no class picker, no visual filter and no visual sort in the editor.** Since WF-007 | **unowned — BCN-004 or BCN-009** |
+| A live pass on the **BYOB** side of the converged builder, against Directus | BCN-004 |
+| `relatedTo` executed against a backend rather than only authored | BCN-005 |
 | Make `toPostgrest` / `toPocketBaseFilter` reachable from a node — the request envelope, not the filter | BCN-004 |
 | A relation in the equivalence corpus | BCN-005 |
 | Proximity *sorting* for `nearSphere` on the built-in backend — the filter works, the ordering does not | — |
