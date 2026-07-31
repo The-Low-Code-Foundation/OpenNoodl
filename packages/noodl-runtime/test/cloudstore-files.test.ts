@@ -113,7 +113,18 @@ describe('CloudStore — browser (XHR) path', () => {
     xhr.readyState = 4;
     xhr.onreadystatechange && xhr.onreadystatechange();
 
-    expect(results).toEqual([{ url: 'https://x/files/abc123_photo.png?exp=1&sig=y', expiresAt: '2026-01-01T00:00:00.000Z', ttlSeconds: 300 }]);
+    // BCN-007 step 1/4: the result is normalised now, and `kind` is the field
+    // that was added. The three the node already reads are byte-identical — the
+    // point of this assertion is that they stayed that way while a fourth
+    // arrived, because `signfileurl.ts` publishes all three on ports verbatim.
+    expect(results).toEqual([
+      {
+        url: 'https://x/files/abc123_photo.png?exp=1&sig=y',
+        kind: 'signed',
+        expiresAt: '2026-01-01T00:00:00.000Z',
+        ttlSeconds: 300
+      }
+    ]);
   });
 });
 
