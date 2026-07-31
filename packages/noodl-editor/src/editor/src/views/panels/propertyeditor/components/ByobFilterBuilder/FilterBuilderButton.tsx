@@ -13,15 +13,25 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import css from './ByobFilterBuilder.module.scss';
 import { FilterBuilderModal } from './FilterBuilderModal';
-import { FilterGroup, getFilterSummary, SchemaCollection } from './types';
+import { FilterGroup, getFilterSummary, OperatorCapabilities, SchemaCollection } from './types';
 
 export interface FilterBuilderButtonProps {
   value: FilterGroup | null;
   schema: SchemaCollection | null;
   onChange: (filter: FilterGroup) => void;
+  /** What the chosen backend can express. Omitted offers everything. */
+  capabilities?: OperatorCapabilities;
+  /** Prefix for a connected value's input port. */
+  valuePortPrefix?: string;
 }
 
-export function FilterBuilderButton({ value, schema, onChange }: FilterBuilderButtonProps) {
+export function FilterBuilderButton({
+  value,
+  schema,
+  onChange,
+  capabilities,
+  valuePortPrefix
+}: FilterBuilderButtonProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const summary = getFilterSummary(value);
@@ -66,6 +76,8 @@ export function FilterBuilderButton({ value, schema, onChange }: FilterBuilderBu
         schema={schema}
         onSave={handleSave}
         onClose={handleCloseModal}
+        capabilities={capabilities}
+        valuePortPrefix={valuePortPrefix}
       />
     </>
   );

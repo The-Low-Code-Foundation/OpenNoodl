@@ -483,7 +483,8 @@ const DbCollectionNode: NodeDefinitionOptions = {
           try {
             _where = QueryUtils.convertVisualFilter(this._internal.visualFilter, {
               queryParameters: this._internal.queryParameters,
-              collectionName: this._internal.name
+              collectionName: this._internal.name,
+              valuePortPrefix: 'qp-'
             });
           } catch (e) {
             this.context.editorConnection.sendWarning(
@@ -826,7 +827,15 @@ function updatePorts(
         ports.push({
           name: 'visualFilter',
           plug: 'input',
-          type: { name: 'query-filter', schema: schema, allowEditOnly: true },
+          type: {
+            name: 'query-filter',
+            schema: schema,
+            allowEditOnly: true,
+            // BCN-003b: the builder greys out what this backend cannot express,
+            // using the same descriptor cell the translator refuses on.
+            backend: QueryUtils.backendType(),
+            valuePortPrefix: 'qp-'
+          },
           displayName: 'Filter',
           group: 'Filter'
         });
@@ -841,16 +850,10 @@ function updatePorts(
       }
 
       if (parameters.visualFilter !== undefined) {
-        // Find all input ports
-        const uniqueInputs: Record<string, boolean> = {};
-        function _collectInputs(query: VisualFilterQuery | undefined) {
-          if (query === undefined) return;
-          if (query.rules !== undefined) query.rules.forEach((r) => _collectInputs(r));
-          else if (query.input !== undefined) uniqueInputs[query.input] = true;
-        }
-
-        _collectInputs(parameters.visualFilter as VisualFilterQuery);
-        Object.keys(uniqueInputs).forEach((input) => {
+        // Find all input ports. Both saved shapes are read — a project that has
+        // not been opened since BCN-003b still holds `{combinator, rules}`, and
+        // a port that stopped being declared takes its wire with it.
+        QueryUtils.collectFilterParameters(parameters.visualFilter as VisualFilterQuery, 'qp-').forEach((input) => {
           ports.push({
             name: 'qp-' + input,
             plug: 'input',

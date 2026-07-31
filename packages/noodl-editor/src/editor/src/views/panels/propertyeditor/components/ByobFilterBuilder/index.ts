@@ -22,9 +22,12 @@ export type {
   FilterValue,
   FilterValueSource,
   FieldType,
+  OperatorCapabilities,
+  OperatorCapability,
   OperatorDefinition,
   SchemaCollection,
-  SchemaField
+  SchemaField,
+  SchemaRelation
 } from './types';
 
 // Utilities
@@ -32,10 +35,16 @@ export {
   countFilterItems,
   createEmptyCondition,
   createEmptyFilterGroup,
+  createEmptyRelationCondition,
+  DEFAULT_VALUE_PORT_PREFIX,
+  generateFilterPortName,
   generateId,
   getFilterSummary,
   isFilterGroup
 } from './types';
+
+// The Parse-family schema, adapted to the one shape the builder reads
+export { isParseSchema, parseSchemaToCollection, type ParseCollectionSchema } from './parseSchema';
 
 // Converter
 export { filterToJsonString, fromDirectusFilter, jsonStringToFilter, toDirectusFilter } from './converter';

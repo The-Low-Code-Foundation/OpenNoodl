@@ -18,13 +18,17 @@ import { useDragContext } from './DragContext';
 import { FilterCondition } from './FilterCondition';
 import {
   createEmptyCondition,
+  createEmptyRelationCondition,
+  DEFAULT_VALUE_PORT_PREFIX,
   FilterCombinator,
   FilterCondition as FilterConditionType,
   FilterGroup as FilterGroupType,
   FilterItem,
   generateId,
   isFilterGroup,
-  SchemaField
+  OperatorCapabilities,
+  SchemaField,
+  SchemaRelation
 } from './types';
 
 export interface FilterGroupProps {
@@ -35,6 +39,12 @@ export interface FilterGroupProps {
   isRoot?: boolean;
   depth?: number;
   parentGroupId?: string;
+  /** What the chosen backend can express. Omitted offers everything. */
+  capabilities?: OperatorCapabilities;
+  /** Prefix for a connected value's input port. */
+  valuePortPrefix?: string;
+  /** Relations that can be filtered on, when the backend has any. */
+  relations?: SchemaRelation[];
 }
 
 export function FilterGroup({
@@ -44,7 +54,10 @@ export function FilterGroup({
   onDelete,
   isRoot = false,
   depth = 0,
-  parentGroupId
+  parentGroupId,
+  capabilities,
+  valuePortPrefix = DEFAULT_VALUE_PORT_PREFIX,
+  relations
 }: FilterGroupProps) {
   const { dragState, setDraggedItem, moveItem } = useDragContext();
   const [isDragOver, setIsDragOver] = useState(false);
@@ -77,6 +90,16 @@ export function FilterGroup({
       conditions: [...group.conditions, newCondition]
     });
   }, [group, onChange]);
+
+  // Add a relation rule. Offered only where the schema has a relation pointing
+  // at this collection — a button that adds a rule with nothing to select in it
+  // is worse than no button.
+  const handleAddRelation = useCallback(() => {
+    onChange({
+      ...group,
+      conditions: [...group.conditions, createEmptyRelationCondition(valuePortPrefix)]
+    });
+  }, [group, onChange, valuePortPrefix]);
 
   // Add a nested group
   const handleAddGroup = useCallback(() => {
@@ -290,6 +313,9 @@ export function FilterGroup({
                   onDelete={() => handleRequestDelete(index)}
                   depth={depth + 1}
                   parentGroupId={group.id}
+                  capabilities={capabilities}
+                  valuePortPrefix={valuePortPrefix}
+                  relations={relations}
                 />
               ) : (
                 // Single condition
@@ -299,6 +325,9 @@ export function FilterGroup({
                   onChange={(updated) => handleConditionChange(index, updated)}
                   onDelete={() => handleRequestDelete(index)}
                   parentGroupId={group.id}
+                  capabilities={capabilities}
+                  valuePortPrefix={valuePortPrefix}
+                  relations={relations}
                 />
               )}
             </React.Fragment>
@@ -325,6 +354,14 @@ export function FilterGroup({
               variant={PrimaryButtonVariant.MutedOnLowBg}
               onClick={handleAddGroup}
             />
+            {relations && relations.length > 0 && (
+              <PrimaryButton
+                label="Add Relation"
+                size={PrimaryButtonSize.Small}
+                variant={PrimaryButtonVariant.MutedOnLowBg}
+                onClick={handleAddRelation}
+              />
+            )}
           </div>
         </Box>
       </div>

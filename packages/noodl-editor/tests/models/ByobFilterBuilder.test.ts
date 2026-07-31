@@ -18,6 +18,11 @@
 import { migrateSavedFilter, type SavedFilterGroup } from '@noodl/backend-contract/translators';
 
 import { toDirectusFilter } from '../../src/editor/src/views/panels/propertyeditor/components/ByobFilterBuilder/converter';
+import { getOperatorsForType } from '../../src/editor/src/views/panels/propertyeditor/components/ByobFilterBuilder/operators';
+import {
+  isParseSchema,
+  parseSchemaToCollection
+} from '../../src/editor/src/views/panels/propertyeditor/components/ByobFilterBuilder/parseSchema';
 import {
   FilterGroup,
   generateFilterPortName
@@ -34,6 +39,90 @@ describe('ByobFilterBuilder connected-value port names', () => {
 
   it('falls back to a stable name when no field is chosen yet', () => {
     expect(generateFilterPortName({ id: 'x2', field: '' })).toBe('filter_value_x2');
+  });
+
+  it('takes the prefix from the node, because the three that own a filter disagree', () => {
+    // BCN-003b: this builder now renders for the Parse family too, and those
+    // nodes key their dynamic inputs on `qp-` and `fp-`. The `filter_` default
+    // above is still what BYOB Query Data gets, and RUN-003's slice-5 test at
+    // the top of this block is what says so.
+    expect(generateFilterPortName({ id: 'abc123', field: 'status' }, 'qp-')).toBe('qp-status_abc123');
+    expect(generateFilterPortName({ id: 'abc123', field: 'status' }, 'fp-')).toBe('fp-status_abc123');
+  });
+});
+
+describe('the Parse schema, in the shape the one builder reads', () => {
+  const schema = {
+    properties: {
+      name: { type: 'String' },
+      age: { type: 'Number' },
+      active: { type: 'Boolean' },
+      born: { type: 'Date' },
+      team: { type: 'Pointer', targetClass: 'Team' },
+      avatar: { type: 'File' },
+      at: { type: 'GeoPoint' },
+      members: { type: 'Relation', targetClass: 'Person' }
+    },
+    relations: { Team: [{ property: 'members' }] }
+  };
+
+  it('keeps only the property types a filter can ask a question about', () => {
+    // The four it drops are the four `QueryEditor` dropped, and the reason is
+    // this phase's rule about capability: what cannot be expressed must be
+    // visibly absent rather than offered and silently ineffective.
+    expect(parseSchemaToCollection(schema, 'Person')?.fields).toEqual([
+      { name: 'name', type: 'string' },
+      { name: 'age', type: 'float' },
+      { name: 'active', type: 'boolean' },
+      { name: 'born', type: 'datetime' },
+      { name: 'team', type: 'pointer', relatedCollection: 'Team' }
+    ]);
+  });
+
+  it('reads relations the other way round from the column of the same name', () => {
+    // A `Relation` *column* on Person is dropped above. `relations` is the
+    // opposite direction — collections holding a relation that points AT
+    // Person — and is what the "related to" rule offers.
+    expect(parseSchemaToCollection(schema, 'Person')?.relations).toEqual([
+      { className: 'Team', properties: ['members'] }
+    ]);
+  });
+
+  it('tells the two schema shapes apart', () => {
+    expect(isParseSchema(schema)).toBe(true);
+    expect(isParseSchema({ collection: 'articles', fields: [{ name: 'title', type: 'string' }] })).toBe(false);
+    expect(isParseSchema(null)).toBe(false);
+  });
+});
+
+describe('the operator dropdown, gated by the backend that will answer it', () => {
+  it('does not offer what the backend declares it cannot express', () => {
+    const offered = getOperatorsForType('string', {
+      matchesRegex: { state: 'unsupported', reason: 'Directus answers a regex on a string column with a 400.' }
+    }).map((op) => op.key);
+    expect(offered).not.toContain('matchesRegex');
+    expect(offered).toContain('contains');
+  });
+
+  it("carries a degraded cell's own sentence, rather than writing a second one", () => {
+    // BCN-003 put the operator declaration in the capability descriptor so the
+    // sentence thrown at runtime and the one shown here are the same string.
+    // Two hand-written explanations of one fact drift.
+    const reason = 'Wildcards in your text are matched as wildcards.';
+    const contains = getOperatorsForType('string', { contains: { state: 'degraded', reason } }).find(
+      (op) => op.key === 'contains'
+    );
+    expect(contains?.caveat).toBe(reason);
+  });
+
+  it('offers everything when nothing has been declared, which is the safe floor', () => {
+    // Silence in the table is not a refusal. Gating on absence could hide an
+    // operator the backend can actually answer — the harmful direction.
+    expect(getOperatorsForType('string').length).toBe(getOperatorsForType('string', {}).length);
+  });
+
+  it('offers a Pointer column the one question it has', () => {
+    expect(getOperatorsForType('pointer').map((op) => op.key)).toEqual(['pointsTo', 'notExists', 'exists']);
   });
 });
 

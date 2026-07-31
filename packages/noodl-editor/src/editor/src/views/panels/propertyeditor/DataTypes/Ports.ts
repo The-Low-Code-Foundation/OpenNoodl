@@ -31,7 +31,6 @@ import { MarginPaddingType } from './MarginPaddingType';
 import { NumberWithUnits } from './NumberWithUnits';
 import { PopoutGroup } from './PopoutGroup';
 import { PropListType } from './PropListType';
-import { QueryFilterType } from './QueryFilterType';
 import {
   WorkflowCasesType,
   WorkflowConditionType,
@@ -456,7 +455,10 @@ export class Ports extends View {
     else if (isOfResizingType()) return ResizingType;
     else if (isOfVariableType()) return VariableType;
     else if (isOfCurveType()) return CurveType;
-    else if (isOfQueryFilterType()) return QueryFilterType;
+    // BCN-003b: both filter ports render the one builder. `QueryFilterType` and
+    // the `QueryEditor` filter components it rendered are deleted, not
+    // deprecated — a second builder for one idea is what this task retired.
+    else if (isOfQueryFilterType()) return ByobFilterType;
     else if (isOfQuerySortingType()) return QuerySortingType;
     else if (isOfByobFilterType()) return ByobFilterType;
     else if (isOfPagesType()) return PagesType;

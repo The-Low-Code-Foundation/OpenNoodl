@@ -14,7 +14,7 @@
 import NoodlRuntime = require('../noodl-runtime');
 import CloudStoreImport = require('../src/api/cloudstore');
 import Model = require('../src/model');
-import { convertFilterOp, convertVisualFilter, matchesQuery } from '../src/api/queryutils';
+import { collectFilterParameters, convertFilterOp, convertVisualFilter, matchesQuery } from '../src/api/queryutils';
 
 type CollectionCache = Record<
   string,
@@ -149,6 +149,93 @@ describe('convertVisualFilter', () => {
         { queryParameters: {} }
       )
     ).toBeUndefined();
+  });
+
+  it('reads the converged builder\'s saved shape too, because a deployed app never opens the editor', () => {
+    // BCN-003b retired `QueryEditor`, so a Query Records node's `visualFilter`
+    // now holds `{type, conditions}`. The editor rewrites the old shape on
+    // load; a published app does not have an editor, so this reads both.
+    expect(
+      convertVisualFilter(
+        {
+          id: 'q',
+          type: 'and',
+          conditions: [
+            {
+              id: 'q-0',
+              kind: 'field',
+              field: 'name',
+              operator: 'containsIgnoreCase',
+              valueSource: 'connected',
+              valuePortName: 'qp-term'
+            }
+          ]
+        } as never,
+        { queryParameters: { term: 'a.b' }, valuePortPrefix: 'qp-' }
+      )
+    ).toEqual({ name: { $regex: 'a\\.b', $options: 'i' } });
+  });
+
+  it('drops an unconnected port in the new shape as well as the old', () => {
+    expect(
+      convertVisualFilter(
+        {
+          id: 'q',
+          type: 'and',
+          conditions: [
+            {
+              id: 'q-0',
+              kind: 'field',
+              field: 'name',
+              operator: 'containsIgnoreCase',
+              value: 'whatever was last typed',
+              valueSource: 'connected',
+              valuePortName: 'qp-term'
+            }
+          ]
+        } as never,
+        { queryParameters: {}, valuePortPrefix: 'qp-' }
+      )
+    ).toBeUndefined();
+  });
+});
+
+describe('collectFilterParameters', () => {
+  it('reads both saved shapes, so a wired port is not silently withdrawn', () => {
+    expect(
+      collectFilterParameters(
+        {
+          combinator: 'and',
+          rules: [
+            { property: 'name', operator: 'contain', input: 'term' },
+            { combinator: 'or', rules: [{ property: 'city', operator: 'equal to', input: 'term' }] },
+            { property: 'age', operator: 'greater than', value: 18 }
+          ]
+        },
+        'qp-'
+      )
+    ).toEqual(['term']);
+
+    expect(
+      collectFilterParameters(
+        {
+          id: 'q',
+          type: 'and',
+          conditions: [
+            { id: 'a', field: 'name', operator: 'contains', valueSource: 'connected', valuePortName: 'qp-term' },
+            {
+              id: 'g',
+              type: 'or',
+              conditions: [
+                { id: 'b', field: 'city', operator: 'equalTo', valueSource: 'connected', valuePortName: 'qp-term' }
+              ]
+            },
+            { id: 'c', field: 'age', operator: 'greaterThan', value: 18 }
+          ]
+        } as never,
+        'qp-'
+      )
+    ).toEqual(['term']);
   });
 });
 

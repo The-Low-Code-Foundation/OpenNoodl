@@ -4,7 +4,7 @@
  * Defines available operators for each field type with human-readable labels.
  */
 
-import { FieldType, OperatorDefinition } from './types';
+import { FieldType, OperatorCapabilities, OperatorDefinition } from './types';
 
 /**
  * All available operators with their definitions
@@ -162,6 +162,16 @@ export const ALL_OPERATORS: Record<string, OperatorDefinition> = {
     label: 'matches regex',
     description: 'Matches regular expression',
     valueCount: 1
+  },
+
+  // Pointer. BCN-003b folded this in from `QueryEditor`, which offered it
+  // automatically the moment a Pointer column was chosen.
+  pointsTo: {
+    key: 'pointsTo',
+    value: 'pointsTo',
+    label: 'points to record',
+    description: 'The record this points at, by id',
+    valueCount: 1
   }
 };
 
@@ -236,16 +246,43 @@ const OPERATORS_BY_TYPE: Record<FieldType, string[]> = {
   // Alias - depends on target, default to string-like
   alias: ['equalTo', 'notEqualTo', 'notExists', 'exists'],
 
+  // Pointer - which record it points at, and whether it is set at all
+  pointer: ['pointsTo', 'notExists', 'exists'],
+
   // Unknown - basic operators
   unknown: ['equalTo', 'notEqualTo', 'notExists', 'exists']
 };
 
 /**
- * Get available operators for a field type
+ * Get available operators for a field type, filtered by what the backend can do.
+ *
+ * ⚠️ **The gate reads the descriptor, it does not have an opinion of its own.**
+ * BCN-003 put the operator declaration in the capability descriptor rather than
+ * in each translator so that the sentence thrown at runtime and the sentence
+ * shown in the editor are the same string. This is the editor end of that: a
+ * `degraded` cell's `reason` becomes the row's `caveat` verbatim, and an
+ * `unsupported` or unproven `conditional` one is simply not offered.
+ *
+ * With no capability table every operator is offered, which is what the builder
+ * did before BCN-003b and is the right floor: it cannot hide an operator the
+ * backend can actually answer.
  */
-export function getOperatorsForType(type: FieldType): OperatorDefinition[] {
+export function getOperatorsForType(type: FieldType, capabilities?: OperatorCapabilities): OperatorDefinition[] {
   const keys = OPERATORS_BY_TYPE[type] || OPERATORS_BY_TYPE.unknown;
-  return keys.map((key) => ALL_OPERATORS[key]);
+  const definitions = keys.map((key) => ALL_OPERATORS[key]);
+  if (!capabilities) return definitions;
+
+  return definitions
+    .map((definition) => {
+      const cell = capabilities[definition.value];
+      // An operator the table says nothing about is offered. The table is a
+      // declaration of what a backend *can* do, and silence is not a refusal.
+      if (!cell) return definition;
+      if (cell.state === 'unsupported' || cell.state === 'conditional') return null;
+      if (cell.state === 'degraded' && cell.reason) return { ...definition, caveat: cell.reason };
+      return definition;
+    })
+    .filter((definition): definition is OperatorDefinition => definition !== null);
 }
 
 /** Get a dropdown row by its key. */

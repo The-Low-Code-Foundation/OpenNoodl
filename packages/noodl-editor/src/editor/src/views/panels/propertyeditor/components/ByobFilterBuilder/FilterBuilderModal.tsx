@@ -12,7 +12,7 @@ import { Modal } from '@noodl-core-ui/components/layout/Modal';
 import { HStack } from '@noodl-core-ui/components/layout/Stack';
 
 import { ByobFilterBuilder, ByobFilterBuilderRef } from './ByobFilterBuilder';
-import { createEmptyFilterGroup, FilterGroup, SchemaCollection } from './types';
+import { createEmptyFilterGroup, FilterGroup, OperatorCapabilities, SchemaCollection } from './types';
 
 export interface FilterBuilderModalProps {
   isVisible: boolean;
@@ -20,9 +20,21 @@ export interface FilterBuilderModalProps {
   schema: SchemaCollection | null;
   onSave: (filter: FilterGroup) => void;
   onClose: () => void;
+  /** What the chosen backend can express. Omitted offers everything. */
+  capabilities?: OperatorCapabilities;
+  /** Prefix for a connected value's input port. */
+  valuePortPrefix?: string;
 }
 
-export function FilterBuilderModal({ isVisible, value, schema, onSave, onClose }: FilterBuilderModalProps) {
+export function FilterBuilderModal({
+  isVisible,
+  value,
+  schema,
+  onSave,
+  onClose,
+  capabilities,
+  valuePortPrefix
+}: FilterBuilderModalProps) {
   // Ref to access filter builder imperatively (for saving pending JSON edits)
   const filterBuilderRef = useRef<ByobFilterBuilderRef>(null);
 
@@ -75,7 +87,14 @@ export function FilterBuilderModal({ isVisible, value, schema, onSave, onClose }
       UNSAFE_style={{ width: '700px', maxHeight: '80vh' }}
     >
       <div style={{ minHeight: '300px', maxHeight: '60vh', overflow: 'auto' }}>
-        <ByobFilterBuilder ref={filterBuilderRef} value={localFilter} schema={schema} onChange={handleFilterChange} />
+        <ByobFilterBuilder
+          ref={filterBuilderRef}
+          value={localFilter}
+          schema={schema}
+          onChange={handleFilterChange}
+          capabilities={capabilities}
+          valuePortPrefix={valuePortPrefix}
+        />
       </div>
     </Modal>
   );

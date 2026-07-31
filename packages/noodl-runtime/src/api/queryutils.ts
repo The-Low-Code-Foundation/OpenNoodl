@@ -21,7 +21,16 @@
  */
 
 import type { Filter, FilterSchema } from '@noodl/backend-contract/translators';
-import { FilterTranslationError, toParseWhere, visualQueryToNeutral } from '@noodl/backend-contract/translators';
+import {
+  FilterTranslationError,
+  isSavedGroup,
+  isVisualQueryFormat,
+  savedFilterToNeutral,
+  toParseWhere,
+  visualQueryToNeutral,
+  type SavedFilterGroup,
+  type SavedFilterItem
+} from '@noodl/backend-contract/translators';
 import type { ModelLike, ModelModule, ModelScopeLike } from '@noodl/types';
 
 import CloudStore = require('./cloudstore');
@@ -66,6 +75,16 @@ export interface VisualFilterQuery {
 export interface VisualFilterOptions {
   queryParameters: Record<string, unknown>;
   collectionName?: string;
+  /**
+   * The prefix this node puts on a filter-value input port — `'qp-'` on Query
+   * Records, `'fp-'` on Filter Records.
+   *
+   * Needed only for a filter saved by the converged builder, which stores the
+   * port name whole where `QueryEditor` stored the bare parameter name.
+   * `queryParameters` is still keyed by the bare name, because that is what the
+   * node's own setter strips it down to.
+   */
+  valuePortPrefix?: string;
 }
 
 /** One row of the editor's visual sorting list. */
@@ -111,7 +130,17 @@ function schemaFor(collectionName: string | undefined): FilterSchema | undefined
  * Reading it here rather than hard-coding the same constant means the day it
  * starts telling the truth, the capability gate starts telling the truth too.
  */
-function backendType(): 'nodegx' | 'parse' {
+/**
+ * Which of the two Parse-family capability tables applies.
+ *
+ * ⚠️ **Exported for the port declaration, and it currently reads a floor.**
+ * `CloudStore._handle()` answers `nodegx` unconditionally (BCN-009's step 4,
+ * unstarted), so a project pointed at an upstream Parse Server is gated against
+ * our own backend's table. That is the *more permissive* of the two, so it can
+ * only fail to gate an operator — never gate one off that the backend could
+ * have answered. The reverse would be the harmful direction.
+ */
+export function backendType(): 'nodegx' | 'parse' {
   try {
     const handle = CloudStore.instance && CloudStore.instance._handle && CloudStore.instance._handle();
     return handle && handle.type === 'parse' ? 'parse' : 'nodegx';
@@ -151,6 +180,50 @@ function resolveRelatedClasses(filter: Filter, modelScope: ModelScopeLike | unde
   return filter;
 }
 
+function stripPortPrefix(portName: string, prefix: string | undefined): string {
+  return prefix && portName.startsWith(prefix) ? portName.slice(prefix.length) : portName;
+}
+
+/**
+ * The names of the filter parameters a saved filter needs input ports for.
+ *
+ * Both Parse-family nodes build their dynamic `qp-`/`fp-` ports from this, and
+ * both saved shapes are read for the same reason `convertVisualFilter` reads
+ * both: a project that has not been opened since BCN-003b still holds the old
+ * one, and a node whose ports vanished would drop every wire attached to them.
+ *
+ * Returns the **bare** parameter name in both cases — the caller adds its own
+ * prefix, because the two nodes do not share one.
+ */
+export function collectFilterParameters(
+  query: VisualFilterQuery | undefined,
+  valuePortPrefix: string
+): string[] {
+  const names: string[] = [];
+
+  function walkVisual(node: VisualFilterQuery | undefined): void {
+    if (node === undefined) return;
+    if (node.rules !== undefined) node.rules.forEach(walkVisual);
+    else if (node.input !== undefined && !names.includes(node.input)) names.push(node.input);
+  }
+
+  function walkSaved(item: SavedFilterItem | undefined): void {
+    if (!item) return;
+    if (isSavedGroup(item)) {
+      (item.conditions ?? []).forEach(walkSaved);
+      return;
+    }
+    if (item.valueSource !== 'connected' || !item.valuePortName) return;
+    const name = stripPortPrefix(item.valuePortName, valuePortPrefix);
+    if (!names.includes(name)) names.push(name);
+  }
+
+  if (query === undefined) return names;
+  if (isVisualQueryFormat(query)) walkVisual(query);
+  else walkSaved(query as unknown as SavedFilterItem);
+  return names;
+}
+
 /**
  * Convert the editor's visual filter tree into a Parse `where` document.
  *
@@ -164,12 +237,30 @@ function resolveRelatedClasses(filter: Filter, modelScope: ModelScopeLike | unde
  * `options.error` is optional and new. Without it the old silent failure is
  * preserved for callers that have their own try/catch — `filterdbmodelsnode`
  * has had one since NDA-004.
+ *
+ * ## Two saved shapes, and why both are read here
+ *
+ * BCN-003b retired `QueryEditor` in favour of the one builder, so a Query
+ * Records node's `visualFilter` now holds `{type, conditions}` rather than
+ * `{combinator, rules}`. **The editor rewrites the old shape when a project is
+ * opened, and a deployed app never opens the editor** — so the runtime reads
+ * both, exactly as BCN-003 made it migrate BYOB's operator names in both
+ * places. A published app whose filters stopped working the day its author
+ * upgraded is not "migrate rather than break".
  */
 export function convertVisualFilter(
   query: VisualFilterQuery,
   options: VisualFilterOptions
 ): ParseQuery | undefined {
-  const neutral = visualQueryToNeutral(query, options.queryParameters);
+  const neutral = isVisualQueryFormat(query)
+    ? visualQueryToNeutral(query, options.queryParameters)
+    : savedFilterToNeutral(
+        query as unknown as SavedFilterGroup,
+        (portName) => options.queryParameters[stripPortPrefix(portName, options.valuePortPrefix)],
+        // The Parse family's optional-filter-port behaviour: a rule whose port
+        // supplies nothing does not narrow the query. Every graph relies on it.
+        { dropUnresolvedConnected: true }
+      );
   if (neutral === null) return undefined;
 
   const where = toParseWhere(resolveRelatedClasses(neutral, undefined), {

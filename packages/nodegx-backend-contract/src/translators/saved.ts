@@ -33,12 +33,26 @@ import type { FilterValueResolver } from './types';
 
 export interface SavedFilterCondition {
   id?: string;
+  /**
+   * What sort of rule this row is. Absent means `'field'`, which is every row
+   * the builder could produce before BCN-003b.
+   *
+   * `'relation'` is the Parse `relatedTo` rule, folded in when `QueryEditor`
+   * was retired. It is a separate kind rather than an operator because it does
+   * not read a field at all — it names a *collection* and a relation property
+   * on that collection, and asks which records this one is related to.
+   */
+  kind?: 'field' | 'relation';
   field: string;
   /** A neutral operator after migration; a Directus one before it. */
   operator: string;
   value?: unknown;
   valueSource?: 'static' | 'connected';
   valuePortName?: string;
+  /** `kind: 'relation'` only — the collection holding the relation. */
+  relationClass?: string;
+  /** `kind: 'relation'` only — the relation property on that collection. */
+  relationProperty?: string;
 }
 
 export interface SavedFilterGroup {
@@ -105,6 +119,26 @@ export function migrateSavedFilter<T extends SavedFilterItem>(item: T): T {
 
 // ── Builder format → neutral filter ──────────────────────────────────────────
 
+/** How a saved group is read. */
+export interface SavedToNeutralOptions {
+  /**
+   * Drop a connected condition whose port supplied no value, instead of falling
+   * back to the last literal typed into it.
+   *
+   * ⚠️ **The two builders disagreed about this and both were right for their
+   * own nodes**, so BCN-003b made it a parameter rather than picking one.
+   *
+   * `QueryEditor` dropped the rule: a Query Records node with an unconnected
+   * "search term" input is meant to return everything, and every Parse-family
+   * graph in every project relies on it. `ByobFilterBuilder` keeps the literal,
+   * because its connected values are opt-in on a row that already had one typed.
+   *
+   * Picking either one globally would silently change what an existing app
+   * queries for — which is the failure class this phase exists to close.
+   */
+  dropUnresolvedConnected?: boolean;
+}
+
 /**
  * Convert the visual builder's saved group into a neutral filter.
  *
@@ -115,12 +149,13 @@ export function migrateSavedFilter<T extends SavedFilterItem>(item: T): T {
  */
 export function savedFilterToNeutral(
   group: SavedFilterGroup | null | undefined,
-  resolve?: FilterValueResolver
+  resolve?: FilterValueResolver,
+  options: SavedToNeutralOptions = {}
 ): Filter | null {
   if (!group || !Array.isArray(group.conditions)) return null;
 
   const children = group.conditions
-    .map((item) => savedItemToNeutral(item, resolve))
+    .map((item) => savedItemToNeutral(item, resolve, options))
     .filter((child): child is Filter => child !== null);
 
   if (children.length === 0) return null;
@@ -128,23 +163,52 @@ export function savedFilterToNeutral(
   return { [group.type]: children } as Filter;
 }
 
-function savedItemToNeutral(item: SavedFilterItem, resolve?: FilterValueResolver): Filter | null {
-  if (isSavedGroup(item)) return savedFilterToNeutral(item, resolve);
+function savedItemToNeutral(
+  item: SavedFilterItem,
+  resolve: FilterValueResolver | undefined,
+  options: SavedToNeutralOptions
+): Filter | null {
+  if (isSavedGroup(item)) return savedFilterToNeutral(item, resolve, options);
 
   const condition = item;
+
+  const isConnected = condition.valueSource === 'connected' && !!condition.valuePortName;
+  const resolved = isConnected && resolve ? resolve(condition.valuePortName as string) : undefined;
+  const value = isConnected
+    ? resolved !== undefined || options.dropUnresolvedConnected
+      ? resolved
+      : condition.value
+    : condition.value;
+
+  if (condition.kind === 'relation') {
+    // A relation rule names no field, so the field guard below would drop it.
+    // Its value is the id of the record whose relation is being asked about,
+    // and without one there is no question to ask.
+    if (value === undefined || value === null || value === '') return null;
+    return {
+      relatedTo: {
+        id: String(value),
+        key: condition.relationProperty ?? '',
+        className: condition.relationClass
+      }
+    };
+  }
+
   // A condition with no field is a half-finished row in the builder UI, not an
   // instruction. Both old converters dropped it and so does this.
   if (!condition.field || !condition.operator) return null;
-
-  const value =
-    condition.valueSource === 'connected' && condition.valuePortName && resolve
-      ? resolve(condition.valuePortName)
-      : condition.value;
 
   const operator = condition.operator as FilterOperator;
   if (operator === 'isEmpty' || operator === 'isNotEmpty') {
     return { [condition.field]: { [operator]: true } } as Filter;
   }
+
+  // Presence takes a boolean of its own and is answered without a value, so it
+  // is checked before the unresolved-value drop.
+  if (operator !== 'exists' && isConnected && value === undefined && options.dropUnresolvedConnected) {
+    return null;
+  }
+
   return { [condition.field]: { [operator]: value } } as Filter;
 }
 
@@ -226,4 +290,128 @@ export function visualQueryToNeutral(
   if (!operator) return null;
 
   return { [query.property]: { [operator]: value } } as Filter;
+}
+
+// ── The Parse-side QueryEditor format → the builder's saved format ────────────
+
+/** How a `QueryEditor` filter is rewritten into the one the builder saves. */
+export interface VisualQueryToSavedOptions {
+  /**
+   * Prefix for the input port carrying a connected value.
+   *
+   * ⚠️ **This is the field that decides whether a user's wires survive.**
+   * `QueryEditor` stored a parameter *name* (`input: 'MyRecordId'`) and the
+   * node turned it into a port (`qp-MyRecordId` on Query Records,
+   * `fp-MyRecordId` on Filter Records). The builder stores the port name whole.
+   * Writing the wrong prefix here, or regenerating the name from the field the
+   * way a new row does, renames a port that has a wire attached to it — and a
+   * connection to a port that no longer exists is dropped without a word.
+   *
+   * So it is required rather than defaulted: there is no prefix that is right
+   * for both nodes, and guessing is the failure.
+   */
+  valuePortPrefix: string;
+}
+
+/**
+ * Rewrite a `QueryEditor` filter into the format `ByobFilterBuilder` saves.
+ *
+ * ## Why this is not `neutral → saved`
+ *
+ * BCN-003b's spec asks for `neutralToSavedFilter`, the mirror of
+ * `savedFilterToNeutral`. That function cannot be written without losing
+ * something: `visualQueryToNeutral` *resolves* `input: 'term'` into whatever
+ * value the port supplied, so by the time a filter is neutral the fact that its
+ * value came from a port — and the port's name — is gone. Round-tripping a
+ * saved filter through the neutral model would turn every connected rule into
+ * whichever literal happened to be on the wire when the project was opened, or
+ * into nothing.
+ *
+ * The two saved formats convert to each other directly, which is what this is,
+ * and the neutral model stays what it is for: describing a *query*, not a
+ * builder's state.
+ *
+ * ## Ids
+ *
+ * Derived from the rule's position in the tree rather than generated, so that
+ * opening the same project twice produces the same ids. A migration that
+ * invented an id per load would show up as an unexplained diff in someone's
+ * version control every time they opened a component — the same reason
+ * `needsOperatorMigration` exists.
+ */
+export function visualQueryToSaved(
+  query: VisualQueryNode | null | undefined,
+  options: VisualQueryToSavedOptions
+): SavedFilterGroup | null {
+  if (!query) return null;
+
+  const root = visualNodeToSaved(query, options, 'q');
+  if (root === null) return null;
+  if (isSavedGroup(root)) return root;
+  // A `QueryEditor` filter can be a bare rule with no group around it. The
+  // builder's root is always a group, so it gets one.
+  return { id: 'q', type: 'and', conditions: [root] };
+}
+
+function visualNodeToSaved(
+  node: VisualQueryNode,
+  options: VisualQueryToSavedOptions,
+  path: string
+): SavedFilterItem | null {
+  if (node.combinator !== undefined && Array.isArray(node.rules)) {
+    return {
+      id: path,
+      type: node.combinator === 'or' ? 'or' : 'and',
+      conditions: node.rules
+        .map((rule, index) => visualNodeToSaved(rule, options, `${path}-${index}`))
+        .filter((child): child is SavedFilterItem => child !== null)
+    };
+  }
+
+  const connected: Pick<SavedFilterCondition, 'valueSource' | 'valuePortName' | 'value'> =
+    node.input !== undefined
+      ? { valueSource: 'connected', valuePortName: options.valuePortPrefix + node.input, value: node.value }
+      : { valueSource: 'static', value: node.value };
+
+  if (node.operator === 'related to') {
+    return {
+      id: path,
+      kind: 'relation',
+      field: '',
+      operator: 'relatedTo',
+      relationClass: node.relatedTo,
+      relationProperty: node.relationProperty,
+      ...connected
+    };
+  }
+
+  if (!node.property) return null;
+
+  // Presence is two dropdown rows carrying one boolean-valued operator, and it
+  // never has a value — a connected one would be meaningless.
+  if (node.operator === 'exist' || node.operator === 'not exist') {
+    return {
+      id: path,
+      kind: 'field',
+      field: node.property,
+      operator: 'exists',
+      value: node.operator === 'exist'
+    };
+  }
+
+  const operator = VISUAL_OPERATORS[node.operator ?? ''];
+  // A rule whose operator was never chosen is a half-finished row. `QueryEditor`
+  // rendered it and `visualQueryToNeutral` dropped it; carrying it across as an
+  // `equalTo` would invent a condition the user did not write.
+  if (!operator) return null;
+
+  return { id: path, kind: 'field', field: node.property, operator, ...connected };
+}
+
+/** Does this look like a `QueryEditor` filter rather than a builder one? */
+export function isVisualQueryFormat(value: unknown): value is VisualQueryNode {
+  if (!value || typeof value !== 'object') return false;
+  const node = value as VisualQueryNode;
+  if (Array.isArray((value as SavedFilterGroup).conditions)) return false;
+  return node.combinator !== undefined || node.property !== undefined || node.operator !== undefined;
 }

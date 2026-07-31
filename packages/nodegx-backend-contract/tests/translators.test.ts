@@ -36,6 +36,7 @@ import {
   toPostgrest,
   translateFilter,
   visualQueryToNeutral,
+  visualQueryToSaved,
   type TranslateOptions
 } from '../src/translators';
 import type { Filter } from '../src/filter';
@@ -537,6 +538,121 @@ describe('the saved formats', () => {
         { _or: [{ rating: { _gte: 4 } }, { tags: { _nempty: true } }] }
       ]
     });
+  });
+
+  it('sends a pre-BCN-003b Parse filter to exactly the same Parse payload as before', () => {
+    // BCN-003b's acceptance criterion, in the same shape as BCN-003's above.
+    // `QueryEditor` is retired and its saved filters are rewritten into the
+    // format the surviving builder saves. "Rewritten rather than broken" is
+    // only true if the rewritten filter asks the backend for the same thing —
+    // otherwise opening a project silently changes what the user's app queries.
+    const savedByQueryEditor = {
+      combinator: 'and',
+      rules: [
+        { property: 'name', operator: 'contain', input: 'term' },
+        { property: 'age', operator: 'greater than or equal to', value: 18 },
+        { property: 'email', operator: 'exist' },
+        { property: 'team', operator: 'points to', input: 'MyTeamId' },
+        {
+          combinator: 'or',
+          rules: [
+            { property: 'born', operator: 'less than', value: '1900-01-01T00:00:00.000Z' },
+            // Unconnected: the port supplies nothing, so the rule is dropped
+            // and the query does not narrow on it.
+            { property: 'name', operator: 'equal to', input: 'exactName' }
+          ]
+        },
+        { operator: 'related to', relatedTo: 'Person', relationProperty: 'members', input: 'MyPersonId' }
+      ]
+    };
+
+    const parameters: Record<string, unknown> = { term: 'ada', MyTeamId: 'T1', MyPersonId: 'P9' };
+
+    const schema: TranslateOptions = { backend: 'nodegx', schema: SCHEMA };
+    const before = toParseWhere(visualQueryToNeutral(savedByQueryEditor, parameters), schema);
+
+    const rewritten = visualQueryToSaved(savedByQueryEditor, { valuePortPrefix: 'qp-' });
+    const after = toParseWhere(
+      savedFilterToNeutral(rewritten, (port) => parameters[port.replace(/^qp-/, '')], {
+        dropUnresolvedConnected: true
+      }),
+      schema
+    );
+
+    expect(after).toEqual(before);
+    // Pinned rather than only compared, so a change to both paths at once is
+    // still visible.
+    expect(after).toEqual({
+      $and: [
+        { name: { $regex: 'ada', $options: 'i' } },
+        { age: { $gte: 18 } },
+        { email: { $ne: null } },
+        { team: { $eq: { __type: 'Pointer', objectId: 'T1', className: 'Team' } } },
+        { born: { $lt: { __type: 'Date', iso: '1900-01-01T00:00:00.000Z' } } },
+        { $relatedTo: { object: { __type: 'Pointer', className: 'Person', objectId: 'P9' }, key: 'members' } }
+      ]
+    });
+  });
+
+  it('keeps the port name a wire is already attached to', () => {
+    // The one thing this rewrite can destroy without saying so. `QueryEditor`
+    // stored a parameter name and the node prefixed it; the builder stores the
+    // port name whole. Regenerating it from the field — which is what a new row
+    // does — renames a port that has a connection on it, and the connection is
+    // dropped in silence.
+    const saved = visualQueryToSaved(
+      { combinator: 'and', rules: [{ property: 'name', operator: 'contain', input: 'term' }] },
+      { valuePortPrefix: 'fp-' }
+    );
+    expect(saved?.conditions[0]).toMatchObject({
+      field: 'name',
+      valueSource: 'connected',
+      valuePortName: 'fp-term'
+    });
+  });
+
+  it('gives the same ids every time, so opening a project does not dirty it', () => {
+    const query = {
+      combinator: 'and',
+      rules: [{ property: 'name', operator: 'equal to', value: 'Ada' }, { combinator: 'or', rules: [] }]
+    };
+    expect(visualQueryToSaved(query, { valuePortPrefix: 'qp-' })).toEqual(
+      visualQueryToSaved(query, { valuePortPrefix: 'qp-' })
+    );
+  });
+
+  it('wraps a bare rule in a group, because the builder has no other root', () => {
+    expect(visualQueryToSaved({ property: 'name', operator: 'equal to', value: 'Ada' }, { valuePortPrefix: 'qp-' })).toEqual(
+      {
+        id: 'q',
+        type: 'and',
+        conditions: [
+          { id: 'q', kind: 'field', field: 'name', operator: 'equalTo', valueSource: 'static', value: 'Ada' }
+        ]
+      }
+    );
+  });
+
+  it('drops an unresolved connected value only when asked to', () => {
+    const saved = {
+      id: 'g',
+      type: 'and' as const,
+      conditions: [
+        {
+          id: 'c',
+          field: 'status',
+          operator: 'equalTo',
+          value: 'the last literal typed',
+          valueSource: 'connected' as const,
+          valuePortName: 'qp-term'
+        }
+      ]
+    };
+    // The two builders disagreed and both were right for their own nodes, so
+    // this is a parameter. BYOB keeps the literal; the Parse family drops the
+    // rule, which is how an optional filter port has always worked.
+    expect(savedFilterToNeutral(saved, () => undefined)).toEqual({ status: { equalTo: 'the last literal typed' } });
+    expect(savedFilterToNeutral(saved, () => undefined, { dropUnresolvedConnected: true })).toBeNull();
   });
 
   it('maps exist / not exist without needing a value', () => {

@@ -46,14 +46,18 @@ export { betweenBounds, escapeLike, escapeRegExp, lowerToLike, lowerToRegex } fr
 
 export {
   isSavedGroup,
+  isVisualQueryFormat,
   migrateSavedFilter,
   needsOperatorMigration,
   savedFilterToNeutral,
   visualQueryToNeutral,
+  visualQueryToSaved,
   type SavedFilterCondition,
   type SavedFilterGroup,
   type SavedFilterItem,
-  type VisualQueryNode
+  type SavedToNeutralOptions,
+  type VisualQueryNode,
+  type VisualQueryToSavedOptions
 } from './saved';
 
 export {

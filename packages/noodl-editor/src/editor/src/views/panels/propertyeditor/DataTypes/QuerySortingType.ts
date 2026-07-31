@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
-import QueryEditor from '../components/QueryEditor';
+import QuerySorting from '../components/QuerySorting';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
@@ -49,7 +49,7 @@ export class QuerySortingType extends TypeView {
       if (!this.root) {
         this.root = createRoot(div);
       }
-      this.root.render(React.createElement(QueryEditor.Sorting, props));
+      this.root.render(React.createElement(QuerySorting.Sorting, props));
     };
 
     renderSorting();

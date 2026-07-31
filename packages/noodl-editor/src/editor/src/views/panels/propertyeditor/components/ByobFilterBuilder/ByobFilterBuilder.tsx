@@ -80,8 +80,14 @@ function validateFilterGroup(group: unknown): boolean {
     if ('conditions' in i) {
       if (!validateFilterGroup(i)) return false;
     } else {
-      // It's a condition - must have field and operator
-      if (!('field' in i) || !('operator' in i)) return false;
+      // It's a condition - must have field and operator. A relation rule names
+      // no field, so it is validated on carrying its relation instead; without
+      // this, hand-editing the JSON of a relation filter rejects it silently.
+      if (i.kind === 'relation') {
+        if (!('relationClass' in i) && !('relationProperty' in i)) return false;
+      } else if (!('field' in i) || !('operator' in i)) {
+        return false;
+      }
     }
   }
 
@@ -89,7 +95,7 @@ function validateFilterGroup(group: unknown): boolean {
 }
 
 export const ByobFilterBuilder = forwardRef<ByobFilterBuilderRef, ByobFilterBuilderProps>(function ByobFilterBuilder(
-  { value, schema, onChange },
+  { value, schema, onChange, capabilities, valuePortPrefix },
   ref
 ) {
   // Initialize filter state
@@ -218,7 +224,15 @@ export const ByobFilterBuilder = forwardRef<ByobFilterBuilderRef, ByobFilterBuil
       {/* Visual Filter Builder - Wrapped in DragProvider for drag & drop */}
       <DragProvider rootFilter={filter} onFilterChange={handleFilterChange}>
         <div className={css.ByobFilterBuilderContent}>
-          <FilterGroup group={filter} fields={fields} onChange={handleFilterChange} isRoot={true} />
+          <FilterGroup
+            group={filter}
+            fields={fields}
+            onChange={handleFilterChange}
+            isRoot={true}
+            capabilities={capabilities}
+            valuePortPrefix={valuePortPrefix}
+            relations={schema?.relations}
+          />
         </div>
       </DragProvider>
 

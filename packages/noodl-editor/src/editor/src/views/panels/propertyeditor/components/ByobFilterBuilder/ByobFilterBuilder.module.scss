@@ -264,10 +264,34 @@
   color: var(--theme-color-primary);
 }
 
+// BCN-003b: this is a text input now, not a label. `QueryEditor` let the user
+// name the port a connected value arrives on, and two rules naming the same one
+// shared a single input — an affordance auto-generated names do not have, so it
+// was kept for everybody rather than lost with the builder that had it.
 .FilterConditionPortName {
+  flex: 1;
+  min-width: 0;
   font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
   font-size: 11px;
   font-weight: 500;
+
+  input {
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    color: var(--theme-color-primary);
+  }
+}
+
+// The chosen backend's own sentence about the chosen operator, straight from
+// its capability descriptor. Character for character the one the translator
+// throws at runtime — the whole reason BCN-003 put the declaration there.
+.FilterConditionCaveat {
+  margin-top: 4px;
+  padding-left: 26px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--theme-color-notice);
 }
 
 // JSON Preview Styles

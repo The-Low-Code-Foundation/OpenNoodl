@@ -46,6 +46,17 @@ export type FilterValueSource = 'static' | 'connected';
 
 export interface FilterCondition {
   id: string;
+  /**
+   * What sort of rule this row is. Absent means `'field'`, which is every row
+   * this builder could produce before BCN-003b.
+   *
+   * `'relation'` arrived with `QueryEditor`'s retirement. It asks "which records
+   * is *this* one related to", so it reads no field at all — it names a
+   * collection and a relation property on that collection. Parse's `Relation`
+   * has no junction table to query, which is why it cannot be an ordinary
+   * condition on a field.
+   */
+  kind?: 'field' | 'relation';
   field: string; // e.g., "status" or "author.name"
   operator: FilterOperator;
   value: FilterValue;
@@ -53,6 +64,10 @@ export interface FilterCondition {
   valueSource?: FilterValueSource;
   /** Port name when valueSource is 'connected' - auto-generated from condition id */
   valuePortName?: string;
+  /** `kind: 'relation'` only — the collection holding the relation. */
+  relationClass?: string;
+  /** `kind: 'relation'` only — the relation property on that collection. */
+  relationProperty?: string;
 }
 
 /**
@@ -103,6 +118,12 @@ export type FilterOperator = Extract<
   | 'isEmpty'
   | 'isNotEmpty'
   | 'matchesRegex'
+  // BCN-003b: the two `QueryEditor` had that this builder did not. `pointsTo`
+  // is an ordinary operator on a Pointer column; `relatedTo` is carried on a
+  // relation *rule* rather than chosen from the operator dropdown, and is in
+  // this union so a saved rule's `operator` field types.
+  | 'pointsTo'
+  | 'relatedTo'
 >;
 
 /**
@@ -124,6 +145,10 @@ export type FieldType =
   | 'csv'
   | 'hash'
   | 'alias'
+  // A Parse `Pointer` column. Its only real question is which record it points
+  // at, so it gets its own operator list rather than being flattened to a
+  // string — which is what would happen if it were mapped to `unknown`.
+  | 'pointer'
   | 'unknown';
 
 /**
@@ -145,6 +170,15 @@ export interface OperatorDefinition {
   label: string;
   description?: string;
   valueCount: 0 | 1 | 2; // 0 = no value (presence check), 1 = single value, 2 = between
+  /**
+   * The chosen backend's `degraded` sentence, when it has one.
+   *
+   * Attached by {@link getOperatorsForType} from the capability table rather
+   * than written here, so it is the *same string* the runtime throws and the
+   * same one BCN-010 will put under a greyed-out port. Two hand-written
+   * explanations of one fact drift; this phase has already paid for that.
+   */
+  caveat?: string;
 }
 
 /** Which dropdown row a saved condition corresponds to. */
@@ -166,13 +200,42 @@ export interface SchemaField {
 }
 
 /**
+ * One collection that holds a relation pointing *at* the one being filtered.
+ *
+ * The direction is the confusing part and worth stating: a "related to" rule on
+ * a Person query asks *"which People are in this Team's `members` relation"*, so
+ * `className` is `Team` — the collection that owns the relation — not `Person`.
+ */
+export interface SchemaRelation {
+  className: string;
+  properties: string[];
+}
+
+/**
  * Schema collection definition
  */
 export interface SchemaCollection {
   name: string;
   displayName?: string;
   fields: SchemaField[];
+  /** Present only where the backend has relations the filter can traverse. */
+  relations?: SchemaRelation[];
 }
+
+/**
+ * The chosen backend's answer for one operator, as the descriptor states it.
+ *
+ * A subset of the contract's `CapabilityCell`, taken structurally rather than
+ * by import so this module does not pull the whole capability model into the
+ * property editor's bundle.
+ */
+export interface OperatorCapability {
+  state: 'supported' | 'degraded' | 'conditional' | 'unsupported';
+  reason?: string;
+}
+
+/** Operator → what the chosen backend can do with it. */
+export type OperatorCapabilities = Partial<Record<FilterOperator, OperatorCapability>>;
 
 /**
  * Props for the main filter builder
@@ -181,6 +244,17 @@ export interface ByobFilterBuilderProps {
   value: FilterGroup | null;
   schema: SchemaCollection | null;
   onChange: (filter: FilterGroup) => void;
+  /**
+   * What the chosen backend can express. Omitted means "offer everything",
+   * which is what the builder did before BCN-003b.
+   */
+  capabilities?: OperatorCapabilities;
+  /**
+   * Prefix for a connected value's input port. See
+   * `generateFilterPortName` — the node the filter sits on decides it, and
+   * getting it wrong renames a port that may already have a wire on it.
+   */
+  valuePortPrefix?: string;
 }
 
 /**
@@ -207,6 +281,26 @@ export function createEmptyCondition(): FilterCondition {
 }
 
 /**
+ * Create an empty relation rule.
+ *
+ * Its value is the id of the record whose relation is being asked about, and it
+ * defaults to `connected` because that is what the rule is nearly always for —
+ * `QueryEditor` did the same, seeding the port name `MyRelationRecordId`.
+ */
+export function createEmptyRelationCondition(valuePortPrefix = DEFAULT_VALUE_PORT_PREFIX): FilterCondition {
+  const id = generateId();
+  return {
+    id,
+    kind: 'relation',
+    field: '',
+    operator: 'relatedTo',
+    value: '',
+    valueSource: 'connected',
+    valuePortName: generateFilterPortName({ id, field: 'related' }, valuePortPrefix)
+  };
+}
+
+/**
  * Generate a unique ID
  */
 export function generateId(): string {
@@ -214,14 +308,27 @@ export function generateId(): string {
 }
 
 /**
- * Generate the input-port name for a connected condition value.
- * The runtime registers any input starting with `filter_` as a dynamic
- * filter-value port (see byob-query-data.js), so the name must keep that
- * prefix. Field names can contain dots (relation paths) — slugify them.
+ * The prefix a BYOB Query Data node keys its dynamic filter inputs on.
+ *
+ * ⚠️ **Load-bearing.** `byob-query-data.ts` registers any input starting with
+ * `filter_` as a filter-value port, and RUN-003's slice-5 test exists to say so.
  */
-export function generateFilterPortName(condition: Pick<FilterCondition, 'id' | 'field'>): string {
+export const DEFAULT_VALUE_PORT_PREFIX = 'filter_';
+
+/**
+ * Generate the input-port name for a connected condition value.
+ *
+ * The prefix is a parameter because the three nodes that own a filter do not
+ * agree on one: BYOB Query Data keys on `filter_`, Query Records on `qp-`, and
+ * Filter Records on `fp-`. Field names can contain dots (relation paths) —
+ * slugify them.
+ */
+export function generateFilterPortName(
+  condition: Pick<FilterCondition, 'id' | 'field'>,
+  prefix = DEFAULT_VALUE_PORT_PREFIX
+): string {
   const fieldSlug = (condition.field || 'value').replace(/[^a-zA-Z0-9]/g, '_');
-  return `filter_${fieldSlug}_${condition.id}`;
+  return `${prefix}${fieldSlug}_${condition.id}`;
 }
 
 /**
@@ -240,8 +347,10 @@ export function countFilterItems(group: FilterGroup | null): { conditions: numbe
       groups++;
       item.conditions.forEach(countRecursive);
     } else {
-      // Only count conditions that have a field selected
-      if (item.field) {
+      // Only count conditions that have been filled in. A relation rule names
+      // no field, so it is counted on having a relation chosen instead —
+      // otherwise the summary reads "No filter" on a filter that has one.
+      if (item.kind === 'relation' ? !!item.relationProperty : !!item.field) {
         conditions++;
       }
     }
