@@ -2,13 +2,14 @@
 
 **Track S — One Backend Contract**
 
-**All 10 tasks specced as of 2026-07-31. BCN-001 and BCN-002 COMPLETE — the contract exists and the first adapter is behind it. BCN-003 is next.**
+**11 tasks. BCN-001, BCN-002 and BCN-003 COMPLETE — the contract exists, the first adapter is behind it, and one translator per backend is proved against five live servers. BCN-003b (the filter-builder convergence, split out by Richard) is next.**
 
 | Task | Tier | Status | Notes |
 |---|---|---|---|
 | BCN-001 The adapter contract & capability descriptor | 1 | ✅ **Complete** | Prose contract circulated first, then [`packages/nodegx-backend-contract`](../../../packages/nodegx-backend-contract/). **Four stale premises found (§0 + §9); the two unverified cells were probed, not deferred.** All 9 decisions answered |
 | BCN-002 Parse-wire behind the contract | 1 | ✅ **Complete** | `ParseWireAdapter` + a `CloudStore` reduced to resolution. **Four more stale premises, three wrong contract shapes, three wrong `parse` descriptor cells and two defects** — see [BCN-002-NOTES.md](./BCN-002-NOTES.md). A real Parse Server now runs in the rig |
-| BCN-003 The filter dialect | 1 | 📋 Specced | Largest per-backend surface, best precedent. **One translator per backend, shared editor+runtime** — two copies is how RUN-003 shipped a 403 |
+| BCN-003 The filter dialect | 1 | ✅ **Complete** | Five translators, gated by the descriptor. **`convertFilterOp` had no branch for eleven operators, so `contains` returned the whole collection.** Both built-in-backend defects fixed. 106 live checks, 0 failures — see [BCN-003-NOTES.md](./BCN-003-NOTES.md) |
+| BCN-003b One filter builder | 1 | 📋 Specced | The UI half of BCN-003, **split out by Richard 2026-07-31**. No data-format change — BCN-003 already moved the saved vocabulary. Ends in live QA the parent task did not do |
 | BCN-004 REST data adapter & the end of BYOB | 2 | 📋 Specced | Retires 4 of the 5 BYOB types (realtime waits for BCN-008). Closes RUN-003's Supabase/PocketBase "believed to work" residuals |
 | BCN-005 Relations across five backends | 2 | 📋 Specced | Opens with RUN-003's recorded residual: O2M/M2M need `GET /relations`. Parse's junction-less `Relation` is what the contract shape must accommodate |
 | BCN-006 Auth & the token lifecycle | 2 | 📋 Specced | **The only task with no precedent in this repo.** Parse tokens never expire, so refresh/single-flight/cross-tab is new machinery. Budget accordingly |
@@ -28,7 +29,8 @@ The phase is done when all six of these hold:
    before it is discovered at runtime. *(BCN-010, on BCN-001's descriptor)*
 4. A logged-in user stays logged in across an access-token expiry, on every backend that has one.
    *(BCN-006)*
-5. The same filter returns the same rows from every backend that can express it. *(BCN-003)*
+5. The same filter returns the same rows from every backend that can express it. *(BCN-003 — **met**:
+   106 live checks, 0 failures, and every divergence carries the `degraded` cell that predicted it)*
 6. Phase 30 can audit the data nodes against a library that will not move under it. *(BCN-010)*
 
 Criterion 3 is the one that justifies the phase. Criteria 1 and 2 are what the user asked for; 3 is what
@@ -48,6 +50,8 @@ makes granting it an improvement rather than a trade.
 | — | New package, or a folder in an existing tree? | **New package.** `packages/nodegx-backend-contract`. Its stated cost was overstated — see [§9](./BCN-001-CONTRACT.md) |
 | — | Stand up a Parse Server in the rig, or descope BCN-002's external live pass? | **Stand one up.** Done — `parse` profile, `parseplatform/parse-server:7.3.0` + Mongo. It paid for itself immediately: three wrong descriptor cells and one defect in our own client |
 | — | Who owns the two defects BCN-001 found in our own backend? | **Both in BCN-003** — the `matchesRegex`-is-a-`LIKE` one *and* the silently-dropped geo filters. ⚠️ **This widens BCN-003 beyond its ~2-week re-estimate**: geo needs a distance function in SQL and an indexing story we would then own |
+| — | **Does the geo fix really belong in BCN-003, given what it adds?** | **Fix all three properly.** What changed the answer: `node:sqlite` exposes `db.function()`, so SQLite can call back into JavaScript and neither fix is an approximation — the regex is the browser's own engine, the geometry is ordinary JS. What we own is one sentence (no spatial index, so these scan) and the descriptor says it. **Done and driven against a real database** |
+| — | **Does the filter-builder convergence stay in BCN-003?** | **Split out as BCN-003b.** BCN-003 ships the translators, the migration and the live equivalence pass — all headless. The editor-UI convergence gets its own task and its own live QA, so the commit that proves filter equivalence is not also the one that rewrites the thing that builds filters |
 
 ### Still open
 
@@ -55,6 +59,50 @@ makes granting it an improvement rather than a trade.
 |---|---|---|
 | 3 | **Does the phase ship before or after the alpha?** Tier 3 is what removes the duplicate nodes a stranger would see. Tier 1 alone is invisible to users. | Sequencing against Phase 33; the answer changes whether ALPHA-001's cold-install pass has to account for two record families. |
 | 6 | **Are the four maturity levels the right gate for the security disclosure?** BCN-009 shows it always; OPS-001's Playing level shows nothing. A lesson project on a shared backend is the awkward case. | Cross-phase interaction between two of his own decisions. |
+
+## What BCN-003 found
+
+Full detail in [BCN-003-NOTES.md](./BCN-003-NOTES.md).
+
+- ⚠️ **`convertFilterOp` had no branch for eleven of the operators the vocabulary defines** —
+  `contains`, `startsWith`, `between` and their siblings. It fell off the end of its if/else
+  chain, returned `{}`, and so a "name contains Ada" filter **returned every record in the
+  collection**, with no error. Meanwhile the `parse` descriptor had claimed since BCN-001 that
+  each was "lowered to `$regex`". This is the exact failure the spec names as the worst outcome
+  available in the task, and it was in the shipping code.
+- **Three more widenings closed with it:** a leaf carrying two operators kept only the first;
+  `pointsTo` with no cached schema emitted `className: undefined` (empty result set, no error);
+  and values were unescaped before becoming regexes, so `contains 'a.b'` also matched `axb`.
+- **Both built-in-backend defects are fixed, not merely declared.** `node:sqlite` exposes
+  `db.function()`, so `matchesRegex` is now the same `RegExp` engine the user's browser runs and
+  the three geo operators are real geometry. Driven against a real database: `^Ada$` returns
+  `Ada` and not `Adam`; 250 km of London returns London and Bristol.
+- ⚠️ **A JS twin of the SQL WHERE clause exists in `nodegx-backend`**, for realtime subscription
+  filters, with a property test. Fixing the SQL side broke it on the first generated case — both
+  sides had agreed that `DA` matched `Date`, and both had agreed that a geo filter constrained
+  nothing. There is a **third** twin (`matchesQuery`) which evaluated one operator per field, and
+  `between` made that wrong. All three now agree.
+- **The live equivalence pass: 106 checks across five real backends, 0 failures, 8 declared
+  divergences.** What it asserts is not "they all agree" but *"a backend whose cell says
+  `supported` returns exactly the expected rows, and one that returns anything else has a cell
+  that already said so."* All eight divergences were `supported` cells before the run.
+- ⚠️ **Four wrong descriptor cells, all written from documentation**: Directus refuses `_regex` on
+  a string column outright; Directus and PocketBase honour no `LIKE` escape; Directus's `_empty`
+  matches a NULL; PocketBase has no NULL for a text field at all. A fifth was corrected without a
+  probe — Supabase's geo cells were `conditional` on PostGIS, but PostgREST's filter grammar has
+  no geo operator whether or not PostGIS is installed, so the probe asked a real question that
+  was not *the* question.
+- ⚠️ **Parse's `$exists` tests key presence, not null-ness** — a record whose field was explicitly
+  null satisfied "is set". `$ne: null` / `$eq: null` asks what the user means and is a no-op on
+  our own backend.
+- **Two handover premises were wrong.** The two `toDirectusFilter` copies had *not* materially
+  diverged (both unwrapped a lone child; the runtime's own test was named for it), and
+  `dbcollectionnode2`'s leaked type wanted `ParseWhere`, not the contract's `Filter` — the value
+  is already translated by the time it is held.
+- **Cost, measured rather than estimated:** the capability gate puts the descriptors in the viewer
+  bundle. `noodl-runtime`'s entry goes from 103,668 to 115,883 bytes gzipped — **+12.2 KB,
+  +11.8%**. Bought deliberately: it is what makes the sentence thrown at runtime and the sentence
+  under a greyed-out port the same string.
 
 ## What BCN-002 found
 
@@ -133,15 +181,20 @@ Full detail in [BCN-001-CONTRACT.md §8](./BCN-001-CONTRACT.md). Rig extended, n
 
 | Item | Owner |
 |---|---|
-| Apply `DIRECTUS_OPERATOR_MIGRATION` to saved project filters; re-target the BYOB builder to emit the neutral vocabulary | BCN-003 |
-| `custom` now has auth + filter surface: accept a **declared** dialect and token lifecycle | BCN-003, BCN-006 |
-| Fix `queryutils.ts:373` — `$maxDistanceInMiles` read with `$`, the other two without; only one can be receiving what its caller writes | BCN-003 |
-| Fix `pointsTo` reaching into the global `CloudStore._collections` cache; the schema must be passed in | BCN-003 |
+| ~~Apply `DIRECTUS_OPERATOR_MIGRATION` to saved project filters; re-target the BYOB builder~~ | ✅ BCN-003 — migrated in both the editor and the runtime, idempotently |
+| ~~`custom` now has a filter surface: accept a **declared** dialect~~ (auth half remains) | ✅ BCN-003 / BCN-006 |
+| ~~Fix `queryutils.ts:373` — `$maxDistanceInMiles` read with `$`, the other two without~~ | ✅ BCN-003 |
+| ~~Fix `pointsTo` reaching into the global `CloudStore._collections` cache~~ | ✅ BCN-003 — the schema is a parameter |
 | Rename `targetClass` to a neutral name, or decide it stays | BCN-005 |
 | Build refresh/single-flight/cross-tab **once**, driven by `TokenLifecycle` | BCN-006 |
 | ~~Resolve Parse's documented-not-probed cells against a real Parse Server~~ | ✅ BCN-002 — one runs in the rig now |
-| Built-in backend drops geo filters; `matchesRegex` is not a regex | **BCN-003** — Richard's call, 2026-07-31: fix **both** there |
-| `dbcollectionnode2.ts:25` imports `WhereClause` from the *server-side* persistence types. The type it wants is the contract's `Filter` | BCN-003 |
+| ~~Built-in backend drops geo filters; `matchesRegex` is not a regex~~ | ✅ BCN-003 — both fixed with `node:sqlite` user-defined functions, driven live |
+| ~~`dbcollectionnode2.ts:25` imports `WhereClause` from the *server-side* persistence types~~ | ✅ BCN-003 — the type it wanted was `ParseWhere`, not `Filter` |
+| One filter builder; fold `QueryPointerRule` in; **live QA in the editor** | **BCN-003b** |
+| Make `toPostgrest` / `toPocketBaseFilter` reachable from a node — the request envelope, not the filter | BCN-004 |
+| A relation in the equivalence corpus | BCN-005 |
+| Proximity *sorting* for `nearSphere` on the built-in backend — the filter works, the ordering does not | — |
+| `CloudStore._handle()` still answers `nodegx` unconditionally, so the capability gate reads a floor rather than the truth | BCN-009 |
 | Promisifying the fourteen callback methods — deliberately not done, recorded as a follow-up | — |
 | `AdapterRegistry.createAdapter`'s `case 'parse'` still throws "not yet refactored". That stub is for a **server-side** Parse adapter, not the client one BCN-002 built | — |
 

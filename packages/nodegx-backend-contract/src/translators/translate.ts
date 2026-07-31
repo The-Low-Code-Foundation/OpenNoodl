@@ -37,13 +37,23 @@ import { parseFilterNode } from './walk';
 /**
  * Resolve the descriptor a translation is gated on.
  *
- * This is the import that puts the descriptor table in the viewer bundle —
- * about 8 KB gzipped, measured — and it is a deliberate purchase rather than an
- * oversight. BCN-002 kept the contract to `import type` only precisely so this
- * decision would be taken on purpose when something needed the data. What it
- * buys is in the module comment above: one declaration of what a backend can
- * do, so the sentence shown on a greyed-out port and the sentence thrown at
- * runtime cannot say different things.
+ * This is the import that puts the descriptor table in the viewer bundle, and
+ * it is a deliberate purchase rather than an oversight. BCN-002 kept the
+ * contract to `import type` only precisely so this decision would be taken on
+ * purpose when something needed the data.
+ *
+ * **Measured, not estimated:** bundling `noodl-runtime`'s entry with esbuild
+ * (minified, gzipped) goes from 103,668 to 115,883 bytes — **+12.2 KB gzipped,
+ * +11.8%**. Roughly 8 KB of that is the descriptors and the rest is the five
+ * dialects. An earlier draft of this comment guessed 8 KB for the whole thing,
+ * which was wrong in the flattering direction; the number above is what the
+ * command actually prints.
+ *
+ * What it buys is in the module comment above: one declaration of what a
+ * backend can do, so the sentence shown on a greyed-out port and the sentence
+ * thrown at runtime cannot say different things. The alternative — a second
+ * per-dialect support list kept in step by a test — is the exact shape that
+ * produced this phase's two-copies problem in the first place.
  */
 export function resolveDescriptor(backend: BackendType | BackendDescriptor): BackendDescriptor {
   return typeof backend === 'string' ? descriptorFor(backend) : backend;
