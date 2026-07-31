@@ -13,3 +13,4 @@ export * from './EmbeddedTemplate.test';
 export * from './StyleTokenCoverage.test';
 export * from './StyleTokensUndo.test';
 export * from './code-history.test';
+export * from './BackendSecurity.test';
