@@ -11,6 +11,7 @@
 import {
   parseDirectusSchema,
   parseGenericSchema,
+  parseParseSchema,
   parsePocketbaseSchema,
   parseSchemaResponse,
   parseSupabaseSchema
@@ -277,6 +278,114 @@ describe('parsePocketbaseSchema', () => {
   });
 });
 
+// ─── Parse wire (/schemas) ───────────────────────────────────────────────────
+
+/**
+ * BCN-004 step 4: the fourth shape. The fixture is a trimmed Parse `GET /schemas`
+ * response, and it is deliberately the SAME fixture the runtime's
+ * `schema-ports.test.js` drives `collectionsFromParseClasses` with — the two type maps
+ * are twins across a package boundary neither side may cross, so they are checked
+ * against one another's expectations rather than trusted to stay in step.
+ */
+describe('parseParseSchema', () => {
+  const parseSchemas = {
+    results: [
+      {
+        className: 'Article',
+        fields: {
+          objectId: { type: 'String' },
+          createdAt: { type: 'Date' },
+          updatedAt: { type: 'Date' },
+          ACL: { type: 'ACL' },
+          title: { type: 'String' },
+          views: { type: 'Number' },
+          published: { type: 'Boolean' },
+          publishedAt: { type: 'Date' },
+          payload: { type: 'Object' },
+          cover: { type: 'File' },
+          author: { type: 'Pointer', targetClass: 'Author' },
+          tags: { type: 'Relation', targetClass: 'Tag' }
+        }
+      },
+      { className: '_User', fields: { objectId: { type: 'String' }, username: { type: 'String' } } }
+    ]
+  };
+
+  it('creates a collection per class, keyed on objectId', () => {
+    const schema = parseParseSchema(parseSchemas);
+    expect(schema.collections.map((c) => c.name)).toEqual(['Article', '_User']);
+    expect(schema.collections[0].primaryKey).toBe('objectId');
+    expect(schema.collections[0].fields.find((f) => f.name === 'objectId')?.primaryKey).toBe(true);
+  });
+
+  it('maps Parse type names onto the neutral field types the port generator reads', () => {
+    const article = parseParseSchema(parseSchemas).collections[0];
+    const typeOf = (name: string) => article.fields.find((f) => f.name === name)?.type;
+
+    expect(typeOf('title')).toBe('string');
+    expect(typeOf('views')).toBe('number');
+    expect(typeOf('published')).toBe('boolean');
+    expect(typeOf('publishedAt')).toBe('dateTime');
+    expect(typeOf('payload')).toBe('json');
+    expect(typeOf('cover')).toBe('json');
+  });
+
+  it('keeps the native Parse type alongside the neutral one', () => {
+    const article = parseParseSchema(parseSchemas).collections[0];
+    expect(article.fields.find((f) => f.name === 'publishedAt')?.nativeType).toBe('Date');
+  });
+
+  it('recovers Pointer relations as many-to-one and Relation as many-to-many', () => {
+    const article = parseParseSchema(parseSchemas).collections[0];
+    const author = article.fields.find((f) => f.name === 'author');
+    const tags = article.fields.find((f) => f.name === 'tags');
+
+    expect(author?.relationTarget).toBe('Author');
+    expect(author?.relationType).toBe('many-to-one');
+    expect(tags?.relationTarget).toBe('Tag');
+    expect(tags?.relationType).toBe('many-to-many');
+  });
+
+  it('marks the ACL hidden so the port builders skip it', () => {
+    const article = parseParseSchema(parseSchemas).collections[0];
+    expect(article.fields.find((f) => f.name === 'ACL')?.hidden).toBe(true);
+  });
+
+  it('leaves relationTarget unset for plain fields', () => {
+    const article = parseParseSchema(parseSchemas).collections[0];
+    expect(article.fields.find((f) => f.name === 'title')?.relationTarget).toBeUndefined();
+  });
+
+  it('parses our own backend’s /api/_schema envelope, which is not /schemas at all', () => {
+    // nodegx-backend's parse-wire.ts says in its header that client schema management
+    // is "Explicitly NOT implemented"; the schema lives at GET /api/_schema, whose
+    // columns carry the same Parse type names.
+    const schema = parseParseSchema({
+      tables: [
+        {
+          name: 'Article',
+          columns: [
+            { name: 'objectId', type: 'String' },
+            { name: 'views', type: 'Number' },
+            { name: 'author', type: 'Pointer', targetClass: 'Author' }
+          ]
+        }
+      ]
+    });
+
+    expect(schema.collections.map((c) => c.name)).toEqual(['Article']);
+    const fields = schema.collections[0].fields;
+    expect(fields.find((f) => f.name === 'views')?.type).toBe('number');
+    expect(fields.find((f) => f.name === 'author')?.relationTarget).toBe('Author');
+  });
+
+  it('returns an empty schema for garbage input', () => {
+    expect(parseParseSchema(undefined).collections).toEqual([]);
+    expect(parseParseSchema({}).collections).toEqual([]);
+    expect(parseParseSchema({ results: [{ fields: {} }] }).collections).toEqual([]);
+  });
+});
+
 // ─── Generic / dispatch ──────────────────────────────────────────────────────
 
 describe('parseGenericSchema + parseSchemaResponse', () => {
@@ -293,5 +402,14 @@ describe('parseGenericSchema + parseSchemaResponse', () => {
     expect(parseSchemaResponse('directus', directusFields).collections.length).toBe(3);
     expect(parseSchemaResponse('custom', [{ name: 'c' }]).collections[0].name).toBe('c');
     expect(parseSchemaResponse('anything-else', { tables: [{ name: 't' }] }).collections[0].name).toBe('t');
+  });
+
+  it('dispatches both Parse-wire backend types at the Parse parser', () => {
+    const payload = { results: [{ className: 'Article', fields: { title: { type: 'String' } } }] };
+    for (const type of ['parse', 'nodegx']) {
+      const schema = parseSchemaResponse(type, payload);
+      expect(schema.collections[0].name).toBe('Article');
+      expect(schema.collections[0].primaryKey).toBe('objectId');
+    }
   });
 });

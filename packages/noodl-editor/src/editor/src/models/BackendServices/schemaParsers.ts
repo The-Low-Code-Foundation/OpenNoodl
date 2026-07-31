@@ -222,6 +222,150 @@ export function parsePocketbaseSchema(data: unknown, schema: CachedSchema = empt
 }
 
 /**
+ * One field of a Parse class, as `GET /schemas` reports it.
+ * `targetClass` is set on `Pointer` and `Relation` and on nothing else.
+ */
+interface ParseRawField {
+  type?: string;
+  targetClass?: string;
+  required?: boolean;
+  defaultValue?: unknown;
+}
+
+/**
+ * One class of a Parse-typed schema response.
+ *
+ * Two envelopes, because two servers speak the Parse wire and they do not agree on
+ * this route: upstream Parse answers `GET /schemas` with `{results: [{className,
+ * fields}]}`, while our own `nodegx-backend` does **not** implement `/schemas` at all
+ * (`parse-wire.ts` lists it under "Explicitly NOT implemented") and serves
+ * `GET /api/_schema` with `{tables: [{name, columns}]}` instead. The *types* inside
+ * are the same words — its SchemaManager stores `String`/`Number`/`Pointer` with a
+ * `targetClass` — so only the envelope has to be unwrapped twice.
+ */
+interface ParseRawClass {
+  /** `GET /schemas` spelling. */
+  className?: string;
+  /** `GET /api/_schema` spelling. */
+  name?: string;
+  /** `GET /schemas` spelling: a map keyed by field name. */
+  fields?: Record<string, ParseRawField>;
+  /** `GET /api/_schema` spelling: an array carrying the name inside each entry. */
+  columns?: ({ name?: string } & ParseRawField)[];
+  classLevelPermissions?: unknown;
+}
+
+/** The class list, from whichever envelope arrived. */
+function parseClassList(data: unknown): ParseRawClass[] {
+  if (Array.isArray(data)) return data as ParseRawClass[];
+  const results = (data as { results?: unknown })?.results;
+  if (Array.isArray(results)) return results as ParseRawClass[];
+  const tables = (data as { tables?: unknown })?.tables;
+  if (Array.isArray(tables)) return tables as ParseRawClass[];
+  return [];
+}
+
+/** The fields of one class, from whichever spelling arrived. */
+function parseClassFields(cls: ParseRawClass): Record<string, ParseRawField> {
+  if (cls.fields) return cls.fields;
+  if (Array.isArray(cls.columns)) {
+    const map: Record<string, ParseRawField> = {};
+    for (const column of cls.columns) {
+      if (column && column.name) map[column.name] = column;
+    }
+    return map;
+  }
+  return {};
+}
+
+/**
+ * Parse's own type names, mapped onto the neutral field types the runtime's port
+ * generator reads.
+ *
+ * ⚠️ **This table has a twin** in `noodl-runtime/src/nodes/std-library/data/schema-ports.ts`
+ * (`PARSE_TYPE_MAP`), which normalises the same classes when they arrive through the
+ * legacy `dbCollections` project metadata instead of through Backend Services. The editor
+ * cannot import the runtime and the runtime cannot import the editor, so the twin is
+ * unavoidable; both sides are tested against the same fixture so a drift fails a test
+ * rather than producing a quietly wrong port type. A third copy would be the signal to
+ * promote it into `@noodl/backend-contract`.
+ */
+const PARSE_TYPE_MAP: Record<string, string> = {
+  String: 'string',
+  Number: 'number',
+  Boolean: 'boolean',
+  Date: 'dateTime',
+  Object: 'json',
+  Array: 'array',
+  GeoPoint: 'json',
+  Polygon: 'json',
+  Bytes: 'string',
+  // `{__type: 'File', name, url}` on the wire — an object port until BCN-007 gives
+  // files a port type of their own.
+  File: 'json',
+  // A Pointer's own value is the target's objectId.
+  Pointer: 'string',
+  // A Relation is a record SET, not a value, and keeps a type of its own so callers
+  // can tell it apart.
+  Relation: 'relation'
+};
+
+/**
+ * Parse the Parse-wire schema from `GET /schemas` — the fourth backend shape, and the
+ * one that lets the Record nodes' ports be schema-driven like the BYOB nodes' are
+ * (BCN-004 step 4, Desired State 3).
+ *
+ * `Pointer` and `Relation` carry `targetClass`, so M2O relations are recovered here the
+ * way Directus' `foreign_key_table` and PostgREST's `<fk .../>` annotation are. A
+ * `Relation` is a record set, marked many-to-many, so relation *traversal* skips it —
+ * the same rule the other parsers already follow.
+ */
+export function parseParseSchema(data: unknown, schema: CachedSchema = emptySchema()): CachedSchema {
+  // Parse returns: { results: [{ className, fields: {name: {type, targetClass}} }] }
+  // NodeGX returns: { tables: [{ name, columns: [{name, type, targetClass}] }] }
+  for (const cls of parseClassList(data)) {
+    const className = cls?.className || cls?.name;
+    if (!className) continue;
+
+    const rawFields = parseClassFields(cls);
+    const fields: SchemaField[] = Object.keys(rawFields).map((name) => {
+      const raw = rawFields[name] || {};
+      const field: SchemaField = {
+        name,
+        displayName: name,
+        type: PARSE_TYPE_MAP[raw.type] || 'string',
+        nativeType: raw.type,
+        required: raw.required === true,
+        primaryKey: name === 'objectId' || undefined,
+        defaultValue: raw.defaultValue
+      };
+
+      if (raw.type === 'Pointer') {
+        field.relationTarget = raw.targetClass;
+        field.relationType = 'many-to-one';
+      } else if (raw.type === 'Relation') {
+        field.relationTarget = raw.targetClass;
+        field.relationType = 'many-to-many';
+      }
+
+      // The ACL is access control, not data — no port has ever been useful for it.
+      if (name === 'ACL') field.hidden = true;
+
+      return field;
+    });
+
+    schema.collections.push({
+      name: className,
+      displayName: className,
+      fields,
+      primaryKey: 'objectId'
+    });
+  }
+
+  return schema;
+}
+
+/**
  * Parse a generic schema format (custom REST backends): an array of
  * collections, or an object with a `collections`/`tables` array.
  */
@@ -265,6 +409,9 @@ export function parseSchemaResponse(type: string, data: unknown): CachedSchema {
   if (type === 'directus') return parseDirectusSchema(data, schema);
   if (type === 'supabase') return parseSupabaseSchema(data, schema);
   if (type === 'pocketbase') return parsePocketbaseSchema(data, schema);
+  // Both presets point `endpoints.schema` at Parse's `/schemas`, and both answer the
+  // same envelope — one wire, two rows in the preset table (BCN-002).
+  if (type === 'parse' || type === 'nodegx') return parseParseSchema(data, schema);
 
   // For custom, try to parse as a generic schema format
   return parseGenericSchema(data, schema);

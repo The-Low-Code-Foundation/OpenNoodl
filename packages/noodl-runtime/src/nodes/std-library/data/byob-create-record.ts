@@ -19,7 +19,9 @@ import type {
   RuntimeDiscoveredPort
 } from '@noodl/types';
 
-import type { BackendServicesMetaData, ResolvedBackend, SchemaField } from './byob-types';
+import type { ResolvedBackend, SchemaField } from './byob-types';
+
+import * as SchemaPorts from './schema-ports';
 
 import ByobUtils = require('./byob-utils');
 
@@ -369,7 +371,11 @@ const CreateRecordNode: NodeDefinitionOptions = {
 };
 
 /**
- * Update dynamic ports based on node configuration
+ * Update dynamic ports based on node configuration.
+ *
+ * Composed from the shared schema-driven port generator (BCN-004 step 4): the
+ * per-column input ports, their enum dropdowns and the hidden-field skipping all
+ * come from `fieldPorts`, which reads both the cached and the raw field shape.
  */
 function updatePorts(
   nodeId: string,
@@ -377,116 +383,22 @@ function updatePorts(
   editorConnection: NodeContextLike['editorConnection'],
   graphModel: GraphModelLike
 ) {
-  const ports: RuntimeDiscoveredPort[] = [];
+  const ctx = SchemaPorts.resolveSchemaPortContext({ graphModel, parameters });
 
-  // Get backend services metadata
-  const backendServices = (graphModel.getMetaData('backendServices') as BackendServicesMetaData) || {
-    backends: []
-  };
-  const backends = backendServices.backends || [];
+  const ports: RuntimeDiscoveredPort[] = [
+    ...SchemaPorts.backendPickerPorts(ctx),
+    ...SchemaPorts.apiPathModePorts(ctx),
+    ...SchemaPorts.collectionPorts(ctx),
+    // Dynamic field inputs based on selected collection schema, minus the
+    // columns the server owns
+    ...SchemaPorts.fieldPorts(ctx, {
+      readOnlyFields: ['id', 'date_created', 'date_updated', 'user_created', 'user_updated']
+    })
+  ];
 
-  // Backend selection dropdown
-  const backendEnums = [{ label: 'Active Backend', value: '_active_' }];
-  backends.forEach((b) => {
-    backendEnums.push({ label: b.name, value: b.id });
+  SchemaPorts.sendSchemaPorts(editorConnection, nodeId, ports, {
+    staticPorts: SchemaPorts.staticPortNames(CreateRecordNode)
   });
-
-  ports.push({
-    name: 'backendId',
-    displayName: 'Backend',
-    type: {
-      name: 'enum',
-      enums: backendEnums,
-      allowEditOnly: true
-    },
-    default: '_active_',
-    plug: 'input',
-    group: 'Backend'
-  });
-
-  // Resolve the selected backend
-  const selectedBackendId =
-    parameters.backendId === '_active_' || !parameters.backendId
-      ? backendServices.activeBackendId
-      : parameters.backendId;
-  const selectedBackend = backends.find((b) => b.id === selectedBackendId);
-  const allCollections = selectedBackend?.schema?.collections || [];
-
-  // API Path Mode dropdown - MUST come before Collection for proper UX
-  const isSystemTable = ByobUtils.isSystemCollection(parameters.collection as string);
-
-  ports.push({
-    name: 'apiPathMode',
-    displayName: 'API Path',
-    type: {
-      name: 'enum',
-      enums: [
-        { label: 'Items (User Collections)', value: 'items' },
-        { label: 'System (Directus Tables)', value: 'system' }
-      ],
-      allowEditOnly: true
-    },
-    default: isSystemTable ? 'system' : 'items',
-    plug: 'input',
-    group: 'Configuration'
-  });
-
-  // Filter collections based on selected API path mode
-  const apiPathMode = (parameters.apiPathMode as string) || (isSystemTable ? 'system' : 'items');
-  const filteredCollections = ByobUtils.filterCollectionsByMode(allCollections, apiPathMode);
-
-  // Collection dropdown (filtered by API path mode)
-  const collectionEnums = [{ label: '(Select collection)', value: '' }];
-  filteredCollections.forEach((c) => {
-    collectionEnums.push({ label: c.displayName || c.name, value: c.name });
-  });
-
-  ports.push({
-    name: 'collection',
-    displayName: 'Collection',
-    type: {
-      name: 'enum',
-      enums: collectionEnums,
-      allowEditOnly: true
-    },
-    plug: 'input',
-    group: 'Configuration'
-  });
-
-  // Dynamic field inputs based on selected collection schema
-  const selectedCollection = allCollections.find((c) => c.name === parameters.collection);
-  const fields = selectedCollection?.fields || [];
-
-  // Read-only fields that should never be editable
-  const readOnlyFields = ['id', 'date_created', 'date_updated', 'user_created', 'user_updated'];
-
-  fields.forEach((field) => {
-    // Skip read-only fields
-    if (readOnlyFields.includes(field.name)) {
-      return;
-    }
-
-    // Skip presentation elements and hidden fields
-    if (!ByobUtils.shouldShowField(field)) {
-      return;
-    }
-
-    // Get enhanced field type (with enum support, placeholders, etc.)
-    const fieldType = ByobUtils.getEnhancedFieldType(field);
-
-    ports.push({
-      name: `field_${field.name}`,
-      displayName: field.displayName || field.name,
-      type: fieldType.type,
-      plug: 'input',
-      group: 'Fields'
-    });
-  });
-
-  // NOTE: 'create' signal is defined in static inputs.
-  // Outputs are all static too — pushing them here would list each twice in getPorts().
-
-  editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
 const CreateRecordNodeModule: NodeModule = {
@@ -496,60 +408,33 @@ const CreateRecordNodeModule: NodeModule = {
       return;
     }
 
+    /**
+     * The field-schema stash below is dead code, kept verbatim — see the DEFECT note on
+     * `_internal.fieldSchema` in the instance type. It writes onto the editor-side
+     * `GraphNodeModel`, not the runtime instance that reads it. Left as it was because
+     * removing it and making it work are two different changes, and only one of them is
+     * BCN-004 step 4's.
+     */
     function _managePortsForNode(node: GraphNodeModel & { _internal?: Record<string, unknown> }) {
-      // Store field schema in node for value normalization
-      const backendServices = (graphModel.getMetaData('backendServices') as BackendServicesMetaData) || {
-        backends: []
-      };
-      const backends = backendServices.backends || [];
-      const selectedBackendId =
-        node.parameters.backendId === '_active_' || !node.parameters.backendId
-          ? backendServices.activeBackendId
-          : node.parameters.backendId;
-      const selectedBackend = backends.find((b) => b.id === selectedBackendId);
-      const allCollections = selectedBackend?.schema?.collections || [];
-      const selectedCollection = allCollections.find((c) => c.name === node.parameters.collection);
+      function _stashFieldSchema() {
+        const ctx = SchemaPorts.resolveSchemaPortContext({ graphModel, parameters: node.parameters || {} });
+        if (!ctx.selectedCollection || !ctx.selectedCollection.fields) return;
 
-      if (selectedCollection && selectedCollection.fields) {
         const fieldSchema: Record<string, SchemaField> = {};
-        selectedCollection.fields.forEach((field: SchemaField) => {
+        ctx.selectedCollection.fields.forEach((field: SchemaField) => {
           fieldSchema[field.name] = field;
         });
-        // Ensure _internal exists before setting properties
         if (!node._internal) {
           node._internal = {};
         }
         node._internal.fieldSchema = fieldSchema;
       }
 
+      _stashFieldSchema();
       updatePorts(node.id, node.parameters || {}, context.editorConnection, graphModel);
 
       node.on('parameterUpdated', function () {
-        // Update field schema when collection changes
-        const backendServices = (graphModel.getMetaData('backendServices') as BackendServicesMetaData) || {
-          backends: []
-        };
-        const backends = backendServices.backends || [];
-        const selectedBackendId =
-          node.parameters.backendId === '_active_' || !node.parameters.backendId
-            ? backendServices.activeBackendId
-            : node.parameters.backendId;
-        const selectedBackend = backends.find((b) => b.id === selectedBackendId);
-        const allCollections = selectedBackend?.schema?.collections || [];
-        const selectedCollection = allCollections.find((c) => c.name === node.parameters.collection);
-
-        if (selectedCollection && selectedCollection.fields) {
-          const fieldSchema: Record<string, SchemaField> = {};
-          selectedCollection.fields.forEach((field: SchemaField) => {
-            fieldSchema[field.name] = field;
-          });
-          // Ensure _internal exists before setting properties
-          if (!node._internal) {
-            node._internal = {};
-          }
-          node._internal.fieldSchema = fieldSchema;
-        }
-
+        _stashFieldSchema();
         updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
       });
 
