@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "isolatedModules": true,
+    "noEmit": true,
+    "strict": true,
+    // This package is types and frozen data. Nothing here should ever need an
+    // escape hatch, and `strict` is what keeps that true as the descriptors
+    // grow — a capability table with an implicit `any` in it is a table that
+    // can claim anything.
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}

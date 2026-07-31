@@ -57,8 +57,8 @@ POCKETBASE 0.30.0
 ══════════════════════════════════════════════════════════════════════════
   health: {"message":"API is healthy.","code":200,"data":{}}
 
-  articles collection created
-  7 records seeded
+  articles collection already present — reusing
+  7 records already present — not re-seeding
 
 ── PocketBase count — the one that works ─────────────────────────────────
   200  GET …/records?perPage=1
@@ -73,17 +73,17 @@ POCKETBASE 0.30.0
        
   200  colon-style aggregate   GET /api/collections/articles/records?fields=rating:sum
   200  a group parameter   GET /api/collections/articles/records?group=status
-       {"items":[{"collectionId":"pbc_4287850865","collectionName":"articles","featured":true,"id":"f6unhpedhg3onf9","rating":5,"status":"published","title":"Published one"},{"collectionId":"pbc_4287850865","collectionName":"articles","featured":false,"id":"z96lmuppa …
+       {"items":[{"collectionId":"pbc_4287850865","collectionName":"articles","featured":true,"id":"c45imxv4d52w3ay","rating":5,"status":"published","title":"Published one"},{"collectionId":"pbc_4287850865","collectionName":"articles","featured":false,"id":"j4ps9ujrr …
   200  groupBy parameter   GET /api/collections/articles/records?groupBy=status&fields=rating
        {"items":[{"rating":5},{"rating":3},{"rating":4},{"rating":2},{"rating":4},{"rating":5},{"rating":2}],"page":1,"perPage":30,"totalItems":7,"totalPages":1}
        
   200  unknown parameter, as a control   GET /api/collections/articles/records?thisParamDoesNotExist=1&perPage=1
-       {"items":[{"collectionId":"pbc_4287850865","collectionName":"articles","featured":true,"id":"f6unhpedhg3onf9","rating":5,"status":"published","title":"Published one"}],"page":1,"perPage":1,"totalItems":7,"totalPages":7}
+       {"items":[{"collectionId":"pbc_4287850865","collectionName":"articles","featured":true,"id":"c45imxv4d52w3ay","rating":5,"status":"published","title":"Published one"}],"page":1,"perPage":1,"totalItems":7,"totalPages":7}
        
 
 ── PocketBase distinct ───────────────────────────────────────────────────
   200  distinct parameter   GET /api/collections/articles/records?distinct=status
-       {"items":[{"collectionId":"pbc_4287850865","collectionName":"articles","featured":true,"id":"f6unhpedhg3onf9","rating":5,"status":"published","title":"Published one"},{"collectionId":"pbc_4287850865","collectionName":"articles","featured":false,"id":"z96lmuppav98val","rating":3,"status":"published","title":"Published two"},{"collectionId":"pbc_4287850865","collectionName":"articles","featured":fal …
+       {"items":[{"collectionId":"pbc_4287850865","collectionName":"articles","featured":true,"id":"c45imxv4d52w3ay","rating":5,"status":"published","title":"Published one"},{"collectionId":"pbc_4287850865","collectionName":"articles","featured":false,"id":"j4ps9ujrrwa8t1z","rating":3,"status":"published","title":"Published two"},{"collectionId":"pbc_4287850865","collectionName":"articles","featured":fal …
   200  fields=status only   GET /api/collections/articles/records?fields=status&perPage=50
        {"items":[{"status":"published"},{"status":"published"},{"status":"published"},{"status":"draft"},{"status":"draft"},{"status":"archived"},{"status":"archived"}],"page":1,"perPage":50,"totalItems":7,"totalPages":1}
        
@@ -93,6 +93,26 @@ POCKETBASE 0.30.0
   200  reading the view
        {"items":[{"avg_rating":3.5,"collectionId":"pbc_2089103500","collectionName":"articles_by_status","id":"1","n":2,"status":"archived"},{"avg_rating":3,"collectionId":"pbc_2089103500","collectionName":"articles_by_status","id":"2","n":2,"status":"draft"},{"avg_rating":4,"collectionId":"pbc_2089103500","collectionName":"articles_by_status","id":"3","n":3,"status":"published"}],"page":1,"perPage":10,"totalItems":3,"totalPages":1}
        
+
+══════════════════════════════════════════════════════════════════════════
+DIRECTUS 11 — RUN-003's container, reused
+══════════════════════════════════════════════════════════════════════════
+
+── Directus aggregate ────────────────────────────────────────────────────
+  200  count over the collection   GET /items/articles?aggregate[count]=*
+       {"data":[{"count":4}]}
+  200  sum of a column   GET /items/articles?aggregate[sum]=rating
+       {"data":[{"sum":{"rating":14}}]}
+  200  GROUP BY status   GET /items/articles?aggregate[count]=*&groupBy=status
+       {"data":[{"status":"draft","count":1},{"status":"published","count":3}]}
+  200  aggregate with a filter   GET /items/articles?aggregate[avg]=rating&filter={"status":{"_eq":"published"}}
+       {"data":[{"avg":{"rating":3.3333333333333335}}]}
+
+── Directus distinct & search ────────────────────────────────────────────
+  200  distinct via groupBy   GET /items/articles?groupBy=status&aggregate[count]=*
+       {"data":[{"status":"draft","count":1},{"status":"published","count":3}]}
+  200  the search parameter   GET /items/articles?search=Published&fields=title
+       {"data":[{"title":"Alpha"},{"title":"Beta"},{"title":"Delta"}]}
 
 ══════════════════════════════════════════════════════════════════════════
 VERDICTS — transcribed into the BCN-001 capability descriptor
@@ -134,6 +154,22 @@ VERDICTS — transcribed into the BCN-001 capability descriptor
       pointed at PocketBase would not error, it would return wrong numbers.
       There is nothing to catch at runtime, so the descriptor gate is the only
       thing that can stop it. Exactly the case BCN-010 exists for.
+
+  DIRECTUS  data.aggregate ....................... supported
+      count, sum and avg all answered, groupBy groups, and a filter composes
+      with the aggregate. No opt-in, no admin setting. Not on the unverified
+      list — probed anyway because the container was already here.
+
+  DIRECTUS  data.distinct ........................ supported
+      groupBy alone returns one row per distinct value.
+
+  DIRECTUS  data.search .......................... degraded
+      ?search= works but is a substring match across EVERY field, unranked:
+      searching "Published" returned three articles whose *status* is
+      published and whose titles do not contain the word. That is not what a
+      user typing into a search box means, and it is not what BAK-008's FTS5
+      ranking does on the built-in backend. Same port, materially different
+      behaviour — which is the definition of degraded.
 
   POCKETBASE  data.count ......................... supported
       totalItems / totalPages on every list response.

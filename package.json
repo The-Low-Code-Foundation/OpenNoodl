@@ -51,7 +51,7 @@
     "test:ci": "ts-node -P ./scripts/tsconfig.json ./scripts/test-editor.ts --ci",
     "test:platform": "lerna exec --scope @noodl/platform-node -- npm test",
     "test:main": "npm --prefix packages/noodl-editor run test:main",
-    "test:packages": "lerna run test --stream --concurrency 1 --scope @noodl/noodl-core-ui --scope @noodl/runtime --scope @noodl/nodegx-backend --scope @noodl/noodl-viewer-react --scope @noodl/preview --scope @noodl/mcp --scope @noodl/cloud-runtime",
+    "test:packages": "lerna run test --stream --concurrency 1 --scope @noodl/noodl-core-ui --scope @noodl/runtime --scope @noodl/nodegx-backend --scope @noodl/backend-contract --scope @noodl/noodl-viewer-react --scope @noodl/preview --scope @noodl/mcp --scope @noodl/cloud-runtime",
     "check:persistence": "lerna run build --stream --scope @noodl/nodegx-backend && node scripts/check-packaged-persistence.js",
     "cloud-library:generate": "node scripts/cloud-node-library/generate.js",
     "cloud-library:check": "node scripts/cloud-node-library/generate.js --check",

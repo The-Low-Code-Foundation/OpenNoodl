@@ -27,8 +27,10 @@
 const PGRST_DEFAULT = 'http://localhost:8057';
 const PGRST_ENABLED = 'http://localhost:8058';
 const POCKETBASE = 'http://localhost:8091';
+const DIRECTUS = 'http://localhost:8055';
 
 const PB_ADMIN = { identity: 'admin@example.com', password: 'pocketbase-admin-pw' };
+const DIRECTUS_ADMIN = { email: 'admin@example.com', password: 'directus-admin-pw' };
 
 let failures = 0;
 
@@ -282,6 +284,52 @@ async function probePocketbase(token) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// Directus
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * Directus was not on BCN-001's unverified list — its aggregate support is
+ * documented and unambiguous. It is probed anyway because the container is
+ * already in this rig, and "documented, not probed" is a choice rather than a
+ * limit when the backend is one `docker compose up` away. Uses RUN-003's
+ * existing Directus service and its seed.
+ */
+async function probeDirectus() {
+  const authed = await req(`${DIRECTUS}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(DIRECTUS_ADMIN)
+  });
+  if (!authed.ok) {
+    console.error(`  !! Directus login failed (${authed.status}): ${authed.text.slice(0, 200)}`);
+    console.error('     Has `node seed.mjs` been run against this container?');
+    failures++;
+    return;
+  }
+  const headers = { Authorization: `Bearer ${authed.json.data.access_token}` };
+
+  sub('Directus aggregate');
+  for (const [name, path] of [
+    ['count over the collection', '/items/articles?aggregate[count]=*'],
+    ['sum of a column', '/items/articles?aggregate[sum]=rating'],
+    ['GROUP BY status', '/items/articles?aggregate[count]=*&groupBy=status'],
+    ['aggregate with a filter', '/items/articles?aggregate[avg]=rating&filter={"status":{"_eq":"published"}}']
+  ]) {
+    const res = await req(DIRECTUS + path, { headers });
+    report(`${name}   GET ${path}`, res, { maxBody: 300 });
+  }
+
+  sub('Directus distinct & search');
+  for (const [name, path] of [
+    ['distinct via groupBy', '/items/articles?groupBy=status&aggregate[count]=*'],
+    ['the search parameter', '/items/articles?search=Published&fields=title']
+  ]) {
+    const res = await req(DIRECTUS + path, { headers });
+    report(`${name}   GET ${path}`, res, { maxBody: 300 });
+  }
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 
 async function main() {
   hr('BCN-001 aggregate-capability probe');
@@ -305,6 +353,9 @@ async function main() {
     const token = await pbAuth();
     if (token && (await pbSeed(token))) await probePocketbase(token);
   }
+
+  hr('DIRECTUS 11 — RUN-003\'s container, reused');
+  if (await waitFor(DIRECTUS + '/server/health', 'directus')) await probeDirectus();
 
   hr('VERDICTS — transcribed into the BCN-001 capability descriptor');
   console.log(`
@@ -344,6 +395,22 @@ async function main() {
       pointed at PocketBase would not error, it would return wrong numbers.
       There is nothing to catch at runtime, so the descriptor gate is the only
       thing that can stop it. Exactly the case BCN-010 exists for.
+
+  DIRECTUS  data.aggregate ....................... supported
+      count, sum and avg all answered, groupBy groups, and a filter composes
+      with the aggregate. No opt-in, no admin setting. Not on the unverified
+      list — probed anyway because the container was already here.
+
+  DIRECTUS  data.distinct ........................ supported
+      groupBy alone returns one row per distinct value.
+
+  DIRECTUS  data.search .......................... degraded
+      ?search= works but is a substring match across EVERY field, unranked:
+      searching "Published" returned three articles whose *status* is
+      published and whose titles do not contain the word. That is not what a
+      user typing into a search box means, and it is not what BAK-008's FTS5
+      ranking does on the built-in backend. Same port, materially different
+      behaviour — which is the definition of degraded.
 
   POCKETBASE  data.count ......................... supported
       totalItems / totalPages on every list response.
