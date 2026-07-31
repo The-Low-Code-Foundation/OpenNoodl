@@ -138,9 +138,17 @@ asymmetry is deliberate and is the single most load-bearing detail in the implem
 | No session at all | call back immediately with no session — an anonymous request |
 | `eternal` lifecycle | call back immediately, always |
 | Session fresh (now < refresh-at) | call back immediately |
-| Session inside its refresh margin, no refresh running | start one, queue this caller |
-| Refresh already running | queue this caller — **do not start a second** |
+| Inside the refresh margin, token **still valid** | call back immediately **with the current token**, and start the refresh in the background if one is not already running |
+| Token **expired**, no refresh running | start one, queue this caller |
+| Token expired, refresh already running | queue this caller — **do not start a second** |
 | Refresh just failed fatally | call back with no session; the session is gone |
+
+The fourth row is the one worth arguing with, so it is stated rather than
+implied: **a request inside the refresh margin does not wait.** The margin
+exists precisely because the access token is still good throughout it, and only
+the *refresh* token rotates — so holding a request back would add latency to buy
+nothing. Queueing is what happens when there is genuinely no usable token, which
+on a correctly scheduled lifecycle should be never.
 
 ### Why rotation makes this non-negotiable
 
