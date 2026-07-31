@@ -20,13 +20,48 @@ export interface AuthUser {
   [property: string]: unknown;
 }
 
-export interface AuthSession {
-  user: AuthUser;
-  /** Opaque to callers. Its lifetime is described by `TokenLifecycle`. */
-  sessionToken: string;
+/**
+ * A signed-in session: the user's own fields, **flat**, with the tokens beside
+ * them.
+ *
+ * ⚠️ **Corrected in BCN-006.** BCN-001 shaped this as an envelope,
+ * `{user, sessionToken}`, and putting the first auth adapter behind the contract
+ * is what showed that nothing produces or consumes that. Parse answers `/login`,
+ * `/users` and `/users/me` with the user record and `sessionToken` *in* it;
+ * `userservice.ts` stores that object verbatim under one key; `login.ts`,
+ * `signup.ts`, `users.ts` and the `User` node all read user fields straight off
+ * what `success` hands them. An envelope would have required changing every one
+ * of those call sites in the one task whose safety argument is that none of them
+ * move.
+ *
+ * It is also the right shape for the other four backends rather than a
+ * concession to this one. Directus and Supabase answer with
+ * `{access_token, refresh_token, user}`; their adapters flatten *towards* this,
+ * which is the same direction `recordIdentity.ts` normalises records — the
+ * Parse-family name wins, the better implementation comes from wherever it is
+ * better.
+ */
+export interface AuthSession extends AuthUser {
+  /**
+   * Opaque to callers. Its lifetime is described by `TokenLifecycle`.
+   *
+   * Optional because a stored session can lack one — Parse's own storage has
+   * always been able to hold a user object with no token, and BCN-002 pinned
+   * that the wire sends the literal string `undefined` when it does.
+   */
+  sessionToken?: string;
   /** Present only on `refresh`-lifecycle backends. */
   refreshToken?: string;
-  /** Unix ms. Present only on `refresh`-lifecycle backends. */
+  /**
+   * Unix ms at which `sessionToken` stops being accepted.
+   *
+   * The **token is the authority**: when the backend states an expiry
+   * (Directus's `expires`, Supabase's `expires_at`, a JWT `exp`) that is what
+   * belongs here. `RefreshTokenLifecycle.accessTtlSeconds` is a fallback for
+   * backends that state nothing, never an override — every one of these
+   * backends lets an administrator change the TTL, so a declared value that won
+   * would be wrong on exactly the instances configured deliberately.
+   */
   expiresAt?: number;
 }
 
@@ -77,10 +112,27 @@ export interface RequestPasswordResetOptions extends Callbacks<() => void> {
   email: string;
 }
 
-export interface SignInWithProviderOptions extends Callbacks<(session: AuthSession) => void> {
+/**
+ * ⚠️ **Corrected in BCN-006 — this one does not take `Callbacks`.**
+ *
+ * `signInWithProvider` *navigates the browser away*. Nothing after it runs, and
+ * the result arrives on a later page load through the adapter's return leg. So
+ * `success` is never called on a redirect-based provider, and requiring it —
+ * which `Callbacks` does — would have made every call site declare a callback
+ * that cannot fire. `signinwith.ts` passes only `error`, and passes it for the
+ * two things that *can* fail before the navigation: no configured backend, and
+ * no provider set.
+ *
+ * `success` stays declared, optional, because a backend that signs in through a
+ * popup or a token exchange rather than a top-level redirect can honour it.
+ */
+export interface SignInWithProviderOptions {
   provider: string;
   /** Where to land after the provider redirects back. */
   redirect?: string;
+  /** Never called when the sign-in is a top-level redirect. */
+  success?: (session: AuthSession) => void;
+  error?: (err?: string) => void;
 }
 
 export interface RequestMagicLinkOptions extends Callbacks<() => void> {
@@ -114,6 +166,60 @@ export const AUTH_ADAPTER_METHODS = Object.freeze([
   'requestMagicLink'
 ] as const) satisfies readonly (keyof IAuthAdapter)[];
 
+// ── The session event surface ───────────────────────────────────────────────
+
+/**
+ * What an auth adapter announces about the session, in the vocabulary the
+ * `User` node has always had.
+ *
+ * These four names are not new. `userservice.ts` has emitted them since long
+ * before this contract, and `user.ts` wires three of them to real output ports
+ * (`loggedIn`, `loggedOut`, `sessionLost`). They are written down here so that
+ * five adapters announce the *same* four things rather than each inventing a
+ * vocabulary, and so BCN-006's refresh machinery has a name for the one event
+ * it needs to raise — a failed refresh is a `sessionLost`, which is a port a
+ * builder can already wire.
+ *
+ * `sessionChanged` is the fifth and is the only one that is new. It is the
+ * *storage* fact, not a user-facing event: "what is written under this
+ * backend's session key is now this". `UserService` listens to it to keep its
+ * `current` model in step, which is what lets the ten methods move into an
+ * adapter without changing the order in which anything observable happens.
+ */
+export type AuthEventType =
+  /** A password/OAuth sign-in completed. */
+  | 'loggedIn'
+  /** An explicit sign-out completed. */
+  | 'loggedOut'
+  /** A stored session was checked against the backend and is alive. */
+  | 'sessionGained'
+  /**
+   * A session ended without the user asking: the backend rejected it, or a
+   * refresh could not be completed before the access token expired.
+   *
+   * **A successful silent refresh raises nothing.** `sessionGained` is what
+   * graphs wire re-fetches to, and firing it every access-token lifetime would
+   * turn a project into one that re-queries its backend on a timer forever.
+   */
+  | 'sessionLost'
+  /** The stored session changed. Bookkeeping, not a user-facing event. */
+  | 'sessionChanged';
+
+export type AuthEventHandler = (session?: AuthSession) => void;
+
+export interface IAuthEvents {
+  on(event: AuthEventType, handler: AuthEventHandler, context?: unknown): void;
+  off(event: AuthEventType, handler?: AuthEventHandler, context?: unknown): void;
+}
+
+export const AUTH_EVENTS = Object.freeze([
+  'loggedIn',
+  'loggedOut',
+  'sessionGained',
+  'sessionLost',
+  'sessionChanged'
+] as const) satisfies readonly AuthEventType[];
+
 // ── The eleventh member, which is not a method ──────────────────────────────
 
 /**
@@ -143,7 +249,12 @@ export interface EternalTokenLifecycle {
 /** Directus, Supabase, PocketBase. */
 export interface RefreshTokenLifecycle {
   kind: 'refresh';
-  /** Nominal access-token lifetime in seconds, as the backend ships it. */
+  /**
+   * Nominal access-token lifetime in seconds, as the backend ships it.
+   *
+   * A **fallback**, used only when a session carries no `expiresAt` of its own.
+   * See {@link AuthSession.expiresAt}.
+   */
   accessTtlSeconds: number;
   /** Path, relative to the handle's URL. */
   refreshEndpoint: string;
@@ -156,3 +267,24 @@ export interface RefreshTokenLifecycle {
    */
   refreshBeforeExpirySeconds: number;
 }
+
+/**
+ * A lifecycle does not have to come from a descriptor.
+ *
+ * Richard's 2026-07-31 answer to "is `custom` really data-only?" made `custom` a
+ * **declared** backend: the user fills in the capability table themselves in the
+ * Backend Services panel, and the token lifecycle is part of what they declare.
+ * The shape is the same either way — this is data, and the machinery that acts
+ * on it neither knows nor cares which form filled it in.
+ *
+ * What differs is **trust**. A descriptor lifecycle was written against a
+ * backend somebody probed; a declared one was typed into a form. So a declared
+ * lifecycle is validated before it is armed, and an invalid one degrades to
+ * `eternal` rather than refusing to connect — the rule `customDescriptor`
+ * already states for its own default, because a refresh loop against an endpoint
+ * that may not exist produces background 404s on every custom backend that never
+ * needed one. The validator is
+ * `noodl-runtime/src/api/backends/TokenLifecycle.ts::validateTokenLifecycle`;
+ * it lives there rather than here because this package is types and frozen data.
+ */
+export type DeclaredTokenLifecycle = TokenLifecycle;
