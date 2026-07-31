@@ -210,9 +210,112 @@ export interface RelationOptions extends Callbacks<(record: AdapterRecord) => vo
 
 // ── Files ──────────────────────────────────────────────────────────────────
 
-export interface UploadFileOptions extends FileCallbacks<(result: { name: string; url: string }) => void> {
+/**
+ * One stored file, as it crosses the adapter boundary.
+ *
+ * `name` and `url` are the two the rest of NodeGX already runs on: `CloudFile`
+ * is built from exactly those two, `signFileUrl` and `deleteFile` are addressed
+ * by `name`, and `cloudstore.js`'s `_serializeObject` persists a File-typed
+ * record property as `{__type: 'File', url, name}`. They are therefore required
+ * and keep their Parse-family spelling, per the phase's naming decision.
+ *
+ * The other four are what BCN-007 adds, and every one of them is a field some
+ * backend returns and the wire currently throws away. They are **optional
+ * because they are not always knowable**, not because they are unimportant:
+ *
+ * - `id` is the backend's own handle where that is a different thing from the
+ *   stored name. Ours and Parse's are the same string, so neither sets it;
+ *   Directus keys files by a UUID and serves them from `/assets/{id}`, so the
+ *   name and the address are genuinely two values there.
+ * - `filename` is what the user called the file. Ours sanitises and prefixes
+ *   (`<random8>_<sanitized original>`), so `name` and `filename` diverge the
+ *   moment anyone uploads `my photo.png`.
+ * - `contentType` is the **sniffed** type where a backend sniffs. BAK-006's
+ *   `sniff.ts` exists because a client's declared type decides what renders and
+ *   clients lie; an adapter that reports the declared type here re-introduces
+ *   the bug that module was written to fix.
+ * - `size` in bytes.
+ *
+ * ⚠️ **These four survive an upload, not a round trip.** A file read back off a
+ * record comes through `_deserializeJSON`, which reconstructs a `CloudFile` from
+ * the persisted `{__type: 'File', url, name}` and has never had anywhere to put
+ * a size or a content type. So a `FileRef` from `uploadFile` may carry all six
+ * fields and the same file loaded from a record will carry two. Widening the
+ * persisted shape is a stored-data change and belongs to whoever owns the record
+ * wire, not here.
+ */
+export interface FileRef {
+  /** The **stored** name — what `signFileUrl` and `deleteFile` are addressed by. */
+  name: string;
+  /** Where the bytes are served from. Not necessarily usable without credentials — see {@link FileUrlKind}. */
+  url: string;
+  id?: string;
+  filename?: string;
+  contentType?: string;
+  size?: number;
+}
+
+/**
+ * What kind of URL a backend just handed back — and the reason this is on the
+ * contract rather than in a doc page.
+ *
+ * The spec's third desired state says it plainly: *"a URL that expires and a URL
+ * that requires a header are different things for an app author to hold."* They
+ * fail differently, they are shareable differently, and the failure arrives
+ * hours later in someone else's browser. A single `url: string` cannot say which
+ * one it is, and every backend picks a different one:
+ *
+ * - `signed` — the URL carries its own proof (`?exp=&sig=`) and stops working at
+ *   `expiresAt`. Anyone holding it can fetch it until then; nobody can fetch it
+ *   after. This is ours, from BAK-006, and Supabase's.
+ * - `token` — the URL only works while it carries a credential belonging to the
+ *   **signed-in user**. Pasting it to a colleague either fails for them or hands
+ *   them the credential; neither is what the author expected. Directus's asset
+ *   access token and PocketBase's file token are both this.
+ * - `public` — needs nothing and never expires. Upstream Parse's files are this,
+ *   and so is any file on our backend that was not uploaded private.
+ *
+ * Required, not optional, on {@link SignedFileUrl}: an adapter that cannot say
+ * which of the three it produced does not know what it just handed the user.
+ */
+export type FileUrlKind = 'signed' | 'token' | 'public';
+
+export const FILE_URL_KINDS: readonly FileUrlKind[] = Object.freeze(['signed', 'token', 'public']);
+
+/**
+ * The result of asking a backend for a usable link to a file.
+ *
+ * `expiresAt` is an **ISO string**, not an epoch number. BCN-001 typed it
+ * `number`; `nodegx-backend`'s `FileRoutes.signUrl` sends an ISO timestamp and
+ * the Sign File URL node has always declared it a string and published it on a
+ * `string` port. Corrected in BCN-002 — a wrong type here would have had
+ * BCN-004's adapters minting epochs for a port that renders them verbatim.
+ *
+ * Both it and `ttlSeconds` stay optional because a `public` URL has no expiry to
+ * report, and a `token` URL's expiry is the session's rather than the link's.
+ */
+export interface SignedFileUrl {
+  url: string;
+  /** See {@link FileUrlKind}. The one field that says how this URL will fail. */
+  kind: FileUrlKind;
+  expiresAt?: string;
+  ttlSeconds?: number;
+}
+
+/**
+ * ⚠️ **`data` is gone, and it was required.** BCN-001 extracted a `data: unknown`
+ * field because `cloudstore.js` merged `options.data` into the upload response
+ * before handing it to `success`. Nothing in the repo has ever set it — not the
+ * Upload File node, not `Noodl.Files.upload`, not a test — so the merge only ever
+ * spread `undefined`, and the contract carried a **required** field no caller
+ * could satisfy. Removing it is the same class of correction as BCN-002's three,
+ * and it is removed here rather than recorded because BCN-007 is the task that
+ * owns what an upload returns: the answer is now {@link FileRef}, and an
+ * arbitrary caller-supplied object merged over the backend's own response is the
+ * one thing that shape cannot survive.
+ */
+export interface UploadFileOptions extends FileCallbacks<(result: FileRef) => void> {
   file: { name: string; type?: string };
-  data: unknown;
   /**
    * Carried as the `X-NodeGX-File-Private` header (`cloudstore.js:446`) —
    * **ours, not Parse's**. On every other backend privacy is a different
@@ -229,16 +332,16 @@ export interface UploadFileOptions extends FileCallbacks<(result: { name: string
 }
 
 /**
- * `expiresAt` is an **ISO string**, not an epoch number.
+ * Ask the backend for a link to a file that the app can actually use.
  *
- * BCN-001 typed it `number`; `nodegx-backend`'s `FileRoutes.signUrl` sends an
- * ISO timestamp and the Sign File URL node has always declared it a string and
- * published it on a `string` port. Corrected in BCN-002 — a wrong type here
- * would have had BCN-004's adapters minting epochs for a port that renders them
- * verbatim.
+ * The method is named for what our backend does — `GET /files/:name/sign` — and
+ * three of the five backends do something else. It keeps the name (the node is
+ * called Sign File URL and twenty-five nodes' worth of naming precedent says the
+ * Parse-family spelling wins) and the *result* carries the difference, in
+ * {@link SignedFileUrl.kind}. "Signing" is the question; the answer is allowed
+ * to be a token URL, as long as it says so.
  */
-export interface SignFileUrlOptions
-  extends FileCallbacks<(result: { url: string; expiresAt?: string; ttlSeconds?: number }) => void> {
+export interface SignFileUrlOptions extends FileCallbacks<(result: SignedFileUrl) => void> {
   name: string;
 }
 

@@ -14,13 +14,18 @@ import {
   CAPABILITY_KEYS,
   DATA_ADAPTER_METHODS,
   DIRECTUS_OPERATOR_MIGRATION,
+  FILE_URL_KINDS,
   FILTER_OPERATORS,
   LOWERED_OPERATORS,
   type BackendDescriptor,
   type Capability,
+  type FileRef,
+  type FileUrlKind,
   type FilterOperator,
   type IAuthAdapter,
-  type IDataAdapter
+  type IDataAdapter,
+  type SignedFileUrl,
+  type UploadFileOptions
 } from '../src';
 
 // ── Compile-time exhaustiveness ────────────────────────────────────────────
@@ -262,5 +267,53 @@ describe('the three Parse cells BCN-002 measured and found wrong', () => {
     // BCN-001 §0.2's separate-columns argument, now a measurement rather than
     // a reading. This is the sentence the descriptor is entitled to stand on.
     expect(capabilities['data.aggregate'].evidence).toContain('master key is required');
+  });
+});
+
+describe('the normalised file reference (BCN-007 step 1)', () => {
+  // The file methods are the part of the contract that has been corrected most
+  // — three shapes in BCN-002, a fourth here — so each correction gets a test
+  // that names it, for the same reason the Parse cells above do.
+
+  it('offers exactly three kinds of file URL, and the union and the array agree', () => {
+    // The array is the only way a test can enumerate a union; this line fails
+    // to COMPILE if a fourth kind is added to one and not the other.
+    const _kindsAreExhaustive: Exclude<FileUrlKind, (typeof FILE_URL_KINDS)[number]> extends never ? true : never =
+      true;
+    expect(_kindsAreExhaustive).toBe(true);
+    expect(FILE_URL_KINDS).toEqual(['signed', 'token', 'public']);
+  });
+
+  it('makes an adapter say which kind of URL it just minted', () => {
+    // `kind` is required. An adapter that cannot answer does not know what it
+    // handed the user — and the three fail in ways an app author has to plan
+    // for differently: one expires, one is a credential, one is neither.
+    const signed: SignedFileUrl = { url: 'https://x/a.png?exp=1&sig=y', kind: 'signed' };
+    // @ts-expect-error — a URL with no kind is not a SignedFileUrl.
+    const kindless: SignedFileUrl = { url: 'https://x/a.png' };
+    expect([signed.kind, kindless.url]).toEqual(['signed', 'https://x/a.png']);
+  });
+
+  it('requires only the two fields the rest of NodeGX already runs on', () => {
+    // `CloudFile` is built from `{name, url}` and a File-typed record property
+    // persists as `{__type:'File', url, name}`. The other four are real fields
+    // some backends report and none report all of — and none of them survives a
+    // round trip through a record, which is why they cannot be required.
+    const minimal: FileRef = { name: 'a1b2_photo.png', url: 'https://x/files/a1b2_photo.png' };
+    expect(Object.keys(minimal)).toEqual(['name', 'url']);
+  });
+
+  it('no longer asks an uploader for a `data` field nothing ever set', () => {
+    // BCN-001 extracted `data: unknown` as REQUIRED because `cloudstore.js`
+    // merged it into the upload response. No caller in the repo has ever set
+    // it, so the merge only ever spread `undefined` and the field could not be
+    // satisfied. Same class as BCN-002's three, found the same way — by making
+    // something else depend on the shape.
+    const options: UploadFileOptions = {
+      file: { name: 'photo.png', type: 'image/png' },
+      success: () => undefined,
+      error: () => undefined
+    };
+    expect(options.file.name).toBe('photo.png');
   });
 });
