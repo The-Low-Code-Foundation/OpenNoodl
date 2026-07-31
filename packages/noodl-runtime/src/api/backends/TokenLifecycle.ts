@@ -1,3 +1,10 @@
+/// <reference path="../../globals.d.ts" />
+//
+// Same rule as `ParseWireAdapter`, and the same reason: this file is compiled by
+// every consumer's program, `_noodl_cloud_runtime_version` is declared only in
+// this package's `src/globals.d.ts`, and the identifier must stay **bare** —
+// webpack's DefinePlugin substitutes identifiers, and `globalThis.…` is not a
+// substitution site. See PLAT-003 slice 13 and BCN-002 `37d23adb`.
 /**
  * `TokenLifecycleController` — refresh scheduling, single-flight, the request
  * gate, the failure policy and the cross-tab lock, built once.
@@ -130,6 +137,31 @@ export function validateTokenLifecycle(lifecycle: TokenLifecycle | undefined): s
   return undefined;
 }
 
+/**
+ * Is there a browser tab that outlives a request?
+ *
+ * The design doc's §6 rule, and it needed a sharper test than "is there
+ * storage". **RUN-002's SSR harness installs a `localStorage` mock**
+ * (`static/ssr/runtime-globals.js`) so the runtime's bracket-access reads work
+ * during a server render — which means an absent-storage check would have
+ * concluded "browser" and armed a fifteen-minute timer holding a refresh token,
+ * once per render, in a long-lived Node process.
+ *
+ * It installs no `window`, which is the honest signal. The cloud runtime is
+ * excluded separately: each request there has its own scope and its session
+ * arrives *with* the request, already validated, so there is nothing to schedule
+ * for and the next request brings its own token.
+ *
+ * Neither branch changes anything today — Parse is `eternal` and arms nothing —
+ * but BCN-004's Directus adapter would have leaked a timer per server render,
+ * and that is a defect nobody would look for.
+ */
+export function isBrowserTab(): boolean {
+  if (typeof window === 'undefined' || !window) return false;
+  if (typeof _noodl_cloud_runtime_version !== 'undefined') return false;
+  return true;
+}
+
 export type SessionCallback = (session: StoredSession | undefined, error?: string) => void;
 
 export interface TokenLifecycleControllerOptions {
@@ -158,6 +190,8 @@ export interface TokenLifecycleControllerOptions {
   now?: () => number;
   setTimeoutImpl?: (fn: () => void, delay: number) => unknown;
   clearTimeoutImpl?: (handle: unknown) => void;
+  /** Overridable for tests. Defaults to {@link isBrowserTab}. */
+  isBrowserTab?: () => boolean;
 }
 
 export class TokenLifecycleController {
@@ -175,6 +209,7 @@ export class TokenLifecycleController {
   private readonly now: () => number;
   private readonly setTimeoutImpl: (fn: () => void, delay: number) => unknown;
   private readonly clearTimeoutImpl: (handle: unknown) => void;
+  private readonly isBrowserTab: () => boolean;
 
   private timer: unknown;
   private unsubscribe?: () => void;
@@ -205,6 +240,7 @@ export class TokenLifecycleController {
     this.now = options.now || Date.now;
     this.setTimeoutImpl = options.setTimeoutImpl || ((fn, delay) => setTimeout(fn, delay));
     this.clearTimeoutImpl = options.clearTimeoutImpl || ((handle) => clearTimeout(handle as number));
+    this.isBrowserTab = options.isBrowserTab || isBrowserTab;
   }
 
   /** True when this controller has anything at all to do. */
@@ -233,7 +269,11 @@ export class TokenLifecycleController {
     if (this.started) return;
     this.started = true;
     if (this.lifecycle.kind === 'eternal') return;
-    if (!this.store.available) return; // SSR / cloud runtime — §6.
+    // §6. Not "is there storage": a server render HAS storage — a mock RUN-002
+    // installs so the runtime's reads work — and would otherwise arm a timer per
+    // render in a long-lived process.
+    if (!this.isBrowserTab()) return;
+    if (!this.store.available) return;
 
     this.unsubscribe = this.store.onExternalChange((session) => this.adoptFromOtherTab(session));
     this.sessionChanged();
@@ -369,6 +409,7 @@ export class TokenLifecycleController {
   private beginRefresh(): void {
     if (this.lifecycle.kind !== 'refresh') return;
     if (this.refreshing) return; // Single-flight. §3.
+    if (!this.isBrowserTab()) return;
     if (!this.store.available) return;
 
     const session = this.store.read();

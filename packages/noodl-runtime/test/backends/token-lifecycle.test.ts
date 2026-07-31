@@ -26,6 +26,7 @@ import type { SessionBroadcaster, StorageChange, StoredSession } from '../../src
 import {
   TokenLifecycleController,
   classifyRefreshFailure,
+  isBrowserTab,
   validateTokenLifecycle
 } from '../../src/api/backends/TokenLifecycle';
 import type { TokenLifecycleControllerOptions } from '../../src/api/backends/TokenLifecycle';
@@ -153,7 +154,12 @@ function makeRig(overrides: Partial<TokenLifecycleControllerOptions> & { session
         },
         now: () => timers.now,
         setTimeoutImpl: timers.setTimeout,
-        clearTimeoutImpl: timers.clearTimeout
+        clearTimeoutImpl: timers.clearTimeout,
+        // These suites run under jest's node environment, where there is no
+        // `window` — so the real check would refuse to start and every case
+        // below would pass by doing nothing. Injected, and the check itself is
+        // tested separately.
+        isBrowserTab: () => true
       },
       overrides
     ) as TokenLifecycleControllerOptions
@@ -635,7 +641,8 @@ describe('SSR and the cloud runtime', () => {
       performRefresh: () => Promise.reject(new Error('must not be called')),
       now: () => timers.now,
       setTimeoutImpl: timers.setTimeout,
-      clearTimeoutImpl: timers.clearTimeout
+      clearTimeoutImpl: timers.clearTimeout,
+      isBrowserTab: () => true
     });
     controller.start();
 
@@ -643,8 +650,49 @@ describe('SSR and the cloud runtime', () => {
     let seen: unknown = 'not called';
     controller.withSession((s) => (seen = s));
     expect(seen).toBeUndefined();
-    // A server render always sees a logged-out user, and a per-request timer
-    // holding a refresh token in a long-lived Node process is a memory leak.
+  });
+
+  test('⚠️ a server render HAS storage, and must still arm nothing', () => {
+    // The trap this exists for: RUN-002's SSR harness installs a `localStorage`
+    // mock (`static/ssr/runtime-globals.js`) so the runtime's bracket-access
+    // reads work during a render. An "is there storage" check therefore
+    // concludes *browser* on a server, and BCN-004's Directus adapter would have
+    // armed a fifteen-minute timer holding a refresh token once per render, in a
+    // long-lived Node process.
+    const rig = makeRig({ isBrowserTab: () => false });
+    rig.controller.start();
+
+    expect(rig.store.read()).toBeDefined(); // storage works
+    expect(rig.timers.count).toBe(0); // and nothing is scheduled against it
+    expect(rig.broadcaster.listeners).toHaveLength(0);
+  });
+
+  test('nor may a request start one', () => {
+    const rig = makeRig({ isBrowserTab: () => false });
+    rig.controller.start();
+    rig.timers.now += 900_001;
+    rig.controller.withSession(() => {});
+    expect(rig.refreshCalls).toHaveLength(0);
+  });
+
+  test('the real check refuses a Node environment, which is what a server render is', () => {
+    // No `window` here, and the SSR harness installs none either — which is the
+    // honest signal, unlike storage.
+    expect(isBrowserTab()).toBe(false);
+  });
+
+  test('the real check refuses the cloud runtime even when a window exists', () => {
+    (globalThis as unknown as { window: unknown }).window = { addEventListener() {} };
+    try {
+      expect(isBrowserTab()).toBe(true);
+      (globalThis as unknown as { _noodl_cloud_runtime_version: string })._noodl_cloud_runtime_version = '1';
+      // Each cloud-runtime request has its own scope and its session arrives
+      // *with* the request, already validated. There is nothing to schedule for.
+      expect(isBrowserTab()).toBe(false);
+    } finally {
+      delete (globalThis as unknown as { _noodl_cloud_runtime_version?: string })._noodl_cloud_runtime_version;
+      delete (globalThis as unknown as { window?: unknown }).window;
+    }
   });
 });
 
