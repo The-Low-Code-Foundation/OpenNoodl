@@ -101,7 +101,9 @@ export const nodegxDescriptor: BackendDescriptor = {
     // not implemented. BAK-001 shipped Server-Sent Events over a generic
     // ChangeBus instead. Same capability from a node's point of view, entirely
     // different transport, which is BCN-008's problem rather than this file's.
-    'realtime.subscribe': supported('BAK-001: SSE at GET /realtime, not Parse LiveQuery')
+    'realtime.subscribe': supported(
+      'BAK-001: SSE at GET /realtime, not Parse LiveQuery. BCN-008 measured it live: `connected` frame carries a server-minted clientId, POST /realtime/subscriptions answers 200 {accepted:[…]}, create/update/delete all arrive as `change` frames carrying the WHOLE record (a delete included). Heartbeat is a `: heartbeat` comment every 25s, which the client owes nothing back. A Last-Event-ID reconnect answers `connected` with a fresh clientId then `resync{reason:"reconnect"}`.'
+    )
   }),
 
   filters: filterTable(supported(`translated to SQL — ${SQL}`), {

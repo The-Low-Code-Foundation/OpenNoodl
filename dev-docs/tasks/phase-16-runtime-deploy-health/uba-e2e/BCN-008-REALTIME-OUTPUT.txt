@@ -1,0 +1,195 @@
+BCN-008 realtime probe — 2026-07-31T15:54:57.386Z
+node v22.22.0 · global EventSource: undefined · global WebSocket: function
+
+============================================================================
+DIRECTUS 11 — ws://localhost:8055/websocket
+============================================================================
+  · collection bcn008_items already present
+  primary key type: integer
+      evidence: GET /fields/bcn008_items/id
+
+── handshake ─────────────────────────────────────────────────────────────
+  connect: open
+      evidence: first handler to fire, at 4ms
+  auth reply: {"type":"auth","status":"ok"}
+      evidence: send {type:auth, access_token}
+  subscribe confirm: {"type":"subscription","event":"init","data":[],"uid":"bcn008"}
+      evidence: send {type:subscribe, collection, uid}
+
+── event payloads ────────────────────────────────────────────────────────
+  row id (REST): 2 (number)
+      evidence: POST /items — the REST view of the key
+  create frame: {"type":"subscription","event":"create","data":[{"id":2,"title":"probe row"}],"uid":"bcn008"}
+    create data[0] types: {id: number, title: string}
+  update frame: {"type":"subscription","event":"update","data":[{"id":2,"title":"probe row, edited"}],"uid":"bcn008"}
+    update data[0] types: {id: number, title: string}
+  DELETE frame: {"type":"subscription","event":"delete","data":["2"],"uid":"bcn008"}
+    delete data: array[1] of string
+      evidence: THE question — key type after a numeric-pk delete
+
+── keepalive ─────────────────────────────────────────────────────────────
+  waiting up to 45s for a server ping (WEBSOCKETS_HEARTBEAT_PERIOD default is 30s)…
+  server ping: {"type":"ping"} at 30016ms
+  answered with: {type:pong}
+
+── the no-pong rule (a second socket, deliberately silent) ───────────────
+  ignoring every ping for up to 100s and watching for a server-side close…
+  pings ignored: 1
+  server closed us: close at 60035ms — code=1005 reason=""
+
+── failure presentation ──────────────────────────────────────────────────
+  bad token: open@10ms → message@20ms → close@22ms
+    frame: {"type":"auth","status":"error","error":{"code":"AUTH_FAILED","message":"Authentication handshake failed."}}
+
+============================================================================
+SUPABASE — the rig has PostgREST, not a Supabase stack
+============================================================================
+  · The `supabase` compose profile is one postgres + one postgrest container.
+  · Supabase Realtime is a SEPARATE Elixir service (Phoenix channels) and is
+  · not in docker-compose.yml at all. These probes establish that rather than
+  · standing in for it.
+
+── what the descriptor tells a probe to ask ──────────────────────────────
+  GET /realtime/v1/api/tenants/realtime/health: 404
+      evidence: {}
+
+── the websocket endpoint a Supabase client would open ───────────────────
+  handler sequence: error@5ms (Received network error or non-101 status code.)
+
+── is anything listening on the usual Realtime port? ─────────────────────
+  ws://localhost:4000/socket/websocket: error@3ms
+  ws://localhost:54321/socket/websocket: error@2ms
+
+============================================================================
+POCKETBASE 0.30 — SSE at http://localhost:8091/api/realtime
+============================================================================
+  · collection bcn008_items already present
+
+── handshake — anonymous, no token anywhere ──────────────────────────────
+  GET /api/realtime: 200 text/event-stream
+  first frame: event=PB_CONNECT data={"clientId":"gub5UMCg9DH8WhF6GYp8CjuqMjOfROddbcAcHYV4"}
+    raw: "id:gub5UMCg9DH8WhF6GYp8CjuqMjOfROddbcAcHYV4\nevent:PB_CONNECT\ndata:{\"clientId\":\"gub5UMCg9DH8WhF6GYp8CjuqMjOfROddbcAcHYV4\"}"
+      evidence: the literal bytes, so the frame shape is on the record
+  POST /api/realtime {clientId, subscriptions}: 204
+      evidence: (empty body)
+
+── event payloads ────────────────────────────────────────────────────────
+  row id (REST): "8dsq9m32qfi4y75" (string)
+  create frame: event=bcn008_items data={"record":{"collectionId":"pbc_78145772","collectionName":"bcn008_items","count":1,"id":"8dsq9m32qfi4y75","title":"probe row"},"action":"create"}
+    record types: {collectionId: string, collectionName: string, count: number, id: string, title: string}
+  update frame: event=bcn008_items data={"record":{"collectionId":"pbc_78145772","collectionName":"bcn008_items","count":1,"id":"8dsq9m32qfi4y75","title":"probe row, edited"},"action":"update"}
+  DELETE frame: event=bcn008_items data={"record":{"collectionId":"pbc_78145772","collectionName":"bcn008_items","count":1,"id":"8dsq9m32qfi4y75","title":"probe row, edited"},"action":"delete"}
+    delete record types: {collectionId: string, collectionName: string, count: number, id: string, title: string}
+      evidence: THE question — is the record whole, or just a key?
+
+── keepalive ─────────────────────────────────────────────────────────────
+  watching an idle stream for 130s (long enough to catch a 30s, 60s or 120s beat)…
+  frames while idle: 0
+
+── failure presentation ──────────────────────────────────────────────────
+  subscribe with an unknown clientId: 404
+      evidence: {"data":{},"message":"Missing or invalid client id.","status":404}
+
+  stream to a dead port: TypeError: fetch failed
+      evidence: fetch rejects — there is no onerror/onclose distinction to get wrong on this path
+
+── is a private collection subscribable anonymously? ─────────────────────
+  subscribe to a superuser-only collection, anonymously: 204
+      evidence: (empty body)
+    …and does anything arrive?: no — accepted, then silent
+      evidence: wrote a row (200) and waited 6s
+
+============================================================================
+PARSE SERVER 7.3.0 — LiveQuery at ws://localhost:8092/parse
+============================================================================
+  GET /parse/serverInfo: 200
+    parseServerVersion: 7.3.0
+    liveQuery advertised?: NO
+      evidence: feature keys: globalConfig, hooks, cloudCode, logs, push, schemas, settings
+  · The descriptor probe says "a liveQueryServer entry, or a reachable ws:// endpoint".
+  · Half of that question is answered above; the other half is below.
+
+── open the LiveQuery socket the Parse SDK would open ────────────────────
+  first handler: error at 20ms — Received network error or non-101 status code.
+  full sequence: error@20ms
+  time to a definite answer: 20ms
+      evidence: how long a probe must budget before calling it unsupported
+
+── the root path, and the LiveQuery-on-its-own-port case ─────────────────
+  ws://localhost:8092/: error@10ms — Received network error or non-101 status code.
+  raw GET /parse with Upgrade headers: HTTP/1.1 403 Forbidden
+      evidence: "HTTP/1.1 403 Forbidden\r\nX-Powered-By: Express\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET,PUT,POST,DELETE,OPTIONS\r\nAccess-Control-Allow-Headers: X-Parse-Master-Key, X-Parse-REST"
+
+============================================================================
+NODEGX BACKEND — SSE at http://localhost:8593/realtime
+============================================================================
+  security posture: {"devOpen":true,"enforced":false,"migratedThisStart":true}
+      evidence: dev-open relaxes the CLP gate on subscription
+
+── the discovery answer for a client that forgets the Accept header ──────
+  GET /realtime (no Accept): 200
+      evidence: {"realtime":true,"transport":"sse","hint":"Open GET /realtime with `Accept: text/event-stream` (pass the auth token as ?token=… since EventSource cannot set headers), then POST /realtime/subscriptions {clientId, subscriptions:[{collection, filter?}]}."}
+
+── handshake ─────────────────────────────────────────────────────────────
+  GET /realtime (SSE): 200 text/event-stream; charset=utf-8
+  first frame: event=connected data={"clientId":"U8M6GOqEcP1e0Uu05dditcYR"}
+    raw: "id: 1\nevent: connected\ndata: {\"clientId\":\"U8M6GOqEcP1e0Uu05dditcYR\"}"
+  POST /realtime/subscriptions: 200
+      evidence: {"accepted":[{"collection":"Bcn008Items"}],"rejected":[]}
+
+── event payloads ────────────────────────────────────────────────────────
+  row id (REST): "5411ec7f-655e-4b72-bd8f-85810c9c18c8" (string)
+  create frame: event=change data={"action":"create","collection":"Bcn008Items","record":{"objectId":"5411ec7f-655e-4b72-bd8f-85810c9c18c8","createdAt":"2026-07-31T15:59:00.381Z","updatedAt":"2026-07-31T15:59:00.381Z","ACL":null,"title":"probe row","count":1}}
+  update frame: event=change data={"action":"update","collection":"Bcn008Items","record":{"objectId":"5411ec7f-655e-4b72-bd8f-85810c9c18c8","createdAt":"2026-07-31T15:59:00.381Z","updatedAt":"2026-07-31T15:59:00.386Z","ACL":null,"title":"probe row, edited","count":1}}
+  DELETE frame: event=change data={"action":"delete","collection":"Bcn008Items","record":{"objectId":"5411ec7f-655e-4b72-bd8f-85810c9c18c8","createdAt":"2026-07-31T15:59:00.381Z","updatedAt":"2026-07-31T15:59:00.386Z","ACL":null,"title":"probe row, edited","count":1}}
+    delete record types: {objectId: string, createdAt: string, updatedAt: string, ACL: null, title: string, count: number}
+      evidence: THE question
+
+── keepalive ─────────────────────────────────────────────────────────────
+  watching an idle stream for 30s (DEFAULT_HEARTBEAT_MS is 25000)…
+  frames while idle: 1
+      25018ms comment ": heartbeat"
+
+── reconnect semantics ───────────────────────────────────────────────────
+  reconnect with Last-Event-ID: connected → resync {"reason":"reconnect"}
+    new clientId?: yes, a fresh one
+
+── failure presentation ──────────────────────────────────────────────────
+  subscribe with an unknown clientId: 404
+      evidence: {"error":"Unknown clientId — reconnect and re-subscribe","requestId":"a8888bc6-9094-4d13-896e-461b16ae6c45"}
+  subscribe with an unsupported filter: 200
+      evidence: {"accepted":[],"rejected":[{"collection":"Bcn008Items","reason":"\"$nonsense\" is not supported in realtime subscription filters"}]}
+  stream to a dead port: TypeError: fetch failed
+
+============================================================================
+THE onclose TRAP — which WebSocket handler fires, per failure mode
+============================================================================
+  · RUN-003 found that Node's undici WebSocket fires only `error`, never
+  · `close`, when a connect fails before establishing. Reconnect logic on
+  · `onclose` alone dead-ends. Three distinct failure modes, measured:
+  nothing listening: error@1ms
+      evidence: ws://localhost:8199/websocket
+    → close fired?: NO
+      evidence: error did
+  listening, but not a WebSocket server: error@20ms
+      evidence: ws://localhost:8056/realtime/v1/websocket
+    → close fired?: NO
+      evidence: error did
+  a real WS server, wrong path: (NOTHING fired in 20s)
+      evidence: ws://localhost:8055/not-the-websocket-path
+    → close fired?: NO
+      evidence: and nor did error
+    → what the server actually answered: (no bytes before timeout)
+      evidence: "(no bytes before timeout)"
+  unresolvable host: error@16ms
+      evidence: ws://no-such-host.invalid/websocket
+    → close fired?: NO
+      evidence: error did
+
+── a socket that opens and is then killed by the server (a restart) ──────
+  · Not simulated here — BCN-008 proper restarts the container. What this
+  · section establishes is only the PRE-establishment asymmetry above.
+
+============================================================================
+DONE
+============================================================================
