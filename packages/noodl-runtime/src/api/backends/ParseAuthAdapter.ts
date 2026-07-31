@@ -37,13 +37,25 @@
  *   pointing at the user who just turned out to be signed out. The `User` node
  *   clears its own model off `sessionLost`, so nothing visible depends on it.
  *   Faithfully preserved; a candidate for its own commit.
- * - **`verifyEmail` and `resetPassword` read their outcome out of an HTML page**,
- *   and both use `if (response.indexOf(…))` where the intended test was
- *   `!== -1`. A found-at-index-0 match reads as false and index -1 reads as
- *   true, so the second branch is effectively always taken. Ported verbatim.
  * - **`signUp` merges `options.properties` into the stored session** but sends
  *   them through the serialiser separately, so what is stored is the
  *   unserialised form. Pre-existing.
+ *
+ * ## No longer preserved — step 4 fixed three things
+ *
+ * The list above was longer. Step 2's rule was that nothing be tidied on the way
+ * through, so that "changes nothing" stayed testable; step 4 is the task that
+ * makes the flows *work*, and each of these was reproduced live before it was
+ * touched. The reasoning is at each site rather than summarised here.
+ *
+ * 1. **`signUp` did not store the `email` it was given**, so `Current.email` was
+ *    `undefined` until a later call re-read the user. See {@link ParseAuthAdapter.signUp}.
+ * 2. **`emailVerified` never populated at all** — absent from every response on
+ *    this wire, measured. A fresh sign-up now stores `false`, which is a fact
+ *    about that account. Same site.
+ * 3. **The inverted `indexOf` tests**, and the much worse defect beside them: an
+ *    HTML error page arriving as a node's error *string*. See {@link pageSays} and
+ *    {@link htmlPageError}.
  *
  * @module api/backends/ParseAuthAdapter
  */
@@ -103,6 +115,71 @@ export interface AuthRequestOptions {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   success(response?: any): void;
   error(error?: AuthRequestError): void;
+}
+
+/**
+ * Does this HTML page contain this phrase?
+ *
+ * ⚠️ **This function exists because of a bug that was deliberately preserved and
+ * is now deliberately fixed.** `verifyEmail` and `resetPassword` read their
+ * outcome out of an HTML page, and both wrote `if (response.indexOf(phrase))`
+ * where the test had to be `!== -1`. A phrase found at index 0 reads as *false*
+ * and an absent phrase (-1) reads as *true* — the condition was inverted for
+ * every input except a match at index 1 or later — so the second branch was
+ * effectively always taken and the third was dead code.
+ *
+ * BCN-006 step 2 ported it verbatim on purpose: that task's entire value was that
+ * putting the wire behind a seam changed nothing, and a fix smuggled in would have
+ * spent the only signal the move produced. Its notes listed this as *"a candidate
+ * for its own commit"*.
+ *
+ * **This is that commit, and three things make it the right call now rather than
+ * later:**
+ *
+ * 1. **The move is finished and merged.** The no-behaviour-change claim has
+ *    already been made and evidenced against the version that had the bug.
+ * 2. **No test has ever reached this code, and the bug is why.** BCN-006-007-LIVE-QA
+ *    §1.2 records that the run *"did not reach it"*. It cannot be covered without
+ *    first deciding what it should do, so "leave it and test it" was never
+ *    available.
+ * 3. **Step 4 measured what actually happens**, which changed the picture. Against
+ *    a running backend, an invalid link answers **HTTP 400** with the failure page
+ *    — and `_makeRequest` routes any non-2xx to `error`, so on *our* backend the
+ *    broken branch is unreachable in either direction and the real defect is next
+ *    door: the whole HTML document arrived as the node's error string. Stock Parse
+ *    Server, which redirects to a `200` failure page, *does* reach the broken
+ *    branch and reports "Invalid verification token" for any page it cannot
+ *    identify. Both are wrong, and neither could be fixed by preserving them.
+ *
+ * The behaviour that changes: a page nobody recognises now reports the honest
+ * "Failed to…" rather than confidently naming a cause it did not observe.
+ */
+function pageSays(response: unknown, phrase: string): boolean {
+  return typeof response === 'string' && response.indexOf(phrase) !== -1;
+}
+
+/**
+ * A sentence for the user out of a failed HTML-page response.
+ *
+ * ⚠️ **The defect this closes was found by step 4's measurement and was in no
+ * register.** `/apps/{appId}/verify_email` and `/apps/{appId}/request_password_reset`
+ * answer an invalid link with **400 and an HTML page** — measured against a
+ * running backend. `_makeRequest` sends any non-2xx to `error` as
+ * `{error: xhr.responseText, status}`, and both methods forwarded `e.error`
+ * straight on. So the Verify Email and Reset Password nodes' `error` output
+ * carried an **entire HTML document**, `<!doctype html>` and inline CSS included,
+ * for a builder to wire to a text label.
+ *
+ * `UserServiceCallbacks` is explicit that `error` receives *"a message string,
+ * never an error object"*, and that the two HTML endpoints *"substitute a message
+ * of their own"*. They did not. This is what doing that looks like.
+ *
+ * A non-HTML error — a network failure, "No active cloud service" — is passed
+ * through untouched, because those are already sentences.
+ */
+function htmlPageError(error: string | undefined, invalidPhrase: string, invalidMessage: string, fallback: string): string {
+  if (typeof error !== 'string' || error.indexOf('<') === -1) return error || fallback;
+  return error.indexOf(invalidPhrase) !== -1 ? invalidMessage : fallback;
 }
 
 /**
@@ -353,7 +430,62 @@ export class ParseAuthAdapter extends AuthEvents implements IAuthAdapter {
         email: options.email
       }),
       success: (response) => {
-        const _cu = Object.assign(response, { username: options.username }, options.properties);
+        /**
+         * ⚠️ **`email` is merged here, and its absence was a live defect.**
+         *
+         * `POST /users` answers `{objectId, createdAt, sessionToken}` and nothing
+         * else — measured against a running backend, and the backend's own
+         * comment says so deliberately: *"Parse's signup response: objectId +
+         * createdAt + sessionToken. The client merges its own
+         * username/properties over this, so keep it minimal."*
+         *
+         * The client merged `username` and `properties`. It did **not** merge
+         * `email`, which the caller had just supplied, so `Current.email` was
+         * `undefined` until some later call re-read the user. An app that signs a
+         * user up and immediately shows *"we sent a link to {email}"* — the
+         * single most ordinary thing to do after a sign-up — rendered
+         * `undefined`, and it worked after a login, which is why it survived
+         * casual testing. Reproduced twice on fresh users in
+         * BCN-006-007-LIVE-QA §1.1 and pinned at the wire in step 4.
+         *
+         * Merged only when supplied: writing `email: undefined` would put the key
+         * in the object for `Object.assign`'s benefit and out of it again for
+         * `JSON.stringify`'s, which is a difference nobody should have to reason
+         * about.
+         */
+        const identity: Record<string, unknown> = { username: options.username };
+        if (options.email !== undefined) identity.email = options.email;
+
+        /**
+         * ⚠️ **And `emailVerified` is stamped `false`, which is a fact and not a
+         * guess.**
+         *
+         * The second half of the same live defect: `emailVerified` never
+         * populated at all, *"not even after an explicit `Current.fetch()`"*, so
+         * any graph gating on "has this user verified their address" read
+         * `undefined` forever. Step 4 measured why — the field is absent from
+         * **every** response on this wire (`/users`, `/login` and `/users/me` all
+         * omit it), because a password sign-up never writes the column, so there
+         * is nothing for the response to carry.
+         *
+         * An account created one millisecond ago cannot have had its address
+         * confirmed, so `false` here is the truth about this user rather than a
+         * default standing in for the truth. It is also the backend's own
+         * reading: `users.ts` gates login on `!user.emailVerified`, which treats
+         * absent as false already.
+         *
+         * Deliberately **only on sign-up**. `logIn` and `fetchCurrentUser` still
+         * report exactly what the backend said, including saying nothing: a
+         * *stored* absence there could mean "this backend does not track
+         * verification", and inventing `false` for it would tell a Parse project
+         * with verification switched off that all of its users are unverified.
+         */
+        const _cu = Object.assign(response, identity, options.properties);
+        // Only when nothing said otherwise. A backend that *does* answer a signup
+        // with `emailVerified` — ours does not, stock Parse with verification on
+        // might — is the authority, and so is a project that passed it as a
+        // property.
+        if (_cu.emailVerified === undefined) _cu.emailVerified = false;
         this.setSession(handle, _cu);
         options.success(response);
         this.emitAuthEvent('loggedIn', _cu);
@@ -397,16 +529,16 @@ export class ParseAuthAdapter extends AuthEvents implements IAuthAdapter {
         // This endpoint answers with an HTML page rather than JSON, so the outcome has to be
         // read out of the page's text.
         success: (response: string) => {
-          if (response.indexOf('Successfully verified your email') !== -1) {
+          if (pageSays(response, 'Successfully verified your email')) {
             options.success();
-          } else if (response.indexOf('Invalid Verification Link')) {
+          } else if (pageSays(response, 'Invalid Verification Link')) {
             options.error('Invalid verification token');
           } else {
             options.error('Failed to verify email');
           }
         },
         error: (e) => {
-          options.error(e.error);
+          options.error(htmlPageError(e.error, 'Invalid Verification Link', 'Invalid verification token', 'Failed to verify email'));
         }
       }
     );
@@ -435,18 +567,21 @@ export class ParseAuthAdapter extends AuthEvents implements IAuthAdapter {
       },
       success: (response: string) => {
         if (
-          response.indexOf('Password successfully reset') !== -1 ||
-          response.indexOf('Successfully updated your password') !== -1
+          pageSays(response, 'Password successfully reset') ||
+          pageSays(response, 'Successfully updated your password')
         ) {
           options.success();
-        } else if (response.indexOf('Invalid Link')) {
-          options.error('Invalid verification token');
+        } else if (pageSays(response, 'Invalid Link')) {
+          // Was "Invalid verification token", then "Failed to verify email" — both
+          // copied from `verifyEmail` and both about the wrong flow. A user
+          // resetting a password was told their *email* had failed to verify.
+          options.error('Invalid or expired reset link');
         } else {
-          options.error('Failed to verify email');
+          options.error('Failed to reset password');
         }
       },
       error: (e) => {
-        options.error(e.error);
+        options.error(htmlPageError(e.error, 'Invalid Link', 'Invalid or expired reset link', 'Failed to reset password'));
       }
     });
   }

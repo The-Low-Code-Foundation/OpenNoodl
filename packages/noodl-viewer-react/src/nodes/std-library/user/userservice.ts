@@ -4,7 +4,9 @@ import { EventEmitter } from 'events';
 import NoodlRuntime from '@noodl/runtime';
 import { ParseAuthAdapter } from '@noodl/runtime/src/api/backends/ParseAuthAdapter';
 import type { OAuthReturnState } from '@noodl/runtime/src/api/backends/ParseAuthAdapter';
-import type { BackendHandle } from '@noodl/backend-contract';
+import { RestAuthAdapter } from '@noodl/runtime/src/api/backends/RestAuthAdapter';
+import { ACTIVE_BACKEND, resolveBackendFromRuntime } from '@noodl/runtime/src/api/backends/resolveBackend';
+import type { BackendHandle, IAuthAdapter } from '@noodl/backend-contract';
 import CloudStore from '@noodl/runtime/src/api/cloudstore';
 
 export type { OAuthReturnState };
@@ -98,8 +100,22 @@ class UserService {
    */
   static forScope: (modelScope: unknown) => UserService;
 
-  /** The ten methods, and the session. */
+  /**
+   * The ten methods, and the session — on the **Parse wire**.
+   *
+   * Still called `adapter` and still a `ParseAuthAdapter`, because that is what
+   * every existing project resolves to and because tests and callers read it by
+   * name. {@link restAdapter} is the second one; {@link _adapter} picks.
+   */
   readonly adapter: ParseAuthAdapter;
+
+  /**
+   * Auth for Directus and PocketBase — BCN-006 step 4.
+   *
+   * Lazily constructed, so a project that never touches a REST backend never
+   * builds one, and nothing about the Parse path changes for it.
+   */
+  private restAdapter?: RestAuthAdapter;
 
   constructor() {
     this._initCloudServices();
@@ -113,17 +129,10 @@ class UserService {
       serializeObject: (data, collectionName) => CloudStore._serializeObject(data, collectionName)
     });
 
-    // The bridge. `sessionChanged` is bookkeeping — it is what keeps `current` in
-    // step — and the four below are the events nodes have always subscribed to,
-    // re-raised with no payload because that is how they were raised before.
-    this.adapter.on('sessionChanged', () => {
-      if (this.adapter.getCurrentUser(this._handle()) === undefined) delete this.current;
-      else this.current = this.getUserModel();
-    });
-    this.adapter.on('loggedIn', () => this.events.emit('loggedIn'));
-    this.adapter.on('loggedOut', () => this.events.emit('loggedOut'));
-    this.adapter.on('sessionGained', () => this.events.emit('sessionGained'));
-    this.adapter.on('sessionLost', () => this.events.emit('sessionLost'));
+    this._bridge(this.adapter);
+    // Parse-only: BAK-004's provider return leg. `RestAuthAdapter` raises no
+    // `oauthReturn` because it starts no provider flow — step 5 owns the other
+    // three redirect shapes and none of them exists.
     this.adapter.events.on('oauthReturn', (state: unknown) => this.events.emit('oauthReturn', state));
 
     // BAK-004 return leg FIRST: a page load carrying a sign-in code is not a
@@ -162,8 +171,33 @@ class UserService {
    * for the same reason `cloudstore.js::_handle` marks it: this class cannot tell our
    * backend from an upstream Parse Server, which is exactly why BCN-001 gave them
    * separate descriptor columns.
+   *
+   * ## The BYOB fallback — BCN-006 step 4
+   *
+   * The `cloudservices` answer is returned **unchanged whenever the project has an
+   * endpoint**, which is every project that works today, so nothing about the
+   * Parse path moves. Only when there is no endpoint at all does this fall through
+   * to `backendServices`, and that case is the user-facing headline BCN-006's
+   * Current State names: *"A project on Directus today has data nodes and no
+   * login."*
+   *
+   * Falling back cannot regress anything, and the reason is worth stating rather
+   * than assuming: with no endpoint, `url` is `undefined`, and every method on the
+   * Parse adapter answers `"No active cloud service"` before touching the network.
+   * There is no behaviour there to preserve.
+   *
+   * ⚠️ **What this deliberately does not do is give the user nodes a backend
+   * picker.** BCN-009 gave the Record family a `backendId` input; the eleven user
+   * nodes have none, so a project with *both* an endpoint and a Directus backend
+   * signs in to the endpoint — the same rule `resolveBackend`'s own docblock
+   * settled for `_active_`, and for the same no-silent-migration reason. Recorded
+   * in BCN-006-NOTES §9 as the remaining half of this step.
    */
   _handle(): BackendHandle {
+    if (!this.endpoint) {
+      const resolved = resolveBackendFromRuntime(ACTIVE_BACKEND);
+      if (resolved) return resolved.handle;
+    }
     return {
       id: '_active_',
       type: 'nodegx',
@@ -173,13 +207,63 @@ class UserService {
     };
   }
 
+  /**
+   * Which adapter serves this backend.
+   *
+   * The three REST types go to `RestAuthAdapter`; **everything else stays on the
+   * Parse wire**, including an unrecorded type. That floor is the one
+   * `resolveBackend.isParseWireType` already established for the data path, and it
+   * is what makes this change unable to move an existing project: `_handle()`
+   * answers `nodegx` for every project that has an endpoint.
+   */
+  private _adapter(handle: BackendHandle): IAuthAdapter {
+    if (handle.type === 'directus' || handle.type === 'supabase' || handle.type === 'pocketbase') {
+      if (this.restAdapter === undefined) {
+        this.restAdapter = new RestAuthAdapter();
+        // The same bridge, so `current` and the four node-facing events behave
+        // identically whichever backend produced them. This is the whole payoff
+        // of putting the event vocabulary on the contract instead of in here.
+        this._bridge(this.restAdapter);
+      }
+      return this.restAdapter;
+    }
+    return this.adapter;
+  }
+
+  /** The adapter serving the currently resolved backend. */
+  private _active(): { handle: BackendHandle; adapter: IAuthAdapter } {
+    const handle = this._handle();
+    return { handle, adapter: this._adapter(handle) };
+  }
+
+  /**
+   * Keep `current` and the node-facing events in step with an adapter.
+   *
+   * `sessionChanged` is bookkeeping — it is what keeps `current` in step, and it
+   * is raised *synchronously* between the storage write and `success` so the
+   * observable order is unchanged. The four below are the events nodes have always
+   * subscribed to, re-raised with no payload because that is how they were raised
+   * before.
+   */
+  private _bridge(adapter: ParseAuthAdapter | RestAuthAdapter): void {
+    adapter.on('sessionChanged', () => {
+      if (adapter.getCurrentUser(this._handle()) === undefined) delete this.current;
+      else this.current = this.getUserModel();
+    });
+    adapter.on('loggedIn', () => this.events.emit('loggedIn'));
+    adapter.on('loggedOut', () => this.events.emit('loggedOut'));
+    adapter.on('sessionGained', () => this.events.emit('sessionGained'));
+    adapter.on('sessionLost', () => this.events.emit('sessionLost'));
+  }
+
   /** BAK-004: the state of a sign-in returning from a provider or a magic link. */
   get oauthReturn(): OAuthReturnState {
     return this.adapter.oauthReturn;
   }
 
   getUserFromLocalStorage(): ParseUser | undefined {
-    return this.adapter.getCurrentUser(this._handle()) as ParseUser | undefined;
+    const { handle, adapter } = this._active();
+    return (adapter as ParseAuthAdapter | RestAuthAdapter).getCurrentUser(handle) as ParseUser | undefined;
   }
 
   _initCloudServices(): void {
@@ -208,11 +292,13 @@ class UserService {
   // ── The ten, each binding the resolved handle ────────────────────────────
 
   logIn(options: UserServiceCallbacks<ParseUser> & { username: string; password: string }): void {
-    this.adapter.logIn(this._handle(), options);
+    const { handle, adapter } = this._active();
+    adapter.logIn(handle, options);
   }
 
   logOut(options: UserServiceCallbacks): void {
-    this.adapter.logOut(this._handle(), options);
+    const { handle, adapter } = this._active();
+    adapter.logOut(handle, options);
   }
 
   signUp(
@@ -224,35 +310,43 @@ class UserService {
       properties?: Record<string, unknown>;
     }
   ): void {
-    this.adapter.signUp(this._handle(), options);
+    const { handle, adapter } = this._active();
+    adapter.signUp(handle, options);
   }
 
   fetchCurrentUser(options: UserServiceCallbacks<ParseUser> & { sessionToken?: string }): void {
-    this.adapter.fetchCurrentUser(this._handle(), options);
+    const { handle, adapter } = this._active();
+    adapter.fetchCurrentUser(handle, options);
   }
 
   verifyEmail(options: UserServiceCallbacks & { username: string; token: string }): void {
-    this.adapter.verifyEmail(this._handle(), options);
+    const { handle, adapter } = this._active();
+    adapter.verifyEmail(handle, options);
   }
 
   sendEmailVerification(options: UserServiceCallbacks & { email: string }): void {
-    this.adapter.sendEmailVerification(this._handle(), options);
+    const { handle, adapter } = this._active();
+    adapter.sendEmailVerification(handle, options);
   }
 
   resetPassword(options: UserServiceCallbacks & { username: string; token: string; newPassword: string }): void {
-    this.adapter.resetPassword(this._handle(), options);
+    const { handle, adapter } = this._active();
+    adapter.resetPassword(handle, options);
   }
 
   requestPasswordReset(options: UserServiceCallbacks & { email: string }): void {
-    this.adapter.requestPasswordReset(this._handle(), options);
+    const { handle, adapter } = this._active();
+    adapter.requestPasswordReset(handle, options);
   }
 
   signInWithProvider(options: { provider: string; redirect?: string; error?(message: string): void }): void {
-    this.adapter.signInWithProvider(this._handle(), options);
+    const { handle, adapter } = this._active();
+    adapter.signInWithProvider(handle, options);
   }
 
   requestMagicLink(options: UserServiceCallbacks & { email: string; redirect?: string }): void {
-    this.adapter.requestMagicLink(this._handle(), options);
+    const { handle, adapter } = this._active();
+    adapter.requestMagicLink(handle, options);
   }
 
   // ── Not contract, and forwarded for the same reason ──────────────────────
@@ -264,7 +358,8 @@ class UserService {
       properties?: Record<string, unknown>;
     }
   ): void {
-    this.adapter.setUserProperties(this._handle(), options);
+    const { handle, adapter } = this._active();
+    (adapter as ParseAuthAdapter | RestAuthAdapter).setUserProperties(handle, options);
   }
 
   /** The sign-in methods this backend offers — for rendering a set of buttons. */
