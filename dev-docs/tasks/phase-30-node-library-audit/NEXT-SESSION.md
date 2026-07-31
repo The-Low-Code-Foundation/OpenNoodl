@@ -47,18 +47,41 @@ error output, and a deduplicated `raiseRuntimeError`.
 has the table and the two rules that fall out of it. Read it before you trust any other "the class
 is these N nodes" claim in this phase — including one written the same day by the same pass.
 
-### 2. **Data (46 nodes).** The last big one, and the highest-yield one.
+### 2. **Data (46 nodes).** The last big one, and bigger than the node count suggests.
 
-29 of its 46 nodes are at 0% documentation, so NDA-005's C1 work is nearly all still there. Run it
-as **one pass, not two** — NDA-012's C1 *is* NDA-005 — and read
+**Measured 2026-07-30, before planning: 517 ports, 55 documented — 10.6%.** 29 of the 46 nodes are
+at 0%. Data alone is **~19% of the library's ports and holds ~5% of its documentation**, so this
+category is most of what remains of NDA-005 and will move the headline number more than the previous
+four passes combined. Run it as **one pass, not two** — NDA-012's C1 *is* NDA-005 — and read
 [`PORT-DESCRIPTION-STYLE.md`](../../reference/PORT-DESCRIPTION-STYLE.md) first; it is normative and
 settled.
 
-It will not fit in one session. Split it **by helper, not alphabetically**: `modelcrudbase`,
-`dbmodelcrudbase`, the Collection/Array family, the Object nodes, the Repeater. Read the helper once
-and each node is minutes — but record a helper defect **once** with its sites listed, or the
-register reports a usage count. This last batch had four such shapes and the worksheets show the
-format.
+It will not fit in one session. Split it **by helper, not alphabetically**:
+
+| Family | Nodes | Members |
+|---|---|---|
+| Legacy Object/Variable/Collection (`modelcrudbase`) | ~17 | `Model2`, `Variable2`, `Collection2`, the `Collection*` verbs, `SetModelProperties`, `Static Data`, `Filter`/`Map Collection`, `For Each Actions` |
+| Record family (`dbmodelcrudbase`) | 6 | `FilterDBModels`, `NewDbModelProperties`, `SetDbModelProperties`, `DeleteDbModelProperties`, `Add`/`RemoveDbModelRelation` |
+| BYOB | 5 | `noodl.byob.{QueryData,CreateRecord,UpdateRecord,DeleteRecord,SubscribeToChanges}` |
+| Agent/stream (`net.noodl.*`) | ~15 | `SSE`, `WebSocket`, `TextAccumulator`, `StreamBuffer`, `JSONStreamParser`, `PatternExtractor`, `ActionDispatcher`/`Handler`, `OptimisticUpdate`, `StateHistory`/`Snapshot`/`Undo`, `GlobalStore` ×3 |
+| Misc | 3 | `RunTasks`, `net.noodl.HTTP`, `REST2` |
+
+**Do the legacy families first and the agent/stream nodes last.** The 29 nodes at 0% are almost
+entirely legacy; the `net.noodl.*` nodes are the newest code in the library — AIX-005 built them
+*with* descriptions — and are the only Data nodes already partly documented. Highest yield per hour
+is where the documentation is absent and the code is oldest.
+
+Read the helper once and each node is minutes — but record a helper defect **once** with its sites
+listed, or the register reports a usage count. This last batch had four such shapes and the
+worksheets show the format.
+
+⚠️ **A scope question to settle before writing 37 descriptions, not after.** Three of the 46 are
+**deprecated *and* absent from the node picker** — `Collection` (Array, 17 ports), `Model` (Object,
+11) and `Variable` (9). That is **37 of the 517 ports, 7% of the job, on nodes nobody can add to a
+graph.** `REST2` is deprecated but *is* in the picker, so it stays in scope regardless. Decide
+whether C1 covers unpickable deprecated nodes and write the decision into PROGRESS.md either way,
+because it changes what the coverage percentage means. This is adjacent to §2 item 3 and is probably
+worth putting to Richard alongside it.
 
 Then **Visual (29)** last: only 1 node is at 0%, so its C1 work is nearly done and only the other
 eleven checks remain.
