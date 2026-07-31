@@ -88,16 +88,20 @@ export const directusDescriptor: BackendDescriptor = {
       'BCN-001: ?search=Published returned three articles matched on their status field, unranked'
     ),
 
-    'relations.pointerRead': supported('RUN-003: M2O foreign keys parsed and mapped to ports'),
-
-    // RUN-003's recorded residual, carried forward rather than rediscovered.
-    'relations.relatedTo': unsupported(
-      'Filtering by "records related to this one" is not available on Directus yet.',
-      "RUN-003 found relations are dropped by the BYOB path; Directus needs GET /relations to resolve M2M junctions. BCN-005 owns this."
+    'relations.pointerRead': supported(
+      'BCN-005 live: ?fields=*,author.* nests the author. An M2M needs two hops (tags.tag_id.*) because one hop returns junction rows; the adapter emits the two-hop path and flattens the result'
     ),
-    'relations.addRemove': unsupported(
-      'Adding and removing related records is not available on Directus yet.',
-      'RUN-003 residual: O2M/M2M need GET /relations. BCN-005 owns this.'
+
+    // RUN-003's recorded residual, closed for reading and writing; `relatedTo`
+    // is the one relation cell that stays refused, and for a different reason
+    // from before — see below.
+    'relations.relatedTo': unsupported(
+      'Filtering by "records related to this one" is not available on Directus. Filter on a field of the related record instead, such as author → name.',
+      'BCN-005 live: filtering across a relation works via a nested path ({author:{city:{_eq}}}) and across an M2M via the junction, but Parse\'s $relatedTo asks for members of one record\'s relation set, which has no Directus spelling. The dotted-path filter is the replacement and it is measured working'
+    ),
+    'relations.addRemove': degraded(
+      'Adding a related record writes a row in a join table, and Directus join tables allow the same pair twice. NodeGX checks first so you will not get duplicates, but if two people add the same one at the same moment you can.',
+      'BCN-005 live: POST junction row 200; the same pair posted twice creates a second row, so addRelation reads before it writes. DELETE of a pair that never existed answers 204, so a remove cannot report "was not there"'
     ),
 
     'files.upload': supported('POST /files, multipart'),

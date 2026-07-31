@@ -130,13 +130,16 @@ export function makeRestSerializer(options: RestSerializerOptions) {
 /**
  * The cached schema as the filter translators want it.
  *
- * ⚠️ **Nothing reads it today, and that is worth writing down rather than discovering.**
- * `RestDataAdapter` takes a `schemaFor` and hands it to `translateOptions`, and Worker A's
- * handover says "without `schemaFor` a `pointsTo` filter cannot resolve its target". That
- * is true of the *Parse* translator; `directus.ts`, `postgrest.ts` and `pocketbase.ts`
- * never read `options.schema` at all. It is passed because the adapter asks for it and
- * because the port generator already holds the data, so a translator that starts reading
- * it finds it there — not because a filter is currently wrong without it.
+ * ⚠️ **BCN-004's note here said "nothing reads it today". BCN-005 made that false**, and
+ * in the one way that mattered: `pocketbase.ts` now reads `cardinality` to decide between
+ * `tags.label = 'x'` (every related record must match) and `tags.label ?= 'x'` (at least
+ * one must). Measured on a live PocketBase, the first returns **no rows** where the second
+ * returns the right one — so a `RestDataAdapter` constructed without `schemaFor` will
+ * quietly return an empty result set for any filter across a multi-valued relation. The
+ * one place that builds the adapter passes it; this comment is for the second.
+ *
+ * The rest of the note still holds: `directus.ts` and `postgrest.ts` do not read the
+ * schema, and the Parse translator reads `targetClass` for `pointsTo`.
  */
 export function filterSchemaFor(
   collections: readonly SchemaCollection[] | undefined,
@@ -153,7 +156,16 @@ export function filterSchemaFor(
       // `nativeType` is the backend's own spelling and is what a translator would key on;
       // the neutral `type` is the fallback for a schema that did not record one.
       type: field.nativeType || field.type,
-      ...(field.relationTarget ? { targetClass: field.relationTarget } : {})
+      ...(field.relationTarget ? { targetClass: field.relationTarget } : {}),
+      // `relationType` is the cached schema's word for cardinality. Only the
+      // to-many spellings become `'many'`; anything else — including a relation
+      // whose type was never recorded — stays undefined, which the translators
+      // treat as `'one'`, i.e. exactly what they did before this field existed.
+      ...(field.relationType === 'many-to-many' || field.relationType === 'one-to-many'
+        ? { cardinality: 'many' as const }
+        : field.relationType
+          ? { cardinality: 'one' as const }
+          : {})
     };
   }
 

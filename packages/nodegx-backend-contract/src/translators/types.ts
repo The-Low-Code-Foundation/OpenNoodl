@@ -38,6 +38,29 @@ export interface FilterFieldSchema {
   type?: string;
   /** For `Pointer`/`Relation`: the collection pointed at. */
   targetClass?: string;
+  /**
+   * Whether this relation holds one record or a set of them.
+   *
+   * ⚠️ **Added by BCN-005 because a live PocketBase returned the wrong row set
+   * without it.** PocketBase spells a filter across a relation two ways and the
+   * difference is not cosmetic: `tags.label = 'x'` means *every* related record
+   * matches, and `tags.label ?= 'x'` means *at least one* does. Measured on
+   * 0.30.0, on a record with two tags one of which was `algebra`:
+   *
+   * ```
+   * filter tags.label='algebra'   -> []                            <- 0 rows
+   * filter tags.label?='algebra'  -> [{"title":"Notes on the …"}]   <- the row
+   * ```
+   *
+   * So the plain form is a **silent empty result** — no error, no warning, and
+   * the one failure shape this phase keeps finding. `type` alone cannot decide
+   * it, because PocketBase calls both cardinalities `relation`.
+   *
+   * Absent means "not a relation, or cardinality unknown", and the translators
+   * treat unknown as `'one'` — which is what they did before this field existed,
+   * so a schema that does not carry it behaves exactly as it used to.
+   */
+  cardinality?: 'one' | 'many';
 }
 
 /**

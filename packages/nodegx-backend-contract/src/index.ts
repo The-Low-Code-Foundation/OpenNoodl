@@ -14,6 +14,7 @@ export * from './capabilities';
 export * from './data';
 export * from './auth';
 export * from './events';
+export * from './relations';
 export * from './realtime';
 export * from './filter';
 export * from './descriptors';
