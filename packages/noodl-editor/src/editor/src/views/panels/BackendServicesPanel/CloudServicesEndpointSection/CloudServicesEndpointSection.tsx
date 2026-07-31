@@ -27,9 +27,24 @@
  * "External Backends" section — one panel, three headings, three unrelated
  * mechanisms, which is exactly why the duplication read as intentional to a
  * user. It is now one entry in one list of backends, and it carries the same
- * security disclosure every other entry does. What it *writes* is unchanged:
- * converging the two metadata keys is BCN-009 step 2 and deliberately separate,
- * because it reaches into the runtime's resolver and the exporter's injection.
+ * security disclosure every other entry does.
+ *
+ * ## BCN-009 step 2: this card no longer decides that it is active
+ *
+ * It used to render **ACTIVE** unconditionally, whenever an endpoint was
+ * configured. Two things followed, and both were seen in live QA:
+ *
+ * - with an external backend also active, **two cards said ACTIVE at once**, and
+ *   nothing distinguished them;
+ * - it said ACTIVE for a local backend that was **Stopped** — a green-looking
+ *   word for a port with nothing listening on it — because the badge reflected
+ *   *"an endpoint is configured"* rather than any selection.
+ *
+ * The endpoint is now one candidate in the project's one selection, identified by
+ * `ENDPOINT_BACKEND_ID` — the same synthetic id the runtime's per-node picker
+ * already saves. What this card *writes* is still `cloudservices`: the selection
+ * converged, the configuration deliberately did not. See
+ * `models/BackendServices/activeBackend.ts`.
  *
  * @module BackendServicesPanel/CloudServicesEndpointSection
  */
@@ -37,7 +52,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { securityFor } from '@noodl-models/BackendServices';
-import { endpointBackendType } from '@noodl-models/BackendServices/backendList';
+import { endpointBackendType, endpointDisplayName } from '@noodl-models/BackendServices/backendList';
 import { getPreset } from '@noodl-models/BackendServices/presets';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { getCloudServices, setCloudServices } from '@noodl-models/projectmodel.editor';
@@ -64,6 +79,38 @@ export interface CloudServicesEndpointSectionProps {
   isEditingRequested?: boolean;
   /** Raised when the form closes, so the panel can drop its request. */
   onEditingClosed?: () => void;
+  /**
+   * Is this endpoint the project's active backend?
+   *
+   * BCN-009 step 2. Owned by the panel, from `BackendServices.activeBackendId`,
+   * because "which backend is this project's" is one answer for the whole list
+   * and this card deciding for itself is how there came to be two.
+   */
+  isActive?: boolean;
+  /** Make this endpoint the project's active backend. Goes through the switch dialog. */
+  onSetActive?: () => void;
+  /** Raised after the endpoint is cleared, so the selection can fall back. */
+  onDisconnected?: () => void;
+  /**
+   * The sentence for a legacy project that still has a second bound backend.
+   *
+   * Rendered under the status line rather than as a banner: nothing is broken,
+   * and the resolution is a button already on the other card.
+   */
+  conflictNote?: string;
+  /**
+   * When this endpoint is a backend *this editor runs*, whether it is up.
+   *
+   * BCN-009 live-QA finding 3.2: this card drew a green tick and "Deployed
+   * built-in backend" for `http://localhost:8578` while the local backend on 8578
+   * read **Stopped**. The tick reflected *"an endpoint is configured"* — there is
+   * nothing in `cloudservices` that could have told it otherwise. The panel knows,
+   * because it holds the managed process list, so it says.
+   *
+   * `undefined` for an endpoint that is not one of ours, where the editor has no
+   * business claiming to know.
+   */
+  localStatus?: 'running' | 'stopped';
 }
 
 function readCurrentEndpoint() {
@@ -79,7 +126,12 @@ function readCurrentEndpoint() {
 
 export function CloudServicesEndpointSection({
   isEditingRequested,
-  onEditingClosed
+  onEditingClosed,
+  isActive = false,
+  onSetActive,
+  onDisconnected,
+  conflictNote,
+  localStatus
 }: CloudServicesEndpointSectionProps) {
   const [current, setCurrent] = useState(readCurrentEndpoint);
   const [isEditing, setIsEditing] = useState(false);
@@ -145,7 +197,11 @@ export function CloudServicesEndpointSection({
 
     setCloudServices(project, { id: undefined, endpoint: undefined, appId: undefined, type: undefined });
     setCurrent(readCurrentEndpoint());
-  }, []);
+    // The selection may have been naming this endpoint. Told rather than
+    // inferred, because `cloudservices` is written from three places and only
+    // this one is a user saying "not this backend".
+    onDisconnected?.();
+  }, [onDisconnected]);
 
   const isConnected = Boolean(current.endpoint);
 
@@ -160,7 +216,7 @@ export function CloudServicesEndpointSection({
   const preset = getPreset(type);
 
   return (
-    <div className={css.Root} data-test="cloud-services-endpoint-card">
+    <div className={`${css.Root} ${isActive ? css.Active : ''}`} data-test="cloud-services-endpoint-card">
       {!isEditing ? (
         <>
           <div className={css.Header}>
@@ -169,39 +225,70 @@ export function CloudServicesEndpointSection({
                 <Text textType={TextType.Proud}>{preset.displayName.charAt(0).toUpperCase()}</Text>
               </div>
               <div className={css.IdentityText} title={`${current.appId || ''}\n${current.endpoint}`}>
-                <Text textType={TextType.DefaultContrast}>{current.appId || current.endpoint}</Text>
+                {/* The app id used to be the card's title — the one entry in the
+                    list wearing a machine id where every other wore a name. It
+                    is identity, not a name, so it sits on the detail line. */}
+                <Text textType={TextType.DefaultContrast}>{endpointDisplayName(type)}</Text>
                 <Text className={css.EndpointMeta} textType={TextType.Shy} style={{ fontSize: '11px' }}>
-                  {preset.displayName} • {current.endpoint}
+                  {[preset.displayName, current.appId, current.endpoint].filter(Boolean).join(' • ')}
                 </Text>
               </div>
             </div>
-            <div className={css.ActiveBadge}>
-              <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
-                ACTIVE
-              </Text>
-            </div>
+            {isActive && (
+              <div className={css.ActiveBadge} data-test="endpoint-active-badge">
+                <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
+                  ACTIVE
+                </Text>
+              </div>
+            )}
           </div>
 
           <div className={css.Status}>
             <div className={css.EndpointLine}>
               <Icon
-                icon={IconName.Check}
+                icon={localStatus === 'stopped' ? IconName.CircleOpen : IconName.Check}
                 size={IconSize.Tiny}
-                UNSAFE_style={{ color: 'var(--theme-color-success)' }}
+                UNSAFE_style={{
+                  color:
+                    localStatus === 'stopped'
+                      ? 'var(--theme-color-fg-default-shy)'
+                      : 'var(--theme-color-success)'
+                }}
               />
-              <Text textType={TextType.Shy}>
-                {current.type === 'nodegx'
+              <Text textType={TextType.Shy} testId="endpoint-status-line">
+                {localStatus === 'stopped'
+                  ? 'Built-in backend on this computer — stopped'
+                  : current.type === 'nodegx'
                   ? 'Deployed built-in backend — supports realtime'
                   : current.type === 'external'
                   ? 'Parse-compatible server'
                   : 'Type unknown — treated as a Parse server'}
               </Text>
             </div>
+            {conflictNote && (
+              <Text textType={TextType.Shy} style={{ fontSize: '11px' }} testId="backend-selection-conflict">
+                {conflictNote}
+              </Text>
+            )}
           </div>
 
           <SecurityDisclosure disclosure={securityFor(type)} testId="backend-security-endpoint" />
 
           <div className={css.Actions}>
+            {/* Same affordance as every other card: the one that is not active
+                offers to become it, and the switch dialog is in the way. */}
+            {!isActive && onSetActive && (
+              <div className={css.ButtonRow}>
+                <PrimaryButton
+                  label="Set active"
+                  size={PrimaryButtonSize.Small}
+                  variant={PrimaryButtonVariant.Muted}
+                  onClick={onSetActive}
+                  testId="set-active-endpoint"
+                  isGrowing
+                />
+              </div>
+            )}
             <div className={css.ButtonRow}>
               <PrimaryButton
                 label="Edit"

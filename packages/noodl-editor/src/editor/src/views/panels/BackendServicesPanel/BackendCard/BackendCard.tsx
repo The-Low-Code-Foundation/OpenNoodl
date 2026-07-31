@@ -25,6 +25,15 @@ import css from './BackendCard.module.scss';
 export interface BackendCardProps {
   backend: BackendConfig;
   isActive: boolean;
+  /**
+   * The sentence for a legacy project that is still bound to this backend from
+   * the Data nodes while something else is the project's active backend.
+   *
+   * BCN-009 step 2 converged the selection, but it refuses to converge the one
+   * case where either answer would silently repoint a family of nodes. This is
+   * how that case is said out loud instead of shown as a second ACTIVE badge.
+   */
+  conflictNote?: string;
   onSetActive: () => void;
   onDelete: () => void;
   onTestConnection: () => void;
@@ -52,6 +61,7 @@ function getStatusDisplay(status: ConnectionStatus): { icon: IconName; color: st
 export function BackendCard({
   backend,
   isActive,
+  conflictNote,
   onSetActive,
   onDelete,
   onTestConnection,
@@ -141,6 +151,14 @@ export function BackendCard({
             {backend.lastError}
           </Text>
         )}
+        {/* Not red and not a banner: nothing is broken, the project is in a state
+            a previous build allowed, and the fix is the `Set active` button that
+            is already on this card. */}
+        {conflictNote && (
+          <Text textType={TextType.Shy} style={{ fontSize: '11px' }} testId={`backend-conflict-${backend.id}`}>
+            {conflictNote}
+          </Text>
+        )}
       </div>
 
       {/* BCN-009: what choosing this backend publishes. Every card carries one,
@@ -167,6 +185,7 @@ export function BackendCard({
               size={PrimaryButtonSize.Small}
               variant={PrimaryButtonVariant.Muted}
               onClick={onSetActive}
+              testId={`set-active-${backend.id}`}
               isGrowing
             />
           </div>
