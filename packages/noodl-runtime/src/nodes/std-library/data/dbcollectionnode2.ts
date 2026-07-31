@@ -23,12 +23,14 @@ import JavascriptNodeParser = require('../../../javascriptnodeparser');
 import QueryUtils = require('../../../api/queryutils');
 import type { AdapterEvent } from '@noodl/backend-contract';
 import type { VisualSorting } from '../../../api/queryutils';
-// BCN-002 triage: this reaches into the **server-side** persistence types
-// (`LocalSQLAdapter`'s layer), which is a genuine cross-layer leak — the type it
-// wants is the contract's `Filter`. Left in place because relocating the filter
-// model is BCN-003's, and moving half of it here would give that task two
-// starting points instead of one.
-import type { WhereClause } from '../../../api/adapters/types';
+// BCN-002 recorded this as a node importing the **server-side** persistence
+// types, and predicted the type it wanted was the contract's `Filter`. Reading
+// it in BCN-003, that prediction was wrong in an interesting way: what
+// `getStorageFilter` returns is not a neutral filter at all — it is the output
+// of `convertVisualFilter`/`convertFilterOp`, so it is already *translated*, a
+// Parse `where` document on its way to `CloudStore.query`. The leak was a wrong
+// type as well as a misplaced one.
+import type { ParseWhere } from '@noodl/backend-contract/translators';
 
 /**
  * NDA-004 §2 — see `setError`.
@@ -117,7 +119,7 @@ interface DbCollectionNodeInstance extends NodeInstance {
   setError(err: string): void;
   scheduleFetch(): void;
   fetch(): void;
-  getStorageFilter(): { where?: WhereClause; sort?: string | string[] } | undefined;
+  getStorageFilter(): { where?: ParseWhere; sort?: string | string[] } | undefined;
   getStorageLimit(): number | undefined;
   getStorageSkip(): number | undefined;
   getStorageFetchTotalCount(): boolean;
@@ -471,13 +473,27 @@ const DbCollectionNode: NodeDefinitionOptions = {
       const storageSettings = this._internal.storageSettings;
       if (storageSettings['storageFilterType'] === undefined || storageSettings['storageFilterType'] === 'simple') {
         // Create simple filter
-        const _where =
-          this._internal.visualFilter !== undefined
-            ? QueryUtils.convertVisualFilter(this._internal.visualFilter, {
-                queryParameters: this._internal.queryParameters,
-                collectionName: this._internal.name
-              })
-            : undefined;
+        // BCN-003: the translator refuses an operator the backend cannot
+        // express rather than dropping it, so this can now throw where it used
+        // to emit a condition that quietly matched nothing (`pointsTo` with no
+        // cached schema produced `className: undefined`). Reported on the node
+        // through the same channel the JSON filter path below uses.
+        let _where: ParseWhere | undefined;
+        if (this._internal.visualFilter !== undefined) {
+          try {
+            _where = QueryUtils.convertVisualFilter(this._internal.visualFilter, {
+              queryParameters: this._internal.queryParameters,
+              collectionName: this._internal.name
+            });
+          } catch (e) {
+            this.context.editorConnection.sendWarning(
+              this.nodeScope.componentOwner.name,
+              this.id,
+              'query-collection-filter',
+              { message: (e as Error).message }
+            );
+          }
+        }
 
         const _sort =
           this._internal.visualSorting !== undefined

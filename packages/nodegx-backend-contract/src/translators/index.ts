@@ -16,6 +16,19 @@
  * @module backend-contract/translators
  */
 
+// The neutral model itself, re-exported so a consumer that only wants to
+// translate never has to import the package root — which is what would pull the
+// whole capability model in behind it.
+export {
+  DIRECTUS_OPERATOR_MIGRATION,
+  FILTER_OPERATORS,
+  LOWERED_OPERATORS,
+  type Filter,
+  type FilterOperator,
+  type OperatorAndValue,
+  type RelatedToFilter
+} from '../filter';
+
 export { toParseWhere, type ParseWhere } from './parse';
 export { toDirectusFilter, type DirectusFilter } from './directus';
 export { toPostgrest, postgrestQueryString, encodePostgrestValue, type PostgrestFilter } from './postgrest';

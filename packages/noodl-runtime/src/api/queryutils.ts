@@ -1,3 +1,27 @@
+/**
+ * The boundary between the runtime's filter call sites and the pure translators.
+ *
+ * BCN-003 moved the translation itself into `@noodl/backend-contract`, where the
+ * editor can reach the same code — one translator per backend, never two copies,
+ * which is the architecture RUN-003's live 403 paid for. What is left here is
+ * everything a *pure* function may not do:
+ *
+ * - reading the collection schema out of `CloudStore._collections`, a
+ *   module-global mutable cache;
+ * - resolving a `relatedTo` filter's class from the model store;
+ * - turning a refusal into `options.error(…)` rather than an exception, so a
+ *   malformed filter degrades to a message on the node instead of taking the
+ *   node down.
+ *
+ * `convertFilterOp` and `convertVisualFilter` keep their names and signatures on
+ * purpose: six call sites across three packages read them, and moving the
+ * implementation and the callers in one change would leave nothing to compare.
+ *
+ * @module api/queryutils
+ */
+
+import type { Filter, FilterSchema } from '@noodl/backend-contract/translators';
+import { FilterTranslationError, toParseWhere, visualQueryToNeutral } from '@noodl/backend-contract/translators';
 import type { ModelLike, ModelModule, ModelScopeLike } from '@noodl/types';
 
 import CloudStore = require('./cloudstore');
@@ -50,93 +74,170 @@ export interface VisualSorting {
   order?: 'ascending' | 'descending';
 }
 
+/**
+ * The schema of one collection, as the translators want it.
+ *
+ * This function is the reason `FilterSchema` is a parameter rather than
+ * something the translator reads for itself. `CloudStore._collections` is a
+ * module-global mutable cache filled in by whichever node fetched a schema
+ * first, so a translator reading it directly produced a different query
+ * depending on what else the app had done — and could not be unit-tested
+ * against two collections in one run, or used by the editor at all.
+ */
+function schemaFor(collectionName: string | undefined): FilterSchema | undefined {
+  if (!collectionName) return undefined;
+  // Both this getter and `CloudStore.instance` below read
+  // `NoodlRuntime.instance`, and one of them constructs a `CloudStore` as a
+  // side effect. Neither is guaranteed in every context a filter is translated
+  // from — the cloud runtime's `records.js` is one — and translating a filter
+  // must never be the thing that builds a singleton or throws for want of
+  // ambient state. Without a schema the translators still handle every operator
+  // but `pointsTo`, which says so rather than guessing.
+  let collection;
+  try {
+    collection = CloudStore._collections[collectionName];
+  } catch (e) {
+    return undefined;
+  }
+  if (!collection || !collection.schema) return undefined;
+  return { collection: collectionName, properties: collection.schema.properties };
+}
+
+/**
+ * Which backend the Parse wire is currently pointed at.
+ *
+ * `CloudStore._handle()` answers `nodegx` unconditionally today — BCN-002 left
+ * it as a floor with a comment saying so, and BCN-009 is what makes it real.
+ * Reading it here rather than hard-coding the same constant means the day it
+ * starts telling the truth, the capability gate starts telling the truth too.
+ */
+function backendType(): 'nodegx' | 'parse' {
+  try {
+    const handle = CloudStore.instance && CloudStore.instance._handle && CloudStore.instance._handle();
+    return handle && handle.type === 'parse' ? 'parse' : 'nodegx';
+  } catch (e) {
+    // See `schemaFor`. `nodegx` is the right floor rather than an arbitrary
+    // one: it is the more permissive of the two tables, so falling back to it
+    // cannot gate an operator off that the backend can actually answer.
+    return 'nodegx';
+  }
+}
+
+/**
+ * Fill in a `relatedTo` filter's class from the model store, at any depth.
+ *
+ * The translator cannot do this: `Model.get(id)?._class` is a reach into
+ * runtime state, and a pure function that did it would be untestable and
+ * order-dependent. Doing it here keeps the lookup exactly where it was while
+ * leaving the translator pure.
+ */
+function resolveRelatedClasses(filter: Filter, modelScope: ModelScopeLike | undefined): Filter {
+  if (!filter || typeof filter !== 'object') return filter;
+  const record = filter as Record<string, OpenJson>;
+
+  if (Array.isArray(record.and)) {
+    return { and: record.and.map((child: Filter) => resolveRelatedClasses(child, modelScope)) } as Filter;
+  }
+  if (Array.isArray(record.or)) {
+    return { or: record.or.map((child: Filter) => resolveRelatedClasses(child, modelScope)) } as Filter;
+  }
+  if (record.relatedTo && typeof record.relatedTo === 'object' && !record.relatedTo.className) {
+    const id = record.relatedTo.id;
+    const className = id === undefined ? undefined : (modelScope || Model).get(id)?._class;
+    if (className !== undefined) {
+      return { relatedTo: { ...record.relatedTo, className } } as Filter;
+    }
+  }
+  return filter;
+}
+
+/**
+ * Convert the editor's visual filter tree into a Parse `where` document.
+ *
+ * Two steps now, where it used to be one: the tree becomes a neutral filter
+ * (`visualQueryToNeutral`, which knows the English operator names the
+ * `QueryEditor` writes), and the neutral filter becomes Parse. Splitting them
+ * is what lets BCN-003b retire one of the two visual builders without touching
+ * a translator, and it means this tree gets the escaped regexes and the
+ * schema-driven date handling the JSON filter path gets.
+ *
+ * `options.error` is optional and new. Without it the old silent failure is
+ * preserved for callers that have their own try/catch — `filterdbmodelsnode`
+ * has had one since NDA-004.
+ */
 export function convertVisualFilter(
   query: VisualFilterQuery,
   options: VisualFilterOptions
 ): ParseQuery | undefined {
-  const inputs = options.queryParameters;
+  const neutral = visualQueryToNeutral(query, options.queryParameters);
+  if (neutral === null) return undefined;
 
-  if (query.combinator !== undefined && query.rules !== undefined) {
-    if (query.rules.length === 0) return;
-    else if (query.rules.length === 1) return convertVisualFilter(query.rules[0], options);
-    else {
-      const _res: ParseQuery = {};
-      const _op = '$' + query.combinator;
-      _res[_op] = [];
-      query.rules.forEach((r) => {
-        const cond = convertVisualFilter(r, options);
-        if (cond !== undefined) _res[_op].push(cond);
-      });
+  const where = toParseWhere(resolveRelatedClasses(neutral, undefined), {
+    backend: backendType(),
+    schema: schemaFor(options.collectionName)
+  });
+  return Object.keys(where).length === 0 ? undefined : (where as ParseQuery);
+}
 
-      return _res;
-    }
-  } else if (query.operator === 'related to') {
-    const value = query.input !== undefined ? inputs[query.input] : undefined;
-    if (value === undefined) return;
-
-    return {
-      $relatedTo: {
-        object: {
-          __type: 'Pointer',
-          objectId: value,
-          className: query.relatedTo
-        },
-        key: query.relationProperty
-      }
-    };
-  } else {
-    const _res: ParseQuery = {};
-    let cond;
-    let value: OpenJson = query.input !== undefined ? inputs[query.input] : query.value;
-
-    if (query.operator === 'exist') {
-      _res[query.property] = { $exists: true };
-      return _res;
-    } else if (query.operator === 'not exist') {
-      _res[query.property] = { $exists: false };
-      return _res;
-    }
-
-    if (value === undefined) return;
-
-    // Declared inside the `if` and read after it — `var` hoisting, which §23.1 flagged as
-    // the pattern a mechanical `var`→`const` rewrite silently breaks. Hoisted by hand.
-    let schema;
-    if (CloudStore._collections[options.collectionName])
-      schema = CloudStore._collections[options.collectionName].schema;
-
-    const propertyType =
-      schema && schema.properties && schema.properties[query.property]
-        ? schema.properties[query.property].type
-        : undefined;
-
-    if (propertyType === 'Date') {
-      if (!(value instanceof Date)) value = new Date(value.toString());
-      value = { __type: 'Date', iso: value.toISOString() };
-    }
-
-    if (query.operator === 'greater than') cond = { $gt: value };
-    else if (query.operator === 'greater than or equal to') cond = { $gte: value };
-    else if (query.operator === 'less than') cond = { $lt: value };
-    else if (query.operator === 'less than or equal to') cond = { $lte: value };
-    else if (query.operator === 'equal to') cond = { $eq: value };
-    else if (query.operator === 'not equal to') cond = { $ne: value };
-    else if (query.operator === 'points to') {
-      const targetClass =
-        schema && schema.properties && schema.properties[query.property]
-          ? schema.properties[query.property].targetClass
-          : undefined;
-
-      cond = {
-        $eq: { __type: 'Pointer', objectId: value, className: targetClass }
-      };
-    } else if (query.operator === 'contain') {
-      cond = { $regex: value, $options: 'i' };
-    }
-
-    _res[query.property] = cond;
-
-    return _res;
+/**
+ * One operator of a leaf condition, evaluated against a loaded record's value.
+ *
+ * ⚠️ **Three things changed here, and `between` is why.**
+ *
+ * This used to be an if/else chain inside `matchesQuery`, which meant a
+ * condition carrying two operators had only its *first* one evaluated. That was
+ * survivable while `convertFilterOp` never produced such a condition. It does
+ * now: `between` lowers to `{$gte, $lte}` on one field, because Parse allows
+ * several constraints on a field and one condition beats an `$and` of two. With
+ * the chain, the lower bound would simply not have been checked locally — a
+ * record outside the range appearing in a Query Records node's results while
+ * the backend correctly excluded it.
+ *
+ * The two defects PLAT-003 recorded and left verbatim are fixed with it, since
+ * both sit on the path `between` now takes:
+ *
+ * - `$lte` compared against `$lt`, which is `undefined` on an `$lte`-only
+ *   condition — and every comparison with `undefined` is false, so a `$lte`
+ *   filter had never matched a local record.
+ * - `$nin` read `$in`, so a `$nin`-only condition threw a `TypeError`.
+ *
+ * And `{$exists: false}` was read as `{$exists: true}` — the old branch tested
+ * `value !== undefined` whatever the operand was, so "has no email" matched
+ * exactly the records that *had* one.
+ */
+function matchesOperator(value: unknown, op: string, condition: OpenJson): boolean {
+  const operand = condition[op];
+  switch (op) {
+    case '$eq':
+      // Loose equality is deliberate: a filter value arriving from an input
+      // port is often a string where the record holds a number.
+      return operand && operand.__type === 'Pointer' ? value === operand.objectId : value == operand;
+    case '$ne':
+      return value != operand;
+    case '$lt':
+      return (value as number) < operand;
+    case '$lte':
+      return (value as number) <= operand;
+    case '$gt':
+      return (value as number) > operand;
+    case '$gte':
+      return (value as number) >= operand;
+    case '$exists':
+      return operand === false ? value === undefined || value === null : value !== undefined && value !== null;
+    case '$in':
+      return Array.isArray(operand) && operand.indexOf(value) !== -1;
+    case '$nin':
+      return Array.isArray(operand) && operand.indexOf(value) === -1;
+    case '$regex':
+      if (value === undefined || value === null) return false;
+      return new RegExp(operand, condition['$options']).test(String(value));
+    default:
+      // An operator with no branch here would otherwise contribute nothing and
+      // let a record through that the backend excluded — the same widening
+      // BCN-003 closes everywhere else. There is no channel to report on from
+      // inside a local match, so it is left permissive and named instead of
+      // being silently absent.
+      return true;
   }
 }
 
@@ -178,26 +279,13 @@ export function matchesQuery(model: ModelLike, query?: ParseQuery): boolean | nu
         match = false; // cannot resolve relation queries locally
       } else {
         const value = model.get(k);
-        if (query[k]['$eq'] !== undefined && query[k]['$eq'].__type === 'Pointer')
-          match &= Number(value === query[k]['$eq'].objectId);
-        else if (query[k]['$eq'] !== undefined) match &= Number(value == query[k]['$eq']);
-        else if (query[k]['$ne'] !== undefined) match &= Number(value != query[k]['$ne']);
-        else if (query[k]['$lt'] !== undefined) match &= Number(value < query[k]['$lt']);
-        // DEFECT (PLAT-003 NOTES §29.3), left verbatim: `$lte` compares against `$lt`,
-        // which is `undefined` on an `$lte`-only condition — and every comparison with
-        // `undefined` is false. So a `$lte` filter has never matched a local record, while
-        // the same filter sent to the backend matches correctly. The two disagree.
-        else if (query[k]['$lte'] !== undefined) match &= Number(value <= query[k]['$lt']);
-        else if (query[k]['$gt'] !== undefined) match &= Number(value > query[k]['$gt']);
-        else if (query[k]['$gte'] !== undefined) match &= Number(value >= query[k]['$gte']);
-        else if (query[k]['$exists'] !== undefined) match &= Number(value !== undefined);
-        else if (query[k]['$in'] !== undefined) match &= Number(query[k]['$in'].indexOf(value) !== -1);
-        // DEFECT (PLAT-003 NOTES §29.3), left verbatim: `$nin` reads `$in`. On a condition
-        // that carries only `$nin` that is `undefined`, so this throws a `TypeError`
-        // rather than mismatching quietly.
-        else if (query[k]['$nin'] !== undefined) match &= Number(query[k]['$in'].indexOf(value) === -1);
-        else if (query[k]['$regex'] !== undefined)
-          match &= Number(new RegExp(query[k]['$regex'], query[k]['$options']).test(value as string));
+        const condition = query[k];
+        // `$options` is a modifier on `$regex`, not a condition of its own.
+        Object.keys(condition)
+          .filter((op) => op !== '$options')
+          .forEach((op) => {
+            match &= Number(matchesOperator(value, op, condition));
+          });
       }
     });
   }
@@ -228,16 +316,6 @@ export function convertVisualSorting(sorting: VisualSorting[]): string[] {
   });
 }
 
-function _value(v: unknown): unknown {
-  if (v instanceof Date && typeof v.toISOString === 'function') {
-    return {
-      __type: 'Date',
-      iso: v.toISOString()
-    };
-  }
-  return v;
-}
-
 export interface FilterOpOptions {
   collectionName?: string;
   modelScope?: ModelScopeLike;
@@ -248,158 +326,39 @@ export interface FilterOpOptions {
  * Converts the *user-facing* filter language — the one a Filter Records node's `filter`
  * input is written in — into the Parse query the backend understands.
  *
- * `options.error` is called rather than thrown, and the function then returns whatever
- * `error` returned (usually `undefined`), so a malformed filter degrades to "no filter"
- * with a message rather than taking the node down.
+ * `options.error` is called rather than thrown, and the function then returns
+ * `{}`, so a malformed filter degrades to "no filter" with a message rather
+ * than taking the node down. That is the pre-existing contract and it is kept.
+ *
+ * ⚠️ **What this used to do, and no longer does.** The if/else chain it replaces
+ * had no branch for eleven of the operators the vocabulary defines —
+ * `contains`, `startsWith`, `endsWith`, `between` and their negative and
+ * case-insensitive siblings. It fell off the end of the chain, left `res[key]`
+ * unset, and returned `{}`. So a "name contains Ada" filter did not narrow
+ * anything: the query succeeded and returned **every record in the
+ * collection**, with no error anywhere. Those eleven are lowered onto `$regex`
+ * and comparisons now, which is what the `parse` descriptor had claimed all
+ * along.
+ *
+ * A second widening is closed at the same time: a leaf carrying two operators
+ * (`{price: {greaterThan: 1, lessThan: 5}}`) took whichever the chain reached
+ * first and dropped the other. It is refused now.
  */
 export function convertFilterOp(filter: ParseQuery, options: FilterOpOptions): ParseQuery {
-  const keys = Object.keys(filter);
-  if (keys.length === 0) return {};
-  if (keys.length !== 1) {
-    return options.error('Filter must only have one key found ' + keys.join(',')) as unknown as ParseQuery;
+  try {
+    const resolved = resolveRelatedClasses(filter as Filter, options.modelScope);
+    return toParseWhere(resolved, {
+      backend: backendType(),
+      schema: schemaFor(options.collectionName)
+    }) as ParseQuery;
+  } catch (e) {
+    if (e instanceof FilterTranslationError) {
+      // The message carries the capability table's own sentence when the
+      // refusal came from a gated operator — the same words the editor shows
+      // under the greyed-out port.
+      options.error(e.message);
+      return {};
+    }
+    throw e;
   }
-
-  const res: ParseQuery = {};
-  const key = keys[0];
-  if (filter['and'] !== undefined && Array.isArray(filter['and'])) {
-    res['$and'] = filter['and'].map((f) => convertFilterOp(f, options));
-  } else if (filter['or'] !== undefined && Array.isArray(filter['or'])) {
-    res['$or'] = filter['or'].map((f) => convertFilterOp(f, options));
-  } else if (filter['idEqualTo'] !== undefined) {
-    res['objectId'] = { $eq: filter['idEqualTo'] };
-  } else if (filter['idContainedIn'] !== undefined) {
-    res['objectId'] = { $in: filter['idContainedIn'] };
-  } else if (filter['relatedTo'] !== undefined) {
-    const modelId = filter['relatedTo']['id'];
-    if (modelId === undefined) {
-      return options.error('Must provide id in relatedTo filter') as unknown as ParseQuery;
-    }
-
-    const relationKey = filter['relatedTo']['key'];
-    if (relationKey === undefined) {
-      return options.error('Must provide key in relatedTo filter') as unknown as ParseQuery;
-    }
-
-    const className = filter['relatedTo']['className'] || (options.modelScope || Model).get(modelId)?._class;
-    if (typeof className === 'undefined') {
-      // Either the pointer is loaded as an object or we allow passing in the className.
-      return options.error('Must preload the Pointer or include className') as unknown as ParseQuery;
-    }
-
-    res['$relatedTo'] = {
-      object: {
-        __type: 'Pointer',
-        objectId: modelId,
-        className
-      },
-      key: relationKey
-    };
-  } else if (typeof filter[key] === 'object') {
-    const opAndValue = filter[key];
-    if (opAndValue['equalTo'] !== undefined) res[key] = { $eq: _value(opAndValue['equalTo']) };
-    else if (opAndValue['notEqualTo'] !== undefined) res[key] = { $ne: _value(opAndValue['notEqualTo']) };
-    else if (opAndValue['lessThan'] !== undefined) res[key] = { $lt: _value(opAndValue['lessThan']) };
-    else if (opAndValue['greaterThan'] !== undefined) res[key] = { $gt: _value(opAndValue['greaterThan']) };
-    else if (opAndValue['lessThanOrEqualTo'] !== undefined) res[key] = { $lte: _value(opAndValue['lessThanOrEqualTo']) };
-    else if (opAndValue['greaterThanOrEqualTo'] !== undefined)
-      res[key] = { $gte: _value(opAndValue['greaterThanOrEqualTo']) };
-    else if (opAndValue['exists'] !== undefined) res[key] = { $exists: opAndValue['exists'] };
-    else if (opAndValue['containedIn'] !== undefined) res[key] = { $in: opAndValue['containedIn'] };
-    else if (opAndValue['notContainedIn'] !== undefined) res[key] = { $nin: opAndValue['notContainedIn'] };
-    else if (opAndValue['pointsTo'] !== undefined) {
-      let schema = null;
-      if (CloudStore._collections[options.collectionName]) {
-        schema = CloudStore._collections[options.collectionName].schema;
-      }
-
-      const targetClass =
-        schema && schema.properties && schema.properties[key] ? schema.properties[key].targetClass : undefined;
-      const type = schema && schema.properties && schema.properties[key] ? schema.properties[key].type : undefined;
-
-      if (type === 'Relation') {
-        res[key] = {
-          __type: 'Pointer',
-          objectId: opAndValue['pointsTo'],
-          className: targetClass
-        };
-      } else {
-        if (Array.isArray(opAndValue['pointsTo'])) {
-          res[key] = {
-            $in: opAndValue['pointsTo'].map((v) => {
-              return { __type: 'Pointer', objectId: v, className: targetClass };
-            })
-          };
-        } else {
-          res[key] = {
-            $eq: {
-              __type: 'Pointer',
-              objectId: opAndValue['pointsTo'],
-              className: targetClass
-            }
-          };
-        }
-      }
-    } else if (opAndValue['matchesRegex'] !== undefined) {
-      res[key] = {
-        $regex: opAndValue['matchesRegex'],
-        $options: opAndValue['options']
-      };
-    } else if (opAndValue['text'] !== undefined && opAndValue['text']['search'] !== undefined) {
-      const _v = opAndValue['text']['search'];
-      if (typeof _v === 'string') res[key] = { $text: { $search: { $term: _v, $caseSensitive: false } } };
-      else
-        res[key] = {
-          $text: {
-            $search: {
-              $term: _v.term,
-              $language: _v.language,
-              $caseSensitive: _v.caseSensitive,
-              $diacriticSensitive: _v.diacriticSensitive
-            }
-          }
-        };
-      // Geo points
-    } else if (opAndValue['nearSphere'] !== undefined) {
-      const _v = opAndValue['nearSphere'];
-      res[key] = {
-        $nearSphere: {
-          __type: 'GeoPoint',
-          latitude: _v.latitude,
-          longitude: _v.longitude
-        },
-        // Note the inconsistency, left verbatim: the first reads `$maxDistanceInMiles`
-        // with the `$`, the other two read the bare name. Only one of the three can be
-        // receiving what its caller writes.
-        $maxDistanceInMiles: _v.$maxDistanceInMiles,
-        $maxDistanceInKilometers: _v.maxDistanceInKilometers,
-        $maxDistanceInRadians: _v.maxDistanceInRadians
-      };
-    } else if (opAndValue['withinBox'] !== undefined) {
-      const _v = opAndValue['withinBox'];
-      res[key] = {
-        $within: {
-          $box: _v.map((gp) => ({
-            __type: 'GeoPoint',
-            latitude: gp.latitude,
-            longitude: gp.longitude
-          }))
-        }
-      };
-    } else if (opAndValue['withinPolygon'] !== undefined) {
-      const _v = opAndValue['withinPolygon'];
-      res[key] = {
-        $geoWithin: {
-          $polygon: _v.map((gp) => ({
-            __type: 'GeoPoint',
-            latitude: gp.latitude,
-            longitude: gp.longitude
-          }))
-        }
-      };
-    }
-  } else {
-    options.error('Unrecognized filter keys ' + keys.join(','));
-  }
-
-  return res;
 }
