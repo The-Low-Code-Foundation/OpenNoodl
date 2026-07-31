@@ -30,7 +30,9 @@ import {
   type SavedFilterItem
 } from '@noodl/backend-contract/translators';
 
-import type { BackendServicesMetaData, ResolvedBackend, SchemaCollection } from './byob-types';
+import type { ResolvedBackend, SchemaCollection } from './byob-types';
+
+import * as SchemaPorts from './schema-ports';
 
 import Node = require('../../../node');
 import ByobUtils = require('./byob-utils');
@@ -790,8 +792,12 @@ function parseFilterForConnectedPorts(filterJson: string | undefined): Connected
 }
 
 /**
- * Update dynamic ports based on node configuration
- * This will be extended to support schema-driven collection/field dropdowns
+ * Update dynamic ports based on node configuration.
+ *
+ * Composed from the shared schema-driven port generator (BCN-004 step 4). What is
+ * left here is what only a query node has: the visual filter builder's port, the
+ * sort dropdown, pagination, and one `filter_*` input per condition whose value is
+ * wired rather than typed.
  */
 function updatePorts(
   nodeId: string,
@@ -799,94 +805,19 @@ function updatePorts(
   editorConnection: NodeContextLike['editorConnection'],
   graphModel: GraphModelLike
 ) {
-  const ports: RuntimeDiscoveredPort[] = [];
+  const ctx = SchemaPorts.resolveSchemaPortContext({ graphModel, parameters });
 
-  // Get backend services metadata
-  const backendServices = (graphModel.getMetaData('backendServices') as BackendServicesMetaData) || {
-    backends: []
-  };
-  const backends = backendServices.backends || [];
+  const ports: RuntimeDiscoveredPort[] = [
+    ...SchemaPorts.backendPickerPorts(ctx),
+    // API Path Mode MUST come before Collection for proper UX
+    ...SchemaPorts.apiPathModePorts(ctx, { group: 'Query' }),
+    ...SchemaPorts.collectionPorts(ctx, { group: 'Query' })
+  ];
 
-  // Backend selection dropdown
-  const backendEnums = [{ label: 'Active Backend', value: '_active_' }];
-  backends.forEach((b) => {
-    backendEnums.push({ label: b.name, value: b.id });
-  });
-
-  ports.push({
-    name: 'backendId',
-    displayName: 'Backend',
-    type: {
-      name: 'enum',
-      enums: backendEnums,
-      allowEditOnly: true
-    },
-    default: '_active_',
-    plug: 'input',
-    group: 'Backend'
-  });
-
-  // Resolve the selected backend
-  const selectedBackendId =
-    parameters.backendId === '_active_' || !parameters.backendId
-      ? backendServices.activeBackendId
-      : parameters.backendId;
-  const selectedBackend = backends.find((b) => b.id === selectedBackendId);
-  const allCollections = selectedBackend?.schema?.collections || [];
-
-  // API Path Mode dropdown - MUST come before Collection for proper UX
-  const isSystemTable = ByobUtils.isSystemCollection(parameters.collection as string);
-
-  ports.push({
-    name: 'apiPathMode',
-    displayName: 'API Path',
-    type: {
-      name: 'enum',
-      enums: [
-        { label: 'Items (User Collections)', value: 'items' },
-        { label: 'System (Directus Tables)', value: 'system' }
-      ],
-      allowEditOnly: true
-    },
-    default: isSystemTable ? 'system' : 'items',
-    plug: 'input',
-    group: 'Query'
-  });
-
-  // Filter collections based on selected API path mode
-  const apiPathMode = (parameters.apiPathMode as string) || (isSystemTable ? 'system' : 'items');
-  const filteredCollections = ByobUtils.filterCollectionsByMode(allCollections, apiPathMode);
-
-  // Collection dropdown (filtered by API path mode)
-  const collectionEnums = [{ label: '(Select collection)', value: '' }];
-  filteredCollections.forEach((c) => {
-    collectionEnums.push({ label: c.displayName || c.name, value: c.name });
-  });
-
-  ports.push({
-    name: 'collection',
-    displayName: 'Collection',
-    type: {
-      name: 'enum',
-      enums: collectionEnums,
-      allowEditOnly: true
-    },
-    plug: 'input',
-    group: 'Query'
-  });
-
-  // Get selected collection for field-based dropdowns
-  const selectedCollection = allCollections.find((c) => c.name === parameters.collection);
-
-  // Expand M2O/O2O relations one hop (author.name) so the filter builder and
-  // sort dropdown can traverse into related collections (Directus supports
-  // dotted paths in both filter and sort)
-  const fields = selectedCollection?.fields || [];
-  const relationFields = selectedCollection ? ByobUtils.getRelationFields(selectedCollection, allCollections) : [];
-  const expandedRelationFields = selectedCollection
-    ? ByobUtils.expandRelationFields(selectedCollection, allCollections)
-    : [];
-  const filterFields = fields.concat(expandedRelationFields);
+  // Own fields plus the one-hop dotted relation paths (author.name) — Directus
+  // supports those in both filter and sort
+  const filterFields = SchemaPorts.getFilterFields(ctx);
+  const selectedCollection = ctx.selectedCollection;
 
   // Filter port - uses Visual Filter Builder when schema is available
   ports.push({
@@ -978,19 +909,8 @@ function updatePorts(
   });
 
   // One Include toggle per traversable relation — when on, the request expands
-  // the relation in the fields param (fields=*,author.*) so records carry the
-  // related record as a nested object instead of a raw foreign key
-  relationFields.forEach(({ field, targetCollection }) => {
-    ports.push({
-      name: `include_${field.name}`,
-      displayName: `Include ${field.displayName || field.name}`,
-      type: 'boolean',
-      default: false,
-      plug: 'input',
-      group: 'Related Data',
-      tooltip: `Fetch the related ${targetCollection.displayName || targetCollection.name} record as a nested object`
-    });
-  });
+  // the relation in the fields param (fields=*,author.*)
+  ports.push(...SchemaPorts.relationIncludePorts(ctx));
 
   // Parse filter to find connected conditions and add dynamic ports
   const connectedConditions = parseFilterForConnectedPorts(parameters.filter as string);
@@ -1010,13 +930,13 @@ function updatePorts(
     });
   }
 
-  // NOTE: 'fetch' signal is defined in static inputs (with valueChangedToTrue handler)
-  // DO NOT add it here again or it will appear twice in the connection popup
-
-  // Outputs are all static (declared on the node definition) — pushing them
-  // here too would list every output twice in getPorts().
-
-  editorConnection.sendDynamicPorts(nodeId, ports);
+  // The `fetch` signal and every output are declared statically on the node.
+  // `sendSchemaPorts` drops any generated port that would collide with one —
+  // re-pushing a static output as a dynamic port is what once made `getPorts()`
+  // list each output twice (RUN-003 slice 8).
+  SchemaPorts.sendSchemaPorts(editorConnection, nodeId, ports, {
+    staticPorts: SchemaPorts.staticPortNames(QueryDataNode)
+  });
 }
 
 /**

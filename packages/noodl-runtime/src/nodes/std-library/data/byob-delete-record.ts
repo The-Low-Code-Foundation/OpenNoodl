@@ -19,7 +19,9 @@ import type {
   RuntimeDiscoveredPort
 } from '@noodl/types';
 
-import type { BackendServicesMetaData, ResolvedBackend, SchemaField } from './byob-types';
+import type { ResolvedBackend } from './byob-types';
+
+import * as SchemaPorts from './schema-ports';
 
 import ByobUtils = require('./byob-utils');
 
@@ -310,7 +312,11 @@ const DeleteRecordNode: NodeDefinitionOptions = {
 };
 
 /**
- * Update dynamic ports based on node configuration
+ * Update dynamic ports based on node configuration.
+ *
+ * Composed from the shared schema-driven port generator (BCN-004 step 4) rather
+ * than built by hand here; `sendSchemaPorts` is what keeps a static port from
+ * being re-announced as a dynamic one.
  */
 function updatePorts(
   nodeId: string,
@@ -318,95 +324,25 @@ function updatePorts(
   editorConnection: NodeContextLike['editorConnection'],
   graphModel: GraphModelLike
 ) {
-  const ports: RuntimeDiscoveredPort[] = [];
+  const ctx = SchemaPorts.resolveSchemaPortContext({ graphModel, parameters });
 
-  // Get backend services metadata
-  const backendServices = (graphModel.getMetaData('backendServices') as BackendServicesMetaData) || {
-    backends: []
-  };
-  const backends = backendServices.backends || [];
+  const ports: RuntimeDiscoveredPort[] = [
+    ...SchemaPorts.backendPickerPorts(ctx),
+    ...SchemaPorts.apiPathModePorts(ctx),
+    ...SchemaPorts.collectionPorts(ctx),
+    // Record ID input (required for delete)
+    {
+      name: 'recordId',
+      displayName: 'Record ID',
+      type: 'string',
+      plug: 'input',
+      group: 'Configuration'
+    }
+  ];
 
-  // Backend selection dropdown
-  const backendEnums = [{ label: 'Active Backend', value: '_active_' }];
-  backends.forEach((b) => {
-    backendEnums.push({ label: b.name, value: b.id });
+  SchemaPorts.sendSchemaPorts(editorConnection, nodeId, ports, {
+    staticPorts: SchemaPorts.staticPortNames(DeleteRecordNode)
   });
-
-  ports.push({
-    name: 'backendId',
-    displayName: 'Backend',
-    type: {
-      name: 'enum',
-      enums: backendEnums,
-      allowEditOnly: true
-    },
-    default: '_active_',
-    plug: 'input',
-    group: 'Backend'
-  });
-
-  // Resolve the selected backend
-  const selectedBackendId =
-    parameters.backendId === '_active_' || !parameters.backendId
-      ? backendServices.activeBackendId
-      : parameters.backendId;
-  const selectedBackend = backends.find((b) => b.id === selectedBackendId);
-  const allCollections = selectedBackend?.schema?.collections || [];
-
-  // API Path Mode dropdown - MUST come before Collection for proper UX
-  const isSystemTable = ByobUtils.isSystemCollection(parameters.collection as string);
-
-  ports.push({
-    name: 'apiPathMode',
-    displayName: 'API Path',
-    type: {
-      name: 'enum',
-      enums: [
-        { label: 'Items (User Collections)', value: 'items' },
-        { label: 'System (Directus Tables)', value: 'system' }
-      ],
-      allowEditOnly: true
-    },
-    default: isSystemTable ? 'system' : 'items',
-    plug: 'input',
-    group: 'Configuration'
-  });
-
-  // Filter collections based on selected API path mode
-  const apiPathMode = (parameters.apiPathMode as string) || (isSystemTable ? 'system' : 'items');
-  const filteredCollections = ByobUtils.filterCollectionsByMode(allCollections, apiPathMode);
-
-  // Collection dropdown (filtered by API path mode)
-  const collectionEnums = [{ label: '(Select collection)', value: '' }];
-  filteredCollections.forEach((c) => {
-    collectionEnums.push({ label: c.displayName || c.name, value: c.name });
-  });
-
-  ports.push({
-    name: 'collection',
-    displayName: 'Collection',
-    type: {
-      name: 'enum',
-      enums: collectionEnums,
-      allowEditOnly: true
-    },
-    plug: 'input',
-    group: 'Configuration'
-  });
-
-  // Record ID input (required for delete)
-  ports.push({
-    name: 'recordId',
-    displayName: 'Record ID',
-    type: 'string',
-    plug: 'input',
-    group: 'Configuration'
-  });
-
-  // NOTE: 'delete' signal is defined in static inputs.
-  // Outputs are all static too — pushing them here would list each twice in getPorts().
-
-  editorConnection.sendDynamicPorts(nodeId, ports);
 }
 
 const DeleteRecordNodeModule: NodeModule = {
