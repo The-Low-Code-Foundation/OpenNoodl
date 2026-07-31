@@ -1,3 +1,24 @@
+/// <reference path="../../globals.d.ts" />
+//
+// The reference is load-bearing, and PLAT-003 slice 13 is why.
+//
+// `_noodl_cloud_runtime_version` and `_noodl_cloudservices` are ambient globals
+// declared in `src/globals.d.ts`. That declaration is in *this* package's
+// program, and it was enough while the wire lived in `cloudstore.js`: a `.js`
+// file under `checkJs: false` is never typechecked, and consumers' `ts-jest`
+// passes it through untransformed.
+//
+// Moving the wire into a `.ts` file changes both halves. `cloudstore.js` now
+// requires a TypeScript module, so every consumer's `ts-jest` compiles *this*
+// file with *their* tsconfig — where `src/globals.d.ts` is not in scope, and
+// nine `typeof` guards become nine `TS2304`s. `noodl-viewer-react`'s tsconfig
+// already carries a long comment about this exact failure; the reference is what
+// makes the file carry its own ambients into whichever program picks it up.
+//
+// The bare identifiers must stay bare. `globalThis._noodl_cloudservices` would
+// satisfy the compiler and quietly break the deploy bundles, where webpack's
+// DefinePlugin substitutes the *identifier* — a property access is not a
+// substitution site.
 /**
  * `ParseWireAdapter` — the Parse wire, behind `IDataAdapter`.
  *
