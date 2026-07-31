@@ -206,7 +206,10 @@ export class ParseWireAdapter extends AdapterEvents implements IDataAdapter {
       xhr.open(options.method || 'GET', handle.url + path, true);
 
       xhr.setRequestHeader('X-Parse-Application-Id', handle.publicToken);
-      if (typeof _noodl_cloudservices !== 'undefined')
+      // The second half of this guard is BCN-002's live-pass fix: `masterKey` is
+      // optional on `_noodl_cloudservices`, and setting a header to `undefined`
+      // sends the four-letter string, not nothing. See the fetch branch.
+      if (typeof _noodl_cloudservices !== 'undefined' && _noodl_cloudservices.masterKey !== undefined)
         xhr.setRequestHeader('X-Parse-Master-Key', _noodl_cloudservices.masterKey);
 
       // Check for current users.
@@ -249,12 +252,23 @@ export class ParseWireAdapter extends AdapterEvents implements IDataAdapter {
       const appId = typeof _noodl_cloudservices !== 'undefined' ? _noodl_cloudservices.appId : handle.publicToken;
       const masterKey = typeof _noodl_cloudservices !== 'undefined' ? _noodl_cloudservices.masterKey : undefined;
 
+      // BCN-002 live-pass fix. This used to be one object literal with
+      // `'X-Parse-Master-Key': masterKey` in it, and when there is no master key
+      // that property is `undefined` — which `JSON.stringify` drops but
+      // `new Headers()` keeps, as the literal four-letter string `undefined`.
+      // A cloud runtime without baked credentials (a configuration
+      // `globals.d.ts` describes explicitly) therefore sent
+      // `X-Parse-Master-Key: undefined` on *every* request, and
+      // `nodegx-backend` counts each one as a failed credential attempt and
+      // locks the caller out for 300 seconds after a handful.
+      //
+      // Found by the live pass, on the very first run, and by nothing else: the
+      // unit suites all take the XHR branch, and upstream Parse ignores a
+      // master-key header it does not recognise rather than rejecting it. The
+      // one server that fails loudly here is our own.
       const headers: Record<string, string> = Object.assign(
-        {
-          'X-Parse-Application-Id': appId,
-          'X-Parse-Master-Key': masterKey,
-          'Content-Type': 'application/json'
-        },
+        { 'X-Parse-Application-Id': appId, 'Content-Type': 'application/json' },
+        masterKey !== undefined ? { 'X-Parse-Master-Key': masterKey } : {},
         options.headers || {}
       );
 

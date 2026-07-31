@@ -207,6 +207,45 @@ describe('BCN-002 — the traps the move had to preserve', () => {
   });
 });
 
+describe('BCN-002 — the cloud-runtime branch, and the header that said "undefined"', () => {
+  const realFetch = (globalThis as unknown as { fetch?: unknown }).fetch;
+  let captured: { headers?: Record<string, string> } | undefined;
+
+  beforeEach(() => {
+    captured = undefined;
+    (globalThis as unknown as { _noodl_cloud_runtime_version: string })._noodl_cloud_runtime_version = '1';
+    (globalThis as unknown as { fetch: unknown }).fetch = (_url: string, init: { headers?: Record<string, string> }) => {
+      captured = init;
+      return Promise.resolve({ status: 200, json: () => Promise.resolve({ results: [] }) });
+    };
+  });
+
+  afterEach(() => {
+    delete (globalThis as unknown as { _noodl_cloud_runtime_version?: string })._noodl_cloud_runtime_version;
+    (globalThis as unknown as { fetch?: unknown }).fetch = realFetch;
+  });
+
+  test('no master key means no master-key header — not one reading "undefined"', async () => {
+    // The defect this pins is not hypothetical and not cosmetic. `JSON.stringify`
+    // drops an `undefined` property, but `new Headers({...})` keeps it as the
+    // four-letter string, so a cloud runtime with no baked credentials sent
+    // `X-Parse-Master-Key: undefined` on every request — and `nodegx-backend`
+    // counts each as a failed credential attempt and locks the caller out for
+    // 300 seconds. Pre-existing in `cloudstore.js`; found by BCN-002's live
+    // pass on its first run, because every unit suite takes the XHR branch and
+    // upstream Parse ignores a master key it does not recognise.
+    await new Promise<void>((resolve) => {
+      makeAdapter().query(handle, { collection: 'Posts', success: () => resolve(), error: () => resolve() });
+    });
+
+    expect(captured?.headers).toBeDefined();
+    expect('X-Parse-Master-Key' in captured!.headers!).toBe(false);
+    // And the constructed Headers agrees — which is the layer that differed.
+    expect([...new Headers(captured!.headers!).keys()]).not.toContain('x-parse-master-key');
+    expect(captured!.headers!['X-Parse-Application-Id']).toBe('app-id-123');
+  });
+});
+
 describe('BCN-002 — record identity at the boundary', () => {
   beforeEach(() => {
     FakeXHR.instances = [];
