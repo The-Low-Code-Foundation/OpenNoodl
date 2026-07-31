@@ -42,6 +42,29 @@ const FIXTURE = Process.cwd() + '/tests/testfs/import_collide_target';
 const PAST_DEBOUNCE_MS = 1800;
 /** Opening a project raises events of its own. Let them settle before measuring. */
 const SETTLE_MS = 1500;
+/**
+ * How long a write that IS coming is allowed to take, and why it is not
+ * `PAST_DEBOUNCE_MS`.
+ *
+ * The two kinds of claim here need two different instruments. "Does not write"
+ * is an *absence*: it cannot be polled for, so a fixed wait past the debounce is
+ * the only way to observe it. "DOES write" is a *presence*, and sampling a
+ * presence at one fixed instant asserts a deadline nobody meant to claim — the
+ * claim is that an edit reaches disk, not that it reaches disk within 800ms of
+ * the debounce firing.
+ *
+ * The distinction matters because a missed deadline and a dropped edit produce
+ * the identical `Expected true to be false`, on the one suite whose whole job is
+ * to catch a silently dropped user edit. Measured on an idle machine, the write
+ * lands 1132ms and 1122ms after the edit — ~130ms past the debounce, against
+ * 800ms of slack, so the deadline is not tight today. It is simply measuring
+ * something other than the claim.
+ *
+ * Matches `projectsaveflush.js`'s POLL_BUDGET_MS, whose header states the same
+ * principle: every assertion there is timing-free on purpose.
+ */
+const WRITE_BUDGET_MS = 8000;
+const POLL_INTERVAL_MS = 50;
 
 describe('only a project edit writes the project', function () {
   let previousInstance;
@@ -89,11 +112,21 @@ describe('only a project edit writes the project', function () {
     fs.writeFileSync(file, JSON.stringify(json, null, 2));
 
     return function sentinelSurvives() {
-      const current = JSON.parse(fs.readFileSync(file, 'utf8'));
+      let current;
+      try {
+        current = JSON.parse(fs.readFileSync(file, 'utf8'));
+      } catch (e) {
+        // Caught the file mid-replace. That is evidence a save is in flight, not
+        // evidence the sentinel is gone — so report it as surviving and let the
+        // caller look again. Unguarded, this threw a JSON parse error in place of
+        // whichever assertion was being made.
+        return true;
+      }
       return (current.metadata || {}).diskOnlySentinel === true;
     };
   }
 
+  /** Assert an ABSENCE. Nothing may be written, so there is nothing to wait for. */
   function afterDebounce(assert, done) {
     setTimeout(function () {
       try {
@@ -103,6 +136,33 @@ describe('only a project edit writes the project', function () {
         done.fail(e);
       }
     }, PAST_DEBOUNCE_MS);
+  }
+
+  /**
+   * Assert a PRESENCE: the edit reached disk. Polls rather than sampling, and
+   * says what it was claiming when it gives up — `Expected true to be false`
+   * named neither the claim nor which of the two ways it can fail.
+   */
+  function expectTheProjectIsWritten(what, sentinelSurvives, done) {
+    const started = Date.now();
+
+    (function poll() {
+      if (!sentinelSurvives()) return done();
+
+      const waited = Date.now() - started;
+      if (waited >= WRITE_BUDGET_MS) {
+        return done.fail(
+          new Error(
+            `${what} did not write the project within ${WRITE_BUDGET_MS}ms. The ` +
+              'disk-only sentinel survived, so no save serialised it away — the ' +
+              'autosave allowlist dropped the edit. (An edit that merely arrived ' +
+              'late would have cleared the sentinel before this budget expired; ' +
+              'a write takes ~130ms past the 1000ms debounce on an idle machine.)'
+          )
+        );
+      }
+      setTimeout(poll, POLL_INTERVAL_MS);
+    })();
   }
 
   it('a preview client connecting does not rewrite the project', function (done) {
@@ -167,9 +227,7 @@ describe('only a project edit writes the project', function () {
     const node = component.graph.roots[0];
     node.set({ x: node.x + 64, y: node.y + 32 });
 
-    afterDebounce(function () {
-      expect(sentinelSurvives()).toBe(false);
-    }, done);
+    expectTheProjectIsWritten('moving a node', sentinelSurvives, done);
   });
 
   it('changing a node parameter in the project DOES rewrite the project', function (done) {
@@ -179,8 +237,6 @@ describe('only a project edit writes the project', function () {
     const node = component.graph.roots[0];
     node.setParameter('paddingLeft', { value: 17, unit: 'px' });
 
-    afterDebounce(function () {
-      expect(sentinelSurvives()).toBe(false);
-    }, done);
+    expectTheProjectIsWritten('changing a node parameter', sentinelSurvives, done);
   });
 });
