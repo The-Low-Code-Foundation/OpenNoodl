@@ -12,5 +12,5 @@
     // can claim anything.
     "types": ["node", "jest"]
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts", "translators.ts"]
 }

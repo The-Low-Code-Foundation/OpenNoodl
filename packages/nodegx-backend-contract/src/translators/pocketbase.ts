@@ -1,0 +1,207 @@
+/**
+ * `toPocketBaseFilter` — the neutral filter as a PocketBase filter expression.
+ *
+ * PocketBase's filter is a **string expression** (`status = "x" && rating > 3`),
+ * which makes the obvious implementation string concatenation and the obvious
+ * implementation an injection vector. A user typing `" || 1=1 || "` into a
+ * search box would otherwise rewrite the query's logic — and on a collection
+ * with per-user rules, read someone else's rows.
+ *
+ * So the translator never concatenates a value. It emits placeholders and a
+ * separate parameter map, exactly as PocketBase's own SDK helper `pb.filter()`
+ * does, and `bindPocketBaseFilter` performs the substitution with each value
+ * encoded for its type. Keeping the two apart is what makes the guarantee
+ * testable rather than asserted: a test can check that no user text reaches the
+ * expression at all.
+ *
+ * @module backend-contract/translators/pocketbase
+ */
+
+import type { Filter } from '../filter';
+import { applyLikeAnchor, betweenBounds, lowerToLike } from './lowering';
+import { translateWith } from './translate';
+import type { DialectContext, FilterDialect, FilterNode, TranslateOptions } from './types';
+
+export interface PocketBaseFilter {
+  /** The expression, with `{:p0}`-style placeholders in place of every value. */
+  expression: string;
+  /** Placeholder name → value. Never interpolated by this module. */
+  params: Record<string, unknown>;
+}
+
+type ConditionNode = Extract<FilterNode, { kind: 'condition' }>;
+
+function createPocketBaseDialect(): FilterDialect<PocketBaseFilter> {
+  // Per-translation, not per-module: two queries translated in the same tick
+  // would otherwise share a counter and overwrite each other's parameters.
+  let next = 0;
+  const params: Record<string, unknown> = {};
+
+  const bind = (value: unknown): string => {
+    const name = `p${next++}`;
+    params[name] = value;
+    return `{:${name}}`;
+  };
+
+  const expr = (expression: string): PocketBaseFilter => ({ expression, params });
+
+  return {
+    name: 'pocketbase',
+    identityField: 'id',
+
+    empty: () => expr(''),
+    isEmpty: (value) => value.expression === '',
+
+    group(combinator, children) {
+      const joiner = combinator === 'and' ? ' && ' : ' || ';
+      return expr(`(${children.map((child) => child.expression).join(joiner)})`);
+    },
+
+    id(node) {
+      if (node.operator === 'idEqualTo') return expr(`id = ${bind(node.value)}`);
+      const values = Array.isArray(node.value) ? node.value : [node.value];
+      // PocketBase has no `in` operator, so set membership is a disjunction.
+      return expr(`(${values.map((value) => `id = ${bind(value)}`).join(' || ')})`);
+    },
+
+    relatedTo(node, ctx) {
+      return ctx.fail('PocketBase cannot filter by Parse-style relations', { operator: 'relatedTo' });
+    },
+
+    condition(node, ctx) {
+      return expr(conditionExpression(node, ctx, bind));
+    }
+  };
+}
+
+const COMPARISONS: Readonly<Record<string, string>> = Object.freeze({
+  equalTo: '=',
+  notEqualTo: '!=',
+  lessThan: '<',
+  greaterThan: '>',
+  lessThanOrEqualTo: '<=',
+  greaterThanOrEqualTo: '>='
+});
+
+function conditionExpression(node: ConditionNode, ctx: DialectContext, bind: (value: unknown) => string): string {
+  const { field, operator, value } = node;
+
+  const comparison = COMPARISONS[operator];
+  if (comparison) return `${field} ${comparison} ${bind(value)}`;
+
+  switch (operator) {
+    case 'containedIn':
+    case 'notContainedIn': {
+      const values = Array.isArray(value) ? value : [value];
+      if (values.length === 0) {
+        // An empty set matches nothing; its negation matches everything.
+        // Emitting an empty disjunction would be a syntax error, and emitting
+        // nothing at all would drop the condition — the failure this task is
+        // about.
+        return operator === 'containedIn' ? '1 = 2' : '1 = 1';
+      }
+      const symbol = operator === 'containedIn' ? '=' : '!=';
+      const joiner = operator === 'containedIn' ? ' || ' : ' && ';
+      return `(${values.map((item) => `${field} ${symbol} ${bind(item)}`).join(joiner)})`;
+    }
+
+    case 'exists':
+      return value === false ? `${field} = null` : `${field} != null`;
+
+    // `~` is PocketBase's LIKE. It wraps the value in `%` on both sides unless
+    // the value already contains one, which is how the anchored members are
+    // expressed: bind `foo%` and PocketBase leaves it alone.
+    //
+    // The three case-insensitive members are not distinguished, because
+    // PocketBase's `~` is SQLite `LIKE`, which is already case-insensitive for
+    // ASCII and has no case-sensitive counterpart. That makes `contains` the
+    // degraded one rather than `containsIgnoreCase` — recorded in the
+    // descriptor rather than pretended away here.
+    case 'contains':
+    case 'containsIgnoreCase':
+    case 'notContains':
+    case 'startsWith':
+    case 'startsWithIgnoreCase':
+    case 'notStartsWith':
+    case 'endsWith':
+    case 'endsWithIgnoreCase':
+    case 'notEndsWith': {
+      const lowered = lowerToLike(operator, value);
+      if (!lowered) return ctx.fail(`Cannot express "${operator}"`, { operator, field });
+      const pattern = applyLikeAnchor(lowered.anchor, escapeLikeValue(lowered.value), '%');
+      return `${field} ${lowered.negated ? '!~' : '~'} ${bind(pattern)}`;
+    }
+
+    case 'between':
+    case 'notBetween': {
+      const bounds = betweenBounds(value);
+      if (!bounds) {
+        return ctx.fail(`A "${operator}" filter needs a two-element array [from, to]`, { operator, field });
+      }
+      return operator === 'between'
+        ? `(${field} >= ${bind(bounds[0])} && ${field} <= ${bind(bounds[1])})`
+        : `(${field} < ${bind(bounds[0])} || ${field} > ${bind(bounds[1])})`;
+    }
+
+    case 'isEmpty':
+      return `${field} = ${bind('')}`;
+    case 'isNotEmpty':
+      return `${field} != ${bind('')}`;
+
+    // PocketBase has no ranked search; the descriptor says so and marks the
+    // cell `degraded`. Lowered to contains.
+    case 'textSearch':
+      return `${field} ~ ${bind(
+        `%${escapeLikeValue(typeof value === 'string' ? value : (value as { term?: unknown })?.term)}%`
+      )}`;
+
+    case 'pointsTo': {
+      const values = Array.isArray(value) ? value : [value];
+      return values.length === 1
+        ? `${field} = ${bind(values[0])}`
+        : `(${values.map((item) => `${field} = ${bind(item)}`).join(' || ')})`;
+    }
+
+    default:
+      return ctx.fail(`The PocketBase dialect cannot express "${operator}"`, { operator, field });
+  }
+}
+
+/**
+ * Neutralise SQL `LIKE` wildcards inside a value bound to `~`.
+ *
+ * PocketBase's `~` is `LIKE` underneath, so a `%` or `_` the *user* typed would
+ * otherwise act as a wildcard and widen the match. Backslash is SQLite's
+ * conventional escape and PocketBase passes it through.
+ */
+function escapeLikeValue(value: unknown): string {
+  return String(value ?? '').replace(/[\\%_]/g, '\\$&');
+}
+
+export function toPocketBaseFilter(filter: Filter | null | undefined, options: TranslateOptions): PocketBaseFilter {
+  return translateWith(createPocketBaseDialect(), filter, options);
+}
+
+/**
+ * Substitute bound parameters into an expression, the way PocketBase's own SDK
+ * helper does.
+ *
+ * Only used at the point the request is built — the translator's output keeps
+ * them apart so a test can prove no user text reaches the expression. Strings
+ * go through `JSON.stringify`, which is precisely the quoting PocketBase
+ * expects and escapes an embedded quote or backslash on the way.
+ */
+export function bindPocketBaseFilter(filter: PocketBaseFilter): string {
+  let bound = filter.expression;
+  for (const [name, value] of Object.entries(filter.params)) {
+    bound = bound.split(`{:${name}}`).join(encodePocketBaseValue(value));
+  }
+  return bound;
+}
+
+export function encodePocketBaseValue(value: unknown): string {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'boolean' || typeof value === 'number') return String(value);
+  if (value instanceof Date) return JSON.stringify(value.toISOString().replace('T', ' ').replace('Z', 'Z'));
+  return JSON.stringify(String(value));
+}
