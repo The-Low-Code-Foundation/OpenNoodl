@@ -2,7 +2,12 @@
 
 **Track S — One Backend Contract**
 
-**11 tasks. BCN-001, BCN-002 and BCN-003 COMPLETE — the contract exists, the first adapter is behind it, and one translator per backend is proved against five live servers. BCN-003b (the filter-builder convergence, split out by Richard) is next.**
+**11 tasks. BCN-001, BCN-002 and BCN-003 COMPLETE — the contract exists, the first adapter is behind it, and one translator per backend is proved against five live servers. BCN-003b (the filter-builder convergence, split out by Richard) is next, and is the last Tier 1 item.**
+
+**Three Tier 2/3 tasks are partially landed** from parallel sessions — BCN-006 (steps 1–3), BCN-007
+(step 1) and BCN-009 (steps 1, 3, 5, 6). All three stop at the same wall: **BCN-004's REST transport
+does not exist**, and none of them invented a second one. Their rows below say exactly which steps
+are done.
 
 | Task | Tier | Status | Notes |
 |---|---|---|---|
@@ -12,10 +17,10 @@
 | BCN-003b One filter builder | 1 | 📋 Specced | The UI half of BCN-003, **split out by Richard 2026-07-31**. No data-format change — BCN-003 already moved the saved vocabulary. Ends in live QA the parent task did not do |
 | BCN-004 REST data adapter & the end of BYOB | 2 | 📋 Specced | Retires 4 of the 5 BYOB types (realtime waits for BCN-008). Closes RUN-003's Supabase/PocketBase "believed to work" residuals |
 | BCN-005 Relations across five backends | 2 | 📋 Specced | Opens with RUN-003's recorded residual: O2M/M2M need `GET /relations`. Parse's junction-less `Relation` is what the contract shape must accommodate |
-| BCN-006 Auth & the token lifecycle | 2 | 📋 Specced | **The only task with no precedent in this repo.** Parse tokens never expire, so refresh/single-flight/cross-tab is new machinery. Budget accordingly |
-| BCN-007 Files across five backends | 2 | 📋 Specced | The scoping assumption that no backend has native file storage was wrong — all five do. Cheaper than expected |
+| BCN-006 Auth & the token lifecycle | 2 | 🔨 **Steps 1–3 of 8** | The lifecycle designed in prose, `IAuthAdapter` + the Parse wire behind it, and refresh/single-flight/cross-tab under test on injected timers. ⚠️ **Exit criterion 4 cannot be claimed — nothing in the product refreshes a token yet.** One `SessionStore` replaced *four* separate opinions about who is signed in, three of them in no spec. Two more wrong contract shapes. Steps 4–8 need BCN-004 — see [BCN-006-NOTES.md](./BCN-006-NOTES.md) §6 |
+| BCN-007 Files across five backends | 2 | 🔨 **Step 1 of 7** | The normalised `FileRef` and the Parse wire behind it, plus step 4's contract half (`kind`) and step 5 for the two backends that could be evidenced. **A fourth wrong contract shape**: `UploadFileOptions.data` was required and nothing in the repo has ever set it. ⚠️ The normalised reference **stops meaning what the spec assumes one save later**. Steps 2, 3, 6, 7 need BCN-004 — see [BCN-007-NOTES.md](./BCN-007-NOTES.md) |
 | BCN-008 Realtime across three transports | 2 | 📋 Specced | Retires the fifth BYOB type. Parse LiveQuery is the `conditional` case that justifies the whole four-state descriptor |
-| BCN-009 One backend list, picker & disclosure | 3 | 📋 Specced | The security disclosure is the deliverable; the panel plumbing is not. Feeds OPS-006 rather than duplicating it |
+| BCN-009 One backend list, picker & disclosure | 3 | 🔨 **Steps 1, 3, 5, 6 of 7** | One list from *three* mechanisms, one add flow, and **the security disclosure on every card — the deliverable**. Its prose is reproduced in [BCN-009-NOTES.md](./BCN-009-NOTES.md) §1 so Richard can mark it up without running the editor. ⚠️ **OPS-003's findings store does not exist**, so step 6 could not mean what the spec says. Steps 2 (converging the metadata keys), 4 (the per-node picker) and 7 (the live pass) not started |
 | BCN-010 Capability gating & catalog reconciliation | 3 | 📋 Specced | **The task that makes the phase's claim true or false.** A merged family with silent gaps is worse than two honest ones. Unblocks phase 30 |
 
 ## The exit criterion
@@ -28,7 +33,8 @@ The phase is done when all six of these hold:
 3. Anything a chosen backend cannot do is **visible in the editor, with a sentence saying why** —
    before it is discovered at runtime. *(BCN-010, on BCN-001's descriptor)*
 4. A logged-in user stays logged in across an access-token expiry, on every backend that has one.
-   *(BCN-006)*
+   *(BCN-006 — **not met**: the machinery ships wired but inert, because no adapter has a
+   `performRefresh` to give it and only Parse, whose tokens never expire, is behind the contract)*
 5. The same filter returns the same rows from every backend that can express it. *(BCN-003 — **met**:
    106 live checks, 0 failures, and every divergence carries the `degraded` cell that predicted it)*
 6. Phase 30 can audit the data nodes against a library that will not move under it. *(BCN-010)*
@@ -58,7 +64,7 @@ makes granting it an improvement rather than a trade.
 | # | Question | Why it is his call |
 |---|---|---|
 | 3 | **Does the phase ship before or after the alpha?** Tier 3 is what removes the duplicate nodes a stranger would see. Tier 1 alone is invisible to users. | Sequencing against Phase 33; the answer changes whether ALPHA-001's cold-install pass has to account for two record families. |
-| 6 | **Are the four maturity levels the right gate for the security disclosure?** BCN-009 shows it always; OPS-001's Playing level shows nothing. A lesson project on a shared backend is the awkward case. | Cross-phase interaction between two of his own decisions. |
+| 6 | **Are the four maturity levels the right gate for the security disclosure?** BCN-009 has now *written* the prose and shipped it always-on — it is reproduced in [BCN-009-NOTES.md](./BCN-009-NOTES.md) §1 for markup. Its §2 offers the concrete alternative: **disclosure always-on, only the `publicToken` finding gated**, which needs no new machinery. | Cross-phase interaction between two of his own decisions. |
 
 ## What BCN-003 found
 
@@ -182,11 +188,15 @@ Full detail in [BCN-001-CONTRACT.md §8](./BCN-001-CONTRACT.md). Rig extended, n
 | Item | Owner |
 |---|---|
 | ~~Apply `DIRECTUS_OPERATOR_MIGRATION` to saved project filters; re-target the BYOB builder~~ | ✅ BCN-003 — migrated in both the editor and the runtime, idempotently |
-| ~~`custom` now has a filter surface: accept a **declared** dialect~~ (auth half remains) | ✅ BCN-003 / BCN-006 |
+| ~~`custom` now has a filter surface: accept a **declared** dialect~~ | ✅ BCN-003 — **but neither the filter dialect nor the lifecycle has a form to declare it in.** BCN-006 shipped `validateTokenLifecycle` for the panel to call; the panel is BCN-009's step 2 |
 | ~~Fix `queryutils.ts:373` — `$maxDistanceInMiles` read with `$`, the other two without~~ | ✅ BCN-003 |
 | ~~Fix `pointsTo` reaching into the global `CloudStore._collections` cache~~ | ✅ BCN-003 — the schema is a parameter |
 | Rename `targetClass` to a neutral name, or decide it stays | BCN-005 |
-| Build refresh/single-flight/cross-tab **once**, driven by `TokenLifecycle` | BCN-006 |
+| ~~Build refresh/single-flight/cross-tab **once**, driven by `TokenLifecycle`~~ | ✅ BCN-006 steps 1–3 — built and tested on injected timers, **inert until an adapter supplies a `performRefresh`** |
+| Every `performRefresh` — Directus, Supabase, PocketBase have none, for want of a REST transport | BCN-004 → BCN-006 step 4 |
+| `dist-types/src/api/cloudstore.d.ts` carries a dangling `packages/…` import; the viewer typecheck needs `--skipLibCheck`. Pre-existing, from BCN-002 | — |
+| `listAuthProviders` has no consumer anywhere in the repo. Moved with the wire rather than deleted | — |
+| A saved File-typed record property is `{__type, url, name}` — the normalised `FileRef` does not survive a round-trip through `cloudstore.js` | BCN-007 remainder |
 | ~~Resolve Parse's documented-not-probed cells against a real Parse Server~~ | ✅ BCN-002 — one runs in the rig now |
 | ~~Built-in backend drops geo filters; `matchesRegex` is not a regex~~ | ✅ BCN-003 — both fixed with `node:sqlite` user-defined functions, driven live |
 | ~~`dbcollectionnode2.ts:25` imports `WhereClause` from the *server-side* persistence types~~ | ✅ BCN-003 — the type it wanted was `ParseWhere`, not `Filter` |
@@ -194,7 +204,7 @@ Full detail in [BCN-001-CONTRACT.md §8](./BCN-001-CONTRACT.md). Rig extended, n
 | Make `toPostgrest` / `toPocketBaseFilter` reachable from a node — the request envelope, not the filter | BCN-004 |
 | A relation in the equivalence corpus | BCN-005 |
 | Proximity *sorting* for `nearSphere` on the built-in backend — the filter works, the ordering does not | — |
-| `CloudStore._handle()` still answers `nodegx` unconditionally, so the capability gate reads a floor rather than the truth | BCN-009 |
+| `CloudStore._handle()` still answers `nodegx` unconditionally, so the capability gate reads a floor rather than the truth | BCN-009 — **its step 4, unstarted** |
 | Promisifying the fourteen callback methods — deliberately not done, recorded as a follow-up | — |
 | `AdapterRegistry.createAdapter`'s `case 'parse'` still throws "not yet refactored". That stub is for a **server-side** Parse adapter, not the client one BCN-002 built | — |
 
