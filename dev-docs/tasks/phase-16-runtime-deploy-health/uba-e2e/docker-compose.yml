@@ -45,3 +45,87 @@ services:
     depends_on:
       supabase-db:
         condition: service_healthy
+
+  # ── Aggregate-capability probe stack (profile: aggregate) ────────────────
+  # BCN-001 §5.3 left two descriptor cells unverified because they are facts
+  # about other people's products: can PocketBase and Supabase aggregate?
+  #
+  # For Supabase the question is really "what does PostgREST do", and the
+  # honest answer needs BOTH configurations of the same server against the
+  # same rows — hence two postgrest containers on one database. Reading the
+  # docs is not enough: the db-aggregates-enabled default has moved.
+  #
+  # Kept separate from the `supabase` profile above so RUN-003's recorded
+  # SUPABASE-CONTACT-OUTPUT.txt stays reproducible.
+  #
+  #   docker compose --profile aggregate up -d
+  #   node bcn-001-aggregate-probe.mjs
+  #   docker compose --profile aggregate down -v
+  agg-db:
+    profiles: ["aggregate"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: "agg-e2e-pw"
+      POSTGRES_DB: "app"
+    volumes:
+      - ./bcn-001-agg-seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  # Stock configuration — nothing set beyond what the supabase-shaped stack
+  # above sets. Whatever this one does IS the PostgREST 12.2 default.
+  agg-rest-default:
+    profiles: ["aggregate"]
+    image: postgrest/postgrest:v12.2.3
+    ports:
+      - "8057:3000"
+    environment:
+      PGRST_DB_URI: "postgres://postgres:agg-e2e-pw@agg-db:5432/app"
+      PGRST_DB_SCHEMA: "public"
+      PGRST_DB_ANON_ROLE: "web_anon"
+      PGRST_OPENAPI_MODE: "ignore-privileges"
+    depends_on:
+      agg-db:
+        condition: service_healthy
+
+  # Identical, plus the one setting. The delta between 8057 and 8058 is the
+  # entire evidence for marking Supabase aggregate `conditional`.
+  agg-rest-enabled:
+    profiles: ["aggregate"]
+    image: postgrest/postgrest:v12.2.3
+    ports:
+      - "8058:3000"
+    environment:
+      PGRST_DB_URI: "postgres://postgres:agg-e2e-pw@agg-db:5432/app"
+      PGRST_DB_SCHEMA: "public"
+      PGRST_DB_ANON_ROLE: "web_anon"
+      PGRST_OPENAPI_MODE: "ignore-privileges"
+      PGRST_DB_AGGREGATES_ENABLED: "true"
+    depends_on:
+      agg-db:
+        condition: service_healthy
+
+  # PocketBase. No seeding hook exists in the image, so the probe creates its
+  # own collection and rows over the API after authenticating as superuser.
+  pocketbase:
+    profiles: ["aggregate"]
+    image: ghcr.io/muchobien/pocketbase:0.30.0
+    # 8090 is PocketBase's own default and is often already taken by a local
+    # instance; 8091 keeps this rig out of its way.
+    ports:
+      - "8091:8090"
+    # PB_ADMIN_* are the image's entrypoint variables, not PocketBase's own —
+    # it shells out to `pocketbase superuser upsert` before serving. PocketBase
+    # itself has no env-var path to a first superuser; without this the only
+    # route is the one-time installer link printed in the container log.
+    environment:
+      PB_ADMIN_EMAIL: "admin@example.com"
+      PB_ADMIN_PASSWORD: "pocketbase-admin-pw"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/api/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 30

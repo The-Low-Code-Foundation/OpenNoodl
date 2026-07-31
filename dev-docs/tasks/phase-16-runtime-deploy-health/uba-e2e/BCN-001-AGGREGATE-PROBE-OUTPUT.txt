@@ -1,0 +1,155 @@
+
+══════════════════════════════════════════════════════════════════════════
+BCN-001 aggregate-capability probe
+══════════════════════════════════════════════════════════════════════════
+node v22.22.0
+
+══════════════════════════════════════════════════════════════════════════
+SUPABASE / PostgREST 12.2.3 — identical servers, one setting apart
+══════════════════════════════════════════════════════════════════════════
+
+── PostgREST STOCK CONFIG (db-aggregates-enabled unset) — http://localhost:8057 
+  server header: postgrest/12.2.3 (519615d)
+  400  count() over the whole table   GET /articles?select=count()
+       {"code":"PGRST123","details":null,"hint":null,"message":"Use of aggregate functions is not allowed"}
+  400  sum of a column   GET /articles?select=rating.sum()
+       {"code":"PGRST123","details":null,"hint":null,"message":"Use of aggregate functions is not allowed"}
+  400  avg + max together   GET /articles?select=rating.avg(),rating.max()
+       {"code":"PGRST123","details":null,"hint":null,"message":"Use of aggregate functions is not allowed"}
+  400  GROUP BY status with avg   GET /articles?select=status,rating.avg()&order=status
+       {"code":"PGRST123","details":null,"hint":null,"message":"Use of aggregate functions is not allowed"}
+  400  GROUP BY with a where clause   GET /articles?select=status,rating.sum()&featured=eq.false&order=status
+       {"code":"PGRST123","details":null,"hint":null,"message":"Use of aggregate functions is not allowed"}
+  200  aggregate over an embedded relation   GET /authors?select=name,articles(count)
+       [{"name":"Ada","articles":[{"count": 4}]}, 
+        {"name":"Grace","articles":[{"count": 3}]}]
+
+── PostgREST count & distinct — http://localhost:8057 ────────────────────
+  206  count via Prefer: count=exact + Range: 0-0
+       content-range: 0-0/7
+  400  distinct attempt: ?distinct= query param   GET /articles?select=status&distinct=status
+       {"code":"PGRST100","details":"unexpected \"s\" expecting \"not\" or operator (eq, gt, ...)","hint":null,"message":"\"failed to parse filter (status)\" (line 1, column 1)"}
+  400  distinct attempt: distinct() as a select suffix   GET /articles?select=status.distinct()
+       {"code":"PGRST100","details":"unexpected \"d\" expecting \"sum\", \"avg\", \"count\", \"max\" or \"min\"","hint":null,"message":"\"failed to parse select parameter (status.distinct())\" (line 1, column 8)"}
+
+── PostgREST PGRST_DB_AGGREGATES_ENABLED=true — http://localhost:8058 ────
+  server header: postgrest/12.2.3 (519615d)
+  200  count() over the whole table   GET /articles?select=count()
+       [{"count":7}]
+  200  sum of a column   GET /articles?select=rating.sum()
+       [{"sum":25}]
+  200  avg + max together   GET /articles?select=rating.avg(),rating.max()
+       [{"avg":3.5714285714285714,"max":5}]
+  200  GROUP BY status with avg   GET /articles?select=status,rating.avg()&order=status
+       [{"status":"draft","avg":3.0000000000000000}, 
+        {"status":"published","avg":4.0000000000000000}, 
+        {"status":"archived","avg":3.5000000000000000}]
+  200  GROUP BY with a where clause   GET /articles?select=status,rating.sum()&featured=eq.false&order=status
+       [{"status":"draft","sum":6}, 
+        {"status":"published","sum":7}, 
+        {"status":"archived","sum":7}]
+  200  aggregate over an embedded relation   GET /authors?select=name,articles(count)
+       [{"name":"Ada","articles":[{"count": 4}]}, 
+        {"name":"Grace","articles":[{"count": 3}]}]
+
+══════════════════════════════════════════════════════════════════════════
+POCKETBASE 0.30.0
+══════════════════════════════════════════════════════════════════════════
+  health: {"message":"API is healthy.","code":200,"data":{}}
+
+  articles collection created
+  7 records seeded
+
+── PocketBase count — the one that works ─────────────────────────────────
+  200  GET …/records?perPage=1
+       totalItems: 7   totalPages: 7
+
+── PocketBase aggregate — every spelling an adapter might try ────────────
+  200  SQL-ish count in fields   GET /api/collections/articles/records?fields=count(*)
+       {"items":[{},{},{},{},{},{},{}],"page":1,"perPage":30,"totalItems":7,"totalPages":1}
+       
+  200  aggregate suffix in fields   GET /api/collections/articles/records?fields=rating.sum()
+       {"items":[{"rating":5},{"rating":3},{"rating":4},{"rating":2},{"rating":4},{"rating":5},{"rating":2}],"page":1,"perPage":30,"totalItems":7,"totalPages":1}
+       
+  200  colon-style aggregate   GET /api/collections/articles/records?fields=rating:sum
+  200  a group parameter   GET /api/collections/articles/records?group=status
+       {"items":[{"collectionId":"pbc_4287850865","collectionName":"articles","featured":true,"id":"f6unhpedhg3onf9","rating":5,"status":"published","title":"Published one"},{"collectionId":"pbc_4287850865","collectionName":"articles","featured":false,"id":"z96lmuppa …
+  200  groupBy parameter   GET /api/collections/articles/records?groupBy=status&fields=rating
+       {"items":[{"rating":5},{"rating":3},{"rating":4},{"rating":2},{"rating":4},{"rating":5},{"rating":2}],"page":1,"perPage":30,"totalItems":7,"totalPages":1}
+       
+  200  unknown parameter, as a control   GET /api/collections/articles/records?thisParamDoesNotExist=1&perPage=1
+       {"items":[{"collectionId":"pbc_4287850865","collectionName":"articles","featured":true,"id":"f6unhpedhg3onf9","rating":5,"status":"published","title":"Published one"}],"page":1,"perPage":1,"totalItems":7,"totalPages":7}
+       
+
+── PocketBase distinct ───────────────────────────────────────────────────
+  200  distinct parameter   GET /api/collections/articles/records?distinct=status
+       {"items":[{"collectionId":"pbc_4287850865","collectionName":"articles","featured":true,"id":"f6unhpedhg3onf9","rating":5,"status":"published","title":"Published one"},{"collectionId":"pbc_4287850865","collectionName":"articles","featured":false,"id":"z96lmuppav98val","rating":3,"status":"published","title":"Published two"},{"collectionId":"pbc_4287850865","collectionName":"articles","featured":fal …
+  200  fields=status only   GET /api/collections/articles/records?fields=status&perPage=50
+       {"items":[{"status":"published"},{"status":"published"},{"status":"published"},{"status":"draft"},{"status":"draft"},{"status":"archived"},{"status":"archived"}],"page":1,"perPage":50,"totalItems":7,"totalPages":1}
+       
+
+── PocketBase view collections — the only aggregate mechanism it has ─────
+  200  POST /api/collections  (type: view, GROUP BY in viewQuery)
+  200  reading the view
+       {"items":[{"avg_rating":3.5,"collectionId":"pbc_2089103500","collectionName":"articles_by_status","id":"1","n":2,"status":"archived"},{"avg_rating":3,"collectionId":"pbc_2089103500","collectionName":"articles_by_status","id":"2","n":2,"status":"draft"},{"avg_rating":4,"collectionId":"pbc_2089103500","collectionName":"articles_by_status","id":"3","n":3,"status":"published"}],"page":1,"perPage":10,"totalItems":3,"totalPages":1}
+       
+
+══════════════════════════════════════════════════════════════════════════
+VERDICTS — transcribed into the BCN-001 capability descriptor
+══════════════════════════════════════════════════════════════════════════
+
+  SUPABASE / PostgREST  data.aggregate .......... conditional
+      Stock PostgREST 12.2.3 refuses every aggregate with PGRST123 "Use of
+      aggregate functions is not allowed". The same binary with
+      db-aggregates-enabled=true answers all of them, GROUP BY and WHERE
+      included. It is a per-instance setting, which is the definition of
+      `conditional`. Supabase's hosted platform sets it independently of the
+      PostgREST default — newer projects have it on, older ones do not — so a
+      connect-time probe is the only honest answer. Probe request:
+      GET /<table>?select=count()  → 200 means supported, PGRST123 means not.
+
+  SUPABASE / PostgREST  data.count ............... supported
+      Answered by the Content-Range header under Prefer: count=exact, not by
+      the aggregate machinery. Worked with aggregates disabled. This is why
+      data.count and data.aggregate are separate capability keys.
+
+  SUPABASE / PostgREST  data.distinct ............ unsupported
+      No query-string form. Both plausible spellings are parse errors
+      (PGRST100). DISTINCT would need a database view or an RPC.
+
+  ⚠ Embedded-relation count is NOT gated by db-aggregates-enabled.
+      /authors?select=name,articles(count) returned 200 on BOTH servers. So
+      "can this instance count related rows" and "can this instance aggregate"
+      are different questions, and probing with the wrong one reports
+      supported on an instance that cannot sum anything.
+
+  POCKETBASE  data.aggregate ..................... unsupported
+      Not "refused" — IGNORED. Every spelling tried returned HTTP 200 with
+      ordinary un-aggregated rows: ?group=, ?groupBy=, ?fields=count(*) (which
+      returned seven empty objects), and an invented parameter behaved
+      identically. ?fields=rating:sum returned 200 with Content-Type
+      application/json and Content-Length: 0 — an empty body that JSON.parse
+      throws on.
+      This is the worst possible shape for the phase's claim: an aggregate node
+      pointed at PocketBase would not error, it would return wrong numbers.
+      There is nothing to catch at runtime, so the descriptor gate is the only
+      thing that can stop it. Exactly the case BCN-010 exists for.
+
+  POCKETBASE  data.count ......................... supported
+      totalItems / totalPages on every list response.
+
+  POCKETBASE  data.distinct ...................... unsupported
+      ?distinct=status silently returned all seven rows. Same ignore-the-
+      parameter failure mode.
+
+  ⚠ PocketBase CAN aggregate — via a `view` collection, and only there.
+      A view collection wrapping "SELECT … GROUP BY status" was created and
+      read back correctly. But that is schema authored by hand in the admin UI,
+      not something an adapter can express from a node's ports at runtime. It
+      does not make data.aggregate supported; it is what the reason string
+      should point a user towards.
+
+
+══════════════════════════════════════════════════════════════════════════
+DONE — all probes ran
+══════════════════════════════════════════════════════════════════════════
