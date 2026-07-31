@@ -1,12 +1,17 @@
 # BCN-001 — The Contract, in Prose
 
-**Status:** 📤 Circulated for review — 2026-07-31. **No TypeScript written yet, by design.**
+**Status:** ✅ **Reviewed and shipped — 2026-07-31.** All eight §7 decisions answered, plus the
+`custom` question. The types now exist at [`packages/nodegx-backend-contract`](../../../packages/nodegx-backend-contract/).
 **Reviewer:** Richard. Nine sibling tasks register against the names in this document; changing them
 after Tier 1 starts touches all nine.
 
 This is the deliverable BCN-001 step 1 asks for: the contract in prose, circulated *before* the types.
 Everything below is transcribed from code that exists, with the line numbers to check it against. Where
 something could not be verified it says so rather than asserting.
+
+> **What changed after review.** §5.3's two unresolved cells were settled by a live probe (§8), which
+> also found two defects in our *own* backend and one in Directus's search. §6's stated cost was wrong
+> — see §9. Everything else shipped as written.
 
 ---
 
@@ -334,6 +339,11 @@ Honesty about evidence, since a descriptor built on assumptions is wrong where u
 PostgREST. Recommend BCN-001 ships with both marked `conditional` — which is the correct value anyway
 if the answer is "depends on instance config" — and BCN-004's live pass resolves them.
 
+> ✅ **Both were probed rather than deferred — see [§8](#8-the-two-unresolved-cells-resolved).**
+> Supabase is `conditional` and now provably so; PocketBase is `unsupported` and **fails silently**,
+> which is a materially worse answer than "believed absent". Parse `/aggregate` remains
+> documented-not-probed, and the descriptor says so in its `evidence` field.
+
 ### 5.4 Reason strings — draft voice, for your review
 
 You asked me to draft and you to review. Proposed voice, three rules:
@@ -344,6 +354,11 @@ You asked me to draft and you to review. Proposed voice, three rules:
    total in your app, or switch this node's backend."
 3. **Never say "not implemented" or "coming soon"** — these are product facts about someone else's
    backend, not our backlog.
+
+> ✅ **Voice approved; all ~30 written**, across the six descriptors. The three rules are enforced by a
+> test rather than by memory: no reason string may contain its own capability key, the word
+> "capability", or backlog language ("not implemented", "coming soon"), and each must be a sentence
+> ending in punctuation rather than a label.
 
 Sample of six, for you to react to before I write the other ~24:
 
@@ -376,18 +391,18 @@ neither tree can own it without forcing the other to import across.
 
 ---
 
-## 7. Open for your decision
+## 7. Decisions — all answered 2026-07-31
 
-| # | Question | My recommendation |
+| # | Question | Answer |
 |---|---|---|
-| 1 | **§0.1** — amend the success criterion from 18 methods to 14? | Yes. As written it cannot be met |
-| 2 | **§0.3** — migrate saved BYOB filters, or accept the break? | Migrate. Mechanical, 24 operators, and the QA fixture uses them |
-| 3 | **§0.3** — raise BCN-003 from 1–1.5 wks to ~2 wks? | Yes |
-| 4 | **§2.1** — `TokenLifecycle` as a declaration in BCN-001 rather than three implementations in BCN-006? | Yes. It is the cheapest thing that de-risks the riskiest task |
-| 5 | **§4.2** — lower `contains`/`startsWith`/`between` to regex/comparisons rather than gating them off? | Yes. Otherwise half the string operators grey out on our own backend |
-| 6 | **§5.3** — ship PocketBase/Supabase aggregate as `conditional` and let BCN-004's live pass resolve them? | Yes. Do not assert what we have not probed |
-| 7 | **§6** — new package, accepting the re-baseline cost? | Yes |
-| 8 | **§5.4** — is that voice right? | Six samples above; I write the other ~24 once you react |
+| 1 | **§0.1** — amend the success criterion from 18 methods to 14? | ✅ **Yes.** Now asserted at compile time in `tests/contract.test.ts`, so the count cannot drift back |
+| 2 | **§0.3** — migrate saved BYOB filters, or accept the break? | ✅ **Migrate.** Map shipped as `DIRECTUS_OPERATOR_MIGRATION`; BCN-003 applies it |
+| 3 | **§0.3** — raise BCN-003 from 1–1.5 wks to ~2 wks? | ✅ **Yes** |
+| 4 | **§2.1** — `TokenLifecycle` as a declaration rather than three implementations in BCN-006? | ✅ **Yes.** Declared per descriptor |
+| 5 | **§4.2** — lower `contains`/`startsWith`/`between` rather than gating them? | ✅ **Yes.** `LOWERED_OPERATORS`, with a test that they are never `unsupported` on the Parse-family backends |
+| 6 | **§5.3** — ship PocketBase/Supabase aggregate as `conditional`? | ✅ **Superseded — both were probed instead.** See §8 |
+| 7 | **§6** — new package, accepting the re-baseline cost? | ✅ **Yes**, and the cost was smaller than stated. See §9 |
+| 8 | **§5.4** — is that voice right? | ✅ **Yes.** All ~30 written, with a test that enforces the three rules |
 
 ### And the one you reopened
 
@@ -410,4 +425,80 @@ data-driven. It gets you a genuine custom-backend story without the support tail
 recommend** — but it does mean `custom` gains auth and filter capability, so it is your call, not a
 detail I should absorb.
 
-I have written nothing for `custom` beyond the data-only baseline until you answer.
+**✅ Answered: the declared backend.** `customDescriptor` ships `declarable: true` and a floor of the
+five operations the custom preset form already requires by name (`list`/`get`/`create`/`update`/
+`delete`) — configuring a custom backend is already a claim that those exist. Everything else is
+`unsupported` with a reason that points at the Capabilities tab the user fills in. BCN-003 and BCN-006
+must now accept a *declared* dialect and lifecycle rather than assuming one of five known ones; that is
+the price, and it is bounded.
+
+---
+
+## 8. The two unresolved cells, resolved
+
+§5.3 said PocketBase and Supabase aggregate "cannot be resolved from this repo" and recommended
+shipping both `conditional`. Both were probed instead. Rig extended, not rebuilt: a new `aggregate`
+profile on [uba-e2e](../phase-16-runtime-deploy-health/uba-e2e/), recorded run in
+`BCN-001-AGGREGATE-PROBE-OUTPUT.txt`.
+
+### 8.1 Supabase — `conditional`, and now provably so
+
+Two PostgREST 12.2.3 containers, the same rows, differing in exactly one setting. Stock config refuses
+every aggregate with `PGRST123 "Use of aggregate functions is not allowed"`. The same binary with
+`db-aggregates-enabled=true` answers `count()`, `sum()`, `avg()`, `GROUP BY` and a composed `WHERE`.
+It is per-instance, which is what `conditional` means — so the recommendation was right, but it is now
+a finding rather than a hedge, and the descriptor carries the probe request that settles it.
+
+**Trap recorded in the descriptor.** `?select=name,articles(count)` — an embedded-relation count —
+returned **200 on both servers**. Probing with that reports `supported` on an instance that cannot sum
+anything. The probe has to be the exact question.
+
+### 8.2 PocketBase — `unsupported`, and it fails silently
+
+Worse than expected, and it is the single best argument for the phase. PocketBase does not *refuse*
+aggregation, it **ignores** it. Every spelling — `?group=`, `?groupBy=`, `?fields=count(*)` — returned
+**HTTP 200 with ordinary un-aggregated rows**, indistinguishable from an invented parameter used as a
+control. `?fields=rating:sum` returned 200 with `Content-Type: application/json` and
+`Content-Length: 0`: an empty body that `JSON.parse` throws on.
+
+So an Aggregate Records node pointed at PocketBase would not error. **It would return wrong numbers,
+and the app would show them.** There is nothing for a runtime handler to catch, which means the
+descriptor gate is the only thing that can stop it. That is BCN-010's job, stated concretely.
+
+(PocketBase *can* aggregate — through a hand-authored `view` collection wrapping a `GROUP BY`, verified
+working. But that is schema authored in the admin UI, not something a node can express, so it belongs
+in the reason string rather than in the cell.)
+
+### 8.3 Three findings nobody asked for
+
+Directus was probed too, because its container was already in the rig and "documented, not probed" is a
+choice rather than a limit when the backend is one command away.
+
+| Finding | Where | State |
+|---|---|---|
+| **The built-in backend drops geo filters on the floor.** `$nearSphere`/`$within`/`$geoWithin` warn to the console and return `null` from the SQL translator, so the condition never reaches the WHERE clause and a "within 5km" query returns **every record** | `local-sql/QueryBuilder.ts:394` | `unsupported` |
+| **The built-in backend's `matchesRegex` is `LIKE '%value%'`**, not a regex. `^Ada$` searches for that literal text, silently | `local-sql/QueryBuilder.ts:366` | `degraded` |
+| **Directus `?search=` matches every field, unranked.** Searching "Published" returned three articles matched on their *status*, with titles that do not contain the word. Materially different from BAK-008's FTS5 ranking on the same port | probe output | `degraded` |
+
+The first two are ours. Fixing SQLite geo is out of scope for phase 34; recording it is not.
+
+---
+
+## 9. §6's cost was overstated
+
+The contract doc priced the new package at "a PLAT-004 TSFixme re-baseline, a new jest project, and a
+new entry in the per-package hex ratchet". Measured after the fact, **two of the three do not exist**:
+
+- **No TSFixme re-baseline.** `.tsfixme-baseline.json` targets `packages` wholesale, so the new package
+  is scanned automatically — files scanned went 2,294 → 2,310 and every marker count stayed put. It is
+  `strict: true` with no `any` and no `TSFixme`, which is achievable because the package is types and
+  frozen data.
+- **No hex-ratchet entry.** That ratchet targets only `noodl-editor/src` and `noodl-core-ui/src`.
+- **The jest project was real**, and cost one `--scope` in the root `test:packages` script.
+
+Recorded because it is the fourth stale premise this task has turned up, and the first one that was
+mine rather than the spec's.
+
+> ⚠️ **Unrelated, and pre-existing:** the TSFixme gate is currently **RED on `cline-dev`** — `TSFixme`
+> and `any` each +26 over baseline, concentrated in `noodl-viewer-react/tests` and editor canvas tests
+> from other sessions' work. Nothing in this task contributed to it, and it needs an owner.
