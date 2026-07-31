@@ -1,0 +1,87 @@
+
+========================================================================
+DIRECTUS 11
+========================================================================
+  auth header: Authorization: Bearer <token>
+      evidence: POST /auth/login -> 200, data.access_token present
+  create returns the row(s): {data}
+      evidence: POST /items/bcn004 -> 200
+  primary key field: id
+      evidence: created row keys: id, name, tag
+  list envelope: {meta, data}
+      evidence: GET /items/bcn004?meta=... -> 200
+  rows at: data
+      evidence: data is array[2] of {id, name, tag}
+  meta: {"total_count":3,"filter_count":3}
+      evidence: unfiltered, limit=2
+  meta on a FILTERED query: {"total_count":3,"filter_count":2}
+      evidence: filter tag=x, limit=1 (2 match, 3 total)
+      -> filter_count is the one pagination needs; total_count ignores the filter.
+  pagination: limit + offset (0-based)
+      evidence: offset=1&sort=name -> ["Alan"]
+
+========================================================================
+POSTGREST v12.2.3  (the Supabase REST wire)
+========================================================================
+  reachable: 200
+      evidence: GET / (OpenAPI document)
+  tables in the seed: articles, authors
+      evidence: from the OpenAPI paths
+  list envelope: array[1] of {id, title, body, status, rating, featured, published_at, author_id}
+      evidence: GET /articles?limit=2 -> 200
+      -> a BARE ARRAY. There is no envelope and no dataPath.
+  Content-Range without asking: 0-0/*
+      evidence: no Prefer header sent
+  Content-Range WITH Prefer: count=exact: 0-0/1
+      evidence: -> 200
+      -> the total lives in a HEADER, not the body. `totalCountPath` cannot express this.
+  columns: id, title, body, status, rating, featured, published_at, author_id
+      evidence: first row
+  Content-Range on a FILTERED query: 0-0/1
+      evidence: total reflects the filter
+  create WITHOUT Prefer: return=representation: 201, body=""
+      evidence: POST
+  create WITH Prefer: return=representation: 201, array[1] of {id, title, body, status, rating, featured, published_at, author_id}
+      evidence: POST
+      -> without it the adapter gets NO created row, so `create`s success callback has nothing to hand back.
+  pagination: limit + offset (0-based)
+      evidence: PostgREST accepts ?limit=&offset=; Range headers are the alternative
+
+========================================================================
+POCKETBASE 0.30.0
+========================================================================
+  reachable: 200
+      evidence: GET /api/health
+  superuser token acquired (200)
+  auth: Authorization: <token>: 200
+      evidence: GET /api/collections
+  auth: Authorization: Bearer <token>: 200
+      evidence: GET /api/collections
+  auth: no header: 401
+      evidence: GET /api/collections (control)
+      -> whichever returns 200 is what the adapter must send. Both working is also a fact worth having.
+  create collection -> 400 ({"data":{"name":{"code":"validation_collection_name_exists","message":"Collection name must be unique (case insensitive))
+  create returns the row: 200, {collectionId, collectionName, id, name, tag}
+      evidence: POST .../records
+  primary key field: id
+      evidence: created row keys: collectionId, collectionName, id, name, tag
+  list envelope: {items, page, perPage, totalItems, totalPages}
+      evidence: GET .../records?perPage=2 -> 200
+  rows at: items
+      evidence: items is array[2] of {collectionId, collectionName, id, name, tag}
+  total at: totalItems = 3
+      evidence: page=1 perPage=2 totalPages=2
+  page=1: ["Ada"]
+      evidence: sorted by name
+  page=2: ["Alan"]
+      evidence: sorted by name
+  page=0: 200 ["Ada"]
+      evidence: is page 1-based or 0-based?
+      -> the preset maps `offsetParam: page`. If page is 1-based, an offset->page adapter that
+         passes an offset straight through is off by one page, silently.
+  totalItems on a FILTERED query: 2
+      evidence: filter tag='x' (2 match, 3 total)
+
+========================================================================
+END
+========================================================================
