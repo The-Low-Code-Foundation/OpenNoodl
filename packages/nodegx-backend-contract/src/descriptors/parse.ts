@@ -4,13 +4,20 @@
  * Kept as a preset by decision, not by inertia: projects exist that point at a
  * real Parse Server, and the wire is one we already speak.
  *
- * **Evidence quality is the thing to know about this file.** Every cell is
- * transcribed from Parse Server's documented REST API and from the fact that
- * `cloudstore.js` has shipped against it for years. None of it is probed —
- * we do not run a Parse Server anywhere in this repo, and standing one up was
- * not in BCN-001's scope. Where the documentation is unambiguous that is fine.
- * Where it is not, the cell is `conditional` and carries a probe, which is the
- * honest state for "this depends on the deployment and we have not asked it".
+ * **Evidence quality is the thing to know about this file, and it changed in
+ * BCN-002.** BCN-001 shipped every cell here transcribed from Parse Server's
+ * documented REST API, because no Parse Server existed in this repo. One does
+ * now — `parseplatform/parse-server:7.3.0` on the rig's `parse` profile — and
+ * the data, relation and file cells have been driven against it by the real
+ * `ParseWireAdapter`. Cells carrying `PROBED` were measured; cells still
+ * carrying `SHIPPED` were not, and say so.
+ *
+ * **Three cells were wrong, and the documentation is why.** Reading the docs
+ * produced `files.upload: supported`, `files.delete: supported` and
+ * `files.sign: conditional`. A real server says: uploads are refused outright
+ * unless the deployment turned them on, deleting a file needs the master key,
+ * and the signing route does not exist at all. All three are the kind of wrong
+ * that only shows up in a user's app.
  *
  * @module backend-contract/descriptors/parse
  */
@@ -18,7 +25,14 @@
 import type { BackendDescriptor } from '../capabilities';
 import { conditional, filterTable, supported, unsupported } from './helpers';
 
-const SHIPPED = 'cloudstore.js has spoken this wire since Noodl; not probed — no Parse Server is run in this repo';
+const SHIPPED = 'cloudstore.js has spoken this wire since Noodl; documented, not probed';
+
+/**
+ * BCN-002's live pass: the real `ParseWireAdapter` against
+ * `parseplatform/parse-server:7.3.0`, recorded in the rig's
+ * `BCN-002-PARSE-WIRE-OUTPUT.txt`.
+ */
+const PROBED = 'BCN-002 live pass against parse-server 7.3.0, app id only';
 
 export const parseDescriptor: BackendDescriptor = {
   type: 'parse',
@@ -29,28 +43,30 @@ export const parseDescriptor: BackendDescriptor = {
   tokenLifecycle: { kind: 'eternal' },
 
   capabilities: Object.freeze({
-    'data.query': supported(SHIPPED),
-    'data.count': supported(SHIPPED),
+    'data.query': supported(`${PROBED}; filtered read with $gt returned the matching row only`),
+    'data.count': supported(PROBED),
 
-    // The one place Parse and the built-in backend genuinely part company.
-    // Upstream Parse Server requires the master key for /aggregate, and the
-    // master key must never be in a browser — so this is not "hard from the
-    // client", it is closed to it. Marked unsupported rather than conditional
-    // because no per-instance setting opens it up.
+    // The one place Parse and the built-in backend genuinely part company, and
+    // the reason BCN-001 gave them separate columns. It is no longer a reading
+    // of the docs: asked with the app id alone, Parse answers
+    // `unauthorized: master key is required`; asked with the master key, it
+    // answers 200 with the total. The master key must never be in a browser, so
+    // this is not "hard from the client", it is closed to it. `unsupported`
+    // rather than `conditional` because no per-instance setting opens it up.
     'data.aggregate': unsupported(
       'Parse Server only allows totals and averages from a trusted server, not from your app. Query the records and calculate in your app, or switch this node to the built-in backend.',
-      'Parse Server REST docs: /aggregate is master-key only. Documented, not probed.'
+      `${PROBED}: 403 "unauthorized: master key is required"; the same call with the master key returns 200 and the total`
     ),
     'data.distinct': unsupported(
       'Parse Server only allows distinct values from a trusted server, not from your app.',
-      'Parse Server REST docs: /aggregate/distinct is master-key only. Documented, not probed.'
+      `${PROBED}: /aggregate?distinct= is refused without the master key and answers 200 with it`
     ),
 
-    'data.fetch': supported(SHIPPED),
-    'data.create': supported(SHIPPED),
-    'data.save': supported(SHIPPED),
-    'data.increment': supported(`__op: 'Increment' is atomic on Parse. ${SHIPPED}`),
-    'data.delete': supported(SHIPPED),
+    'data.fetch': supported(PROBED),
+    'data.create': supported(PROBED),
+    'data.save': supported(PROBED),
+    'data.increment': supported(`__op: 'Increment' is atomic on Parse. ${PROBED}, and the response carried the new value`),
+    'data.delete': supported(PROBED),
     'data.acl': supported(`Parse ACLs are the model BAK-003 was built to match. ${SHIPPED}`),
 
     // BAK-008's `search` parameter is ours. Parse has $text, which is a filter
@@ -63,15 +79,40 @@ export const parseDescriptor: BackendDescriptor = {
 
     'relations.pointerRead': supported(SHIPPED),
     'relations.relatedTo': supported(`$relatedTo is Parse's own operator. ${SHIPPED}`),
-    'relations.addRemove': supported(`__op AddRelation/RemoveRelation. ${SHIPPED}`),
+    'relations.addRemove': supported(`__op AddRelation/RemoveRelation. ${PROBED}, both directions, app id only`),
 
-    'files.upload': supported(SHIPPED),
-    'files.sign': conditional(
-      'Signed file links depend on how your Parse Server stores files. Servers using S3 can sign them; the default local file store cannot.',
-      { method: 'GET', path: '/files/probe.txt', expect: 'a redirect to a URL carrying a signature or expiry parameter' },
-      'Parse file adapters differ: S3Adapter presigns, GridFS and the filesystem adapter serve unsigned URLs. Documented, not probed.'
+    // Corrected in BCN-002, and the correction is the argument for probing.
+    // Parse Server disables file upload by default for *everyone* — public,
+    // anonymous and authenticated alike — so an out-of-the-box server answers
+    // the Upload File node with `File upload by public is disabled.` The
+    // documentation reads as though upload is simply available; it is not, and
+    // the difference is per deployment, which is what `conditional` means.
+    'files.upload': conditional(
+      'Whether your Parse Server accepts uploads depends on how it was set up — new servers turn file uploads off. Ask whoever hosts yours to enable them.',
+      {
+        method: 'POST',
+        path: '/files/probe.txt',
+        expect: 'a 201 with a name and url, rather than error code 130 "File upload by public is disabled"'
+      },
+      `${PROBED}: a server started with Parse's defaults answers 400 code 130; the same server with fileUpload.enableForPublic accepts it`
     ),
-    'files.delete': supported(`master key is not required for file delete on most deployments. ${SHIPPED}`),
+    // Corrected in BCN-002 from `conditional`. The probe BCN-001 wrote asked
+    // whether Parse's file adapter presigns URLs, which is a real question —
+    // but the contract's `signFileUrl` calls `GET /files/:name/sign`, and that
+    // route is BAK-006's, ours. Parse has no route there at all: it answers 403
+    // code 119 "Invalid application ID" *even with the master key*, which is
+    // what a missing route looks like from behind Parse's router.
+    'files.sign': unsupported(
+      'Parse Server has no way to mint a temporary link to a file. Store files on the built-in backend if you need links that expire.',
+      `${PROBED}: GET /files/:name/sign answers 403 code 119 with the master key as well as without — the route is BAK-006's, not Parse's`
+    ),
+    // Corrected in BCN-002. The old cell read `supported`, with "master key is
+    // not required for file delete on most deployments" — the opposite of what
+    // a real server does, and a confident wrong answer about a delete.
+    'files.delete': unsupported(
+      'Parse Server only allows a file to be deleted from a trusted server, not from your app.',
+      `${PROBED}: DELETE /files/:name answers 403 "unauthorized: master key is required", and 200 with the master key`
+    ),
     'files.private': unsupported(
       'Parse Server files are public to anyone with the link. To keep a file private, store it on the built-in backend instead.',
       'The private flag is the X-NodeGX-File-Private header — ours, not Parse\'s.'

@@ -223,3 +223,44 @@ describe('custom is a declared backend', () => {
     expect(claimed).toEqual(['data.create', 'data.delete', 'data.fetch', 'data.query', 'data.save']);
   });
 });
+
+describe('the three Parse cells BCN-002 measured and found wrong', () => {
+  // These are here because the correction is the argument for the phase, not a
+  // footnote to it. BCN-001 wrote all three from Parse Server's own
+  // documentation, carefully, and got all three wrong — in the direction that
+  // only surfaces in a user's app. A real server was the only way to know.
+
+  const { capabilities } = BACKEND_DESCRIPTORS.parse;
+
+  it('will not claim a Parse Server takes file uploads, because a new one does not', () => {
+    // Parse Server disables uploads for public, anonymous AND authenticated
+    // clients by default. Measured: 400, code 130, "File upload by public is
+    // disabled." It depends on the deployment, so it carries a probe.
+    const upload = capabilities['files.upload'];
+    expect(upload.state).toBe('conditional');
+    // Narrowed rather than asserted: `probe` only exists on the conditional
+    // member of the union, which is the point — a `conditional` cell that could
+    // not carry a probe would be a hedge rather than a question.
+    if (upload.state === 'conditional') expect(upload.probe).toBeDefined();
+  });
+
+  it('will not offer a signed file link, because the route is ours', () => {
+    // `GET /files/:name/sign` is BAK-006's. Parse answers 403 code 119 with the
+    // master key as readily as without — a missing route, seen from behind
+    // Parse's router. The old cell was `conditional` on a probe that asked a
+    // different and unanswerable question.
+    expect(capabilities['files.sign'].state).toBe('unsupported');
+  });
+
+  it('will not let an app delete a Parse file, which the old cell said it could', () => {
+    // The worst of the three to be confidently wrong about. Measured: 403,
+    // "unauthorized: master key is required"; 200 with the master key.
+    expect(capabilities['files.delete'].state).toBe('unsupported');
+  });
+
+  it('records the aggregate refusal in the server’s own words', () => {
+    // BCN-001 §0.2's separate-columns argument, now a measurement rather than
+    // a reading. This is the sentence the descriptor is entitled to stand on.
+    expect(capabilities['data.aggregate'].evidence).toContain('master key is required');
+  });
+});

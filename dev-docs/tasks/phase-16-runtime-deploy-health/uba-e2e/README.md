@@ -8,6 +8,7 @@ is kept deliberately; the rig is shared.
 |---|---|---|
 | *(default)* + `supabase` | RUN-003 | first contact: does UBA/BYOB work against a live backend at all |
 | `aggregate` | BCN-001 (phase 34) | which backends can aggregate — see [below](#the-aggregate-capability-probe-bcn-001) |
+| `parse` | BCN-002 (phase 34) | what an **upstream Parse Server** does that ours does not — see [below](#the-parse-wire-live-pass-bcn-002) |
 
 ## RUN-003 — first contact
 
@@ -120,3 +121,64 @@ Headline results, in case the file is not to hand:
 
 Credentials are throwaway: PocketBase `admin@example.com` /
 `pocketbase-admin-pw`.
+
+## The Parse-wire live pass (BCN-002)
+
+BCN-002 moved the Parse client behind `IDataAdapter` as `ParseWireAdapter`, and
+its success criterion asked for a live pass against **an external Parse server**.
+There was none — not in this repo, not in this rig — which is also why BCN-001
+shipped every `parse` descriptor cell reading *"documented, not probed"*.
+Decision 2026-07-31: stand one up.
+
+```bash
+docker compose --profile parse up -d          # parse-server 7.3.0 + mongo 7, ~20s
+# and our own backend, for the other direction:
+(cd ../../../../packages/nodegx-backend && node bin/nodegx-backend.js serve \
+   --data-dir /tmp/bcn002-backend --port 8093 &)
+
+node build-bcn-002.mjs && node bcn-002-parse-driver.cjs
+
+docker compose --profile parse down -v
+```
+
+| File | What it is |
+|---|---|
+| `parse` (8092) + `parse-db` | `parseplatform/parse-server:7.3.0` on Mongo 7. 8092, not Parse's own 1337, so it stays out of a local instance's way |
+| `bcn-002-parse-driver.ts` + `build-bcn-002.mjs` | Drives the **real `ParseWireAdapter`**, bundled from `noodl-runtime` sources — 36 checks against both servers |
+| `BCN-002-PARSE-WIRE-OUTPUT.txt` | Recorded run |
+
+**Why both servers.** `nodegx-backend` answers the same Parse routes on the same
+headers, so a green pass against it proves the adapter's shape and nothing about
+upstream Parse. The safety net and the trap are the same object. Every row where
+the two columns differ is a descriptor cell that used to be a reading of the
+Parse docs.
+
+What the run found:
+
+- **BCN-001 §0.2's separate-columns argument, measured.** Upstream Parse answers
+  `/aggregate` and `/aggregate?distinct=` with
+  `unauthorized: master key is required`, and answers both with 200 when given
+  the master key. Ours serves both under ordinary ACLs. Same wire, different
+  capabilities — in Parse's own words rather than its documentation's.
+- **Three `parse` file cells were wrong**, all read carefully from the docs, all
+  wrong in the direction that only shows up in a user's app: a stock Parse Server
+  **refuses uploads outright** (`code 130, File upload by public is disabled`),
+  **deleting a file needs the master key** (the cell said it did not), and
+  **`GET /files/:name/sign` does not exist on Parse at all** — it is BAK-006's,
+  ours, and Parse answers 403 code 119 with the master key as readily as without.
+- **A defect in our own client**, found on the first run and reachable by nothing
+  else in the repo. With no baked `_noodl_cloudservices`, the cloud-runtime
+  branch sent `X-Parse-Master-Key: undefined` — `JSON.stringify` drops an
+  undefined property but `new Headers()` keeps it as the four-letter string.
+  `nodegx-backend` counts each as a failed credential attempt and **locks the
+  caller out for 300 seconds**. Upstream Parse ignores a master key it does not
+  recognise, so ours is the only server that fails loudly. Fixed in `203469c7`.
+
+**One trap worth carrying forward.** Parse Server restricts master-key use to
+loopback by default, and a request published through Docker arrives from the
+bridge gateway — so every master-key probe 403s for a reason that has nothing to
+do with the route being probed. The compose file opens `PARSE_SERVER_MASTER_KEY_IPS`
+so a refusal is evidence about the route. The default is itself a finding: it is a
+second reason a browser can never reach a master-key-only route.
+
+Credentials are throwaway: app id `uba-e2e-app`, master key `uba-e2e-master-key`.

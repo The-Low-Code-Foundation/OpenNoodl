@@ -16,6 +16,18 @@ import { degraded, filterTable, supported, unsupported } from './helpers';
 const WIRE = 'nodegx-backend/src/server/parse-wire.ts';
 const SQL = 'noodl-runtime/src/api/adapters/local-sql/QueryBuilder.ts';
 
+/**
+ * BCN-002's live pass drove the real `ParseWireAdapter` against a running
+ * `nodegx-backend`, so the cells carrying this were not only read in the
+ * handler — they answered. Recorded in the rig's
+ * `BCN-002-PARSE-WIRE-OUTPUT.txt`.
+ *
+ * The cells without it (`data.acl`, `data.search`, the two pointer/relation
+ * reads, `files.private`, `files.progress`) are still read-not-driven, and the
+ * distinction is the whole reason this field exists.
+ */
+const DRIVEN = '; driven live in BCN-002';
+
 export const nodegxDescriptor: BackendDescriptor = {
   type: 'nodegx',
 
@@ -26,8 +38,8 @@ export const nodegxDescriptor: BackendDescriptor = {
   tokenLifecycle: { kind: 'eternal' },
 
   capabilities: Object.freeze({
-    'data.query': supported(`POST/GET /classes/:c — ${WIRE}:6`),
-    'data.count': supported(`GET /classes/:c with count=1 — ${WIRE}:7`),
+    'data.query': supported(`POST/GET /classes/:c — ${WIRE}:6${DRIVEN}, including a $gt filter`),
+    'data.count': supported(`GET /classes/:c with count=1 — ${WIRE}:7${DRIVEN}`),
 
     // Verified in BCN-001's probe work by reading the handler, and it settles
     // README footnote 2: there is no master-key check anywhere in parse-wire.ts.
@@ -35,24 +47,24 @@ export const nodegxDescriptor: BackendDescriptor = {
     // they reveal exactly what find reveals and work from a browser. Upstream
     // Parse restricts the same route to the master key, which is the whole
     // reason `nodegx` and `parse` are separate rows in this package.
-    'data.distinct': supported(`GET /aggregate/:c — ${WIRE}:246-284, ACL-governed, no master key`),
-    'data.aggregate': supported(`GET /aggregate/:c — ${WIRE}:246-284, ACL-governed, no master key`),
+    'data.distinct': supported(`GET /aggregate/:c — ${WIRE}:246-284, ACL-governed, no master key${DRIVEN} with the app id alone, where upstream Parse refuses`),
+    'data.aggregate': supported(`GET /aggregate/:c — ${WIRE}:246-284, ACL-governed, no master key${DRIVEN} with the app id alone, where upstream Parse refuses`),
 
-    'data.fetch': supported(`GET /classes/:c/:id — ${WIRE}:8`),
-    'data.create': supported(`POST /classes/:c — ${WIRE}:6`),
-    'data.save': supported(`PUT /classes/:c/:id — ${WIRE}:9`),
-    'data.increment': supported(`PUT with __op: 'Increment' — ${WIRE}:88, atomic`),
-    'data.delete': supported(`DELETE /classes/:c/:id — ${WIRE}:10`),
+    'data.fetch': supported(`GET /classes/:c/:id — ${WIRE}:8${DRIVEN}`),
+    'data.create': supported(`POST /classes/:c — ${WIRE}:6${DRIVEN}`),
+    'data.save': supported(`PUT /classes/:c/:id — ${WIRE}:9${DRIVEN}`),
+    'data.increment': supported(`PUT with __op: 'Increment' — ${WIRE}:88, atomic${DRIVEN}`),
+    'data.delete': supported(`DELETE /classes/:c/:id — ${WIRE}:10${DRIVEN}`),
     'data.acl': supported('BAK-003: CLP + row-level ACL, filtered in SQL'),
     'data.search': supported('BAK-008: FTS5 ranking on a dedicated `search` parameter — parse-wire.ts:126'),
 
     'relations.pointerRead': supported('Pointer columns resolve via include'),
     'relations.relatedTo': supported(`junction-table subquery on _Join_<key>_<class> — ${SQL}:254`),
-    'relations.addRemove': supported(`PUT with __op AddRelation/RemoveRelation — ${WIRE}:90`),
+    'relations.addRemove': supported(`PUT with __op AddRelation/RemoveRelation — ${WIRE}:90${DRIVEN}, both directions`),
 
-    'files.upload': supported('BAK-006 file storage v2'),
-    'files.sign': supported('BAK-006: SigV4 presign, or a local signed URL'),
-    'files.delete': supported('BAK-006'),
+    'files.upload': supported(`BAK-006 file storage v2${DRIVEN} with the app id alone, where a stock Parse Server refuses outright`),
+    'files.sign': supported(`BAK-006: SigV4 presign, or a local signed URL${DRIVEN}, returning a url with exp and sig`),
+    'files.delete': supported(`BAK-006${DRIVEN} with the app id alone, where upstream Parse needs the master key`),
     'files.private': supported('X-NodeGX-File-Private header — cloudstore.js:446, ours by construction'),
     'files.progress': supported('XHR upload path reports progress'),
 

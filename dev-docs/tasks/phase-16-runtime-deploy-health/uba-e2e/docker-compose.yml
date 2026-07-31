@@ -129,3 +129,65 @@ services:
       interval: 2s
       timeout: 2s
       retries: 30
+
+  # ── Upstream Parse Server (profile: parse) ───────────────────────────────
+  # BCN-001 shipped every `parse` descriptor cell reading "documented, not
+  # probed", because no Parse Server existed in this repo or this rig — which
+  # also made BCN-002's success criterion ("live pass against an external Parse
+  # server") unmeetable as written. Decision 2026-07-31: stand one up.
+  #
+  # This is the ONLY thing in the rig that can tell our backend from the wire it
+  # speaks. `nodegx-backend` answers the same Parse routes on the same headers,
+  # so a green pass against it proves adapter shape and nothing about upstream
+  # Parse — the safety net and the trap are the same object. The two exist as
+  # separate descriptor columns precisely because BCN-001 found them differing
+  # on `/aggregate`, and this service is what turns that from a reading of the
+  # Parse docs into a measurement.
+  #
+  #   docker compose --profile parse up -d
+  #   node bcn-002-parse-wire-probe.mjs
+  #   docker compose --profile parse down -v
+  parse-db:
+    profiles: ["parse"]
+    image: mongo:7
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  parse:
+    profiles: ["parse"]
+    # Pinned, not `latest`: the point of this service is to be a fixed thing the
+    # descriptor's evidence strings can name. Parse Server 7 is the current
+    # major at the time of writing.
+    image: parseplatform/parse-server:7.3.0
+    # 1337 is Parse's own default and is often already taken; 8092 keeps this
+    # rig out of its way and beside the other probe ports.
+    ports:
+      - "8092:1337"
+    environment:
+      PARSE_SERVER_APPLICATION_ID: "uba-e2e-app"
+      PARSE_SERVER_MASTER_KEY: "uba-e2e-master-key"
+      # Parse Server restricts master-key use to loopback by default, and a
+      # request published through Docker arrives from the bridge gateway — so
+      # without this every master-key probe 403s for a reason that has nothing
+      # to do with the route being probed. Opened so that a refusal is evidence
+      # about the route. (The default is itself a finding, and a good one: it is
+      # a second reason a browser can never reach a master-key-only route.)
+      PARSE_SERVER_MASTER_KEY_IPS: "0.0.0.0/0,::/0"
+      PARSE_SERVER_DATABASE_URI: "mongodb://parse-db:27017/dev"
+      PARSE_SERVER_MOUNT_PATH: "/parse"
+      # Off by default since Parse Server 5, and the probe wants to create its
+      # own classes without the master key to see what an ordinary client can
+      # do. Turned on here so that "an ordinary client cannot X" is a finding
+      # about X rather than about this setting.
+      PARSE_SERVER_ALLOW_CLIENT_CLASS_CREATION: "true"
+      # Parse Server disables ALL file upload by default — public, anonymous and
+      # authenticated alike. That default is itself a descriptor fact, so the
+      # probe checks the disabled case first and this only opens the public path
+      # afterwards.
+      PARSE_SERVER_FILE_UPLOAD_OPTIONS: '{"enableForPublic":true,"enableForAnonymousUser":true,"enableForAuthenticatedUser":true}'
+    depends_on:
+      parse-db:
+        condition: service_healthy
