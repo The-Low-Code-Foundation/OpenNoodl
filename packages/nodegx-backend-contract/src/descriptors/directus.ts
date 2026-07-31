@@ -16,6 +16,38 @@
 import type { BackendDescriptor } from '../capabilities';
 import { conditional, degraded, filterTable, supported, unsupported } from './helpers';
 
+/**
+ * The nine string operators, on a backend whose `LIKE` cannot be escaped.
+ *
+ * Measured by BCN-003's live equivalence pass: `%` and `_` in the user's text
+ * act as wildcards, a backslash escape is matched literally rather than
+ * honoured, and the comparison ignores case whether the operator says so or
+ * not — so `notStartsWith "Ada"` also excludes `adaline`. The three
+ * `IgnoreCase` members are the ones for which that last part is not a
+ * difference, so they carry the shorter sentence.
+ *
+ * `pocketbase.ts` has the same table for the same measured reasons. They are
+ * separate copies because they are separate claims about separate products, and
+ * sharing one would make a later divergence between them invisible.
+ */
+const WILDCARD_DEGRADED = (() => {
+  const wildcards =
+    'The characters % and _ act as wildcards here, so searching for text containing one will match more than you asked for.';
+  const bothWays = `${wildcards} Matching also ignores capitals.`;
+  const evidence = 'BCN-003 live: LIKE with no ESCAPE clause; contains "100%" also returned "1000 words"';
+  return {
+    contains: degraded(bothWays, evidence),
+    notContains: degraded(bothWays, evidence),
+    containsIgnoreCase: degraded(wildcards, evidence),
+    startsWith: degraded(bothWays, evidence),
+    notStartsWith: degraded(bothWays, evidence),
+    startsWithIgnoreCase: degraded(wildcards, evidence),
+    endsWith: degraded(bothWays, evidence),
+    notEndsWith: degraded(bothWays, evidence),
+    endsWithIgnoreCase: degraded(wildcards, evidence)
+  };
+})();
+
 export const directusDescriptor: BackendDescriptor = {
   type: 'directus',
 
@@ -113,7 +145,39 @@ export const directusDescriptor: BackendDescriptor = {
 
   filters: filterTable(supported('native Directus filter operator'), {
     // The neutral vocabulary was chosen partly because Directus covers most of
-    // it natively — these are its own operators, one rename away.
+    // it natively — these are its own operators, one rename away. The
+    // exceptions below were measured by BCN-003's live equivalence pass against
+    // Directus 11, and three of them contradict what this table said when it
+    // was written from the documentation.
+
+    // ⚠️ BCN-003, live: Directus 11 answers a `_regex` filter on a string field
+    // with `400 Invalid query. "string" field type does not contain the
+    // "_regex" filter operator.` Documented, but not served for ordinary text
+    // columns — precisely the "documented, not probed" distinction this package
+    // exists to make.
+    matchesRegex: unsupported(
+      'Directus cannot match text with regular expressions. Use "contains", "starts with" or "ends with" instead.',
+      'BCN-003 live: 400 — "string field type does not contain the _regex filter operator"'
+    ),
+
+    // ⚠️ BCN-003, live: `_contains` is `LIKE '%value%'` with no escape
+    // available — a `%` or `_` the user typed acts as a wildcard, and a
+    // backslash is matched literally rather than honoured. Searching for "100%"
+    // also returns "1000 words". Degraded rather than unsupported because the
+    // condition *is* applied; it is broader than asked, not absent.
+    ...WILDCARD_DEGRADED,
+
+    // ⚠️ BCN-003, live: `_empty` matches a NULL as well as an empty string, so
+    // it answers a different question from the neutral `isEmpty` — which exists
+    // precisely because "empty" and "not set" are not the same question.
+    isEmpty: degraded(
+      'On Directus, "is empty" also matches records where the field was never set.',
+      'BCN-003 live: _empty returned both the empty-string row and the NULL row'
+    ),
+    isNotEmpty: degraded(
+      'On Directus, "is not empty" also excludes records where the field was never set.',
+      'BCN-003 live: the complement of the above'
+    ),
 
     relatedTo: unsupported(
       'Filtering by "records related to this one" is not available on Directus yet.',

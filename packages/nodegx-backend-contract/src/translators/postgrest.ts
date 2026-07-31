@@ -58,18 +58,45 @@ export interface PostgrestFilter {
 type ConditionNode = Extract<FilterNode, { kind: 'condition' }>;
 
 /**
- * Encode one value for a PostgREST filter.
- *
- * The reserved set is `,` `.` `:` `(` `)` and whitespace — all of which are
- * structural in the query string. A reserved value is double-quoted, and a
- * double quote or backslash inside it is backslash-escaped. This is the
- * PostgREST-shaped answer to the same question PocketBase's parameter binding
- * answers: user text must never be able to change the shape of the query.
+ * A value's text, before any PostgREST quoting.
  */
-export function encodePostgrestValue(raw: unknown): string {
+function valueText(raw: unknown): string {
   if (raw === null || raw === undefined) return 'null';
   if (typeof raw === 'boolean' || typeof raw === 'number') return String(raw);
-  const text = raw instanceof Date ? raw.toISOString() : String(raw);
+  return raw instanceof Date ? raw.toISOString() : String(raw);
+}
+
+/**
+ * Encode a value for the **top level** — `?name=eq.<here>`.
+ *
+ * Verbatim, and that is not an oversight. ⚠️ PostgREST 12.2 does **not** strip
+ * surrounding double quotes for `eq` at the top level: `?city=eq."London"`
+ * matches nothing, because the quotes become part of the value being compared.
+ * An earlier draft of this file quoted any value carrying a reserved character
+ * and the live equivalence pass found it immediately — a filter for a name
+ * containing a quote and an `&&` returned zero rows from PostgREST and the
+ * right row from the other four.
+ *
+ * Nothing needs quoting here anyway: the only structural character at the top
+ * level is `&`, and percent-encoding the parameter handles it. **The caller must
+ * percent-encode** — `new URLSearchParams(filter.params)` is exactly right.
+ */
+export function encodePostgrestValue(raw: unknown): string {
+  return valueText(raw);
+}
+
+/**
+ * Encode a value for use **inside `and=(…)` / `or=(…)`**, where the rules are
+ * the opposite way round.
+ *
+ * There, `,` and `)` really are structural — a bare comma in a value is a
+ * PGRST100 parse error — and quoting *is* honoured, with a backslash escaping a
+ * quote or a backslash. Both halves measured against PostgREST 12.2; see
+ * `BCN-003-EQUIVALENCE-OUTPUT.txt`.
+ */
+export function encodePostgrestGroupedValue(raw: unknown): string {
+  const text = valueText(raw);
+  if (raw === null || raw === undefined || typeof raw === 'boolean' || typeof raw === 'number') return text;
   if (/[,.:()"\\\s]/.test(text) || text === '') {
     return `"${text.replace(/(["\\])/g, '\\$1')}"`;
   }
@@ -92,10 +119,16 @@ export function escapePostgrestLike(value: string): string {
   return value.replace(/[\\%_*]/g, '\\$&');
 }
 
-/** `in.("a","b")` — the list form, which quotes every member unconditionally. */
+/**
+ * `in.("a","b")` — the list form.
+ *
+ * Its own grammar, in which quoting *is* honoured in both positions (measured
+ * at the top level, where `eq` quoting is not). Members are quoted whenever
+ * they carry a reserved character, exactly as inside a logical group.
+ */
 function encodeList(raw: unknown): string {
   const items = Array.isArray(raw) ? raw : [raw];
-  return `(${items.map((item) => encodePostgrestValue(item)).join(',')})`;
+  return `(${items.map((item) => encodePostgrestGroupedValue(item)).join(',')})`;
 }
 
 /** The `!inner` embed prefix a dotted path implies, or undefined for a plain field. */
@@ -104,12 +137,12 @@ function embedFor(field: string): string | undefined {
   return parts.length > 1 ? parts.slice(0, -1).join('.') : undefined;
 }
 
-function leaf(field: string, operator: string): PostgrestFilter {
+function leaf(field: string, bare: string, grouped: string): PostgrestFilter {
   const embed = embedFor(field);
   return {
-    params: [[field, operator]],
+    params: [[field, bare]],
     // A dotted path has no compact spelling — see the module comment.
-    expression: embed ? undefined : `${field}.${operator}`,
+    expression: embed ? undefined : `${field}.${grouped}`,
     embeds: embed ? [embed] : []
   };
 }
@@ -149,9 +182,15 @@ function createPostgrestDialect(): FilterDialect<PostgrestFilter> {
     },
 
     id(node) {
-      return node.operator === 'idEqualTo'
-        ? leaf('id', `eq.${encodePostgrestValue(node.value)}`)
-        : leaf('id', `in.${encodeList(node.value)}`);
+      if (node.operator === 'idContainedIn') {
+        const list = `in.${encodeList(node.value)}`;
+        return leaf('id', list, list);
+      }
+      return leaf(
+        'id',
+        `eq.${encodePostgrestValue(node.value)}`,
+        `eq.${encodePostgrestGroupedValue(node.value)}`
+      );
     },
 
     relatedTo(node, ctx) {
@@ -159,7 +198,14 @@ function createPostgrestDialect(): FilterDialect<PostgrestFilter> {
     },
 
     condition(node, ctx) {
-      return leaf(node.field, conditionOperator(node, ctx));
+      // Built twice, with the two encodings the two positions need. Cheaper
+      // than threading a pair through every branch, and it keeps each branch
+      // reading as one spelling of one operator.
+      return leaf(
+        node.field,
+        conditionOperator(node, ctx, encodePostgrestValue),
+        conditionOperator(node, ctx, encodePostgrestGroupedValue)
+      );
     }
   };
 }
@@ -171,21 +217,25 @@ const COMPARISONS: Readonly<Record<string, string>> = Object.freeze({
   greaterThanOrEqualTo: 'gte'
 });
 
-function conditionOperator(node: ConditionNode, ctx: DialectContext): string {
+function conditionOperator(
+  node: ConditionNode,
+  ctx: DialectContext,
+  encode: (raw: unknown) => string
+): string {
   const { field, operator, value } = node;
 
   switch (operator) {
     case 'equalTo':
       // `eq.null` matches nothing in SQL; `is.null` is the null test.
-      return value === null ? 'is.null' : `eq.${encodePostgrestValue(value)}`;
+      return value === null ? 'is.null' : `eq.${encode(value)}`;
     case 'notEqualTo':
-      return value === null ? 'not.is.null' : `neq.${encodePostgrestValue(value)}`;
+      return value === null ? 'not.is.null' : `neq.${encode(value)}`;
 
     case 'lessThan':
     case 'greaterThan':
     case 'lessThanOrEqualTo':
     case 'greaterThanOrEqualTo':
-      return `${COMPARISONS[operator]}.${encodePostgrestValue(value)}`;
+      return `${COMPARISONS[operator]}.${encode(value)}`;
 
     case 'containedIn':
       return `in.${encodeList(value)}`;
@@ -199,7 +249,7 @@ function conditionOperator(node: ConditionNode, ctx: DialectContext): string {
       // `~` and `~*`. POSIX regular expressions rather than PCRE, which is a
       // real difference for lookahead — recorded in the descriptor rather than
       // papered over here.
-      return `${node.regexOptions?.includes('i') ? 'imatch' : 'match'}.${encodePostgrestValue(value)}`;
+      return `${node.regexOptions?.includes('i') ? 'imatch' : 'match'}.${encode(value)}`;
 
     case 'contains':
     case 'notContains':
@@ -214,7 +264,7 @@ function conditionOperator(node: ConditionNode, ctx: DialectContext): string {
       if (!lowered) return ctx.fail(`Cannot express "${operator}"`, { operator, field });
       const like = lowered.insensitive ? 'ilike' : 'like';
       const pattern = applyLikeAnchor(lowered.anchor, escapePostgrestLike(lowered.value), '*');
-      return `${lowered.negated ? 'not.' : ''}${like}.${encodePostgrestValue(pattern)}`;
+      return `${lowered.negated ? 'not.' : ''}${like}.${encode(pattern)}`;
     }
 
     // PostgREST has no BETWEEN, so a range is two conditions. Both spellings
@@ -225,12 +275,10 @@ function conditionOperator(node: ConditionNode, ctx: DialectContext): string {
       return ctx.fail(`A "${operator}" filter needs a two-element array [from, to]`, { operator, field });
 
     case 'textSearch':
-      return `fts.${encodePostgrestValue(
-        typeof value === 'string' ? value : (value as { term?: unknown })?.term
-      )}`;
+      return `fts.${encode(typeof value === 'string' ? value : (value as { term?: unknown })?.term)}`;
 
     case 'pointsTo':
-      return Array.isArray(value) ? `in.${encodeList(value)}` : `eq.${encodePostgrestValue(value)}`;
+      return Array.isArray(value) ? `in.${encodeList(value)}` : `eq.${encode(value)}`;
 
     // PostGIS may well be installed — the descriptor marks these `conditional`
     // on it — but PostgREST exposes no distance or containment operator in the

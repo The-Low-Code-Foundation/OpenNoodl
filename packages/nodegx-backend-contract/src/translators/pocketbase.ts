@@ -168,14 +168,30 @@ function conditionExpression(node: ConditionNode, ctx: DialectContext, bind: (va
 }
 
 /**
- * Neutralise SQL `LIKE` wildcards inside a value bound to `~`.
+ * ⚠️ **Does not escape, and that is the measured answer rather than the tidy one.**
  *
- * PocketBase's `~` is `LIKE` underneath, so a `%` or `_` the *user* typed would
- * otherwise act as a wildcard and widen the match. Backslash is SQLite's
- * conventional escape and PocketBase passes it through.
+ * PocketBase's `~` is SQL `LIKE`, so a `%` or `_` in the user's text acts as a
+ * wildcard. The obvious fix is a backslash escape — and the live equivalence
+ * pass showed PocketBase does not honour one: `contains "100%"` escaped to
+ * `100\%` returns **nothing**, because the backslash is matched literally.
+ * SQLite's `LIKE` only honours an escape when the query says `ESCAPE '\'`, and
+ * nothing in PocketBase's filter grammar can say it.
+ *
+ * So both available behaviours are wrong, and the choice is which way:
+ *
+ * - Escaping returns *nothing* for any search containing `%` or `_`. `_` is
+ *   common in real text (`user_id`), so this breaks ordinary searches
+ *   completely and looks like "no results".
+ * - Not escaping returns a *superset* that still contains the right rows.
+ *
+ * Superset wins here, against this task's usual rule, because the rule exists
+ * to stop a *condition being dropped* — and this is not that. The condition is
+ * applied; a wildcard the user did not intend makes it slightly broader. The
+ * `pocketbase` descriptor marks the whole contains family `degraded` and says
+ * so in the user's own words, which is the honest half of the trade.
  */
 function escapeLikeValue(value: unknown): string {
-  return String(value ?? '').replace(/[\\%_]/g, '\\$&');
+  return String(value ?? '');
 }
 
 export function toPocketBaseFilter(filter: Filter | null | undefined, options: TranslateOptions): PocketBaseFilter {

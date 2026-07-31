@@ -9,6 +9,7 @@ is kept deliberately; the rig is shared.
 | *(default)* + `supabase` | RUN-003 | first contact: does UBA/BYOB work against a live backend at all |
 | `aggregate` | BCN-001 (phase 34) | which backends can aggregate — see [below](#the-aggregate-capability-probe-bcn-001) |
 | `parse` | BCN-002 (phase 34) | what an **upstream Parse Server** does that ours does not — see [below](#the-parse-wire-live-pass-bcn-002) |
+| `aggregate` + `parse` together | BCN-003 (phase 34) | does the same filter return the same rows from all five backends — see [below](#the-filter-equivalence-pass-bcn-003) |
 
 ## RUN-003 — first contact
 
@@ -188,3 +189,63 @@ so a refusal is evidence about the route. The default is itself a finding: it is
 second reason a browser can never reach a master-key-only route.
 
 Credentials are throwaway: app id `uba-e2e-app`, master key `uba-e2e-master-key`.
+
+
+## The filter equivalence pass (BCN-003)
+
+**The deliverable of BCN-003, not its scaffolding.** One logical corpus in five
+backends, one set of neutral filters, and an assertion about what comes back.
+
+```bash
+# ⚠️ the SQL seed only runs on a FRESH volume
+docker compose --profile aggregate --profile parse down -v
+docker compose --profile aggregate --profile parse up -d
+(cd ../../../../packages/nodegx-backend && node bin/nodegx-backend.js serve --data-dir /tmp/bcn003-backend --port 8093 &)
+node build-bcn-003.mjs && node bcn-003-equivalence-driver.cjs
+```
+
+| File | What it is |
+|---|---|
+| `bcn-003-equivalence-driver.ts` | Drives the **real translators** from `@noodl/backend-contract` against all five backends |
+| `bcn-003-people-seed.sql` | The corpus, for the PostgREST half — the only backend that cannot create its own table |
+| `BCN-003-EQUIVALENCE-OUTPUT.txt` | Recorded run: 106 checks, 0 failures, 8 declared divergences |
+
+### What it asserts, which is not "they all agree"
+
+They do not all agree, and a run demanding that would be measuring the world
+rather than our claims about it. What is asserted:
+
+> **A backend whose capability cell says `supported` returns exactly the
+> expected rows. A backend that returns anything else has a cell that already
+> said so.**
+
+A `degraded` cell buys a divergence; nothing else does. All eight divergences
+in the recorded run were `supported` cells *before* the run — the pass is what
+turned them into `degraded` ones with a sentence attached.
+
+### The seven people, and why each is there
+
+`Ada` / `Adam` / `adaline` separate case-sensitive from case-insensitive
+matching. Adam's empty bio and Grace's NULL one separate `isEmpty` from
+`exists`. `Q"uote && Co` is the injection case — a value carrying a quote, an
+ampersand pair and a space must come back as one row rather than as a rewritten
+query. `100% sure` beside `1000 words` is the LIKE-wildcard case: searching for
+`100%` must not match the second.
+
+### What it found
+
+Four defects in translators that every unit test passed, and four wrong
+descriptor cells:
+
+- **PostgREST 12.2 does not strip quotes at the top level.** `?city=eq."London"`
+  matches nothing. Quoting is honoured *inside* `or=(…)`, where a bare comma is
+  a parse error — so the two positions need opposite encodings.
+- **Parse `$exists` tests key presence, not null-ness.** A record whose field
+  was explicitly set to null satisfies `$exists: true`, so "is set" returned it
+  and "is not set" returned nothing. `$ne: null` / `$eq: null` is the question
+  the user is actually asking, and compiles to the same SQL on our own backend.
+- **Directus 11 refuses `_regex` on a string field** — `400`, in its own words.
+  The cell said `supported`, written from the documentation.
+- **Directus and PocketBase honour no `LIKE` escape.** A `%` or `_` in the
+  user's text is a wildcard and a backslash is matched literally. Postgres does
+  honour it, so PostgREST escapes and the other two declare `degraded`.

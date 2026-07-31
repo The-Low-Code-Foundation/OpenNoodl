@@ -129,8 +129,21 @@ function conditionValue(node: ConditionNode, ctx: DialectContext): Record<string
       return { $in: Array.isArray(value) ? value.map(v) : [v(value)] };
     case 'notContainedIn':
       return { $nin: Array.isArray(value) ? value.map(v) : [v(value)] };
+    // ⚠️ **Not `$exists`**, which the code this replaces emitted.
+    //
+    // Parse inherits MongoDB's meaning: `$exists` tests whether the *key is
+    // present*, so a record whose `bio` was explicitly set to null satisfies
+    // `$exists: true`. Every other backend here answers "does this field have a
+    // value", and so does our own SQL translator (`col IS NOT NULL`). The live
+    // equivalence pass caught it — upstream Parse returned Grace, whose bio is
+    // null, for "bio is set", and returned nothing at all for "bio is not set".
+    //
+    // `$eq: null` matches missing *or* null and `$ne: null` matches
+    // present-and-not-null, which is the question the user is asking. On our
+    // own backend this is a no-op: `$eq`/`$ne` against null already compile to
+    // `IS NULL` / `IS NOT NULL`, the same SQL `$exists` produced.
     case 'exists':
-      return { $exists: value !== false };
+      return value === false ? { $eq: null } : { $ne: null };
 
     case 'matchesRegex':
       return node.regexOptions === undefined

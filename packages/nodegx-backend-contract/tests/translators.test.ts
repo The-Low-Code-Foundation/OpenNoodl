@@ -337,11 +337,28 @@ describe('toPostgrest', () => {
     );
   });
 
-  it('quotes a value carrying a reserved character so it cannot restructure the query', () => {
+  it('does NOT quote at the top level, and does inside a group', () => {
+    // ⚠️ Both halves are measured against PostgREST 12.2 by the live
+    // equivalence pass, and the first half inverts the obvious guess: at the
+    // top level PostgREST does *not* strip surrounding quotes, so
+    // `?city=eq."London"` matches nothing. An earlier draft quoted anything
+    // carrying a reserved character, and a filter for a name containing a
+    // quote and an `&&` returned zero rows from PostgREST and the right row
+    // from the other four backends. Nothing needs quoting there anyway — the
+    // only structural character is `&`, and percent-encoding handles it.
     expect(postgrestQueryString(toPostgrest({ name: { equalTo: 'Lovelace, Ada' } }, supabase))).toBe(
-      'name=eq."Lovelace, Ada"'
+      'name=eq.Lovelace, Ada'
     );
-    expect(postgrestQueryString(toPostgrest({ name: { equalTo: 'a"b' } }, supabase))).toBe('name=eq."a\\"b"');
+    // Inside `or=(…)` the rules reverse: a bare comma is a PGRST100 parse
+    // error, quoting is honoured, and a quote inside is backslash-escaped.
+    expect(
+      postgrestQueryString(
+        toPostgrest({ or: [{ name: { equalTo: 'Lovelace, Ada' } }, { age: { equalTo: 1 } }] }, supabase)
+      )
+    ).toBe('or=(name.eq."Lovelace, Ada",age.eq.1)');
+    expect(
+      postgrestQueryString(toPostgrest({ or: [{ name: { equalTo: 'a"b' } }, { age: { equalTo: 1 } }] }, supabase))
+    ).toBe('or=(name.eq."a\\"b",age.eq.1)');
   });
 
   it('reports the embed a dotted path needs, and refuses one inside an or', () => {
@@ -357,12 +374,12 @@ describe('toPostgrest', () => {
 
   it('lowers the string family onto like/ilike and escapes the wildcards', () => {
     // PostgREST's wildcard is `*`, which it rewrites to `%`, so both are
-    // metacharacters and both are escaped out of the user's value. The escaping
-    // then happens twice over and that is correct: once for `LIKE`, and again
-    // because a backslash inside a quoted PostgREST value is itself escaped.
-    // `50%` searched for a literal per cent sign, not "anything".
-    expect(postgrestQueryString(toPostgrest({ name: { startsWith: '50%' } }, supabase))).toBe('name=like."50\\\\%*"');
-    expect(postgrestQueryString(toPostgrest({ name: { contains: 'a*b' } }, supabase))).toBe('name=like."*a\\\\*b*"');
+    // metacharacters and both are escaped out of the user's value. Unlike
+    // Directus and PocketBase, Postgres *does* honour the backslash escape —
+    // measured live: `bio=like.*100\\%*` returns "100% sure" and not
+    // "1000 words", where the unescaped form returns both.
+    expect(postgrestQueryString(toPostgrest({ name: { startsWith: '50%' } }, supabase))).toBe('name=like.50\\%*');
+    expect(postgrestQueryString(toPostgrest({ name: { contains: 'a*b' } }, supabase))).toBe('name=like.*a\\*b*');
     expect(postgrestQueryString(toPostgrest({ name: { notContains: 'ada' } }, supabase))).toBe('name=not.like.*ada*');
   });
 
@@ -400,9 +417,16 @@ describe('toPocketBaseFilter', () => {
     expect(filter.expression).toBe('(status = {:p0} || status = {:p1})');
   });
 
-  it("escapes a wildcard the user typed so it cannot widen the match", () => {
+  it('does not escape a wildcard, because PocketBase honours no escape', () => {
+    // ⚠️ Measured, and deliberately the less tidy answer. PocketBase's `~` is
+    // SQL LIKE with no reachable `ESCAPE` clause, so a backslash is matched
+    // literally: escaping `100%` to `100\\%` returns *nothing* rather than the
+    // right row. Both available behaviours are wrong; a superset that still
+    // contains the right rows beats an empty result, and `_` is common enough
+    // in real text (`user_id`) that escaping would break ordinary searches.
+    // The `pocketbase` descriptor marks the family `degraded` and says so.
     const filter = toPocketBaseFilter({ title: { contains: '100%' } }, pocketbase);
-    expect(filter.params).toEqual({ p0: '%100\\%%' });
+    expect(filter.params).toEqual({ p0: '%100%%' });
   });
 });
 

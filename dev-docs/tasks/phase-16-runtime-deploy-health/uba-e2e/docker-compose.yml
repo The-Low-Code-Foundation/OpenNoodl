@@ -69,6 +69,9 @@ services:
       POSTGRES_DB: "app"
     volumes:
       - ./bcn-001-agg-seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+      # BCN-003's equivalence corpus. Runs after the file above (name order) and
+      # touches nothing it created, so BCN-001's recorded output is unaffected.
+      - ./bcn-003-people-seed.sql:/docker-entrypoint-initdb.d/zz-bcn-003-people.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
       interval: 2s

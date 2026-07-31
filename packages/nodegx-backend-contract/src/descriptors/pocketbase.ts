@@ -24,6 +24,33 @@
 import type { BackendDescriptor } from '../capabilities';
 import { conditional, degraded, filterTable, supported, unsupported } from './helpers';
 
+/**
+ * The nine string operators on `~`, PocketBase's `LIKE`.
+ *
+ * Measured by BCN-003's live equivalence pass: `%` and `_` in the user's text
+ * act as wildcards and no escape is honoured, and the comparison ignores case
+ * whether the operator asks it to or not — so `notStartsWith "Ada"` also
+ * excludes `adaline`. See the identical table in `directus.ts` for why the two
+ * are separate copies rather than one shared constant.
+ */
+const WILDCARD_DEGRADED = (() => {
+  const wildcards =
+    'The characters % and _ act as wildcards here, so searching for text containing one will match more than you asked for.';
+  const bothWays = `${wildcards} Matching also ignores capitals.`;
+  const evidence = 'BCN-003 live: ~ is LIKE with no ESCAPE clause; a backslash is matched literally';
+  return {
+    contains: degraded(bothWays, evidence),
+    notContains: degraded(bothWays, evidence),
+    containsIgnoreCase: degraded(wildcards, evidence),
+    startsWith: degraded(bothWays, evidence),
+    notStartsWith: degraded(bothWays, evidence),
+    startsWithIgnoreCase: degraded(wildcards, evidence),
+    endsWith: degraded(bothWays, evidence),
+    notEndsWith: degraded(bothWays, evidence),
+    endsWithIgnoreCase: degraded(wildcards, evidence)
+  };
+})();
+
 const IGNORED =
   'BCN-001 probe: PocketBase returns 200 and un-aggregated rows for every spelling tried; an invented parameter behaves identically. Nothing fails at runtime.';
 
@@ -130,8 +157,23 @@ export const pocketbaseDescriptor: BackendDescriptor = {
       'The filter language has ~ (contains) but no regex operator.'
     ),
 
-    isEmpty: supported('= "" matches empty string and empty array in the PocketBase filter language'),
-    isNotEmpty: supported('!= ""'),
+    // ⚠️ BCN-003, live: PocketBase has no NULL for a text field — an unset
+    // value *is* the empty string — so "is empty" and "is not set" are the same
+    // question here and cannot be separated. All three cells say so.
+    isEmpty: degraded(
+      'PocketBase stores an empty value rather than a missing one, so "is empty" also matches records that were never given a value.',
+      'BCN-003 live: = "" returned both the empty-string row and the row seeded without a value'
+    ),
+    isNotEmpty: degraded(
+      'PocketBase stores an empty value rather than a missing one, so "is not empty" also excludes records that were never given a value.',
+      'BCN-003 live: the complement of the above'
+    ),
+    exists: degraded(
+      'PocketBase stores an empty value rather than a missing one, so "is set" and "is not empty" are the same question here.',
+      'BCN-003 live: = null also matched the empty-string row'
+    ),
+
+    ...WILDCARD_DEGRADED,
 
     relatedTo: unsupported(
       'Filtering by "records related to this one" is not available on PocketBase yet.',
