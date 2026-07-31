@@ -1,8 +1,23 @@
 /**
  * Add Backend Dialog
  *
- * Modal dialog for adding new backend configurations.
- * Supports preset selection (Directus, Supabase, Pocketbase) and custom REST APIs.
+ * One list of six backends: the built-in one, a Parse server, Directus,
+ * Supabase, PocketBase, and a custom REST API.
+ *
+ * ## BCN-009: six, and the dialog dispatches
+ *
+ * It offered three presets plus a hardcoded fourth "Custom REST" button, and had
+ * no name at all for the two Parse-wire backends the record nodes have been
+ * talking to all along — so a user looking for "the backend I already have"
+ * found a list it was not in, beside two other sections that were.
+ *
+ * Adding the missing two is not the same as making them fill in this form.
+ * Three mechanisms still write a backend binding (see
+ * `BackendPreset.configuredBy`), and offering a second place to type an endpoint
+ * and app id would re-create the duplication this task removes. So the choice is
+ * unified and the dialog hands off: pick Built-in and it starts one or points at
+ * a deployed one; pick Parse Server and it opens the endpoint card. Converging
+ * the storage underneath is step 2, and deliberately separate.
  *
  * @module BackendServicesPanel
  * @since 1.2.0
@@ -23,12 +38,17 @@ import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { ToastLayer } from '../../../ToastLayer/ToastLayer';
+import { SecurityDisclosure } from '../SecurityDisclosure/SecurityDisclosure';
 import css from './AddBackendDialog.module.scss';
 
 export interface AddBackendDialogProps {
   isVisible: boolean;
   onClose: () => void;
   onCreated: () => void;
+  /** Start a built-in backend on this computer. Owned by the panel's local-backend form. */
+  onRequestManagedBackend: () => void;
+  /** Open the Cloud Services Endpoint card's form, for a deployed built-in or a Parse server. */
+  onRequestEndpoint: () => void;
 }
 
 interface HelpPopupProps {
@@ -76,8 +96,16 @@ function HelpPopup({ content, onClose }: HelpPopupProps) {
   );
 }
 
-export function AddBackendDialog({ isVisible, onClose, onCreated }: AddBackendDialogProps) {
-  const [selectedType, setSelectedType] = useState<BackendType>('directus');
+export function AddBackendDialog({
+  isVisible,
+  onClose,
+  onCreated,
+  onRequestManagedBackend,
+  onRequestEndpoint
+}: AddBackendDialogProps) {
+  // The built-in one is first and selected first: it is the only backend in the
+  // list that needs nothing set up anywhere else.
+  const [selectedType, setSelectedType] = useState<BackendType>('nodegx');
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [adminToken, setAdminToken] = useState('');
@@ -93,7 +121,7 @@ export function AddBackendDialog({ isVisible, onClose, onCreated }: AddBackendDi
   // Reset form when dialog opens
   React.useEffect(() => {
     if (isVisible) {
-      setSelectedType('directus');
+      setSelectedType('nodegx');
       setName('');
       setUrl('');
       setAdminToken('');
@@ -187,7 +215,9 @@ export function AddBackendDialog({ isVisible, onClose, onCreated }: AddBackendDi
   return (
     <Modal isVisible={isVisible} onClose={onClose} title="Add Backend">
       <VStack hasSpacing>
-        {/* Preset Selection */}
+        {/* Preset Selection — all six, in one grid, in the order the panel lists
+            them. Custom is no longer a hardcoded seventh button: it is a preset
+            like the rest, which is what makes the count checkable. */}
         <Box hasBottomSpacing>
           <Text textType={TextType.Shy} hasBottomSpacing>
             Select a backend type
@@ -199,27 +229,64 @@ export function AddBackendDialog({ isVisible, onClose, onCreated }: AddBackendDi
                 type="button"
                 className={`${css.PresetCard} ${selectedType === preset.type ? css.Selected : ''}`}
                 onClick={() => handleSelectPreset(preset)}
+                data-test={`preset-${preset.type}`}
               >
                 <div className={css.PresetIcon}>{preset.displayName.charAt(0)}</div>
                 <Text textType={TextType.DefaultContrast}>{preset.displayName}</Text>
                 <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
-                  {preset.description.substring(0, 50)}...
+                  {preset.description}
                 </Text>
               </button>
             ))}
-            <button
-              type="button"
-              className={`${css.PresetCard} ${selectedType === 'custom' ? css.Selected : ''}`}
-              onClick={() => handleSelectPreset(getPreset('custom'))}
-            >
-              <div className={css.PresetIcon}>?</div>
-              <Text textType={TextType.DefaultContrast}>Custom REST</Text>
-              <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
-                Configure any REST API
-              </Text>
-            </button>
           </div>
         </Box>
+
+        {/* What choosing this one publishes — before anything is typed, which is
+            the only moment at which it can change the choice. */}
+        <Box hasBottomSpacing>
+          <SecurityDisclosure disclosure={selectedPreset.security} testId="add-backend-security" />
+        </Box>
+
+        {/* The two backends this form does not configure hand off rather than
+            offering a second place to type an endpoint. */}
+        {selectedPreset.configuredBy !== 'rest-config' ? (
+          <>
+            <Box hasBottomSpacing>
+              <Text textType={TextType.Shy}>
+                {selectedPreset.configuredBy === 'managed-process'
+                  ? 'A built-in backend is either one this editor runs on your computer, or one you have already deployed. Both are set up in the panel behind this dialog.'
+                  : 'A Parse server needs its endpoint and application id, and nothing else. That is the Cloud Services Endpoint card in the panel behind this dialog.'}
+              </Text>
+            </Box>
+            <HStack hasSpacing UNSAFE_style={{ justifyContent: 'flex-end' }}>
+              <PrimaryButton label="Cancel" variant={PrimaryButtonVariant.Muted} onClick={onClose} />
+              {selectedPreset.configuredBy === 'managed-process' && (
+                <PrimaryButton
+                  label="Run one on this computer"
+                  variant={PrimaryButtonVariant.Muted}
+                  onClick={() => {
+                    onRequestManagedBackend();
+                    onClose();
+                  }}
+                  testId="add-managed-backend"
+                />
+              )}
+              <PrimaryButton
+                label={
+                  selectedPreset.configuredBy === 'managed-process'
+                    ? 'Connect to a deployed one'
+                    : 'Enter endpoint and app id'
+                }
+                onClick={() => {
+                  onRequestEndpoint();
+                  onClose();
+                }}
+                testId="add-endpoint-backend"
+              />
+            </HStack>
+          </>
+        ) : (
+          <>
 
         {/* Name */}
         <Box hasBottomSpacing>
@@ -289,10 +356,12 @@ export function AddBackendDialog({ isVisible, onClose, onCreated }: AddBackendDi
             type="password"
             placeholder="Enter your public/anon API key"
           />
+          {/* BCN-009: the sentence, not the glyph. What this field does is
+              stated above in the disclosure; the note beside the input says the
+              one thing somebody typing into it needs to hold in mind. */}
           <div className={css.FieldNote}>
-            <span className={css.WarningIcon}>⚠️</span>
             <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
-              Will be visible in deployed app — scope for public access only
+              Published with your app — every visitor can read this one
             </Text>
           </div>
         </Box>
@@ -331,6 +400,8 @@ export function AddBackendDialog({ isVisible, onClose, onCreated }: AddBackendDi
           />
           <PrimaryButton label="Create Backend" onClick={handleCreate} isDisabled={isLoading || !isFormValid} />
         </HStack>
+          </>
+        )}
       </VStack>
 
       {/* Help Popups */}

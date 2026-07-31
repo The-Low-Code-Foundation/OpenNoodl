@@ -1,0 +1,83 @@
+/* Informational, not alarming.
+ *
+ * `--theme-color-primary-bg` is the azure primary at 13% — the token this design
+ * system already uses for "this is worth reading". Red is danger-only by phase
+ * law (UIX-001), and a true statement about how a backend works is not a danger.
+ * Amber was considered and rejected for the same reason: five of the six
+ * disclosures describe a backend working exactly as designed.
+ */
+.Root {
+  margin-bottom: 8px;
+  min-width: 0;
+
+  background-color: var(--theme-color-primary-bg);
+  border-left: 2px solid var(--theme-color-primary);
+  border-radius: 3px;
+}
+
+.Summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover .Headline {
+    color: var(--theme-color-fg-default-contrast);
+  }
+}
+
+.SummaryIcon {
+  flex: 0 0 auto;
+  /* Optical alignment with the first line of an 11px sentence. */
+  margin-top: 2px;
+  color: var(--theme-color-primary);
+}
+
+/* The headline is a sentence and wraps; it never widens the card. */
+.Headline {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.SummaryCaret {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.Body {
+  padding: 0 8px 8px 22px;
+  min-width: 0;
+}
+
+.Paragraph {
+  font-size: 11px;
+  line-height: 1.5;
+  margin-bottom: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.Link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--theme-color-primary);
+  font-size: 11px;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--theme-color-primary-highlight);
+    text-decoration: underline;
+  }
+}

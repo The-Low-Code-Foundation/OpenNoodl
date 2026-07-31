@@ -1,0 +1,43 @@
+/* Two columns of the same two facts. The comparison is the message, so they
+ * wrap to one column rather than shrinking below legibility. */
+.Columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+}
+
+.Column {
+  flex: 1 1 220px;
+  min-width: 0;
+
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.ColumnLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.Fact {
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+
+/* The one sentence that is only true when what the app publishes changes kind.
+ * Azure, informational — see SecurityDisclosure.module.scss for why not red. */
+.Note {
+  background-color: var(--theme-color-primary-bg);
+  border-left: 2px solid var(--theme-color-primary);
+  border-radius: 3px;
+  padding: 8px 10px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
