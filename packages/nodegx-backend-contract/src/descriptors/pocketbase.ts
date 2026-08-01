@@ -135,10 +135,26 @@ export const pocketbaseDescriptor: BackendDescriptor = {
       { method: 'GET', path: '/api/settings', expect: 'an smtp section with enabled: true' },
       'Same silent-log fallback as verification.'
     ),
+    // ⚠️ **The probe named the wrong field, and the field it named is `null`.**
+    // Measured on PocketBase 0.30.0: `auth-methods` answers
+    // `{password:{…}, oauth2:{providers:[], enabled:false}, otp:{…}, authProviders:null}`.
+    // `authProviders` is the ≤0.22 spelling, kept as a deprecated alias — and on
+    // an instance with OAuth **switched off** it is not an empty array, it is
+    // `null`. A probe reading it would have thrown rather than reported "no
+    // providers", which is the failure mode a probe exists to avoid. `oauth2` is
+    // the live field and `oauth2.enabled` is the switch.
+    //
+    // The cell stays `conditional`, and now for a reason that was measured rather
+    // than assumed: the *implementation* exists and has been driven end to end
+    // (BCN-006 step 5 — a stub OIDC provider was stood up so a real round trip
+    // could be observed), but whether any provider is configured is this
+    // instance's business. `RestAuthAdapter.signInWithProvider` asks
+    // `auth-methods` before it navigates anywhere, so this probe and the runtime
+    // check are the same question asked of the same endpoint.
     'auth.oauth': conditional(
       'Signing in with Google, GitHub and the rest depends on which providers you have set up in your PocketBase admin.',
-      { method: 'GET', path: '/api/collections/{collection}/auth-methods', expect: 'an authProviders array with at least one entry' },
-      'Providers are per-collection configuration; auth-methods enumerates them.'
+      { method: 'GET', path: '/api/collections/{collection}/auth-methods', expect: 'oauth2.enabled true, with at least one entry in oauth2.providers' },
+      'MEASURED 2026-08-01 against PocketBase 0.30.0: with a provider configured, auth-methods returns oauth2.providers[] carrying a per-attempt state, codeVerifier and an authURL ending in a bare `redirect_uri=`; POST /api/collections/{c}/auth-with-oauth2 {provider, code, codeVerifier, redirectURL} answers 200 with {token, record, meta.isNew}. With OAuth off the same POST answers 403 "The collection is not configured to allow OAuth2 authentication."'
     ),
     'auth.magicLink': unsupported(
       'PocketBase has no magic-link login. Use email and password, or an OAuth provider.',

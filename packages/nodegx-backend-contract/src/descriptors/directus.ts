@@ -130,10 +130,29 @@ export const directusDescriptor: BackendDescriptor = {
       { method: 'POST', path: '/auth/password/request', expect: 'anything other than a mail-transport error' },
       'Same EMAIL_TRANSPORT dependency.'
     ),
-    'auth.oauth': conditional(
-      'Signing in with Google, GitHub and the rest depends on which providers your Directus instance was set up with.',
-      { method: 'GET', path: '/auth', expect: 'a list of configured SSO providers' },
-      'Directus AUTH_PROVIDERS is deployment configuration; GET /auth enumerates them.'
+    // ⚠️ **`conditional` → `unsupported`, and the change is a correction rather
+    // than a retreat.** `conditional` says *"your instance decides"*. That was
+    // the wrong question: even on an instance with three SSO providers
+    // configured, NodeGX cannot complete a Directus single sign-on, and no probe
+    // of that instance would discover it.
+    //
+    // The reason is the shape of the return leg. `/auth/login/{provider}` sends
+    // the browser to the provider and Directus hands the session back as an
+    // **httpOnly cookie**, with nothing in the URL and nothing in a response body
+    // — there is no mode that answers with tokens the way `POST /auth/login`
+    // does. Consuming that needs a cookie-carried session: `credentials:
+    // 'include'` on every request and a `mode: 'cookie'` refresh, which is a
+    // second session model beside `SessionStore` rather than a fifth redirect
+    // shape. Password sign-in on the same instance is unaffected and is
+    // `supported` above.
+    //
+    // Measured, on the way to this: `GET /auth` answers `{"data":[]}` on an
+    // instance with no provider configured, and `GET /auth/login/google` on that
+    // instance is a **404 ROUTE_NOT_FOUND** — so a start leg written anyway would
+    // navigate the user off the app onto Directus's error JSON.
+    'auth.oauth': unsupported(
+      'NodeGX cannot complete a Directus single sign-on yet. Directus returns the session as a browser cookie rather than in the response, which needs a different kind of session than NodeGX stores. Use email and password on this backend.',
+      'MEASURED 2026-08-01 on Directus 11: GET /auth -> {"data":[],"disableDefault":false}; GET /auth/login/google -> 404 ROUTE_NOT_FOUND. The blocker is the cookie-carried session, not the provider list — GET /auth is still read by listAuthProviders so a builder can see what the instance offers.'
     ),
     'auth.magicLink': unsupported(
       'Directus has no magic-link login. Use email and password, or an OAuth provider.',

@@ -132,13 +132,35 @@ export const supabaseDescriptor: BackendDescriptor = {
       'DOCUMENTED, NOT PROBED — POST /auth/v1/recover is read from documentation.'
     ),
     'auth.oauth': conditional(
-      'Signing in with Google, GitHub and the rest depends on which providers you have enabled in your Supabase dashboard.',
+      'Signing in with a provider needs Supabase Auth, and NodeGX does not support it on this backend yet.',
       { method: 'GET', path: '/auth/v1/settings', expect: 'an external section listing enabled providers' },
-      'Providers are per-project configuration; the settings endpoint enumerates them.'
+      'DOCUMENTED, NOT PROBED — same as auth.password. Which providers a project has enabled is per-project configuration, but that is moot while nothing here can reach GoTrue at all.'
     ),
 
-    // The one place Supabase does something the built-in backend cannot.
-    'auth.magicLink': supported('POST /auth/v1/otp — magic links are a first-class Supabase flow'),
+    // ⚠️ **This was `supported`, and it was the last Supabase auth cell still
+    // claiming a capability the product does not have.** BCN-006 corrected its
+    // five neighbours and flagged that it had not touched the descriptors; this
+    // one survived the sweep because its evidence string reads like a fact about
+    // Supabase — and it is one. `POST /auth/v1/otp` really is a first-class
+    // Supabase flow. The cell is not about Supabase, though: it is about whether
+    // **NodeGX** can drive it, and `RestAuthAdapter` refuses every Supabase auth
+    // call with `SUPABASE_AUTH_UNSUPPORTED` before a request is issued.
+    //
+    // So a builder on Supabase saw `Request Magic Link` offered as fully
+    // supported, wired it up, and got a refusal at runtime — the precise failure
+    // this phase's central promise exists to prevent, in the one family where the
+    // spec names it: *"`Request Magic Link` on a Directus project is a disabled
+    // node with a reason, not a node that emits nothing."*
+    //
+    // `conditional` rather than `unsupported` for the same reason as its five
+    // neighbours: the editor treats it as unavailable until a probe says
+    // otherwise, and the day a GoTrue is stood up and measured this is the cell
+    // that gets promoted rather than rewritten.
+    'auth.magicLink': conditional(
+      'Sending a magic-link sign-in needs Supabase Auth, and NodeGX does not support it on this backend yet.',
+      { method: 'GET', path: '/auth/v1/settings', expect: 'a settings document rather than a 404' },
+      'DOCUMENTED, NOT PROBED — POST /auth/v1/otp is read from documentation. Magic links being first-class in Supabase is a fact about Supabase, not about whether we can reach them: every /auth/v1/* answers 404 in this rig and RestAuthAdapter issues no Supabase request at all.'
+    ),
 
     // ⚠️ **The one realtime cell nothing has ever verified.** BCN-008 tried and
     // could not: the rig's "Supabase" is one Postgres and one PostgREST
