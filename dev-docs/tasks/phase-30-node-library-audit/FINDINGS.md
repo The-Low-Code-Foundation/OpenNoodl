@@ -2179,6 +2179,83 @@ asking for — but **the two ports spell one intent two ways and neither is the 
 anything that reads the style back (an export, an SSR pass, a style inspector) sees one of two junk
 values. Recorded rather than fixed: the correct spelling is a decision about what `Auto` means.
 
+### DV-vi — `Slider`'s private `addBorderInputs` has drifted, and the answer is four ways
+
+The handover's open question. The two are not a stale copy of one generator; they are **two
+different designs**, because Slider's borders belong to two sub-elements (`track`, `thumb`) rather
+than to the node's own box. The shared version registers `addInputs` with setters that maintain
+`_internal.borders` and call `_updateBorders`; the private copy
+([`slider.ts:225`](../../../../packages/noodl-viewer-react/src/nodes/controls/slider.ts#L225))
+registers `addInputProps` with no setters at all and leaves the composition to `Slider.tsx`.
+
+| | shared | private copy |
+|---|---|---|
+| `borderWidth` default | **2** | **0** |
+| caller's `defaults` | `if (defaults.X === undefined) defaults.X = …` — overridable | `defaults.borderStyle = 'none'` etc. — **hard overwrite, the caller's values are discarded** |
+| the `orNotSet` lookup | `defaults[styleName]` where `styleName` is `border${suffix}Style` — matches the map | `styleName` is **`trackBorder${suffix}Style`** — a *prefixed* key read from an *unprefixed* map, so it is always `undefined` and the branch never fires |
+| descriptions | on all three ports | **none** — which is most of Slider's 68 undocumented ports |
+
+**Only the first is reachable today**; the other three are latent because nobody passes `defaults`.
+And the per-edge cascade is **not** missing — `Slider.tsx:36-56` re-implements it — but that
+re-implementation has a bug of its own at
+[`:45`](../../../../packages/noodl-viewer-react/src/components/controls/Slider/Slider.tsx#L45):
+`const c = (style[color] = props[color] || …)` writes `style.trackBorderTopColor` alongside the
+correct `style.borderTopColor`, so four invalid CSS keys go into every track and thumb style object.
+`width` and `style` on the same three lines do not do this.
+
+⚠️ **The transferable part is not the duplication, it is what duplication does to a fix's blast
+radius.** `Slider`'s `_updateOutputValuePercent` compares against `_internal.valuePercentChanged`,
+a field nothing ever writes, so `Value Percent` is flagged dirty on every change.
+**PLAT-003 slice 10 found that exact bug, wrote four lines explaining it, and deliberately kept it
+verbatim — in the *deprecated* `range.tsx`
+([`:401-404`](../../../../packages/noodl-viewer-react/src/nodes-deprecated/controls/range.tsx#L401-L404))**
+— and never looked at the live `Slider`, which carries the identical code with no comment. A fix
+scoped by file rather than by shape, again (B-viii), and this time the *documented* copy is the one
+nobody runs.
+
+### DV-vii — `Page`'s `Title` and `Url Path` ports are dead
+
+`Page`'s `setup` derives a default for both and sends them as dynamic ports
+([`page.ts:190-208`](../../../../packages/noodl-viewer-react/src/nodes/navigation/page.ts#L190-L208)).
+`registerInputIfNeeded` registers setters that write `_internal.title` / `_internal.urlPath`
+([`:154-162`](../../../../packages/noodl-viewer-react/src/nodes/navigation/page.ts#L154-L162)). The
+only readers — `getTitle()` and `getUrlPath()`
+([`:130-135`](../../../../packages/noodl-viewer-react/src/nodes/navigation/page.ts#L130-L135)) —
+**are called by nothing in the repository.**
+
+The Page Router routes from `routerIndex.pages` and sets the document title from *its* copy
+([`router.tsx:328`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L328));
+`META_TAGS` has no `title` entry. So **a `Page` node cannot set the browser tab title**, though it
+offers a `Title` port pre-filled with the component's name, and `Noodl.SEO.setTitle` exists one
+import away.
+
+⚠️ **This is what §4.4 is for.** Both ports exist only inside `setup`, which `graph-harness` never
+calls — the same blind spot that held six of Navigation's fifteen defects. Neither port appears in
+the catalog either, being dynamic, so the structural sweep could not see them and no C1 figure
+counts them.
+
+Separately, `urlPath`'s derived default is not sanitised for a URL: `title.replace(/\s+/g, '-')
+.toLowerCase()` and nothing else, so a component named `Order #1 & Co` proposes `order-#1-&-co`.
+
+### DV-viii — B3 is one design gap, seen seven times
+
+The check asks whether **every signal input has a terminating signal output**. It had been
+pre-filled as "does the node have *any* signal output", which a node with `Did Mount` and pointer
+events passes trivially. Read properly, **seven of the eight Visual nodes with action inputs cannot
+tell a graph that the action finished**: `Drag` (both snap actions), `Group` (both scrolls and
+`Focus`), `Video` (`Restart`, `Reset`), `Checkbox` (`Check`, `Uncheck`), `Text Input` (`Clear`),
+`Component Stack` (`Reset`), `Page Router` (`Reset`).
+
+The eighth is the `Repeater`, and it is the only one that gets it right — because NDA-004 §3 gave
+it `Items Rendered` for exactly this reason, and recorded that every list-then-scroll interaction
+had until then been a guessed `Delay`. **The same sentence applies verbatim to a snap-then-do, a
+scroll-then-measure and a reset-then-navigate.** Recorded as one gap rather than seven defects, per
+NDA-012's own warning about counting usages as defects.
+
+⚠️ **Do not compare Visual's find rate with earlier categories.** Two counts moved for reasons
+unrelated to Visual: `B1`'s pre-fill was wrong until last session (§4.1), and `B3` was being read
+too generously until this one. `Navigation`'s 1.88/node was measured under the old B3 reading.
+
 ## What these passes did *not* cover
 
 - **76 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No
