@@ -37,11 +37,18 @@
  *
  * ## What is live today
  *
- * Nothing refreshes. Parse and the built-in backend are both `eternal`, so the
+ * ⚠️ **This section was "nothing refreshes" until step 4, and no longer is.**
+ * `RestAuthAdapter` supplies a `performRefresh` for Directus and PocketBase, both
+ * measured against the live rig, so every path below now runs in the product and
+ * not only in the suite. Parse and the built-in backend remain `eternal` — the
  * controller they hold arms no timer, subscribes to nothing, and its gate is the
- * synchronous pass-through. Every `refresh` path below is tested and unwired
- * until BCN-004's REST transport gives the other three backends a
- * `performRefresh`.
+ * synchronous pass-through — which is what keeps this task's footprint on
+ * existing projects at zero.
+ *
+ * Two things the design assumed and a real backend contradicted, both now
+ * options/guards below rather than assumptions: PocketBase issues **no refresh
+ * token** ({@link TokenLifecycleControllerOptions.refreshTokenRequired}), and a
+ * refresh is not guaranteed to move the deadline ({@link MIN_REFRESH_SPACING_MS}).
  *
  * @module api/backends/TokenLifecycle
  */
@@ -62,6 +69,27 @@ const MAX_TIMEOUT_MS = 2147483647;
 const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 30000;
 const RETRY_LIMIT = 5;
+
+/**
+ * A **successful** refresh may not be followed by another sooner than this.
+ *
+ * ⚠️ Added in step 4 against a measured hazard, not a hypothetical one. The
+ * scheduler's contract with itself is "arm from `expiresAt`", and it assumes a
+ * refresh moves `expiresAt` forward. If a backend answers a refresh with a token
+ * whose expiry has *not* moved — and PocketBase 0.30.0 hands back a
+ * byte-identical token for two refreshes inside the same second, because its
+ * claims carry `exp` and no `iat` — then `arm` computes a delay of zero, fires
+ * immediately, refreshes again, and the app hammers the backend in a tight loop
+ * for as long as it is open. No error is raised anywhere and the app keeps
+ * working, which is the failure mode this phase keeps finding.
+ *
+ * Five seconds is chosen to be far below any real token lifetime (so it never
+ * delays a legitimate refresh) and far above any plausible request time (so a
+ * pathological backend costs twelve requests a minute rather than thousands).
+ *
+ * Inert until the first successful refresh, so nothing that predates it moves.
+ */
+const MIN_REFRESH_SPACING_MS = 5000;
 
 /**
  * What a rejected `performRefresh` may carry so the controller can tell a
@@ -175,6 +203,25 @@ export interface TokenLifecycleControllerOptions {
    * session from a request that never arrived.
    */
   performRefresh?: (session: StoredSession) => Promise<StoredSession>;
+  /**
+   * Does a refresh need a **separate** `refreshToken` on the session?
+   *
+   * ⚠️ **Added in step 4, because a real backend said no.** The design assumed
+   * every refreshing backend issues an access token *with a refresh token beside
+   * it* — three of them do, and PocketBase does not. Measured against PocketBase
+   * 0.30.0: the auth response is `{record, token}` with no second token, and
+   * `POST /api/collections/{c}/auth-refresh` carrying only
+   * `Authorization: Bearer <access token>` answers 200 and a new token.
+   *
+   * Without this the guard below would take the `failFatally` branch at the
+   * first scheduled refresh and sign **every PocketBase user out** — a
+   * fifteen-minute-later logout that no unit test on Parse could ever have
+   * shown, because Parse never schedules a refresh at all.
+   *
+   * Defaults to `true`, so nothing that existed before this option behaves
+   * differently.
+   */
+  refreshTokenRequired?: boolean;
   /** A silent refresh landed. Bookkeeping — see §4 for why no node hears it. */
   onSessionRefreshed?: (session: StoredSession) => void;
   /**
@@ -202,6 +249,7 @@ export class TokenLifecycleController {
 
   private readonly store: SessionStore;
   private readonly performRefresh?: (session: StoredSession) => Promise<StoredSession>;
+  private readonly refreshTokenRequired: boolean;
   private readonly onSessionRefreshed?: (session: StoredSession) => void;
   private readonly onSessionLost?: (reason: string) => void;
   private readonly onSessionClearedElsewhere?: () => void;
@@ -218,6 +266,8 @@ export class TokenLifecycleController {
   private holdsLock = false;
   private retries = 0;
   private queue: SessionCallback[] = [];
+  /** 0 until the first successful refresh, which keeps the spacing floor inert. */
+  private lastRefreshAt = 0;
 
   constructor(options: TokenLifecycleControllerOptions) {
     const invalid = validateTokenLifecycle(options.lifecycle);
@@ -233,6 +283,7 @@ export class TokenLifecycleController {
 
     this.store = options.store;
     this.performRefresh = options.performRefresh;
+    this.refreshTokenRequired = options.refreshTokenRequired !== false;
     this.onSessionRefreshed = options.onSessionRefreshed;
     this.onSessionLost = options.onSessionLost;
     this.onSessionClearedElsewhere = options.onSessionClearedElsewhere;
@@ -361,7 +412,10 @@ export class TokenLifecycleController {
 
   private arm(session: StoredSession): void {
     const expiresAt = session.expiresAt as number;
-    const delay = this.refreshAt(expiresAt) - this.now();
+    // The later of "when the token says" and "not sooner than the spacing floor
+    // allows". `lastRefreshAt` is 0 until a refresh has actually landed, so the
+    // second term cannot win on a first arm.
+    const delay = Math.max(this.refreshAt(expiresAt), this.lastRefreshAt + MIN_REFRESH_SPACING_MS) - this.now();
 
     if (delay <= 0) {
       // Already due. Still goes through the timer rather than recursing, so a
@@ -422,7 +476,10 @@ export class TokenLifecycleController {
       return;
     }
 
-    if (!session.refreshToken) {
+    // Only when this backend actually issues one — see `refreshTokenRequired`.
+    // PocketBase presents its access token instead, and a session with no
+    // refresh token is normal there rather than unrenewable.
+    if (this.refreshTokenRequired && !session.refreshToken) {
       this.failFatally('This sign-in cannot be renewed. Please sign in again.');
       return;
     }
@@ -448,6 +505,7 @@ export class TokenLifecycleController {
     this.refreshing = false;
     this.releaseLock();
     this.retries = 0;
+    this.lastRefreshAt = this.now();
 
     if (this.lifecycle.kind !== 'refresh') return;
 

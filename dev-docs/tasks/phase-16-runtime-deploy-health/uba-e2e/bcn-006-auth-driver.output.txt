@@ -1,0 +1,57 @@
+BCN-006 step 8 — RestAuthAdapter against the live rig
+====================================================
+
+═══ 1. Directus — login, /users/me, and `expires` ═══
+  ✅ logIn resolved
+  ✅ the user record is merged, not just the tokens  — admin@example.com
+  ✅ `id` was normalised to `objectId`  — 2dcfd6f6-e253-4b1f-aed7-f624b83f730c
+  ✅ the password placeholder never reached storage
+  ✅ a refresh token is stored
+  ✅ `expiresAt` is ~15 minutes in the FUTURE  — 900s
+  ✅ the session round-trips through storage
+
+═══ 2. Directus — a scheduled refresh on real timers, with rotation ═══
+  … waiting up to 20s for the scheduled refresh (nothing is being polled)
+  ✅ the access token was replaced WITHOUT anyone asking  — after ~5s
+  ✅ the refresh token rotated too
+  ✅ no sessionLost was raised — a silent refresh is silent
+  ✅ the NEW access token is accepted  — HTTP 200
+  ✅ the OLD refresh token is now REJECTED (rotation is real)  — HTTP 401
+  ✅ a refresh happened at all
+
+═══ 3. Directus — the failure policy, against the real 401 ═══
+  ✅ a spent refresh token ends the session  — Invalid user credentials.
+  ✅ …with the backend's own words, not ours  — Invalid user credentials.
+  ✅ storage was cleared
+  — and now an unreachable backend
+  ✅ a user on a dead network keeps their session
+  ✅ …and the session is still in storage
+
+═══ 5. Directus — ten concurrent requests cause ONE rotation ═══
+  ✅ all ten callers were answered
+  ✅ all ten got the SAME token
+  ✅ exactly one rotation happened, so nobody was signed out
+  ✅ the refresh token moved on exactly once
+
+═══ 4. PocketBase — a GENUINE access-token expiry, with the app open ═══
+  This is exit criterion 4. The backend really issues 25-second tokens for
+  the length of this test; nothing about the clock or the token is faked.
+  ✅ signUp resolved and signed the new user in
+  ✅ the new user carries the email the create would not tell us  — bcn006_live_1785565905534@example.com
+  ✅ `verified` was mapped to `emailVerified`
+  ✅ no refresh token exists, and that is normal here
+  ✅ the backend really is issuing ~25s tokens  — 24s
+  … waiting 30s — past the real expiry, with the session open
+  ✅ the ORIGINAL token has genuinely expired  — HTTP 401
+  ✅ the user is STILL SIGNED IN
+  ✅ …on a token that was silently replaced
+  ✅ …and nothing told the app the session was lost
+  ✅ the replacement token is accepted by the backend  — HTTP 200
+  ✅ fetchCurrentUser still works across the expiry  — [object Object]
+  (restored the users collection token duration to 604800s)
+
+═══ 6. Supabase — refused, and the rig says why ═══
+  ✅ there is genuinely no GoTrue in the rig  — HTTP 404
+  ✅ the adapter refuses with a sentence rather than guessing a wire  — NodeGX cannot sign users in to Supabase yet. Supabase authentication is served b…
+
+════ 35 passed, 0 failed, in 42s ════
