@@ -19,7 +19,7 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
   name: 'CollectionRemove',
   docs: 'https://docs.noodl.net/nodes/data/array/remove-from-array',
   displayNodeName: 'Remove Object From Array',
-  shortDesc: 'A collection of models, mainly used together with a For Each Node.',
+  shortDesc: 'Takes an object, named by its id, out of a shared array.',
   category: 'Data',
   usePortAsLabel: 'collectionId',
   color: 'data',
@@ -32,12 +32,18 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
         identifierDisplayName: 'Array Ids'
       },
       displayName: 'Array Id',
+      description:
+        'Id of the array to remove from; clearing it unbinds the node, and the next Do then fails ' +
+        'rather than acting on a throwaway array',
       group: 'General',
       set: setCollectionIdInput
     },
     modifyId: {
       type: { name: 'string', allowConnectionsOnly: true },
       displayName: 'Object Id',
+      description:
+        'Id of the object to remove; the record must already have been loaded, or the removal is ' +
+        'refused instead of quietly doing nothing',
       group: 'Modify',
       set: function (this: CollectionRemoveInstance, value: string) {
         this._internal.modifyId = value;
@@ -45,6 +51,7 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
     },
     remove: {
       displayName: 'Do',
+      description: 'Removes the object named by Object Id from the array, or fires Failure if either cannot be resolved',
       group: 'Actions',
       valueChangedToTrue: function (this: CollectionRemoveInstance) {
         const internal = this._internal;
@@ -86,7 +93,8 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
     modified: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Done'
+      displayName: 'Done',
+      description: 'Fires once the object is no longer in the array'
     }
   },
   prototypeExtensions: {

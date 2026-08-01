@@ -52,16 +52,19 @@ const SetVariableNodeDefinition: NodeDefinitionOptions = {
     done: {
       type: 'signal',
       displayName: 'Done',
+      description: 'Fires once the variable has been written and every Variable node reading it has been notified',
       group: 'Events'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
+      description: 'Fires when nothing was stored because no variable Name is set',
       group: 'Events'
     },
     error: {
       type: 'string',
       displayName: 'Error',
+      description: 'Why the write was refused, in one sentence; empty until something fails',
       group: 'Events',
       getter: function (this: SetVariableInstance) {
         return this._internal.lastError;
@@ -76,6 +79,7 @@ const SetVariableNodeDefinition: NodeDefinitionOptions = {
         identifierDisplayName: 'Variable names'
       },
       displayName: 'Name',
+      description: 'Which app-wide variable to write; leaving it blank refuses the write rather than storing it somewhere unreadable',
       group: 'General',
       set: function (this: SetVariableInstance, value: string) {
         this._internal.name = value;
@@ -97,6 +101,13 @@ const SetVariableNodeDefinition: NodeDefinitionOptions = {
         allowEditOnly: true
       },
       displayName: 'Set as',
+      // NDA-012 (Data): the sentence says what is actually done, not what the labels imply.
+      // Only Empty string, Boolean, Object and Array change the value; String, Number and Date
+      // choose the Value port's declared type and leave what arrives on a wire untouched. Filed
+      // rather than repaired — what `Date` should even produce is a decision.
+      description:
+        'Chooses the type of the Value port; Empty string stores "" and needs no Value, Object and ' +
+        'Array accept an id as well as a value, and Boolean is coerced',
       default: '*',
       group: 'General',
       set: function (this: SetVariableInstance, value: SetVariableAs) {
@@ -105,6 +116,7 @@ const SetVariableNodeDefinition: NodeDefinitionOptions = {
     },
     do: {
       displayName: 'Do',
+      description: 'Writes Value into the named variable, or fires Failure when no Name is set',
       group: 'Actions',
       valueChangedToTrue: function (this: SetVariableInstance) {
         this.scheduleStore();

@@ -36,6 +36,9 @@ const ForEachActionsDefinition: NodeDefinitionOptions = {
     removeCompleted: {
       type: { name: 'boolean', allowConnectionsOnly: true },
       displayName: 'Remove Completed',
+      description:
+        'Tells the Repeater the exit work is finished and this item may now be destroyed; needed ' +
+        'only when Try Remove is connected',
       group: 'Events',
       valueChangedToTrue: function (this: ForEachActionsInstance) {
         this._internal.removeCompletedCallback && this._internal.removeCompletedCallback();
@@ -46,16 +49,21 @@ const ForEachActionsDefinition: NodeDefinitionOptions = {
     added: {
       type: 'signal',
       displayName: 'Added',
+      description: 'Fires once this repeated item has been created and Item Id is available',
       group: 'Events'
     },
     tryRemove: {
       type: 'signal',
       displayName: 'Try Remove',
+      description:
+        'Fires before the Repeater destroys this item, and holds the removal until Remove Completed ' +
+        'is pulsed — connect it only if something must run first',
       group: 'Events'
     },
     itemId: {
       type: 'string',
       displayName: 'Item Id',
+      description: 'Id of the record this repeated item was created for',
       group: 'General',
       get(this: ForEachActionsInstance) {
         return this.getItemId();

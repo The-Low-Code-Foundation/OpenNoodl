@@ -27,11 +27,15 @@ const CollectionClearNode: NodeDefinitionOptions = {
         identifierDisplayName: 'Array Ids'
       },
       displayName: 'Array Id',
+      description:
+        'Id of the array to empty; clearing it unbinds the node, and the next Do then fails rather ' +
+        'than emptying a throwaway array',
       group: 'General',
       set: setCollectionIdInput
     },
     clear: {
       displayName: 'Do',
+      description: 'Removes every item from the array, or fires Failure if no array is bound',
       group: 'Actions',
       valueChangedToTrue(this: CollectionClearInstance) {
         this.scheduleAfterInputsHaveUpdated(() => {
@@ -57,7 +61,8 @@ const CollectionClearNode: NodeDefinitionOptions = {
     modified: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Done'
+      displayName: 'Done',
+      description: 'Fires once the array holds no items'
     }
   },
   methods: {

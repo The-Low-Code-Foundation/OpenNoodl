@@ -20,13 +20,14 @@ const CollectionNewNode: NodeDefinitionOptions = {
   name: 'CollectionNew',
   docs: 'https://docs.noodl.net/nodes/data/array/create-new-array',
   displayNodeName: 'Create New Array',
-  shortDesc: 'A collection of models, mainly used together with a For Each Node.',
+  shortDesc: 'Creates a fresh array with a generated id, optionally seeded from another array.',
   category: 'Data',
   color: 'data',
   initialize: function () {},
   inputs: {
     new: {
       displayName: 'Do',
+      description: 'Creates a fresh array with a generated id and copies Items into it',
       group: 'Actions',
       valueChangedToTrue: function (this: CollectionNewInstance) {
         this.scheduleNew();
@@ -36,6 +37,7 @@ const CollectionNewNode: NodeDefinitionOptions = {
       type: 'array',
       group: 'General',
       displayName: 'Items',
+      description: 'Contents to copy into the new array when Do fires; leave unconnected to start empty',
       set: function (this: CollectionNewInstance, value: CollectionLike) {
         this._internal.sourceCollection = value;
       }
@@ -45,6 +47,9 @@ const CollectionNewNode: NodeDefinitionOptions = {
     id: {
       type: 'string',
       displayName: 'Id',
+      description:
+        'Id of the array made by the last Do — give it to an Array node or a mutator to reach the ' +
+        'same array; empty until Do has fired',
       group: 'General',
       getter: function (this: CollectionNewInstance) {
         // DEBT-006: the old fallback read `_internal.collectionId`, which nothing
@@ -55,7 +60,8 @@ const CollectionNewNode: NodeDefinitionOptions = {
     created: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Done'
+      displayName: 'Done',
+      description: 'Fires once the new array exists and Id is up to date'
     }
   },
   prototypeExtensions: {

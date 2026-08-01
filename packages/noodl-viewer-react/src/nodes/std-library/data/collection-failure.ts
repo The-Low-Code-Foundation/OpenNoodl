@@ -117,11 +117,13 @@ export function addCollectionFailure(def: FailableCollectionDef, codePrefix: str
     failure: {
       type: 'signal',
       displayName: 'Failure',
+      description: 'Fires when the array or the object could not be resolved, so nothing was changed',
       group: 'Events'
     },
     error: {
       type: 'string',
       displayName: 'Error',
+      description: 'Why the last attempt changed nothing, in one sentence; empty until something fails',
       group: 'Error',
       getter: function (this: FailableCollectionInstance) {
         return this._internal.error;
