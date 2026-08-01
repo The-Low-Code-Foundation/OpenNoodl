@@ -2119,20 +2119,45 @@ and [`:827-846`](../../../packages/noodl-viewer-react/src/react-component-node.t
 a Visual node the interesting shape is not "DB-ii fires" — it fires 242 times — but **"DB-ii fires
 *and* the second route is also blocked."** That conjunction happens twice.
 
-### DV-ii — `Button` and `Icon` declare a padding default that reaches nothing
+### DV-ii — `Button` and `Icon` declare a padding default that reaches no style, and only one of them suffers
 
 `addPaddingInputs` gives all four of its ports `applyDefault: false`
 ([`node-shared-port-definitions.ts:277`](../../../packages/noodl-viewer-react/src/node-shared-port-definitions.ts#L277),
 `:291`, `:310`, `:327`), which is exactly the switch that blocks the `startStyle` route. DB-ii blocks
 the setter route. Fourteen nodes call the generator; **twelve pass `0`, so losing the default costs
-them nothing — and the two that pass a non-zero value are the two that are wrong**:
+them nothing — and the two that pass a non-zero value are the two at risk**:
 [`button.ts:64-71`](../../../packages/noodl-viewer-react/src/nodes/controls/button.ts#L64-L71) (20px
 horizontal, 5px vertical) and
 [`icon.ts:30-37`](../../../packages/noodl-viewer-react/src/nodes/visual/icon.ts#L30-L37) (5px).
 
-A freshly-dropped Button renders with its label flush against its edges while the property panel
-shows Pad Left 20. **No node's `defaultCss` sets padding**, so the `applyDefault: false` guard is not
-protecting anything; it only costs these two nodes their declared padding.
+The mechanism is confirmed at both ends, in the running editor, on author-created nodes:
+`NodeGraphNode.getParameter` falls back to `port.default` **for the panel**
+([`NodeGraphNode.ts:817`](../../../packages/noodl-editor/src/editor/src/models/nodegraphmodel/NodeGraphNode.ts#L817))
+while `this.parameters` never gains the key, and `NodeScope` queues only what the model carries.
+
+⚠️ **The first version of this finding said a fresh Button renders with no padding. That was wrong,
+and no amount of source reading would have caught it.** Driven live:
+
+| | model parameter | what the panel shows | what the browser computes |
+|---|---|---|---|
+| `Button` | absent | `20` | **`padding: 5px 20px`** |
+| `Icon` | absent | `5` | **`padding: 0px`** |
+
+Button looks correct because
+[`assets/style.css:24`](../../../packages/noodl-viewer-react/src/assets/style.css#L24) —
+`.ndl-controls-button { … padding: 5px 20px 5px 20px; … }` — happens to carry the same two numbers.
+Icon has no such rule, so **Icon is the one whose declared padding genuinely does not render.**
+
+**So the defect is not "Button has no padding". It is that Button's padding is specified twice, in
+two files, by two mechanisms, and only the one nobody would look at is load-bearing.** Change the
+port default and nothing moves; change the stylesheet and the panel starts lying. The two copies
+agreeing is why this has survived unnoticed, and it is a strictly worse state than the visible bug
+this finding originally claimed.
+
+⚠️ **The transferable rule: a mechanism defect and its consequence are two different claims, and a
+static measurement only ever establishes the first.** The corpus rows now separate them explicitly —
+the mechanism rows assert on the node's style object, and a second block records what the live run
+found for each node.
 
 ### DV-iii — `Component Stack` says it clips and does not
 

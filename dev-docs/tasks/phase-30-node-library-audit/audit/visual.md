@@ -18,6 +18,11 @@
 > ```
 >
 > ⚠️ **`Component Children` has ZERO static ports** and is recorded **`n/a`, not 100%**.
+>
+> ✅ **C1 closed to 100% (1227/1227) later in the same session**, so every `C1` row below reads ✅
+> and the per-node counts record what was written rather than what was missing. The `docs` figure in
+> each node's header line is the number **at audit time**, kept deliberately: it is what the audit
+> was looking at.
 
 Checks are defined in [NDA-012](../NDA-012-PER-NODE-AUDIT.md) and derive from the defect classes
 in [FINDINGS.md](../FINDINGS.md). Verdicts: ✅ pass · ⚠️ defect · 🔵 by design, document it ·
@@ -55,7 +60,7 @@ Source: [`nodes/visual/text.ts`](../../../../packages/noodl-viewer-react/src/nod
 | B1 | `n/a` | no action input and nothing that can fail |
 | B2 | `n/a` | — |
 | B3 | `n/a` | no signal inputs |
-| C1 | ⚠️ **93%** (53/57) | 4 left, all on the shared text-style ports |
+| C1 | ✅ **100%** (57/57) | closed this session — 4 ports written |
 | D1 | ✅ | `as` is an enum, not a bare string |
 | E1 | ✅ | no dead-end types |
 | F1 | `n/a` | targets nothing |
@@ -83,7 +88,7 @@ Source: [`nodes/visual/group.ts`](../../../../packages/noodl-viewer-react/src/no
 | B1 | ⚠️ **none** | `Scroll To Element` with an element that is not a descendant, and `Scroll To Index` past the end, both do nothing and report nothing |
 | B2 | ⚠️ | there is no report at all, so there is nothing for a deployed app to lose |
 | B3 | ⚠️ | **three signal inputs, no terminating signal**: `scrollToIndex.do`, `scrollToElement.do`, `focus`. The 12 signal outputs are pointer, hover, mount and scroll-gesture events — none of them means "the action you asked for finished". `Scroll End` fires for a *user* scroll |
-| C1 | ⚠️ **75%** (79/105) | 26 left |
+| C1 | ✅ **100%** (105/105) | closed this session — 26 ports written |
 | D1 | ✅ | `flexDirection` validates against `flexDirectionValues` and warns ([`:60-66`](../../../../packages/noodl-viewer-react/src/nodes/visual/group.ts#L60-L66)) — ⚠️ but see B2: the warning is editor-only |
 | E1 | ✅ | no dead-end types |
 | F1 | `n/a` | — |
@@ -113,7 +118,7 @@ Source: [`nodes/visual/circle.ts`](../../../../packages/noodl-viewer-react/src/n
 | B1 | `n/a` | nothing can fail |
 | B2 | `n/a` | — |
 | B3 | `n/a` | no signal inputs |
-| C1 | ⚠️ **81%** (38/47) | 9 left |
+| C1 | ✅ **100%** (47/47) | closed this session — 9 ports written |
 | D1 | ✅ | — |
 | E1 | ✅ | — |
 | F1 | `n/a` | — |
@@ -139,7 +144,7 @@ Source: [`nodes/visual/columns.ts`](../../../../packages/noodl-viewer-react/src/
 | B1 | `n/a` | no action input |
 | B2 | `n/a` | — |
 | B3 | `n/a` | no signal inputs |
-| C1 | ⚠️ **52%** (13/25) | 12 left |
+| C1 | ✅ **100%** (25/25) | closed this session — 12 ports written |
 | D1 | ⚠️ | `layoutString` is a bare string parsed with `parseInt` per token. The setter validates only that it *is* a string ([`columns.ts:49-64`](../../../../packages/noodl-viewer-react/src/nodes/visual/columns.ts#L49-L64)); `'1 a 1'` yields a `NaN` column and is neither reported nor rejected |
 | E1 | ✅ | — |
 | F1 | `n/a` | — |
@@ -169,16 +174,19 @@ Source: [`nodes/visual/icon.ts`](../../../../packages/noodl-viewer-react/src/nod
 | B1 | `n/a` | — |
 | B2 | `n/a` | — |
 | B3 | `n/a` | no signal inputs |
-| C1 | ✅ **100%** (38/38) | the category's only fully documented node |
+| C1 | ✅ **100%** (38/38) | was the category's only fully documented node; the rest caught up this session |
 | D1 | ✅ | icon source is an enum pair, not a bare string |
 | E1 | ✅ | — |
 | F1 | `n/a` | — |
 | H1 | ✅ | declares `safe` |
 
-**Verdict:** ⚠️ defect — **`DV-ii`**. `Icon` declares 5px padding on all four edges
+**Verdict:** ⚠️ defect — **`DV-ii`, and Icon is the node it actually costs.** `Icon` declares 5px
+padding on all four edges
 ([`icon.ts:30-37`](../../../../packages/noodl-viewer-react/src/nodes/visual/icon.ts#L30-L37)) and
 renders none of it: `addPaddingInputs` sets `applyDefault: false`, which blocks the `startStyle`
-route, and DB-ii blocks the setter route. Pinned in `nda-012-visual-declared-defaults.test.ts`.
+route, and DB-ii blocks the setter route. **Measured live: `padding: 0px` on the node's own element,
+with no stylesheet rule supplying it** — unlike `Button`, which is saved by a coincidence. Pinned in
+`nda-012-visual-declared-defaults.test.ts`.
 
 ---
 
@@ -198,7 +206,7 @@ Source: [`nodes/visual/image.ts`](../../../../packages/noodl-viewer-react/src/no
 | B1 | ✅ | `On Error` **and** `Error` — the bare signal got its string in this phase |
 | B2 | ✅ | `raiseRuntimeError('image/load-failed', …)` ([`Image.tsx:41`](../../../../packages/noodl-viewer-react/src/components/visual/Image/Image.tsx#L41)), so the diagnosis exists in a deployed app |
 | B3 | `n/a` | no signal inputs |
-| C1 | ⚠️ **97%** (77/79) | 2 left |
+| C1 | ✅ **100%** (79/79) | closed this session — 2 ports written |
 | D1 | ✅ | `src` is typed `image` and resolved, not string-matched |
 | E1 | ✅ | — |
 | F1 | `n/a` | — |
@@ -226,7 +234,7 @@ Source: [`nodes/visual/video.ts`](../../../../packages/noodl-viewer-react/src/no
 | B1 | ✅ | `Playback Failure` + `Error` |
 | B2 | ✅ | distinct codes on the runtime channel (`video/play-rejected`, `video/media-error`) |
 | B3 | ⚠️ | four action inputs, two terminators. `Play`→`On Play` ✅ and `Pause`→`On Pause` ✅, but **`Restart` and `Reset` have no completion signal at all** |
-| C1 | ⚠️ **75%** (67/89) | 22 left |
+| C1 | ✅ **100%** (89/89) | closed this session — 22 ports written |
 | D1 | ✅ | — |
 | E1 | ⚠️ | **`pause` and `reset` are declared `type: 'boolean'` and implemented with `valueChangedToTrue`** ([`video.ts:65-80`](../../../../packages/noodl-viewer-react/src/nodes/visual/video.ts#L65-L80)) while `play` and `restart` are `type: 'signal'`. So the panel offers a toggle for something that is a pulse, and setting `Pause` back to `false` does nothing — you must use `Play`. Four ports, one contract, two spellings |
 | F1 | `n/a` | — |
@@ -253,7 +261,7 @@ Source: [`nodes/visual/drag.ts`](../../../../packages/noodl-viewer-react/src/nod
 | B1 | ⚠️ **none** | a `Do` before the component mounts is dropped by `this.innerReactComponentRef && …` ([`:42`](../../../../packages/noodl-viewer-react/src/nodes/visual/drag.ts#L42), `:74`) with no report |
 | B2 | ⚠️ | nothing is reported anywhere, so the deployed case is no worse than the editor one — which is the point |
 | B3 | ⚠️ | two signal inputs (`Snap To Position X/Y — Do`), **no terminating signal**. `Drag Started`/`Ended`/`Moved` are gesture events; nothing says the snap animation finished, which is precisely what a snap-then-do graph needs |
-| C1 | ⚠️ **44%** (14/32) | 18 left |
+| C1 | ✅ **100%** (32/32) | closed this session — 18 ports written |
 | D1 | ✅ | — |
 | E1 | ✅ | — |
 | F1 | `n/a` | — |
@@ -282,17 +290,22 @@ Source: [`nodes/controls/button.ts`](../../../../packages/noodl-viewer-react/src
 | B1 | `n/a` | nothing can fail |
 | B2 | `n/a` | — |
 | B3 | `n/a` | no signal inputs |
-| C1 | ⚠️ **97%** (96/99) | 3 left |
+| C1 | ✅ **100%** (99/99) | closed this session — 3 ports written |
 | D1 | ✅ | — |
 | E1 | ✅ | — |
 | F1 | `n/a` | — |
 | H1 | ✅ | declares `safe`; `addControlEventsAndStates` seeds and owns its state |
 
-**Verdict:** ⚠️ defect — **`DV-ii`**, and it is the more visible of the two instances. `Button`
-declares 20px horizontal and 5px vertical padding
+**Verdict:** ⚠️ defect — **`DV-ii`, but not the one it looks like.** `Button` declares 20px
+horizontal and 5px vertical padding
 ([`button.ts:64-71`](../../../../packages/noodl-viewer-react/src/nodes/controls/button.ts#L64-L71))
-and renders none of it, so a freshly-dropped Button has its label flush against its edges while the
-property panel reads Pad Left 20.
+and puts none of it on the node's style — yet **a rendered Button computes `padding: 5px 20px`
+anyway**, because
+[`assets/style.css:24`](../../../../packages/noodl-viewer-react/src/assets/style.css#L24) carries the
+same two numbers. ⚠️ **This session's first reading of the finding claimed the padding was missing
+on screen; the live run disproved it.** The real defect is that Button's padding is specified twice,
+in two files, by two mechanisms, and only the stylesheet is load-bearing: changing the port default
+moves nothing, and changing the stylesheet makes the panel lie.
 
 ---
 
@@ -312,7 +325,7 @@ Source: [`nodes/controls/checkbox.ts`](../../../../packages/noodl-viewer-react/s
 | B1 | `n/a` | nothing can fail |
 | B2 | `n/a` | — |
 | B3 | ⚠️ | `Check` and `Uncheck` are signal inputs and neither has a terminator — see A1: they deliberately do not fire `Changed`, which leaves them with nothing at all to sequence off |
-| C1 | ⚠️ **92%** (88/96) | 8 left |
+| C1 | ✅ **100%** (96/96) | closed this session — 8 ports written |
 | D1 | ✅ | — |
 | E1 | ✅ | — |
 | F1 | `n/a` | — |
@@ -340,7 +353,7 @@ Source: [`nodes/controls/options.ts`](../../../../packages/noodl-viewer-react/sr
 | B1 | ⚠️ **none** | the crash above is the failure surface |
 | B2 | ⚠️ | an uncaught `TypeError` in a setter, with no code and no message an author can act on |
 | B3 | `n/a` | no signal inputs |
-| C1 | ⚠️ **93%** (103/111) | 8 left |
+| C1 | ✅ **100%** (111/111) | closed this session — 8 ports written |
 | D1 | ✅ | the commented-out validation at [`:79-83`](../../../../packages/noodl-viewer-react/src/nodes/controls/options.ts#L79-L83) is deliberate — a value not in `items` deselects rather than being rejected |
 | E1 | ⚠️ | `items` is `type: 'array'`, one of the category's two object/array ports |
 | F1 | `n/a` | — |
@@ -369,7 +382,7 @@ Source: [`nodes/controls/radiobutton.ts`](../../../../packages/noodl-viewer-reac
 | B1 | `n/a` | — |
 | B2 | `n/a` | — |
 | B3 | `n/a` | no signal inputs |
-| C1 | ⚠️ **93%** (88/95) | 7 left |
+| C1 | ✅ **100%** (95/95) | closed this session — 7 ports written, from 0% |
 | D1 | ✅ | — |
 | E1 | ✅ | — |
 | F1 | ⚠️ | **the group is resolved through a React context and cannot be named.** `RadioButtonContext` ([`RadioButton.tsx:38`](../../../../packages/noodl-viewer-react/src/components/controls/RadioButton/RadioButton.tsx#L38)) is the only binding, there is no `Group` port, and a Radio Button rendered outside a Radio Button Group gets `name: undefined`, `checked: false` forever and a click that short-circuits to nothing — visibly a control, functionally inert, with no resolution shown anywhere. Defect class F exactly |
@@ -396,7 +409,7 @@ Source: [`nodes/controls/radiobuttongroup.ts`](../../../../packages/noodl-viewer
 | B1 | `n/a` | — |
 | B2 | `n/a` | — |
 | B3 | `n/a` | no signal inputs |
-| C1 | ⚠️ **91%** (40/44) | 4 left |
+| C1 | ✅ **100%** (44/44) | closed this session — 4 ports written |
 | D1 | ✅ | `flexDirection` validates against `flexDirectionValues` |
 | E1 | ✅ | — |
 | F1 | 🔵 | it is the *provider* of the context `Radio Button` consumes; providing implicitly is the reasonable half of that pair |
@@ -423,7 +436,7 @@ Source: [`nodes/controls/slider.ts`](../../../../packages/noodl-viewer-react/src
 | B1 | `n/a` | — |
 | B2 | `n/a` | — |
 | B3 | `n/a` | no signal inputs |
-| C1 | ⚠️ **40%** (45/113) | **68 left — the category's largest single block**, and ~60 of them are the private border/radius/shadow generators at [`slider.ts:225`](../../../../packages/noodl-viewer-react/src/nodes/controls/slider.ts#L225), `:325`, `:369`, which the shared pass cannot reach |
+| C1 | ✅ **100%** (113/113) | closed this session — **68 ports**, the category's largest block; ~60 of them in the private generators at [`slider.ts:225`](../../../../packages/noodl-viewer-react/src/nodes/controls/slider.ts#L225), `:325`, `:369` |
 | D1 | ✅ | — |
 | E1 | ⚠️ | **the `Value` input is declared `type: 'string'` and the `Value` output `type: 'number'`** ([`:63`](../../../../packages/noodl-viewer-react/src/nodes/controls/slider.ts#L63) vs [`:74`](../../../../packages/noodl-viewer-react/src/nodes/controls/slider.ts#L74)). One Slider cannot feed another without a type mismatch, and the panel offers a text field for a number |
 | F1 | `n/a` | — |
@@ -458,7 +471,7 @@ Source: [`nodes/controls/text-input.ts`](../../../../packages/noodl-viewer-react
 | B1 | `n/a` | — |
 | B2 | `n/a` | — |
 | B3 | ⚠️ | four signal inputs. `Set`→`Text Changed` ✅, `Focus`→`Focused` ✅, `Blur`→`Blurred` ✅ — **`Clear` has no terminator**, and per A1 it does not even flag the value output when unmounted |
-| C1 | ⚠️ **87%** (103/118) | 15 left |
+| C1 | ✅ **100%** (118/118) | closed this session — 15 ports written |
 | D1 | ✅ | `type` is an enum |
 | E1 | ✅ | — |
 | F1 | ✅ | `startValue` defers to `Set` when `Set` is connected ([`:114`](../../../../packages/noodl-viewer-react/src/nodes/controls/text-input.ts#L114)) — the explicit-binding pattern, done right, and the category's only instance |
@@ -489,7 +502,7 @@ Source: [`nodes/navigation/page.ts`](../../../../packages/noodl-viewer-react/src
 | B1 | ⚠️ **none** | — |
 | B2 | ⚠️ | — |
 | B3 | ✅ | `Page Ready` is the SSR handshake and terminates on the server side, not in the graph — the one signal input whose terminator is deliberately outside it |
-| C1 | ⚠️ **47%** (15/32) | 17 left |
+| C1 | ✅ **100%** (32/32) | closed this session — 17 ports written |
 | D1 | ⚠️ | **`urlPath`'s derived default is not sanitised for a URL.** [`page.ts:200`](../../../../packages/noodl-viewer-react/src/nodes/navigation/page.ts#L200) does `title.replace(/\s+/g, '-').toLowerCase()` and nothing else, so a component named `Order #1 & Co` proposes the path `order-#1-&-co` |
 | E1 | ✅ | — |
 | F1 | `n/a` | — |
@@ -525,7 +538,7 @@ Source: [`nodes/navigation/navigation-stack.tsx`](../../../../packages/noodl-vie
 | B1 | ✅ | NDA-004 §2's `hasFailed` — the *caller* carries the port, which is the right owner |
 | B2 | ✅ | codes and messages travel; NDA-008 §3 settled the ownership |
 | B3 | ⚠️ | `Reset` is a signal input with **no terminating signal**. A reset-then-navigate graph has nothing to wait on, and reset builds a start page asynchronously |
-| C1 | ⚠️ **60%** (12/20) | 8 left |
+| C1 | ✅ **100%** (20/20) | closed this session — 8 ports written |
 | D1 | ✅ | `pages` is a `proplist`, not a bare string |
 | E1 | ✅ | — |
 | F1 | ✅ | the stack is named, and an unmatched name **queues** rather than dropping ([`navigation-handler.ts:56`](../../../../packages/noodl-viewer-react/src/nodes/navigation/navigation-handler.ts#L56)) — a typo and a not-yet-mounted stack are genuinely indistinguishable at call time |
@@ -552,7 +565,7 @@ Source: [`nodes/navigation/router.tsx`](../../../../packages/noodl-viewer-react/
 | B1 | ⚠️ **none** | **RT-1** — a routed component with no `Page` node is dropped by a bare `return` at [`:318-321`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L318-L321) |
 | B2 | ⚠️ | nothing reaches any surface from the reset path — no `hasFailed` (reset carries no args), no `sendWarning`, no `raiseRuntimeError`. `navigateAsync` was given all of this in NDA-004 §2; `resetAsync` was not, and reset runs first |
 | B3 | ⚠️ | `Reset` is a signal input with no terminating signal — same as `Component Stack` |
-| C1 | ⚠️ **60%** (12/20) | 8 left |
+| C1 | ✅ **100%** (20/20) | closed this session — 8 ports written |
 | D1 | ⚠️ | `_getLocationPath` decodes the whole path with `decodeURI` ([`:418`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L418)) and `_matchPathParts` then decodes each captured parameter again with `decodeURIComponent` ([`:484`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L484)). A parameter containing an encoded `/` or `%` is decoded twice and by two different rules |
 | E1 | ✅ | — |
 | F1 | ✅ | named, with the same queue-rather-than-drop reasoning as `Component Stack` |
@@ -582,7 +595,7 @@ Source: [`nodes/std-library/data/foreach.tsx`](../../../../packages/noodl-viewer
 | B1 | ⚠️ **none** | — |
 | B2 | ⚠️ | a `templateScript` syntax error goes to `editorConnection.sendWarning` and nowhere else ([`:255-262`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L255-L262)); a *runtime* throw inside the compiled function is caught at [`:351`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L351) and reported the same editor-only way. **This is the phase's most common shape and the handover predicted it here** |
 | B3 | ✅ | `Refresh`→`Items Rendered`, added in NDA-004 §3, and it is the reason list-then-scroll no longer needs a guessed Delay |
-| C1 | ⚠️ **0%** (0/7) | **the only 0% node in the category** |
+| C1 | ✅ **100%** (7/7) | closed this session |
 | D1 | ⚠️ | `templateScript` is compiled with `new Function` from a bare string with no validation beyond the try/catch. `template` is a `component` type and is not checked to exist |
 | E1 | ⚠️ | `items` is `type: 'array'` |
 | F1 | ✅ | the target is the graph parent, resolved through `setNodeModel`/`parentUpdated` ([`:295-311`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L295-L311)) and visible on the canvas as the wire itself |
@@ -657,6 +670,8 @@ deliberate rather than unfinished.
 | ✅ pass overall | 4 — `Text`, `Circle`, `Image`, `Component Children` |
 | ⚠️ at least one defect | **16** |
 | ⚠️ cells, excluding C1 | **41** |
+| C1 at audit time | 80.0% (981/1227) |
+| C1 now | **100% (1227/1227)** |
 | Find rate, counting nodes | **0.80 defective nodes / node** |
 | Find rate, counting ⚠️ cells | **2.05 / node** |
 
@@ -669,7 +684,7 @@ this file). `Navigation`'s 1.88/node was measured under the old B3 reading.
 
 | Check | ⚠️ | Nodes |
 |---|---|---|
-| C1 | **17** | everything except `Icon`; `Component Children` is `n/a` |
+| ~~C1~~ | ~~17~~ → **0** | was everything except `Icon`; closed to 100% this session |
 | B3 | **7** | Drag, Group, Video, Checkbox, Text Input, Component Stack, Page Router |
 | G1 | **7** | Drag, Dropdown, Radio Button Group, Slider, Text Input, Repeater, Page Router |
 | B1 + B2 | 6 (×2 cells) | Drag, Group, Dropdown, Page, Page Router, Repeater |

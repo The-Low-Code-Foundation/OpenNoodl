@@ -78,7 +78,7 @@ async function bareVsAuthored(module: any, port: string, value: unknown): Promis
   return [graph.node('bare') as unknown as Probed, graph.node('authored') as unknown as Probed];
 }
 
-describe('V-i — Button and Icon declare a padding default that reaches nothing', () => {
+describe('V-i — Button and Icon declare a padding default that reaches no style', () => {
   // Padding is registered through `addPaddingInputs`, and every one of its four ports carries
   // `applyDefault: false` (node-shared-port-definitions.ts:277, 291, 310, 327). That switch
   // blocks the `startStyle` route at react-component-node.ts:753. DB-ii blocks the setter
@@ -86,21 +86,77 @@ describe('V-i — Button and Icon declare a padding default that reaches nothing
   // and `Button` (20/5) and `Icon` (5) are the only two of the fourteen callers that do.
   //
   // No node's `defaultCss` sets padding, so the `applyDefault: false` guard is not protecting
-  // anything; it only costs these two nodes their declared padding.
+  // anything.
+  //
+  // ⚠️ **The consequence differs between the two, and only live QA showed it** — see the
+  // `renders` block below. These rows measure the mechanism; they do not claim the padding is
+  // missing on screen.
   it.each([
     ['Button', 'paddingLeft', 20, '20px'],
     ['Button', 'paddingTop', 5, '5px'],
     ['Icon', 'paddingLeft', 5, '5px'],
     ['Icon', 'paddingTop', 5, '5px']
-  ])('%s declares %s = %s and renders none of it', async (label, port, declared, expected) => {
+  ])('%s declares %s = %s and puts none of it in the node style', async (label, port, declared, expected) => {
     const module = label === 'Button' ? ButtonModule : IconModule;
     const [bare, authored] = await bareVsAuthored(module, port as string, declared);
 
-    // What an author who never touched the port gets: no padding at all.
+    // What an author who never touched the port gets: nothing on the node's own style.
     expect(bare.style[port as string]).toBeUndefined();
     // What the property panel has been showing them all along.
     expect(authored.style[port as string]).toBe(expected);
   }, 30000);
+});
+
+describe('V-i, what it actually costs — measured in the running editor, not inferred', () => {
+  // ⚠️ This block exists because the first version of this finding was WRONG about Button, and
+  // reading the source could not have shown it. Driven live (NodeGX 0.1.0, a real project, an
+  // author-created Button whose only model parameter was `label`):
+  //
+  //   Button  parameters.paddingLeft = absent   getParameter('paddingLeft') = 20
+  //           rendered <button class="ndl-controls-button">  computed padding: 5px 20px
+  //   Icon    parameters.paddingLeft = absent   getParameter('paddingLeft') = 5
+  //           rendered <div class="ndl-visual-icon">         computed padding: 0px
+  //
+  // So the mechanism holds for both — `NodeGraphNode.getParameter` falls back to `port.default`
+  // for the PANEL (NodeGraphNode.ts:817) while `this.parameters` stays empty, and NodeScope
+  // queues only what the model carries. But **Button looks correct anyway**, because a static
+  // stylesheet rule happens to carry the same two numbers, and **Icon does not**, because no
+  // such rule exists for it.
+  //
+  // The real defect is therefore not "Button has no padding". It is that Button's padding is
+  // specified twice, in two files, in two mechanisms, and only one of them is load-bearing.
+
+  it('Button: the stylesheet carries the same numbers the dead port declares', () => {
+    // Read from source rather than from a DOM, so this row fails if either copy is edited.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fs = require('fs');
+    const css = fs.readFileSync(__dirname + '/../../src/assets/style.css', 'utf8');
+
+    const rule = css.slice(css.indexOf('.ndl-controls-button {'));
+    expect(rule.slice(0, rule.indexOf('}'))).toContain('padding: 5px 20px 5px 20px');
+
+    // …and those are exactly the port defaults, which is why nobody has ever noticed.
+    const inputs = (ButtonModule as any).node.inputs;
+    expect(inputs.paddingTop.default).toBe(5);
+    expect(inputs.paddingRight.default).toBe(20);
+    expect(inputs.paddingBottom.default).toBe(5);
+    expect(inputs.paddingLeft.default).toBe(20);
+  });
+
+  it('Icon: nothing supplies what its dead port declares', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fs = require('fs');
+    const css = fs.readFileSync(__dirname + '/../../src/assets/style.css', 'utf8');
+
+    // There is no `.ndl-visual-icon` padding rule — confirmed live as `padding: 0px` on the
+    // node's own element. Icon's declared 5px is the one that genuinely does not render.
+    const iconRules = css
+      .split('}')
+      .filter((block) => /\.ndl-visual-icon\b/.test(block) || /\.ndl-icon-glyph\b/.test(block));
+    for (const block of iconRules) expect(block).not.toContain('padding');
+
+    expect((IconModule as any).node.inputs.paddingLeft.default).toBe(5);
+  });
 });
 
 describe('V-ii — Component Stack says it clips and does not', () => {
