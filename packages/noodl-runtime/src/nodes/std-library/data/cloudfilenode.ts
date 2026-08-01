@@ -40,6 +40,29 @@ const CloudFileNode: NodeDefinitionOptions = {
         const n = this._internal.cloudFile.getName().split('_');
         return n.length === 1 ? n[0] : n.slice(1).join('_');
       }
+    },
+    // BCN-007's live pass found the backend reports both on a real 201 and
+    // `normalizeFileRef` keeps both, but nothing downstream could read them.
+    // Both stay `undefined` rather than `''`/`0` on a backend that does not
+    // report them, and on a file read back out of a saved record property —
+    // see `cloudfile.ts` for why that distinction is kept rather than defaulted.
+    contentType: {
+      type: 'string',
+      displayName: 'Content Type',
+      group: 'General',
+      description: 'MIME type the backend recorded on upload; empty on a backend that does not report one, and on a file read back from a record property',
+      get(this: CloudFileNodeInstance) {
+        return this._internal.cloudFile && this._internal.cloudFile.getContentType();
+      }
+    },
+    size: {
+      type: 'number',
+      displayName: 'Size',
+      group: 'General',
+      description: 'Size in bytes the backend recorded on upload; empty on a backend that does not report one, and on a file read back from a record property',
+      get(this: CloudFileNodeInstance) {
+        return this._internal.cloudFile && this._internal.cloudFile.getSize();
+      }
     }
   },
   inputs: {
@@ -56,6 +79,8 @@ const CloudFileNode: NodeDefinitionOptions = {
         this._internal.cloudFile = value as CloudFile;
         this.flagOutputDirty('name');
         this.flagOutputDirty('url');
+        this.flagOutputDirty('contentType');
+        this.flagOutputDirty('size');
       }
     }
   }

@@ -200,14 +200,29 @@ const DbCollectionNode: NodeDefinitionOptions = {
       }
 
       function _addModelAtCorrectIndex(m: ModelLike) {
+        // ⚠️ An **empty** sort is not the same as no sort, and telling them apart is
+        // load-bearing here. The Javascript filter path initialises its sort to `[]`
+        // and only fills it if the script calls `sort(...)` — so a Query Records node
+        // with a JS filter and no `sort()` (an ordinary configuration) carries
+        // `sort: []`. A bare `!== undefined` guard lets that through, and
+        // `sort[0][0]` below then reads `[0]` of `undefined` and throws.
+        //
+        // That throw is not contained: this runs inside the store's `create`/`save`
+        // event emit, which the adapter raises **inside** the originating node's
+        // success callback — so a Create Record on the same backend never reached
+        // `sendSignalOnOutput('created')`, and the exception escaped as an uncaught
+        // error. Found by BCN-004 step 6's live pass, which is the first thing to
+        // run a create and a limited query against one backend in one graph.
+        const sort = _this._internal.currentQuery.sort;
+        const hasSort = Array.isArray(sort) ? sort.length > 0 : sort !== undefined;
+
         // `i` is declared outside the loop because the original relied on `var` hoisting to
         // read it after the `break` (PLAT-003 NOTES §23.1).
         let i = 0;
-        if (_this._internal.currentQuery.sort !== undefined) {
+        if (hasSort) {
           // We need to add it at the right index
           for (i = 0; i < _this._internal.collection.size(); i++)
-            if (QueryUtils.compareObjects(_this._internal.currentQuery.sort, _this._internal.collection.get(i), m) > 0)
-              break;
+            if (QueryUtils.compareObjects(sort, _this._internal.collection.get(i), m) > 0) break;
 
           _this._internal.collection.addAtIndex(m, i);
         } else {
@@ -216,14 +231,15 @@ const DbCollectionNode: NodeDefinitionOptions = {
 
         // Make sure we don't exceed limit
         const size = _this._internal.collection.size();
-        if (_this._internal.currentQuery.limit !== undefined && size > _this._internal.currentQuery.limit)
-          _this._internal.collection.remove(
-            _this._internal.collection.get(
-              _this._internal.currentQuery.sort !== undefined && _this._internal.currentQuery.sort[0][0] === '-'
-                ? size - 1
-                : 0
-            )
-          );
+        if (_this._internal.currentQuery.limit !== undefined && size > _this._internal.currentQuery.limit) {
+          // Which end to drop from depends on the sort direction. The first sort key
+          // carries it as a leading `-`, and it is read the same way whether `sort` is
+          // a string (`'-rank'`) or an array (`['-rank']`) — which is what the original
+          // `sort[0][0]` did by accident, and is preserved deliberately.
+          const firstKey = hasSort ? (Array.isArray(sort) ? sort[0] : sort) : undefined;
+          const descending = typeof firstKey === 'string' && firstKey.charAt(0) === '-';
+          _this._internal.collection.remove(_this._internal.collection.get(descending ? size - 1 : 0));
+        }
 
         //Send the array again over the items output to trigger function nodes etc that might be connected
         _this.flagOutputDirty('items');

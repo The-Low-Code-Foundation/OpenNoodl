@@ -212,9 +212,30 @@ export interface BackendConfigSerialized {
  * Project metadata for backend services
  */
 export interface BackendServicesMetadata {
+  /**
+   * Which reading of `activeBackendId` this metadata was written under.
+   *
+   * BCN-009 step 2. Absent (i.e. 1) means the legacy split, where
+   * `activeBackendId` bound only the BYOB nodes and `cloudservices` separately
+   * bound the record, auth and file ones. `2` means the selection has converged
+   * and `activeBackendId` is the project's one backend.
+   *
+   * ⚠️ **The two are byte-identical in the case that matters**, which is why
+   * there is a number here at all — see
+   * `activeBackend.ts::BACKEND_SELECTION_VERSION`.
+   */
+  version?: number;
   /** List of configured backends */
   backends: BackendConfigSerialized[];
-  /** ID of the active backend (used by data nodes by default) */
+  /**
+   * The project's active backend.
+   *
+   * From BCN-009 step 2 this may also be `'_endpoint_'`
+   * (`activeBackend.ts::ENDPOINT_BACKEND_ID`), meaning the project's
+   * `cloudservices` pointer — the same synthetic id the runtime's picker already
+   * saves on a node. It is not in `backends` and never will be: the endpoint's
+   * *configuration* stays in `cloudservices`; only the *selection* converged.
+   */
   activeBackendId?: string;
 }
 
@@ -298,11 +319,30 @@ export interface IBackendServices extends IModel<BackendServicesEvent, BackendSe
   /** All configured backends */
   readonly backends: BackendConfig[];
 
-  /** The currently active backend (if any) */
+  /**
+   * The currently active backend (if any).
+   *
+   * `undefined` when the project's active backend is its `cloudservices`
+   * endpoint, which has no `BackendConfig` — check `isEndpointActive` before
+   * reading absence as "nothing is active".
+   */
   readonly activeBackend: BackendConfig | undefined;
 
-  /** ID of the active backend */
+  /**
+   * The project's one active backend id.
+   *
+   * May be `'_endpoint_'`. See `BackendServicesMetadata.activeBackendId`.
+   */
   readonly activeBackendId: string | undefined;
+
+  /** Is the project's `cloudservices` endpoint the active backend? */
+  readonly isEndpointActive: boolean;
+
+  /**
+   * A second backend a legacy project is still bound to, if it has one.
+   * `undefined` for every project whose selection has converged.
+   */
+  readonly conflictingBackendId: string | undefined;
 
   /** Initialize and load backends from project */
   initialize(): Promise<void>;
@@ -319,8 +359,11 @@ export interface IBackendServices extends IModel<BackendServicesEvent, BackendSe
   /** Delete a backend */
   deleteBackend(id: string): Promise<boolean>;
 
-  /** Set the active backend */
+  /** Set the active backend. `id` may be `'_endpoint_'`. */
   setActiveBackend(id: string | undefined): void;
+
+  /** Re-point the selection after the project's `cloudservices` endpoint is removed. */
+  endpointRemoved(): void;
 
   /** Test connection to a backend */
   testConnection(backendOrConfig: BackendConfig | CreateBackendRequest): Promise<ConnectionTestResult>;

@@ -3814,6 +3814,17 @@
       ],
       "outputs": [
         {
+          "name": "contentType",
+          "displayName": "Content Type",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "MIME type the backend recorded on upload; empty on a backend that does not report one, and on a file read back from a record property"
+        },
+        {
           "name": "name",
           "displayName": "Name",
           "group": "General",
@@ -3823,6 +3834,17 @@
           },
           "isSignal": false,
           "description": "Original file name as it was uploaded, without the storage prefix"
+        },
+        {
+          "name": "size",
+          "displayName": "Size",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Size in bytes the backend recorded on upload; empty on a backend that does not report one, and on a file read back from a record property"
         },
         {
           "name": "url",

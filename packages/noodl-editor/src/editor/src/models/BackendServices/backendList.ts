@@ -18,6 +18,7 @@
 
 import { descriptorFor, isUsable, type BackendType } from '@noodl/backend-contract';
 
+import { ENDPOINT_BACKEND_ID } from './activeBackend';
 import { BackendPreset, getPreset } from './presets';
 import { BackendSecurityDisclosure, securityFor } from './security';
 import { BackendConfig } from './types';
@@ -48,16 +49,24 @@ export interface BackendListEntry {
   /**
    * Is this the backend the project's nodes are talking to?
    *
-   * Note that two entries can be active at once today, and that is not a bug in
-   * this function: `cloudservices` binds the record/auth/file nodes while
-   * `backendServices.activeBackendId` binds the BYOB nodes. Saying so is better
-   * than picking one and being wrong — and it is the clearest single argument
-   * for step 2.
+   * ⚠️ **This used to be able to be true twice**, because `cloudservices` bound
+   * the record/auth/file nodes while `backendServices.activeBackendId` bound the
+   * BYOB ones, and the two were independent. BCN-009 step 2 converged the
+   * selection: there is one id now, it may name the endpoint, and at most one
+   * entry in this list carries it.
    */
   isActive: boolean;
   preset: BackendPreset;
   security: BackendSecurityDisclosure;
-  /** Present for `managed` and `external`; the `endpoint` entry has no id of its own. */
+  /**
+   * The id this entry is selected by.
+   *
+   * The `endpoint` entry carries `'_endpoint_'` — the synthetic id the runtime
+   * invents for a `cloudservices` pointer, which the converged selection adopts
+   * rather than replaces. A `managed` entry carries its local process id, which
+   * is *not* a selection id: a managed backend enters the project by writing the
+   * endpoint, so the entry that goes active is the endpoint one.
+   */
   backendId?: string;
 }
 
@@ -68,8 +77,18 @@ export interface BackendListSources {
   endpoint?: { endpoint?: string; appId?: string; type?: string };
   /** `backendServices` metadata. */
   external: readonly BackendConfig[];
-  /** `backendServices.activeBackendId`. */
-  activeExternalId?: string;
+  /**
+   * The project's one active backend id — `BackendServices.activeBackendId`.
+   *
+   * ⚠️ The **resolved** id, not the raw stored one. Pass
+   * `BackendServices.activeBackendId` (or `resolveActiveBackendId`'s answer);
+   * this module does no derivation of its own.
+   *
+   * May be `'_endpoint_'`. Before BCN-009 step 2 this was `activeExternalId` and
+   * could only name a `backendServices` entry, which is why the endpoint card
+   * had to claim ACTIVE unconditionally and two cards could claim it at once.
+   */
+  activeBackendId?: string;
 }
 
 /**
@@ -90,6 +109,38 @@ export function endpointBackendType(cloudServicesType: string | undefined): Back
 }
 
 /**
+ * A name for the endpoint entry.
+ *
+ * ⚠️ **It used to be `appId || endpoint`, and that was the one entry in the whole
+ * product wearing a machine id where every other entry wore a name.** The picker
+ * showed `backend_ms94j6xso72rl` in a dropdown next to "Rig Directus" and "Rig
+ * Supabase"; the panel showed the same thing as a card title. An app id is
+ * *identity*, not a name — it belongs on the second line with the URL, which is
+ * where the detail line now carries it.
+ *
+ * There is no user-entered name to use instead: `cloudservices` has no `name`
+ * field, and adding one reaches into `projectmodel.editor.ts` and the exporter's
+ * injection. So the name is the backend's kind, which is what a user calls it
+ * anyway — "the built-in one", "my Parse server".
+ */
+export function endpointDisplayName(type: BackendType): string {
+  return type === 'nodegx' ? 'Built-in backend' : 'Parse Server';
+}
+
+/**
+ * Does the project's one selection name the `cloudservices` endpoint?
+ *
+ * No derivation here on purpose. `BackendListSources.activeBackendId` is the
+ * **already-resolved** id — `BackendServices.activeBackendId`, i.e.
+ * `resolveActiveBackendId`'s answer — and re-deriving it from a subset of the
+ * inputs is how the panel would come to draw a badge on a card the runtime is not
+ * using. One derivation, in `activeBackend.ts`, and everything else reads it.
+ */
+function isEndpointActive(sources: BackendListSources): boolean {
+  return Boolean(sources.endpoint?.endpoint) && sources.activeBackendId === ENDPOINT_BACKEND_ID;
+}
+
+/**
  * Every backend this project can see, in one list, in one order.
  *
  * Order is deliberate and not alphabetical: the backend the project is talking
@@ -106,10 +157,15 @@ export function buildBackendList(sources: BackendListSources): BackendListEntry[
       type: 'nodegx',
       name: backend.name,
       detail: backend.running ? `Built-in • Port ${backend.port}` : 'Built-in • Stopped',
-      // A managed backend is what the project is talking to when it wrote the
-      // endpoint; matching on the endpoint rather than on "is running" avoids
-      // calling a second, unrelated backend active just because it is up.
-      isActive: Boolean(sources.endpoint?.endpoint?.includes(`:${backend.port}`)),
+      // ⚠️ Never active, and that is the fix rather than a gap. A managed
+      // backend is a *process on this machine*; it becomes the project's backend
+      // by writing the endpoint, and the endpoint entry is what the selection
+      // names. This used to match on the port, which meant a running local
+      // backend and the endpoint pointing at it were two active entries for one
+      // server — half of the two-ACTIVE-badges defect, in the model rather than
+      // in the view. `LocalBackendCard` has never drawn a badge, so this is also
+      // what the panel already looked like.
+      isActive: false,
       preset: getPreset('nodegx'),
       security: securityFor('nodegx'),
       backendId: backend.id
@@ -122,11 +178,20 @@ export function buildBackendList(sources: BackendListSources): BackendListEntry[
       key: 'endpoint',
       kind: 'endpoint',
       type,
-      name: sources.endpoint.appId || sources.endpoint.endpoint,
-      detail: `${getPreset(type).displayName} • ${sources.endpoint.endpoint}`,
-      isActive: true,
+      name: endpointDisplayName(type),
+      // The app id belongs here rather than in the name — see
+      // `endpointDisplayName`.
+      detail: [getPreset(type).displayName, sources.endpoint.appId, sources.endpoint.endpoint]
+        .filter(Boolean)
+        .join(' • '),
+      // ⚠️ Was `true`, unconditionally. That is the model half of live-QA
+      // findings 3.1 and 3.2: a configured endpoint claimed ACTIVE beside an
+      // active Directus card, and claimed it for a local backend that was
+      // stopped. It is a selection now, like every other entry.
+      isActive: isEndpointActive(sources),
       preset: getPreset(type),
-      security: securityFor(type)
+      security: securityFor(type),
+      backendId: ENDPOINT_BACKEND_ID
     });
   }
 
@@ -137,7 +202,7 @@ export function buildBackendList(sources: BackendListSources): BackendListEntry[
       type: backend.type,
       name: backend.name,
       detail: `${getPreset(backend.type).displayName} • ${backend.url}`,
-      isActive: backend.id === sources.activeExternalId,
+      isActive: backend.id === sources.activeBackendId,
       preset: getPreset(backend.type),
       security: securityFor(backend.type),
       backendId: backend.id
