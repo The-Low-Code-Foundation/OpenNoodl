@@ -56,6 +56,8 @@ const SetDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
       store: {
         displayName: 'Do',
         group: 'Actions',
+        description:
+          'Writes the property inputs onto the record named by Id, and on to the backend unless Store to is Local only',
         valueChangedToTrue: function (this: SetDbModelPropertiesInstance) {
           if (this._internal.storeType === undefined || this._internal.storeType === 'cloud') this.scheduleSave();
           else this.scheduleStore();
@@ -64,6 +66,8 @@ const SetDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
       storeProperties: {
         displayName: 'Properties to  store',
         group: 'General',
+        description:
+          'Whether to send only the properties wired on this node or every property the record holds; not offered when Store to is Local only',
         type: {
           name: 'enum',
           enums: [
@@ -79,6 +83,8 @@ const SetDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
       storeType: {
         displayName: 'Store to',
         group: 'General',
+        description:
+          'Whether the change is sent to the backend as well as applied to the in-memory record, or only held locally',
         type: {
           name: 'enum',
           enums: [
@@ -96,7 +102,9 @@ const SetDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
       stored: {
         type: 'signal',
         displayName: 'Success',
-        group: 'Events'
+        group: 'Events',
+        description:
+          'Fires once the record has been updated, waiting for the backend to answer unless Store to is Local only'
       }
     },
     methods: {

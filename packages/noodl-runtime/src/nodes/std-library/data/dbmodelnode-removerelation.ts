@@ -32,6 +32,7 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
       store: {
         displayName: 'Do',
         group: 'Actions',
+        description: 'Removes the record named by Target Record Id from the chosen Relation on the record named by Id',
         valueChangedToTrue: function (this: RemoveRelationInstance) {
           this.scheduleRemoveRelation();
         }
@@ -41,7 +42,9 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
       relationRemoved: {
         type: 'signal',
         displayName: 'Success',
-        group: 'Events'
+        group: 'Events',
+        description:
+          'Fires once the backend has accepted the removal, which is also what happens when the relation was not there to begin with'
       }
     },
     methods: {

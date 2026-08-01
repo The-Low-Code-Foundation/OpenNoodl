@@ -87,12 +87,15 @@ function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: b
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description:
+        'Fires when the backend refused the operation or the node had nothing valid to send, with the reason on Error'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
+      description: 'Why the most recent attempt failed, kept after a later attempt succeeds',
       getter: function (this: DbCrudBaseInstance) {
         return this._internal.error;
       }
@@ -343,6 +346,7 @@ function _addModelId(def: DbCrudNodeModule, opts?: { includeInputs?: boolean; in
         default: 'explicit',
         displayName: 'Id Source',
         group: 'General',
+        description: 'Whether the record comes from the Id input or from the record the surrounding Repeater is on',
         tooltip:
           'Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater.',
         set: function (this: DbModelIdInstance, value: unknown) {
@@ -358,6 +362,8 @@ function _addModelId(def: DbCrudNodeModule, opts?: { includeInputs?: boolean; in
         type: 'component',
         displayName: 'Repeater Component',
         group: 'General',
+        description:
+          'Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one',
         set: function (this: DbModelIdInstance, value: string) {
           this._internal.repeaterComponent = value || undefined;
           // Only re-resolve in the mode this input belongs to; in `explicit` mode the record
@@ -373,6 +379,7 @@ function _addModelId(def: DbCrudNodeModule, opts?: { includeInputs?: boolean; in
         },
         displayName: 'Id',
         group: 'General',
+        description: 'Id of the record this node acts on; a record itself is accepted here as well as its Id',
         set: function (this: DbModelIdInstance, value: unknown) {
           if (value instanceof Model) value = (value as ModelLike).getId(); // Can be passed as model as well
           this._internal.modelId = value as string; // Wait to fetch data
@@ -389,6 +396,7 @@ function _addModelId(def: DbCrudNodeModule, opts?: { includeInputs?: boolean; in
         type: 'string',
         displayName: 'Id',
         group: 'General',
+        description: 'Id of the record this node last acted on, which on Create Record is the Id the backend assigned',
         getter: function (this: DbModelIdInstance) {
           return this._internal.model ? this._internal.model.getId() : this._internal.modelId;
         }
@@ -511,6 +519,8 @@ function _addRelationProperty(def: DbCrudNodeModule) {
       type: { name: 'string', allowConnectionsOnly: true },
       displayName: 'Target Record Id',
       group: 'General',
+      description:
+        'Id of the record at the other end of the relation, which must come from a Query Records or Record output so that its class is known',
       set: function (this: RelationPropertyInstance, value: unknown) {
         this._internal.targetModelId = value as string;
       }
@@ -582,6 +592,8 @@ function _addAccessControl(def: DbCrudNodeModule) {
       index: 1000,
       displayName: 'Access Control Rules',
       group: 'Access Control Rules',
+      description:
+        'Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; backends that have no per-record access control ignore them',
       set: function (this: AccessControlInstance, value: unknown) {
         this._internal.accessControlRules = value as AccessControlInstance['_internal']['accessControlRules'];
       }

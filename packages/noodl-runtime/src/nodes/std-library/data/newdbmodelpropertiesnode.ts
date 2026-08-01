@@ -62,6 +62,7 @@ const NewDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
       store: {
         displayName: 'Do',
         group: 'Actions',
+        description: 'Creates a record in the chosen Class from the property inputs and sends it to the backend',
         valueChangedToTrue: function (this: NewDbModelPropertiesInstance) {
           this.storageInsert();
         }
@@ -70,6 +71,8 @@ const NewDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
         type: { name: 'string', allowConnectionsOnly: true },
         displayName: 'Source Object Id',
         group: 'General',
+        description:
+          'Id of an existing record whose properties seed the new one before the property inputs are applied over them; leave blank to start empty',
         set: function (this: NewDbModelPropertiesInstance, value: unknown) {
           if (value instanceof Model) value = value.getId(); // Can be passed as model as well
           this._internal.sourceObjectId = value as string; // Wait to fetch data
@@ -80,7 +83,8 @@ const NewDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
       created: {
         type: 'signal',
         displayName: 'Success',
-        group: 'Events'
+        group: 'Events',
+        description: 'Fires once the backend has stored the new record and Id carries the Id it was given'
       }
     },
     methods: {
