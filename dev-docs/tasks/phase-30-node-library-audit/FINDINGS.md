@@ -2433,6 +2433,85 @@ Three of the six rows are the SSR-preserving controls. They were **green at base
 green, which is the whole reason they exist: the rows that redden prove the fix, and the rows that do
 not are what stop the fix being the wrong one.
 
+### DV-xiii — a cell can be confident about which half is broken, twice in one category
+
+✅ **Both fixed 2026-08-01** (stream D). `Group`'s `A3` in stream C established the shape; stream D
+produced a second instance where the mis-filing was **load-bearing**.
+
+`Page Router`'s `A2` was filed as *"`resetAsync` decides whether anything changed by **identity** on
+the page-info object"*, which reads as a one-character fix. It is not, and the fix it implies changes
+nothing: `RouterHandler.getPageInfoForComponent` returns the live entry out of
+`graphModel.routerIndex.pages`, and `_internal.currentPage` was assigned **that same object**. An
+in-place edit therefore mutates *both sides of the comparison at once* — identity and value agree,
+because there is only one object. Swapping `===` for `shallowObjectsEqual` would have closed the cell
+and left the defect exactly where it was.
+
+What was missing was never the operator. It was **a record of what had been rendered**:
+`currentPageSnapshot`, a copy of the three flat strings taken at render time.
+
+**Generalisable:** when a cell names a *comparison* as the defect, check whether the two things being
+compared are actually two things. A comparison against a live reference is not a comparison.
+
+### DV-xiv — the reported consequence outlived the fix that changed it
+
+✅ **Fixed 2026-08-01** (stream D). Two of stream D's four `D1` cells described symptoms that were
+true when filed and false by the time anyone acted on them.
+
+- **`Columns`** was filed as *"`'1 a 1'` yields a `NaN` column"*. NDA-006's autofold pass added a
+  `Number.isFinite` filter to `parseLayout` — for its own reasons, correctly — which converted a
+  visible `NaN` into a **silent drop**. Three authored columns render as two and nothing says so.
+  The defect survived; only its symptom changed, and the cell recorded the symptom.
+- **`Drag`'s `B2`** was filed as *"nothing is reported anywhere"*. Stream B's `G1` fix, in this same
+  phase and on this same node, gave both snap-value ports `raiseRuntimeError` — and the bus **is**
+  the deployed channel. The cell was already closed and had simply not been re-read. It is the only
+  cell in the category closed with **no code change**.
+
+**Generalisable, and it is `DV-ii`'s rule one turn on:** a worksheet records a *consequence*, and a
+consequence is the least stable thing about a defect. Before fixing a cell, re-derive the mechanism
+from the code — including checking whether a *later* fix in your own phase has already moved it.
+
+### DV-xv — a decode is not idempotent, and two of them throw
+
+✅ **Fixed 2026-08-01** (stream D). `Page Router`'s `D1` was filed as *"decoded twice and by two
+different rules"*, which understates it: **the second decode throws.**
+
+`Navigate` encodes a parameter with `encodeURIComponent`, so a value containing a literal `%` leaves
+as `a%25b`. `_getLocationPath` ran `decodeURI` over the whole location, which decodes `%25` because
+`%` is not in the reserved set `decodeURI` protects — yielding `a%b`. `_matchPathParts` then ran
+`decodeURIComponent('a%b')`, which raises `URIError: URI malformed`. **A page parameter containing a
+percent sign took the router's entire match down, uncaught.** `decodeURI` throws the same way on a
+hand-typed `/%zz`, which is a bad address-bar entry and not an author mistake at all.
+
+Decoding once, per segment, *after* the split also fixes two quieter things: an encoded `/` now stays
+**inside** a parameter instead of becoming a separator, and a nested router no longer decodes a
+second time what its parent already decoded.
+
+**Generalisable:** `decodeURI` and `decodeURIComponent` are not the same function and neither is
+idempotent. Any pipeline that decodes at two levels is wrong at one of them; decode once, at the
+level that owns the delimiter.
+
+### DV-xvi — four defects with no cell, all found by writing the row rather than reading the code
+
+Recorded because the ratio matters for how the remaining categories are worked: stream D closed nine
+filed cells and turned up **four unfiled defects**, every one of them while building the corpus rows
+for a *different* fix.
+
+1. **`Repeater`** kept the **previous** compiled `templateScript` after a syntax error, so it went on
+   rendering rows from code the author had already replaced.
+2. **`Group`'s `scrollToElement`** used a bare `ref instanceof HTMLElement`. `instanceof` against an
+   undeclared global is a `ReferenceError`, not `false` — so a scroll fired in any runtime without a
+   DOM **threw**, on a node that declares SSR `safe`. Surfaced only because the corpus runs
+   `testEnvironment: node`.
+3. **`RadioButtonContext`'s default was an object** with undefined fields, which is truthy. A
+   groupless Radio Button with no `Value` compared `undefined === undefined` and rendered
+   **permanently checked**.
+4. **`Scroll To Element`** aimed at a node outside its Group never failed — `scrollIntoView` walks to
+   the nearest scrollable *ancestor*, so it silently scrolled a **different container**.
+
+**Generalisable:** the corpus is not only a way to pin a fix, it is the cheapest defect-finder in the
+phase, and its two most productive properties are accidental — it runs without a DOM, and it forces
+someone to state what "working" means for a path nobody had stated it for.
+
 ## What these passes did *not* cover
 
 - **76 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No

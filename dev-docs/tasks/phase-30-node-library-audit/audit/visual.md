@@ -1,5 +1,56 @@
 # Audit worksheet — Visual (29 nodes, **20 in scope**, 20 audited)
 
+> ## Remediation stream D, 2026-08-01 (seventh session of the day)
+>
+> **In-scope ⚠️ cells 24 → 15, and every one of the 15 is owned elsewhere or blocked on a
+> decision.** 11 are `ERG-001`'s (7 `B3`, 4 `B1`), 2 are `NDA-014`'s (both `E1`), and the last
+> two are recorded below rather than closed. **Nine cells closed; no code change is left in this
+> category that this phase owns and can make unilaterally.**
+>
+> | Fix | Cells resolved |
+> |---|---|
+> | The four `D1` bare-string contracts | Columns D1 · Page D1 · Page Router D1 · Repeater D1 |
+> | `B2`, the deployed-diagnosis leg | Group B2 · Repeater B2 · **Drag B2 (stale — no code change)** |
+> | `Radio Button`'s missing `Changed` | A1 |
+> | `Page Router`'s in-place page edit | A2 |
+>
+> **What is *not* closed, and why — read this before re-opening any of it:**
+>
+> - **`Page` B2** — the cell was filed with **no mechanism at all** (its note was a dash). Read for
+>   one, the answer is `DV-vii`: the dead `Title`/`Url Path` ports. Fixing that means deciding
+>   whether the Page or the Router owns the document title, which is Richard's. §2.
+> - **`Radio Button` F1** — the *report* half of class F's remedy is built; the **`Group` port** is
+>   not, because naming a group needs a name→group registry like `Component Stack`'s. Half closed
+>   and marked as such rather than counted.
+> - **Both `E1` cells** — `array` casts only to `collection`. That is the typecast table's
+>   property, not Dropdown's or Repeater's, and `NDA-014` owns it.
+>
+> ⚠️ **Three of the nine cells named the wrong mechanism, and one of those would have produced a
+> fix that changed nothing.** `Page Router` A2 was filed as identity-versus-value, but the router
+> held a *reference* to the index entry, so identity and value agreed — a value comparison would
+> have closed the cell and fixed nothing, exactly as `Group`'s A3 nearly did in stream C. `Columns`
+> D1 described a `NaN` column that NDA-006 had already converted into a silent drop. `Page Router`
+> D1 described a mis-decode that is really an **uncaught `URIError`**. The operational rule stands:
+> **re-derive the mechanism from the code before fixing what a cell says.**
+>
+> ⚠️ **`Drag`'s B2 closed with no code change**, because stream B's `G1` fix had already put its
+> diagnosis on the runtime bus. A cell can be closed by a *previous* session's work and stay ⚠️
+> because nobody re-read it.
+>
+> **Four defects were found by writing the rows, none of which had a cell:** the `Repeater` kept
+> using the previous compiled `templateScript` after a syntax error; `Group`'s `scrollToElement`
+> threw a `ReferenceError` in any runtime without a DOM, on a node declaring SSR `safe`;
+> `RadioButtonContext`'s truthy default rendered a groupless Radio Button **permanently checked**;
+> and `Scroll To Element` aimed outside its Group silently scrolled a *different* container.
+>
+> **Gates:** viewer jest **577** (was 519, +58 rows across 4 new files), runtime **1,758 / 13
+> skipped** (unchanged), all four catalog gates exit 0, Visual C1 **1228/1228**. ⚠️ **Live QA is
+> owed** — every fix here is a viewer change and none of it reaches a deployed app until
+> `npm run build --prefix packages/noodl-viewer-react`.
+>
+> ⚠️ **Seven reverts, seven correct predictions.** Recorded because the handover asks for the
+> number to be said out loud: 1, 2, 3, 1, 2, 2, 3.
+
 > ## Remediation stream B, 2026-08-01 (third session of the day)
 >
 > **Three fix items landed and a fourth was reverted. In-scope ⚠️ cells 34 → 27**, of which **7 are
@@ -155,7 +206,7 @@ Source: [`nodes/visual/group.ts`](../../../../packages/noodl-viewer-react/src/no
 | A3 | ✅ | ~~the two scroll actions guard `innerReactComponentRef` at **different times**~~ — **fixed 2026-08-01, and the cell's diagnosis was incomplete.** This was filed as an *asymmetry*, with `scrollToIndex.do`'s check inside `scheduleAfterInputsHaveUpdated` reading as the careful version. ⚠️ **Neither placement worked.** The ref is assigned by React's ref callback, which commits *after* the graph update — so `scheduleAfterInputsHaveUpdated` narrows the window and does not close it, and making the two agree would have closed this cell and fixed nothing. Both now use `withInnerComponent` (`react-component-node.ts`), which waits for the ref itself. 11 rows in `nda-012-visual-premount-actions.test.ts`; reverting Group reddens exactly its 2 and reverting Video reddens exactly Video's 7 |
 | G1 | ✅ | `scrollToElement.element` accepts a reference; an empty one lands as `undefined` and the scroll is a no-op |
 | B1 | ⚠️ **none** | `Scroll To Element` with an element that is not a descendant, and `Scroll To Index` past the end, both do nothing and report nothing |
-| B2 | ⚠️ | there is no report at all, so there is nothing for a deployed app to lose |
+| B2 | ✅ | **fixed 2026-08-01** — three reports where there were none or where the only one was editor-only. `flexDirection`'s invalid-value warning moves from `editorConnection.sendWarning` to the bus (`group/layout-not-a-flex-direction`), which is what makes `D1`'s ✅ above mean anything in a deployed app; and both scroll actions now *return why they did nothing*, raised as `group/scroll-to-index-failed` / `group/scroll-to-element-failed`. ⚠️ The sharp one is `Scroll To Element` with an element outside the Group: `scrollIntoView` scrolls the nearest scrollable **ancestor**, so it never failed — it silently scrolled a *different* container. The editor's `clearWarning` path is kept, because the bus has no un-raise. 11 rows in `nda-012-visual-deployed-diagnosis.test.ts`. ⚠️ Found while writing them: `ref instanceof HTMLElement` was a bare `instanceof` against an undeclared global, so a scroll fired in any runtime without a DOM threw a `ReferenceError` rather than no-op'ing — and this node declares SSR `safe` |
 | B3 | ⚠️ | **three signal inputs, no terminating signal**: `scrollToIndex.do`, `scrollToElement.do`, `focus`. The 12 signal outputs are pointer, hover, mount and scroll-gesture events — none of them means "the action you asked for finished". `Scroll End` fires for a *user* scroll |
 | C1 | ✅ **100%** (105/105) | closed this session — 26 ports written |
 | D1 | ✅ | `flexDirection` validates against `flexDirectionValues` and warns ([`:60-66`](../../../../packages/noodl-viewer-react/src/nodes/visual/group.ts#L60-L66)) — ⚠️ but see B2: the warning is editor-only |
@@ -214,7 +265,7 @@ Source: [`nodes/visual/columns.ts`](../../../../packages/noodl-viewer-react/src/
 | B2 | `n/a` | — |
 | B3 | `n/a` | no signal inputs |
 | C1 | ✅ **100%** (25/25) | closed this session — 12 ports written |
-| D1 | ⚠️ | `layoutString` is a bare string parsed with `parseInt` per token. The setter validates only that it *is* a string ([`columns.ts:49-64`](../../../../packages/noodl-viewer-react/src/nodes/visual/columns.ts#L49-L64)); `'1 a 1'` yields a `NaN` column and is neither reported nor rejected |
+| D1 | ✅ | **fixed 2026-08-01** — ⚠️ **this cell's recorded consequence was stale.** It read "`'1 a 1'` yields a `NaN` column", which was true when filed and stopped being true when NDA-006's autofold pass added a `Number.isFinite` filter to `parseLayout`: the entry is **dropped**, so three authored columns render as two and nothing says so. The defect outlived the fix that changed its symptom. The setter now reports the loss on the runtime error bus — `columns/layout-string-invalid`, naming each unreadable entry and both counts — and `Medium Layout` / `Small Layout` go through the same validator, being the same contract. `parseInt` → `Number`: the port documents *proportions* and `parseInt` silently truncated `'1 2.5 1'` to `1 2 1`; `Number` rather than `parseFloat` because `parseFloat` reads a prefix and turns `'1abc'` into `1`. 9 rows in `nda-012-visual-bare-strings.test.ts` |
 | E1 | ✅ | — |
 | F1 | `n/a` | — |
 | H1 | ✅ | declares `safe` |
@@ -333,7 +384,7 @@ Source: [`nodes/visual/drag.ts`](../../../../packages/noodl-viewer-react/src/nod
 | A3 | ✅ | the snap actions defer through `scheduleAfterInputsHaveUpdated`, so value and duration are read after the same frame's inputs land |
 | G1 | ✅ | **fixed 2026-08-01** — both snap coordinates stored whatever arrived. ⚠️ **This cell's recorded consequence was wrong: `null` became 0, not `NaN`** — `easeOutCubic` computes `(end - start) * … + start`, so `null` coerced to zero and the element animated to the **origin**, which is worse than a visible `NaN` because it is a plausible position. `NaN` was the non-numeric-*string* case, and nothing coerces a declared `number` port on arrival. Now `undefined`/`null`/`''` abstain and leave the current position, and anything else non-numeric raises `drag/snap-position-not-a-number`. Live-verified: 240 → `null` → **240**, 240 → `'somewhere'` → **240** with the message in the warnings panel. Pinned in `nda-012-visual-value-ports.test.ts` |
 | B1 | ⚠️ **none** | ~~a `Do` before the component mounts is dropped by `this.innerReactComponentRef && …`~~ — ⚠️ **the *drop* was fixed 2026-08-01; only the missing report is still `B1`'s.** This cell held the **third** instance of the `A3` pre-mount class, filed under a different check, so counting `A3` cells found two of the three. Both snap actions use `withInnerComponent` now. What remains for ERG-001 is unchanged and is the rest of the cell: a `Do` that cannot do anything — an element that is not a descendant, an index past the end — still reports nothing |
-| B2 | ⚠️ | nothing is reported anywhere, so the deployed case is no worse than the editor one — which is the point |
+| B2 | ✅ | **stale, closed 2026-08-01 without a code change.** The cell reads "nothing is reported anywhere", which was true when filed and stopped being true in remediation stream B: the `G1` fix gave both snap-value ports `raiseRuntimeError('drag/snap-position-not-a-number', …)`, and the bus **is** the deployed channel. Re-derived by reading the node rather than trusting the cell; the node was also swept for any other silent failure and has none — `withInnerComponent` holds a pre-mount `Do`, and "already at that position" is documented behaviour, not a failure. The `Do`-cannot-act condition this cell also gestured at is `B1`'s **port** and stays with `ERG-001` |
 | B3 | ⚠️ | two signal inputs (`Snap To Position X/Y — Do`), **no terminating signal**. `Drag Started`/`Ended`/`Moved` are gesture events; nothing says the snap animation finished, which is precisely what a snap-then-do graph needs |
 | C1 | ✅ **100%** (32/32) | closed this session — 18 ports written |
 | D1 | ✅ | — |
@@ -429,7 +480,7 @@ Source: [`nodes/controls/options.ts`](../../../../packages/noodl-viewer-react/sr
 | B3 | `n/a` | no signal inputs |
 | C1 | ✅ **100%** (111/111) | closed this session — 8 ports written |
 | D1 | ✅ | the commented-out validation at [`:79-83`](../../../../packages/noodl-viewer-react/src/nodes/controls/options.ts#L79-L83) is deliberate — a value not in `items` deselects rather than being rejected |
-| E1 | ⚠️ | `items` is `type: 'array'`, one of the category's two object/array ports |
+| E1 | ⚠️ **NDA-014's** | `items` is `type: 'array'`, one of the category's two object/array ports. **Reassigned 2026-08-01, not fixed** — see the Repeater's `E1` for the reasoning; `array` casting only to `collection` is the typecast table's property, not this node's |
 | F1 | `n/a` | — |
 | H1 | ✅ | **fixed 2026-08-01** — nothing removed the `change` listener, so a deleted Dropdown kept a live handler on the collection and called `forceUpdate` on a dead node. Closed with `addDeleteListener`, the shape `Drag` uses at [`drag.ts:28`](../../../../packages/noodl-viewer-react/src/nodes/visual/drag.ts#L28). Pinned in `nda-012-dropdown-items.test.ts` |
 
@@ -454,7 +505,7 @@ Source: [`nodes/controls/radiobutton.ts`](../../../../packages/noodl-viewer-reac
 
 | Check | Verdict | Note |
 |---|---|---|
-| A1 | ⚠️ | **`Radio Button` has no `Changed` output at all**, unlike `Checkbox` and `Radio Button Group`. Selection can only be observed by polling `Checked` or by listening on the group |
+| A1 | ✅ | **fixed 2026-08-01** — a `Changed` signal output, declared the way `Checkbox` and `Radio Button Group` declare theirs (`onChange`, group `Events`) and fired through the same `sendSignalOnOutput`. ⚠️ Keeping the *meaning* identical to its two siblings' was the whole of the work: `Changed` means **the user did this**, and only the group knows which of its two write paths ran, so the selection and its provenance travel together through `RadioButtonContext` as one piece of state (`selectionFromUser`). Without that, the graph setting the group's `Value` would fire every affected button's `Changed` while the group's own stayed silent — the very inconsistency this cell is about, reintroduced one level down. 4 rows in `nda-012-radio-button-group.test.tsx`, the ticked/unticked pair being the instrument |
 | A2 | `n/a` | — |
 | A3 | ✅ | **fixed 2026-08-01** — `props.checkedChanged(…)` was called **from the render body** and reached `flagOutputDirty('checked')` and `_updateVisualState()` ([`radiobutton.ts:39-46`](../../../../packages/noodl-viewer-react/src/nodes/controls/radiobutton.ts#L39-L46)), so a render React discarded or double-invoked moved graph state and repainted visual states for a checked-ness the committed tree never had. Now a `useEffect`. The `checked` **expression** stays in render and feeds the `<input>` — the DOM is a render output, not a side effect — and the duplicated inline copy is hoisted to one `const`. Live-verified: two radios in a group read `{dom:false,node:false}` / `{dom:true,node:true}`, and clicking A's label flips **both** nodes' `_internal.checked` with the DOM. Pinned in `nda-012-render-body-effects.test.tsx` |
 | G1 | ✅ | `value` is a plain prop forward |
@@ -464,7 +515,7 @@ Source: [`nodes/controls/radiobutton.ts`](../../../../packages/noodl-viewer-reac
 | C1 | ✅ **100%** (95/95) | closed this session — 7 ports written, from 0% |
 | D1 | ✅ | — |
 | E1 | ✅ | — |
-| F1 | ⚠️ | **the group is resolved through a React context and cannot be named.** `RadioButtonContext` ([`RadioButton.tsx:38`](../../../../packages/noodl-viewer-react/src/components/controls/RadioButton/RadioButton.tsx#L38)) is the only binding, there is no `Group` port, and a Radio Button rendered outside a Radio Button Group gets `name: undefined`, `checked: false` forever and a click that short-circuits to nothing — visibly a control, functionally inert, with no resolution shown anywhere. Defect class F exactly |
+| F1 | ⚠️ **half closed** | **reported 2026-08-01, still not nameable.** Class F's remedy in `FINDINGS.md` has two halves — *an optional explicit target* and *a visible indication of what was resolved when it is left implicit* — and only the second is built. A groupless Radio Button now raises `radio-button/no-group` on the bus, so "visibly a control, functionally inert, with **no resolution shown anywhere**" is no longer true. The `Group` port is **not** built: naming a group needs a name→group registry of the kind `Component Stack` and `Page Router` have, which is exactly why both of *their* `F1` cells pass, and inventing one for this node alone is a design change rather than a remediation. ⚠️ **Building the report exposed a live bug**: `RadioButtonContext`'s default was an **object** with undefined fields, which is truthy, so `radioButtonGroup ? radioButtonGroup.selected === props.value : false` took the first branch either way and compared `undefined === undefined` — a groupless Radio Button with no `Value` rendered **checked**, permanently, and could not be unchecked. The default is `null` now, which is what made the condition detectable at all. 4 rows in `nda-012-radio-button-group.test.tsx` |
 | H1 | ✅ | declares `safe`; the context subscription is React's |
 
 **Verdict:** ⚠️ defect — F1 is the headline and is the category's only instance of defect class F.
@@ -601,10 +652,10 @@ Source: [`nodes/navigation/page.ts`](../../../../packages/noodl-viewer-react/src
 | A3 | ✅ | **fixed 2026-08-01** — `Noodl.SEO.setMeta` was called for all fourteen meta tags **from the render body**, and in a browser that mutates `document.head`, so a discarded or double-invoked render changed document-level state for a tree never committed. ⚠️ **The obvious fix would have been worse than the defect**: SSR renders with `ReactDOMServer.renderToString` and **effects never run**, while `injectSeo` builds the served `<head>` out of the buffer `setMeta` fills — an unconditional move into `useEffect` empties the meta tags of every SSR and SSG page, and `ssr-inject-seo.test.js` stays green because it tests the string transform and not the producer. So the render body stays the path **on the server** and the browser writes after commit. Three of the six rows in `nda-012-render-body-effects.test.tsx` are the SSR-preserving controls, green at baseline on purpose |
 | G1 | ✅ | `setMeta(key, undefined)` removes the tag, which is the correct clearing behaviour |
 | B1 | ⚠️ **none** | — |
-| B2 | ⚠️ | — |
+| B2 | ⚠️ **blocked, mechanism now recorded** | ⚠️ **this cell was filed with no mechanism at all** — its note was a dash, so there was nothing to fix and nothing to disprove. Read for one: the only thing `Page` silently fails at is `DV-vii`, its **dead `Title` and `Url Path` ports**, which accept a value and drop it in every runtime. That is a genuine class-B failure and it is *not* fixed here, because making `Title` work means deciding whether the Page or the Router owns the document title — the Router already sets it from its own copy ([`router.tsx:428`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L428)) and would overwrite anything the Page wrote. §2 question for Richard, not a quiet judgement call. **Recorded rather than closed** |
 | B3 | ✅ | `Page Ready` is the SSR handshake and terminates on the server side, not in the graph — the one signal input whose terminator is deliberately outside it |
 | C1 | ✅ **100%** (32/32) | closed this session — 17 ports written |
-| D1 | ⚠️ | **`urlPath`'s derived default is not sanitised for a URL.** [`page.ts:200`](../../../../packages/noodl-viewer-react/src/nodes/navigation/page.ts#L200) does `title.replace(/\s+/g, '-').toLowerCase()` and nothing else, so a component named `Order #1 & Co` proposes the path `order-#1-&-co` |
+| D1 | ✅ | **fixed 2026-08-01** — `toUrlPathSegment` replaces the bare `title.replace(/\s+/g, '-').toLowerCase()`, so `Order #1 & Co` proposes `order-1-co` rather than `order-#1-&-co`. The proposal is what an author accepts by not editing it, so an unsanitised default is a route that silently does not match — `#` starts the fragment and the *hash* router already puts the whole route after one. ⚠️ Written as a **deny** list of the RFC 3986 delimiters, not an allow list: `[a-z0-9]` passed every row that mattered and turned `Über Café` into `ber-caf`, deleting most of a title that percent-encodes perfectly well. The row that caught it is kept as a control. 5 rows in `nda-012-visual-bare-strings.test.ts` |
 | E1 | ✅ | — |
 | F1 | `n/a` | — |
 | H1 | ✅ | `singleton: true`; `nodeScopeDidInitialize` was moved out of `initialize` precisely because connections are not wired during it |
@@ -662,14 +713,14 @@ Source: [`nodes/navigation/router.tsx`](../../../../packages/noodl-viewer-react/
 | Check | Verdict | Note |
 |---|---|---|
 | A1 | ✅ | both outputs are flagged on every page change |
-| A2 | ⚠️ | `resetAsync` decides whether anything changed by **identity** on the page-info object ([`router.tsx:292`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L292)). Editing a page's path or title in place leaves the identity intact, so an explicit `Reset` re-reads nothing |
+| A2 | ✅ | **fixed 2026-08-01, and ⚠️ the cell named the wrong mechanism.** It was filed as identity-versus-value, and **swapping `===` for a value comparison would have closed the cell and fixed nothing**: `getPageInfoForComponent` returns the live entry out of `graphModel.routerIndex.pages` and `currentPage` was assigned *that same object*, so an in-place edit mutates both sides of the comparison at once — identity and value agree because there is only one object. What was missing was a record of what had been **rendered**. `currentPageSnapshot` is a three-string copy taken at render time, and the comparison is against that. Second instance this category of "a cell can be confident about which half is broken and be wrong", after `Group`'s `A3`. 4 rows in `nda-012-page-router-path-and-reset.test.ts`, the no-change control being the one that stops "always rebuild" passing |
 | A3 | ✅ | serialised through `asyncQueue` |
 | G1 | ✅ | **RT-2 fixed 2026-08-01** — `getPageInfoForComponent` returns `ComponentPageInfo | undefined`, and `resetAsync` compared it against the current page by identity, so on a fresh router `undefined === undefined` read as "already on the right page": the router built nothing, rendered nothing and said nothing, on every reset. A start page missing from the index gave a permanently blank router with no diagnostic. The target is now resolved before comparing and an unresolvable one raises `router/page-not-found`. Pinned in `nda-012-page-router-reset.test.ts` |
 | B1 | ✅ | **RT-1 fixed 2026-08-01** — a routed component with no `Page` node (or two) was created, assigned to `currentPageComponent`, then dropped by a bare `return`. It is now deleted and reported as `router/component-is-not-a-page` with the count, and the stale `currentPage` is cleared — the children are torn down before the component is built, so leaving it set let the identity check absorb the next reset back to that page, which is RT-2's symptom through a second door |
 | B2 | ✅ | **RT-3 and the reporting gap fixed 2026-08-01** — nothing reached any surface from the reset path: no `hasFailed` (reset carries no args), no `sendWarning`, no `raiseRuntimeError`, while `navigateAsync` had been given all of it in NDA-004 §2 and reset runs *first*. All four drops now raise on the runtime error bus (`FAILURE-CONTRACT.md`): `router/no-pages`, `router/no-start-page`, `router/page-not-found`, `router/component-is-not-a-page`. ⚠️ RT-3 was the worst of them — a Page Router dropped on a canvas and not yet configured **threw a `TypeError`**, because the start-page read existed twice, guarded on `:280` and bare on `:292`, in the else branch of the same `if`. It is one read now |
 | B3 | ⚠️ | `Reset` is a signal input with no terminating signal — same as `Component Stack` |
 | C1 | ✅ **100%** (20/20) | closed this session — 8 ports written |
-| D1 | ⚠️ | `_getLocationPath` decodes the whole path with `decodeURI` ([`:418`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L418)) and `_matchPathParts` then decodes each captured parameter again with `decodeURIComponent` ([`:484`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L484)). A parameter containing an encoded `/` or `%` is decoded twice and by two different rules |
+| D1 | ✅ | **fixed 2026-08-01, and ⚠️ the consequence was sharper than recorded.** Filed as "decoded twice and by two different rules"; the second decode **throws**. `Navigate` encodes with `encodeURIComponent`, so a parameter holding a literal `%` leaves as `a%25b`; `decodeURI` decodes `%25` because `%` is not in the reserved set it protects; and `decodeURIComponent('a%b')` then raises `URIError: URI malformed`. **A page parameter with a percent sign in it took the router's whole match down, uncaught** — as did a hand-typed `/%zz`, which is a bad address-bar entry rather than an author mistake at all. `_getLocationPath` returns the raw path now and each segment is decoded exactly once after the split (`_decodePathSegment`, never throws), which also makes an encoded `/` stay *inside* a parameter instead of splitting it, and stops a nested router double-decoding what its parent handed it. 12 rows in `nda-012-page-router-path-and-reset.test.ts` |
 | E1 | ✅ | — |
 | F1 | ✅ | named, with the same queue-rather-than-drop reasoning as `Component Stack` |
 | H1 | ✅ | **RT-1's node leak fixed 2026-08-01** — the component created before the `Page`-node check is now deleted on the bail rather than left unattached and undeleted. `popstate`/`hashchange` listeners were already removed on unmount, so the listener half was always clean |
@@ -707,11 +758,11 @@ Source: [`nodes/std-library/data/foreach.tsx`](../../../../packages/noodl-viewer
 | A3 | ✅ | `scheduleRefresh` coalesces to one refresh per frame; item creation is deliberately spread across frames and now **announces** when it is done |
 | G1 | ✅ | **fixed 2026-08-01** — was `if (!value) return;`, the truthiness test `DC-iii` warns against explicitly, so `null` abstained instead of clearing and a Repeater bound to a query that came back empty kept showing the previous list indefinitely. ✅ **Richard decided it clears** — empty array, `null`, anything falsy. ⚠️ The guard had a **second half** in `scheduleCopyItems`, which bailed on `items === undefined`; both are gone. ⚠️ Deliberate recorded divergence from `EMPTY-VALUE-CONTRACT.md`, whose table has `undefined` abstaining; stated on the port's `description`. Pinned in `nda-012-repeater-clears.test.ts` |
 | B1 | ⚠️ **none** | — |
-| B2 | ⚠️ | a `templateScript` syntax error goes to `editorConnection.sendWarning` and nowhere else ([`:255-262`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L255-L262)); a *runtime* throw inside the compiled function is caught at [`:351`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L351) and reported the same editor-only way. **This is the phase's most common shape and the handover predicted it here** |
+| B2 | ✅ | **fixed 2026-08-01** — all three of this node's editor-only reports move to the bus: `repeater/template-script-syntax-error`, `repeater/template-script-threw` and `repeater/input-mapping-syntax-error`. ⚠️ Writing the rows found a fourth thing: **a `templateScript` that stopped compiling left the *previous* compiled function in place**, so the Repeater went on rendering rows from code the author had already replaced. The stale function is dropped now. Per-item failures are deduped per rebuild (`reportTemplateProblem`) — a 5,000-row list naming a missing component would otherwise raise 5,000 identical events, and the `console.error` subscriber a deployed app uses does not collapse duplicates the way the editor's warning panel does. 9 rows in `nda-012-visual-deployed-diagnosis.test.ts` |
 | B3 | ✅ | `Refresh`→`Items Rendered`, added in NDA-004 §3, and it is the reason list-then-scroll no longer needs a guessed Delay |
 | C1 | ✅ **100%** (7/7) | closed this session |
-| D1 | ⚠️ | `templateScript` is compiled with `new Function` from a bare string with no validation beyond the try/catch. `template` is a `component` type and is not checked to exist |
-| E1 | ⚠️ | `items` is `type: 'array'` |
+| D1 | ✅ | **fixed 2026-08-01** — both halves. The `templateScript` half is `B2`'s raise plus dropping the stale compiled function. The `template` half is the one with no report at all: `component` is a *string* checked against nothing, so `addItem`'s `if (!template) return;` and a `createNode` on a renamed or deleted component both produced **no row and no diagnosis** — a list that rendered 9 rows for 10 records looked exactly like a list of 9. Now `repeater/no-template-for-item` (worded per mode, because Explicit and Dynamic have different fixes) and `repeater/template-component-not-found` |
+| E1 | ⚠️ **NDA-014's** | `items` is `type: 'array'`. **Reassigned 2026-08-01, not fixed.** `array` casts only to `collection` and back ([NDA-014](../NDA-014-TYPE-DEAD-ENDS.md)), which is a property of the **typecast table**, not of this node — changing it here would either do nothing or fork the type system per node. NDA-014 is Tier 2, is scoped at 1–2 weeks, and is flagged as expensive to reverse. Same reasoning that puts `B3`/`B1` with `ERG-001`: the cell is real, the owner is elsewhere |
 | F1 | ✅ | the target is the graph parent, resolved through `setNodeModel`/`parentUpdated` ([`:295-311`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L295-L311)) and visible on the canvas as the wire itself |
 | H1 | ✅ | `addDeleteListener` deletes every item node ([`:201-203`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L201-L203)) |
 
@@ -783,10 +834,11 @@ deliberate rather than unfinished.
 | Nodes in scope | **20** |
 | Audited | **20** |
 | ✅ pass overall | 6 — `Text`, `Circle`, `Image`, `Component Children`, and `Icon` + `Radio Button Group` from stream A |
-| ⚠️ at least one defect | **16** at audit time; **12** after streams A and B |
-| ⚠️ cells, excluding C1 | **41** as first counted — ⚠️ **not reproducible; see the note at the top of this file.** One method over the same section gives **47** at audit time, **34** after stream A and **27** after stream B |
+| ⚠️ at least one defect | **16** at audit time; **12** after streams A and B; **11** after streams C and D |
+| ⚠️ cells, excluding C1 | **41** as first counted — ⚠️ **not reproducible; see the note at the top of this file.** One method over the same section gives **47** at audit time, **34** after stream A, **27** after stream B, **24** after stream C and **15** after stream D |
+| Of the 15 remaining | 11 `ERG-001` (7 `B3`, 4 `B1`) · 2 `NDA-014` (`E1`) · 1 blocked on Richard (`Page` B2) · 1 half closed (`Radio Button` F1) |
 | C1 at audit time | 80.0% (981/1227) |
-| C1 now | **100% (1227/1227)** |
+| C1 now | **100% (1228/1228)** — the denominator moved by one: `Radio Button`'s new `Changed` output |
 | Find rate, counting nodes | **0.80 defective nodes / node** |
 | Find rate, counting ⚠️ cells | **2.05 / node** |
 
@@ -804,14 +856,15 @@ this file). `Navigation`'s 1.88/node was measured under the old B3 reading.
 | ~~C1~~ | ~~17~~ → **0** | was everything except `Icon`; closed to 100% at audit time |
 | B3 | **7** | Drag, Group, Video, Checkbox, Text Input, Component Stack, Page Router — **all `ERG-001`'s** |
 | G1 | 7 → **0** | ~~Drag~~, ~~Dropdown~~, ~~Radio Button Group~~, ~~Slider~~, ~~Text Input~~, ~~Repeater~~, ~~Page Router~~ — **the check is closed for the category** |
-| B1 + B2 | 6 → **4** (×2 cells) | Drag, Group, ~~Dropdown~~, Page, ~~Page Router~~, Repeater |
-| A3 | 6 → **2** | Group, Video, ~~Dropdown~~, ~~Radio Button~~, ~~Slider~~, ~~Page~~ |
-| D1 | 4 | Columns, Page, Page Router, Repeater |
-| E1 | 4 → 3 | Video, ~~Slider~~, Dropdown, Repeater |
+| B1 | 6 → **4** | Drag, Group, ~~Dropdown~~, Page, ~~Page Router~~, Repeater — **all `ERG-001`'s** |
+| B2 | 6 → **1** | ~~Drag~~ (stale), ~~Group~~, ~~Dropdown~~, Page, ~~Page Router~~, ~~Repeater~~ |
+| A3 | 6 → **0** | ~~Group~~, ~~Video~~, ~~Dropdown~~, ~~Radio Button~~, ~~Slider~~, ~~Page~~ |
+| D1 | 4 → **0** | ~~Columns~~, ~~Page~~, ~~Page Router~~, ~~Repeater~~ — **the check is closed for the category** |
+| E1 | 4 → **2** | ~~Video~~, ~~Slider~~, Dropdown, Repeater — both remaining are **`NDA-014`'s** |
 | H1 | 3 → 0 | ~~Dropdown~~, ~~Component Stack~~, ~~Page Router~~ |
-| A1 | 2 → 1 | Radio Button, ~~Text Input~~ (four more are 🔵 — the controls' shared no-feedback-loop rule) |
-| F1 | 1 | Radio Button |
-| A2 | 1 | Page Router |
+| A1 | 2 → **0** | ~~Radio Button~~, ~~Text Input~~ (four more are 🔵 — the controls' shared no-feedback-loop rule) |
+| F1 | 1 | Radio Button — **half closed**: reported, not nameable |
+| A2 | 1 → **0** | ~~Page Router~~ |
 
 ⚠️ **Both revised counts above were wrong when first written, in the same direction** (A3 as 3 and
 B1/B2 as 5), and the arithmetic that caught them is one shell command over this file's own tables —
