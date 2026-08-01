@@ -167,6 +167,27 @@ export class UserRoutes {
     delete (rest as Record<string, unknown>).ACL;
     delete (rest as Record<string, unknown>)._method;
     const user = await this.facade.rawCreate('_User', {
+      // ⚠️ **`emailVerified: false` is written here, and it is the close of a
+      // defect BCN-006 could only half-fix from the client.**
+      //
+      // The column was absent from every response on this wire — `/users`,
+      // `/login` and `/users/me` alike — because a password signup never wrote
+      // it. So the `User` node's `emailVerified` output read `undefined` for
+      // every account, and a graph doing `if (!user.emailVerified) show the
+      // "please verify" banner` could not tell "not verified" from "this
+      // backend does not track it". BCN-006 made the *client* default a
+      // brand-new sign-up to `false`, which fixed the account it had just
+      // created and nothing else: a user whose row predates that, or who signs
+      // in on a fresh page load, still read `undefined`.
+      //
+      // Writing the column is the honest fix, because it makes the value a
+      // fact rather than a client-side guess. It also matches what this server
+      // already believes — `login` gates on `!user.emailVerified`, i.e. it has
+      // been reading absent as false all along.
+      //
+      // `...rest` first, deliberately: a caller that supplies the field (an
+      // admin-side import, say) outranks this default.
+      emailVerified: false,
       ...rest,
       username,
       _hashed_password: hashPassword(password)

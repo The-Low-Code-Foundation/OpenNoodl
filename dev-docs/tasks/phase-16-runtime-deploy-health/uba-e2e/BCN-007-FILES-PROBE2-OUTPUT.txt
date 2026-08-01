@@ -1,0 +1,53 @@
+=== BCN-007 probe 2 — the three probe-1 failures, confounds removed ===
+
+=== 1. Directus — does a REAL file relation stop a delete? ===
+  ....  field create status: 200
+  ....  POST /relations status: 200
+  PASS  the relation now exists: 200
+  ....  relation schema: {"table":"bcn007_ref","column":"attachment","foreign_key_table":"directus_files","foreign_key_column":"id","on_update":"NO ACTION","on_delete":"SET NULL","constraint_name":null}
+  ....  uploaded file id: "ad71ed23-8b81-416b-82df-69daa4f578f2"
+  ....  referencing row id: 1
+  ....  DELETE /files/{id} with a REAL relation pointing at it: 204
+  ....    body: ""
+  ....  the referencing row after the delete: {"id":1,"title":"referenced","attachment":null}
+  FAIL  ⚠️ the SPEC's trap — 'Directus will not delete a file that is referenced' — holds?: false (expected true)
+  PASS  what actually happens instead: the delete succeeds and the reference is nulled: {"status":204,"attachment":null}
+
+=== 2. PocketBase — did `protected: true` survive the collection create? ===
+  ....  create status: 200
+  ....  as PocketBase stored it — secret: {"hidden":false,"id":"file1554180325","maxSelect":1,"maxSize":0,"mimeTypes":null,"name":"secret","presentable":false,"protected":true,"required":false,"system":false,"thumbs":null,"type":"file"}
+  PASS  `protected` round-tripped as true: true
+  PASS  …and the other field is false: false
+  ....  record: {"id":"kjbjzafpwrpckmi","open":"open_jfoycludvp.png","secret":"secret_vb6p6ii810.png"}
+  PASS  the open file serves with no credential: 200
+  FAIL  ⚠️ the PROTECTED file is refused with no credential: false (expected true)
+  ....    status: 200
+  ....  admin-only collection create status: 200
+  PASS  protected file on an ADMIN-ONLY collection, no credential: true
+  ....    status: 404
+  ....  …and with a file token minted as the superuser: 200
+  ....  protected + ?token=<auth token, not a file token>: 200
+  PASS  protected + ?token=<FILE token> serves: 200
+  ....  file-token payload (note: no `iat`, so ttl must come from exp - now): {"collectionId":"pbc_3142635823","exp":1785570450,"id":"cwfl73cuxhsd4jo","type":"file"}
+  ....  file-token ttl seconds, measured against the clock: 180
+  PASS  the file token is short-lived (PocketBase default is 120s): true
+  ....  skipped the live expiry wait — ttl too long: 180
+
+=== 3. nodegx-backend — signature expiry with devOpen OFF ===
+  PASS  private upload status (admin, enforced): 201
+  ....  body: {"url":"http://127.0.0.1:8110/files/1daf2d4768c29289_bcn007-enforced.png","name":"1daf2d4768c29289_bcn007-enforced.png","size":70,"contentType":"image/png"}
+  FAIL  ⚠️ the PLAIN url of a private file is refused anonymously: false (expected true)
+  ....    status: 200
+  PASS  sign status: 200
+  ....  signed: {"url":"http://127.0.0.1:8110/files/1daf2d4768c29289_bcn007-enforced.png?exp=1785570273&sig=4df6b2e61a1a98c3c797f94c41a35504f40c38ed704d08a3c1207efe675ed378","expiresAt":"2026-08-01T07:44:33.000Z","ttlSeconds":3}
+  PASS  the signed url serves ANONYMOUSLY — this is the point of signing: 200
+  waiting 4s for the 3s signature to expire…
+  FAIL  ⚠️ the signed url STOPS serving after its ttl: false (expected true)
+  ....    status after expiry: 200
+  ....    body after expiry: "�PNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001\b\u0006\u0000\u0000\u0000\u001f\u0015ĉ\u0000\u0000\u0000\rIDATx�cd��P\u000f\u0000\u0003�\u0001�Z4}k\u0000\u0000\u0000\u0000IEND�B`�"
+  FAIL  a tampered signature is refused (so the sig is really verified): false (expected true)
+  ....    status: 200
+  PASS  the file stops serving after deletion: true
+  ....    status: 404
+
+=== 17 checks, 5 failures ===

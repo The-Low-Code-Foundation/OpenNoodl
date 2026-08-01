@@ -1,0 +1,58 @@
+BCN-006 step 5 — OAuth, measured
+PocketBase :8091 + stub OIDC provider :8113
+
+═══ 1. listAuthProviders — asking the instance rather than the descriptor ═══
+  ✅ PocketBase lists the configured provider  — oidc
+  ✅ …with the display name the admin set  — BCN006b Stub
+  ✅ …and magicLink is FALSE, not PocketBase’s OTP
+  ✅ Directus reports its (empty) SSO list rather than erroring
+  ✅ Supabase is refused by name, and no request is issued  — NodeGX cannot sign users in to Supabase yet. Supabase authen…
+
+═══ 2. PocketBase — a genuine provider round trip ═══
+  ✅ signInWithProvider navigated rather than refusing
+  ✅ …to the PROVIDER, not to PocketBase  — http://localhost:8113/authorize?client_id=bcn0…
+  ✅ …with the redirect appended to the bare `redirect_uri=` PocketBase left
+  ✅ a PKCE challenge is carried
+  ✅ the flow is parked BEFORE the navigation
+  ✅ …including the state, so the return can be verified
+  ✅ the provider redirects back to the app with a code  — http://localhost:8574/bcn006b/?code=bcn006b-code-17&state=KlEIvT50lnz9pV8Kk2IQlCz42Sswrv
+  ✅ …and echoes the state PocketBase minted
+  ✅ consumeAuthReturn recognised this page load as a return
+  ✅ the exchange succeeded
+  ✅ …and reported whether the account was created  — created
+  ✅ a session is stored
+  ✅ …carrying the user’s email from the provider  — bcn006b-subject-17@example.com
+  ✅ …with `id` normalised to `objectId`
+  ✅ …and `verified` mapped to `emailVerified`
+  ✅ the code was stripped from the address bar  — (empty)
+  ✅ a reload carrying the same code cannot replay it
+  ✅ the session token is accepted by PocketBase  — HTTP 200
+
+═══ 3. What is refused, and whether it says why ═══
+  ✅ an unconfigured provider is refused BEFORE any navigation
+  ✅ …and the message names what IS on offer  — "google" is not one of the sign-in providers PocketBase offers (oidc).
+  ✅ Directus SSO is refused
+  ✅ …because of the cookie session, not "not implemented"  — NodeGX cannot complete a Directus single sign-on yet. Directus returns the session as a br
+  ✅ Supabase names GoTrue
+  ✅ an empty provider is a sentence, not a redirect to nowhere  — Sign In With: no provider was set.
+
+═══ 4. A code that was not minted by this attempt ═══
+  ✅ it is still recognised as a return
+  ✅ …and refused
+  ✅ …with a sentence a builder can show  — This sign-in could not be verified as the one you started. Please try again.
+  ✅ …and NO request was issued  — 0 request(s)
+
+═══ 5. A `?code=` with no flow parked — the generic-parameter trap ═══
+  ✅ nothing is consumed and nothing is exchanged
+
+═══ 6. readAuthMethods against the live payload ═══
+  ✅ the live payload parses to one provider
+  ✅ `authURL` survives (and `authUrl` is the alias)
+  ✅ otp is reported separately from magicLink
+  ✅ an empty Directus list parses to zero providers, not a throw
+  ✅ readIsNew reads PocketBase’s own word
+
+════════════════════════════════════════════════════════════
+  39 passed, 0 failed
+  (created PocketBase user 4dvcpxpqv8uh5y7 — namespaced bcn006b_)
+════════════════════════════════════════════════════════════

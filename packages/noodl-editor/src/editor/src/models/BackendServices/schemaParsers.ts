@@ -11,6 +11,14 @@
  * @module BackendServices
  */
 
+import {
+  RelationDescriptor,
+  relationsFromDirectus,
+  relationsFromParseClasses,
+  relationsFromPocketBase,
+  relationsFromPostgrestSpec
+} from '@noodl/backend-contract';
+
 import { CachedSchema, SchemaField } from './types';
 
 /**
@@ -194,10 +202,22 @@ interface PocketbaseRawField {
   type: string;
   required?: boolean;
   /** ≤ 0.22: select options were nested. */
-  options?: { values?: string[] };
+  options?: { values?: string[]; collectionId?: string; maxSelect?: number };
   /** 0.23+: the same options were flattened onto the field. */
   values?: string[];
   system?: boolean;
+  /**
+   * 0.23+. `true` on `password` and `tokenKey` in every auth collection, and on
+   * anything the user has hidden. Measured on the rig's 0.30.0 — see
+   * {@link parsePocketbaseSchema}.
+   */
+  hidden?: boolean;
+  /** 0.23+ marks the primary key on the field itself rather than by its name. */
+  primaryKey?: boolean;
+  /** On a `relation` field: the **id** of the target collection, never its name. */
+  collectionId?: string;
+  /** On a `relation` field: `1` for a single-valued relation. */
+  maxSelect?: number;
 }
 
 /**
@@ -219,18 +239,52 @@ interface PocketbaseRawField {
  * The select-options move is the same story one level down: `options.values` became a
  * flattened `values` in the same release, so `enumValues` reads both or a select field
  * offers no choices.
+ *
+ * ## BCN-005 schema sync: three more things a live 0.30.0 said and the fixture did not
+ *
+ * The `schema`→`fields` rename survived two releases because the test fixture only ever
+ * carried the old shape, so the parser and its test agreed with each other and with
+ * nothing else. Re-auditing the same function against the rig's real payload — rather
+ * than against the fixture that had already been wrong once — found three more:
+ *
+ * 1. ⚠️ **A `relation` field's target was dropped entirely.** `bcn005_articles.author`
+ *    arrived as `{type: 'relation', collectionId: 'pbc_1390417582', maxSelect: 1}` and
+ *    came out with `relationTarget: undefined` — so on PocketBase, alone of the four
+ *    backends, no relation was visible to anything downstream. The target is named by
+ *    **collection id**, never by name, which is why resolving it needs the whole
+ *    collection list and not one collection.
+ * 2. ⚠️ **`hidden` was not propagated**, so `password` and `tokenKey` — both
+ *    `hidden: true`, `system: true` on every auth collection — became ordinary ports.
+ *    `SchemaField.hidden` is exactly the flag the runtime's `shouldShowField` reads to
+ *    skip them.
+ * 3. **The primary key marks itself.** 0.23+ carries `primaryKey: true` on the field;
+ *    `f.name === 'id'` happened to agree on every collection measured, and is kept as
+ *    the fallback for the old shape, which had no such flag.
+ *
+ * ⚠️ **`col.system` does not mean "not a user collection".** PocketBase's `users`
+ * collection is `system: false` with `type: 'auth'`; skipping it would remove the one
+ * collection an auth-bound app most needs. It is kept, and (2) is what makes keeping it
+ * safe.
  */
 export function parsePocketbaseSchema(data: unknown, schema: CachedSchema = emptySchema()): CachedSchema {
-  const collections = Array.isArray(data) ? data : (data as { items?: unknown[] })?.items || [];
-
-  for (const col of collections as Array<{
+  const collections = (Array.isArray(data) ? data : (data as { items?: unknown[] })?.items || []) as Array<{
+    id?: string;
     name: string;
     /** 0.23+ */
     fields?: PocketbaseRawField[];
     /** ≤ 0.22 */
     schema?: PocketbaseRawField[];
     system?: boolean;
-  }>) {
+  }>;
+
+  // A relation field names its target by id, so the whole list has to be indexed
+  // before any one collection can be parsed.
+  const nameByCollectionId = new Map<string, string>();
+  for (const col of collections) {
+    if (col.id && col.name) nameByCollectionId.set(col.id, col.name);
+  }
+
+  for (const col of collections) {
     if (col.system) continue;
 
     const rawFields = col.fields ?? col.schema ?? [];
@@ -238,18 +292,34 @@ export function parsePocketbaseSchema(data: unknown, schema: CachedSchema = empt
     schema.collections.push({
       name: col.name,
       displayName: col.name,
-      fields: rawFields.map((f) => ({
-        name: f.name,
-        displayName: f.name,
-        type: f.type,
-        nativeType: f.type,
-        required: f.required || false,
-        // `id` is present in the 0.23+ `fields` array and was absent from the old
-        // `schema` array. Marking it is what keeps the primary key from reading as an
-        // ordinary editable text column now that it is visible.
-        primaryKey: f.name === 'id' || undefined,
-        enumValues: f.values ?? f.options?.values
-      })),
+      fields: rawFields.map((f) => {
+        const field: SchemaField = {
+          name: f.name,
+          displayName: f.name,
+          type: f.type,
+          nativeType: f.type,
+          required: f.required || false,
+          // `id` is present in the 0.23+ `fields` array and was absent from the old
+          // `schema` array. Marking it is what keeps the primary key from reading as an
+          // ordinary editable text column now that it is visible.
+          primaryKey: f.primaryKey || f.name === 'id' || undefined,
+          enumValues: f.values ?? f.options?.values
+        };
+
+        if (f.hidden === true) field.hidden = true;
+
+        if (f.type === 'relation') {
+          const targetId = f.collectionId ?? f.options?.collectionId;
+          const target = targetId ? nameByCollectionId.get(targetId) : undefined;
+          if (target) {
+            field.relationTarget = target;
+            const maxSelect = f.maxSelect ?? f.options?.maxSelect;
+            field.relationType = maxSelect === 1 ? 'many-to-one' : 'many-to-many';
+          }
+        }
+
+        return field;
+      }),
       primaryKey: 'id'
     });
   }
@@ -291,8 +361,15 @@ interface ParseRawClass {
   classLevelPermissions?: unknown;
 }
 
-/** The class list, from whichever envelope arrived. */
-function parseClassList(data: unknown): ParseRawClass[] {
+/**
+ * The class list, from whichever envelope arrived.
+ *
+ * Exported because {@link parseRelationsResponse} feeds the same list to the contract's
+ * `relationsFromParseClasses`: the Parse family's relation metadata *is* its schema
+ * response, so unwrapping the envelope twice in two places is exactly the drift this
+ * phase keeps finding.
+ */
+export function parseClassList(data: unknown): ParseRawClass[] {
   if (Array.isArray(data)) return data as ParseRawClass[];
   const results = (data as { results?: unknown })?.results;
   if (Array.isArray(results)) return results as ParseRawClass[];
@@ -434,6 +511,184 @@ export function parseGenericSchema(data: unknown, schema: CachedSchema = emptySc
   }
 
   return schema;
+}
+
+// ============================================================================
+// Relation metadata — BCN-005's parsers, given a caller
+// ============================================================================
+
+/**
+ * Does this backend need a **second** request to describe its relations?
+ *
+ * ⚠️ **Only Directus does**, and the call site BCN-005 wrote out for this task says
+ * otherwise. Its sketch asks for `get('/')` on Supabase and `get('/api/collections')`
+ * on PocketBase — but those are the *same URLs* `fetchSchema` has already fetched
+ * (`presets.ts` points `endpoints.schema` at `/rest/v1/` and `/api/collections`
+ * respectively), so following it literally would double every schema sync's request
+ * count and, worse, introduce a window in which the two halves of one sync describe two
+ * different states of the backend. Three of the four backends publish their relation
+ * metadata **inside** the schema response:
+ *
+ * | Backend | Schema response | Relations |
+ * |---|---|---|
+ * | Directus | `GET /fields` | ⚠️ `GET /relations` — a genuinely separate document |
+ * | Supabase / PostgREST | `GET /rest/v1/` (OpenAPI) | the same document's `<fk .../>` annotations |
+ * | PocketBase | `GET /api/collections` | the same list's `relation` fields |
+ * | Parse / NodeGX | `GET /schemas` | the same classes' `Pointer` / `Relation` fields |
+ *
+ * `custom` has no relation model at all (BCN-005 §3.4) and returns `undefined` rather
+ * than an empty array, so "this backend cannot describe relations" and "this backend
+ * has none" stay different answers.
+ */
+export function relationEndpointFor(type: string): string | undefined {
+  return type === 'directus' ? '/relations' : undefined;
+}
+
+/**
+ * PocketBase's default page size for `GET /api/collections`, measured on 0.30.0.
+ *
+ * ⚠️ **`GET /api/collections` is paginated and the preset never said otherwise.**
+ * Measured against the rig:
+ *
+ * ```
+ * /api/collections            -> page 1, perPage 30,  totalItems 12, items 12
+ * /api/collections?perPage=5  -> page 1, perPage 5,   totalItems 12, items 5
+ * ```
+ *
+ * The rig has twelve collections, so the sync has never seen the cliff — but any
+ * PocketBase project with more than thirty collections syncs the first thirty and drops
+ * the rest, silently, with a 200. And it is worse than a truncated list: a relation
+ * field names its target by **collection id**, resolved against the list, so a relation
+ * pointing at collection thirty-one has an unresolvable target and is dropped too. A
+ * project would lose collections *and* relations between collections that did sync,
+ * with nothing anywhere reporting a problem.
+ *
+ * This is the `col.schema` → `col.fields` rename all over again: a request whose answer
+ * looks complete because nothing in it says it is not.
+ */
+const POCKETBASE_COLLECTION_PAGE_SIZE = 500;
+
+/**
+ * The schema path to actually request, given the one the backend is configured with.
+ *
+ * Applied on top of `endpoints.schema` rather than fixed in `presets.ts` because the
+ * preset is copied into each `BackendConfig` **when the backend is created** — editing
+ * the preset would leave every already-configured PocketBase backend asking the old
+ * question forever. A user who has deliberately set their own `perPage` keeps it.
+ */
+export function schemaRequestPath(type: string, configuredPath: string): string {
+  if (type !== 'pocketbase') return configuredPath;
+  if (/[?&]perPage=/.test(configuredPath)) return configuredPath;
+  return `${configuredPath}${configuredPath.includes('?') ? '&' : '?'}perPage=${POCKETBASE_COLLECTION_PAGE_SIZE}`;
+}
+
+/**
+ * Relation metadata → the neutral descriptors, for whichever backend this is.
+ *
+ * `schemaData` is the schema response `parseSchemaResponse` was given; `relationData`
+ * is the answer from {@link relationEndpointFor}, when there was one. Every backend
+ * except Directus reads the first and ignores the second.
+ *
+ * The parsers themselves are `@noodl/backend-contract`'s, not copies — BCN-005 tested
+ * them against verbatim payloads from all four servers and drove them live, and the one
+ * thing missing was a caller. This is the caller. A second implementation here would be
+ * the third copy of a rule this phase exists to have exactly one of.
+ */
+export function parseRelationsResponse(
+  type: string,
+  schemaData: unknown,
+  relationData?: unknown
+): RelationDescriptor[] | undefined {
+  if (type === 'directus') {
+    // `{data: [...]}`, or a bare array if someone configured the endpoint to return one.
+    const rows = Array.isArray(relationData)
+      ? relationData
+      : ((relationData as { data?: unknown[] })?.data as unknown[] | undefined);
+    // ⚠️ `undefined`, not `[]`: the request can 403 (relation metadata is admin-only),
+    // and "we could not ask" must not be stored as "there are none" — the runtime's
+    // fallback is worth more than an empty list.
+    if (!Array.isArray(rows)) return undefined;
+    return relationsFromDirectus(rows);
+  }
+
+  if (type === 'supabase') return relationsFromPostgrestSpec(schemaData as never);
+
+  if (type === 'pocketbase') {
+    const items = Array.isArray(schemaData) ? schemaData : (schemaData as { items?: unknown[] })?.items;
+    return relationsFromPocketBase((items ?? []) as never);
+  }
+
+  if (type === 'parse' || type === 'nodegx') return relationsFromParseClasses(parseClassList(schemaData) as never);
+
+  return undefined;
+}
+
+/**
+ * Store the descriptors on the schema, and back-fill the fields they describe.
+ *
+ * Two separate jobs, and the split is the deviation worth reading:
+ *
+ * - **The descriptors are stored whole**, on `schema.relations`, because they carry
+ *   facts no `SchemaField` has anywhere to put — the junction collection and its two
+ *   columns, whether a duplicate write is idempotent, Directus's two-hop `readPath`.
+ *   That is what a running app needs and what it cannot ask for itself.
+ * - **The field list is only ever *enriched*, never invented.** Where the schema
+ *   already has a field of that name, `relationTarget` and `relationType` are filled
+ *   in; where it does not, nothing is added.
+ *
+ * ⚠️ The second half is deliberate and it costs something. PostgREST names a
+ * many-to-many after the target table (`bcn005_tags`) and there is no such column, so
+ * that relation appears in `schema.relations` and **not** in `bcn005_articles.fields`.
+ * Synthesising the column would put a writable port on the record nodes for something
+ * that is not a column, and a write to it would 400 — the plausible-wrong-value failure
+ * class this phase exists to remove. A relation that is described but has no field is
+ * still reachable by every relation *method*; a field that is not a column is reachable
+ * by everything and works nowhere.
+ *
+ * What enrichment does buy, measured against the rig:
+ *
+ * - Directus's M2M alias `tags` arrives from `GET /fields` as `{type: 'alias',
+ *   schema: null}` with no relation information at all — an ordinary-looking port of
+ *   type `alias`. It becomes `many-to-many → bcn005_tags`, which is what makes the
+ *   runtime's `skipRelations` and one-hop traversal rules apply to it.
+ * - Directus's reverse one-to-many (`bcn005_authors.articles`) has no field either, so
+ *   it is stored and not enriched — see above.
+ */
+export function applyRelationsToSchema(schema: CachedSchema, relations: RelationDescriptor[] | undefined): CachedSchema {
+  if (!relations) return schema;
+
+  schema.relations = relations;
+
+  for (const relation of relations) {
+    const collection = schema.collections.find((candidate) => candidate.name === relation.collection);
+    if (!collection) continue;
+
+    const field = collection.fields.find((candidate) => candidate.name === relation.field);
+    if (!field) continue;
+
+    // Never overwrite a target the schema response itself established — a foreign key
+    // Directus and PostgREST both report on the column is the more specific fact, and
+    // the two agree wherever both exist.
+    if (!field.relationTarget) field.relationTarget = relation.target;
+    if (!field.relationType) field.relationType = relationTypeOf(relation);
+  }
+
+  return schema;
+}
+
+/**
+ * A descriptor's cardinality as the four-value `SchemaField.relationType`.
+ *
+ * ⚠️ `RelationCardinality` has two values and `relationType` has four, so the missing
+ * bit comes from **`write.kind`**, not from the cardinality: a to-many whose write is a
+ * plain foreign key is the *reverse* of a many-to-one — a one-to-many — while a
+ * junction, an array field or a Parse `Relation` op is a genuine many-to-many. Reading
+ * `cardinality` alone would label every reverse one-to-many `many-to-many`, which is
+ * the shape of fact that later reads as "NodeGX thinks this needs a junction table".
+ */
+function relationTypeOf(relation: RelationDescriptor): SchemaField['relationType'] {
+  if (relation.cardinality === 'one') return 'many-to-one';
+  return relation.write.kind === 'foreignKey' ? 'one-to-many' : 'many-to-many';
 }
 
 /**

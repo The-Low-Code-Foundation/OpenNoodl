@@ -27,6 +27,8 @@
  *
  * @module noodl-runtime
  */
+import type { FileTarget } from '@noodl/backend-contract';
+
 class CloudFile {
   readonly name: string;
   readonly url: string;
@@ -34,14 +36,44 @@ class CloudFile {
   readonly contentType?: string;
   /** Bytes the backend reported on upload; absent on a wire that does not report one. */
   readonly size?: number;
+  /**
+   * Where the file lives, on a backend where the name is not an address.
+   *
+   * BCN-007 step 3: PocketBase addresses a file by (collection, record id,
+   * filename) and Supabase by (bucket, path). `signFileUrl` and `deleteFile`
+   * need those, and the only place they can come from is the reference the
+   * upload returned — so it is carried here rather than asked of the author a
+   * second time.
+   *
+   * ⚠️ **It does not survive a save.** `_serializeObject` persists a File-typed
+   * record property as `{__type: 'File', url, name}`, so a file read back off a
+   * record has no target and Sign File URL on PocketBase or Supabase will refuse
+   * with a sentence. That is the same round-trip limit `contentType` and `size`
+   * have and it is documented rather than papered over — see the note above.
+   * Widening the persisted envelope is a stored-data change on the Parse wire.
+   */
+  readonly target?: FileTarget;
 
-  constructor({ name, url, contentType, size }: { name: string; url: string; contentType?: string; size?: number }) {
+  constructor({
+    name,
+    url,
+    contentType,
+    size,
+    target
+  }: {
+    name: string;
+    url: string;
+    contentType?: string;
+    size?: number;
+    target?: FileTarget;
+  }) {
     this.name = name;
     this.url = url;
     // Assigned only when present, so `'contentType' in file` distinguishes "the
     // backend did not say" from "the backend said empty".
     if (contentType !== undefined) this.contentType = contentType;
     if (size !== undefined) this.size = size;
+    if (target !== undefined) this.target = target;
   }
 
   getUrl(): string {
@@ -58,6 +90,11 @@ class CloudFile {
 
   getSize(): number | undefined {
     return this.size;
+  }
+
+  /** See {@link CloudFile.target}. `undefined` on the three backends that do not need one. */
+  getTarget(): FileTarget | undefined {
+    return this.target;
   }
 
   toString(): string {

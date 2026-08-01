@@ -110,16 +110,29 @@ export const pocketbaseDescriptor: BackendDescriptor = {
       'BCN-005 live: PATCH {"tags+": id} and {"tags-": id} are applied server-side in one request and are set-shaped — appending a value already present leaves the list unchanged. ⚠️ On a relation that holds only one record, "+" replaces what is there and "-" clears it whichever id you name'
     ),
 
-    'files.upload': supported('multipart POST to the record endpoint; files are record fields'),
-    'files.sign': supported('POST /api/files/token then ?token= on the file URL'),
-    'files.delete': supported('PATCH the record with the file field cleared'),
-
-    'files.private': degraded(
-      'PocketBase files are protected by the same rule as the record they belong to, so a file is private only if its record is. There is no per-file setting.',
-      'File access follows the collection view rule; the protected flag is per field, not per file.'
+    // ── Files — BCN-007 steps 2/3/5/7, every cell measured ───────────────
+    // Probe: BCN-007-FILES-PROBE-OUTPUT.txt §3 and
+    // BCN-007-FILES-PROBE2-OUTPUT.txt §2.
+    'files.upload': degraded(
+      'On PocketBase a file is a field on a record, not a thing of its own — so the Upload File node needs a Collection and a Field, and a Record ID if it should attach to a record that already exists rather than creating one. Leave them blank and the upload has nowhere to go.',
+      'BCN-007 live: a multipart POST to the RECORD endpoint answers 200 and the field holds a bare filename string. The handle is (collection, record id, filename) and FileRef.target carries it — the contract expresses it rather than approximating it, and this cell is degraded because the target is something the app author has to supply and cannot be guessed'
     ),
-
-    'files.progress': supported('multipart upload goes over the XHR path'),
+    'files.sign': degraded(
+      'A PocketBase file link carries a token rather than a signature. It expires quickly (about three minutes on a default install) and it works for whoever holds it until then, so treat it as short-lived rather than shareable.',
+      'BCN-007 live: POST /api/files/token answers 200 with a JWT whose exp is 180s ahead, and ?token= serves a protected file. The token is per-CALLER, not per-file — its payload names a collection and an auth-record id, not the file'
+    ),
+    'files.delete': degraded(
+      'Deleting a file on PocketBase edits the record it belongs to — the file goes and the record stays. Deleting the record instead takes its files with it.',
+      'BCN-007 live: PATCH {field: null} answers 200, the field reads "" afterwards, and the file URL becomes 404. DELETE of the record also 404s the file. Neither is symmetric with our own DELETE /files/{name}, which removes a file and leaves records pointing at it'
+    ),
+    'files.private': degraded(
+      'PocketBase files are protected by the same rule as the record they belong to, so a file is private only if its record is. Marking a field "protected" on a collection anyone can read does nothing.',
+      '⚠️ BCN-007 live, and stronger than this cell previously claimed: a field created with protected:true — confirmed round-tripped as true by reading the collection back — SERVED WITH NO CREDENTIAL AT ALL when the collection\'s view rule was public. The same field on an admin-only collection answered 404. So `protected` defers to the record rule rather than being an independent file-level control'
+    ),
+    'files.progress': degraded(
+      'The upload works but the progress bar will not move on this backend.',
+      '⚠️ CORRECTED by BCN-007. This cell read `supported` with the evidence "multipart upload goes over the XHR path". It does not: RestDataAdapter is built on `fetch`, which has no upload-progress event'
+    ),
 
     'auth.password': supported('POST /api/collections/{c}/auth-with-password'),
     'auth.signUp': supported('POST /api/collections/{c}/records on an auth collection'),
@@ -135,10 +148,26 @@ export const pocketbaseDescriptor: BackendDescriptor = {
       { method: 'GET', path: '/api/settings', expect: 'an smtp section with enabled: true' },
       'Same silent-log fallback as verification.'
     ),
+    // ⚠️ **The probe named the wrong field, and the field it named is `null`.**
+    // Measured on PocketBase 0.30.0: `auth-methods` answers
+    // `{password:{…}, oauth2:{providers:[], enabled:false}, otp:{…}, authProviders:null}`.
+    // `authProviders` is the ≤0.22 spelling, kept as a deprecated alias — and on
+    // an instance with OAuth **switched off** it is not an empty array, it is
+    // `null`. A probe reading it would have thrown rather than reported "no
+    // providers", which is the failure mode a probe exists to avoid. `oauth2` is
+    // the live field and `oauth2.enabled` is the switch.
+    //
+    // The cell stays `conditional`, and now for a reason that was measured rather
+    // than assumed: the *implementation* exists and has been driven end to end
+    // (BCN-006 step 5 — a stub OIDC provider was stood up so a real round trip
+    // could be observed), but whether any provider is configured is this
+    // instance's business. `RestAuthAdapter.signInWithProvider` asks
+    // `auth-methods` before it navigates anywhere, so this probe and the runtime
+    // check are the same question asked of the same endpoint.
     'auth.oauth': conditional(
       'Signing in with Google, GitHub and the rest depends on which providers you have set up in your PocketBase admin.',
-      { method: 'GET', path: '/api/collections/{collection}/auth-methods', expect: 'an authProviders array with at least one entry' },
-      'Providers are per-collection configuration; auth-methods enumerates them.'
+      { method: 'GET', path: '/api/collections/{collection}/auth-methods', expect: 'oauth2.enabled true, with at least one entry in oauth2.providers' },
+      'MEASURED 2026-08-01 against PocketBase 0.30.0: with a provider configured, auth-methods returns oauth2.providers[] carrying a per-attempt state, codeVerifier and an authURL ending in a bare `redirect_uri=`; POST /api/collections/{c}/auth-with-oauth2 {provider, code, codeVerifier, redirectURL} answers 200 with {token, record, meta.isNew}. With OAuth off the same POST answers 403 "The collection is not configured to allow OAuth2 authentication."'
     ),
     'auth.magicLink': unsupported(
       'PocketBase has no magic-link login. Use email and password, or an OAuth provider.',

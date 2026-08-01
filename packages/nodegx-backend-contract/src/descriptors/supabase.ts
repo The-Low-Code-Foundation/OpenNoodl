@@ -81,11 +81,33 @@ export const supabaseDescriptor: BackendDescriptor = {
       'BCN-005 live: with PRIMARY KEY (article_id, tag_id) the M2M embed answers 200 and POST with Prefer: resolution=merge-duplicates makes the add idempotent; with a surrogate id primary key the identical two tables answer PGRST200 "no matches were found" and no request recovers the relation'
     ),
 
-    'files.upload': supported('Supabase Storage: POST /storage/v1/object/{bucket}/{path}'),
-    'files.sign': supported('POST /storage/v1/object/sign/{bucket}/{path}'),
-    'files.delete': supported('DELETE /storage/v1/object/{bucket}/{path}'),
-    'files.private': supported('private buckets are the Supabase Storage default'),
-
+    // ── Files — BCN-007 steps 2/5/7 ──────────────────────────────────────
+    //
+    // ⚠️ **These five were the only Supabase cells in the descriptor written
+    // from documentation that BCN-007 could turn into measurements.** The rig
+    // has never had a Storage service — `:8056` is plain PostgREST and answers
+    // every `/storage/v1/*` with a bare `404 {}` — and BCN-006 hit the same wall
+    // on auth and correctly refused to flip anything, moving four cells to
+    // `conditional` instead. Rather than repeat that here, BCN-007 stood a real
+    // `supabase/storage-api` up against the rig's existing `supabase-db` and
+    // probed it; the service is in `docker-compose.yml` under the `supabase`
+    // profile so the measurement is reproducible.
+    //
+    // Probe: `BCN-007-SUPABASE-STORAGE-OUTPUT.txt`, 14 checks, 0 failures.
+    'files.upload': degraded(
+      'Supabase keeps files in a Storage bucket, so the Upload File node needs a Bucket and a Path. There is no default bucket, and a bucket name that does not exist fails with a message that does not say so.',
+      'BCN-007 live: POST /storage/v1/object/{bucket}/{path} answers 200 with {Key, Id} — and NOTHING ELSE. No url, no size, no content type; those exist only on a second call to POST /object/list/{bucket}, so an upload reports them absent rather than making a round trip to dress the answer up'
+    ),
+    'files.sign': supported(
+      'BCN-007 live: POST /storage/v1/object/sign/{bucket}/{path} with {expiresIn} answers 200 and the link EXPIRES — verified by waiting it out, after which it answers 400 InvalidJWT "jwt expired". ⚠️ The signedURL it returns is RELATIVE (/object/sign/…), so it resolves against the app\'s own origin and 404s there unless the adapter puts the origin and the /storage/v1 mount back'
+    ),
+    'files.delete': degraded(
+      'Deleting a file that is not there is an error on Supabase rather than a no-op, so a Delete File node that runs twice reports a failure the second time.',
+      'BCN-007 live: DELETE /storage/v1/object/{bucket}/{path} answers 200 {"message":"Successfully deleted"} and the public URL then 400s. A path that never existed answers 400 with statusCode 404 "Object not found" — NOT idempotent, unlike nodegx-backend, which answers 200 for an unknown name by design'
+    ),
+    'files.private': supported(
+      'BCN-007 live: a bucket created public:false serves 400 on /object/public/{bucket}/{path} while an identical public:true bucket serves 200 with the bytes. Privacy is the bucket\'s, not the file\'s, and row-level security applies on top — an upload with the anon key was refused with "new row violates row-level security policy"'
+    ),
     'files.progress': degraded(
       "Upload progress isn't reported by Supabase — the file still uploads, the bar just won't move.",
       'The Storage endpoint is consumed over fetch, which has no upload-progress event.'
@@ -132,13 +154,35 @@ export const supabaseDescriptor: BackendDescriptor = {
       'DOCUMENTED, NOT PROBED — POST /auth/v1/recover is read from documentation.'
     ),
     'auth.oauth': conditional(
-      'Signing in with Google, GitHub and the rest depends on which providers you have enabled in your Supabase dashboard.',
+      'Signing in with a provider needs Supabase Auth, and NodeGX does not support it on this backend yet.',
       { method: 'GET', path: '/auth/v1/settings', expect: 'an external section listing enabled providers' },
-      'Providers are per-project configuration; the settings endpoint enumerates them.'
+      'DOCUMENTED, NOT PROBED — same as auth.password. Which providers a project has enabled is per-project configuration, but that is moot while nothing here can reach GoTrue at all.'
     ),
 
-    // The one place Supabase does something the built-in backend cannot.
-    'auth.magicLink': supported('POST /auth/v1/otp — magic links are a first-class Supabase flow'),
+    // ⚠️ **This was `supported`, and it was the last Supabase auth cell still
+    // claiming a capability the product does not have.** BCN-006 corrected its
+    // five neighbours and flagged that it had not touched the descriptors; this
+    // one survived the sweep because its evidence string reads like a fact about
+    // Supabase — and it is one. `POST /auth/v1/otp` really is a first-class
+    // Supabase flow. The cell is not about Supabase, though: it is about whether
+    // **NodeGX** can drive it, and `RestAuthAdapter` refuses every Supabase auth
+    // call with `SUPABASE_AUTH_UNSUPPORTED` before a request is issued.
+    //
+    // So a builder on Supabase saw `Request Magic Link` offered as fully
+    // supported, wired it up, and got a refusal at runtime — the precise failure
+    // this phase's central promise exists to prevent, in the one family where the
+    // spec names it: *"`Request Magic Link` on a Directus project is a disabled
+    // node with a reason, not a node that emits nothing."*
+    //
+    // `conditional` rather than `unsupported` for the same reason as its five
+    // neighbours: the editor treats it as unavailable until a probe says
+    // otherwise, and the day a GoTrue is stood up and measured this is the cell
+    // that gets promoted rather than rewritten.
+    'auth.magicLink': conditional(
+      'Sending a magic-link sign-in needs Supabase Auth, and NodeGX does not support it on this backend yet.',
+      { method: 'GET', path: '/auth/v1/settings', expect: 'a settings document rather than a 404' },
+      'DOCUMENTED, NOT PROBED — POST /auth/v1/otp is read from documentation. Magic links being first-class in Supabase is a fact about Supabase, not about whether we can reach them: every /auth/v1/* answers 404 in this rig and RestAuthAdapter issues no Supabase request at all.'
+    ),
 
     // ⚠️ **The one realtime cell nothing has ever verified.** BCN-008 tried and
     // could not: the rig's "Supabase" is one Postgres and one PostgREST

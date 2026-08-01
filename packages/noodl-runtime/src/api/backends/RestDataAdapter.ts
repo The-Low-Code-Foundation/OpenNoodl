@@ -53,12 +53,28 @@
  * Directus's M2M `include` is **two hops** (one hop returns junction rows with a
  * 200), and a PostgREST embed nests under the *table* name unless it is aliased.
  *
+ * ## Files — BCN-007 steps 2–7
+ *
+ * `uploadFile`/`signFileUrl`/`deleteFile` were blanket refusals here. They are
+ * implementations now, on wires that were **probed before they were written**,
+ * and the probes contradicted the spec twice: Directus does **not** refuse to
+ * delete a referenced file (204, and it nulls the reference), and PocketBase's
+ * `protected: true` does **not** make a file private on its own. Both are
+ * written up at their call sites and in the descriptors.
+ *
+ * The one structural thing to know: **two of these three cannot store a file
+ * without being told where.** Supabase needs a bucket and a path, PocketBase
+ * needs a collection, a field and (optionally) a record. `FileTarget` carries
+ * it, the other three backends ignore it, and a missing one is a **refusal with
+ * a sentence** rather than a guessed bucket name — see {@link
+ * RestDataAdapter.uploadFile}.
+ *
  * ## What is not here
  *
- * Files (`uploadFile`/`signFileUrl`/`deleteFile`) are BCN-007's. They are
- * implemented as explicit refusals carrying the reason, not as silent no-ops:
- * the contract requires all fourteen methods and a method that quietly does
- * nothing is the failure this phase exists to remove.
+ * **Upload progress.** `fetch` cannot report it; `XMLHttpRequest` can, which is
+ * why the Parse wire does. Nothing synthetic is emitted and the three
+ * `files.progress` cells were corrected to `degraded` — two of them read
+ * `supported` on the strength of an XHR path this adapter does not use.
  *
  * @module api/backends/RestDataAdapter
  */
@@ -83,6 +99,7 @@ import {
   type DeleteOptions,
   type DistinctOptions,
   type FetchOptions,
+  type FileError,
   type IDataAdapter,
   type IncrementOptions,
   type ListOption,
@@ -106,15 +123,40 @@ import {
 } from '@noodl/backend-contract/translators';
 
 import { AdapterEvents } from './AdapterEvents';
+import { directusPathOverride } from './directusSystem';
+import {
+  DIRECTUS_FILE_FIELDS,
+  POCKETBASE_FILE_FIELDS,
+  SUPABASE_FILE_FIELDS,
+  jwtExpiry,
+  normalizeFileRef
+} from './fileRef';
 import { normalizeRecordIdentities, normalizeRecordIdentity } from './recordIdentity';
 
 /** Query-string parameters as **pairs**, not a record — PostgREST repeats keys. */
 type Params = Array<[string, string]>;
 
+/**
+ * What may go on the wire as a request body.
+ *
+ * ⚠️ **Widened by BCN-007, and the widening is load-bearing.** Every data method
+ * sends JSON, so `string` was enough — but all three of these backends take an
+ * upload as either raw bytes or `multipart/form-data`, and both of those are
+ * *binary*. A `JSON.stringify` in the middle of an upload path turns a PNG into
+ * the string `{}` and the backend stores it, answers 200, and serves back four
+ * bytes of nothing. The type is what stops that being possible.
+ *
+ * `Blob` and `FormData` only, deliberately — not the whole of `BodyInit`. Those
+ * are the two shapes the upload paths here produce (`File extends Blob`), and
+ * every wider member brings a variance problem with `fetch`'s own `BodyInit`
+ * that has to be cast away, which is the opposite of what this type is for.
+ */
+export type RequestBody = string | Blob | FormData;
+
 /** The subset of `fetch` this adapter uses, so a test can inject one. */
 export type FetchLike = (
   url: string,
-  init?: { method?: string; headers?: Record<string, string>; body?: string }
+  init?: { method?: string; headers?: Record<string, string>; body?: RequestBody }
 ) => Promise<{
   status: number;
   headers: { get(name: string): string | null };
@@ -344,8 +386,42 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
 
   // ── The wire ─────────────────────────────────────────────────────────────
 
+  /**
+   * Fill a profile path template — with one substitution the profile cannot
+   * express.
+   *
+   * ⚠️ **Directus's system collections are not under `/items`.** `directus_users`
+   * is served from `/users`, and `/items/directus_users` answers **403** with
+   * *"You don't have permission to access this"* — measured, with an admin
+   * token. That message reaching a user whose permissions are fine is the
+   * plausible-wrong-answer this phase exists to remove, which is why it is
+   * handled here rather than left as a gap.
+   *
+   * This is the capability BYOB had and this adapter did not, and it is
+   * **BCN-010's stated precondition** for deleting the four `noodl.byob.*`
+   * types. See `directusSystem.ts` for the measurements, for why `apiPathMode`
+   * is derived rather than carried as a port, and for the duplicate map.
+   *
+   * The `{id}` suffix is preserved: `/users/{id}` and `/files/{id}` are the same
+   * shape as `/items/{collection}/{id}`, so a record template keeps working.
+   *
+   * Gated on the template being an `/items/` one rather than on
+   * `profile.type === 'directus'`, for the reason {@link recordTarget} gives for
+   * the same choice: the branch then names the wire fact it depends on. It also
+   * means a PocketBase collection someone chose to call `directus_users` is
+   * untouched, which a type-free prefix test would not have managed.
+   */
   private path(template: string, collection: string, id?: string): string {
-    return template.replace('{collection}', encodeURIComponent(collection)).replace('{id}', encodeURIComponent(id ?? ''));
+    const override = template.startsWith('/items/') ? directusPathOverride(collection) : undefined;
+    const effective =
+      override === undefined
+        ? template
+        : // `/items/{collection}` -> `/users`; `/items/{collection}/{id}` -> `/users/{id}`.
+          override + (template.includes('{id}') ? '/{id}' : '');
+
+    return effective
+      .replace('{collection}', encodeURIComponent(collection))
+      .replace('{id}', encodeURIComponent(id ?? ''));
   }
 
   /**
@@ -401,7 +477,24 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
    */
   private request(
     handle: BackendHandle,
-    init: { method?: string; path: string; params?: Params; headers?: Record<string, string>; body?: unknown },
+    init: {
+      method?: string;
+      path: string;
+      params?: Params;
+      headers?: Record<string, string>;
+      body?: unknown;
+      /**
+       * Send `body` as-is instead of `JSON.stringify`-ing it — the upload path.
+       *
+       * ⚠️ A separate flag rather than an `instanceof` sniff on the body. The
+       * sniff would have to know every binary type the platform offers
+       * (`Blob`, `File`, `FormData`, `ArrayBuffer`, every `TypedArray`, Node's
+       * `Buffer`), and the one it forgot would be silently JSON-stringified
+       * into `{}` — a 200 that stores four bytes of nothing. The caller always
+       * knows which it is sending.
+       */
+      raw?: boolean;
+    },
     callbacks: { ok: (body: unknown, headers: { get(name: string): string | null }) => void; fail: (message: string) => void }
   ): void {
     const url = this.url(handle, init.path, init.params ?? []);
@@ -409,7 +502,12 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
     this.fetchImpl(url, {
       method: init.method || 'GET',
       headers: init.headers,
-      body: init.body === undefined ? undefined : JSON.stringify(init.body)
+      body:
+        init.body === undefined
+          ? undefined
+          : init.raw
+            ? (init.body as RequestBody)
+            : JSON.stringify(init.body)
     })
       .then((response) =>
         response.text().then((text) => {
@@ -1570,32 +1668,562 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
     return result;
   }
 
-  // ── Files — BCN-007 ──────────────────────────────────────────────────────
+  // ── Files — BCN-007 steps 2–7 ────────────────────────────────────────────
 
   /**
-   * The three file methods are BCN-007's, and BCN-004's Out of Scope says so.
+   * `beginFile` is `begin` with the file callbacks' error envelope.
    *
-   * They refuse loudly rather than silently, and they refuse with the
-   * `FileError` envelope the file callbacks actually declare (`{error, status}`)
-   * rather than the bare string the eleven data methods take — a BCN-002
-   * correction that two node call sites depend on to tell a 403 from a 500.
+   * The eleven data methods take `error(message: string)`; the three file
+   * methods take `error({error, status})` — a BCN-002 correction that two node
+   * call sites depend on to tell a 403 from a 500. Rather than let each file
+   * method remember to wrap, the wrapping is here once.
+   */
+  private beginFile(
+    handle: BackendHandle,
+    key: CapabilityKey,
+    error: (err?: FileError) => void
+  ): RestWireProfile | undefined {
+    return this.begin(handle, key, (message) => error({ error: message }));
+  }
+
+  /**
+   * Upload a file. Three genuinely different operations behind one name.
    *
-   * ⚠️ Note the descriptor disagreement, recorded rather than papered over: all
-   * three backends have `files.upload` **supported** because their APIs do
-   * support it. The gap is this adapter, not the backend, and a cell that says
-   * so would be a lie about Directus.
+   * | Backend | What an upload *is* |
+   * |---|---|
+   * | Directus | `POST /files`, multipart, field `file`. A file is its own object. |
+   * | Supabase | `POST /storage/v1/object/{bucket}/{path}`, raw bytes. A file is an object in a bucket. |
+   * | PocketBase | multipart create-or-update of a **record**. A file is a field. |
+   *
+   * All three measured — `BCN-007-FILES-PROBE-OUTPUT.txt` and
+   * `BCN-007-SUPABASE-STORAGE-OUTPUT.txt`.
+   *
+   * ⚠️ **`onUploadProgress` is never called on any of them, and that is not an
+   * oversight.** `fetch` has no upload-progress event; only `XMLHttpRequest`
+   * does, which is why the Parse wire has one. Rather than fire a single
+   * synthetic 100% event — which is worse than nothing, because a progress bar
+   * that jumps from 0 to 100 tells the author their instrumentation works when
+   * it does not — nothing is emitted and the three `files.progress` cells were
+   * corrected from `supported` to `degraded`. Two of them claimed *"the XHR
+   * upload path is client-side"*, which was written before this adapter existed.
    */
   uploadFile(handle: BackendHandle, options: UploadFileOptions): void {
-    options.error({ error: `Uploading files to ${handle.type} is not available yet.` });
+    const profile = this.beginFile(handle, 'files.upload', options.error);
+    if (!profile) return;
+
+    const blob = options.file as unknown as Blob;
+    // `UploadFileOptions.file` is typed `{name, type?}` — the structural subset
+    // of `File` the Parse wire needed. A real `File`/`Blob` is what every caller
+    // passes; anything else has no bytes and would upload an empty object with a
+    // 200 to show for it.
+    if (typeof (blob as { arrayBuffer?: unknown })?.arrayBuffer !== 'function' && typeof Blob !== 'undefined' && !(blob instanceof Blob)) {
+      options.error({
+        error:
+          'Upload File was given something that is not a file. Wire the File output of an Open File Picker node into it.'
+      });
+      return;
+    }
+
+    const contentType = options.file.type || 'application/octet-stream';
+
+    switch (profile.type) {
+      case 'directus':
+        return this.uploadDirectus(handle, profile, options, blob);
+      case 'supabase':
+        return this.uploadSupabase(handle, profile, options, blob, contentType);
+      case 'pocketbase':
+        return this.uploadPocketBase(handle, profile, options, blob);
+    }
   }
 
+  /**
+   * Directus: `POST /files`, `multipart/form-data`, the part named `file`.
+   *
+   * ⚠️ **The `Content-Type` header must be *removed*, not set.** `headers()`
+   * sets `application/json` for every data request; a multipart POST carrying
+   * that header sends a body the server cannot parse and gets a 400 that names
+   * the wrong thing. The boundary is `fetch`'s to choose and it only chooses one
+   * when no header is present.
+   *
+   * The synthesised `url` is `/assets/{id}` **without a credential**. That URL
+   * 403s in an `<img>` (BCN-004-FILE-FACTS §2.1) and is still the right thing to
+   * put on the `FileRef`, because a `FileRef.url` is **persisted into a record
+   * property** by `_serializeObject`. Baking the caller's access token into it
+   * would write a live credential into the user's database, where it would
+   * outlive the session and be readable by everyone who can read the row. The
+   * usable link comes from {@link signFileUrl}, is minted per use, and is never
+   * stored.
+   */
+  private uploadDirectus(
+    handle: BackendHandle,
+    profile: RestWireProfile,
+    options: UploadFileOptions,
+    blob: Blob
+  ): void {
+    const form = new FormData();
+    form.append('file', blob, options.file.name);
+
+    this.request(
+      handle,
+      {
+        method: 'POST',
+        path: '/files',
+        headers: multipartHeaders(this.headers(profile, handle)),
+        body: form,
+        raw: true
+      },
+      {
+        ok: (body) => {
+          const file = readRecord(profile, body);
+          if (!file) {
+            options.error({ error: 'Directus accepted the upload but did not describe the stored file.' });
+            return;
+          }
+          options.success(
+            normalizeFileRef(file, DIRECTUS_FILE_FIELDS, (name) => (name ? `${baseOf(handle)}/assets/${name}` : undefined))
+          );
+        },
+        fail: (message) => options.error({ error: message })
+      }
+    );
+  }
+
+  /**
+   * Supabase Storage: raw bytes to `POST /storage/v1/object/{bucket}/{path}`.
+   *
+   * ⚠️ **A different service from PostgREST, on the same origin in a real
+   * Supabase project and on a different port in our rig.** `handle.url` is the
+   * project origin, which is correct for a deployed project; the rig runs
+   * `supabase/storage-api` separately, which is why the live driver points a
+   * second handle at it. The spec's own trap says this: *"a file 403 will look
+   * like a data 403 and have a different cause"*.
+   *
+   * The response is `{Key, Id}` and carries **no URL, no size and no content
+   * type** — measured. `Key` is `{bucket}/{path}`, so the public URL is
+   * `/storage/v1/object/public/{Key}`. That URL works only for a bucket created
+   * `public: true`; on a private bucket it answers **400** and the usable link
+   * comes from {@link signFileUrl}.
+   */
+  private uploadSupabase(
+    handle: BackendHandle,
+    profile: RestWireProfile,
+    options: UploadFileOptions,
+    blob: Blob,
+    contentType: string
+  ): void {
+    const target = options.target;
+    if (target?.kind !== 'bucket') {
+      options.error({ error: SUPABASE_NEEDS_BUCKET });
+      return;
+    }
+
+    this.request(
+      handle,
+      {
+        method: 'POST',
+        path: `${STORAGE_ROOT}/object/${storagePath(target.bucket, target.path)}`,
+        headers: Object.assign(this.headers(profile, handle), { 'Content-Type': contentType }),
+        body: blob,
+        raw: true
+      },
+      {
+        ok: (body) => {
+          const file = (body ?? {}) as Record<string, unknown>;
+          options.success(
+            normalizeFileRef(
+              file,
+              SUPABASE_FILE_FIELDS,
+              (key) => (key ? `${baseOf(handle)}${STORAGE_ROOT}/object/public/${encodePath(key)}` : undefined),
+              target
+            )
+          );
+        },
+        fail: (message) => options.error({ error: message })
+      }
+    );
+  }
+
+  /**
+   * PocketBase: a multipart create-or-update of the **record** the file hangs
+   * off.
+   *
+   * `recordId` present → `PATCH .../records/{id}`; absent → `POST .../records`,
+   * which creates the record as part of the upload. Both measured.
+   *
+   * ⚠️ **Deliberately not the `field+` append form.** PocketBase's multi-file
+   * fields take `gallery+` to *add* and `gallery` to *replace* (both observed).
+   * The plain form is used, so `record[field]` after the write contains exactly
+   * what was just uploaded and the filename can be read back without guessing
+   * which entry is ours. An append would leave the adapter picking an element
+   * out of a list it did not fully author.
+   */
+  private uploadPocketBase(
+    handle: BackendHandle,
+    profile: RestWireProfile,
+    options: UploadFileOptions,
+    blob: Blob
+  ): void {
+    const target = options.target;
+    if (target?.kind !== 'record') {
+      options.error({ error: POCKETBASE_NEEDS_RECORD });
+      return;
+    }
+
+    const form = new FormData();
+    form.append(target.field, blob, options.file.name);
+
+    const creating = !target.recordId;
+    const path = creating
+      ? this.path(profile.createPath, target.collection)
+      : this.path(profile.recordPath, target.collection, target.recordId);
+
+    this.request(
+      handle,
+      {
+        method: creating ? 'POST' : 'PATCH',
+        path,
+        headers: multipartHeaders(this.headers(profile, handle)),
+        body: form,
+        raw: true
+      },
+      {
+        ok: (body) => {
+          const record = readRecord(profile, body);
+          const stored = readPocketBaseFileName(record, target.field);
+          const recordId = typeof record?.id === 'string' ? record.id : undefined;
+
+          if (!record || !stored || !recordId) {
+            options.error({
+              error: `PocketBase accepted the upload but "${target.field}" on the saved record does not name a file. Check that it is a file-typed field.`
+            });
+            return;
+          }
+
+          options.success(
+            normalizeFileRef(
+              { name: stored },
+              POCKETBASE_FILE_FIELDS,
+              () => `${baseOf(handle)}/api/files/${encodeURIComponent(target.collection)}/${encodeURIComponent(recordId)}/${encodeURIComponent(stored)}`,
+              { kind: 'record', collection: target.collection, recordId, field: target.field }
+            )
+          );
+        },
+        fail: (message) => options.error({ error: message })
+      }
+    );
+  }
+
+  /**
+   * A usable link to a file — and, on two of these three, **not a signed one**.
+   *
+   * This is step 4's substance. The three backends answer the same question with
+   * two different kinds of link, and the difference is the whole reason
+   * `SignedFileUrl.kind` exists:
+   *
+   * | Backend | Mechanism | `kind` | Expiry |
+   * |---|---|---|---|
+   * | Supabase | `POST /object/sign/{bucket}/{path}` with `expiresIn` | `signed` | asked for, and real — 400 `jwt expired` after it |
+   * | Directus | `?access_token=` on `/assets/{id}` | `token` | the **session's**, ~900s, read out of the JWT |
+   * | PocketBase | `POST /api/files/token`, then `?token=` | `token` | the **file token's**, 180s in the rig |
+   *
+   * ⚠️ **A `token` URL carries the caller's own credential.** Pasting a Directus
+   * asset URL to a colleague hands them the session token; pasting a Supabase
+   * signed URL hands them a link that works for the file and nothing else. Those
+   * are different enough that the node publishes the distinction on its outputs
+   * rather than leaving it to a doc page — `signfileurl.ts`.
+   *
+   * ⚠️ **Directus's is the caller's *session* token, not a per-file one.**
+   * Directus has no per-asset token to mint, so this is the strongest link the
+   * API offers and its expiry is whenever the session ends. `ttlSeconds` is
+   * therefore reported from the JWT rather than from any request this made —
+   * an honest number, but a number about the session.
+   */
   signFileUrl(handle: BackendHandle, options: SignFileUrlOptions): void {
-    options.error({ error: `File links for ${handle.type} are not available yet.` });
+    const profile = this.beginFile(handle, 'files.sign', options.error);
+    if (!profile) return;
+
+    const token = handle.sessionToken || handle.publicToken;
+
+    switch (profile.type) {
+      case 'directus': {
+        if (!token) {
+          options.error({
+            error:
+              'A Directus asset link needs a signed-in session or a public token — the backend has neither right now.'
+          });
+          return;
+        }
+        const expiry = jwtExpiry(token);
+        options.success({
+          url: `${baseOf(handle)}/assets/${encodeURIComponent(options.name)}?access_token=${encodeURIComponent(token)}`,
+          kind: 'token',
+          ...(expiry ?? {})
+        });
+        return;
+      }
+
+      case 'supabase': {
+        const target = options.target;
+        if (target?.kind !== 'bucket') {
+          options.error({ error: LOST_TARGET });
+          return;
+        }
+        this.request(
+          handle,
+          {
+            method: 'POST',
+            path: `${STORAGE_ROOT}/object/sign/${storagePath(target.bucket, target.path)}`,
+            headers: this.headers(profile, handle),
+            body: { expiresIn: SIGNED_URL_TTL_SECONDS }
+          },
+          {
+            ok: (body) => {
+              // ⚠️ `signedURL` is **relative** — `/object/sign/{bucket}/{path}?token=…`
+              // — so it needs the origin AND the `/storage/v1` mount putting
+              // back. Handing it to an `<img src>` as returned resolves against
+              // the *app's* origin and 404s there, which reads as a broken file.
+              const relative = (body as { signedURL?: unknown } | undefined)?.signedURL;
+              if (typeof relative !== 'string' || relative.length === 0) {
+                options.error({ error: 'Supabase Storage signed the file but did not return a URL.' });
+                return;
+              }
+              const url = `${baseOf(handle)}${STORAGE_ROOT}${relative}`;
+              const expiry = jwtExpiry(tokenParam(url));
+              options.success({ url, kind: 'signed', ...(expiry ?? {}) });
+            },
+            fail: (message) => options.error({ error: message })
+          }
+        );
+        return;
+      }
+
+      case 'pocketbase': {
+        const target = options.target;
+        if (target?.kind !== 'record') {
+          options.error({ error: LOST_TARGET });
+          return;
+        }
+        this.request(
+          handle,
+          { method: 'POST', path: '/api/files/token', headers: this.headers(profile, handle) },
+          {
+            ok: (body) => {
+              const fileToken = (body as { token?: unknown } | undefined)?.token;
+              if (typeof fileToken !== 'string' || fileToken.length === 0) {
+                options.error({ error: 'PocketBase did not return a file token.' });
+                return;
+              }
+              const base = `${baseOf(handle)}/api/files/${encodeURIComponent(target.collection)}/${encodeURIComponent(target.recordId ?? '')}/${encodeURIComponent(options.name)}`;
+              const expiry = jwtExpiry(fileToken);
+              options.success({
+                url: `${base}?token=${encodeURIComponent(fileToken)}`,
+                kind: 'token',
+                ...(expiry ?? {})
+              });
+            },
+            fail: (message) => options.error({ error: message })
+          }
+        );
+        return;
+      }
+    }
   }
 
+  /**
+   * Delete a file. Three different meanings, all three now measured, and **two
+   * of the spec's three sentences about them were wrong**.
+   *
+   * | Backend | What deletion does |
+   * |---|---|
+   * | Directus | `DELETE /files/{id}` → 204. Succeeds **even when referenced**, and Directus nulls the reference. |
+   * | Supabase | `DELETE /storage/v1/object/{bucket}/{path}` → 200. A path that never existed is a **400**, not a no-op. |
+   * | PocketBase | `PATCH` the record with the field cleared → 200. The blob goes; the record stays. |
+   *
+   * ⚠️ **The spec's trap — *"Directus will not delete a file that is
+   * referenced"* — is false.** Measured with a real `directus_files` relation
+   * created through `POST /relations`: the delete answers **204**, the file is
+   * gone, and the referencing row's field becomes `null`
+   * (`BCN-007-FILES-PROBE2-OUTPUT.txt` §1). The trap warned that a `deleteFile`
+   * reporting success from a different code path *"will look correct and leave
+   * the file"*; the real hazard turned out to be the opposite one, and an
+   * adapter written to the spec would have added a defensive pre-check for a
+   * refusal that never comes.
+   *
+   * ⚠️ **PocketBase deletion is not symmetric with ours.** Clearing the field
+   * removes the blob but leaves the record, so a Delete File node on PocketBase
+   * silently edits a record — which is why the `files.delete` cell says so.
+   */
   deleteFile(handle: BackendHandle, options: DeleteFileOptions): void {
-    options.error({ error: `Deleting files from ${handle.type} is not available yet.` });
+    const profile = this.beginFile(handle, 'files.delete', options.error);
+    if (!profile) return;
+
+    switch (profile.type) {
+      case 'directus':
+        this.request(
+          handle,
+          { method: 'DELETE', path: `/files/${encodeURIComponent(options.file.name)}`, headers: this.headers(profile, handle) },
+          {
+            ok: (body) => options.success((body ?? {}) as Record<string, unknown>),
+            fail: (message) => options.error({ error: message })
+          }
+        );
+        return;
+
+      case 'supabase': {
+        const target = options.target;
+        if (target?.kind !== 'bucket') {
+          options.error({ error: LOST_TARGET });
+          return;
+        }
+        this.request(
+          handle,
+          {
+            method: 'DELETE',
+            path: `${STORAGE_ROOT}/object/${storagePath(target.bucket, target.path)}`,
+            headers: this.headers(profile, handle)
+          },
+          {
+            ok: (body) => options.success((body ?? {}) as Record<string, unknown>),
+            fail: (message) => options.error({ error: message })
+          }
+        );
+        return;
+      }
+
+      case 'pocketbase': {
+        const target = options.target;
+        if (target?.kind !== 'record' || !target.recordId) {
+          options.error({ error: LOST_TARGET });
+          return;
+        }
+        this.request(
+          handle,
+          {
+            method: 'PATCH',
+            path: this.path(profile.recordPath, target.collection, target.recordId),
+            headers: this.headers(profile, handle),
+            body: { [target.field]: null }
+          },
+          {
+            ok: (body) => options.success((body ?? {}) as Record<string, unknown>),
+            fail: (message) => options.error({ error: message })
+          }
+        );
+        return;
+      }
+    }
   }
+}
+
+// ── File helpers, exported for the unit suite ──────────────────────────────
+
+/** Supabase Storage's mount, on the project origin. Not PostgREST's `/rest/v1`. */
+const STORAGE_ROOT = '/storage/v1';
+
+/**
+ * How long a Supabase signed URL lasts.
+ *
+ * Matches `nodegx-backend`'s own `signedUrlTtlSeconds` default (300, see
+ * `storage/config.ts`), so the two backends that genuinely sign behave alike
+ * rather than differing by whichever number each adapter's author picked.
+ */
+const SIGNED_URL_TTL_SECONDS = 300;
+
+const SUPABASE_NEEDS_BUCKET =
+  'Supabase keeps files in a Storage bucket. Set Bucket and Path on the node — there is no default, ' +
+  'and a guessed bucket name fails with an error that does not say so.';
+
+const POCKETBASE_NEEDS_RECORD =
+  'On PocketBase a file is a field on a record. Set Collection and Field on the node (and Record ID to ' +
+  'attach to an existing record rather than create a new one) — a file with no record has nowhere to live.';
+
+/**
+ * The sentence for a **later** operation that lost the file's location.
+ *
+ * ⚠️ Not the upload sentence, and the difference matters. Sign File URL and
+ * Delete File have no Collection or Bucket inputs to set, so telling the user to
+ * "set Collection and Field on the node" names ports that are not there —
+ * exactly the plausible-looking wrong message this phase exists to remove.
+ *
+ * The real cause is one thing and it is worth saying: `cloudstore.js`'s
+ * `_serializeObject` persists a File-typed record property as
+ * `{__type: 'File', url, name}`, so a file **read back off a saved record** has
+ * no `target` and cannot be addressed on these two backends. A file still held
+ * from the Upload File node that produced it works fine.
+ */
+const LOST_TARGET =
+  'This file came from a saved record, and on this backend a record only stores the file\'s name — not the ' +
+  'bucket or collection it lives in, which is what a link or a delete needs. Wire the Cloud File straight ' +
+  'from the Upload File node that produced it, or use a cloud function that knows where the file is.';
+
+/** The origin to compose file URLs against, without a trailing slash. */
+function baseOf(handle: BackendHandle): string {
+  return (handle.url || '').replace(/\/$/, '');
+}
+
+/**
+ * `bucket/path`, each segment escaped, `/` left as a separator.
+ *
+ * `encodeURIComponent` on the whole thing would turn the path separators into
+ * `%2F` and address one object whose name contains slashes — which Storage
+ * treats as a different object and answers 400 for. Only the segments are
+ * escaped.
+ */
+function storagePath(bucket: string, path: string): string {
+  return `${encodeURIComponent(bucket)}/${encodePath(path)}`;
+}
+
+function encodePath(path: string): string {
+  return String(path)
+    .split('/')
+    .filter((segment) => segment.length > 0)
+    .map(encodeURIComponent)
+    .join('/');
+}
+
+/**
+ * The headers for a multipart request: everything the data path sends **except**
+ * `Content-Type`.
+ *
+ * ⚠️ Deleting it is the point. `fetch` picks the `multipart/form-data` boundary
+ * itself and only does so when the header is absent; an inherited
+ * `application/json` produces a body the server reads as JSON, fails to parse,
+ * and reports as a malformed request naming the wrong thing entirely.
+ */
+function multipartHeaders(headers: Record<string, string>): Record<string, string> {
+  const copy = Object.assign({}, headers);
+  delete copy['Content-Type'];
+  return copy;
+}
+
+/**
+ * The filename PocketBase stored, out of the saved record.
+ *
+ * A single-file field holds a string; a `maxSelect > 1` field holds an array.
+ * The **last** entry is taken: this adapter always writes with the replacing
+ * form (never `field+`), so on a multi-file field the array holds exactly what
+ * was just uploaded, and `last` is right for both shapes without a branch that
+ * only one of them exercises.
+ */
+export function readPocketBaseFileName(record: Record<string, unknown> | undefined, field: string): string | undefined {
+  const value = record?.[field];
+  if (typeof value === 'string') return value.length > 0 ? value : undefined;
+  if (Array.isArray(value) && value.length > 0) {
+    const last = value[value.length - 1];
+    return typeof last === 'string' && last.length > 0 ? last : undefined;
+  }
+  return undefined;
+}
+
+/** The `token` query parameter of a URL, without needing a `URL` polyfill. */
+export function tokenParam(url: string): string | undefined {
+  const query = url.split('?')[1];
+  if (!query) return undefined;
+  for (const pair of query.split('&')) {
+    const [key, value] = pair.split('=');
+    if (key === 'token' && value) return decodeURIComponent(value);
+  }
+  return undefined;
 }
 
 // ── Free functions, exported for the unit suite ────────────────────────────

@@ -286,6 +286,46 @@ describe('nodegx-backend HTTP surface', () => {
     expect(bad.json.code).toBe(101);
   });
 
+  /**
+   * BCN-006's other half — `emailVerified` is a **fact**, not an absence.
+   *
+   * The client could only ever half-fix this. `POST /users` answers
+   * `{objectId, createdAt, sessionToken}` and nothing else, deliberately, so
+   * BCN-006 made the *client* default a brand-new sign-up to `false`. That fixed
+   * the account it had just created and nothing else: a user whose row predates
+   * the change, or who signs in on a fresh page load, still read `undefined` —
+   * and a graph doing `if (!user.emailVerified) show the "please verify" banner`
+   * could not tell "not verified" from "this backend does not track it".
+   *
+   * ⚠️ **`false`, not `0`.** SQLite has no boolean type and this codebase has
+   * been bitten by that before (`isFlagSet` exists because `record.emailVerified
+   * === true` was false for a verified user). The column is inferred as `Boolean`
+   * and comes back as a real boolean; asserting the *type* is what would catch a
+   * regression to a number, which would reach a graph as a truthy-looking `0`.
+   */
+  it('signup writes emailVerified: false, so login and /users/me report it', async () => {
+    const signup = await req<UserResponse>('POST', '/users', {
+      username: 'bcn006b_ev',
+      password: 'secret123',
+      email: 'bcn006b_ev@x.io'
+    });
+    expect(signup.status).toBe(201);
+
+    const login = await req<UserResponse>('POST', '/login', {
+      username: 'bcn006b_ev',
+      password: 'secret123',
+      _method: 'GET'
+    });
+    expect(login.status).toBe(200);
+    expect(login.json.emailVerified).toBe(false);
+    expect(typeof login.json.emailVerified).toBe('boolean');
+
+    const me = await req<UserResponse>('GET', '/users/me', undefined, {
+      'X-Parse-Session-Token': tokenOf(login.json)
+    });
+    expect(me.json.emailVerified).toBe(false);
+  });
+
   it('GET /users/me echoes the session token (the client re-stores the whole response)', async () => {
     const me = await req<UserResponse>('GET', '/users/me', undefined, { 'X-Parse-Session-Token': sessionToken });
     expect(me.status).toBe(200);
