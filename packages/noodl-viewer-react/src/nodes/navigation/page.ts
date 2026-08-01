@@ -11,6 +11,35 @@ interface PageNodeInstance extends ReactNodeInstance {
   };
 }
 
+/**
+ * NDA-012 (Visual) D1. Derive a URL path segment from a component title.
+ *
+ * The old derivation was `title.replace(/\s+/g, '-').toLowerCase()` and nothing else, so a
+ * component called `Order #1 & Co` proposed the path `order-#1-&-co`. That is not a path: `#`
+ * starts the fragment — and the *hash* router puts the whole route after a `#` already — while
+ * `&` and `?` are query delimiters. The proposal is what the author accepts by not editing it,
+ * so an unsanitised default is a route that silently does not match.
+ *
+ * What is removed is the RFC 3986 delimiter set plus whitespace, `%` and the characters
+ * browsers rewrite — a **deny** list, not an allow list. Allow-listing `[a-z0-9]` was the first
+ * version of this and it turned `Über Café` into `ber-caf`, silently deleting most of a title
+ * that percent-encodes perfectly well. Non-ASCII titles keep their letters; the router decodes
+ * each path segment exactly once, so they round-trip.
+ *
+ * Runs of separators collapse and the ends are trimmed. A title with no usable characters at
+ * all yields `''`, which the author must then fill in — proposing a path of `-` would be worse.
+ *
+ * ⚠️ Not `\p{L}`-based, which would read better: this package compiles at `target: es5` and
+ * unicode property escapes need ES2018.
+ */
+export function toUrlPathSegment(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[\s:/?#[\]@!$&'()*+,;=%"<>\\^`{|}]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 const PageNode = {
   name: 'Page',
   displayNodeName: 'Page',
@@ -202,7 +231,7 @@ const PageNode = {
         });
 
         const title = (node.parameters['title'] as string) || titleParts[titleParts.length - 1];
-        const defaultUrlPath = title.replace(/\s+/g, '-').toLowerCase();
+        const defaultUrlPath = toUrlPathSegment(title);
         ports.push({
           name: 'urlPath',
           displayName: 'Url Path',

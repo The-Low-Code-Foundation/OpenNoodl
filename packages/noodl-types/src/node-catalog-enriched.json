@@ -45065,6 +45065,17 @@
           "description": "Fires when keyboard focus leaves this control, which is the usual place to validate what was entered"
         },
         {
+          "name": "onChange",
+          "displayName": "Changed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the user selects or deselects this button; a value arriving on the Radio Button Group's Value input does not fire it"
+        },
+        {
           "name": "onFocus",
           "displayName": "Focused",
           "group": "Focus Events",

@@ -15,18 +15,27 @@ export interface RadioButtonGroupProps extends Noodl.ReactProps {
 }
 
 export function RadioButtonGroup(props: RadioButtonGroupProps) {
-  const [selected, setSelected] = useState(props.value);
+  // NDA-012 (Visual) A1. The selection and *how it was made* are one piece of state, not two:
+  // stored apart they can be read in an order where the value is new and the provenance is
+  // stale, and a Radio Button's `Changed` would then fire for a graph-driven selection.
+  const [selection, setSelection] = useState({ value: props.value, fromUser: false });
+
   const context = {
-    selected: selected,
+    selected: selection.value,
+    selectionFromUser: selection.fromUser,
     name: props.name,
     checkedChanged: (value) => {
-      setSelected(value);
+      setSelection({ value, fromUser: true });
       props.valueChanged && props.valueChanged(value);
     }
   };
 
+  // The graph's write path. `valueChanged` above also lands here a render later, because the
+  // node mirrors the click back onto `props.value` — but by then the buttons' effects have
+  // already run against `fromUser: true`, and `checked` does not change a second time, so
+  // nothing re-fires.
   useEffect(() => {
-    setSelected(props.value);
+    setSelection({ value: props.value, fromUser: false });
   }, [props.value]);
 
   const style: React.CSSProperties = { ...props.style };

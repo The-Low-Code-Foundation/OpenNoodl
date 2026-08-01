@@ -40,6 +40,50 @@ function _trimUrlPart(url) {
   return url;
 }
 
+/**
+ * NDA-012 (Visual) D1 — decode one path segment, exactly once, and never throw.
+ *
+ * The path used to be decoded **twice, by two different rules**: `_getLocationPath` ran
+ * `decodeURI` over the whole location, and `_matchPathParts` then ran `decodeURIComponent` over
+ * each captured parameter. The two are not the same function — `decodeURI` deliberately leaves
+ * the reserved set (`; / ? : @ & = + $ , #`) encoded and decodes everything else.
+ *
+ * ⚠️ The worksheet recorded this as "decoded twice and by two different rules". The consequence
+ * is sharper than that: it **throws**. `Navigate` encodes a parameter with
+ * `encodeURIComponent`, so a value containing a literal `%` leaves as `a%25b`; `decodeURI`
+ * turns that into `a%b` because `%25` is not reserved; and `decodeURIComponent('a%b')` raises
+ * `URIError: URI malformed`. A page parameter with a `%` in it therefore took the router's
+ * whole match down, uncaught. `decodeURI` itself throws the same way on a hand-typed or
+ * truncated URL (`/%zz`) — a bad address bar entry, not an author mistake at all.
+ *
+ * Decoding *after* the split is also what makes `%2F` mean what it was encoded to mean: a
+ * literal slash **inside** a parameter rather than a segment boundary.
+ *
+ * Undecodable input is carried through as written rather than thrown or dropped. A segment that
+ * cannot be decoded simply will not match a page pattern, which is the correct outcome for a
+ * malformed URL — and the router reports the miss through its own `router/page-not-found` path.
+ */
+function _decodePathSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch (e) {
+    return segment;
+  }
+}
+
+/**
+ * NDA-012 (Visual) A2 — a copy of the page info as it was when the page was built.
+ *
+ * `RouterHandler.getPageInfoForComponent` hands back the live entry from
+ * `graphModel.routerIndex.pages`. Holding that reference as "the current page" means an
+ * in-place edit changes what the router *thinks it rendered* retroactively, so no comparison
+ * against it can detect the edit. Three flat strings; a copy is all it takes.
+ */
+function _snapshotPageInfo(pageInfo: ComponentPageInfo | undefined) {
+  if (pageInfo === undefined) return undefined;
+  return { path: pageInfo.path, title: pageInfo.title, component: pageInfo.component };
+}
+
 function getBaseUrlLength(url: string): number {
   // If the URL is a full URL, then we only want to get the pathname.
   // Otherwise we just return the url length which should be the pathname.
@@ -339,7 +383,22 @@ const RouterNode = {
         return;
       }
 
-      if (this._internal.currentPage === targetPage) {
+      /**
+       * NDA-012 (Visual) A2. "Am I already showing this page?" — asked against a *snapshot*.
+       *
+       * This was `this._internal.currentPage === targetPage`, and the worksheet filed it as an
+       * identity-versus-value comparison. ⚠️ **Comparing by value would have fixed nothing.**
+       * `getPageInfoForComponent` returns the entry straight out of
+       * `graphModel.routerIndex.pages`, and `currentPage` was assigned that same object — so
+       * editing a page's path or title *in place* mutates both sides of the comparison at once.
+       * Identity and value agree, and both say "no change", because there is only one object.
+       *
+       * The missing ingredient was never the comparison operator, it was a record of what was
+       * actually rendered. `currentPageSnapshot` is a copy taken at render time, so an in-place
+       * edit moves the index and leaves the snapshot behind, and an explicit `Reset` sees the
+       * difference and rebuilds. Same reason a title-only edit now re-runs `Noodl.SEO.setTitle`.
+       */
+      if (shallowObjectsEqual(this._internal.currentPageSnapshot, _snapshotPageInfo(targetPage))) {
         //already at the correct page, keep the current page
         //update page inputs if they have changed
         //TODO: fix if a parameter goes from a value to undefined, the old value will still exist in the connection from previous navigation
@@ -376,6 +435,7 @@ const RouterNode = {
         // identity check above absorb the *next* reset back to it — RT-2's symptom through a
         // second door.
         this._internal.currentPage = undefined;
+        this._internal.currentPageSnapshot = undefined;
         this._internal.currentPageComponent = undefined;
         this.flagOutputDirty('currentPageComponent');
 
@@ -390,6 +450,7 @@ const RouterNode = {
 
       this._internal.currentPageComponent = content;
       this._internal.currentPage = targetPage;
+      this._internal.currentPageSnapshot = _snapshotPageInfo(targetPage);
       this._internal.currentParams = params;
 
       this.flagOutputDirty('currentPageTitle');
@@ -475,6 +536,11 @@ const RouterNode = {
 
       return parentUrl;
     },
+    /**
+     * The location path, **still encoded**. See `_decodePathSegment`: decoding happens once,
+     * per segment, after the split — not here over the whole path, which both double-decoded
+     * parameters and threw on a malformed escape before any of this could be caught.
+     */
     _getLocationPath: function () {
       const navigationPathType = NoodlRuntime.instance.getProjectSettings()['navigationPathType'];
       if (navigationPathType === undefined || navigationPathType === 'hash') {
@@ -484,7 +550,7 @@ const RouterNode = {
           if (hash[0] === '#') hash = hash.substring(1);
           if (hash[0] === '/') hash = hash.substring(1);
         }
-        return decodeURI(hash);
+        return hash;
       } else {
         // Use url as path
         let path = location.pathname;
@@ -499,7 +565,7 @@ const RouterNode = {
             }
           }
         }
-        return decodeURI(path);
+        return path;
       }
     },
     _getSearchParams: function () {
@@ -535,7 +601,10 @@ const RouterNode = {
       if (parent === undefined) {
         let urlPath = this._getLocationPath();
         if (urlPath[0] === '/') urlPath = urlPath.substring(1);
-        pathParts = urlPath.split('/');
+        // Split first, decode second — one decode per segment (`_decodePathSegment`). A nested
+        // router receives already-decoded parts from its parent below and must not decode
+        // again, which is the same double-decode seen from the other end.
+        pathParts = urlPath.split('/').map(_decodePathSegment);
       } else {
         pathParts = parent.getNavigationRemainingPath();
       }
@@ -548,9 +617,10 @@ const RouterNode = {
         for (let i = 0; i < pattern.length; i++) {
           const _p = pattern[i];
           if (_p[0] === '{' && _p[_p.length - 1] === '}') {
-            // This is a param, collect it
+            // This is a param, collect it. Already decoded once by `_decodePathSegment` at the
+            // split; decoding here as well is what turned an encoded `%` into a `URIError`.
             if (path[i] !== undefined) {
-              params[_p.substring(1, _p.length - 1)] = decodeURIComponent(path[i]);
+              params[_p.substring(1, _p.length - 1)] = path[i];
             }
           } else if (path[i] === undefined || _p !== path[i]) return;
         }
@@ -686,6 +756,7 @@ const RouterNode = {
       const content = await this.nodeScope.createNode(args.target, guid());
 
       this._internal.currentPage = newPage;
+      this._internal.currentPageSnapshot = _snapshotPageInfo(newPage);
       this._internal.currentParams = args.params;
 
       this.flagOutputDirty('currentPageTitle');

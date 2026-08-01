@@ -1,6 +1,48 @@
 import { Columns } from '../../components/visual/Columns';
+import { readLayoutToken } from '../../components/visual/Columns/Columns';
 import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 import { createTooltip } from '../../tooltips';
+
+/**
+ * NDA-012 (Visual) D1 — the bare-string half of the Columns contract.
+ *
+ * A layout string is space-separated proportions, and every entry that is not a positive number
+ * is **dropped** by `parseLayout`. So `'1 a 1'` is three columns as authored and two as
+ * rendered, with nothing said about the difference: the setter validated only that the value
+ * *was a string*.
+ *
+ * ⚠️ The worksheet cell recorded the consequence as "`'1 a 1'` yields a `NaN` column". That was
+ * true when it was filed and is not now — NDA-006's autofold pass added the finite-check to
+ * `parseLayout`, which converted a visible `NaN` into a silent drop. The defect survived the
+ * fix that changed its symptom, which is why the cell reads wrong today. Re-derived, not
+ * inherited.
+ *
+ * Returns the human half of the diagnosis, or `undefined` when the string is wholly usable.
+ */
+export function describeLayoutString(value: string): string | undefined {
+  // A double space splits to an empty entry and means nothing; it is not a mistake worth
+  // reporting, and `parseLayout` drops it silently on purpose.
+  const tokens = value.split(' ').filter((token) => token !== '');
+
+  if (tokens.length === 0) {
+    return 'it has no entries, so one full-width column is rendered';
+  }
+
+  const unusable = tokens.filter((token) => readLayoutToken(token) === undefined);
+  if (unusable.length === 0) return undefined;
+
+  const listed = unusable.map((token) => JSON.stringify(token)).join(', ');
+
+  if (unusable.length === tokens.length) {
+    return `none of its ${tokens.length} entries is a positive number (${listed}), so one full-width column is rendered instead`;
+  }
+
+  const rendered = tokens.length - unusable.length;
+  return (
+    `${listed} ${unusable.length === 1 ? 'is not a positive number and is' : 'are not positive numbers and are'} dropped, ` +
+    `so ${tokens.length} columns were authored and ${rendered} ${rendered === 1 ? 'is' : 'are'} rendered`
+  );
+}
 
 const ColumnsNode: ReactNodeDefinition = {
   name: 'net.noodl.visual.columns',
@@ -46,26 +88,67 @@ const ColumnsNode: ReactNodeDefinition = {
       default: '1 2 1',
       set(value) {
         this.props.layoutString = value;
-
-        if (typeof value !== 'string') {
-          this.context.editorConnection.sendWarning(
-            this.nodeScope.componentOwner.name,
-            this.id,
-            'layout-type-warning',
-            {
-              message: 'Layout String needs to be a string.'
-            }
-          );
-        } else {
-          this.context.editorConnection.clearWarning(
-            this.nodeScope.componentOwner.name,
-            this.id,
-            'layout-type-warning'
-          );
-        }
-
+        this.revalidateLayoutStrings();
         this.forceUpdate();
       }
+    }
+  },
+
+  methods: {
+    /**
+     * NDA-012 (Visual) D1 / B2. Re-check all three layout strings and report once.
+     *
+     * Two things changed here. The diagnosis is now **the drop**, not the type — a string that
+     * *is* a string can still lose columns — and it is raised on the runtime error bus
+     * (`FAILURE-CONTRACT.md`) rather than sent straight to `editorConnection.sendWarning`, so
+     * it survives into a deployed app, SSR and export instead of vanishing at the moment it
+     * starts to matter.
+     *
+     * All three ports are re-read on every change rather than each reporting for itself. The
+     * bus keys an editor warning by `code`, so three ports raising the same code would occupy
+     * one slot and fixing any one of them would clear the other two's warning. One code, one
+     * combined message, one clear.
+     */
+    revalidateLayoutStrings() {
+      const ports: [string, unknown][] = [
+        ['Layout String', this.props.layoutString],
+        ['Medium Layout', this.props.mediumLayout],
+        ['Small Layout', this.props.smallLayout]
+      ];
+
+      const problems: string[] = [];
+      for (const [displayName, value] of ports) {
+        // A blank breakpoint layout is a port with no opinion, not a mistake — the port's own
+        // description says leaving it blank makes the breakpoint inert. Empty-Value Contract:
+        // abstain rather than report.
+        if (value === undefined || value === null || value === '') continue;
+
+        if (typeof value !== 'string') {
+          problems.push(`${displayName} is ${typeof value}, not a string`);
+          continue;
+        }
+
+        const problem = describeLayoutString(value);
+        if (problem) problems.push(`${displayName} (${JSON.stringify(value)}): ${problem}`);
+      }
+
+      const code = 'columns/layout-string-invalid';
+
+      if (problems.length === 0) {
+        // Keep the editor's clear path. The bus has no "un-raise", and without this a layout
+        // string that was briefly wrong while being typed would leave a warning behind for the
+        // rest of the session.
+        const editorConnection = this.context && this.context.editorConnection;
+        if (editorConnection && editorConnection.clearWarning) {
+          editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, code);
+        }
+        return;
+      }
+
+      this.raiseRuntimeError(
+        code,
+        `Columns cannot read every entry of its layout — ${problems.join('; ')}. Entries are space-separated positive numbers, so "1 2 1" makes three columns with a double-width middle one.`
+      );
     }
   },
 
@@ -138,7 +221,14 @@ const ColumnsNode: ReactNodeDefinition = {
       group: 'Breakpoints',
       displayName: 'Medium Layout',
       description: 'Layout String to use below Medium Below; leaving it blank makes the breakpoint inert',
-      type: 'string'
+      type: 'string',
+      // D1: the breakpoint layouts are the same bare-string contract as `layoutString` and go
+      // through the same `parseLayout`, so they drop entries the same silent way. `onChange`,
+      // not `set` — on `inputProps` the setter is generated and writing one would stop the
+      // value reaching the prop at all (`react-component-node.ts:46-48`).
+      onChange() {
+        this.revalidateLayoutStrings();
+      }
     },
     smallBreakpoint: {
       group: 'Breakpoints',
@@ -150,7 +240,10 @@ const ColumnsNode: ReactNodeDefinition = {
       group: 'Breakpoints',
       displayName: 'Small Layout',
       description: 'Layout String to use below Small Below; leaving it blank makes the breakpoint inert',
-      type: 'string'
+      type: 'string',
+      onChange() {
+        this.revalidateLayoutStrings();
+      }
     },
     marginX: {
       group: 'Layout Settings',

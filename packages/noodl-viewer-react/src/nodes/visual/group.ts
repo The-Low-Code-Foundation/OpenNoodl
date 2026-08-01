@@ -56,15 +56,23 @@ const GroupNode: ReactNodeDefinition = {
           this.removeStyle(['flexDirection']);
         }
 
-        if (this.context.editorConnection) {
-          // Send warning if the value is wrong
-          if (value !== 'none' && !flexDirectionValues.includes(value)) {
-            this.context.editorConnection.sendWarning(this.nodeScope.componentOwner.name, this.id, 'layout-warning', {
-              message: 'Invalid Layout value has to be a valid flex-direction value.'
-            });
-          } else {
-            this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, 'layout-warning');
-          }
+        // NDA-012 (Visual) B2. This was `editorConnection.sendWarning`, which exists only in
+        // the editor — so an invalid Layout was diagnosed while building and silent once
+        // deployed, which is the whole of defect class B. It goes on the runtime error bus now
+        // (`FAILURE-CONTRACT.md`); the editor still shows it, because `sendWarning` is one of
+        // the bus's subscribers.
+        const code = 'group/layout-not-a-flex-direction';
+        if (value !== 'none' && !flexDirectionValues.includes(value)) {
+          this.raiseRuntimeError(
+            code,
+            `Layout is ${JSON.stringify(value)}, which is not a flex-direction — expected one of ${flexDirectionValues
+              .map((v) => JSON.stringify(v))
+              .join(', ')}, or "none"`
+          );
+        } else if (this.context.editorConnection && this.context.editorConnection.clearWarning) {
+          // The bus has no "un-raise", so the editor's clear path stays: without it a Layout
+          // that was briefly wrong while being typed would leave a warning for the session.
+          this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, code);
         }
 
         this.forceUpdate();
@@ -88,7 +96,13 @@ const GroupNode: ReactNodeDefinition = {
         this.scheduleAfterInputsHaveUpdated(() => {
           const childIndex = this._internal.scrollIndex;
           const duration = this._internal.scrollIndexDuration;
-          this.withInnerComponent((inner) => inner.scrollToIndex(childIndex, duration));
+          this.withInnerComponent((inner) => {
+            // B2: the component returns why it did nothing, and that reaches a deployed app.
+            const reason = inner.scrollToIndex(childIndex, duration);
+            if (typeof reason === 'string') {
+              this.raiseRuntimeError('group/scroll-to-index-failed', `Scroll To Index did nothing: ${reason}`);
+            }
+          });
         });
       }
     },
@@ -102,7 +116,12 @@ const GroupNode: ReactNodeDefinition = {
         this.scheduleAfterInputsHaveUpdated(() => {
           const element = this._internal.scrollElement;
           const duration = this._internal.scrollElementDuration;
-          this.withInnerComponent((inner) => inner.scrollToElement(element, duration));
+          this.withInnerComponent((inner) => {
+            const reason = inner.scrollToElement(element, duration);
+            if (typeof reason === 'string') {
+              this.raiseRuntimeError('group/scroll-to-element-failed', `Scroll To Element did nothing: ${reason}`);
+            }
+          });
         });
       }
     },

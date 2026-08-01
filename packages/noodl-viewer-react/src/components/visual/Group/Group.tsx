@@ -73,37 +73,79 @@ export class Group extends React.Component<GroupProps> {
     this.props.noodlNode.context.setNodeFocused(this.props.noodlNode, false);
   }
 
-  scrollToIndex(index, duration) {
-    if (this.iScroll) {
-      const child = this.scrollRef.current.children[0].children[index] as HTMLElement;
-      if (child) {
-        this.iScroll.scrollToElement(child, duration, 0, 0);
-      }
-    } else {
-      const child = this.scrollRef.current.children[index];
-      child &&
-        child.scrollIntoView({
-          behavior: 'smooth'
-        });
+  /**
+   * NDA-012 (Visual) B1/B2. Both scroll actions return the reason they did nothing, or
+   * `undefined` when they scrolled.
+   *
+   * Every failure here used to be a `child && …` or an `if (element && …)` with no else: a
+   * `Scroll To Index` past the end of the list and a `Scroll To Element` pointing at something
+   * the Group does not contain were both indistinguishable from success. The node raises the
+   * returned reason on the runtime error bus (`group.ts`), so — unlike the editor-only
+   * `sendWarning` this category is full of — the diagnosis survives into a deployed app.
+   *
+   * The reason is produced here rather than in the node because only the component knows which
+   * scroll implementation is live: with iScroll the children hang off an inner wrapper element,
+   * without it they are direct children, and "index 5 of 3" has to be counted against whichever
+   * of those is actually in the DOM.
+   */
+  scrollToIndex(index, duration): string | undefined {
+    const container = this.scrollRef.current;
+    if (!container) return 'the Group has no scrollable element';
+
+    // iScroll wraps the children in one scroller element; the plain path does not.
+    const scrollParent = (this.iScroll ? container.children[0] : container) as HTMLElement | undefined;
+    if (!scrollParent) return 'the Group has no scrollable element';
+
+    const child = scrollParent.children[index] as HTMLElement | undefined;
+    if (!child) {
+      return `there is no child at index ${JSON.stringify(index)} — the Group has ${scrollParent.children.length}`;
     }
+
+    if (this.iScroll) {
+      this.iScroll.scrollToElement(child, duration, 0, 0);
+    } else {
+      child.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    return undefined;
   }
 
-  scrollToElement(noodlChild, duration) {
-    if (!noodlChild) return;
+  scrollToElement(noodlChild, duration): string | undefined {
+    // An unwired `Element` is a port with no opinion, not a failure — Empty-Value Contract.
+    if (!noodlChild) return undefined;
+
     // Get the ref - in React 19, we need to access the DOM element directly
     // rather than using the deprecated findDOMNode
     const ref = noodlChild.getRef();
-    // The ref might be a DOM element directly, or a ref object with a current property
-    const element = (ref instanceof HTMLElement ? ref : ref?.current) as HTMLElement | null;
-    if (element && element.scrollIntoView) {
-      if (this.iScroll) {
-        this.iScroll.scrollToElement(element, duration, 0, 0);
-      } else {
-        element.scrollIntoView({
-          behavior: 'smooth'
-        });
-      }
+    // The ref might be a DOM element directly, or a ref object with a current property.
+    //
+    // ⚠️ `typeof HTMLElement !== 'undefined'` is load-bearing, not defensive noise: `instanceof`
+    // against an undeclared global is a `ReferenceError`, not `false`. This node declares SSR
+    // `safe`, and the server has no `HTMLElement` — so the bare `instanceof` turned a scroll
+    // action fired anywhere without a DOM into a thrown error rather than a no-op. Found by the
+    // corpus row for the reason-string contract, which runs in `testEnvironment: node`.
+    const isElement = typeof HTMLElement !== 'undefined' && ref instanceof HTMLElement;
+    const element = (isElement ? ref : ref?.current) as HTMLElement | null;
+
+    if (!element || !element.scrollIntoView) {
+      return 'the node on Element has no rendered DOM element — it may not be mounted';
     }
+
+    const container = this.scrollRef.current;
+    // `scrollIntoView` scrolls the nearest scrollable *ancestor* of the target, so an element
+    // outside this Group does not fail — it silently scrolls something else, which is the
+    // hardest version of this defect to spot. Say so rather than move an unrelated container.
+    if (container && !container.contains(element)) {
+      return 'the node on Element is not inside this Group, so scrolling it would move a different container';
+    }
+
+    if (this.iScroll) {
+      this.iScroll.scrollToElement(element, duration, 0, 0);
+    } else {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    return undefined;
   }
 
   setupIScroll() {

@@ -46,15 +46,34 @@ function toPixels(value: string | number | undefined): number {
  * Parse the authored layout string into positive fractions.
  *
  * Anything that is not a positive finite number is dropped rather than carried: a double
- * space (`'1  2'`) splits to an empty entry, `parseInt('')` is `NaN`, and one `NaN` makes
+ * space (`'1  2'`) splits to an empty entry, `parseFloat('')` is `NaN`, and one `NaN` makes
  * `totalFractions` `NaN`, which renders *every* child at `width: NaN%`. A layout string that
  * yields nothing usable falls back to a single column.
+ *
+ * ⚠️ NDA-012 (Visual) D1. Dropping is what makes the port's failure mode *quiet* rather than
+ * loud — `'1 a 1'` is three columns as authored and two as rendered — so the drop is reported
+ * by the node's setter (`describeLayoutString`, `columns.ts`). The filter stays: by the time
+ * the string reaches here the diagnosis has already been raised, and a `NaN` column is worse
+ * than a missing one.
+ *
+ * `Number`, not `parseInt`: the port documents its values as *proportions*, and `parseInt`
+ * silently truncated `'1 2.5 1'` to `1 2 1`. Nothing downstream assumes integers —
+ * `_calcAutofold` only ever sums them and divides — so fractional proportions now mean what
+ * they say. `Number` rather than `parseFloat` because `parseFloat` reads a *prefix*: it turns
+ * `'1abc'` into `1`, which is the same silent-coercion defect one layer down. `readLayoutToken`
+ * is the single definition of "a usable entry", shared with the node's validator so the string
+ * that gets reported and the string that gets rendered cannot disagree.
  */
+export function readLayoutToken(token: string): number | undefined {
+  const fraction = Number(token);
+  return Number.isFinite(fraction) && fraction > 0 ? fraction : undefined;
+}
+
 export function parseLayout(columnLayout: string): number[] {
   const layout = columnLayout
     .split(' ')
-    .map((number) => parseInt(number))
-    .filter((fraction) => Number.isFinite(fraction) && fraction > 0);
+    .map(readLayoutToken)
+    .filter((fraction): fraction is number => fraction !== undefined);
 
   return layout.length ? layout : [1];
 }

@@ -112,6 +112,8 @@ interface ForEachInstance extends NodeInstance {
     inputMappingScript?: string;
     inputMapFunc?(map: (mappings: Record<string, string | ((model: ModelLike) => unknown)>) => void, object: unknown): void;
     hasScheduledRefresh?: boolean;
+    /** Messages already raised during the current rebuild — see `reportTemplateProblem`. */
+    reportedTemplateProblems?: Set<string>;
     hasScheduledCopyItems?: boolean;
     hasScheduledTriggerItemOutputSignal?: boolean;
     target?: ForEachItemNode;
@@ -127,6 +129,7 @@ interface ForEachInstance extends NodeInstance {
   /** `null`/`undefined` are ordinary arrivals and mean "clear the list" — see `inputs.items`. */
   bindCollection(collection: CollectionLike | null | undefined): void;
   getTemplateForModel(model: ModelLike): string | undefined;
+  reportTemplateProblem(code: string, message: string): void;
   _mapInputs(itemNode: ForEachItemNode, model: ModelLike): void;
   addItem(model: ModelLike, index: number): Promise<void>;
   removeItem(model: ModelLike): void;
@@ -273,21 +276,26 @@ const ForEachDefinition: NodeDefinitionOptions = {
       group: 'Appearance',
       default: defaultDynamicScript,
       set: function (this: ForEachInstance, value: string) {
+        const code = 'repeater/template-script-syntax-error';
         try {
           this._internal.templateFunction = new Function(
             'item',
             'var component;' + value + ';return component;'
           ) as ForEachInstance['_internal']['templateFunction'];
-        } catch (e) {
-          console.log(e);
-          if (this.context.editorConnection) {
-            this.context.editorConnection.sendWarning(
-              this.nodeScope.componentOwner.name,
-              this.id,
-              'foreach-syntax-warning',
-              { message: '<strong>Syntax</strong>: ' + (e as Error).message }
-            );
+
+          // NDA-012 (Visual) D1. A `templateScript` that stops compiling used to leave the
+          // *previous* function in place, so the Repeater went on rendering rows from code the
+          // author had already replaced. The stale function is dropped, and `:347` then renders
+          // nothing — which the raise below explains.
+          if (this.context.editorConnection && this.context.editorConnection.clearWarning) {
+            this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, code);
           }
+        } catch (e) {
+          this._internal.templateFunction = undefined;
+          // NDA-012 (Visual) B2. Was `editorConnection.sendWarning` and nothing else: a Repeater
+          // whose Script does not compile rendered no rows and said nothing at all once
+          // deployed. The bus reaches every runtime, and the editor still shows it.
+          this.raiseRuntimeError(code, `The Repeater's Script does not compile: ${(e as Error).message}`, e);
         }
         this.scheduleRefresh();
       }
@@ -371,6 +379,21 @@ const ForEachDefinition: NodeDefinitionOptions = {
       internal.items = collection;
       this.scheduleCopyItems();
     },
+    /**
+     * Raise a per-item template failure at most once per rebuild.
+     *
+     * The dedupe set is created by `refresh()`. When a problem is hit outside a rebuild — an
+     * `add` arriving on the bound collection, say — there is no set, and the event is raised:
+     * a one-off add is exactly the case where one report is the right number.
+     */
+    reportTemplateProblem: function (this: ForEachInstance, code: string, message: string) {
+      const reported = this._internal.reportedTemplateProblems;
+      if (reported) {
+        if (reported.has(message)) return;
+        reported.add(message);
+      }
+      this.raiseRuntimeError(code, message);
+    },
     getTemplateForModel: function (this: ForEachInstance, model: ModelLike) {
       const internal = this._internal;
       if (internal.templateType === undefined || internal.templateType === 'explicit') return internal.template;
@@ -380,15 +403,17 @@ const ForEachDefinition: NodeDefinitionOptions = {
       try {
         template = internal.templateFunction(model);
       } catch (e) {
-        console.log(e);
-        if (this.context.editorConnection) {
-          this.context.editorConnection.sendWarning(
-            this.nodeScope.componentOwner.name,
-            this.id,
-            'foreach-dynamic-warning',
-            { message: '<strong>Dynamic template</strong>: ' + (e as Error).message }
-          );
-        }
+        // NDA-012 (Visual) B2. A throw *inside* the compiled Script — the common case, because
+        // it depends on the data rather than the code — was reported the same editor-only way
+        // as a syntax error. On the bus it survives into a deployed app, where a Repeater that
+        // renders one fewer row than it has items is otherwise invisible.
+        this.raiseRuntimeError(
+          'repeater/template-script-threw',
+          `The Repeater's Script threw while choosing a component for an item, so that item has no row: ${
+            (e as Error).message
+          }`,
+          e
+        );
       }
 
       //simple (and limited) way to support ./ and ../ at the start of component template names
@@ -429,12 +454,36 @@ const ForEachDefinition: NodeDefinitionOptions = {
 
       // Create a new component for this item
       const template = this.getTemplateForModel(model);
-      if (!template) return;
+      if (!template) {
+        // NDA-012 (Visual) D1. `template` is a `component`-typed *string* and was never checked
+        // against anything: an item with no component resolved simply produced no row, so a
+        // list that rendered 9 rows for 10 records looked exactly like a list of 9. Which of
+        // the two ports is at fault depends on the mode, and the fixes are different, so the
+        // message names the one the author has to open.
+        this.reportTemplateProblem(
+          'repeater/no-template-for-item',
+          internal.templateType === 'dynamic'
+            ? 'The Repeater\'s Script returned no component for an item, so that item has no row — set `component` to a component path in the Script'
+            : 'The Repeater has no Template, so its items have no rows — pick the component to repeat on the Template input'
+        );
+        return;
+      }
 
       const itemNode = (await this.nodeScope.createNode(template, guid(), {
         _forEachModel: model,
         _forEachNode: this
       })) as ForEachItemNode;
+
+      // D1, second half: `createNode` on a component path that does not exist yields nothing,
+      // and every line below assumes it did. A renamed or deleted template component is the
+      // ordinary way into this, and it was silent.
+      if (!itemNode) {
+        this.reportTemplateProblem(
+          'repeater/template-component-not-found',
+          `The Repeater cannot find the component ${JSON.stringify(template)}, so its items have no rows — it may have been renamed or deleted`
+        );
+        return;
+      }
 
       // Set input values for all model data, and track changes
       if (this._internal.inputMapFunc === undefined) {
@@ -554,6 +603,14 @@ const ForEachDefinition: NodeDefinitionOptions = {
     refresh: async function (this: ForEachInstance) {
       const internal = this._internal;
       internal.hasScheduledRefresh = false;
+
+      // NDA-012 (Visual) D1/B2. Per-item template failures are reported once per rebuild, not
+      // once per item: a 5,000-row list whose Template names a component that does not exist
+      // would otherwise raise 5,000 identical events, and the `console.error` subscriber a
+      // deployed app uses does not collapse duplicates the way the editor's warning panel does.
+      // Keyed by message, so *distinct* problems in one rebuild are all still reported.
+      internal.reportedTemplateProblems = new Set<string>();
+
       if (!(internal.template || internal.templateFunction) || !internal.items) return;
 
       // NDA-013: resync the private collection from whatever is currently bound to `items`
@@ -754,12 +811,10 @@ const ForEachDefinition: NodeDefinitionOptions = {
         });
     },
     setInputMappingScript: function (this: ForEachInstance, value: string) {
-      if (this.context.editorConnection) {
-        this.context.editorConnection.clearWarning(
-          this.nodeScope.componentOwner.name,
-          this.id,
-          'foreach-inputmapping-warning'
-        );
+      const code = 'repeater/input-mapping-syntax-error';
+
+      if (this.context.editorConnection && this.context.editorConnection.clearWarning) {
+        this.context.editorConnection.clearWarning(this.nodeScope.componentOwner.name, this.id, code);
       }
 
       this._internal.inputMappingScript = value;
@@ -773,14 +828,14 @@ const ForEachDefinition: NodeDefinitionOptions = {
           ) as ForEachInstance['_internal']['inputMapFunc'];
         } catch (e) {
           this._internal.inputMapFunc = undefined;
-          if (this.context.editorConnection) {
-            this.context.editorConnection.sendWarning(
-              this.nodeScope.componentOwner.name,
-              this.id,
-              'foreach-inputmapping-warning',
-              { message: '<strong>Input mapping</strong>: ' + (e as Error).message }
-            );
-          }
+          // B2, third of three on this node. Same move as the two above.
+          this.raiseRuntimeError(
+            code,
+            `The Repeater's input mapping script does not compile, so no item inputs are mapped: ${
+              (e as Error).message
+            }`,
+            e
+          );
         }
       } else {
         this._internal.inputMapFunc = undefined;
