@@ -31,6 +31,15 @@ import type { VisualSorting } from '../../../api/queryutils';
 // Parse `where` document on its way to `CloudStore.query`. The leak was a wrong
 // type as well as a misplaced one.
 import type { Filter, ParseWhere } from '@noodl/backend-contract/translators';
+import type { SchemaCollection } from './schema-types';
+
+import { resolveBackendFromRuntime } from '../../../api/backends/resolveBackend';
+import {
+  createRealtimeSubscription,
+  realtimeSupportFor,
+  type RealtimeSubscription
+} from '../../../api/backends/realtime';
+import type { RealtimeChange, RealtimeError, RealtimeStatus } from '@noodl/backend-contract';
 
 import {
   recordBackendPickerPorts,
@@ -49,6 +58,15 @@ import { sendSchemaPorts, staticPortNames } from './schema-ports';
  * condition and is left where it is.
  */
 const QUERY_ERROR_CODE = 'query-records/query-failed';
+
+/**
+ * BCN-008. A separate code from {@link QUERY_ERROR_CODE} because they are separate
+ * conditions with separate fixes: a query that cannot run is a filter or a permission, and
+ * a subscription that cannot connect is a transport, a token, or a backend that has no
+ * realtime at all. Collapsing them would put "Parse LiveQuery is not running" and "your
+ * filter is malformed" behind one warning key.
+ */
+const REALTIME_ERROR_CODE = 'query-records/realtime-failed';
 
 const Model = ModelImport as unknown as ModelModule;
 const Collection = CollectionImport as unknown as CollectionModule;
@@ -134,6 +152,22 @@ interface DbCollectionNodeInstance extends NodeInstance {
      * set yet), so the binding happens on the first query and moves if the picker does.
      */
     boundStore?: CloudStoreLike;
+
+    // ── BCN-008: server-pushed changes ──────────────────────────────────
+    //
+    // ⚠️ Distinct from `boundStore` above, and the difference is the whole point.
+    // `cloudStoreEvents` fires on **our own** completed writes and needs nothing from
+    // the server; this fires on the change another user made in another browser.
+    /** The `Subscribe To Changes` input. */
+    realtime?: boolean;
+    subscription?: RealtimeSubscription | null;
+    realtimeStatus?: RealtimeStatus;
+    realtimeError?: RealtimeError | null;
+    realtimeEvent?: string;
+    changedRecord?: Record<string, unknown> | null;
+    changedRecords?: unknown[];
+    changedRecordId?: string;
+    realtimeReconfigureScheduled?: boolean;
   };
   setCollectionName(name: string): void;
   bindStoreEvents(store: CloudStoreLike | undefined): void;
@@ -151,6 +185,14 @@ interface DbCollectionNodeInstance extends NodeInstance {
   setVisualSorting(value: unknown): void;
   setSearch(value: string): void;
   setQueryParameter(name: string, value: unknown): void;
+  setRealtime(value: boolean): void;
+  scheduleRealtimeReconfigure(): void;
+  reconfigureRealtime(): void;
+  teardownRealtime(): void;
+  realtimePrimaryKey(collections: SchemaCollection[] | undefined, isParseWire: boolean): string;
+  handleRealtimeChange(change: RealtimeChange): void;
+  handleRealtimeStatus(status: RealtimeStatus): void;
+  handleRealtimeError(error: RealtimeError): void;
 }
 
 const DbCollectionNode: NodeDefinitionOptions = {
@@ -381,6 +423,113 @@ const DbCollectionNode: NodeDefinitionOptions = {
       getter: function (this: DbCollectionNodeInstance) {
         return this._internal.error;
       }
+    },
+
+    // ── BCN-008: Subscribe To Changes, folded into the Record family ────────
+    //
+    // These replace `noodl.byob.SubscribeToChanges`, which was Directus-only and lived
+    // beside the query rather than on it. Same outputs on every transport — the whole
+    // argument of BCN-008 is that an app author should not be able to tell which wire is
+    // underneath from the ports.
+    subscribed: {
+      type: 'boolean',
+      displayName: 'Subscribed',
+      group: 'Realtime',
+      description: 'True while the backend has confirmed the subscription and is delivering changes',
+      getter: function (this: DbCollectionNodeInstance) {
+        return this._internal.realtimeStatus === 'subscribed';
+      }
+    },
+    realtimeStatus: {
+      type: 'string',
+      displayName: 'Realtime Status',
+      group: 'Realtime',
+      description:
+        'connecting, subscribed, interrupted or stopped. Four states rather than a boolean, because ' +
+        '"connecting for the first time" and "dropped and retrying" want different things on screen',
+      getter: function (this: DbCollectionNodeInstance) {
+        return this._internal.realtimeStatus || '';
+      }
+    },
+    realtimeError: {
+      type: 'object',
+      displayName: 'Realtime Error',
+      group: 'Realtime',
+      description: 'The last realtime failure, with a code and whether retrying can help; null until one happens',
+      getter: function (this: DbCollectionNodeInstance) {
+        return this._internal.realtimeError || null;
+      }
+    },
+    realtimeFailure: {
+      type: 'signal',
+      displayName: 'Realtime Failure',
+      group: 'Realtime',
+      description: 'Fires when a subscription cannot connect, is rejected, or has been given up on'
+    },
+    created: {
+      type: 'signal',
+      displayName: 'Record Created',
+      group: 'Realtime',
+      description: 'Another client created a record in this collection'
+    },
+    updated: {
+      type: 'signal',
+      displayName: 'Record Updated',
+      group: 'Realtime',
+      description: 'Another client updated a record in this collection'
+    },
+    deleted: {
+      type: 'signal',
+      displayName: 'Record Deleted',
+      group: 'Realtime',
+      description: 'Another client deleted a record from this collection'
+    },
+    changed: {
+      type: 'signal',
+      displayName: 'Records Changed',
+      group: 'Realtime',
+      description:
+        'Any of the three, and also the backend saying the view may be stale after a reconnect — the one to ' +
+        'react to if you do not care which happened'
+    },
+    changedEvent: {
+      type: 'string',
+      displayName: 'Change Type',
+      group: 'Realtime',
+      description: 'create, update, delete, init or resync',
+      getter: function (this: DbCollectionNodeInstance) {
+        return this._internal.realtimeEvent || '';
+      }
+    },
+    changedRecord: {
+      type: 'object',
+      displayName: 'Changed Record',
+      group: 'Realtime',
+      description:
+        'The record the change was about. ⚠️ Null on a delete against Directus, which sends only the key — ' +
+        'use Changed Record Id, which every backend fills',
+      getter: function (this: DbCollectionNodeInstance) {
+        return this._internal.changedRecord || null;
+      }
+    },
+    changedRecords: {
+      type: 'array',
+      displayName: 'Changed Records',
+      group: 'Realtime',
+      description: 'Every record in the change frame; some backends batch',
+      getter: function (this: DbCollectionNodeInstance) {
+        return this._internal.changedRecords || [];
+      }
+    },
+    changedRecordId: {
+      type: 'string',
+      displayName: 'Changed Record Id',
+      group: 'Realtime',
+      description:
+        'The id of the changed record, always a string — even where the backend\'s primary key is an integer',
+      getter: function (this: DbCollectionNodeInstance) {
+        return this._internal.changedRecordId || '';
+      }
     }
   },
   prototypeExtensions: {
@@ -388,6 +537,8 @@ const DbCollectionNode: NodeDefinitionOptions = {
       this._internal.name = name;
 
       if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
+      // A subscription is to a named collection; the old one is watching the wrong thing.
+      this.scheduleRealtimeReconfigure();
     },
     setCollection: function (this: DbCollectionNodeInstance, collection: CollectionLike) {
       this.bindCollection(collection);
@@ -439,6 +590,180 @@ const DbCollectionNode: NodeDefinitionOptions = {
       this.unbindCurrentCollection();
 
       this.bindStoreEvents(undefined);
+      this.teardownRealtime();
+    },
+
+    // ────────────────────────────────────────────────────────────────────────
+    // BCN-008 — Subscribe To Changes
+    //
+    // The fifth and last `noodl.byob.*` node folded into the Record family. It lives on
+    // Query Records rather than beside it because a subscription without a query is a
+    // stream of ids nobody can render, and because the two share everything that decides
+    // where to connect: the Backend picker, the Class dropdown, and the schema that says
+    // which field is the key.
+    //
+    // ⚠️ **The change re-runs the query.** Every transport delivers a change and this node
+    // debounces a re-fetch off it, rather than patching the collection the way
+    // `cloudStoreEvents` does. That is deliberate: the incremental path matches a record
+    // against `currentQuery.where` **locally**, using a Parse-shaped matcher — which is
+    // wrong for a Directus filter, wrong for a search term, and wrong for anything the
+    // server evaluated that the client cannot. Re-running is coarser and correct by
+    // construction, and it is what BAK-001's `Live` toggle already did.
+    //
+    // ⚠️ **No server-side filter is sent.** Our own backend accepts one; Directus takes
+    // none on a subscribe at all and PocketBase takes a different expression language. The
+    // contract is explicit that a transport which cannot filter server-side must not filter
+    // client-side and call it the same thing — so a change to a record *outside* the
+    // query's filter still fires `Records Changed`, and the re-query is what settles
+    // whether `Items` actually moved.
+    // ────────────────────────────────────────────────────────────────────────
+
+    setRealtime: function (this: DbCollectionNodeInstance, value: boolean) {
+      this._internal.realtime = !!value;
+      this.scheduleRealtimeReconfigure();
+    },
+
+    /** Coalesce: a backend and a collection arriving in one update reconnect once. */
+    scheduleRealtimeReconfigure: function (this: DbCollectionNodeInstance) {
+      if (this._internal.realtimeReconfigureScheduled) return;
+      this._internal.realtimeReconfigureScheduled = true;
+      this.scheduleAfterInputsHaveUpdated(() => {
+        this._internal.realtimeReconfigureScheduled = false;
+        this.reconfigureRealtime();
+      });
+    },
+
+    reconfigureRealtime: function (this: DbCollectionNodeInstance) {
+      this.teardownRealtime();
+
+      if (!this._internal.realtime) return;
+      const collection = this._internal.name;
+      if (!collection) return;
+
+      // ⚠️ `client-only`, per capability rather than per node.
+      //
+      // `ssr: { compat: 'client-only' }` on the node definition is what the retired
+      // Subscribe To Changes node used, and it is not available here: Query Records has to
+      // run during a server render — that is most of what SSR is for. So the *capability*
+      // is gated instead. Without this a render answering a thousand requests would hold a
+      // thousand live subscriptions to a change stream nobody will ever read, and two of
+      // the three transports cannot even be constructed (Node has `WebSocket` and no
+      // `EventSource`, measured), so it would fail late and confusingly rather than not at
+      // all.
+      const platform = (this.context as { platform?: { isSSRServer?: () => boolean } })?.platform;
+      if (platform && typeof platform.isSSRServer === 'function' && platform.isSSRServer()) return;
+
+      const target = resolveBackendFromRuntime(this._internal.backendId);
+      if (!target) {
+        this.handleRealtimeError({
+          message: `The backend this node is set to ("${this._internal.backendId}") is not configured in this project.`,
+          code: 'CAPABILITY_UNAVAILABLE',
+          kind: 'fatal'
+        });
+        return;
+      }
+
+      // Answered without opening anything, so a backend with no realtime says so at once
+      // rather than sitting `connecting` — the failure `conditional` was invented for.
+      const support = realtimeSupportFor(target.handle.type);
+      if (support.state === 'unsupported') {
+        this.handleRealtimeError({
+          message: support.reason || 'This backend does not support realtime.',
+          code: 'CAPABILITY_UNAVAILABLE',
+          kind: 'fatal'
+        });
+        return;
+      }
+
+      this._internal.subscription = createRealtimeSubscription(target.handle, {
+        collection,
+        primaryKey: this.realtimePrimaryKey(target.collections, target.isParseWire),
+        onEvent: this.handleRealtimeChange.bind(this),
+        onStatus: this.handleRealtimeStatus.bind(this),
+        onError: this.handleRealtimeError.bind(this)
+      });
+    },
+
+    teardownRealtime: function (this: DbCollectionNodeInstance) {
+      if (this._internal.subscription) {
+        this._internal.subscription.dispose();
+        this._internal.subscription = null;
+      }
+      if (this._internal.realtimeStatus) {
+        this._internal.realtimeStatus = undefined;
+        this.flagOutputDirty('subscribed');
+        this.flagOutputDirty('realtimeStatus');
+      }
+    },
+
+    /**
+     * Which field carries the id, for the transports that send whole records.
+     *
+     * The schema knows, when it has been introspected. The fallbacks are the two wires'
+     * conventions and not a guess: the Parse wire's key is `objectId` and every REST
+     * backend in the rig calls it `id`.
+     */
+    realtimePrimaryKey: function (
+      this: DbCollectionNodeInstance,
+      collections: SchemaCollection[] | undefined,
+      isParseWire: boolean
+    ) {
+      const schema = (collections || []).find((c) => c.name === this._internal.name);
+      return schema?.primaryKey || (isParseWire ? 'objectId' : 'id');
+    },
+
+    handleRealtimeChange: function (this: DbCollectionNodeInstance, change: RealtimeChange) {
+      this._internal.realtimeEvent = change.type;
+      // ⚠️ `recordsComplete` is the gate, not `records.length`. The latter cannot tell a
+      // key-only delete (Directus) from an empty frame, so a "Changed Record" output would
+      // publish `{}` on one backend and a full row on another with nothing saying why.
+      this._internal.changedRecord =
+        change.recordsComplete && change.records.length > 0 ? (change.records[0] as Record<string, unknown>) : null;
+      this._internal.changedRecords = change.recordsComplete ? change.records : [];
+      this._internal.changedRecordId = change.ids.length > 0 ? change.ids[0] : '';
+
+      this.flagOutputDirty('changedEvent');
+      this.flagOutputDirty('changedRecord');
+      this.flagOutputDirty('changedRecords');
+      this.flagOutputDirty('changedRecordId');
+
+      // `init` is the subscription's confirmation snapshot, not a change: firing `created`
+      // for every row already in the collection would make a subscription look like a
+      // burst of writes the moment it connects.
+      if (change.type === 'init') return;
+
+      // `resync` means the server thinks we may have missed something and keeps no replay
+      // log. It is not a create/update/delete and must not pretend to be one — but it IS a
+      // reason to re-query, which is exactly what `changed` is wired to downstream.
+      const signals: Record<string, string> = { create: 'created', update: 'updated', delete: 'deleted' };
+      if (signals[change.type]) this.sendSignalOnOutput(signals[change.type]);
+      this.sendSignalOnOutput('changed');
+
+      // Debounced: `scheduleFetch` coalesces a burst into one query.
+      if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
+    },
+
+    handleRealtimeStatus: function (this: DbCollectionNodeInstance, status: RealtimeStatus) {
+      this._internal.realtimeStatus = status;
+      if (status === 'subscribed' && this._internal.realtimeError) {
+        this._internal.realtimeError = null;
+        this.flagOutputDirty('realtimeError');
+      }
+      this.flagOutputDirty('subscribed');
+      this.flagOutputDirty('realtimeStatus');
+    },
+
+    /**
+     * NDA-004 §2. A structured code, a signal, and the runtime error bus — the three things
+     * the retired Subscribe To Changes node had to be given, kept here rather than lost in
+     * the fold. `console.warn` survives deployment but carries no code and is invisible to
+     * `On App Error` and to every error subscriber.
+     */
+    handleRealtimeError: function (this: DbCollectionNodeInstance, error: RealtimeError) {
+      this._internal.realtimeError = error;
+      this.flagOutputDirty('realtimeError');
+      this.sendSignalOnOutput('realtimeFailure');
+      this.raiseRuntimeError(REALTIME_ERROR_CODE, error.message || 'The realtime subscription failed.', error);
     },
     // The field written here must be the one the `error` output's getter reads. Until
     // PLAT-003 slice 13 this wrote `_internal.err` against a getter reading
@@ -746,7 +1071,11 @@ const DbCollectionNode: NodeDefinitionOptions = {
         backendId: ((value: string) => {
           this._internal.backendId = value;
           if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
-        }) as (value: never) => void
+          // BCN-008: and the subscription follows the picker, or it stays connected to
+          // whichever backend happened to be selected when the node first ran.
+          this.scheduleRealtimeReconfigure();
+        }) as (value: never) => void,
+        realtime: this.setRealtime.bind(this) as (value: never) => void
       };
 
       if (dynamicSetters[name])
@@ -857,6 +1186,22 @@ function updatePorts(
     group: 'Actions',
     name: 'storageFetch',
     displayName: 'Do'
+  });
+
+  // BCN-008: Subscribe To Changes. One input, and the port stays declared whatever the
+  // backend is — a capability that disappears from the panel when the picker moves is
+  // worse than one that says why it cannot connect. `realtimeSupportFor` answers that at
+  // runtime, without opening a socket, and the reason lands on `Realtime Error`.
+  ports.push({
+    type: 'boolean',
+    plug: 'input',
+    group: 'Realtime',
+    name: 'realtime',
+    default: false,
+    displayName: 'Subscribe To Changes',
+    tooltip:
+      'Keep Items current from the server: re-runs this query when another client creates, updates or deletes a ' +
+      'record, and fires the Record Created/Updated/Deleted signals. Not every backend can — see Realtime Error.'
   });
 
   // Total Count

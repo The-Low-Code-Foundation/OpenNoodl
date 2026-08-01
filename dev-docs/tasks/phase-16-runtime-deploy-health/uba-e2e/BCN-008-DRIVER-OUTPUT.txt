@@ -1,0 +1,148 @@
+BCN-008 live driver — 2026-08-01T07:01:55.749Z
+node v22.22.0 · global EventSource: undefined · global WebSocket: function
+(the SSE transports run on a fetch-based EventSource shim: Node has none — see the docblock)
+
+==============================================================================
+DIRECTUS 11 — WebSocket, via DirectusWebSocketTransport
+==============================================================================
+  ✅ declared supported over websocket  — {"transport":"websocket","state":"supported"}
+  · collection bcn008_live already present
+
+── subscribe, then mutate from outside the app ─────────────────────────────
+  ✅ status → subscribed (the init frame confirmed it)  — ["subscribed"]
+  ✅ an init frame arrived and is reported as type "init"
+  ✅ the REST id is a NUMBER on this backend  — 9 (number)
+  ✅ create delivered
+  ✅ create ids are strings and match the REST id  — ["9"]
+  ✅ create carries the record
+  ✅ update delivered
+  ✅ delete delivered
+  ✅ delete ids are strings for an INTEGER primary key  — ["9"]
+  ✅ delete says recordsComplete:false  — {"records":0,"recordsComplete":false}
+
+── the ping/pong rule — 70s of silence from us ─────────────────────────────
+  · Measured: the server pings at ~30s and closes a client that ignored one at ~60s,
+  · code 1005. If the transport answers, the subscription never leaves `subscribed`.
+  ✅ still subscribed after 72s idle  — []
+  ✅ a row written after the idle window is still delivered
+
+── ⚠️ THE unverified criterion — restart the container ─────────────────────
+uba-e2e-directus-1
+  ✅ the drop was noticed (status → interrupted)
+  ✅ directus is answering again
+  ✅ reconnected and re-confirmed  — ["interrupted","subscribed"]
+  ✅ ⭐ a row written AFTER the restart is delivered — resubscribed, not merely reconnected  — {"postId":11,"status":200}
+  ✅ dispose leaves it stopped
+
+==============================================================================
+POCKETBASE 0.30 — SSE, via SseTransport + POCKETBASE_SSE
+==============================================================================
+  ✅ declared supported over sse  — {"transport":"sse","state":"supported"}
+  · collection bcn008_live already present
+  · collection bcn008_live_private already present
+
+── subscribe, then mutate from outside the app ─────────────────────────────
+  ✅ status → subscribed (the 204 confirmed it)  — ["subscribed"]
+  ✅ create delivered on an event named after the COLLECTION
+  ✅ create ids match the REST id  — ["vfa6f7k3z22cgc8"]
+  ✅ update delivered
+  ✅ delete delivered
+  ✅ delete carries the WHOLE record here  — {"records":1,"recordsComplete":true}
+  ✅ delete ids are strings (a 15-char PocketBase id)  — ["vfa6f7k3z22cgc8"]
+
+── ⚠️ a 204 is not a subscription — the trap, as a measurement ─────────────
+  · An anonymous subscription to a superuser-only collection is accepted with 204 and
+  · then delivers nothing. Our transport reports `subscribed`, because 204 is genuinely
+  · all the wire says. This records the limit rather than pretending it is not there.
+  ✅ the private collection also reports subscribed  — ["subscribed"]
+  ✅ and nothing is delivered — subscribed-but-silent is a real state on this backend
+
+── ⚠️ THE unverified criterion — restart the container ─────────────────────
+uba-e2e-pocketbase-1
+  ✅ the drop was noticed (status → interrupted)
+  ✅ pocketbase is answering again
+  ✅ reconnected and re-confirmed  — ["interrupted","subscribed"]
+  ✅ ⭐ a row written AFTER the restart is delivered — resubscribed, not merely reconnected  — {"id":"ydyqrk9f67vljjx","status":200}
+
+==============================================================================
+NODEGX BACKEND — SSE, via SseTransport + NODEGX_SSE
+==============================================================================
+  ✅ declared supported over sse  — {"transport":"sse","state":"supported"}
+
+── subscribe, then mutate from outside the app ─────────────────────────────
+  ✅ status → subscribed (a non-empty accepted[] confirmed it)  — ["subscribed"]
+  ✅ create delivered
+  ✅ create ids match the REST objectId  — 181d95bd-d147-4908-8365-8b899c3b8758
+  ✅ update delivered
+  ✅ delete delivered
+  ✅ delete carries the whole pre-delete record  — {"records":1}
+
+── ⚠️ read the BODY: a rejected filter answers 200 ─────────────────────────
+  ✅ a 200 carrying rejected[] is reported as SUBSCRIPTION_REJECTED  — {"message":"The subscription to \"Bcn008Live\" was rejected: \"$nonsense\" is not supported in realtime subscription filters","code":"SUBSCRIPTION_REJECTED","kind":"retryable"}
+  ✅ and it is NOT reported as subscribed  — interrupted
+
+── ⚠️ THE unverified criterion — restart the backend ───────────────────────
+  · Not a container: the rig has no nodegx-backend service, so this is the same process
+  · killed and re-launched, which is the same event from the socket's point of view.
+  ✅ the drop was noticed (status → interrupted)
+  ✅ nodegx-backend is answering again
+  ✅ reconnected and re-confirmed  — ["interrupted","subscribed"]
+  ✅ ⭐ a row written AFTER the restart is delivered — resubscribed with a FRESH clientId  — {"objectId":"20c6acba-1ec5-42aa-8204-b97281897de9","status":201}
+  · resync frames seen: 2
+
+==============================================================================
+PARSE 7.3.0 — LiveQuery, probed. Measured ABSENT.
+==============================================================================
+  ✅ declared conditional, not supported  — conditional
+  ✅ and it says why  — Parse LiveQuery runs as a separate server and most deployments do not start one. NodeGX probes for it and reports what it finds; realtime is off unless one answers.
+
+── a subscription reports a reason, fast, and stops ────────────────────────
+  ✅ the probe reported inside 6s  — 17ms
+  ✅ as CAPABILITY_UNAVAILABLE  — CAPABILITY_UNAVAILABLE
+  ✅ and fatal, so it does not retry forever  — fatal
+  ✅ status → stopped, not connecting-forever  — stopped
+      reason: No LiveQuery server answered. Parse LiveQuery runs as a separate server and most deployments do not start one; `/serverInfo` never mentions it either way, so the socket is the only thing that can say.
+  ✅ reported exactly once  — 1 error(s)
+
+==============================================================================
+SUPABASE — nothing measured, and it says so
+==============================================================================
+  ✅ declared unsupported  — unsupported
+  ✅ and named as its own transport, not "websocket"  — phoenix-channel
+  ✅ a subscription reports immediately rather than opening a socket
+  ✅ as CAPABILITY_UNAVAILABLE  — CAPABILITY_UNAVAILABLE
+  ✅ status → stopped
+      reason: Realtime is not available for Supabase backends. Supabase Realtime is a separate Phoenix-channel service and NodeGX has never connected to one — every cell in the contract's Supabase realtime profile is unmeasured (BCN-008), so no transport was written for it. The capability is conditional, not supported.
+
+── and the rig still has no Supabase Realtime — re-checked, not assumed ────
+  ✅ the descriptor's own health path is a 404 from PostgREST  — 404
+
+==============================================================================
+THE onclose TRAP — does the funnel actually catch all three paths?
+==============================================================================
+
+── a listening server that is not a WebSocket server (error, and never close) 
+  ✅ `error` alone drives reconnection (3×), with no `close` ever arriving  — {"reports":3,"first":"The realtime connection to \"bcn008_live\" went down before it was confirmed (errored)."}
+  ✅ and it stays `interrupted`, not `connecting` forever  — interrupted
+
+── ⚠️ a socket that fires NOTHING — the row RUN-003 never saw ──────────────
+  ✅ ⭐ the connect deadline fired — the ONLY thing that can notice this  — 2004ms
+  ✅ and it keeps retrying rather than reporting once and dying  — 2 reports
+
+── a bad token is fatal, not a retry loop ──────────────────────────────────
+  ✅ AUTH_FAILED reported  — {"message":"Authentication handshake failed.","code":"AUTH_FAILED","kind":"fatal"}
+  ✅ and classified fatal  — fatal
+  ✅ status stays stopped — no reconnect storm  — {"status":"stopped","errors":1}
+
+── a host that does not auto-reconnect its own EventSource ─────────────────
+  · The browser EventSource retries by itself and the transport is written around that.
+  · With that turned off, our own backoff has to be the thing that recovers.
+  ✅ subscribed with a non-reconnecting EventSource  — ["subscribed"]
+  ✅ the drop was noticed
+  ✅ backend answering again
+  ✅ our own backoff reconnected it  — ["interrupted","subscribed"]
+  ✅ ⭐ and delivered again afterwards
+
+==============================================================================
+RESULT — 70 passed, 0 failed
+==============================================================================

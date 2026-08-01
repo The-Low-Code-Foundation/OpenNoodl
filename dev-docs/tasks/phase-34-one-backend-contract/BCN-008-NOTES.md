@@ -241,3 +241,244 @@ Ruthlessly, and loudly.
 - Do not fork the `ChangeBus`: it has two consumers (BAK-001, WF-005) and realtime must remain the
   first tap, not a third.
 - Get a real Supabase stack into the rig, or leave that column `conditional` forever.
+
+---
+---
+
+# BCN-008 (proper) — the transports, built and restarted
+
+**Date** 2026-08-01 · **Scope** steps 1–8. Four transports built, the fifth deliberately not.
+`noodl.byob.SubscribeToChanges` retired and folded into Query Records. **Every backend the
+rig can reach was restarted underneath a live subscription**, which is the one thing the
+contract half could not do.
+
+**Artefacts**
+
+| What | Where |
+|---|---|
+| The lifecycle | `packages/noodl-runtime/src/api/backends/realtime/RealtimeSubscription.ts` |
+| Directus WS | `…/realtime/DirectusWebSocketTransport.ts` |
+| SSE, two dialects | `…/realtime/SseTransport.ts` (`NODEGX_SSE`, `POCKETBASE_SSE`) |
+| Parse LiveQuery | `…/realtime/ParseLiveQueryTransport.ts` — a probe and a reason, not a protocol |
+| Supabase / custom | `…/realtime/UnavailableTransport.ts` |
+| The seam | `…/realtime/index.ts` — `realtimeSupportFor`, `createRealtimeSubscription` |
+| Unit tests | `packages/noodl-runtime/test/backends/realtime-transports.test.ts` (53) |
+| Live driver — transports | `uba-e2e/bcn-008-realtime-driver.ts` → `BCN-008-DRIVER-OUTPUT.txt` (**70 checks, 0 failed**) |
+| Live driver — the node | `uba-e2e/bcn-008-node-driver.ts` → `BCN-008-NODE-OUTPUT.txt` (**29 checks, 0 failed**) |
+| The capability | `Subscribe To Changes` on `DbCollection2` (Query Records) |
+| Deleted | `byob-subscribe.ts`, `byob-realtime.ts`, and their two test suites |
+
+**Gates.** `noodl-runtime` 86 suites / **0 failures** (1602 of 1615 passing, 13 skipped —
+up 22 tests on the 1580 baseline). `nodegx-backend-contract` 146. Editor `test:ci` **1957
+specs, 0 failures**. `npm run catalog:check` clean at 155 node types (156 before). `tsc`
+clean in both packages.
+
+---
+
+## 8. The live pass, per transport — including the restart
+
+Two drivers, because they answer different questions. The transport driver bundles the
+shipped classes and asks whether the *wire* works. The node driver registers a real
+`DbCollection2` into a real `NodeContext` and asks whether a **signal** fires — which is
+what the success criterion actually says, and which no amount of frame-parsing proves.
+
+| | subscribe | mutate from outside | **restart, then deliver** | at the node |
+|---|---|---|---|---|
+| **NodeGX** SSE | ✅ non-empty `accepted[]` | ✅ create/update/delete + whole record on delete | ✅ **process killed & relaunched** → reconnected, re-registered, delivered; 2 `resync` frames | ✅ signals + `Changed Record` carries the pre-delete row |
+| **Directus** WS | ✅ `init` frame | ✅ create/update/delete, delete `ids: ["1"]` for an integer pk | ✅ **`docker restart uba-e2e-directus-1`** → interrupted → subscribed → post-restart row delivered | ✅ signals, `Items` re-queried, `Changed Record` **null** on delete |
+| **PocketBase** SSE | ✅ 204 | ✅ event name is the collection; delete carries the whole record | ✅ **`docker restart uba-e2e-pocketbase-1`** → re-POSTed with the fresh clientId, post-restart row delivered | — (same code path as NodeGX) |
+| **Parse** | n/a | n/a | n/a | ✅ `CAPABILITY_UNAVAILABLE` in **32ms**, fatal, reported once |
+| **Supabase** | n/a | n/a | n/a | ✅ reason on `Realtime Error` + `Realtime Failure` signal, no socket opened |
+
+⚠️ **The restart check demands a delivery, not a status.** A status flipping back to
+`subscribed` proves a socket reconnected and proves nothing about whether the subscription
+was re-registered — and on both SSE servers the `clientId` is fresh per connection and the
+subscription POST *replaces* the set, so "reconnected" and "resubscribed" are genuinely
+separable states. Mutation M4 below shows the check earns its keep.
+
+⚠️ **NodeGX was a process restart, not `docker restart`.** The rig has no nodegx-backend
+service; the driver kills and relaunches the `:8593` process it started. Same event from
+the socket's side (connections dropped, fresh clientIds), and said out loud rather than
+filed under "restarted the backend".
+
+### The ping/pong rule, verified by removing it
+
+Directus, 72 seconds of deliberate client silence: the subscription never left
+`subscribed`. With the `pong` reply removed it dropped and reconnected — **and the very
+next check, "a row written after the idle window is still delivered", still passed**,
+because the reconnect logic recovered. A driver that only asked "did the row arrive?" would
+have scored a missing pong as a pass. That is the shape of this whole task's instrumentation
+risk, caught in the one place it was cheap to catch.
+
+## 9. Mutation testing the driver
+
+Each fix reverted, one at a time, the driver re-run.
+
+| mutation | checks that failed |
+|---|---|
+| **M1** `_armDeadline` returns immediately — the pre-BCN-008 behaviour, no connect deadline | **4** — the silent-socket case never reports, *and* an SSE host whose `EventSource` does not auto-retry never recovers at all |
+| **M2** Directus `ping` not answered | **1** — and delivery still passed (above) |
+| **M3** `NODEGX_SSE.readVerdict` returns `{ok:true}`, trusting the 200 | **2** — a rejected filter reads as a live subscription |
+| **M4** register once instead of on every hello frame | **2** — reconnects, never resubscribes, silent forever after a restart |
+
+M1's second failure was not predicted and is the most useful thing in this table: the
+confirmation deadline is not only the silent-socket guard, it is **the only path by which
+an SSE subscription recovers on a host whose `EventSource` does not retry**. `byob-realtime.ts`
+had neither, so it depended entirely on the browser's retry and had no fallback.
+
+## 10. Stale premises in the spec (in addition to §4's)
+
+6. **"Three transports" is four, or two, depending how you count.** The spec's desired
+   state says SSE, Directus WS and Supabase Realtime. What exists is SSE (two *different*
+   dialects — our event name is `change`, PocketBase's is the collection's own name, and
+   the subscription bodies differ in shape as well as path), Directus WS, and a Parse
+   probe. Supabase is not among them. Counting "SSE" as one transport is what made the
+   spec's estimate look reasonable.
+
+7. **"Probe each new transport live before implementing it" was followed for two of the
+   four and was impossible for the other two** — already noted in §4.4, now closed one way:
+   Parse got a probe *as its implementation*, and Supabase got nothing at all.
+
+8. **The spec's success criterion 3 says an app on a Parse server without LiveQuery "sees a
+   disabled port with a reason".** There is no port-disabling mechanism in the runtime — that
+   is BCN-010's and BCN-009's surface. What ships is the runtime half: a `Realtime Error`
+   port carrying `CAPABILITY_UNAVAILABLE` and a sentence, a `Realtime Failure` signal, and a
+   `Subscribed` output that stays `false` rather than pending. The port is still *drawn*.
+
+9. **The spec assumed `ssr: { compat: 'client-only' }` could stay a node-level flag.** It
+   cannot once the capability lives on Query Records, which has to run during a server
+   render. See §11.4.
+
+## 11. Deviations, with reasoning
+
+1. **The connect deadline is a *confirmation* deadline.** `REALTIME_TIMING.connectTimeoutMs`
+   is described as time-to-`open`. It is armed here whenever the subscription is not
+   `subscribed` and disarmed only by `confirmed()`. The measured reason: three of the five
+   backends will hold an *open* connection that confirms nothing (PocketBase's 204 for a
+   collection it will never deliver; our own 200 carrying a rejection), and "open but never
+   subscribed" is the same silence as "never opened" from the app's side. One timer, both
+   silences — and M1 showed it doing a third job nobody designed it for.
+
+2. **A generation counter replaces the shipped `_downHandled` flag.** That flag
+   de-duplicated *within* a socket, so a late `close` from generation 1 arriving after
+   generation 2 had connected still scheduled a second reconnect — two live sockets, one
+   subscription. Reports are now tagged and stragglers dropped. There is a unit test whose
+   whole content is that scenario.
+
+3. **A connection that goes down before it ever confirmed reports `CONNECT_FAILED`.** Not in
+   the spec. Found by writing the driver: against PostgREST the only observable was a status
+   quietly turning `interrupted` — no code, no message, nothing naming what was wrong.
+   A confirmed connection dropping reports nothing, deliberately: a backend restart is an
+   ordinary event and an error per restart trains people to ignore errors.
+
+4. **`client-only` is enforced per *capability*, not per node.** The retired node could
+   declare `ssr: { compat: 'client-only' }` and be made inert server-side. Query Records
+   cannot — SSR is most of what it is for. So `reconfigureRealtime` checks
+   `context.platform.isSSRServer()` and returns. Same guarantee (a server render opens no
+   sockets), different mechanism, and the mechanism is now in a place a future capability on
+   an SSR-critical node can copy.
+
+5. **No server-side filter is sent, on any transport.** Our own backend accepts one;
+   Directus takes none on a subscribe and PocketBase takes a different expression language.
+   The contract says a transport that cannot filter server-side must not filter client-side
+   and call it the same thing — so a change to a record *outside* the query's filter still
+   fires `Records Changed`, and the debounced re-query is what settles whether `Items`
+   actually moved. Coarser, uniform, and correct by construction. (The transport still
+   *supports* `where`; the node just does not use it.)
+
+6. **A change re-runs the query rather than patching the collection.** `cloudStoreEvents`
+   patches, using a **Parse-shaped** local matcher — wrong for a Directus filter, wrong for a
+   search term, wrong for anything the server evaluated that the client cannot. BAK-001's
+   `Live` toggle already re-queried; this is that, generalised.
+
+7. **One stream/socket per subscription, deliberately.** Both SSE servers' subscription POST
+   *replaces* the set for a `clientId`, so a shared connection means two nodes clobbering
+   each other silently. The cost is one connection per subscribing node. The alternative is a
+   shared registry that has to be right about ordering, and a wrong one presents as "the
+   other node stopped receiving" with nothing in any log.
+
+8. **Consumer callbacks are wrapped.** An exception thrown by a node's handler no longer
+   escapes into the transport's own bookkeeping — the Directus `pong` is dispatched from the
+   very handler a throwing consumer would have killed. This is BCN-004 step 6's
+   `_addModelAtCorrectIndex` defect one layer up, pre-empted rather than waited for. It is
+   reported to `console.error`, not swallowed; this layer has no `raiseRuntimeError` and
+   giving it one would put the node layer inside the transport layer.
+
+9. **Parse's transport declares `transport: 'none'` and only probes.** It reports
+   `CAPABILITY_UNAVAILABLE` in ~30ms when nothing answers — and *also* when something does,
+   with a different sentence, because no NodeGX code has ever spoken the LiveQuery protocol
+   and writing a decoder from documentation is the habit this phase exists to end.
+
+10. **`byob-query-data.ts` was repointed rather than left alone.** It held the only other
+    reference to `byob-realtime.ts`. Keeping a second realtime implementation alive to avoid
+    a five-line edit would have contradicted the task. ⚠️ **This is a one-file overlap with
+    the orchestrator's pending deletion of the other four `noodl.byob.*` types** — a
+    delete-vs-modify conflict that resolves as "delete wins".
+
+11. **The Supabase descriptor's `realtime.subscribe` reason was rewritten** (state left
+    `conditional`). It said "turn Realtime on in your Supabase dashboard", which is now
+    actively wrong: doing that will not make this work, because no transport exists. See
+    §13 for the state disagreement this leaves.
+
+## 12. Could not verify
+
+- **Supabase Realtime: still nothing. No transport was written and none was measured.** The
+  decision, stated plainly: the two acceptable options were "add Realtime to
+  `docker-compose.yml` and measure it" or "leave it `conditional` and say so", and this took
+  the second. The reason is cost and blast radius, not preference — the rig's
+  `uba-e2e-supabase-db-1` runs `wal_level = replica` and has **zero publications** (checked
+  today), so a real Realtime service needs a Postgres restart onto logical replication, a
+  `supabase_realtime` publication, `SECRET_KEY_BASE`/`DB_ENC_KEY`/`API_JWT_SECRET`, and a
+  tenant POSTed to the service's own API before it will serve a socket. That is a compose
+  change to a file **two other workers are running against right now**. Every Supabase cell
+  in `REALTIME_TRANSPORT_PROFILES` remains `measured: false`, untouched.
+- **A browser was never used.** Every measurement is Node 22.22. The Directus half runs on
+  the real undici `WebSocket`; **both SSE transports run on a hand-written `EventSource`
+  shim**, because Node has none. The shim implements dispatch-by-event-name, multi-line
+  `data`, comment skipping, `Last-Event-ID` replay and a 3s retry, and was run in both
+  auto-retry and no-auto-retry modes — but a browser's `EventSource` remains unexercised,
+  and the browser fires `close` after `error` where undici does not. The contract handles
+  both; only one half is measured.
+- **The editor was never opened.** No screenshot, no port panel, no check that
+  `Subscribe To Changes` renders in the Realtime group or that the new outputs group
+  sensibly. The catalog regenerates and the editor's 1957 specs pass; that is not the same
+  thing.
+- **`ssr: { compat: 'client-only' }` still has not been verified by rendering anything.**
+  §11.4 replaced the mechanism, and the new guard is covered by neither a unit test (it
+  needs a `context.platform`) nor a live render. **An SSR render opening zero sockets is
+  still owed.** This is the one deviation in this document with no evidence behind it.
+- **Directus was driven with an admin token throughout.** `auth.publicToken` with a
+  restricted role — what a shipped app carries — is still unexercised, so "which collections
+  a public token can subscribe to" is still unknown. Unchanged from §5.
+- **PocketBase's keepalive is still `none-observed`**, and the proxy-idle-timeout question
+  that matters in deployment is still open. No watchdog was written for either SSE transport
+  and that is a measurement, not an omission: SSE keepalives are `:` comment lines, which
+  `EventSource` does not surface to any listener, so an SSE watchdog would be counting frames
+  it cannot see.
+- **The heartbeat watchdog's 90s threshold has never fired against a real server.** It is
+  unit-tested on an injected clock. Producing the condition needs a connection killed without
+  a FIN — a NAT timeout or a `kill -9` on the right side of a proxy — which `docker restart`
+  does not reproduce.
+- **Nothing tested two subscriptions to the same backend at once.** §11.7 argues one
+  connection per subscription makes the clobbering impossible by construction. It is an
+  argument, not a measurement.
+
+## 13. Handover — what the next task inherits
+
+- ⚠️ **`realtimeSupportFor('supabase')` says `unsupported`; the descriptor cell says
+  `conditional`.** Deliberate and recorded: they answer different questions ("could a
+  Supabase project have realtime?" vs "can NodeGX speak to it?"). **BCN-010 is where one of
+  them has to give**, and the answer that matches shipped behaviour is `unsupported`.
+- ⚠️ **`packages/noodl-editor/.../cloud-node-library.json` still lists
+  `noodl.byob.SubscribeToChanges`** in its "BYOB Data" group. That file is Worker D's
+  territory and was left alone; `nodelibraryexport.ts` and `register-nodes.js` were both
+  updated. **Whoever deletes the other four types must take this fifth line with them**, or
+  the cloud runtime's picker offers a type that no longer exists.
+- **`byob-query-data.ts` now imports `api/backends/realtime`** — see §11.10 for the merge
+  conflict this sets up with the pending BYOB deletions.
+- **The two drivers are re-runnable and cheap.** `bcn-008-node-driver.ts` in particular is
+  BCN-004 step 6's harness and is the right place to add a check that a subscription reaches
+  a graph on a backend nobody has tried yet.
+- **`REALTIME_TRANSPORT_PROFILES` now carries restart evidence** for the three measured
+  backends. The `measured` column is unchanged: `true` for nodegx/directus/pocketbase/parse
+  (parse = measured **absent**), `false` for supabase. **No cell was flipped.**

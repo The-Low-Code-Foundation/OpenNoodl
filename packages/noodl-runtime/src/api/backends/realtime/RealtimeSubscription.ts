@@ -117,6 +117,10 @@ export abstract class RealtimeSubscription implements RealtimeLifecycle, Realtim
    */
   private _generation = 0;
   private _downGeneration = -1;
+  /** The last generation that reached `subscribed`. See {@link transportDownFrom}. */
+  private _confirmedGeneration = -1;
+  /** The last generation a transport reported a reason for, so it is not reported twice. */
+  private _reportedGeneration = -1;
   private _reconnectTimer: unknown = null;
   private _deadlineTimer: unknown = null;
   private _disposed = false;
@@ -167,6 +171,7 @@ export abstract class RealtimeSubscription implements RealtimeLifecycle, Realtim
     if (this._disposed || this._status === 'stopped') return;
     this._clearTimer('_deadlineTimer');
     this._attempt = 0;
+    this._confirmedGeneration = this._generation;
     this._setStatus('subscribed');
   }
 
@@ -195,6 +200,27 @@ export abstract class RealtimeSubscription implements RealtimeLifecycle, Realtim
     this._setStatus('interrupted');
     this.onTransportDown(reason);
 
+    // ⚠️ A connection that goes down having **never confirmed** is a failure, and it needs
+    // a reason. A confirmed connection going down is not: a backend restart is an ordinary
+    // event and reporting an error for every one would train an app author to ignore them.
+    //
+    // The measured case this closes: a WebSocket against a listening server that is not a
+    // WebSocket server (PostgREST) fires `error` at ~20ms and `close` **never**. Without
+    // this, the only observable was a status flipping to `interrupted` — no code, no
+    // message, nothing naming the port that is wrong. `connect-timeout` and
+    // `heartbeat-missed` are excluded because they have already reported their own.
+    if (
+      this._confirmedGeneration !== generation &&
+      this._reportedGeneration !== generation &&
+      (reason === 'errored' || reason === 'closed')
+    ) {
+      const fatal = this.fail(
+        'CONNECT_FAILED',
+        `The realtime connection to "${this.collection}" went down before it was confirmed (${reason}).`
+      );
+      if (fatal) return;
+    }
+
     const delay = nextReconnectDelay(this._attempt++, this.timing);
     this._reconnectTimer = this._setTimeout(() => {
       this._reconnectTimer = null;
@@ -211,16 +237,18 @@ export abstract class RealtimeSubscription implements RealtimeLifecycle, Realtim
    * `CONNECT_FAILED`, which is retryable in general and is not retryable when the string
    * cannot change without a graph edit.
    */
-  protected fail(code: RealtimeErrorCode, message: string, kind?: RealtimeFailureKind): void {
+  protected fail(code: RealtimeErrorCode, message: string, kind?: RealtimeFailureKind): boolean {
     const error: RealtimeError = { message, code, kind: kind || REALTIME_FAILURE_KINDS[code] };
-    if (this._onError) this._onError(error);
+    this._reportedGeneration = this._generation;
+    this._notify('onError', () => this._onError && this._onError(error));
 
-    if (error.kind !== 'fatal') return;
+    if (error.kind !== 'fatal') return false;
 
     this._clearTimer('_deadlineTimer');
     this._clearTimer('_reconnectTimer');
     this._safeClose();
     this._setStatus('stopped');
+    return true;
   }
 
   /**
@@ -245,7 +273,35 @@ export abstract class RealtimeSubscription implements RealtimeLifecycle, Realtim
 
   protected emitChange(change: RealtimeChange): void {
     if (this._disposed) return;
-    if (this._onEvent) this._onEvent(change);
+    this._notify('onEvent', () => this._onEvent && this._onEvent(change));
+  }
+
+  /**
+   * Run a consumer callback without letting it take the transport down with it.
+   *
+   * ⚠️ **An exception thrown in a subscriber does not stay local.** BCN-004 step 6 found
+   * the same shape one layer down: `_addModelAtCorrectIndex` threw inside the store's
+   * `create` emit, which the adapter raises *inside* the originating node's success
+   * callback, so a Create New Record node never fired `Created` for a record it had
+   * already written. A realtime callback runs from inside `onmessage` or an SSE listener,
+   * where a throw would skip the transport's own bookkeeping — the pong that keeps the
+   * Directus connection alive is dispatched from the very same handler.
+   *
+   * So the throw is reported and contained. It is **not** swallowed: `console.error` is
+   * the only channel available here (this layer has no `raiseRuntimeError`, and inventing
+   * a dependency on one would put the node layer inside the transport layer), and the
+   * node that owns the callback is where a runtime error belongs.
+   */
+  private _notify(what: string, run: () => void): void {
+    try {
+      run();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[realtime] a ${what} handler for "${this.collection}" threw; the subscription is unaffected.`,
+        e
+      );
+    }
   }
 
   dispose(): void {
@@ -343,7 +399,7 @@ export abstract class RealtimeSubscription implements RealtimeLifecycle, Realtim
   private _setStatus(status: RealtimeStatus): void {
     if (this._status === status) return;
     this._status = status;
-    if (this._onStatus) this._onStatus(status);
+    this._notify('onStatus', () => this._onStatus && this._onStatus(status));
   }
 }
 

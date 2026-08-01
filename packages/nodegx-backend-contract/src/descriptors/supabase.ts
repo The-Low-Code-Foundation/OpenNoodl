@@ -119,8 +119,18 @@ export const supabaseDescriptor: BackendDescriptor = {
     // it as unavailable until a probe says otherwise, so an unverified cell
     // cannot promise anything. It must NOT be promoted to `supported` by anyone
     // who has not run a real Supabase stack.
+    //
+    // ⚠️ **BCN-008 proper did not change this, and the reason is worth stating.** The
+    // transports shipped for the other four backends; **none was written for Supabase**,
+    // because writing a Phoenix-channel decoder from documentation is the exact habit this
+    // phase exists to end. So at runtime `realtimeSupportFor('supabase')` answers
+    // `unsupported`, while this cell says `conditional` — a disagreement that is deliberate
+    // and recorded rather than papered over. They are answers to different questions
+    // ("could a Supabase project have realtime?" vs "can NodeGX speak to it?"), and BCN-010
+    // is where one of them has to give. Until then the reason below says the true thing.
     'realtime.subscribe': conditional(
-      'Live updates need Realtime turned on for this table in your Supabase dashboard.',
+      'NodeGX cannot subscribe to Supabase Realtime yet — it speaks Phoenix channels and no transport has been ' +
+        'written for it (BCN-008). Turning Realtime on in your Supabase dashboard will not make this work.',
       { method: 'GET', path: '/realtime/v1/api/tenants/realtime/health', expect: 'a healthy response, plus the table being in the supabase_realtime publication' },
       'Realtime is per-table opt-in via the publication, not a project-wide switch. DOCUMENTED, NOT PROBED — BCN-008 confirmed only that no Realtime service exists in this rig to probe. The delete payload in particular (postgres_changes sends old_record with the primary key alone unless the table is REPLICA IDENTITY FULL) is unmeasured, and that is exactly the field RUN-003 got wrong on Directus by reading rather than asking.'
     )

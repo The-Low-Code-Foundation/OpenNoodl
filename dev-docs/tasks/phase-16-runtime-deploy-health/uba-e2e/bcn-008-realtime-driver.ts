@@ -781,8 +781,14 @@ async function traps() {
     COLL,
     { timing: { reconnectBaseMs: 200, reconnectMaxMs: 400, connectTimeoutMs: 15000 } }
   );
-  const bounced = await w1.wait(() => w1.statuses.filter((s) => s === 'interrupted').length >= 2, 12000);
-  check(bounced, '`error` alone drives reconnection (twice), with no `close` ever arriving', w1.statuses.slice(0, 6));
+  // Counting *reports*, not status transitions: `interrupted` is set once and then stays,
+  // so a driver watching the status cannot tell one failed connect from twenty.
+  const bounced = await w1.wait(() => w1.errors.filter((e) => e.code === 'CONNECT_FAILED').length >= 3, 15000);
+  check(bounced, '`error` alone drives reconnection (3×), with no `close` ever arriving', {
+    reports: w1.errors.length,
+    first: w1.errors[0]?.message
+  });
+  check(w1.subscription?.status === 'interrupted', 'and it stays `interrupted`, not `connecting` forever', w1.subscription?.status);
   w1.dispose();
 
   sub('⚠️ a socket that fires NOTHING — the row RUN-003 never saw');

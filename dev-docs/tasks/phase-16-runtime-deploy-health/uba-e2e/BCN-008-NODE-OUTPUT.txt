@@ -1,0 +1,72 @@
+BCN-008 node driver — 2026-08-01T07:03:49.588Z
+node v22.22.0 · global EventSource: undefined · global WebSocket: function
+
+==============================================================================
+DIRECTUS — the capability, through Query Records
+==============================================================================
+
+── the subscription reaches the node ───────────────────────────────────────
+  ✅ Subscribed output goes true  — {"status":"subscribed","error":null}
+  ✅ and connecting fires NO create/changed signals — init is not a write  — ["fetched"]
+  ✅ Change Type carries "init"  — init
+
+── a create, made from outside the app ─────────────────────────────────────
+  ✅ ⭐ Record Created fires  — ["created","changed"]
+  ✅ ⭐ …and Records Changed with it — the signal pair  — ["created","changed"]
+  ✅ Changed Record Id is the string form of a numeric pk  — {"port":"12","rest":12}
+  ✅ Changed Record carries the row  — {"id":12,"title":"node-driver create"}
+  ✅ ⭐ Items re-queried and now contains the new row  — ["after the idle window","after the restart","after the idle window","after the restart","after the restart","after the idle window","after the restart","node-driver create"]
+
+── an update ───────────────────────────────────────────────────────────────
+  ✅ Record Updated fires  — ["updated","changed"]
+  ✅ Change Type is "update"
+
+── ⚠️ a delete — Directus sends keys only ──────────────────────────────────
+  ✅ Record Deleted fires  — ["fetched","deleted","changed"]
+  ✅ Changed Record Id is still right  — 12
+  ✅ ⭐ Changed Record is NULL rather than an empty object — gated on recordsComplete  — null
+  ✅ and Changed Records is empty rather than a list of bare keys
+
+── ⚠️ the node survives a container restart ────────────────────────────────
+uba-e2e-directus-1
+  ✅ Subscribed goes false while it is gone
+    message: 'The realtime connection to "bcn008_live" went down before it was confirmed (errored).',
+    code: 'CONNECT_FAILED',
+    kind: 'retryable'
+    message: 'The realtime connection to "bcn008_live" went down before it was confirmed (errored).',
+    code: 'CONNECT_FAILED',
+    kind: 'retryable'
+  ✅ and back to true once it returns  — {"status":"subscribed"}
+  ✅ ⭐ a row written AFTER the restart still fires Record Created in the graph  — {"status":200,"signals":["created","changed"]}
+  ✅ deleting the node tears the subscription down
+
+==============================================================================
+NODEGX — the same capability, the other transport
+==============================================================================
+  ✅ Subscribed output goes true over SSE  — {"error":null}
+
+── a create, made from outside the app ─────────────────────────────────────
+  ✅ ⭐ Record Created fires  — ["created","changed"]
+  ✅ ⭐ …and Records Changed with it  — ["created","changed"]
+  ✅ Changed Record Id is the objectId  — {"port":"9d98044b-423e-477b-92c2-630502880755","rest":"9d98044b-423e-477b-92c2-630502880755"}
+
+── ⚠️ a delete — this backend sends the whole record, unlike Directus ──────
+  ✅ Record Deleted fires  — ["deleted","changed","fetched"]
+  ✅ ⭐ Changed Record carries the pre-delete row here — the SAME port, a different guarantee  — {"objectId":"9d98044b-423e-477b-92c2-630502880755","createdAt":"2026-08-01T07:03:58.033Z","updatedAt":"2026-08-01T07:03:58.033Z","ACL":null,"title":"node-driver sse create","count":null}
+
+==============================================================================
+A BACKEND WITH NO REALTIME — a reason on a port, not silence
+==============================================================================
+    message: "Realtime is not available for Supabase backends. Supabase Realtime is a separate Phoenix-channel service and NodeGX has never connected to one — every cell in the contract's Supabase realtime profile is unmeasured (BCN-008), so no transport was written for it. The capability is conditional, not supported.",
+    code: 'CAPABILITY_UNAVAILABLE',
+    kind: 'fatal'
+  ✅ Realtime Error is populated  — {"message":"Realtime is not available for Supabase backends. Supabase Realtime is a separate Phoenix-channel service and NodeGX has never connected to one — every cell in the contract's Supabase realtime profile is unmeasured (BCN-008), so no transport was written for it. The capability is conditional, not supported.","code":"CAPABILITY_UNAVAILABLE","kind":"fatal"}
+  ✅ and the Realtime Failure signal fired  — ["realtimeFailure"]
+  ✅ Subscribed stays false rather than pending forever
+  ✅ with a code a graph can branch on  — CAPABILITY_UNAVAILABLE
+  ✅ and a sentence a person can act on
+      reason: Realtime is not available for Supabase backends. Supabase Realtime is a separate Phoenix-channel service and NodeGX has never connected to one — every cell in the contract's Supabase realtime profile is unmeasured (BCN-008), so no transport was written for it. The capability is conditional, not supported.
+
+==============================================================================
+RESULT — 29 passed, 0 failed
+==============================================================================
