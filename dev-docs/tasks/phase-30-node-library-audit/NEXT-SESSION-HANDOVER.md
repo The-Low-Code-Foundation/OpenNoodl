@@ -290,10 +290,12 @@ pathspecs remain the better habit.
   itself was the proof. `.claude/worktrees` is now empty, which also fixes the standing grep trap.
 - `nightly-to-main` is the **only** unmerged branch. It is CI infrastructure — **keep it**.
 - ⚠️ **`main` is 1,007 commits behind `cline-dev`, and `origin/cline-dev` is 857 behind.** See §10.
-- ⚠️ **Five old stashes survive** and two of them (`stash@{0}`, `stash@{3}`) contain the *minified*
-  `project-examples/agent-chat/project.json` (−5,719 lines) — the known editor-launch corruption.
-  **Applying either would damage the example project.** They are AIX-era WIP whose tasks have since
-  shipped. Left in place only because dropping a stash is irreversible; Richard's call.
+- **The stash list is empty.** Five old AIX-era stashes were exported to
+  `.git/stash-archive/*.patch` (with `INDEX.txt` naming what each was) and then cleared, on
+  Richard's instruction. ⚠️ **Two of them — now `stash-0.patch` and `stash-3.patch` — contain the
+  *minified* `project-examples/agent-chat/project.json` (−5,719 lines)**, which is the known
+  editor-launch corruption, not a real edit. **Do not apply either.** The archive is outside the
+  work tree, so it is invisible to `git status` and will never be committed by accident.
 - Pre-existing and unowned: `dist-types/src/api/cloudstore.d.ts` has a dangling `packages/…` import,
   so `tsc -p noodl-viewer-react` needs `--skipLibCheck`. `@noodl/mcp` has **one** pre-existing failing
   test. The root `tsc` has 18 pre-existing `Cannot find module '@noodl-versioning'` errors.
@@ -304,9 +306,12 @@ pathspecs remain the better habit.
 essentially the entire revival — every phase from 12 to 34 — living on one disk with no remote copy.
 
 This is the single largest risk to the project and it is **not a technical problem**: the remote
-exists (`github.com/The-Low-Code-Foundation/OpenNoodl`) and nothing is in conflict. It needs a
-decision about whether this work is pushed to a public repository, and that is Richard's alone —
-which is why no session has done it. **Raise it; do not action it unasked.**
+exists (`github.com/The-Low-Code-Foundation/OpenNoodl`), nothing is in conflict, and a push would
+be a clean fast-forward.
+
+⚠️ **Asked on 2026-08-01. Richard's answer: "Leave it — I'll handle the remote."** So this is a
+known, accepted, owned risk, not an oversight. **Do not push, and do not re-litigate it** — mention
+it once if a session runs long enough that the exposure matters, and otherwise leave it with him.
 - Pre-existing and unowned: `dist-types/src/api/cloudstore.d.ts` has a dangling `packages/…` import,
   so `tsc -p noodl-viewer-react` needs `--skipLibCheck`. `@noodl/mcp` has **one** pre-existing failing
   test. The root `tsc` has 18 pre-existing `Cannot find module '@noodl-versioning'` errors.
