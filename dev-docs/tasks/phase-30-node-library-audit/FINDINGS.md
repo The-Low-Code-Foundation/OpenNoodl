@@ -2121,6 +2121,11 @@ a Visual node the interesting shape is not "DB-ii fires" — it fires 242 times 
 
 ### DV-ii — `Button` and `Icon` declare a padding default that reaches no style, and only one of them suffers
 
+✅ **Fixed 2026-08-01** by deleting both declarations, which removes the duplicate rather than making
+both copies live. Live QA after the fix: `Icon` computes `padding: 0px` and `Button` computes
+`padding: 5px 20px` — **no pixels moved**, and the property panel stops showing a number that reaches
+nothing.
+
 `addPaddingInputs` gives all four of its ports `applyDefault: false`
 ([`node-shared-port-definitions.ts:277`](../../../packages/noodl-viewer-react/src/node-shared-port-definitions.ts#L277),
 `:291`, `:310`, `:327`), which is exactly the switch that blocks the `startStyle` route. DB-ii blocks
@@ -2160,6 +2165,12 @@ the mechanism rows assert on the node's style object, and a second block records
 found for each node.
 
 ### DV-iii — `Component Stack` says it clips and does not
+
+✅ **Fixed 2026-08-01** by adding `overflow: 'hidden'` to `defaultCss`, the one route applied at
+initialize. Confirmed live: an author-untouched Component Stack element now carries
+`overflow: hidden`. ⚠️ The *consequence* — a taller pushed component actually being clipped — was not
+observed, because the QA fixture's stack had no mounted child; the mechanism is measured and the rest
+follows by inference.
 
 [`navigation-stack.tsx:258-266`](../../../packages/noodl-viewer-react/src/nodes/navigation/navigation-stack.tsx#L258-L266)
 is the only thing that writes `overflow: hidden`, its port declares `default: true`, and the node's
@@ -2280,6 +2291,37 @@ NDA-012's own warning about counting usages as defects.
 ⚠️ **Do not compare Visual's find rate with earlier categories.** Two counts moved for reasons
 unrelated to Visual: `B1`'s pre-fill was wrong until last session (§4.1), and `B3` was being read
 too generously until this one. `Navigation`'s 1.88/node was measured under the old B3 reading.
+
+### DV-ix — `Component Stack`'s `resetAsync` throws on a malformed `pages`, which is RT-3 in the sibling node
+
+**Found 2026-08-01 during live QA of the DV-ii/DV-iii fixes, not by a sweep**, and filed rather than
+fixed.
+
+[`navigation-stack.tsx`](../../../packages/noodl-viewer-react/src/nodes/navigation/navigation-stack.tsx)'s
+`resetAsync` guards `pages` with `this._internal.pages === undefined || this._internal.pages.length === 0`
+and then dereferences `this._internal.pages[0].id`. A `pages` that is **present but not an array**
+passes that guard — `undefined === 0` is false — and the dereference throws
+`TypeError: Cannot read properties of undefined (reading 'id')`.
+
+⚠️ **This is exactly RT-3's shape**: a value guarded on one line by one predicate and dereferenced on
+another by a stronger one. The audit marked this node's `G1` ✅ on the grounds that *"`pages` empty is
+reported rather than dereferenced"*, which is true for **empty** and false for **malformed**. The
+check was answered against the case the code handles.
+
+⚠️ **How it was found is the point.** It was tripped by a hand-written QA project that gave the stack
+the `Router`'s `pages` shape (`{startPage, routes}`) instead of the `proplist` shape (`{id, label}[]`).
+Both nodes have a port called `Pages`, the shapes are incompatible, and nothing reports the mismatch.
+
+**Priority: low, but not zero.** The property panel's proplist editor cannot produce a non-array, so
+this is unreachable by ordinary authoring. It *is* reachable from an imported or hand-edited project,
+and honest legacy import is `LIB-006`'s promise — which makes this a node worth hardening before that
+lands rather than after.
+
+⚠️ **The same session's first two diagnoses of this exception were both wrong** — attributed first to
+the Page Router's new code, then to the editor's compilation traverser. It was resolved by finding the
+throwing line in the served bundle and walking *backwards* to the enclosing node definition. **Two
+nodes in this family have a `resetAsync` and a `pages`; a stack trace naming `resetAsync` does not
+tell you which.**
 
 ## What these passes did *not* cover
 

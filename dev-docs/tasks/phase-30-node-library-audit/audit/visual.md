@@ -1,5 +1,35 @@
 # Audit worksheet — Visual (29 nodes, **20 in scope**, 20 audited)
 
+> ## Remediation, 2026-08-01 (second session of the day)
+>
+> **Six fix items landed and 13 of the in-scope ⚠️ cells are resolved: 47 → 34.** Nodes carrying at
+> least one defect: **15 → 13** (`Icon` and `Radio Button Group` are now clean; Icon's defect was
+> recorded in its Verdict prose rather than a cell, so it does not show in the cell arithmetic).
+>
+> | Fix | Cells resolved |
+> |---|---|
+> | `Page Router`'s `resetAsync` — RT-1/RT-2/RT-3 | G1, B1, B2, H1 |
+> | `Dropdown`'s `items` setter — one rewrite | A3, G1, H1, and B1/B2 dissolve with the crash |
+> | `Repeater` clears on an empty `Items` | G1 |
+> | `Icon`/`Button` padding — DV-ii | *(Verdict prose; Icon had no ⚠️ cell)* |
+> | `Component Stack`'s `Clip Content` — DV-iii | H1 |
+> | `Radio Button Group` G1 · `Slider` A3 | G1 · A3 |
+>
+> ⚠️ **The previously recorded totals of "31 defects / 41 ⚠️ cells" are not reproducible from this
+> worksheet.** Counting ⚠️ cells in the in-scope section, excluding `C1`, gives **47** before this
+> session. The 31 presumably collapsed the B1/B2/B3 groups into one defect each. **The 47 → 34 pair
+> above is derived by one method over both revisions**, so those two numbers are comparable with each
+> other and not with the earlier ones.
+>
+> ⚠️ **Live QA, and what it did and did not establish.** Confirmed in the running editor on a
+> purpose-built project whose nodes carry only what an author would have typed: `Icon` computes
+> `padding: 0px` and `Button` computes `padding: 5px 20px` (so DV-ii moved **no pixels**); an
+> author-untouched `Component Stack` element now carries `overflow: hidden`; and an unconfigured
+> `Page Router` **does not throw** and puts *"This Router has no Pages configured…"* in the editor's
+> warnings panel with node provenance. ⚠️ **DV-iii's consequence was not observed** — the stack
+> element had no mounted child, so the *mechanism* is measured and the clipping of a taller pushed
+> component still follows by inference. That distinction is DV-ii's own rule.
+
 > **Audited 2026-08-01.** All 20 in-scope nodes now carry twelve verdicts. The nine deprecated
 > legacy form controls (`Button`, `Checkbox`, `Field Set`, `Form`, `Label`, `Options`,
 > `Radio Button`, `Range`, `Text Input`) are **out of scope** by Richard's standing decision and
@@ -180,13 +210,18 @@ Source: [`nodes/visual/icon.ts`](../../../../packages/noodl-viewer-react/src/nod
 | F1 | `n/a` | — |
 | H1 | ✅ | declares `safe` |
 
-**Verdict:** ⚠️ defect — **`DV-ii`, and Icon is the node it actually costs.** `Icon` declares 5px
-padding on all four edges
-([`icon.ts:30-37`](../../../../packages/noodl-viewer-react/src/nodes/visual/icon.ts#L30-L37)) and
-renders none of it: `addPaddingInputs` sets `applyDefault: false`, which blocks the `startStyle`
-route, and DB-ii blocks the setter route. **Measured live: `padding: 0px` on the node's own element,
-with no stylesheet rule supplying it** — unlike `Button`, which is saved by a coincidence. Pinned in
-`nda-012-visual-declared-defaults.test.ts`.
+**Verdict:** ✅ pass — **`DV-ii` fixed 2026-08-01 and the node is now clean.** `Icon` declared
+5px padding on all four edges and rendered none of it: `addPaddingInputs` sets
+`applyDefault: false`, which blocks the `startStyle` route, and DB-ii blocks the setter route.
+**Measured live: `padding: 0px` on the node's own element, with no stylesheet rule supplying it** —
+unlike `Button`, which was saved by a coincidence.
+
+The declaration is **deleted** rather than made live, on both nodes, which removes the duplicate
+instead of making two copies live. ⚠️ **No pixels move**: 0 is what Icon has always rendered, and
+adding a 5px stylesheet rule now would shift every existing Icon on every canvas to satisfy a
+declaration nothing had ever honoured. What changed is that the property panel stops showing a
+number that reaches nothing. Pinned in `nda-012-visual-declared-defaults.test.ts`, which now also
+ratchets that no padding port declares a non-zero default.
 
 ---
 
@@ -348,21 +383,26 @@ Source: [`nodes/controls/options.ts`](../../../../packages/noodl-viewer-react/sr
 |---|---|---|
 | A1 | 🔵 | as `Checkbox` — the `value` input setter flags the output and sends no `Changed` |
 | A2 | `n/a` | — |
-| A3 | ⚠️ | **re-sending the same collection adds a second listener.** The `off` is guarded by `this._internal.items !== newValue`, the `on` is not ([`options.ts:57-62`](../../../../packages/noodl-viewer-react/src/nodes/controls/options.ts#L57-L62)), so an identical re-set leaves two `change` handlers and every subsequent change re-renders twice |
-| G1 | ⚠️ | **`Items = null` throws.** `this._internal.items.on('change', …)` runs unguarded on the new value ([`:62`](../../../../packages/noodl-viewer-react/src/nodes/controls/options.ts#L62)). `null` and `''` are the reachable empty values (§4.2) and both are ordinary arrivals from a query that matched nothing |
-| B1 | ⚠️ **none** | the crash above is the failure surface |
-| B2 | ⚠️ | an uncaught `TypeError` in a setter, with no code and no message an author can act on |
+| A3 | ✅ | **fixed 2026-08-01** — re-sending the same collection added a second listener: the `off` was guarded by `this._internal.items !== newValue` and the `on` was not, so an identical re-set left two `change` handlers and every subsequent change re-rendered twice. The whole bind/unbind pair is now identity-guarded, the shape `ForEach` uses. Pinned in `nda-012-dropdown-items.test.ts` |
+| G1 | ✅ | **fixed 2026-08-01** — `Items = null` threw, because `.on('change', …)` ran unguarded on the new value, and `null` is an ordinary arrival from a query that matched nothing. Per `EMPTY-VALUE-CONTRACT.md` `null` now clears and `undefined` abstains; a cleared Dropdown offers no options, which `Select` already rendered correctly. Pinned in `nda-012-dropdown-items.test.ts` |
+| B1 | `n/a` | **dissolved 2026-08-01** — the crash *was* the failure surface, and there is no longer a failure: an empty `Items` is a legitimate value that clears the options. Nothing here can fail, so nothing needs a `Failure` port (NDA-004's rule) |
+| B2 | `n/a` | **dissolved 2026-08-01** — was an uncaught `TypeError` in a setter with no code and no message. There is nothing left to report |
 | B3 | `n/a` | no signal inputs |
 | C1 | ✅ **100%** (111/111) | closed this session — 8 ports written |
 | D1 | ✅ | the commented-out validation at [`:79-83`](../../../../packages/noodl-viewer-react/src/nodes/controls/options.ts#L79-L83) is deliberate — a value not in `items` deselects rather than being rejected |
 | E1 | ⚠️ | `items` is `type: 'array'`, one of the category's two object/array ports |
 | F1 | `n/a` | — |
-| H1 | ⚠️ | **the `change` listener is never removed on delete.** There is no `addDeleteListener`; a deleted Dropdown keeps a live handler on the collection and calls `forceUpdate` on a dead node. Same shape `Drag` fixed at [`drag.ts:28`](../../../../packages/noodl-viewer-react/src/nodes/visual/drag.ts#L28) |
+| H1 | ✅ | **fixed 2026-08-01** — nothing removed the `change` listener, so a deleted Dropdown kept a live handler on the collection and called `forceUpdate` on a dead node. Closed with `addDeleteListener`, the shape `Drag` uses at [`drag.ts:28`](../../../../packages/noodl-viewer-react/src/nodes/visual/drag.ts#L28). Pinned in `nda-012-dropdown-items.test.ts` |
 
-**Verdict:** ⚠️ defect — **the densest node in the category: three defects in one eleven-line
-setter** (G1 crash, A3 duplicate listener, H1 leak), plus E1. The setter is
-[`options.ts:57-67`](../../../../packages/noodl-viewer-react/src/nodes/controls/options.ts#L57-L67)
-and all three would be closed by the same rewrite.
+**Verdict:** ⚠️ defect — **the densest node in the category, and one rewrite closed all three
+2026-08-01.** G1 (crash), A3 (duplicate listener) and H1 (leak) were three defects in one
+eleven-line setter, and B1/B2 existed only to describe the crash, so five of the six cells are
+resolved. **E1 remains** — `items` is `type: 'array'`, one of the category's two object/array ports,
+which is a library-wide type question rather than this node's bug.
+
+⚠️ The prediction that "all three would be closed by the same rewrite" held exactly. Subscribe and
+unsubscribe now share one helper, so the guard cannot be applied on one side and forgotten on the
+other — which is how the leak survived in the first place.
 
 ---
 
@@ -405,7 +445,7 @@ Source: [`nodes/controls/radiobuttongroup.ts`](../../../../packages/noodl-viewer
 | A1 | 🔵 | as `Checkbox` — the `value` input setter flags the output and sends no `Changed`; the user path does |
 | A2 | `n/a` | — |
 | A3 | ✅ | both paths compare before flagging |
-| G1 | ⚠️ | `value.toString !== undefined` on a `null` throws before the guard can help ([`radiobuttongroup.ts:82`](../../../../packages/noodl-viewer-react/src/nodes/controls/radiobuttongroup.ts#L82)) — the check reads the property *of* the value it is trying to defend against |
+| G1 | ✅ | **fixed 2026-08-01** — was `value.toString !== undefined`, which threw on the `null` it was meant to defend against: the check read a property *of* the value it was guarding. Now `value?.toString`, so `null` falls through to the string guard and abstains, leaving the current selection alone. Pinned in `nda-012-control-one-liners.test.ts` |
 | B1 | `n/a` | — |
 | B2 | `n/a` | — |
 | B3 | `n/a` | no signal inputs |
@@ -415,8 +455,9 @@ Source: [`nodes/controls/radiobuttongroup.ts`](../../../../packages/noodl-viewer
 | F1 | 🔵 | it is the *provider* of the context `Radio Button` consumes; providing implicitly is the reasonable half of that pair |
 | H1 | ✅ | declares `safe` |
 
-**Verdict:** ⚠️ defect — G1. The guard at `:82` is one character away from correct
-(`value?.toString`), and `null` on a `Value` port is what a cleared selection looks like.
+**Verdict:** ✅ pass — **G1 fixed 2026-08-01 and the node is now clean.** The guard was one
+character away from correct (`value?.toString`), and `null` on a `Value` port is what a cleared
+selection looks like.
 
 ---
 
@@ -431,7 +472,7 @@ Source: [`nodes/controls/slider.ts`](../../../../packages/noodl-viewer-react/src
 |---|---|---|
 | A1 | 🔵 | the `value` input setter does not send `Changed`; the user path does. Same rule as the other controls |
 | A2 | `n/a` | — |
-| A3 | ⚠️ | `_updateOutputValuePercent` compares against `this._internal.valuePercentChanged` ([`slider.ts:205`](../../../../packages/noodl-viewer-react/src/nodes/controls/slider.ts#L205)) — a field nothing ever writes. It is always `undefined`, so the comparison is always true and `valuePercent` is flagged dirty on **every** value change whether the percentage moved or not. ⚠️ **PLAT-003 slice 10 found this exact bug and wrote it up — in the *deprecated* `range.tsx` ([`:401-404`](../../../../packages/noodl-viewer-react/src/nodes-deprecated/controls/range.tsx#L401-L404)), where it deliberately kept it verbatim — and never looked at the live node, which carries the identical code with no comment** |
+| A3 | ✅ | **fixed 2026-08-01** — compared against `this._internal.valuePercentChanged`, a field nothing ever writes, so it was always `undefined`, the comparison was always true, and `valuePercent` was flagged dirty on **every** value change whether the percentage moved or not. Now compares against `_internal.valuePercent`. ⚠️ PLAT-003 slice 10 found this exact bug, wrote it up, and kept it verbatim in the *deprecated* `range.tsx` without ever looking at the live node. Pinned in `nda-012-control-one-liners.test.ts` |
 | G1 | ⚠️ | `_setInputValue` uses `newValue \|\| 0` ([`:212`](../../../../packages/noodl-viewer-react/src/nodes/controls/slider.ts#L212)), so `null` **and a legitimate `0`** both become `0` — then clamped to `min`. A slider with `Min = 10` fed `null` silently reads 10 |
 | B1 | `n/a` | — |
 | B2 | `n/a` | — |
@@ -542,10 +583,11 @@ Source: [`nodes/navigation/navigation-stack.tsx`](../../../../packages/noodl-vie
 | D1 | ✅ | `pages` is a `proplist`, not a bare string |
 | E1 | ✅ | — |
 | F1 | ✅ | the stack is named, and an unmatched name **queues** rather than dropping ([`navigation-handler.ts:56`](../../../../packages/noodl-viewer-react/src/nodes/navigation/navigation-handler.ts#L56)) — a typo and a not-yet-mounted stack are genuinely indistinguishable at call time |
-| H1 | ⚠️ | **`DV-iii`** — declares `partial`, which is honest, but `Clip Content` defaults to `true` and never clips: the setter at [`:258-266`](../../../../packages/noodl-viewer-react/src/nodes/navigation/navigation-stack.tsx#L258-L266) is the only writer of `overflow: hidden` and the `defaultCss` has none |
+| H1 | ✅ | **`DV-iii` fixed 2026-08-01** — `Clip Content` defaults to `true` and never clipped: its setter was the only writer of `overflow: hidden` and a declared default never runs its setter (DB-ii), while `defaultCss` had none. `overflow: 'hidden'` is now in `defaultCss`, the one route applied at initialize, so the panel and the rendering agree. Unticking still reaches `removeStyle`, which deletes from the same style object. Both directions pinned in `nda-012-visual-declared-defaults.test.ts`. The `partial` SSR declaration was always honest and is unchanged |
 
-**Verdict:** ⚠️ defect — `DV-iii` (H1) and B3. Everything NDA-004 §2 and NDA-008 touched is
-sound; both remaining defects are in the parts those passes had no reason to look at.
+**Verdict:** ⚠️ defect — **`DV-iii` (H1) fixed 2026-08-01; B3 remains** and belongs to
+`ERG-001`, which owns completion signals for the whole Visual family as one collision sweep.
+Everything NDA-004 §2 and NDA-008 touched is sound.
 
 ---
 
@@ -561,21 +603,32 @@ Source: [`nodes/navigation/router.tsx`](../../../../packages/noodl-viewer-react/
 | A1 | ✅ | both outputs are flagged on every page change |
 | A2 | ⚠️ | `resetAsync` decides whether anything changed by **identity** on the page-info object ([`router.tsx:292`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L292)). Editing a page's path or title in place leaves the identity intact, so an explicit `Reset` re-reads nothing |
 | A3 | ✅ | serialised through `asyncQueue` |
-| G1 | ⚠️ | see **RT-2**: `undefined === undefined` is read as "already on the right page" |
-| B1 | ⚠️ **none** | **RT-1** — a routed component with no `Page` node is dropped by a bare `return` at [`:318-321`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L318-L321) |
-| B2 | ⚠️ | nothing reaches any surface from the reset path — no `hasFailed` (reset carries no args), no `sendWarning`, no `raiseRuntimeError`. `navigateAsync` was given all of this in NDA-004 §2; `resetAsync` was not, and reset runs first |
+| G1 | ✅ | **RT-2 fixed 2026-08-01** — `getPageInfoForComponent` returns `ComponentPageInfo | undefined`, and `resetAsync` compared it against the current page by identity, so on a fresh router `undefined === undefined` read as "already on the right page": the router built nothing, rendered nothing and said nothing, on every reset. A start page missing from the index gave a permanently blank router with no diagnostic. The target is now resolved before comparing and an unresolvable one raises `router/page-not-found`. Pinned in `nda-012-page-router-reset.test.ts` |
+| B1 | ✅ | **RT-1 fixed 2026-08-01** — a routed component with no `Page` node (or two) was created, assigned to `currentPageComponent`, then dropped by a bare `return`. It is now deleted and reported as `router/component-is-not-a-page` with the count, and the stale `currentPage` is cleared — the children are torn down before the component is built, so leaving it set let the identity check absorb the next reset back to that page, which is RT-2's symptom through a second door |
+| B2 | ✅ | **RT-3 and the reporting gap fixed 2026-08-01** — nothing reached any surface from the reset path: no `hasFailed` (reset carries no args), no `sendWarning`, no `raiseRuntimeError`, while `navigateAsync` had been given all of it in NDA-004 §2 and reset runs *first*. All four drops now raise on the runtime error bus (`FAILURE-CONTRACT.md`): `router/no-pages`, `router/no-start-page`, `router/page-not-found`, `router/component-is-not-a-page`. ⚠️ RT-3 was the worst of them — a Page Router dropped on a canvas and not yet configured **threw a `TypeError`**, because the start-page read existed twice, guarded on `:280` and bare on `:292`, in the else branch of the same `if`. It is one read now |
 | B3 | ⚠️ | `Reset` is a signal input with no terminating signal — same as `Component Stack` |
 | C1 | ✅ **100%** (20/20) | closed this session — 8 ports written |
 | D1 | ⚠️ | `_getLocationPath` decodes the whole path with `decodeURI` ([`:418`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L418)) and `_matchPathParts` then decodes each captured parameter again with `decodeURIComponent` ([`:484`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L484)). A parameter containing an encoded `/` or `%` is decoded twice and by two different rules |
 | E1 | ✅ | — |
 | F1 | ✅ | named, with the same queue-rather-than-drop reasoning as `Component Stack` |
-| H1 | ⚠️ | **RT-1's node leak** — the component created at [`:314`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L314) is neither attached nor deleted on the bail. `popstate`/`hashchange` listeners **are** removed on unmount ([`:100-109`](../../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L100-L109)), so the listener half is clean |
+| H1 | ✅ | **RT-1's node leak fixed 2026-08-01** — the component created before the `Page`-node check is now deleted on the bail rather than left unattached and undeleted. `popstate`/`hashchange` listeners were already removed on unmount, so the listener half was always clean |
 
-**Verdict:** ⚠️ defect — **the category's worst node, with four defects in one 60-line method**.
-RT-1, RT-2 and RT-3 are measured and pinned in `nda-012-page-router-reset.test.ts`; RT-3 in
-particular means a Page Router dropped on a canvas and not yet configured **throws a `TypeError`**
-because `_internal.pages` is guarded on `:272` and dereferenced bare on `:284`, in the else branch
-of the same `if`.
+**Verdict:** ⚠️ defect — **it was the category's worst node with four defects in one 60-line
+method, and all four are fixed 2026-08-01.** RT-1, RT-2 and RT-3 were pinned in
+`nda-012-page-router-reset.test.ts` with a control beside each; every row is now flipped to assert
+the fix and the controls are kept. **Three cells remain and none of them is in `resetAsync`:**
+
+- **A2** — the change test is still identity on the page-info object, so editing a page's path or
+  title *in place* leaves the identity intact and an explicit `Reset` re-reads nothing. Deliberately
+  untouched: the fix is about *when the object is missing*, not about comparing objects by value.
+- **B3** — `Reset` is a signal input with no terminating signal. `ERG-001` owns it, with the other
+  seven Visual nodes, as one collision sweep.
+- **D1** — the double decode: `_getLocationPath` decodes the whole path with `decodeURI` and
+  `_matchPathParts` decodes each captured parameter again with `decodeURIComponent`.
+
+⚠️ **The line numbers in this block's original citations had drifted by eight** (`:272`/`:284` were
+`:280`/`:292` by the time the fix was written). Same two reads, same `if`/`else`. **Re-verify a
+citation against the code before working from it**, even one written in the same phase.
 
 ---
 
@@ -591,7 +644,7 @@ Source: [`nodes/std-library/data/foreach.tsx`](../../../../packages/noodl-viewer
 | A1 | ✅ | `bindCollection` subscribes to the collection and every mutation path re-copies |
 | A2 | ✅ | `Refresh` schedules a real re-read, not a re-render |
 | A3 | ✅ | `scheduleRefresh` coalesces to one refresh per frame; item creation is deliberately spread across frames and now **announces** when it is done |
-| G1 | ⚠️ | **`if (!value) return;`** ([`foreach.tsx:212`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L212)) — a truthiness test, which `DC-iii` warns against explicitly. `null` **abstains instead of clearing**, so a Repeater bound to a query that came back empty keeps showing the previous list indefinitely |
+| G1 | ✅ | **fixed 2026-08-01** — was `if (!value) return;`, the truthiness test `DC-iii` warns against explicitly, so `null` abstained instead of clearing and a Repeater bound to a query that came back empty kept showing the previous list indefinitely. ✅ **Richard decided it clears** — empty array, `null`, anything falsy. ⚠️ The guard had a **second half** in `scheduleCopyItems`, which bailed on `items === undefined`; both are gone. ⚠️ Deliberate recorded divergence from `EMPTY-VALUE-CONTRACT.md`, whose table has `undefined` abstaining; stated on the port's `description`. Pinned in `nda-012-repeater-clears.test.ts` |
 | B1 | ⚠️ **none** | — |
 | B2 | ⚠️ | a `templateScript` syntax error goes to `editorConnection.sendWarning` and nowhere else ([`:255-262`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L255-L262)); a *runtime* throw inside the compiled function is caught at [`:351`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L351) and reported the same editor-only way. **This is the phase's most common shape and the handover predicted it here** |
 | B3 | ✅ | `Refresh`→`Items Rendered`, added in NDA-004 §3, and it is the reason list-then-scroll no longer needs a guessed Delay |
@@ -601,8 +654,9 @@ Source: [`nodes/std-library/data/foreach.tsx`](../../../../packages/noodl-viewer
 | F1 | ✅ | the target is the graph parent, resolved through `setNodeModel`/`parentUpdated` ([`:295-311`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L295-L311)) and visible on the canvas as the wire itself |
 | H1 | ✅ | `addDeleteListener` deletes every item node ([`:201-203`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L201-L203)) |
 
-**Verdict:** ⚠️ defect — G1 is the sharp one and is a `DC-iii` regression in a node that pass did
-not reach. B1/B2 and D1 are the Dynamic-template surface. 🔵 `templateScript`'s declared default
+**Verdict:** ⚠️ defect — **G1, the sharp one and a `DC-iii` regression in a node that pass did
+not reach, is fixed 2026-08-01. B1/B2, D1 and E1 remain** and are the Dynamic-template surface plus
+the `array` port type. 🔵 `templateScript`'s declared default
 never runs its setter (DB-ii), so choosing Template Type = Dynamic without opening the Script
 editor leaves `templateFunction` undefined and the Repeater renders nothing and says nothing
 ([`:347`](../../../../packages/noodl-viewer-react/src/nodes/std-library/data/foreach.tsx#L347)) —
