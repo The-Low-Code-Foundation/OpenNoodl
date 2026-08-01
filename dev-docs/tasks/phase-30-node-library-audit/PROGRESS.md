@@ -182,6 +182,89 @@ this table shows a category producing nothing new.
 
 ## Log
 
+- **2026-08-01 (NDA-012 Data — the hold is lifted, and the first family cost the schema).** Phase 34
+  landed, so Data is unblocked. The inputs were **re-derived rather than inherited**, exactly as the
+  hold prescribed: `catalog:generate` (clean, 151 types), `audit/data.md` deleted and regenerated,
+  every number re-measured before planning. **Two carried premises were stale and both are corrected
+  here.**
+
+  ⚠️ **The incoming handover named Data and Cloud Services as the two remaining categories. Cloud
+  Services was audited on 2026-07-30** — 22/22 nodes, 25 defects, in this same file. The two
+  remaining are **Data** and **Visual (29)**. The error is traceable: BCN-010-NOTES §12, written to
+  unblock this work, says *"Phase 30 deliberately did not start `audit/data.md` (46 entries) or
+  `audit/cloud-services.md` (22)"*, and it was written before phase 30's Cloud Services pass landed.
+  A note written to hand work over goes stale exactly as fast as the work it describes.
+
+  ⚠️ **Data is 41 nodes in the catalog and 37 in scope, not 46/42.** The five `noodl.byob.*` entries
+  the old worksheet carried have been deleted by phase 34, so the 2026-07-31 figure of *42 nodes /
+  471 ports* was stale the moment BCN-004 step 7 merged. Measured now: **37 in-scope nodes, 433
+  ports, 55 documented (12.7%), 20 nodes at 0%.** The four deprecated nodes stay out of scope per
+  Richard's decision and are all still at 0%, so the denominator moved and the numerator did not.
+
+  **6 of the 37 audited — the five Record verbs and Filter Records — 4 defects in 4 of them.**
+  Worksheet: [`audit/data.md`](./audit/data.md); findings **DA-ii…DA-v**.
+
+  **The headline is DA-ii, and it corrupts the backend schema.** `Add`/`Remove Record Relation` send
+  `targetCollection: Model.get(targetModelId)._class`, and `Model.get` **mints a record on read**, so
+  an id arriving from a URL parameter or a text field — rather than from a query result — resolves to
+  a record nothing has loaded, with `_class: undefined`. `validateInputs` checked the *id* and never
+  the *record*. **Measured on the rig's real Parse Server**: the class-less Pointer is refused with
+  `107 Could not add field` — so the node does report failure — **and the field is written into the
+  class schema anyway as `Relation<undefined>`**, after which every correct write to that relation
+  fails `111 schema mismatch`. The relation name is burned for the life of the class, **by the
+  attempt that failed**. Both nodes fixed.
+
+  This is the phase's third recurring shape with a twist worth carrying: **the value is not absent.**
+  The id is present and valid; what is absent is the record behind it. Every earlier instance was
+  "the key is missing", so a sweep for that shape would have walked straight past this one.
+
+  **DA-iii is two ways an Access Control rule silently does nothing**, both in the shared `_getACL`
+  and so shared by Create Record and Update Record. A rule whose `Target` was never opened fell
+  through every branch and contributed **nothing** — while the node's own port builder twenty lines
+  up already reads an unset target as `user`; "add a rule, untick Write" therefore produced an ACL
+  identical to adding no rule at all, and the record was written with no access control. And a `user`
+  rule that cannot resolve a user wrote the key `acl['undefined']`, locking the record to a principal
+  that cannot exist — *and* making the object non-empty, so the "no rules, no ACL" path could not
+  rescue it. Both fixed. ⚠️ **The reason neither had coverage is the more portable lesson**:
+  `record-backend-routing.test.ts`, the suite that exists to drive these nodes, stubs
+  `_getACL: () => undefined` in its instance factory. **A stub in a shared test factory is a coverage
+  hole with no warning label, and it is invisible from the file that has the defect.**
+
+  **DA-iv is a fix that reaches nobody, and says so.** `Delete Record`'s `shortDesc` carried Create
+  Record's sentence — "Stores any amount of properties…" — on the node that deletes one. Fixed, and
+  recorded as shadowed: `shortDesc` is **not** exported to the catalog (regenerating gave a
+  byte-identical file) and its only consumer is `ContextBuilder.ts:228` as
+  `enriched?.summary ?? node.shortDesc`, where this node's enrichment always wins. The field is
+  rotting more widely — four Array siblings share one sentence describing the *noun* across four
+  different verbs — which is NDA-005 §0's `description` finding again, in a second field.
+
+  **DA-v is filed, not fixed**, and the reasoning is the point: Filter Records calls
+  `Model.get(objectId)` on every `save` for its class, minting records it does not hold into a strong
+  global registry. The guard wants `Model.exists` — but the same line is *also* the documented
+  wrong-scope read, so fixing the leak alone leaves the node still not re-filtering. It wants both,
+  with a scoped-store fixture that does not exist.
+
+  ✅ **Every fix has a discrimination check and each was verified to have actually landed before its
+  result was believed.** Five mutations, each reddening only its own rows: the unset-target default
+  (D1 alone), the undefined-user guard (D1+D2 — recorded, because D1's row depends on both fixes),
+  each relation check (D3, D4), the `shortDesc` (D5). Every mutation was `grep`ed in the patched file
+  before the run, which is the failure mode the phase-34 handover warned about.
+
+  **Also checked and recorded as clean** rather than left ambiguous: `acl-<id>-<field>` is safe from
+  the `split('-')` class because proplist ids are 4-char base-36 (no hyphen); Filter Records' simpler
+  `setup` is *not* missing pre-existing nodes, because `GraphModel.addComponent` emits `nodeAdded`
+  for every node already in a component; `displayNodeName` and `displayName` cannot diverge.
+
+  Gates: runtime jest **1,683 passing / 0 failures** (was 1,673; +10 is exactly the new rows), 90/91
+  suites; runtime typecheck clean; `catalog:check`, `catalog:merge:check` and `cloud-library:check`
+  all green at 151 types / 151 documented / 58 cloud types. **`cloud-library:check` is in the gate
+  list now** — phase 34 found it had been red unnoticed.
+
+  ⚠️ **The category is 6 of 37. Two families remain**: the Array/Object/Variable family (~14 nodes)
+  and the agentic/streaming family (~16 AIX nodes — SSE, WebSocket, Global Store, Action Dispatcher,
+  Stream Buffer and siblings), plus `Run Tasks`, already covered by NDA-009. **C1 port descriptions
+  are owed for all six nodes audited so far** and are the reason the category still reads 12.7%.
+
 - **2026-07-31 (Data HELD — Richard is merging the backends into these nodes).** Told to the session
   the same day the scope was settled: a sprint is in flight to **merge all backends into the same
   Data nodes**. The audit is held rather than descoped. **Visual (29) is now the next NDA-012 work**

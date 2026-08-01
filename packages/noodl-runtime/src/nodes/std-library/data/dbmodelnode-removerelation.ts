@@ -14,6 +14,8 @@ interface RemoveRelationInstance extends DbCrudBaseInstance, DbModelIdInstance, 
   _internal: DbCrudBaseInstance['_internal'] & DbModelIdInstance['_internal'] & RelationPropertyInstance['_internal'];
   /** NDA-004 §2: returns the first missing input, or `undefined` when the node can act. */
   validateInputs(): string | undefined;
+  /** The target record's class, or `undefined` when nothing has loaded that record. */
+  targetCollection(): string | undefined;
   scheduleRemoveRelation(): void;
 }
 
@@ -55,6 +57,17 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
           problem = 'No target record Id (the record to remove a relation from) specified';
         } else if (this._internal.model === undefined) {
           problem = 'No record Id specified (the record that should lose the relation)';
+        } else if (this.targetCollection() === undefined) {
+          // NDA-012 (Data) — the twin of the Add sibling's check, and it matters here for the
+          // same reason: `Model.get` mints a record on read, so an id that never came from a
+          // query resolves to a record with no `_class`, and the wire sends a class-less
+          // Pointer. On Parse that answers `107` while writing `Relation<undefined>` into the
+          // class schema, which then refuses every correct write. See `-addrelation` for the
+          // measurement.
+          problem =
+            `The target record "${this._internal.targetModelId}" has not been loaded, so its class is unknown. ` +
+            'Connect the Id from a Query Records / Record node rather than from a raw string, or the relation ' +
+            'cannot be written.';
         }
 
         if (this.context.editorConnection) {
@@ -68,6 +81,12 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
         }
 
         return problem;
+      },
+      /** One reader of the target record's class — see the twin in `-addrelation`. */
+      targetCollection: function (this: RemoveRelationInstance): string | undefined {
+        const targetModelId = this._internal.targetModelId;
+        if (targetModelId === undefined) return undefined;
+        return (this.nodeScope.modelScope || Model).get(targetModelId)._class;
       },
       scheduleRemoveRelation: function (this: RemoveRelationInstance) {
         const _this = this;
@@ -102,7 +121,9 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
             // BCN-005 renamed this on the contract: `targetCollection` is the neutral
             // name, matching `collection` two lines up, and `targetClass` stays a
             // deprecated alias for `Noodl.Records`'s public `targetClassName`.
-            targetCollection: (_this.nodeScope.modelScope || Model).get(targetModelId)._class,
+            //
+            // `validateInputs` has already refused the `undefined` case.
+            targetCollection: _this.targetCollection(),
             success: function (response: Record<string, unknown>) {
               for (const _key in response) {
                 model.set(_key, response[_key]);

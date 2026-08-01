@@ -1725,6 +1725,131 @@ and the coverage denominator changes rather than the numerator. `REST`'s compile
 project that already contains a REST node, and the 2026-07-30 fresh-start decision puts legacy
 projects outside the design constraints.
 
+## NDA-012 Data — the Record CRUD family (2026-08-01), 6 of 37 nodes
+
+The hold is lifted: phase 34 landed, the catalog was regenerated, `audit/data.md` was deleted and
+regenerated, and every number below is measured after the merge rather than inherited. **Data is 41
+nodes in the catalog, 37 in scope** — the five `noodl.byob.*` entries the old worksheet carried no
+longer exist, so the pre-merge figure of 42 was already stale when it was written down.
+
+Six nodes read: the five Record verbs plus Filter Records. **Four defects, in four of the six.**
+
+### DA-ii — a relation to an unloaded record burns the relation name, permanently
+
+The headline, and it is a data-corruption defect reachable from an ordinary graph.
+
+`Add Record Relation` sends `targetCollection: Model.get(targetModelId)._class`. **`Model.get` mints
+a record on read** (`model.ts:232`), so an id that arrived from a URL parameter, a text input or a
+Function node — rather than from a Query Records result — resolves to a record nothing has ever
+loaded, whose `_class` is `undefined`. `validateInputs` checked that the *id* was present and never
+that the *record* was known, which is precisely the distinction that matters.
+
+**Measured against the rig's Parse Server rather than reasoned about**, and the measurement is worse
+than the reading suggested:
+
+| Step | Result |
+|---|---|
+| `AddRelation` with `className` | `200` — the working path |
+| `AddRelation` with `className` omitted | `107 Could not add field enemies` — so the node *does* report failure |
+| schema afterwards | `"enemies":{"type":"Relation","targetClass":"undefined"}` — **written anyway** |
+| the same relation, retried correctly | `111 schema mismatch … expected Relation<undefined> but got Relation<nda012_Target>` |
+
+So the failing attempt is what destroys the schema, and the author who then fixes their graph finds
+it still never works. `Remove Record Relation` carries the identical line and the identical gap.
+
+Both **fixed**: one `targetCollection()` reader per node so the validation and the request cannot
+disagree, refused in `validateInputs` with a sentence that names the cause and the fix. Rows D3/D4.
+
+⚠️ **This is the phase's third recurring shape — a create-on-read lookup fed by a value that can be
+absent — with a twist worth carrying: here the value is *not* absent.** The id is present and valid.
+What is absent is the *record behind it*, and no amount of validating the input catches that. The
+earlier instances (`Model.get(undefined)`, `Record`'s cleared `Id`) were all "the key is missing";
+this one is "the key is fine and the registry invented the row". A sweep looking for the first shape
+would not have found it.
+
+### DA-iii — two ways an Access Control rule silently does nothing
+
+Both in the shared `_getACL` (`dbmodelcrudbase.ts`), so `Create Record` and `Update Record` share
+them. Both confirmed by driving the real mixin.
+
+**(a) A rule whose `Target` was never opened contributes nothing.** The runtime tested
+`rule.target === 'everyone' / 'user' / 'role'` and fell through all three when `target` was
+`undefined` — while the node's *own port builder*, twenty lines up, reads
+`parameters['acl-…-target'] === undefined || === 'user'` when deciding whether to offer the
+`User Id` port. The author-facing half had always read an untouched dropdown as "the current user";
+the runtime half had not. The reachable path is ordinary: `-target` is a dynamic port, so its
+declared `default: 'user'` never runs a setter unless the author opens the dropdown, while toggling
+`Read` or `Write` *does* create the rule object. **"Add a rule, untick Write" produced an ACL
+identical to adding no rule at all**, and the record was written with no access control whatsoever.
+
+**(b) A `user` rule that cannot resolve a user writes the key `"undefined"`.** With no `User Id`
+wired and nobody signed in, `acl[userId] = _rule(rule)` keyed on the four-character string. Two
+consequences, both bad: the record is locked to a principal that cannot exist, and because
+`Object.keys(acl).length > 0` is then true, the function returns that ACL instead of `undefined`, so
+the "no rules, no ACL" path cannot rescue it. **A record created that way is unreadable by everyone,
+including its author.** The `rule === undefined` branch ten lines above has always guarded exactly
+this case — the two branches simply disagreed.
+
+Both **fixed**. Rows D1, D2.
+
+⚠️ **The reason this had no coverage is worth more than the defects.** `record-backend-routing.test.ts`
+— the suite that exists to prove these nodes talk to the right backend — stubs `_getACL: () => undefined`
+in its instance factory. That is a reasonable stub for what it was testing and it made the entire ACL
+path invisible to the only tests that drive these nodes. **A stub in a shared test factory is a
+coverage hole with no warning label**, and it is not visible from the file that has the defect.
+
+### DA-iv — `Delete Record` described creating, and the string reaches nobody
+
+`shortDesc` carried `Create Record`'s sentence verbatim — *"Stores any amount of properties and can
+be used standalone or together with Collections and For Each nodes."* — on the node that deletes one.
+
+**Fixed, and recorded as reaching nobody today**, which is the more useful half. `shortDesc` is not
+exported to the node catalog: regenerating after the change produced a byte-identical file. Its only
+consumer is the AI authoring loop's `ContextBuilder.ts:228`, as `enriched?.summary ?? node.shortDesc`
+— and this node's enrichment summary is present and correct, so the fallback never fires.
+
+⚠️ **The field is rotting across the category, not just here.** Four sibling nodes —
+`Insert Object Into Array`, `Remove Object From Array`, `Array`, `Create New Array` — all carry the
+*same* sentence, *"A collection of models, mainly used together with a…"*, describing the noun on
+four different verbs. Fifty sites declare `shortDesc` across the three runtime packages. It is the
+same shape NDA-005 §0 found in `description`: **a field an author is invited to write, which no
+consumer reads.** Filed for the Array family pass rather than swept here.
+
+### DA-v — Filter Records grows the global record registry, one `save` at a time — filed
+
+`cloudStoreEvents` calls `Model.get(args.objectId)` on **every** `save` for the class it watches, to
+ask whether its collection contains that record. `Model.get` mints on read, and `models` is a strong
+map, so a record this node does *not* hold is created in the global registry and left there for the
+life of the page.
+
+**Filed rather than fixed**, with the reasoning: the guard wants `Model.exists`, but the very same
+line is also the documented wrong-scope read — it reaches the global `Model` rather than
+`nodeScope.modelScope`, so under a scoped store the `contains` test compares against a record from
+the wrong store and the re-filter is skipped anyway. Repairing one half without the other would fix
+the leak and leave the node still not re-filtering. It wants both, together, with a scoped-store
+fixture that does not exist yet.
+
+### Checked and clean — recorded so they are not re-raised
+
+- **`acl-<id>-<field>` is safe from the `split('-')` class (SR-iii).** Proplist item ids are 4-char
+  base-36 (`PropListType.ts:74-81`), and base-36 contains no hyphen, so `name.split('-')` always
+  yields exactly three parts. This is the first instance of that class that turned out to be fine,
+  and it is fine *for a reason a future edit could remove* — a change to the id generator would break
+  it silently.
+- **Filter Records' `setup` is not missing existing nodes.** It registers only
+  `nodeAdded.FilterDBModels` where the CRUD base additionally enumerates `getNodesWithType` after
+  `editorImportComplete`. `GraphModel.addComponent` emits `nodeAdded` for every node already in the
+  component (`graphmodel.ts:232`), so both patterns are covered. The `editorImportComplete` wrapper
+  is about metadata ordering, not about missing nodes.
+- **`displayNodeName` vs `displayName`.** The family uses both spellings; `nodedefinition.ts:264`
+  resolves `opts.displayNodeName || opts.displayName`, so they cannot diverge.
+
+### Standing, not re-raised
+
+`Delete Record` alone reads `nodeScope.ModelScope` — capital M — a defect documented and left
+verbatim since PLAT-003, so it ignores the component's record scope where Create, Update and both
+relation nodes honour it. Fixing it is a behaviour change for any scoped-store project. Still unowned.
+
 ## What these passes did *not* cover
 
 - **76 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No

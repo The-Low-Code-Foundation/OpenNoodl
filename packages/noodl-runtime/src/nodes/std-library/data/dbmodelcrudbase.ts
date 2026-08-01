@@ -713,12 +713,48 @@ function _addAccessControl(def: DbCrudNodeModule) {
           if (rule === undefined) {
             const userId = currentUserId;
             if (userId !== undefined) acl[userId] = { write: true, read: true };
-          } else if (rule.target === 'everyone') {
+            return;
+          }
+
+          /**
+           * NDA-012 (Data) — an unset `Target` means `user`, because that is what the port
+           * builder already decided it means.
+           *
+           * `_additionalDynamicPorts` above tests
+           * `parameters['acl-…-target'] === undefined || === 'user'` when choosing whether to
+           * offer the `User Id` port, so the author-facing half of this node has always read
+           * an untouched dropdown as "the current user". The runtime half did not: it fell
+           * through `everyone`/`user`/`role` and contributed **nothing**.
+           *
+           * The reachable case is not an exotic one. The `-target` port is dynamic, so its
+           * declared `default: 'user'` never runs a setter unless the author opens the
+           * dropdown — while toggling `Read` or `Write` *does* create the rule object. So
+           * "add a rule, untick Write" produced an ACL identical to having added no rule at
+           * all, and the record was written with no access control whatsoever. Measured on
+           * the real mixin before the change: `{accessControlRules:[{id}], accessControl:
+           * {id:{read:true,write:false}}}` → `undefined`.
+           */
+          const target = rule.target === undefined ? 'user' : rule.target;
+
+          if (target === 'everyone') {
             acl['*'] = _rule(rule);
-          } else if (rule.target === 'user') {
+          } else if (target === 'user') {
             const userId = rule.userid || currentUserId;
-            acl[userId] = _rule(rule);
-          } else if (rule.target === 'role') {
+            /**
+             * NDA-012 (Data) — and an unresolvable user is not a user.
+             *
+             * With no `User Id` wired and nobody signed in, `userId` is `undefined` and this
+             * used to write the key `acl['undefined']` — the four-character string. Two things
+             * follow, both bad: the record is locked to a principal that cannot exist, and
+             * because `Object.keys(acl).length > 0` is then true, the function returns that
+             * ACL instead of `undefined`, so the "no rules, no ACL" path cannot rescue it.
+             * A record created that way is unreadable by everyone, including its author.
+             *
+             * The `rule === undefined` branch ten lines up has always guarded exactly this.
+             * The two branches simply disagreed.
+             */
+            if (userId !== undefined) acl[userId] = _rule(rule);
+          } else if (target === 'role') {
             acl['role:' + rule.role] = _rule(rule);
           }
         });

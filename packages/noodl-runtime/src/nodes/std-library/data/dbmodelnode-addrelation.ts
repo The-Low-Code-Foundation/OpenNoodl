@@ -14,6 +14,8 @@ interface AddRelationInstance extends DbCrudBaseInstance, DbModelIdInstance, Rel
   _internal: DbCrudBaseInstance['_internal'] & DbModelIdInstance['_internal'] & RelationPropertyInstance['_internal'];
   /** NDA-004 §2: returns the first missing input, or `undefined` when the node can act. */
   validateInputs(): string | undefined;
+  /** The target record's class, or `undefined` when nothing has loaded that record. */
+  targetCollection(): string | undefined;
   scheduleAddRelation(): void;
 }
 
@@ -61,6 +63,33 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
           problem = 'No target record Id (the record to add a relation to) specified';
         } else if (this._internal.model === undefined) {
           problem = 'No record Id specified (the record that should get the relation)';
+        } else if (this.targetCollection() === undefined) {
+          /**
+           * NDA-012 (Data) — the check that stops this node corrupting the class schema.
+           *
+           * `targetCollection` is read off `Model.get(targetModelId)`, and `Model.get` mints a
+           * record on read (`model.ts:232`). So an id that arrived from a URL parameter, a text
+           * input or a Function node — rather than from a Query Records result — resolves to a
+           * record nothing has ever loaded, whose `_class` is `undefined`. The three checks above
+           * all pass, because the id itself is perfectly valid.
+           *
+           * Measured against a real Parse Server rather than reasoned about: the wire sends a
+           * Pointer with no `className`, Parse answers `107 Could not add field`, **and still
+           * writes the field into the class schema as `Relation<undefined>`**. Every later, correct
+           * write to that relation then fails with `111 schema mismatch ... expected
+           * Relation<undefined> but got Relation<Target>`. The relation name is burned for the life
+           * of the class, and it is the *failing* attempt that burns it — so the author fixes their
+           * graph and it still never works.
+           *
+           * Refusing before the request is what makes that unreachable. Resolving the class by
+           * fetching the target first would also work and is the more helpful behaviour, but it
+           * adds a round trip on every relation write and is a design decision rather than a
+           * repair; it is filed rather than taken here.
+           */
+          problem =
+            `The target record "${this._internal.targetModelId}" has not been loaded, so its class is unknown. ` +
+            'Connect the Id from a Query Records / Record node rather than from a raw string, or the relation ' +
+            'cannot be written.';
         }
 
         if (this.context.editorConnection) {
@@ -74,6 +103,15 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
         }
 
         return problem;
+      },
+      /**
+       * One reader of the target record's class, so the validation and the request cannot
+       * disagree about what is going on the wire.
+       */
+      targetCollection: function (this: AddRelationInstance): string | undefined {
+        const targetModelId = this._internal.targetModelId;
+        if (targetModelId === undefined) return undefined;
+        return (this.nodeScope.modelScope || Model).get(targetModelId)._class;
       },
       scheduleAddRelation: function (this: AddRelationInstance) {
         const _this = this;
@@ -110,7 +148,10 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
             // BCN-005 renamed this on the contract: `targetCollection` is the neutral
             // name, matching `collection` two lines up, and `targetClass` stays a
             // deprecated alias for `Noodl.Records`'s public `targetClassName`.
-            targetCollection: (_this.nodeScope.modelScope || Model).get(targetModelId)._class,
+            //
+            // `validateInputs` has already refused the `undefined` case, so this is the one
+            // reader that cannot send a class-less pointer — see `targetCollection`.
+            targetCollection: _this.targetCollection(),
             success: function (response: Record<string, unknown>) {
               for (const _key in response) {
                 model.set(_key, response[_key]);
