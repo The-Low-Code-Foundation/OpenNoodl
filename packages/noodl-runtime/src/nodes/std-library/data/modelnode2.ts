@@ -103,6 +103,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Id',
       group: 'General',
+      description: 'Id of the object this node is bound to, whether that came from the Id input or from a repeater item',
       getter: function (this: ModelNodeInstance) {
         return this._internal.model ? this._internal.model.getId() : this._internal.modelId;
       }
@@ -110,12 +111,14 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
     changed: {
       type: 'signal',
       displayName: 'Changed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires whenever any property of the bound object changes, from this node or from anywhere else'
     },
     fetched: {
       type: 'signal',
       displayName: 'Fetched',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once a new object has been bound and its property outputs are up to date'
     }
   },
   inputs: {
@@ -131,6 +134,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       default: 'explicit',
       displayName: 'Get Id from',
       group: 'General',
+      description: 'Where the object comes from: the Id input, or the item of the Repeater this node sits inside',
       set: function (this: ModelNodeInstance, value: unknown) {
         this._internal.idSource = value;
         if (value === 'foreach') this.bindToRepeaterItem();
@@ -147,6 +151,8 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       type: 'component',
       displayName: 'Repeater Component',
       group: 'General',
+      description:
+        'Which Repeater to take the item from when several are nested; leave blank to use the nearest one, and ignored unless Get Id from is From repeater',
       set: function (this: ModelNodeInstance, value: string) {
         this._internal.repeaterComponent = value || undefined;
         // Only re-resolve in the mode this input belongs to; in `explicit` mode the model
@@ -162,10 +168,19 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       },
       displayName: 'Id',
       group: 'General',
+      description:
+        'Id of the object to bind to, which is created the first time it is named; an Object or a plain JS object may be wired here instead, and null or blank binds nothing',
       set: function (this: ModelNodeInstance, value: unknown) {
         if (value instanceof Model) value = (value as ModelLike).getId();
         // Can be passed as model as well
-        else if (typeof value === 'object') value = Model.create(value as Record<string, unknown>).getId(); // If this is an js object, dereference it
+        //
+        // NDA-012 (Data): `value !== null` is load-bearing. `typeof null === 'object'`, so a
+        // cleared Id used to reach `Model.create(null)`, whose `data ? data : {}` then read
+        // `Model.get(undefined)` — a brand-new anonymous record, minted afresh on *every*
+        // `null`. The node then reported `Fetched` and bound an object nothing can name.
+        // `null` is the Empty-Value Contract's "clear it", and `setModelID` now honours that.
+        else if (typeof value === 'object' && value !== null)
+          value = Model.create(value as Record<string, unknown>).getId(); // If this is an js object, dereference it
 
         this._internal.modelId = value as string; // Wait to fetch data
         if (this.isInputConnected('fetch') === false) this.setModelID(value as string);
@@ -178,11 +193,14 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       type: { name: 'stringlist', allowEditOnly: true },
       displayName: 'Properties',
       group: 'Properties',
+      description: 'Names the properties to read and write; each name listed here gets an input, an output and a Changed signal',
       set: function () {}
     },
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
+      description:
+        'Re-reads the object named by Id; connecting anything here switches the node to pull mode, so Id alone no longer rebinds it and changes to the object stop being announced',
       valueChangedToTrue: function (this: ModelNodeInstance) {
         this.scheduleSetModel();
       }
@@ -236,7 +254,31 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
         this.setModelID(this._internal.modelId);
       });
     },
+    /**
+     * NDA-012 (Data) — an empty Id is *no object*, not a new one.
+     *
+     * `Model.get` is create-on-read (`model.ts:213-236`), and the id it is handed here comes
+     * straight off a wire. Two empty values reach it on ordinary graphs and neither used to
+     * be filtered:
+     *
+     * - `''` — a Text Input the user has cleared. `Model.get('')` is a **named** record keyed
+     *   on the empty string, so every Object node in the app whose Id is momentarily blank
+     *   rendezvouses on one shared record, and it can never be read back by any real id.
+     * - `null` — the Empty-Value Contract's explicit clear. Measured before this guard: the
+     *   node minted a fresh anonymous record per `null` and announced `Fetched` for it.
+     *
+     * `undefined` cannot arrive over a connection (`node.ts:635` drops it in `sendValue`), but
+     * it is guarded too, because a parameter or a direct `setInputValue` still can.
+     *
+     * `Fetched` is not sent on this path: nothing was fetched, and a completion signal for
+     * work that went nowhere is what the Failure Contract exists to forbid.
+     */
     setModelID: function (this: ModelNodeInstance, id: string) {
+      if (id === undefined || id === null || id === '') {
+        this.setModel(undefined);
+        return;
+      }
+
       const model = (this.nodeScope.modelScope || Model).get(id);
       this.setModel(model);
       this.sendSignalOnOutput('fetched');
@@ -257,6 +299,24 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
         for (const key in model.data) {
           if (this.hasOutput('prop-' + key)) this.flagOutputDirty('prop-' + key);
         }
+
+        /**
+         * NDA-012 (Data) — flush what arrived before the object did.
+         *
+         * `scheduleStore` returns without writing when no object is bound, and keeps the
+         * values in `dirtyValues` so they can be written later. Nothing ever wrote them.
+         * `setModel` was the only place that could, and it did not, so a `prop-…` value that
+         * arrived in an *earlier frame* than the Id was silently dropped — measured: an
+         * Object node fed `name` on one frame and its Id on the next ended up with `{}`.
+         *
+         * The comment in `scheduleStore` (and NDA-004 §2's corpus docstring, which cites it)
+         * has claimed since NDA-004 that these "are written the moment an object arrives".
+         * This is the line that makes that true.
+         *
+         * Same-frame arrival always worked — `scheduleAfterInputsHaveUpdated` runs after
+         * every input in the pass — which is why the gap survived a careful read of this file.
+         */
+        if (Object.keys(this._internal.dirtyValues).length > 0) this.scheduleStore();
       }
     },
     _onNodeDeleted: function (this: ModelNodeInstance) {
@@ -325,7 +385,11 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
         plug: 'input/output',
         group: 'Properties',
         name: 'prop-' + p,
-        displayName: p
+        displayName: p,
+        description:
+          'Reads and writes the ' +
+          p +
+          ' property of the bound object; a value arriving before an object is bound is held and written once one is'
       });
 
       ports.push({
@@ -333,7 +397,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
         plug: 'output',
         group: 'Changed Events',
         displayName: p + ' Changed',
-        name: 'changed-' + p
+        name: 'changed-' + p,
+        description: 'Fires when the ' + p + ' property changes, from this node or from anywhere else'
       });
     }
   }

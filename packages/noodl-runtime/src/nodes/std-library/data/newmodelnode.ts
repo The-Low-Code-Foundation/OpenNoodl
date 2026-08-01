@@ -26,6 +26,7 @@ const NewModelNodeDefinition: MixinNodeModule = {
       new: {
         displayName: 'Do',
         group: 'Actions',
+        description: 'Creates a new object with a generated id and writes the property values currently on the inputs',
         valueChangedToTrue: function (this: NewModelNodeInstance) {
           this.scheduleNew();
         }
@@ -35,7 +36,8 @@ const NewModelNodeDefinition: MixinNodeModule = {
       created: {
         type: 'signal',
         displayName: 'Done',
-        group: 'Events'
+        group: 'Events',
+        description: 'Fires once the new object exists, its properties are written and Id names it'
       }
     },
     methods: {

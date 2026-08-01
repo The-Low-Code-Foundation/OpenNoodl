@@ -29,6 +29,7 @@ const SetModelPropertiedNodeDefinition: MixinNodeModule = {
       store: {
         displayName: 'Do',
         group: 'Actions',
+        description: 'Writes the property values currently on the inputs onto the object named by Id',
         valueChangedToTrue: function (this: SetModelPropertiesInstance) {
           this.scheduleStore();
         }
@@ -38,7 +39,8 @@ const SetModelPropertiedNodeDefinition: MixinNodeModule = {
       stored: {
         type: 'signal',
         displayName: 'Done',
-        group: 'Events'
+        group: 'Events',
+        description: 'Fires once the properties have been written onto the object and anything watching it has been told'
       }
     }
   }

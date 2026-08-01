@@ -53,12 +53,14 @@ function _addFailure(def: MixinNodeModule, codePrefix: string) {
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when there was no object to act on, so nothing was written, after the reason has been put on Error'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
+      description: 'Why no object was bound, and what to set so that one is',
       getter: function (this: FailableNodeInstance) {
         return this._internal.error;
       }
@@ -189,6 +191,7 @@ function _addModelId(def: MixinNodeModule, opts?: { includeInputs?: boolean; inc
         default: 'explicit',
         displayName: 'Id Source',
         group: 'General',
+        description: 'Where the object comes from: the Id input, or the item of the Repeater this node sits inside',
         set: function (this: ModelIdNodeInstance, value: unknown) {
           this._internal.idSource = value;
           if (value === 'foreach') this.bindToRepeaterItem();
@@ -202,6 +205,8 @@ function _addModelId(def: MixinNodeModule, opts?: { includeInputs?: boolean; inc
         type: 'component',
         displayName: 'Repeater Component',
         group: 'General',
+        description:
+          'Which Repeater to take the item from when several are nested; leave blank to use the nearest one, and ignored unless Id Source is From repeater',
         set: function (this: ModelIdNodeInstance, value: string) {
           this._internal.repeaterComponent = value || undefined;
           // Only re-resolve in the mode this input belongs to; in `explicit` mode the model
@@ -217,6 +222,8 @@ function _addModelId(def: MixinNodeModule, opts?: { includeInputs?: boolean; inc
         },
         displayName: 'Id',
         group: 'General',
+        description:
+          'Id of the object to act on, which is created the first time it is named; an Object may be wired here instead, and null or blank binds nothing so Do fails',
         set: function (this: ModelIdNodeInstance, value: unknown) {
           if (value instanceof Model) value = (value as ModelLike).getId(); // Can be passed as model as well
           this._internal.modelId = value as string; // Wait to fetch data
@@ -233,6 +240,7 @@ function _addModelId(def: MixinNodeModule, opts?: { includeInputs?: boolean; inc
         type: 'string',
         displayName: 'Id',
         group: 'General',
+        description: 'Id of the object this node acted on, which is how a newly created one is picked up downstream',
         getter: function (this: ModelIdNodeInstance) {
           return this._internal.model ? this._internal.model.getId() : this._internal.modelId;
         }
@@ -251,7 +259,34 @@ function _addModelId(def: MixinNodeModule, opts?: { includeInputs?: boolean; inc
         this.setModel(resolveForEachItem(this, { target: this._internal.repeaterComponent }));
       });
     },
+    /**
+     * NDA-012 (Data) — an empty Id binds *no object*, so `Do` reports the failure it should.
+     *
+     * `Model.get` mints on read (`model.ts:213-236`), and this id arrives from a wire. Two
+     * empty values reach it on ordinary graphs:
+     *
+     * - `''` — a cleared Text Input. `Model.get('')` is a **named** record keyed on the empty
+     *   string, so it is shared process-wide by every node in this state. **Measured before
+     *   this guard: `Set Object Properties` wrote its properties into that record and
+     *   reported `Done`** — a completion signal for a write no id can ever read back, and one
+     *   that silently collides with every other node doing the same.
+     * - `null` — the Empty-Value Contract's explicit clear. Same outcome, on a record keyed
+     *   `"null"`.
+     *
+     * `undefined` never crosses a connection (`node.ts:635` drops it in `sendValue`), which is
+     * why NDA-004 §2's `_failNoModel` path already fired for a *never-wired* Id and why this
+     * variant survived that pass. It is guarded anyway: a parameter or a direct
+     * `setInputValue` still reaches here.
+     *
+     * Clearing the binding rather than refusing in the setter is deliberate — the failure
+     * belongs on `Do`, where NDA-004 §2 already put it with a message that names the fix.
+     */
     setModelID: function (this: ModelIdNodeInstance, id: string) {
+      if (id === undefined || id === null || id === '') {
+        this.setModel(undefined);
+        return;
+      }
+
       const model = (this.nodeScope.modelScope || Model).get(id);
       this.setModel(model);
     },
@@ -357,7 +392,11 @@ function _addInputProperties(def: MixinNodeModule) {
                 group: 'Property Types',
                 displayName: p,
                 default: '*',
-                name: 'type-' + p
+                name: 'type-' + p,
+                description:
+                  'How to read the ' +
+                  p +
+                  ' value before writing it: Object and Array turn a string into the object or array it names, and Any writes it through untouched'
               });
             }
           }
@@ -400,6 +439,7 @@ function _addInputProperties(def: MixinNodeModule) {
       type: { name: 'stringlist', allowEditOnly: true },
       displayName: 'Properties',
       group: 'Properties to set',
+      description: 'Names the properties to write; each name listed here gets a value input and a type selector',
       set: function () {}
     }
   });
