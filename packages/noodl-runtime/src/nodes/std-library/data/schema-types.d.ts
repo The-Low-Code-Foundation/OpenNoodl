@@ -65,7 +65,22 @@ export interface BackendServiceEntry {
   url: string;
   auth?: { publicToken?: string; [extra: string]: unknown };
   endpoints?: Record<string, unknown>;
-  schema?: { collections?: SchemaCollection[] };
+  schema?: {
+    collections?: SchemaCollection[];
+    /**
+     * The relation descriptors the editor's schema sync parsed and stored.
+     *
+     * BCN-005 shipped four authoritative parsers and nothing stored their output, so a
+     * running app resolved relations from `relationsFromCachedCollections` — the strict
+     * subset derivable without them. The editor stores this now, which is the only way a
+     * running app can have it at all: relation metadata is admin-only on every REST
+     * backend (Directus 403, PostgREST has no endpoint, PocketBase 401) and a deployed
+     * app holds a user token.
+     *
+     * `undefined` on a project synced before the sync recorded them.
+     */
+    relations?: import('@noodl/backend-contract').RelationDescriptor[];
+  };
   [extra: string]: unknown;
 }
 

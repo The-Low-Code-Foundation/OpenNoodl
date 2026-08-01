@@ -32,7 +32,7 @@ const { ParseWireAdapter } = require('./backends/ParseWireAdapter');
 const { RestDataAdapter } = require('./backends/RestDataAdapter');
 const { makeRestSerializer, filterSchemaFor } = require('./backends/restSerialize');
 const { relationsFromCachedCollections } = require('@noodl/backend-contract');
-const { resolveBackendFromRuntime, ACTIVE_BACKEND } = require('./backends/resolveBackend');
+const { resolveBackendFromRuntime, ACTIVE_BACKEND, hasStoredRelations } = require('./backends/resolveBackend');
 
 class CloudStore {
   /**
@@ -75,7 +75,22 @@ class CloudStore {
           // (Directus 403, PostgREST has none, PocketBase 401) and a running app
           // holds a user token. A relation this cannot see is one the adapter
           // refuses by name rather than guessing a junction table for.
-          relationsFor: () => relationsFromCachedCollections(this._target ? this._target.collections : [])
+          // BCN-005 schema sync. The editor stores what each backend's relation-metadata
+          // endpoint actually described; `relationsFromCachedCollections` is the strict
+          // subset derivable without it, and stays as the fallback for a project synced
+          // before the editor stored anything. The subset misses PocketBase relation
+          // fields and any junction with an extra column, and names a many-to-many after
+          // the target collection rather than the parent's own alias.
+          //
+          // ⚠️ `relations.length &&`, not just `relations &&`. A `custom` backend and an
+          // unsynced one both want the fallback, and an empty stored array must not
+          // silence it.
+          relationsFor: () => {
+            const target = this._target;
+            if (!target) return [];
+            if (hasStoredRelations(target)) return target.relations;
+            return relationsFromCachedCollections(target.collections);
+          }
         })
       : new ParseWireAdapter({
           // The module-scope serialiser, not the scope-bound `this._serializeObject`

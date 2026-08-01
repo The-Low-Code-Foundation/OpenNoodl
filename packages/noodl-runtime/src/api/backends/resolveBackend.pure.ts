@@ -60,7 +60,7 @@
  * @module api/backends/resolveBackend
  */
 
-import type { BackendHandle, BackendType } from '@noodl/backend-contract';
+import type { BackendHandle, BackendType, RelationDescriptor } from '@noodl/backend-contract';
 
 import type { BackendServiceEntry, BackendServicesMetaData, SchemaCollection } from '../../nodes/std-library/data/schema-types';
 
@@ -100,6 +100,12 @@ export interface ResolvedBackendTarget {
   isParseWire: boolean;
   /** The cached schema, empty when the backend has never been introspected. */
   collections: SchemaCollection[];
+  /**
+   * The relations the editor's schema sync recorded, or `undefined` on a project synced
+   * before it did. Admin-only on every REST backend, so this is the only way a running
+   * app can have them at all — see `schema-types.d.ts`.
+   */
+  relations?: RelationDescriptor[];
 }
 
 /** The two backend types served by `ParseWireAdapter`. */
@@ -237,8 +243,30 @@ export function resolveBackendTarget(
     handle: handleFor(entry),
     entry,
     isParseWire: isParseWireType(entry.type),
-    collections: entry.schema?.collections || []
+    collections: entry.schema?.collections || [],
+    relations: entry.schema?.relations
   };
+}
+
+/**
+ * Does this target carry relation descriptors the editor actually stored?
+ *
+ * ⚠️ **`.length`, not just presence, and that is the whole point of the function.** Three
+ * states have to stay distinct:
+ *
+ * - `undefined` — the project was synced before the editor stored relations, or never
+ *   synced. Use the derived subset.
+ * - `[]` — synced, and this backend genuinely describes no relations. **Also use the
+ *   derived subset**, because an empty stored array must not silence a fallback that might
+ *   still find something; a `custom` backend is the case that makes this real.
+ * - non-empty — the authoritative descriptors. Use them.
+ *
+ * Named and exported rather than inlined at the one call site because the distinction is
+ * invisible at a glance and a mutation proved nothing else covered it: rewriting the
+ * condition to a bare `target.relations &&` left every suite green.
+ */
+export function hasStoredRelations(target: ResolvedBackendTarget | undefined): boolean {
+  return !!(target && target.relations && target.relations.length > 0);
 }
 
 /** One `backendServices` entry as the handle every contract method takes. */

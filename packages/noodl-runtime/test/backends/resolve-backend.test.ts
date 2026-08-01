@@ -19,6 +19,7 @@ import {
   endpointBackendEntry,
   endpointBackendType,
   handleFor,
+  hasStoredRelations,
   isParseWireType,
   resolveBackendTarget
 } from '../../src/api/backends/resolveBackend';
@@ -269,5 +270,70 @@ describe('the filter schema handed to the translators', () => {
       'published_at',
       'author'
     ]);
+  });
+});
+
+/**
+ * BCN-005's schema sync — the relations the editor stores must reach the adapter.
+ *
+ * The four authoritative parsers shipped tested and with no caller: nothing stored their
+ * output, so a running app resolved relations from `relationsFromCachedCollections`, the
+ * strict subset derivable without them. The editor stores them now, and this is the seam
+ * that carries them.
+ */
+describe('BCN-005: stored relation descriptors reach the resolved target', () => {
+  const REL = [
+    { name: 'tags', kind: 'many-to-many', targetCollection: 'bcn005_tags', junction: 'bcn005_articles_tags' }
+  ] as never[];
+
+  function sourcesWith(schema: unknown) {
+    return {
+      backendServices: {
+        version: 2,
+        activeBackendId: 'b1',
+        backends: [{ id: 'b1', name: 'Directus', type: 'directus', url: 'http://d', schema }]
+      }
+    } as never;
+  }
+
+  it('carries `relations` from the cached schema onto the target', () => {
+    const target = resolveBackendTarget('b1', sourcesWith({ collections: [], relations: REL }));
+
+    expect(target?.relations).toEqual(REL);
+  });
+
+  it('leaves `relations` undefined for a project synced before they were stored', () => {
+    const target = resolveBackendTarget('b1', sourcesWith({ collections: [] }));
+
+    // Undefined rather than `[]`, so `cloudstore.js` can tell "never synced" from
+    // "synced and this backend genuinely has no relations" and fall back accordingly.
+    expect(target?.relations).toBeUndefined();
+  });
+
+  it('treats a stored EMPTY array as "nothing stored", so the derived fallback still runs', () => {
+    // ⚠️ The rule `cloudstore.js`'s `relationsFor` turns on, and the one a bare
+    // `target.relations &&` gets wrong. A mutation to that shape left every other suite
+    // green, which is why this assertion exists at all.
+    expect(hasStoredRelations(resolveBackendTarget('b1', sourcesWith({ collections: [], relations: [] })))).toBe(
+      false
+    );
+    expect(hasStoredRelations(resolveBackendTarget('b1', sourcesWith({ collections: [] })))).toBe(false);
+    expect(hasStoredRelations(undefined)).toBe(false);
+  });
+
+  it('treats a non-empty stored array as authoritative', () => {
+    expect(hasStoredRelations(resolveBackendTarget('b1', sourcesWith({ collections: [], relations: REL })))).toBe(
+      true
+    );
+  });
+
+  it('carries an empty array as an empty array, not as undefined', () => {
+    // ⚠️ The distinction the fallback rule turns on. `cloudstore.js` tests
+    // `relations && relations.length`, so a stored empty array must still reach it as an
+    // array — a `|| undefined` here would be invisible until a backend with genuinely no
+    // relations silently fell back to the derived subset.
+    const target = resolveBackendTarget('b1', sourcesWith({ collections: [], relations: [] }));
+
+    expect(target?.relations).toEqual([]);
   });
 });
