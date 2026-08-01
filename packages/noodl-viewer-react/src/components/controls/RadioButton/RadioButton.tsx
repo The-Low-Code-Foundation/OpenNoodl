@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 
 import RadioButtonContext from '../../../contexts/radiobuttoncontext';
 import Layout from '../../../layout';
@@ -46,7 +46,21 @@ export function RadioButton(props: RadioButtonProps) {
 
   Layout.align(style, props);
 
-  props.checkedChanged && props.checkedChanged(radioButtonGroup ? radioButtonGroup.selected === props.value : false);
+  // Whether this button is the group's selection. A render *output*, so it is computed here and
+  // used below for the `<input>`'s `checked` attribute.
+  const checked = radioButtonGroup ? radioButtonGroup.selected === props.value : false;
+
+  // NDA-012 (Visual), A3. This used to call `props.checkedChanged(checked)` right here, from the
+  // render body — and on the node side that reaches `flagOutputDirty('checked')` and
+  // `_updateVisualState()` (`radiobutton.ts:39-46`). So a render React discarded or double-invoked
+  // moved graph state and repainted visual states for a checked-ness the committed tree never had.
+  //
+  // Reporting to the graph is a side effect and belongs after commit. `checkedChanged` already
+  // no-ops when the value has not changed, so the extra render this costs on a real change is the
+  // one the old code needed anyway.
+  useEffect(() => {
+    props.checkedChanged && props.checkedChanged(checked);
+  }, [checked, props.checkedChanged]);
 
   const inputProps = {
     id: props.id,
@@ -111,7 +125,7 @@ export function RadioButton(props: RadioButtonProps) {
         type="radio"
         name={radioButtonGroup ? radioButtonGroup.name : undefined}
         {...inputProps}
-        checked={radioButtonGroup ? radioButtonGroup.selected === props.value : false}
+        checked={checked}
         onChange={(e) => {
           radioButtonGroup && radioButtonGroup.checkedChanged && radioButtonGroup.checkedChanged(props.value);
         }}

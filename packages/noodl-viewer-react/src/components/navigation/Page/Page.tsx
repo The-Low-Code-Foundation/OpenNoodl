@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import type { TSFixme } from '../../../../typings/global';
 import Layout from '../../../layout';
@@ -159,10 +159,40 @@ export function Page(props: PageProps) {
   Layout.size(style, props);
   Layout.align(style, props);
 
-  // Allow changing the metatags from inputs
-  META_TAGS.forEach((item) => {
-    const value = props.metatags && props.metatags[item.key];
-    Noodl.SEO.setMeta(item.key, value);
+  // Allow changing the metatags from inputs. `undefined` is forwarded rather than skipped: that is
+  // how `SeoApi.setMeta` removes a tag an author has cleared, and `injectSeo` drops the empty
+  // entries on the way into the served `<head>`.
+  const applyMetaTags = () => {
+    META_TAGS.forEach((item) => {
+      const value = props.metatags && props.metatags[item.key];
+      Noodl.SEO.setMeta(item.key, value);
+    });
+  };
+
+  // NDA-012 (Visual), A3. This ran unconditionally in the render body, and in a browser
+  // `setMeta` mutates `document.head` — so a render React discarded or double-invoked changed
+  // document-level state for a tree that was never committed.
+  //
+  // ⚠️ Moving it into an effect outright would have been worse than the defect. SSR renders with
+  // `ReactDOMServer.renderToString` (`static/ssr/server-core.js`) and **effects never run**, while
+  // `injectSeo` builds the served `<head>` out of the buffer this fills — so every server-rendered
+  // and statically-generated page would have lost its meta tags, and `ssr-inject-seo.test.js`
+  // would have stayed green because it tests the string transform, not the producer. So: the
+  // render body stays the path on the server, where there is nothing to mutate and no effect to
+  // wait for, and the browser does its DOM write after commit.
+  // ⚠️ Read per render rather than hoisted to a module-level constant, which is what `seo.ts` does.
+  // The difference is deliberate: this decides *which of two code paths runs*, so a value frozen at
+  // import time makes the branch unreachable from a test and, in the SSG build, from any renderer
+  // that gains a document after the module loads.
+  const inBrowser = typeof document !== 'undefined';
+
+  if (!inBrowser) {
+    applyMetaTags();
+  }
+
+  useEffect(() => {
+    if (!inBrowser) return;
+    applyMetaTags();
   });
 
   return (
