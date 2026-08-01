@@ -188,32 +188,68 @@ export function parseSupabaseSchema(data: unknown, schema: CachedSchema = emptyS
   return schema;
 }
 
+/** One field of a PocketBase collection, in either of the two shapes it has had. */
+interface PocketbaseRawField {
+  name: string;
+  type: string;
+  required?: boolean;
+  /** ≤ 0.22: select options were nested. */
+  options?: { values?: string[] };
+  /** 0.23+: the same options were flattened onto the field. */
+  values?: string[];
+  system?: boolean;
+}
+
 /**
- * Parse Pocketbase schema from /api/collections.
+ * Parse Pocketbase schema from `/api/collections`.
+ *
+ * ⚠️ **PocketBase renamed `collection.schema` to `collection.fields` in 0.23**, and this
+ * function read only the old name — so against any modern PocketBase every collection came
+ * back with **zero fields**, silently. Not a degraded result: `col.schema?.map(...)` on an
+ * absent property is `undefined`, `|| []` turns it into an empty array, and the collection
+ * is still pushed. So the Backend Services panel showed the collection, the Class dropdown
+ * listed it, and every field-derived port — the filter schema included — was empty, with no
+ * error anywhere. Found by BCN-005 and confirmed against the rig's PocketBase 0.30.0, whose
+ * collection payload has `fields` and no `schema` at all.
+ *
+ * Both names are read, newest first. Supporting the old one costs one `??` and PocketBase
+ * 0.22 is a version a user may still be running; refusing to read it would turn a silent
+ * empty result into a silent empty result for a different reason.
+ *
+ * The select-options move is the same story one level down: `options.values` became a
+ * flattened `values` in the same release, so `enumValues` reads both or a select field
+ * offers no choices.
  */
 export function parsePocketbaseSchema(data: unknown, schema: CachedSchema = emptySchema()): CachedSchema {
-  // Pocketbase returns: [{ id, name, schema: [{ name, type, required, ... }] }]
   const collections = Array.isArray(data) ? data : (data as { items?: unknown[] })?.items || [];
 
   for (const col of collections as Array<{
     name: string;
-    schema?: Array<{ name: string; type: string; required?: boolean; options?: { values?: string[] } }>;
+    /** 0.23+ */
+    fields?: PocketbaseRawField[];
+    /** ≤ 0.22 */
+    schema?: PocketbaseRawField[];
     system?: boolean;
   }>) {
     if (col.system) continue;
 
+    const rawFields = col.fields ?? col.schema ?? [];
+
     schema.collections.push({
       name: col.name,
       displayName: col.name,
-      fields:
-        col.schema?.map((f) => ({
-          name: f.name,
-          displayName: f.name,
-          type: f.type,
-          nativeType: f.type,
-          required: f.required || false,
-          enumValues: f.options?.values
-        })) || [],
+      fields: rawFields.map((f) => ({
+        name: f.name,
+        displayName: f.name,
+        type: f.type,
+        nativeType: f.type,
+        required: f.required || false,
+        // `id` is present in the 0.23+ `fields` array and was absent from the old
+        // `schema` array. Marking it is what keeps the primary key from reading as an
+        // ordinary editable text column now that it is visible.
+        primaryKey: f.name === 'id' || undefined,
+        enumValues: f.values ?? f.options?.values
+      })),
       primaryKey: 'id'
     });
   }

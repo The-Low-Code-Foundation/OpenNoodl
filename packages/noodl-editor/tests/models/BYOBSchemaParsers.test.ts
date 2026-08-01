@@ -276,6 +276,81 @@ describe('parsePocketbaseSchema', () => {
     const schema = parsePocketbaseSchema([{ name: 'a', schema: [] }]);
     expect(schema.collections.map((c) => c.name)).toEqual(['a']);
   });
+
+  /**
+   * ⚠️ PocketBase renamed `collection.schema` to `collection.fields` in 0.23, and this
+   * parser read only the old name — so against any modern PocketBase every collection came
+   * back with **zero fields**, silently. The fixture above is the reason it went unnoticed:
+   * it only ever exercised the old shape, so the parser and its test agreed with each other
+   * and with nothing else.
+   *
+   * The payload below is the real one, read from the rig's PocketBase 0.30.0 — note that
+   * `fields` now includes `id`, which the old `schema` array did not.
+   */
+  describe('PocketBase 0.23+ — `fields`, not `schema`', () => {
+    const modern = {
+      items: [
+        {
+          name: 'bcn004n',
+          type: 'base',
+          system: false,
+          fields: [
+            { name: 'id', type: 'text', system: true },
+            { name: 'title', type: 'text', required: true },
+            { name: 'status', type: 'text' },
+            { name: 'rank', type: 'number' },
+            // 0.23 also flattened select options off `options.values`.
+            { name: 'category', type: 'select', values: ['news', 'blog'] }
+          ]
+        },
+        { name: '_superusers', system: true, fields: [] }
+      ]
+    };
+
+    it('recovers the fields at all — the whole defect', () => {
+      const posts = parsePocketbaseSchema(modern).collections[0];
+
+      expect(posts.fields.map((f) => f.name)).toEqual(['id', 'title', 'status', 'rank', 'category']);
+    });
+
+    it('carries types, required flags and the flattened select values', () => {
+      const posts = parsePocketbaseSchema(modern).collections[0];
+
+      expect(posts.fields.find((f) => f.name === 'rank')?.type).toBe('number');
+      expect(posts.fields.find((f) => f.name === 'title')?.required).toBe(true);
+      expect(posts.fields.find((f) => f.name === 'status')?.required).toBe(false);
+      expect(posts.fields.find((f) => f.name === 'category')?.enumValues).toEqual(['news', 'blog']);
+    });
+
+    it('marks id as the primary key, which the old shape never had to', () => {
+      const posts = parsePocketbaseSchema(modern).collections[0];
+
+      expect(posts.primaryKey).toBe('id');
+      expect(posts.fields.find((f) => f.name === 'id')?.primaryKey).toBe(true);
+      expect(posts.fields.find((f) => f.name === 'title')?.primaryKey).toBeUndefined();
+    });
+
+    it('still skips system collections', () => {
+      expect(parsePocketbaseSchema(modern).collections.map((c) => c.name)).toEqual(['bcn004n']);
+    });
+
+    it('reads the OLD shape too, so a 0.22 server does not regress', () => {
+      // Both names are supported deliberately — refusing the old one would turn a silent
+      // empty result into a silent empty result for a different reason.
+      const legacy = parsePocketbaseSchema(pocketbase).collections[0];
+
+      expect(legacy.fields.map((f) => f.name)).toEqual(['title', 'category']);
+      expect(legacy.fields.find((f) => f.name === 'category')?.enumValues).toEqual(['news', 'blog']);
+    });
+
+    it('prefers `fields` when a server somehow sends both', () => {
+      const both = parsePocketbaseSchema([
+        { name: 'x', fields: [{ name: 'new', type: 'text' }], schema: [{ name: 'old', type: 'text' }] }
+      ]);
+
+      expect(both.collections[0].fields.map((f) => f.name)).toEqual(['new']);
+    });
+  });
 });
 
 // ─── Parse wire (/schemas) ───────────────────────────────────────────────────
