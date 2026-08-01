@@ -910,10 +910,19 @@ export class NodeGraphNode extends Model {
   getHealth() {
     const warnings = WarningsModel.instance.getWarnings({ component: this.owner.owner, node: this });
     if (warnings) {
-      return { healthy: false, message: warnings.shortMessage };
+      // BCN-010: which *kind* of unhealthy, so the canvas can honour phase 23's
+      // colour law. Every warning used to be an error in practice — a missing
+      // type, an illegal child — so painting them all in `theme.danger` was
+      // right by accident. A capability gap is the first routine `warning`, and
+      // "Directus has no magic-link login" drawn in red reads as a broken node.
+      // `error` wins whenever any warning on the node is one.
+      const level = warnings.warnings.some((w: TSFixme) => w.warning && w.warning.level === 'error')
+        ? 'error'
+        : 'warning';
+      return { healthy: false, message: warnings.shortMessage, level };
     }
 
-    return { healthy: true };
+    return { healthy: true, level: undefined };
   }
 
   evaluateHealth() {
