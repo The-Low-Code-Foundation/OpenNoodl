@@ -686,26 +686,32 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/rest)
 
 ### Run Tasks  `RunTasks`
 
-10 inputs / 4 outputs · 2 signal in / 4 signal out · docs 0% · SSR `safe` · browser, cloud
+10 inputs / 4 outputs · 2 signal in / 4 signal out · docs 0% → **100%** · SSR `safe` · browser, cloud
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/run-tasks)
+Source: `packages/noodl-runtime/src/nodes/std-library/runtasks.ts` · Docs: [link](https://docs.noodl.net/nodes/data/run-tasks)
+
+⚠️ **Audited under NDA-009 and that audit did not cover this.** NDA-009 §1–§4 are about the
+*template contract* — the three port names matched by string — and their rows are in
+`nda-009-run-tasks-{contract,template}.test.ts`. **Nothing anywhere exercised starting,
+aborting or finishing a run.** Five defects were in the eighty lines between `run` and
+`checkDone`, two of them permanently disabling the node.
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/14) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ⚠️ 1 object/array port(s): items | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | The only mutation is `items`, and `run` re-reads `_internal.items` at `Do` time rather than caching a copy at set time, so a list mutated in place between pulses is picked up. |
+| A2 |  | 🔵 | No `Refresh` input by design — `Do` **is** the re-run, and it re-reads the source. Pinned by RT-2's second row, which is a genuine second run. |
+| A3 |  | ✅ | `scheduleRun`/`scheduleAbort` coalesce within a frame via `hasScheduledRun`/`hasScheduledAbort`, and both then go through `_queueOperation`, so two pulses cannot interleave. The *second* `Do` is not swallowed silently — RT-3's control shows it is reported. |
+| G1 |  | ⚠️ **fixed** | `items`' setter returned on **any** falsy value, so `null` abstained instead of clearing and the next `Do` silently re-ran the **previous** list. `undefined` is unreachable over a wire (`node.ts:635`), so `null` is the reachable spelling of "nothing to run". Now clears. Row RT-5, with a control that `[]` is still a real completed run. |
+| B1 | ✅ has one | ⚠️ **fixed** | `Failure` existed and three whole classes of failure never reached it: no template, no items, and a concurrency of 0. Now they do. |
+| B2 |  | ⚠️ **fixed** | **The headline.** All three `run` preconditions reported through `editorConnection.sendWarning` and nothing else — measured `signals=[] errors=[]`, so in a deployed app `Do` did nothing and told nobody. Now raised on the runtime bus. Same repair NDA-004 §2 made across Data. Rows RT-3. |
+| B3 | ✅ | ⚠️ **fixed** | `Done` fired on ordinary completion only. Not for an empty list (the *common* case — a query matching nothing), not on abort, not on stop-on-failure. So whether "then do the next thing" ran depended on **how** the run ended. Now every terminal path sends it. Rows RT-1, RT-2, RT-4. |
+| C1 | ⚠️ **0%** (0/14) | ✅ **100%** | All 14 ports. `Max Running Tasks` states the ≥1 requirement; `Failure` says the per-item detail is on the error channel; `Abort` says it does nothing when no run is in progress. |
+| D1 |  | 🔵 | The bare-string contract is the four template port names, and it is **deliberately** unvalidated at runtime — NDA-009 §1 moved that check to template-selection time in the editor, with `startTask`'s "no completion output" guard as the deployed backstop. Read and left. |
+| E1 | ⚠️ 1 object/array port(s): items | ✅ | `items` is genuinely an array and every producer in the library hands it one. Not a dead end. |
+| F1 |  | ✅ | The template is named explicitly by `Template`; nothing is resolved implicitly. Per-task binding goes through `foreachitem.ts`, whose `Repeater Component` port makes the nesting case nameable (BINDING-CONTRACT §(a)). |
+| H1 | declares `safe` | ⚠️ **fixed** | **Two ways to brick the node for the life of the page.** `Abort` set `state='aborted'` unconditionally, and only a completing *task* ever cleared it — so an `Abort` with nothing in flight left a state `run` refuses to start from, silently and for ever. `Stop On Failure` never returned to idle either. Neither is author error: one is their own Abort button, one is the node's own option. Rows RT-1, RT-2. Delete-time cleanup (`_deleteAllTasks`) was already correct from PLAT-003. |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ **5 defects, all fixed** — B2's editor-only preconditions, B3's missing `Done` on three of four terminal paths, G1's non-clearing `Items`, and two independent permanent wedges (`Abort` with nothing in flight, `Stop On Failure`). C1 0% → 100%. The lesson is the one NDA-009's own §1 spelled out and this node then failed on a different axis: **a node audited for one contract is not an audited node** — the template contract was examined four times and the run lifecycle never once.
 
 ---
 

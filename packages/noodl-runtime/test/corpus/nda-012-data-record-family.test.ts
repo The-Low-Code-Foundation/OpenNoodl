@@ -339,8 +339,10 @@ describe('D6 — a Record CRUD verb with an empty Id', () => {
     expect(p.errors).toEqual(['Missing Record Id']);
 
     // And nothing was written into the process-wide record named by that spelling.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((Model as any)._models[String(empty)]?.data).toBeUndefined();
+    // `_models` is the named tier's backing table — the thing the defect polluted — and it is
+    // reached through a declared shape rather than `any` so this row costs the ratchet nothing.
+    const named = Model as unknown as { _models: Record<string, { data?: unknown } | undefined> };
+    expect(named._models[String(empty)]?.data).toBeUndefined();
   });
 
   it('control: a real Id still mints on read, binds, and stores', () => {

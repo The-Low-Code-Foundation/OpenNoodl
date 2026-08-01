@@ -2002,6 +2002,102 @@ so the teardown doubles as its control.
   `ContextBuilder`'s `?? node.shortDesc` cannot fire regardless of enrichment. Fifty sites declare it.
   Whether it should exist at all is a decision for Richard.
 
+## DC — Run Tasks and the start of Visual (2026-08-01, second session)
+
+### DC-i — a node audited for one contract is not an audited node
+
+**`Run Tasks` was worked over four times by NDA-009 and nobody ever ran it.**
+
+NDA-009 §1–§4 are about the *template contract* — the three port names the node matches by string
+against its template — and they are thorough: an editor-time check, the names made configurable,
+per-task failure reporting, a node-card affordance, two corpus files, 35 rows. **Not one of them
+starts, aborts or finishes a run.** Five defects were sitting in the eighty lines between `run` and
+`checkDone`, and two of them **permanently disabled the node**:
+
+| | Measured, through a real graph |
+|---|---|
+| `Abort` with nothing in flight | `state=aborted` for ever; every later `Do` did nothing, silently |
+| `Stop On Failure` after one failure | `state=running` for ever; every later `Do` did nothing |
+| `Max Running Tasks = 0` | silent hang — no signals, no errors, no tasks, no end |
+| `Do` with no template | nothing at all; `editorConnection.sendWarning` was the only report |
+| Empty `Items` list | `success` but no `done` |
+
+⚠️ **Neither wedge is author error.** One is the author pressing their own `Abort` button; the other
+is ticking the node's own `Stop On Failure` option. The node then did nothing for the rest of the
+page's life and said nothing about why.
+
+Two shapes here are already named in this document and recurred anyway. The editor-only preconditions
+are **B2** exactly, the class NDA-004 §2 swept the Data nodes for — Run Tasks was not in that sweep
+because it is `std-library/`, not `std-library/data/`. And `Done` firing on only one of four terminal
+paths is the sequencing half of **B3**: an author who wired "when the run is Done, do the next thing"
+had their graph stop dead precisely when there was **no work to do**, because an empty list is the
+common case, not an edge one — a query that matched nothing hands this node `[]`.
+
+The counting lesson: `Run Tasks` had been carried in this phase as *"the only in-scope Data node
+still at 0%"*, i.e. as a documentation gap. It was the densest single node in the category.
+
+### DC-ii — Visual's C1 is concentrated, not large
+
+Visual looked like the phase's biggest documentation job: **593 undocumented ports across 20 nodes**,
+more than Data had ports in total. Measured, the *work* was nothing like the count. **34 port names
+accounted for 262 of them** — `mounted` on 17 nodes, `variant` on 14, `enabled` on 13, the border,
+corner-radius and text-style families on 8 each — and most are **generated**, not declared:
+`defineBorderTab` and `defineCornerTab` each emit 5 ports per node, the text-style block emits 7.
+
+**About 20 sentences, written into two files, closed 269 port instances** and took the category from
+51.6% to 73.6%. `PORT-DESCRIPTION-STYLE.md` §"Where to write them" had predicted exactly this and
+named the same two files; this is its first confirmation at category scale.
+
+⚠️ **Two things the concentration analysis got wrong, both caught by re-measuring afterwards:**
+
+- **`backgroundColor` is not shared machinery.** It looked like it — 8 nodes, no descriptions — but
+  it is declared at **8 separate per-node sites**. A name appearing on many nodes does not mean one
+  declaration, and the grouping has to be done by *declaration site*, not by name.
+- **`Slider` carries its own private copy of `addBorderInputs`** (`slider.ts:225`). So the shared
+  generator's descriptions do not reach its ~40 `thumbBorder*`/`trackBorder*` ports — and, more
+  seriously, **no fix to the shared border ports has ever reached Slider, or ever will.** Whether the
+  two copies have drifted in *behaviour* is unchecked and is the open question, not the duplication.
+
+### DC-iii — the Empty-Value Contract, where the end user can see it
+
+`Text` rendered `String(props.text)`, so a `null` value painted **the four characters `null` on the
+page**. `null` and `undefined` are ordinary arrivals there: a record property nobody filled in, a
+Function node's early return, a Repeater item missing a field. Class **A2** already records this
+`String(value)` cast against the String *variable*, where the garbage at least stays inside the
+graph; here it is on screen, and no one had looked.
+
+The same cast one layer down: `getAbsoluteUrl(null)` is the literal path `/null`, which `Image` and
+`Video` handed to the browser, which fetched it and 404'd. On `Video` that meant **NDA-004 §2's own
+`Playback Failure` port was firing for an empty input as well as a broken one** — the Failure
+Contract's "must not raise on a legitimate empty result", reached from the empty-value side rather
+than the failure side, which is why that pass did not see it.
+
+⚠️ **The guard must test `null`/`undefined` explicitly, not truthiness.** `0` and `false` are
+legitimate things to put in a Text node and `!value` blanks both. Pinned by controls.
+
+### DC-iv — the cost of parallelism, paid in full this time
+
+The Data batch's seam stranded two defects in a territory gap (OB-ii's last two sites), and the
+handover named picking them up as the first job of this session. **Done** — and measuring them first
+showed the shape was worse in the Record family than in the Object family, exactly as predicted: a
+minted record has `_class === undefined`, which is DA-ii's schema-burning value, so a blank `Id`
+reached `Update`/`Delete Record` as `objectId: ''` against `className: undefined`.
+
+⚠️ **And a guard in the obvious place would have measured as fixed while the reachable path stayed
+broken.** `dbmodelnode2.ts` has *three* routes to the shared record, and the third — `modelId.set`'s
+`typeof value === 'object'`, which catches `null` and diverts it into `Model.create(null)` — runs
+**before** `setModelID`. A row driving `setModelID` directly would have gone green. The corpus row
+drives the input setter a wire actually reaches, which is the only version of the test that means
+anything.
+
+**This session's own seam did worse than the Data batch's**, for a reason outside the code: all three
+Visual workers were terminated mid-task by an account monthly spend limit, none having committed.
+Their uncommitted work was reviewable and mostly good, and was salvaged, verified and pinned by the
+orchestrator — but **none of it had tests**, and two of the four behavioural claims could not be
+measured without a DOM and a frame clock. Those are named in the corpus file rather than left silent.
+The generalisable point: **a parallel batch's work is only as safe as its last commit**, and a brief
+that says "commit small and often" is not a style preference.
+
 ## What these passes did *not* cover
 
 - **76 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No

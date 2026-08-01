@@ -31,7 +31,7 @@
 | Nodes with a machine-derived smell row | 155 | ✅ `NODE-REGISTER.md` |
 | Nodes with a pre-filled audit worksheet | 155 | ✅ `audit/`, 17 category files |
 | Nodes whose implementation has been read | **116** | 8 named by Richard + 5 from his second list + Boolean/Color, then NDA-012's sixteen categories |
-| Nodes fully audited against the 12 checks | **116** | 16 of 17 categories **complete**: Variables, Logic, Math, Events, String Manipulation, Interpolation, Javascript, Sensors, Cloud Services, Navigation, Component Utilities, Utilities, **CustomCode (5 of 5)**, Animation, Cloud, **Data (37 of 37, closed 2026-08-01)**. ⚠️ Data's 37th is **`Run Tasks`, audited under NDA-009 and never given a worksheet entry or C1** — it is the only in-scope Data node still at 0% documented, and `audit/data.md` still shows it `⬜`. **Remaining: all of Visual (20 in scope)** |
+| Nodes fully audited against the 12 checks | **116** | 16 of 17 categories **complete**: Variables, Logic, Math, Events, String Manipulation, Interpolation, Javascript, Sensors, Cloud Services, Navigation, Component Utilities, Utilities, **CustomCode (5 of 5)**, Animation, Cloud, **Data (37 of 37, and `Run Tasks` closed it on 2026-08-01 — worksheet entry written, C1 0% → 100%, and it held 5 defects rather than the documentation gap it had been carried as)**. **Remaining: all of Visual.** ⚠️ Visual is **partially worked, not audited**: its C1 is 51.6% → **80.0%** and four defects are fixed, but **no Visual node has its twelve checks filled in** — its three-worker batch was killed mid-task by an account spend limit |
 | Systemic defect classes identified | 8 | A reactivity, B failure, C documentation, D string contracts, **E type dead ends**, **F implicit binding**, **G signal/value ordering** (G came from a community report, not from either pass), **H the deployed build nobody ran** |
 | Findings live-verified in the running editor | Tier 1 + NDA-014 | 2026-07-29 pass: preview runs the new collection semantics (push/index/length notify once each, synchronous, `items` identity holds, `set` = one change); zero renderer exceptions; no cyclic warnings; editor's live typecast table carries the three new casts. Catalog page empty = expected (DB query, no local data, no repeater on it) |
 
@@ -95,7 +95,9 @@ All three gating decisions were put to Richard on 2026-07-29 and he confirmed th
 | Animation | 4 / 4 | **4** | **10** |
 | Cloud | 3 / 3 | **3** | 4 |
 | **Data** | **37 / 37** | **29** | **32** |
-| **16 complete — only Visual (20 in scope) remains** | **116 / 151** | **96** | **148** |
+| **Data — `Run Tasks`** (2026-08-01, closing the category) | (the 37th, above) | 1 | **5** |
+| **Visual** ⚠️ *partial — C1 and 4 defects only, no node's 12 checks done* | **0 / 20** | 4 | **4** |
+| **16 complete + Visual started** | **116 / 151** | **101** | **157** |
 
 **Data closed 2026-08-01 at 37/37 nodes and 32 defects — 0.86 per node, the phase's lowest, and the
 reason is stated rather than inferred.** The four-worker batch read the remaining 29 nodes and found
@@ -209,6 +211,70 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-08-01 (second session — Data *really* closed, Visual started and interrupted).**
+  Three things were owed by the previous handover and all three are done; the fourth, Visual's
+  per-node audit, was cut short by an account spend limit rather than by anything in the code.
+
+  **OB-ii's last two sites — the defects the Data batch's seam stranded — are fixed.**
+  `dbmodelcrudbase.ts` and `dbmodelnode2.ts` carried the empty-Id shape byte-for-byte. Measured
+  first: `Set Record` with `Id = null` bound the process-wide record keyed `"null"`, wrote
+  `{name:'Ada'}` into it and answered **`stored`**. In this family that is also DA-ii's mechanism
+  by a second road — a minted record has `_class === undefined`, the value proved to burn a Parse
+  class schema. ⚠️ **Three routes, and a guard in the obvious place would have measured as
+  fixed while the reachable path stayed broken**: `modelId.set`'s `typeof value === 'object'`
+  catches `null` and diverts it into `Model.create(null)` *before* `setModelID` ever sees it. The
+  corpus row drives the input setter a wire reaches, not the method. Three create-on-read controls
+  hold the family's actual feature.
+
+  **`Run Tasks` closed Data — and it was not the documentation gap it had been carried as.**
+  It had been recorded here as "the only in-scope Data node still at 0%". Reading it produced
+  **five defects**, two of which **permanently disabled the node**: `Abort` with nothing in flight
+  set `state='aborted'` for ever, and `Stop On Failure` never returned to idle — after either, every
+  later `Do` did nothing, silently, for the life of the page. Neither is author error; one is their
+  own Abort button and one is the node's own option. Also: the three `run` preconditions reported
+  only through `editorConnection.sendWarning` (B2 exactly — Run Tasks sits in `std-library/`, not
+  `std-library/data/`, so NDA-004 §2's sweep missed it), `Done` fired on one of four terminal paths
+  so an **empty list** — the common case — stopped a graph dead, `Max Running Tasks = 0` hung for
+  ever in silence, and `null` on `Items` abstained so the next `Do` silently re-ran the previous
+  list. All fixed, 9 corpus rows with 2 controls. C1 0% → 100%. **Data is now 100% documented.**
+  FINDINGS **DC-i**, whose lesson is the general one: **a node audited for one contract is not an
+  audited node** — NDA-009 examined the template contract four times and the run lifecycle never.
+
+  **Visual's C1 is 51.6% → 80.0%, and the job was concentrated rather than large.** 593
+  undocumented ports looked like the phase's biggest documentation task; **34 port names accounted
+  for 262 of them**, most *generated* rather than declared. About **20 sentences in two files closed
+  269 port instances**, exactly as `PORT-DESCRIPTION-STYLE.md` had predicted and in the two files it
+  names. ⚠️ Two corrections from re-measuring afterwards: **`backgroundColor` is declared at 8
+  separate per-node sites**, so a shared *name* is not a shared declaration; and **`Slider` has its
+  own private copy of `addBorderInputs`**, so no fix to the shared border ports has ever reached it
+  — whether the copies have drifted in *behaviour* is unchecked and open. FINDINGS **DC-ii**.
+
+  **Four Visual defects fixed, all Empty-Value Contract or Failure Contract.** `Text` rendered
+  `String(props.text)`, so a `null` painted **the word `null` on the page** — class A2's cast, in
+  the one place an end user sees it. `getAbsoluteUrl(null)` is the path `/null`, which `Image` and
+  `Video` fetched and 404'd, which meant **NDA-004 §2's own `Playback Failure` port was firing for
+  an empty input as well as a broken one**. `Image` had an `On Error` port that had always carried
+  nothing (B-xi's shape; NDA-004 built Video's surface properly and left Image's bare signal alone).
+  `Drag` leaked a snap timer on unmount and delete — SR-vi's leak in a **fifth** node, and the first
+  outside Animation/Utilities, because the defining property is `createTimer`, not the folder.
+  FINDINGS **DC-iii**.
+
+  ⚠️ **The Visual per-node audit did not happen and must not be read as done.** All three workers
+  were terminated mid-task by an account monthly spend limit, **none having committed**. Their
+  uncommitted work was reviewed, verified, pinned with 14 corpus rows and salvaged by the
+  orchestrator — but it had no tests of its own, and **two of the four behavioural claims (Image's
+  error reporting, both Drag fixes) are verified by inspection and typecheck only**; they need a DOM
+  and a frame clock, and the corpus file names them as owed rather than leaving them silent.
+  **No Visual node has its twelve checks filled in.** FINDINGS **DC-iv** — a parallel batch's work
+  is only as safe as its last commit.
+
+  Gates, run before and after: runtime **93/94 suites, 1750 passing** (+16), viewer-react **37
+  suites, 417 passing** (+14), editor `test:ci` **2000 specs, 0 failures**, both typechecks clean,
+  `catalog:check` + `catalog:merge:check` + `cloud-library:check` all clean (the last two needed
+  regenerating, exactly as the standing trap says). ⚠️ **The TSFixme ratchet is still RED at the
+  inherited `any +35` / `@ts-expect-error +1` and this session contributes zero** — it briefly went
+  to +36 and the one `any` was typed away rather than re-baselined.
 
 - **2026-08-01 (NDA-012 Data — CLOSED at 37/37, by a four-worker parallel batch).** The previous
   handover refused to parallelise because both remaining families "share `audit/data.md`, the catalog

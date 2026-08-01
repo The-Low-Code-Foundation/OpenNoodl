@@ -254,7 +254,8 @@
           "type": "array",
           "plug": "input",
           "group": "Data",
-          "displayName": "Items"
+          "displayName": "Items",
+          "description": "The list to run the template once for; each entry becomes one task and is passed to it as a record"
         },
         {
           "name": "stopOnFailure",
@@ -262,6 +263,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Stop On Failure",
+          "description": "Abandons the remaining items as soon as one task fails, rather than running the whole list",
           "default": false
         },
         {
@@ -270,6 +272,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Max Running Tasks",
+          "description": "How many tasks may run at the same time; must be at least 1 or the run fails rather than starting",
           "default": 10
         },
         {
@@ -277,7 +280,8 @@
           "type": "component",
           "plug": "input",
           "group": "General",
-          "displayName": "Template"
+          "displayName": "Template",
+          "description": "The component to run once per item, which must expose the ports named under Template Contract"
         },
         {
           "name": "taskStartInput",
@@ -288,6 +292,7 @@
           "plug": "input",
           "group": "Template Contract",
           "displayName": "Start Input",
+          "description": "Name of the template's signal input to pulse when a task begins",
           "default": "Do"
         },
         {
@@ -299,6 +304,7 @@
           "plug": "input",
           "group": "Template Contract",
           "displayName": "Success Output",
+          "description": "Name of the template's signal output that means one task finished successfully",
           "default": "Success"
         },
         {
@@ -310,6 +316,7 @@
           "plug": "input",
           "group": "Template Contract",
           "displayName": "Failure Output",
+          "description": "Name of the template's signal output that means one task failed",
           "default": "Failure"
         },
         {
@@ -321,6 +328,7 @@
           "plug": "input",
           "group": "Template Contract",
           "displayName": "Error Output",
+          "description": "Name of an optional value output on the template carrying why a task failed; leave blank if it cannot say",
           "default": "Error"
         },
         {
@@ -331,7 +339,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Do"
+          "displayName": "Do",
+          "description": "Starts a run over Items; ignored while a run is already in progress"
         },
         {
           "name": "abort",
@@ -341,7 +350,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Abort"
+          "displayName": "Abort",
+          "description": "Stops starting new tasks and ends the run once those already running finish; does nothing when no run is in progress"
         },
         {
           "name": "success",

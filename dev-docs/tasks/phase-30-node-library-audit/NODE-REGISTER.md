@@ -78,7 +78,7 @@ The smell columns are *machine-derivable*, not verdicts.
 | 65 | Remove Record Relation | Data | 5/4 |  |  | 100% | safe | browser, cloud | ⚠️ NDA-012 (Data) — 1 defect (DA-ii, fixed) — also: ✅ NDA-004 §2 — twin of Add Record Relation |
 | 66 | Repeater Item | Data | 1/3 | ⚠️ |  | 100% | safe | browser | ⚠️ NDA-012 (Data) — clean · 🔵 **recorded:** F1 is unmet by BINDING-CONTRACT §(a) — the Repeater cannot be named — and the docs URL is under `nodes/ui-controls/` while the node's category is `Data`. Cosmetic, but it is the only node in my ten whose documentation lives outside its category. — also: ✅ NDA-004 §2 / NDA-015 — the **sixth** hand-rolled `_forEachModel` read, missed by the sweep that converged the other five. Now uses `resolveForEachItem`, so it takes the scope chain (a Repeater Item nested one component deep resolves) and raises `repeater-item/no-item-in-scope` once instead of handing out an undefined Item Id for ever |
 | 67 | REST _(deprecated)_ | Data | 6/3 |  |  | 0% | safe | browser, cloud |  |
-| 68 | Run Tasks | Data | 10/4 |  |  | 0% | safe | browser, cloud | ✅ NDA-004 — raises `run-tasks/no-completion-output` and ends the run instead of hanging (corpus F1/F1′). NDA-009 §1 still owes the editor-time check |
+| 68 | Run Tasks | Data | 10/4 |  |  | 100% | safe | browser, cloud | ✅ NDA-004 — raises `run-tasks/no-completion-output` and ends the run instead of hanging (corpus F1/F1′). NDA-009 §1 still owes the editor-time check |
 | 69 | Server-Sent Events | Data | 17/17 |  |  | 100% | client-only | browser, cloud | ⚠️ NDA-012 (Data) — 2 defects (D2 **fixed**, L5 **filed**) · C1 fixed · 🔵 E1 by design |
 | 70 | Set Global Store | Data | 6/3 |  |  | 100% | safe | browser, cloud | ⚠️ NDA-012 (Data) — 1 defect (D4, **fixed**) · C1 fixed |
 | 71 | Set Object Properties | Data | 5/4 |  |  | 100% | safe | browser, cloud | ⚠️ NDA-012 (Data) — 1 defect (OB-ii, fixed — shared with `Object`, counted once) · **filed:** FC-6, FC-7, FC-8 in the shared helper. — also: ✅ NDA-004 §2 — `Failure`/`Error` and `set-object-properties/no-object`. `Do` with no object bound wrote nothing and said nothing. Raises in `explicit` mode only; in `foreach` mode `foreachitem.ts` already raised the precise reason, and the graph surface fires either way |
@@ -133,32 +133,32 @@ The smell columns are *machine-derivable*, not verdicts.
 | 120 | Color | Variables | 3/3 | ⚠️ |  | 50% | safe | browser |  |
 | 121 | Number | Variables | 3/3 | ⚠️ |  | 50% | safe | browser, cloud |  |
 | 122 | String | Variables | 3/4 | ⚠️ |  | 57% | safe | browser, cloud |  |
-| 123 | Button _(deprecated)_ | Visual | 48/21 |  |  | 42% | safe | browser |  |
-| 124 | Button | Visual | 79/20 |  |  | 53% | safe | browser |  |
-| 125 | Checkbox _(deprecated)_ | Visual | 39/21 |  |  | 45% | safe | browser |  |
-| 126 | Checkbox | Visual | 76/20 | ⚠️ |  | 48% | safe | browser |  |
-| 127 | Circle | Visual | 33/14 |  |  | 77% | safe | browser |  |
-| 128 | Columns | Visual | 16/9 |  |  | 40% | safe | browser |  |
+| 123 | Button _(deprecated)_ | Visual | 48/21 |  |  | 48% | safe | browser |  |
+| 124 | Button | Visual | 79/20 |  |  | 97% | safe | browser |  |
+| 125 | Checkbox _(deprecated)_ | Visual | 39/21 |  |  | 48% | safe | browser |  |
+| 126 | Checkbox | Visual | 76/20 | ⚠️ |  | 92% | safe | browser |  |
+| 127 | Circle | Visual | 33/14 |  |  | 81% | safe | browser |  |
+| 128 | Columns | Visual | 16/9 |  |  | 52% | safe | browser |  |
 | 129 | Component Children | Visual | 0/0 |  |  | 100% | safe | browser |  |
-| 130 | Component Stack | Visual | 9/11 | ⚠️ |  | 50% | partial | browser |  |
-| 131 | Drag | Visual | 16/16 | ⚠️ |  | 31% | safe | browser |  |
-| 132 | Dropdown | Visual | 91/20 |  |  | 48% | safe | browser |  |
-| 133 | Field Set _(deprecated)_ | Visual | 33/9 |  |  | 88% | safe | browser |  |
-| 134 | Form _(deprecated)_ | Visual | 33/10 |  |  | 86% | safe | browser |  |
-| 135 | Group | Visual | 85/20 | ⚠️ |  | 52% | safe | browser |  |
-| 136 | Icon | Visual | 30/8 |  |  | 92% | safe | browser |  |
-| 137 | Image | Visual | 62/16 |  |  | 64% | safe | browser |  |
-| 138 | Label _(deprecated)_ | Visual | 57/9 |  |  | 50% | safe | browser |  |
-| 139 | Options _(deprecated)_ | Visual | 52/21 |  |  | 51% | safe | browser |  |
-| 140 | Page | Visual | 23/9 | ⚠️ |  | 44% | safe | browser |  |
-| 141 | Page Router | Visual | 9/11 | ⚠️ |  | 50% | safe | browser |  |
-| 142 | Radio Button _(deprecated)_ | Visual | 39/20 |  |  | 46% | safe | browser |  |
-| 143 | Radio Button | Visual | 76/19 |  |  | 48% | safe | browser |  |
-| 144 | Radio Button Group | Visual | 33/11 |  |  | 84% | safe | browser |  |
-| 145 | Range _(deprecated)_ | Visual | 40/22 |  |  | 44% | safe | browser |  |
+| 130 | Component Stack | Visual | 9/11 | ⚠️ |  | 60% | partial | browser |  |
+| 131 | Drag | Visual | 16/16 | ⚠️ |  | 44% | safe | browser |  |
+| 132 | Dropdown | Visual | 91/20 |  |  | 93% | safe | browser |  |
+| 133 | Field Set _(deprecated)_ | Visual | 33/9 |  |  | 98% | safe | browser |  |
+| 134 | Form _(deprecated)_ | Visual | 33/10 |  |  | 95% | safe | browser |  |
+| 135 | Group | Visual | 85/20 | ⚠️ |  | 75% | safe | browser |  |
+| 136 | Icon | Visual | 30/8 |  |  | 100% | safe | browser |  |
+| 137 | Image | Visual | 62/17 |  |  | 97% | safe | browser |  |
+| 138 | Label _(deprecated)_ | Visual | 57/9 |  |  | 97% | safe | browser |  |
+| 139 | Options _(deprecated)_ | Visual | 52/21 |  |  | 55% | safe | browser |  |
+| 140 | Page | Visual | 23/9 | ⚠️ |  | 47% | safe | browser |  |
+| 141 | Page Router | Visual | 9/11 | ⚠️ |  | 60% | safe | browser |  |
+| 142 | Radio Button _(deprecated)_ | Visual | 39/20 |  |  | 49% | safe | browser |  |
+| 143 | Radio Button | Visual | 76/19 |  |  | 93% | safe | browser |  |
+| 144 | Radio Button Group | Visual | 33/11 |  |  | 91% | safe | browser |  |
+| 145 | Range _(deprecated)_ | Visual | 40/22 |  |  | 47% | safe | browser |  |
 | 146 | Repeater | Visual | 5/2 | ⚠️ |  | 0% | safe | browser | ✅ NDA-004 §3 — `Items Rendered`, fired when the operation queue drains (not when `refresh()` returns) |
-| 147 | Slider | Visual | 92/21 |  |  | 27% | safe | browser |  |
-| 148 | Text | Visual | 43/14 |  |  | 75% | safe | browser |  |
-| 149 | Text Input _(deprecated)_ | Visual | 55/21 | ⚠️ |  | 49% | safe | browser |  |
-| 150 | Text Input | Visual | 97/21 | ⚠️ |  | 45% | safe | browser |  |
-| 151 | Video | Visual | 66/23 |  |  | 47% | safe | browser | ✅ NDA-004 §2 — `Playback Failure`/`Error`. `play()`'s rejected promise was dropped at all three sites (`video/play-rejected`), and the element's `error` event had no listener (`video/media-error`). `AbortError` is deliberately **not** reported — a `Pause` superseding a `Play` rejects on a correct graph |
+| 147 | Slider | Visual | 92/21 |  |  | 40% | safe | browser |  |
+| 148 | Text | Visual | 43/14 |  |  | 93% | safe | browser |  |
+| 149 | Text Input _(deprecated)_ | Visual | 55/21 | ⚠️ |  | 53% | safe | browser |  |
+| 150 | Text Input | Visual | 97/21 | ⚠️ |  | 87% | safe | browser |  |
+| 151 | Video | Visual | 66/23 |  |  | 75% | safe | browser | ✅ NDA-004 §2 — `Playback Failure`/`Error`. `play()`'s rejected promise was dropped at all three sites (`video/play-rejected`), and the element's `error` event had no listener (`video/media-error`). `AbortError` is deliberately **not** reported — a `Pause` superseding a `Play` rejects on a correct graph |
