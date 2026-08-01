@@ -213,7 +213,18 @@ const PageStack = {
     flex: '1 1 100%',
     position: 'relative',
     display: 'flex',
-    flexDirection: 'column'
+    flexDirection: 'column',
+    // NDA-012 (Visual), DV-iii. `clip` declares `default: true` and its setter is the only thing
+    // that writes `overflow`, but a declared default never runs its setter (FINDINGS DB-ii) — so
+    // a stack whose panel read "Clip Content ✓" let a pushed component taller than itself spill
+    // out. `defaultCss` is the route that *is* applied at initialize, so the declared default and
+    // the rendered state now agree. Unticking the box still reaches `removeStyle(['overflow'])`,
+    // which deletes from this same style object, so the round trip works.
+    //
+    // ⚠️ `Page Router` has the identical port shape and needs no equivalent: its default enum
+    // value takes the `removeStyle` branch, a no-op on a node that never had the style. That
+    // asymmetry is what makes this a defect rather than a pattern.
+    overflow: 'hidden'
   },
   getReactComponent() {
     return PageStackReactComponent;
@@ -255,7 +266,7 @@ const PageStack = {
     },
     clip: {
       displayName: 'Clip Content',
-      description: 'Clips a pushed component that is bigger than the stack. \u26a0\ufe0f Currently has no effect unless you set it explicitly',
+      description: 'Clips a pushed component that is bigger than the stack',
       type: 'boolean',
       group: 'Layout',
       default: true,

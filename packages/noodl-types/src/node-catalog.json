@@ -18461,7 +18461,7 @@
           },
           "isSignal": false,
           "default": true,
-          "description": "Clips a pushed component that is bigger than the stack. ⚠️ Currently has no effect unless you set it explicitly"
+          "description": "Clips a pushed component that is bigger than the stack"
         },
         {
           "name": "cssClassName",

@@ -203,15 +203,29 @@ describe('V-i, what it actually costs — measured in the running editor, not in
   });
 });
 
-describe('V-ii — Component Stack says it clips and does not', () => {
-  // `navigation-stack.tsx:258-266` is the only thing that writes `overflow: hidden`, and its
-  // port declares `default: true`. The node's `defaultCss` (:211-217) has no `overflow`, so a
-  // stack whose panel reads "Clip Content ✓" lets a taller pushed component spill out of it.
-  it('Clip Content defaults to true and never applies', async () => {
+describe('V-ii — Component Stack said it clips and did not', () => {
+  // `navigation-stack.tsx`'s `clip` setter is the only thing that writes `overflow: hidden`, and
+  // its port declares `default: true`. The node's `defaultCss` had no `overflow`, so a stack whose
+  // panel read "Clip Content ✓" let a taller pushed component spill out of it.
+  //
+  // ✅ **Fixed 2026-08-01** by adding `overflow: 'hidden'` to `defaultCss` — the one route that
+  // *is* applied at initialize — so the declared default and the rendered state agree. Unlike
+  // DV-ii, where the declaration was deleted because nothing had ever honoured it, here the
+  // declaration is the documented promise and the rendering was the thing that was wrong.
+  it('Clip Content defaults to true and now applies', async () => {
     const [bare, authored] = await bareVsAuthored(ComponentStackModule, 'clip', true);
 
-    expect(bare.style.overflow).toBeUndefined();
+    // What an author who never touched the port gets: the clipping the panel promised them.
+    expect(bare.style.overflow).toBe('hidden');
     expect(authored.style.overflow).toBe('hidden');
+  }, 30000);
+
+  // The other half of the round trip: unticking the box must still remove it. `removeStyle`
+  // deletes from the same style object `defaultCss` seeded, so it reaches the default too.
+  it('unticking Clip Content still removes the overflow', async () => {
+    const [, authored] = await bareVsAuthored(ComponentStackModule, 'clip', false);
+
+    expect(authored.style.overflow).toBeUndefined();
   }, 30000);
 
   // The control, and the reason V-ii is Component Stack's alone: Page Router has the same

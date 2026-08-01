@@ -217,7 +217,15 @@ const RangeNode = {
       const min = this.props.min;
       const max = this.props.max;
       const valuePercent = Math.floor(((value - min) / (max - min)) * 100);
-      const valuePercentChanged = this._internal.valuePercentChanged !== valuePercent;
+      // NDA-012 (Visual), A3. This compared against `this._internal.valuePercentChanged` — a
+      // field nothing ever writes, so always `undefined`, so the comparison was always true and
+      // `valuePercent` was flagged dirty on *every* value change whether the percentage moved or
+      // not. Dragging within one percent re-ran everything downstream.
+      //
+      // ⚠️ PLAT-003 slice 10 found this exact bug, wrote four lines explaining it, and kept it
+      // verbatim in the *deprecated* `range.tsx` — without ever looking at the live node, which
+      // carried the identical code with no comment. This is the live one.
+      const valuePercentChanged = this._internal.valuePercent !== valuePercent;
 
       this._internal.valuePercent = valuePercent;
       valuePercentChanged && this.flagOutputDirty('valuePercent');

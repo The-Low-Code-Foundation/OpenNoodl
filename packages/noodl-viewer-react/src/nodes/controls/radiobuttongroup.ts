@@ -82,7 +82,11 @@ const RadioButtonGroupNode = {
       description:
         'Selects the radio button whose own Value matches this; setting it from the graph does not fire Changed',
       set: function (value) {
-        if (typeof value !== 'string' && value.toString !== undefined) value = value.toString();
+        // NDA-012 (Visual), G1: this read `value.toString`, which throws on the `null` it is
+        // meant to defend against — the check reads a property *of* the value it is guarding.
+        // `null` on a `Value` port is what a cleared selection looks like, so it is an ordinary
+        // arrival. With the optional chain it falls through to the guard below and abstains.
+        if (typeof value !== 'string' && value?.toString !== undefined) value = value.toString();
         if (typeof value !== 'string') return;
 
         const changed = value !== this._internal.value;
