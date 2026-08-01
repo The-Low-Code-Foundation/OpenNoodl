@@ -99,6 +99,8 @@ interface RunTasksNodeInstance extends NodeInstance {
   reportTaskFailure(model: ModelLike, itemNode: TaskNode): void;
   /** Ends a run that provably cannot finish, reporting `code` on the runtime error channel. */
   endRunAsFailed(code: string, message: string, detail?: unknown): void;
+  /** Reports a `Do` that could not start a run at all — see the method's own note. */
+  _failToStart(code: string, message: string, detail?: unknown): void;
   run(): Promise<void>;
   abort(): void;
   itemOutputSignalTriggered(name: string, model: ModelLike, itemNode: TaskNode): void;
@@ -128,8 +130,19 @@ const RunTasksDefinition: NodeDefinitionOptions = {
     items: {
       group: 'Data',
       displayName: 'Items',
+      description: 'The list to run the template once for; each entry becomes one task and is passed to it as a record',
       type: 'array',
       set: function (this: RunTasksNodeInstance, value: unknown[]) {
+        // NDA-012 (Data) G1 — `null` clears rather than abstains.
+        //
+        // This used to `return` on any falsy value, so clearing the source left the *previous*
+        // list in place and the next `Do` silently re-ran it. `undefined` never crosses a
+        // connection (`node.ts:635` drops it in `sendValue`), so `null` is the reachable
+        // spelling of "there is nothing to run" and it has to mean that.
+        if (value === null) {
+          this._internal.items = undefined;
+          return;
+        }
         if (!value) return;
         if (value === this._internal.items) return;
 
@@ -140,6 +153,7 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'Stop On Failure',
       type: 'boolean',
+      description: 'Abandons the remaining items as soon as one task fails, rather than running the whole list',
       default: false,
       set: function (this: RunTasksNodeInstance, value: boolean) {
         this._internal.stopOnFailure = value;
@@ -149,6 +163,7 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'Max Running Tasks',
       type: 'number',
+      description: 'How many tasks may run at the same time; must be at least 1 or the run fails rather than starting',
       default: 10,
       set: function (this: RunTasksNodeInstance, value: number) {
         this._internal.maxRunningTasks = value;
@@ -158,6 +173,7 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       type: 'component',
       displayName: 'Template',
       group: 'General',
+      description: 'The component to run once per item, which must expose the ports named under Template Contract',
       set: function (this: RunTasksNodeInstance, value: string) {
         this._internal.template = value;
       }
@@ -187,6 +203,7 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       type: { name: 'string', allowEditOnly: true },
       displayName: 'Start Input',
       group: 'Template Contract',
+      description: "Name of the template's signal input to pulse when a task begins",
       default: TEMPLATE_CONTRACT.start.default,
       set: function (this: RunTasksNodeInstance, value: string) {
         this._internal.startInput = value;
@@ -196,6 +213,7 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       type: { name: 'string', allowEditOnly: true },
       displayName: 'Success Output',
       group: 'Template Contract',
+      description: "Name of the template's signal output that means one task finished successfully",
       default: TEMPLATE_CONTRACT.success.default,
       set: function (this: RunTasksNodeInstance, value: string) {
         this._internal.successOutput = value;
@@ -205,6 +223,7 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       type: { name: 'string', allowEditOnly: true },
       displayName: 'Failure Output',
       group: 'Template Contract',
+      description: "Name of the template's signal output that means one task failed",
       default: TEMPLATE_CONTRACT.failure.default,
       set: function (this: RunTasksNodeInstance, value: string) {
         this._internal.failureOutput = value;
@@ -215,6 +234,7 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       type: { name: 'string', allowEditOnly: true },
       displayName: 'Error Output',
       group: 'Template Contract',
+      description: "Name of an optional value output on the template carrying why a task failed; leave blank if it cannot say",
       default: TEMPLATE_CONTRACT.error.default,
       set: function (this: RunTasksNodeInstance, value: string) {
         this._internal.errorOutput = value;
@@ -224,6 +244,7 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'Do',
       type: 'signal',
+      description: 'Starts a run over Items; ignored while a run is already in progress',
       valueChangedToTrue: function (this: RunTasksNodeInstance) {
         this.scheduleRun();
       }
@@ -232,6 +253,7 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'Abort',
       type: 'signal',
+      description: 'Stops starting new tasks and ends the run once those already running finish; does nothing when no run is in progress',
       valueChangedToTrue: function (this: RunTasksNodeInstance) {
         this.scheduleAbort();
       }
@@ -241,22 +263,26 @@ const RunTasksDefinition: NodeDefinitionOptions = {
     success: {
       type: 'signal',
       group: 'Events',
-      displayName: 'Success'
+      displayName: 'Success',
+      description: 'Fires when every task completed without failing, including when Items was empty'
     },
     failure: {
       type: 'signal',
       group: 'Events',
-      displayName: 'Failure'
+      displayName: 'Failure',
+      description: 'Fires when at least one task failed, or when the run could not start at all; which item failed is reported on the error channel'
     },
     done: {
       type: 'signal',
       group: 'Events',
-      displayName: 'Done'
+      displayName: 'Done',
+      description: 'Fires when the run has ended, whether it succeeded, failed or was aborted'
     },
     aborted: {
       type: 'signal',
       group: 'Events',
-      displayName: 'Aborted'
+      displayName: 'Aborted',
+      description: 'Fires when a run ended early, either from Abort or because Stop On Failure caught a failure'
     }
   },
   methods: {
@@ -425,6 +451,22 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       this.sendSignalOnOutput('failure');
       this.sendSignalOnOutput('done');
     },
+    /**
+     * NDA-012 §B2 — a `Do` that cannot start a run says so **at runtime**, not only in the editor.
+     *
+     * `run`'s three preconditions were reported with `editorConnection.sendWarning` and nothing
+     * else, which is the Failure Contract's headline defect: measured, a `Do` with no template
+     * produced `state=idle, signals=[], errors=[]` — in a deployed app the node did nothing and
+     * told nobody. This is the same repair NDA-004 §2 made across the Data nodes.
+     *
+     * Separate from {@link endRunAsFailed} because that one guards on `state === 'idle'` — it
+     * exists to end a run already in progress, and every case here is one that never started.
+     */
+    _failToStart(this: RunTasksNodeInstance, code: string, message: string, detail?: unknown) {
+      this.raiseRuntimeError(code, message, detail);
+      this.sendSignalOnOutput('failure');
+      this.sendSignalOnOutput('done');
+    },
     async run(this: RunTasksNodeInstance) {
       const internal = this._internal;
 
@@ -446,15 +488,43 @@ const RunTasksDefinition: NodeDefinitionOptions = {
         }
       }
 
+      // NDA-012 §B2. Each of these used to `return` silently after an editor-only warning.
+      //
+      // ⚠️ The "already running" case is deliberately **not** a `failure` signal: the first run
+      // is still in flight and will send its own completion, and firing `failure` here would
+      // report on a run that has not failed. It is raised on the error bus so a deployed app
+      // can see it, which is the half that was missing.
       if (internal.state !== 'idle') {
+        this.raiseRuntimeError(
+          'run-tasks/already-running',
+          'Do was triggered while a run was still in progress, so it was ignored',
+          { template: internal.template }
+        );
         return;
       }
 
       if (!internal.template) {
+        this._failToStart('run-tasks/no-template', 'No task template is selected, so there is nothing to run');
         return;
       }
 
       if (!internal.items) {
+        this._failToStart(
+          'run-tasks/no-items',
+          'No Items list was provided, so there is nothing to run — an empty list is a completed run, but an absent one is a wiring mistake'
+        );
+        return;
+      }
+
+      // A run of zero tasks can never finish, because nothing will ever arrive to complete it.
+      // The node's own comment on `startTask` states the principle: a hang is the worst
+      // available outcome, because it is the only one downstream cannot react to.
+      if (!(internal.maxRunningTasks >= 1)) {
+        this._failToStart(
+          'run-tasks/invalid-concurrency',
+          'Max Running Tasks is ' + internal.maxRunningTasks + ', so no task could ever start',
+          { maxRunningTasks: internal.maxRunningTasks }
+        );
         return;
       }
 
@@ -470,9 +540,16 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       internal.runningTasks = 0;
 
       // No tasks
+      //
+      // NDA-012 §B3 — `Done` fires here too. It did not, and an empty list is the *common*
+      // case, not an edge one: a query that matched nothing hands this node `[]`. An author
+      // who wired "when the run is Done, do the next thing" had their graph stop dead
+      // precisely when there was no work, which is the one time it should sail through.
       if (internal.items.length === 0) {
         this.sendSignalOnOutput('success');
+        this.sendSignalOnOutput('done');
         internal.state = 'idle';
+        return;
       }
 
       // Start tasks
@@ -483,10 +560,36 @@ const RunTasksDefinition: NodeDefinitionOptions = {
         this.startTask(task);
       }
     },
+    /**
+     * NDA-012 §H1 — **`Abort` used to brick the node, permanently and silently.**
+     *
+     * It set `state = 'aborted'` unconditionally, and the only code that ever leaves that state
+     * is `checkDone`, which runs when a *task* completes. So an `Abort` with nothing in flight —
+     * pulsed before the first run, or after one finished — left the node in a state `run` refuses
+     * to start from. Measured: `state=aborted`, then `Do`, then still `state=aborted, signals=[]`.
+     * No signal, no error, no way back. Every later `Do` for the life of the page did nothing.
+     *
+     * Two guards, matching what the two situations mean:
+     *
+     * - **Nothing is running**: there is nothing to abort. Do not change state, and do not
+     *   pretend a run ended — an `Aborted` signal here would report on a run that never began.
+     * - **Running, but no task is in flight** (all queued, none started, or the last one just
+     *   returned): the abort can be honoured immediately, because no `checkDone` is coming to
+     *   honour it later. End the run properly rather than waiting for an event that cannot arrive.
+     */
     abort: function (this: RunTasksNodeInstance) {
       const internal = this._internal;
 
+      if (internal.state !== 'running') return;
+
       internal.state = 'aborted';
+
+      if (internal.activeTasks.size === 0) {
+        internal.queuedTasks = [];
+        internal.state = 'idle';
+        this.sendSignalOnOutput('aborted');
+        this.sendSignalOnOutput('done');
+      }
     },
     itemOutputSignalTriggered: function (
       this: RunTasksNodeInstance,
@@ -503,7 +606,13 @@ const RunTasksDefinition: NodeDefinitionOptions = {
 
       const checkDone = () => {
         if (internal.state === 'aborted') {
+          // `done` here for the same reason as every other terminal path: it is the signal
+          // downstream sequencing is wired to, and this is a run ending. Before this pass only
+          // the ordinary-completion path sent it, so whether "then do the next thing" fired
+          // depended on *how* the run finished.
+          internal.queuedTasks = [];
           this.sendSignalOnOutput('aborted');
+          this.sendSignalOnOutput('done');
           internal.state = 'idle';
           return;
         }
@@ -524,8 +633,21 @@ const RunTasksDefinition: NodeDefinitionOptions = {
               const task = internal.queuedTasks.shift();
               if (task) this.startTask(task);
             } else {
+              // NDA-012 §H1 — **`Stop On Failure` used to disable the node for good.**
+              //
+              // This branch is the one the option exists for, and it sent its two signals
+              // without ever returning to `idle` or sending `done`. Measured: after one failing
+              // task, `state=running` for ever, and a second `Do` produced nothing at all. So
+              // ticking `Stop On Failure` meant the first failure was also the last thing the
+              // node ever did.
+              //
+              // `done` joins them for the same reason as the empty-list path: it is what
+              // downstream sequencing is wired to, and the run has ended.
+              internal.queuedTasks = [];
+              internal.state = 'idle';
               this.sendSignalOnOutput('failure');
               this.sendSignalOnOutput('aborted');
+              this.sendSignalOnOutput('done');
             }
           } else {
             internal.runningTasks++;
