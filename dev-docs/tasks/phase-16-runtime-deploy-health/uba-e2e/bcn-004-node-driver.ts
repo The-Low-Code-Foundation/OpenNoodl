@@ -284,6 +284,20 @@ function setMetadata(next: Record<string, Any>) {
   // second backend in one process silently answers with the first one's store.
   CloudStore.invalidateBackends();
   CloudStore.invalidateCollections();
+
+  // ⚠️ And the legacy singleton has to be told as well.
+  //
+  // `CloudStore.instance` is a module-level `_instance`, built once on first touch — and
+  // `dbcollectionnode2.initialize` touches it (`CloudStore.forScope(modelScope)`) the moment
+  // a node is created, which here is *before* any `cloudservices` exists. It reads the
+  // endpoint at construction, so every later scenario that resolves to `_endpoint_` was
+  // querying an empty endpoint and failing with "Failed to fetch."
+  //
+  // `_initCloudServices()` is the sanctioned re-read — it is what `dbcollectionnode2` itself
+  // calls when the editor changes this metadata — so this is the product's own path for
+  // "the endpoint moved", not a hole punched for the driver. A real app sets the metadata
+  // before nodes run and never needs it, which is why nothing had noticed.
+  (CloudStore.instance as Any)._initCloudServices();
 }
 
 // ---------------------------------------------------------------------------
@@ -906,6 +920,87 @@ async function runRoutingCheck(a: Shape, b: Shape) {
 }
 
 /**
+ * BCN-009 step 2's runtime half, driven live — the converged selection.
+ *
+ * The editor now writes one selection: `backendServices.activeBackendId`, marked with
+ * `version: 2`, which may name the `cloudservices` endpoint. The runtime honours it
+ * behind that gate. Both halves are unit-tested; this is the part that was owed —
+ * **a real node, on a real backend, following the project's selection.**
+ *
+ * The shape under test is the one that is ambiguous without the marker: a project with
+ * an endpoint *and* an `activeBackendId` naming something else. Legacy means the record
+ * nodes stay on the endpoint; converged means they follow the selection. The bytes are
+ * identical, so the two runs below differ **only** by `version` — and if they returned
+ * the same rows, the gate would be doing nothing.
+ *
+ * The endpoint here is the local nodegx-backend, which returns string ids; the selected
+ * backend is Directus, which returns numbers. That is the discriminator: the id type
+ * says which server actually answered, with no way to confuse them.
+ */
+async function runConvergedSelectionCheck(endpointish: Shape, selected: Shape) {
+  head('CONVERGED SELECTION (BCN-009 step 2) — live, through a node');
+  say(`  endpoint: ${endpointish.label}   |   activeBackendId names: ${selected.label}`);
+
+  const cloudservices = { endpoint: endpointish.url, appId: endpointish.token, type: 'nodegx' };
+  const backends = [
+    { id: selected.id, name: selected.label, type: selected.type, url: selected.url, auth: { publicToken: selected.token }, schema: schemaFor(selected) }
+  ];
+
+  // ── Legacy: no version marker. The record nodes must stay on the endpoint. ──
+  setMetadata({ cloudservices, backendServices: { activeBackendId: selected.id, backends } });
+
+  const legacy = queryNode(endpointish);
+  setInput(legacy.node, 'backendId', '_active_');
+  const legacySignal = await runQuery(legacy);
+  checkThat(`converged: a LEGACY project's '_active_' query succeeds`, legacySignal === 'fetched', `${legacySignal} / ${output(legacy.node, 'error')}`);
+  if (legacySignal === 'fetched') {
+    const legacyIds = ids(output(legacy.node, 'items'));
+    checkThat(
+      `⚠️ converged: a LEGACY project stays on the ENDPOINT (${endpointish.expectNumericId ? 'numeric' : 'string'} ids), it does NOT follow activeBackendId`,
+      legacyIds.length > 0 && legacyIds.every((v) => typeof v === (endpointish.expectNumericId ? 'number' : 'string')),
+      `ids ${JSON.stringify(legacyIds)} — if these are ${selected.label}'s, every Record node in every pre-convergence project has just moved`
+    );
+  }
+
+  // ── Converged: the same bytes plus `version: 2`. Now it must follow. ──
+  setMetadata({ cloudservices, backendServices: { version: 2, activeBackendId: selected.id, backends } });
+
+  const conv = queryNode(selected);
+  setInput(conv.node, 'backendId', '_active_');
+  const convSignal = await runQuery(conv);
+  checkThat(`converged: a CONVERGED project's '_active_' query succeeds`, convSignal === 'fetched', `${convSignal} / ${output(conv.node, 'error')}`);
+  if (convSignal === 'fetched') {
+    const convIds = ids(output(conv.node, 'items'));
+    checkThat(
+      `converged: a CONVERGED project FOLLOWS activeBackendId to ${selected.label} (${selected.expectNumericId ? 'numeric' : 'string'} ids)`,
+      convIds.length > 0 && convIds.every((v) => typeof v === (selected.expectNumericId ? 'number' : 'string')),
+      `ids ${JSON.stringify(convIds)}`
+    );
+    check(
+      `converged: and it returns the same filtered set, so it is the same query against a different server`,
+      (titles(output(conv.node, 'items'), selected.titleField) as string[]).slice().sort(),
+      PUBLISHED.slice().sort()
+    );
+  }
+
+  // ── Converged, pointed back at the endpoint by its synthetic id. ──
+  setMetadata({ cloudservices, backendServices: { version: 2, activeBackendId: '_endpoint_', backends } });
+
+  const back = queryNode(endpointish);
+  setInput(back.node, 'backendId', '_active_');
+  if ((await runQuery(back)) === 'fetched') {
+    const backIds = ids(output(back.node, 'items'));
+    checkThat(
+      `converged: '_endpoint_' as the project's selection resolves to the endpoint — the synthetic id survived`,
+      backIds.length > 0 && backIds.every((v) => typeof v === (endpointish.expectNumericId ? 'number' : 'string')),
+      `ids ${JSON.stringify(backIds)}`
+    );
+  } else {
+    checkThat(`converged: '_endpoint_' as the project's selection resolves at all`, false);
+  }
+}
+
+/**
  * A node pointed at a backend the project does not have must fail with a sentence.
  *
  * The alternative — falling back to the active backend — is the defect that would
@@ -1046,6 +1141,12 @@ async function main() {
   const stringy = shapes.find((s) => !s.expectNumericId);
   if (numeric && stringy) await runRoutingCheck(numeric, stringy);
   else say('\n(routing check skipped: needs one numeric-id and one string-id backend)');
+
+  // The endpoint stands in as the local nodegx-backend (string ids); the selection names
+  // Directus (numeric ids). The id type is what says which server actually answered.
+  const ngx = shapes.find((s) => s.type === 'nodegx');
+  if (ngx && numeric) await runConvergedSelectionCheck(ngx, numeric);
+  else say('\n(converged-selection check skipped: needs nodegx-backend and a numeric-id backend)');
 
   if (shapes.length) await runUnknownBackendCheck(shapes[0]);
 

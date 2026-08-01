@@ -16,7 +16,7 @@ Directus 11  (type: directus, id: d1)
   PASS  Directus 11: the one filter returns the 3 published rows
   PASS  Directus 11: count output matches the filtered set
   PASS  Directus 11: isEmpty is false on a non-empty result
-  NOTE  Directus 11: firstItemId = 46 (typeof number)
+  NOTE  Directus 11: firstItemId = 76 (typeof number)
   PASS  Directus 11: firstItemId type is as the notes predict
   PASS  Directus 11: every item's getId() agrees with firstItemId's type
   PASS  Directus 11: total count is the FILTERED total, not the collection total
@@ -24,7 +24,7 @@ Directus 11  (type: directus, id: d1)
   PASS  Directus 11: limit=1 skip=2 returns exactly one row
   PASS  Directus 11: limit=1 skip=2 is the THIRD published row, not the third row of the collection
   PASS  Directus 11: Create New Record fires Created
-  NOTE  Directus 11: created id = 51 (typeof number)
+  NOTE  Directus 11: created id = 81 (typeof number)
   PASS  Directus 11: Create reports a non-empty Id
   PASS  Directus 11: the created row is readable through a fresh query on the same backend
   PASS  Directus 11: the filtered set grew by exactly one
@@ -45,7 +45,7 @@ Supabase (PostgREST 12.2.3)  (type: supabase, id: s1)
   PASS  Supabase (PostgREST 12.2.3): the one filter returns the 3 published rows
   PASS  Supabase (PostgREST 12.2.3): count output matches the filtered set
   PASS  Supabase (PostgREST 12.2.3): isEmpty is false on a non-empty result
-  NOTE  Supabase (PostgREST 12.2.3): firstItemId = 42 (typeof number)
+  NOTE  Supabase (PostgREST 12.2.3): firstItemId = 72 (typeof number)
   PASS  Supabase (PostgREST 12.2.3): firstItemId type is as the notes predict
   PASS  Supabase (PostgREST 12.2.3): every item's getId() agrees with firstItemId's type
   PASS  Supabase (PostgREST 12.2.3): total count is the FILTERED total, not the collection total
@@ -53,7 +53,7 @@ Supabase (PostgREST 12.2.3)  (type: supabase, id: s1)
   PASS  Supabase (PostgREST 12.2.3): limit=1 skip=2 returns exactly one row
   PASS  Supabase (PostgREST 12.2.3): limit=1 skip=2 is the THIRD published row, not the third row of the collection
   PASS  Supabase (PostgREST 12.2.3): Create New Record fires Created
-  NOTE  Supabase (PostgREST 12.2.3): created id = 47 (typeof number)
+  NOTE  Supabase (PostgREST 12.2.3): created id = 77 (typeof number)
   PASS  Supabase (PostgREST 12.2.3): Create reports a non-empty Id
   PASS  Supabase (PostgREST 12.2.3): the created row is readable through a fresh query on the same backend
   PASS  Supabase (PostgREST 12.2.3): the filtered set grew by exactly one
@@ -74,7 +74,7 @@ PocketBase 0.30.0  (type: pocketbase, id: p1)
   PASS  PocketBase 0.30.0: the one filter returns the 3 published rows
   PASS  PocketBase 0.30.0: count output matches the filtered set
   PASS  PocketBase 0.30.0: isEmpty is false on a non-empty result
-  NOTE  PocketBase 0.30.0: firstItemId = "q7j1zrsn4xyunjk" (typeof string)
+  NOTE  PocketBase 0.30.0: firstItemId = "bimnt1y8l9vis96" (typeof string)
   PASS  PocketBase 0.30.0: firstItemId type is as the notes predict
   PASS  PocketBase 0.30.0: every item's getId() agrees with firstItemId's type
   PASS  PocketBase 0.30.0: total count is the FILTERED total, not the collection total
@@ -82,7 +82,7 @@ PocketBase 0.30.0  (type: pocketbase, id: p1)
   PASS  PocketBase 0.30.0: limit=1 skip=2 returns exactly one row
   PASS  PocketBase 0.30.0: limit=1 skip=2 is the THIRD published row, not the third row of the collection
   PASS  PocketBase 0.30.0: Create New Record fires Created
-  NOTE  PocketBase 0.30.0: created id = "6gunpbpcffvvojj" (typeof string)
+  NOTE  PocketBase 0.30.0: created id = "nnew5ytp2rbecu0" (typeof string)
   PASS  PocketBase 0.30.0: Create reports a non-empty Id
   PASS  PocketBase 0.30.0: the created row is readable through a fresh query on the same backend
   PASS  PocketBase 0.30.0: the filtered set grew by exactly one
@@ -103,7 +103,7 @@ nodegx-backend (our own Parse wire)  (type: nodegx, id: g1)
   PASS  nodegx-backend (our own Parse wire): the one filter returns the 3 published rows
   PASS  nodegx-backend (our own Parse wire): count output matches the filtered set
   PASS  nodegx-backend (our own Parse wire): isEmpty is false on a non-empty result
-  NOTE  nodegx-backend (our own Parse wire): firstItemId = "87494021-167f-4e78-ad5c-970015fdeb46" (typeof string)
+  NOTE  nodegx-backend (our own Parse wire): firstItemId = "1739bb51-3445-4de5-82f6-00d3be23a9c3" (typeof string)
   PASS  nodegx-backend (our own Parse wire): firstItemId type is as the notes predict
   PASS  nodegx-backend (our own Parse wire): every item's getId() agrees with firstItemId's type
   PASS  nodegx-backend (our own Parse wire): total count is the FILTERED total, not the collection total
@@ -111,7 +111,7 @@ nodegx-backend (our own Parse wire)  (type: nodegx, id: g1)
   PASS  nodegx-backend (our own Parse wire): limit=1 skip=2 returns exactly one row
   PASS  nodegx-backend (our own Parse wire): limit=1 skip=2 is the THIRD published row, not the third row of the collection
   PASS  nodegx-backend (our own Parse wire): Create New Record fires Created
-  NOTE  nodegx-backend (our own Parse wire): created id = "994a4427-69c2-4627-aeed-d365c07e61f9" (typeof string)
+  NOTE  nodegx-backend (our own Parse wire): created id = "7af4b47f-91a0-4474-a510-7c2f18a7d336" (typeof string)
   PASS  nodegx-backend (our own Parse wire): Create reports a non-empty Id
   PASS  nodegx-backend (our own Parse wire): the created row is readable through a fresh query on the same backend
   PASS  nodegx-backend (our own Parse wire): the filtered set grew by exactly one
@@ -132,7 +132,7 @@ Parse Server 7.3.0 (upstream)  (type: parse, id: ps1)
   PASS  Parse Server 7.3.0 (upstream): the one filter returns the 3 published rows
   PASS  Parse Server 7.3.0 (upstream): count output matches the filtered set
   PASS  Parse Server 7.3.0 (upstream): isEmpty is false on a non-empty result
-  NOTE  Parse Server 7.3.0 (upstream): firstItemId = "xFEMklPha7" (typeof string)
+  NOTE  Parse Server 7.3.0 (upstream): firstItemId = "Cqtcu1Q0Z5" (typeof string)
   PASS  Parse Server 7.3.0 (upstream): firstItemId type is as the notes predict
   PASS  Parse Server 7.3.0 (upstream): every item's getId() agrees with firstItemId's type
   PASS  Parse Server 7.3.0 (upstream): total count is the FILTERED total, not the collection total
@@ -140,7 +140,7 @@ Parse Server 7.3.0 (upstream)  (type: parse, id: ps1)
   PASS  Parse Server 7.3.0 (upstream): limit=1 skip=2 returns exactly one row
   PASS  Parse Server 7.3.0 (upstream): limit=1 skip=2 is the THIRD published row, not the third row of the collection
   PASS  Parse Server 7.3.0 (upstream): Create New Record fires Created
-  NOTE  Parse Server 7.3.0 (upstream): created id = "SMx40xeF2Y" (typeof string)
+  NOTE  Parse Server 7.3.0 (upstream): created id = "wQ9vL5QyFE" (typeof string)
   PASS  Parse Server 7.3.0 (upstream): Create reports a non-empty Id
   PASS  Parse Server 7.3.0 (upstream): the created row is readable through a fresh query on the same backend
   PASS  Parse Server 7.3.0 (upstream): the filtered set grew by exactly one
@@ -163,10 +163,21 @@ ROUTING — two backends configured, node pointed at the non-active one
   PASS  routing: '_active_' still resolves to Directus 11
 
 ============================================================================
+CONVERGED SELECTION (BCN-009 step 2) — live, through a node
+============================================================================
+  endpoint: nodegx-backend (our own Parse wire)   |   activeBackendId names: Directus 11
+  PASS  converged: a LEGACY project's '_active_' query succeeds
+  PASS  ⚠️ converged: a LEGACY project stays on the ENDPOINT (string ids), it does NOT follow activeBackendId
+  PASS  converged: a CONVERGED project's '_active_' query succeeds
+  PASS  converged: a CONVERGED project FOLLOWS activeBackendId to Directus 11 (numeric ids)
+  PASS  converged: and it returns the same filtered set, so it is the same query against a different server
+  PASS  converged: '_endpoint_' as the project's selection resolves to the endpoint — the synthetic id survived
+
+============================================================================
 A Backend id the project does not have
 ============================================================================
 [noodl] DbCollection2 (Driver): The backend this node is set to ("no-such-backend") is not configured in this project. [query-records/query-failed] {
-  nodeId: 'n48',
+  nodeId: 'n51',
   componentName: 'Driver',
   nodeType: 'DbCollection2',
   code: 'query-records/query-failed',
@@ -181,16 +192,16 @@ A Backend id the project does not have
 SUMMARY
 ============================================================================
 backends exercised: 5 — Directus 11, Supabase (PostgREST 12.2.3), PocketBase 0.30.0, nodegx-backend (our own Parse wire), Parse Server 7.3.0 (upstream)
-checks: 101 passed, 0 failed
+checks: 107 passed, 0 failed
 
 observations:
-  - Directus 11: firstItemId = 46 (typeof number)
-  - Directus 11: created id = 51 (typeof number)
-  - Supabase (PostgREST 12.2.3): firstItemId = 42 (typeof number)
-  - Supabase (PostgREST 12.2.3): created id = 47 (typeof number)
-  - PocketBase 0.30.0: firstItemId = "q7j1zrsn4xyunjk" (typeof string)
-  - PocketBase 0.30.0: created id = "6gunpbpcffvvojj" (typeof string)
-  - nodegx-backend (our own Parse wire): firstItemId = "87494021-167f-4e78-ad5c-970015fdeb46" (typeof string)
-  - nodegx-backend (our own Parse wire): created id = "994a4427-69c2-4627-aeed-d365c07e61f9" (typeof string)
-  - Parse Server 7.3.0 (upstream): firstItemId = "xFEMklPha7" (typeof string)
-  - Parse Server 7.3.0 (upstream): created id = "SMx40xeF2Y" (typeof string)
+  - Directus 11: firstItemId = 76 (typeof number)
+  - Directus 11: created id = 81 (typeof number)
+  - Supabase (PostgREST 12.2.3): firstItemId = 72 (typeof number)
+  - Supabase (PostgREST 12.2.3): created id = 77 (typeof number)
+  - PocketBase 0.30.0: firstItemId = "bimnt1y8l9vis96" (typeof string)
+  - PocketBase 0.30.0: created id = "nnew5ytp2rbecu0" (typeof string)
+  - nodegx-backend (our own Parse wire): firstItemId = "1739bb51-3445-4de5-82f6-00d3be23a9c3" (typeof string)
+  - nodegx-backend (our own Parse wire): created id = "7af4b47f-91a0-4474-a510-7c2f18a7d336" (typeof string)
+  - Parse Server 7.3.0 (upstream): firstItemId = "Cqtcu1Q0Z5" (typeof string)
+  - Parse Server 7.3.0 (upstream): created id = "wQ9vL5QyFE" (typeof string)
