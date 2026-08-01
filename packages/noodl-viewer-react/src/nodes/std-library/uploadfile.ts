@@ -89,10 +89,13 @@ const UploadFile: NodeDefinitionOptions = {
               this.flagOutputDirty('progressLoadedPercent');
               this.sendSignalOnOutput('progressChanged');
             },
-            // `CloudStore.uploadFile` resolves with the backend's file record, which is
-            // exactly `{ name, url }`; it is declared `unknown` because `cloudstore.js` is
-            // still JavaScript (PLAT-006 residual).
-            success: (response: { name: string; url: string }) => {
+            // `CloudStore.uploadFile` resolves with the adapter-normalised `FileRef`.
+            // That is *not* `{ name, url }` — BCN-007 gave it `contentType` and `size`
+            // as well, and this annotation saying otherwise is why they were silently
+            // discarded by the `CloudFile` constructor. Typed as the contract's shape
+            // structurally rather than imported, because `cloudstore.js` is still
+            // JavaScript and declares this callback `unknown` (PLAT-006 residual).
+            success: (response: { name: string; url: string; contentType?: string; size?: number }) => {
               this._internal.cloudFile = new CloudFile(response);
               this.flagOutputDirty('cloudFile');
               this.sendSignalOnOutput('success');

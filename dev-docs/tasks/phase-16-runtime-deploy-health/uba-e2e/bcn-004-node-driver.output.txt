@@ -1,0 +1,196 @@
+PostgREST proxy listening on http://localhost:8156 → localhost:8056 (strips /rest/v1)
+
+============================================================================
+SEEDING
+============================================================================
+  seeded Directus
+  seeded PostgREST (articles, status-namespaced)
+  seeded PocketBase
+  seeded nodegx-backend
+  seeded upstream Parse Server
+
+============================================================================
+Directus 11  (type: directus, id: d1)
+============================================================================
+  PASS  Directus 11: filtered query succeeds
+  PASS  Directus 11: the one filter returns the 3 published rows
+  PASS  Directus 11: count output matches the filtered set
+  PASS  Directus 11: isEmpty is false on a non-empty result
+  NOTE  Directus 11: firstItemId = 46 (typeof number)
+  PASS  Directus 11: firstItemId type is as the notes predict
+  PASS  Directus 11: every item's getId() agrees with firstItemId's type
+  PASS  Directus 11: total count is the FILTERED total, not the collection total
+  PASS  Directus 11: limit caps the returned rows
+  PASS  Directus 11: limit=1 skip=2 returns exactly one row
+  PASS  Directus 11: limit=1 skip=2 is the THIRD published row, not the third row of the collection
+  PASS  Directus 11: Create New Record fires Created
+  NOTE  Directus 11: created id = 51 (typeof number)
+  PASS  Directus 11: Create reports a non-empty Id
+  PASS  Directus 11: the created row is readable through a fresh query on the same backend
+  PASS  Directus 11: the filtered set grew by exactly one
+Node SetDbModelProperties: Invalid input property storageType
+node doesn't have input storageType for node: SetDbModelProperties
+  PASS  Directus 11: Set Record Properties fires Stored for an id of type number
+  PASS  Directus 11: the update is visible on a re-read
+Node DeleteDbModelProperties: Invalid input property storageType
+node doesn't have input storageType for node: DeleteDbModelProperties
+  PASS  Directus 11: Delete Record fires Deleted
+  PASS  Directus 11: the filtered set is back to its original size
+  PASS  Directus 11: the deleted row is gone
+
+============================================================================
+Supabase (PostgREST 12.2.3)  (type: supabase, id: s1)
+============================================================================
+  PASS  Supabase (PostgREST 12.2.3): filtered query succeeds
+  PASS  Supabase (PostgREST 12.2.3): the one filter returns the 3 published rows
+  PASS  Supabase (PostgREST 12.2.3): count output matches the filtered set
+  PASS  Supabase (PostgREST 12.2.3): isEmpty is false on a non-empty result
+  NOTE  Supabase (PostgREST 12.2.3): firstItemId = 42 (typeof number)
+  PASS  Supabase (PostgREST 12.2.3): firstItemId type is as the notes predict
+  PASS  Supabase (PostgREST 12.2.3): every item's getId() agrees with firstItemId's type
+  PASS  Supabase (PostgREST 12.2.3): total count is the FILTERED total, not the collection total
+  PASS  Supabase (PostgREST 12.2.3): limit caps the returned rows
+  PASS  Supabase (PostgREST 12.2.3): limit=1 skip=2 returns exactly one row
+  PASS  Supabase (PostgREST 12.2.3): limit=1 skip=2 is the THIRD published row, not the third row of the collection
+  PASS  Supabase (PostgREST 12.2.3): Create New Record fires Created
+  NOTE  Supabase (PostgREST 12.2.3): created id = 47 (typeof number)
+  PASS  Supabase (PostgREST 12.2.3): Create reports a non-empty Id
+  PASS  Supabase (PostgREST 12.2.3): the created row is readable through a fresh query on the same backend
+  PASS  Supabase (PostgREST 12.2.3): the filtered set grew by exactly one
+Node SetDbModelProperties: Invalid input property storageType
+node doesn't have input storageType for node: SetDbModelProperties
+  PASS  Supabase (PostgREST 12.2.3): Set Record Properties fires Stored for an id of type number
+  PASS  Supabase (PostgREST 12.2.3): the update is visible on a re-read
+Node DeleteDbModelProperties: Invalid input property storageType
+node doesn't have input storageType for node: DeleteDbModelProperties
+  PASS  Supabase (PostgREST 12.2.3): Delete Record fires Deleted
+  PASS  Supabase (PostgREST 12.2.3): the filtered set is back to its original size
+  PASS  Supabase (PostgREST 12.2.3): the deleted row is gone
+
+============================================================================
+PocketBase 0.30.0  (type: pocketbase, id: p1)
+============================================================================
+  PASS  PocketBase 0.30.0: filtered query succeeds
+  PASS  PocketBase 0.30.0: the one filter returns the 3 published rows
+  PASS  PocketBase 0.30.0: count output matches the filtered set
+  PASS  PocketBase 0.30.0: isEmpty is false on a non-empty result
+  NOTE  PocketBase 0.30.0: firstItemId = "q7j1zrsn4xyunjk" (typeof string)
+  PASS  PocketBase 0.30.0: firstItemId type is as the notes predict
+  PASS  PocketBase 0.30.0: every item's getId() agrees with firstItemId's type
+  PASS  PocketBase 0.30.0: total count is the FILTERED total, not the collection total
+  PASS  PocketBase 0.30.0: limit caps the returned rows
+  PASS  PocketBase 0.30.0: limit=1 skip=2 returns exactly one row
+  PASS  PocketBase 0.30.0: limit=1 skip=2 is the THIRD published row, not the third row of the collection
+  PASS  PocketBase 0.30.0: Create New Record fires Created
+  NOTE  PocketBase 0.30.0: created id = "6gunpbpcffvvojj" (typeof string)
+  PASS  PocketBase 0.30.0: Create reports a non-empty Id
+  PASS  PocketBase 0.30.0: the created row is readable through a fresh query on the same backend
+  PASS  PocketBase 0.30.0: the filtered set grew by exactly one
+Node SetDbModelProperties: Invalid input property storageType
+node doesn't have input storageType for node: SetDbModelProperties
+  PASS  PocketBase 0.30.0: Set Record Properties fires Stored for an id of type string
+  PASS  PocketBase 0.30.0: the update is visible on a re-read
+Node DeleteDbModelProperties: Invalid input property storageType
+node doesn't have input storageType for node: DeleteDbModelProperties
+  PASS  PocketBase 0.30.0: Delete Record fires Deleted
+  PASS  PocketBase 0.30.0: the filtered set is back to its original size
+  PASS  PocketBase 0.30.0: the deleted row is gone
+
+============================================================================
+nodegx-backend (our own Parse wire)  (type: nodegx, id: g1)
+============================================================================
+  PASS  nodegx-backend (our own Parse wire): filtered query succeeds
+  PASS  nodegx-backend (our own Parse wire): the one filter returns the 3 published rows
+  PASS  nodegx-backend (our own Parse wire): count output matches the filtered set
+  PASS  nodegx-backend (our own Parse wire): isEmpty is false on a non-empty result
+  NOTE  nodegx-backend (our own Parse wire): firstItemId = "87494021-167f-4e78-ad5c-970015fdeb46" (typeof string)
+  PASS  nodegx-backend (our own Parse wire): firstItemId type is as the notes predict
+  PASS  nodegx-backend (our own Parse wire): every item's getId() agrees with firstItemId's type
+  PASS  nodegx-backend (our own Parse wire): total count is the FILTERED total, not the collection total
+  PASS  nodegx-backend (our own Parse wire): limit caps the returned rows
+  PASS  nodegx-backend (our own Parse wire): limit=1 skip=2 returns exactly one row
+  PASS  nodegx-backend (our own Parse wire): limit=1 skip=2 is the THIRD published row, not the third row of the collection
+  PASS  nodegx-backend (our own Parse wire): Create New Record fires Created
+  NOTE  nodegx-backend (our own Parse wire): created id = "994a4427-69c2-4627-aeed-d365c07e61f9" (typeof string)
+  PASS  nodegx-backend (our own Parse wire): Create reports a non-empty Id
+  PASS  nodegx-backend (our own Parse wire): the created row is readable through a fresh query on the same backend
+  PASS  nodegx-backend (our own Parse wire): the filtered set grew by exactly one
+Node SetDbModelProperties: Invalid input property storageType
+node doesn't have input storageType for node: SetDbModelProperties
+  PASS  nodegx-backend (our own Parse wire): Set Record Properties fires Stored for an id of type string
+  PASS  nodegx-backend (our own Parse wire): the update is visible on a re-read
+Node DeleteDbModelProperties: Invalid input property storageType
+node doesn't have input storageType for node: DeleteDbModelProperties
+  PASS  nodegx-backend (our own Parse wire): Delete Record fires Deleted
+  PASS  nodegx-backend (our own Parse wire): the filtered set is back to its original size
+  PASS  nodegx-backend (our own Parse wire): the deleted row is gone
+
+============================================================================
+Parse Server 7.3.0 (upstream)  (type: parse, id: ps1)
+============================================================================
+  PASS  Parse Server 7.3.0 (upstream): filtered query succeeds
+  PASS  Parse Server 7.3.0 (upstream): the one filter returns the 3 published rows
+  PASS  Parse Server 7.3.0 (upstream): count output matches the filtered set
+  PASS  Parse Server 7.3.0 (upstream): isEmpty is false on a non-empty result
+  NOTE  Parse Server 7.3.0 (upstream): firstItemId = "xFEMklPha7" (typeof string)
+  PASS  Parse Server 7.3.0 (upstream): firstItemId type is as the notes predict
+  PASS  Parse Server 7.3.0 (upstream): every item's getId() agrees with firstItemId's type
+  PASS  Parse Server 7.3.0 (upstream): total count is the FILTERED total, not the collection total
+  PASS  Parse Server 7.3.0 (upstream): limit caps the returned rows
+  PASS  Parse Server 7.3.0 (upstream): limit=1 skip=2 returns exactly one row
+  PASS  Parse Server 7.3.0 (upstream): limit=1 skip=2 is the THIRD published row, not the third row of the collection
+  PASS  Parse Server 7.3.0 (upstream): Create New Record fires Created
+  NOTE  Parse Server 7.3.0 (upstream): created id = "SMx40xeF2Y" (typeof string)
+  PASS  Parse Server 7.3.0 (upstream): Create reports a non-empty Id
+  PASS  Parse Server 7.3.0 (upstream): the created row is readable through a fresh query on the same backend
+  PASS  Parse Server 7.3.0 (upstream): the filtered set grew by exactly one
+Node SetDbModelProperties: Invalid input property storageType
+node doesn't have input storageType for node: SetDbModelProperties
+  PASS  Parse Server 7.3.0 (upstream): Set Record Properties fires Stored for an id of type string
+  PASS  Parse Server 7.3.0 (upstream): the update is visible on a re-read
+Node DeleteDbModelProperties: Invalid input property storageType
+node doesn't have input storageType for node: DeleteDbModelProperties
+  PASS  Parse Server 7.3.0 (upstream): Delete Record fires Deleted
+  PASS  Parse Server 7.3.0 (upstream): the filtered set is back to its original size
+  PASS  Parse Server 7.3.0 (upstream): the deleted row is gone
+
+============================================================================
+ROUTING — two backends configured, node pointed at the non-active one
+============================================================================
+  active: Directus 11   |   node names: PocketBase 0.30.0
+  PASS  routing: a query naming PocketBase 0.30.0 succeeds
+  PASS  routing: the rows came from PocketBase 0.30.0 (string ids), not from the active Directus 11
+  PASS  routing: '_active_' still resolves to Directus 11
+
+============================================================================
+A Backend id the project does not have
+============================================================================
+[noodl] DbCollection2 (Driver): The backend this node is set to ("no-such-backend") is not configured in this project. [query-records/query-failed] {
+  nodeId: 'n48',
+  componentName: 'Driver',
+  nodeType: 'DbCollection2',
+  code: 'query-records/query-failed',
+  message: 'The backend this node is set to ("no-such-backend") is not configured in this project.',
+  detail: undefined
+}
+  PASS  an unknown Backend id fails rather than querying the active backend
+  PASS  and it says which backend it could not find
+  PASS  and it returns no rows at all
+
+============================================================================
+SUMMARY
+============================================================================
+backends exercised: 5 — Directus 11, Supabase (PostgREST 12.2.3), PocketBase 0.30.0, nodegx-backend (our own Parse wire), Parse Server 7.3.0 (upstream)
+checks: 101 passed, 0 failed
+
+observations:
+  - Directus 11: firstItemId = 46 (typeof number)
+  - Directus 11: created id = 51 (typeof number)
+  - Supabase (PostgREST 12.2.3): firstItemId = 42 (typeof number)
+  - Supabase (PostgREST 12.2.3): created id = 47 (typeof number)
+  - PocketBase 0.30.0: firstItemId = "q7j1zrsn4xyunjk" (typeof string)
+  - PocketBase 0.30.0: created id = "6gunpbpcffvvojj" (typeof string)
+  - nodegx-backend (our own Parse wire): firstItemId = "87494021-167f-4e78-ad5c-970015fdeb46" (typeof string)
+  - nodegx-backend (our own Parse wire): created id = "994a4427-69c2-4627-aeed-d365c07e61f9" (typeof string)
+  - Parse Server 7.3.0 (upstream): firstItemId = "xFEMklPha7" (typeof string)
+  - Parse Server 7.3.0 (upstream): created id = "SMx40xeF2Y" (typeof string)

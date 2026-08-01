@@ -28,6 +28,11 @@ been scheduled: nobody's task list contains "get the certificates".
 | [ALPHA-003](./ALPHA-003-CRASH-AND-FEEDBACK.md) | Find out when it breaks | 2 | No crash reporting, no log file, no in-app feedback path |
 | [ALPHA-004](./ALPHA-004-USER-DOCS.md) | Documentation for someone who is not us | 2 | Everything in `docs/` is developer reference. There is no "what is a node" |
 | [ALPHA-005](./ALPHA-005-LEGAL-SURFACE.md) | The paperwork that ships with a binary | 2 | We distribute an app that sends project content to third-party AI providers |
+| [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) | The docs platform, and the old site's disposition | 2 | Split from ALPHA-004 on 2026-07-31. **54 of 156 nodes have no working documentation page**, and the docs origin turns out to be the editor's content CDN for seven payload types — six of which are not documentation |
+
+ALPHA-006 was not part of the original five. It exists because ALPHA-004 assumed a
+site to write into, and the site is a 413 MB fork of Noodl's that three editor panels
+silently depend on.
 
 **Tier 1 gates the alpha. Tier 2 makes the alpha worth running.** You could ship
 without Tier 2 — you would simply learn nothing from having shipped, which defeats
