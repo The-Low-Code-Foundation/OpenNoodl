@@ -38335,7 +38335,7 @@
             ]
           },
           "isSignal": false,
-          "default": 5,
+          "default": 0,
           "description": "Space inside the element's bottom edge, between it and its content",
           "index": 67,
           "allowVisualStates": true
@@ -38354,7 +38354,7 @@
             ]
           },
           "isSignal": false,
-          "default": 20,
+          "default": 0,
           "description": "Space inside the element's left edge, between it and its content",
           "index": 64,
           "allowVisualStates": true
@@ -38373,7 +38373,7 @@
             ]
           },
           "isSignal": false,
-          "default": 20,
+          "default": 0,
           "description": "Space inside the element's right edge, between it and its content",
           "index": 65,
           "allowVisualStates": true
@@ -38392,7 +38392,7 @@
             ]
           },
           "isSignal": false,
-          "default": 5,
+          "default": 0,
           "description": "Space inside the element's top edge, between it and its content",
           "index": 66,
           "allowVisualStates": true
@@ -51542,7 +51542,7 @@
             ]
           },
           "isSignal": false,
-          "default": 5,
+          "default": 0,
           "description": "Space inside the element's bottom edge, between it and its content",
           "index": 67,
           "allowVisualStates": true
@@ -51561,7 +51561,7 @@
             ]
           },
           "isSignal": false,
-          "default": 5,
+          "default": 0,
           "description": "Space inside the element's left edge, between it and its content",
           "index": 64,
           "allowVisualStates": true
@@ -51580,7 +51580,7 @@
             ]
           },
           "isSignal": false,
-          "default": 5,
+          "default": 0,
           "description": "Space inside the element's right edge, between it and its content",
           "index": 65,
           "allowVisualStates": true
@@ -51599,7 +51599,7 @@
             ]
           },
           "isSignal": false,
-          "default": 5,
+          "default": 0,
           "description": "Space inside the element's top edge, between it and its content",
           "index": 66,
           "allowVisualStates": true
