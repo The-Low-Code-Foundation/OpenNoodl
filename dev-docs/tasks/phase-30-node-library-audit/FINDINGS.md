@@ -2098,6 +2098,87 @@ measured without a DOM and a frame clock. Those are named in the corpus file rat
 The generalisable point: **a parallel batch's work is only as safe as its last commit**, and a brief
 that says "commit small and often" is not a style preference.
 
+## The Visual per-node audit (NDA-012, 2026-08-01)
+
+### DV-i — DB-ii has now been run outside Data, and the answer is "two, out of 242"
+
+The predicate is differential and mechanical: build the same node twice — once with no authored
+parameters, once with exactly one port authored at *its own declared default* — and diff the
+resulting instance state. Anything that differs is a setter side effect the declared default failed
+to produce. Pinned in
+[`nda-012-visual-declared-defaults.test.ts`](../../../packages/noodl-viewer-react/tests/corpus/nda-012-visual-declared-defaults.test.ts).
+
+**687 ports in Visual declare a `default` and carry a custom `set`. 242 of them differ. Two are
+defects.** That ratio is the finding, and it is the opposite of Data's — where the predicate found
+three dead nodes in fifteen.
+
+⚠️ **The reason Visual is not full of dead nodes is a second route Data does not have.**
+`react-component-node` copies `inputProps`/`inputCss` defaults into `props`/`startStyle` at
+[`react-component-node.ts:753-766`](../../../packages/noodl-viewer-react/src/react-component-node.ts#L753-L766)
+and [`:827-846`](../../../packages/noodl-viewer-react/src/react-component-node.ts#L827-L846). So for
+a Visual node the interesting shape is not "DB-ii fires" — it fires 242 times — but **"DB-ii fires
+*and* the second route is also blocked."** That conjunction happens twice.
+
+### DV-ii — `Button` and `Icon` declare a padding default that reaches nothing
+
+`addPaddingInputs` gives all four of its ports `applyDefault: false`
+([`node-shared-port-definitions.ts:277`](../../../packages/noodl-viewer-react/src/node-shared-port-definitions.ts#L277),
+`:291`, `:310`, `:327`), which is exactly the switch that blocks the `startStyle` route. DB-ii blocks
+the setter route. Fourteen nodes call the generator; **twelve pass `0`, so losing the default costs
+them nothing — and the two that pass a non-zero value are the two that are wrong**:
+[`button.ts:64-71`](../../../packages/noodl-viewer-react/src/nodes/controls/button.ts#L64-L71) (20px
+horizontal, 5px vertical) and
+[`icon.ts:30-37`](../../../packages/noodl-viewer-react/src/nodes/visual/icon.ts#L30-L37) (5px).
+
+A freshly-dropped Button renders with its label flush against its edges while the property panel
+shows Pad Left 20. **No node's `defaultCss` sets padding**, so the `applyDefault: false` guard is not
+protecting anything; it only costs these two nodes their declared padding.
+
+### DV-iii — `Component Stack` says it clips and does not
+
+[`navigation-stack.tsx:258-266`](../../../packages/noodl-viewer-react/src/nodes/navigation/navigation-stack.tsx#L258-L266)
+is the only thing that writes `overflow: hidden`, its port declares `default: true`, and the node's
+`defaultCss` (`:211-217`) has no `overflow`. So a stack whose panel reads "Clip Content ✓" lets a
+pushed component taller than itself spill out. It is the category's only non-`safe` SSR node and its
+lifecycle is its whole job, which is why H1 was worth running on it.
+
+⚠️ **`Page Router` has the identical port shape and is fine**, which is what makes this a defect
+rather than a pattern: the Router's default enum value takes the `removeStyle` branch
+([`router.tsx:180`](../../../packages/noodl-viewer-react/src/nodes/navigation/router.tsx#L180)),
+a no-op on a node that never had the style. Not running *that* setter costs nothing.
+
+### DV-iv — the four mechanisms that absorb the other 240, measured rather than asserted
+
+These are pinned as rows in the same file, deliberately. **Without them the next person to run the
+predicate reads 242 and files 242 defects.**
+
+| Absorber | Where | What it covers |
+|---|---|---|
+| `name = name \|\| 'Main'` at all four entry points | [`navigation-handler.ts:52`](../../../packages/noodl-viewer-react/src/nodes/navigation/navigation-handler.ts#L52), `:63`, `:68`, `:105` | `Component Stack`'s `Name` and `Navigate`'s `Stack` both stay `undefined` and still resolve |
+| `props.parentLayout \|\| 'column'` | [`layout.ts:126`](../../../packages/noodl-viewer-react/src/layout.ts#L126) | `Radio Button Group`'s `Layout` never calls `setLayout`, and the fallback is the declared default |
+| `toPixels` accepts number or string | [`Columns.tsx:41`](../../../packages/noodl-viewer-react/src/components/visual/Columns/Columns.tsx#L41) | `Columns`' `initialize` mirror seeds raw numbers where the framework would have written `'16px'` — NDA-006 already closed the arithmetic |
+| the authored value **is** the CSS initial value | — | the large majority: `translateX(0px)`, `mixBlendMode: normal`, `pointerEvents: auto`, `borderStyle: none`, zero paddings and gaps, `position: relative`, `opacity: 1`, `flexWrap: nowrap`, `wordBreak: normal`, `textTransform: none`, `backgroundColor: transparent` |
+
+⚠️ **`Columns` is worth reading twice.** Its `initialize()`
+([`columns.ts:27-34`](../../../packages/noodl-viewer-react/src/nodes/visual/columns.ts#L27-L34))
+mirrors four defaults, and it runs *after* the framework's default→props copy
+([`react-component-node.ts:864`](../../../packages/noodl-viewer-react/src/react-component-node.ts#L864)),
+so **the hand-written mirror overwrites the framework's correct `'16px'` with a bare `16`.** A mirror
+written to work around DB-ii can reintroduce the type confusion the framework had already got right.
+
+### DV-v — the `Auto` sentinel is unit-suffixed on one port and not the other
+
+`letterSpacing` and `lineHeight` both default to the sentinel string `'Auto'`, and only
+`letterSpacing` is declared with `units: ['px']`. So authoring the value the panel already shows
+produces `letter-spacing: Autopx` — not a CSS value at all — while `lineHeight` yields a plain
+`'Auto'`, which is also not a CSS value, but a different one. Five nodes carry the pair (`Text`,
+`Checkbox`, `Dropdown`, `Radio Button`, `Text Input`, the last on both its own and its label's ports).
+
+The net effect is benign — a browser drops an invalid declaration, which is roughly what "Auto" is
+asking for — but **the two ports spell one intent two ways and neither is the CSS keyword**, so
+anything that reads the style back (an export, an SSR pass, a style inspector) sees one of two junk
+values. Recorded rather than fixed: the correct spelling is a decision about what `Auto` means.
+
 ## What these passes did *not* cover
 
 - **76 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No
