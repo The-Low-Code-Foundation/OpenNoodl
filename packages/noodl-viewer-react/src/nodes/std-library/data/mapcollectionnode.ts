@@ -38,10 +38,21 @@ interface MapCollectionInstance extends NodeInstance {
     mappedCollection?: CollectionLike;
     mapCode?: string;
     /**
-     * The compiled script, or `undefined` when it failed to parse. Nothing guards the
-     * call site below, so a script with a syntax error throws on every change.
+     * The compiled script, or `undefined` when it failed to parse.
+     *
+     * NDA-012 (Data): the call site used to be unguarded, so a script with a syntax error threw a
+     * `TypeError` out of the scheduled callback on every change — into `nodecontext.ts`'s blanket
+     * catch, which only `console.error`s. `scheduleMap` now refuses instead, and says why.
      */
     mapFunc?: (map: MapDeclarator, object: ModelLike) => void;
+    /** The compile diagnosis, held until a run actually needs the script. */
+    mapCompileError?: string;
+    /** Why the last run produced nothing; the `Error` output reads this. */
+    lastError?: string;
+    /** Last message actually raised, so a repeat is not re-announced. Array Filter's shape. */
+    lastReportedError?: string;
+    /** Did an author *ask* for this run (a `Refresh` pulse), or did a value simply arrive? */
+    mapRequested?: boolean;
     collectionChangedCallback(): void;
   };
   collectionChangedScheduled?: boolean;
@@ -49,6 +60,8 @@ interface MapCollectionInstance extends NodeInstance {
   unbindCurrentCollection(): void;
   bindCollection(collection: CollectionLike): void;
   scheduleMap(): void;
+  requestMap(): void;
+  reportFailure(code: string, message: string, detail?: unknown): void;
 }
 
 const MapCollectionNode: NodeDefinitionOptions = {
@@ -69,6 +82,7 @@ const MapCollectionNode: NodeDefinitionOptions = {
     items: {
       type: 'array',
       displayName: 'Items',
+      description: 'Array to map; the node re-runs whenever this array reports a change',
       group: 'General',
       set: function (this: MapCollectionInstance, value: CollectionLike) {
         this.setCollection(value);
@@ -82,15 +96,25 @@ const MapCollectionNode: NodeDefinitionOptions = {
         codeeditor: 'javascript'
       },
       displayName: 'Script',
+      description:
+        'Script run once per record, declaring the output properties through map({ … }); each ' +
+        'entry is either a source property name or a function of the record',
       default: defaultMapCode,
       set: function (this: MapCollectionInstance, value: string) {
         this._internal.mapCode = value;
         try {
           this._internal.mapFunc = new Function('map', 'object', this._internal.mapCode) as MapCollectionInstance['_internal']['mapFunc'];
         } catch (e) {
+          // NDA-012 (Data): the diagnosis is kept and reported from `scheduleMap`, not here.
+          // Raising in the setter would announce on the boot path for a node whose Items are
+          // never connected; a script that cannot compile only matters when something asks it
+          // to run. Array Filter draws the same line for `filter-failed`.
           this._internal.mapFunc = undefined;
-          console.log('Error while parsing map script: ' + e);
+          this._internal.mapCompileError = (e as Error).message || String(e);
+          this.scheduleMap();
+          return;
         }
+        this._internal.mapCompileError = undefined;
         this.scheduleMap();
       }
     },
@@ -103,8 +127,9 @@ const MapCollectionNode: NodeDefinitionOptions = {
       type: 'signal',
       group: 'General',
       displayName: 'Refresh',
+      description: 'Re-runs the mapping now, for a source array that changed without notifying',
       valueChangedToTrue: function (this: MapCollectionInstance) {
-        this.scheduleMap();
+        this.requestMap();
       }
     }
   },
@@ -112,6 +137,7 @@ const MapCollectionNode: NodeDefinitionOptions = {
     items: {
       type: 'array',
       displayName: 'Items',
+      description: 'A new array of records built by the script; the source array is never modified',
       group: 'General',
       getter: function (this: MapCollectionInstance) {
         return this._internal.mappedCollection;
@@ -120,6 +146,7 @@ const MapCollectionNode: NodeDefinitionOptions = {
     count: {
       type: 'number',
       displayName: 'Count',
+      description: 'How many records the last successful mapping produced',
       group: 'General',
       getter: function (this: MapCollectionInstance) {
         return this._internal.mappedCollection ? this._internal.mappedCollection.size() : 0;
@@ -128,7 +155,23 @@ const MapCollectionNode: NodeDefinitionOptions = {
     modified: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Changed'
+      displayName: 'Changed',
+      description: 'Fires once the mapping has run and Items is up to date'
+    },
+    failure: {
+      group: 'Events',
+      type: 'signal',
+      displayName: 'Failure',
+      description: 'Fires when the script could not be compiled, or threw while mapping a record'
+    },
+    error: {
+      group: 'Events',
+      type: 'string',
+      displayName: 'Error',
+      description: 'Why the last mapping failed, in one sentence; empty until something fails',
+      getter: function (this: MapCollectionInstance) {
+        return this._internal.lastError;
+      }
     }
   },
   prototypeExtensions: {
@@ -152,28 +195,96 @@ const MapCollectionNode: NodeDefinitionOptions = {
       Node.prototype._onNodeDeleted.call(this);
       this.unbindCurrentCollection();
     },
+    /**
+     * NDA-012 (Data) — a `Refresh` pulse is an author asking; a value arriving is not.
+     *
+     * Ported verbatim from Array Filter's `requestFilter`, including the stickiness across the
+     * coalescing window: if a value arrival schedules a run and a `Refresh` lands before the
+     * callback fires, the author did ask, and the run that happens is the one they asked for.
+     */
+    requestMap: function (this: MapCollectionInstance) {
+      this._internal.mapRequested = true;
+      this.scheduleMap();
+    },
+    /** Array Filter's `reportFailure`, same dedup, same reason — see `filtercollectionnode.ts`. */
+    reportFailure: function (this: MapCollectionInstance, code: string, message: string, detail?: unknown) {
+      const internal = this._internal;
+      internal.lastError = message;
+      this.flagOutputDirty('error');
+
+      if (internal.lastReportedError === message) return;
+      internal.lastReportedError = message;
+
+      this.raiseRuntimeError(code, message, detail);
+      this.sendSignalOnOutput('failure');
+    },
     scheduleMap: function (this: MapCollectionInstance) {
       if (this.collectionChangedScheduled) return;
       this.collectionChangedScheduled = true;
 
       this.scheduleAfterInputsHaveUpdated(() => {
         this.collectionChangedScheduled = false;
-        if (this._internal.collection === undefined) return;
 
-        const mappedModels = this._internal.collection.map((model) => {
-          const m = Model.create();
-          this._internal.mapFunc(function (mappings) {
-            for (const key in mappings) {
-              const mapping = mappings[key];
-              if (typeof mapping === 'function') {
-                m.set(key, mapping(model));
-              } else if (typeof mapping === 'string') {
-                m.set(key, model.get(mapping));
+        const requested = this._internal.mapRequested === true;
+        this._internal.mapRequested = false;
+
+        if (this._internal.collection === undefined) {
+          // Silent unless an author asked, for the reason Array Filter states: the script and the
+          // array arrive in some order during boot, and reporting here would fire on the ordinary
+          // path every time the script lands first.
+          if (requested) {
+            this.reportFailure('array-map/no-items', 'Nothing to map — no array is connected to the Items input');
+          }
+          return;
+        }
+
+        /**
+         * NDA-012 (Data) — the node was completely silent when its script did not work.
+         *
+         * Measured: a `Script` that fails to compile left `mapFunc` `undefined` and the call
+         * below threw a `TypeError` out of this scheduled callback; a script that compiles but
+         * throws while mapping did the same. Either way `nodecontext.ts`'s blanket catch swallowed
+         * it into one unstructured `console.error`, no signal fired, no error was raised, and the
+         * `Items` output silently kept whatever the previous run had produced. That is a node that
+         * cannot be debugged from the graph in any runtime — defect class B, and Array Filter's
+         * `filter-failed` is the same failure with the same answer.
+         *
+         * Ungated on `requested`: a script that will not run is wrong whenever it is asked to,
+         * and unlike "no array yet" it is never a state the graph passes through on its way to
+         * working.
+         */
+        if (this._internal.mapFunc === undefined) {
+          this.reportFailure(
+            'array-map/script-failed',
+            'The map script could not be compiled: ' + (this._internal.mapCompileError || 'unknown error')
+          );
+          return;
+        }
+
+        let mappedModels: ModelLike[];
+        try {
+          mappedModels = this._internal.collection.map((model) => {
+            const m = Model.create();
+            this._internal.mapFunc(function (mappings) {
+              for (const key in mappings) {
+                const mapping = mappings[key];
+                if (typeof mapping === 'function') {
+                  m.set(key, mapping(model));
+                } else if (typeof mapping === 'string') {
+                  m.set(key, model.get(mapping));
+                }
               }
-            }
-          }, model);
-          return m;
-        });
+            }, model);
+            return m;
+          });
+        } catch (e) {
+          this.reportFailure('array-map/map-failed', 'The map script failed: ' + ((e as Error).message || String(e)));
+          return;
+        }
+
+        // A run that got here worked. Re-arm the dedup so the *next* occurrence of the same
+        // message is announced again rather than swallowed as a repeat.
+        this._internal.lastReportedError = undefined;
 
         this._internal.mappedCollection = Collection.create(mappedModels);
 

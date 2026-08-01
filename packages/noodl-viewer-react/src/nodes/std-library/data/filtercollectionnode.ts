@@ -175,6 +175,8 @@ const FilterCollectionNode: NodeDefinitionOptions = {
     items: {
       type: 'array',
       displayName: 'Items',
+      description:
+        'Array to filter; the node re-runs whenever this array changes, unless Filter is connected',
       group: 'General',
       set(this: FilterCollectionInstance, value: CollectionLike) {
         this.bindCollection(value);
@@ -185,6 +187,7 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       type: 'boolean',
       group: 'General',
       displayName: 'Enabled',
+      description: 'When false the input array passes straight through — unfiltered, unsorted and unlimited',
       default: true,
       set: function (this: FilterCollectionInstance, value: boolean) {
         this._internal.enabled = value;
@@ -195,6 +198,7 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       type: 'signal',
       group: 'Actions',
       displayName: 'Filter',
+      description: 'Runs the filter now and replaces Items with the result',
       valueChangedToTrue: function (this: FilterCollectionInstance) {
         this.requestFilter();
       }
@@ -207,6 +211,7 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       type: 'signal',
       group: 'Actions',
       displayName: 'Refresh',
+      description: 'Runs the filter now — the same action as Filter, under the name the rest of the Array family uses',
       valueChangedToTrue: function (this: FilterCollectionInstance) {
         this.requestFilter();
       }
@@ -216,6 +221,7 @@ const FilterCollectionNode: NodeDefinitionOptions = {
     items: {
       type: 'array',
       displayName: 'Items',
+      description: 'A new array holding the records that passed, in sort order; the input array is never modified',
       group: 'General',
       getter: function (this: FilterCollectionInstance) {
         return this._internal.filteredCollection;
@@ -224,6 +230,7 @@ const FilterCollectionNode: NodeDefinitionOptions = {
     firstItemId: {
       type: 'string',
       displayName: 'First Item Id',
+      description: 'Id of the first record that passed, or empty when nothing matched',
       group: 'General',
       getter: function (this: FilterCollectionInstance) {
         if (this._internal.filteredCollection !== undefined) {
@@ -245,6 +252,7 @@ const FilterCollectionNode: NodeDefinitionOptions = {
     count: {
       type: 'number',
       displayName: 'Count',
+      description: 'How many records passed the filter, after Skip and Limit have been applied',
       group: 'General',
       getter: function (this: FilterCollectionInstance) {
         return this._internal.filteredCollection ? this._internal.filteredCollection.size() : 0;
@@ -253,17 +261,22 @@ const FilterCollectionNode: NodeDefinitionOptions = {
     modified: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Filtered'
+      displayName: 'Filtered',
+      description: 'Fires once the filter has run and Items is up to date'
     },
     failure: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Failure'
+      displayName: 'Failure',
+      description:
+        'Fires when the filter could not be applied — a pattern that will not compile, or a Filter ' +
+        'pulse with no array connected'
     },
     error: {
       group: 'Events',
       type: 'string',
       displayName: 'Error',
+      description: 'Why the last run failed, in one sentence; empty until something fails',
       getter: function (this: FilterCollectionInstance) {
         return this._internal.lastError;
       }

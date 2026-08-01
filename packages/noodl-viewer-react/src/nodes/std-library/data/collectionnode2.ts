@@ -44,7 +44,7 @@ const CollectionNode: NodeDefinitionOptions = {
   name: 'Collection2',
   docs: 'https://docs.noodl.net/nodes/data/array/array-node',
   displayNodeName: 'Array',
-  shortDesc: 'A collection of models, mainly used together with a For Each Node.',
+  shortDesc: 'Binds to a shared array by id and reports its items, count and changes.',
   category: 'Data',
   usePortAsLabel: 'collectionId',
   color: 'data',
@@ -99,6 +99,9 @@ const CollectionNode: NodeDefinitionOptions = {
         identifierDisplayName: 'Array Ids'
       },
       displayName: 'Id',
+      description:
+        'Id of the shared array to bind to; the first node to use an id creates the array, and every ' +
+        'later node naming it reaches the same one',
       group: 'General',
       set: function (this: CollectionNodeInstance, value: string | CollectionLike) {
         if (value instanceof Collection) value = value.getId(); // Can be passed as collection as well
@@ -133,6 +136,7 @@ const CollectionNode: NodeDefinitionOptions = {
     },
     fetch: {
       displayName: 'Fetch',
+      description: 'Re-reads the array named by Id and rebinds this node to it',
       group: 'Actions',
       valueChangedToTrue: function (this: CollectionNodeInstance) {
         this.scheduleSetCollection();
@@ -143,6 +147,7 @@ const CollectionNode: NodeDefinitionOptions = {
     id: {
       type: 'string',
       displayName: 'Id',
+      description: 'Id of the array this node is currently bound to',
       group: 'General',
       getter: function (this: CollectionNodeInstance) {
         return this._internal.collection ? this._internal.collection.getId() : this._internal.collectionId;
@@ -151,6 +156,7 @@ const CollectionNode: NodeDefinitionOptions = {
     items: {
       type: 'array',
       displayName: 'Items',
+      description: 'The bound array itself, for a Repeater or another Array node to read',
       group: 'General',
       getter: function (this: CollectionNodeInstance) {
         return this._internal.collection;
@@ -159,6 +165,7 @@ const CollectionNode: NodeDefinitionOptions = {
     firstItemId: {
       type: 'string',
       displayName: 'First Item Id',
+      description: 'Id of the first object in the array, or empty while the array holds nothing',
       group: 'General',
       getter: function (this: CollectionNodeInstance) {
         if (this._internal.collection) {
@@ -170,6 +177,7 @@ const CollectionNode: NodeDefinitionOptions = {
     count: {
       type: 'number',
       displayName: 'Count',
+      description: 'How many objects the bound array holds',
       group: 'General',
       getter: function (this: CollectionNodeInstance) {
         return this._internal.collection ? this._internal.collection.size() : 0;
@@ -178,12 +186,14 @@ const CollectionNode: NodeDefinitionOptions = {
     changed: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Changed'
+      displayName: 'Changed',
+      description: 'Fires when the bound array gains or loses items; suppressed while Fetch is connected'
     },
     fetched: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Fetched'
+      displayName: 'Fetched',
+      description: 'Fires once Fetch has rebound this node and the outputs are up to date'
     }
   },
   prototypeExtensions: {
@@ -255,6 +265,23 @@ const CollectionNode: NodeDefinitionOptions = {
       if (this._internal.collection)
         // Remove old listener if existing
         this._internal.collection.off('change', this._internal.collectionChangedCallback);
+
+      /**
+       * NDA-012 (Data) — the *source* subscription was never unwound.
+       *
+       * `setSourceCollection` binds `change` on whatever arrives at `Items`, and only that method
+       * ever unbound it — on the next arrival. A node deleted while bound left the callback on a
+       * collection that outlives it (a named array is held strongly for the life of the page), so
+       * every later change to the source still ran `scheduleCopyItems` on a destroyed node and
+       * kept its whole instance reachable.
+       *
+       * Duck-typed on `off` rather than repeating `instanceof Collection`, and deliberately:
+       * `off` on a collection that never registered a listener is a no-op, so this unwinds
+       * whichever branch `setSourceCollection` took without having to agree with it.
+       */
+      const source = this._internal.sourceCollection;
+      if (source && typeof source.off === 'function')
+        source.off('change', this._internal.sourceCollectionChangedCallback);
     }
   }
 };

@@ -19,7 +19,7 @@ const CollectionInsertNode: NodeDefinitionOptions = {
   name: 'CollectionInsert',
   docs: 'https://docs.noodl.net/nodes/data/array/insert-into-array',
   displayNodeName: 'Insert Object Into Array',
-  shortDesc: 'A collection of models, mainly used together with a For Each Node.',
+  shortDesc: 'Adds an object, named by its id, to a shared array.',
   category: 'Data',
   usePortAsLabel: 'collectionId',
   color: 'data',
@@ -32,12 +32,16 @@ const CollectionInsertNode: NodeDefinitionOptions = {
         identifierDisplayName: 'Array Ids'
       },
       displayName: 'Array Id',
+      description:
+        'Id of the array to insert into; clearing it unbinds the node, and the next Do then fails ' +
+        'rather than writing to a throwaway array',
       group: 'General',
       set: setCollectionIdInput
     },
     modifyId: {
       type: { name: 'string', allowConnectionsOnly: true },
       displayName: 'Object Id',
+      description: 'Id of the object to insert; a record with this id is created if none has been loaded yet',
       group: 'Modify',
       set: function (this: CollectionInsertInstance, value: string) {
         this._internal.modifyId = value;
@@ -45,6 +49,7 @@ const CollectionInsertNode: NodeDefinitionOptions = {
     },
     add: {
       displayName: 'Do',
+      description: 'Adds the object named by Object Id to the array, or fires Failure if either cannot be resolved',
       group: 'Actions',
       valueChangedToTrue: function (this: CollectionInsertInstance) {
         const internal = this._internal;
@@ -78,7 +83,12 @@ const CollectionInsertNode: NodeDefinitionOptions = {
     modified: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Done'
+      displayName: 'Done',
+      // NDA-012 (Data): the sentence carries the pinned ambiguity. Inserting an id the array
+      // already holds is a no-op that still reports Done — filed for a decision, not repaired.
+      description:
+        'Fires after the insert has been applied, including when the object was already in the ' +
+        'array and nothing changed'
     }
   },
   prototypeExtensions: {
