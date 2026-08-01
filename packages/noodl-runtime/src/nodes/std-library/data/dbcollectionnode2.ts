@@ -49,6 +49,7 @@ import {
   recordSchemaContext
 } from './record-ports';
 import { sendSchemaPorts, staticPortNames } from './schema-ports';
+import { runOnChangeDynamicPorts } from '../../../run-on-value-change';
 
 /**
  * NDA-004 §2 — see `setError`.
@@ -122,8 +123,12 @@ interface CloudStoreLike {
  * against `currentQuery.where` rather than re-querying — except when a search term is
  * active, where BM25 ranking makes an incremental patch unrepresentable and it re-fetches.
  *
- * And every setter consults `isInputConnected('storageFetch')`: with `Do` wired, nothing
- * here re-runs the query on its own.
+ * ⚠️ **NDA-017 §2 rewrote the sentence that used to close this comment.** It read: "And every
+ * setter consults `isInputConnected('storageFetch')`: with `Do` wired, nothing here re-runs
+ * the query on its own." That is the trap, stated as the design, on the node where it is most
+ * expensive — a Query Records whose class or search term moves and does not re-query is
+ * showing the wrong rows. Nine sites consulted that guard; each now consults a checkbox
+ * instead. See `initialize` for how the nine were grouped into five.
  */
 interface DbCollectionNodeInstance extends NodeInstance {
   _internal: {
@@ -206,6 +211,26 @@ const DbCollectionNode: NodeDefinitionOptions = {
     const _this = this;
     this._internal.queryParameters = {};
 
+    /**
+     * NDA-017 §2. This node has no `runOnValueChange` field because it has no declared
+     * inputs at all — `inputs` is empty and every port is minted at runtime. The two
+     * checkboxes that do not correspond to a port are registered here; the rest appear in
+     * `registerInputIfNeeded` as their ports do.
+     *
+     * Nine guard sites, five checkboxes:
+     *
+     * - `records` — the cloud-store subscription *and* the realtime change handler. Two
+     *   transports, one meaning: the records changed underneath me.
+     * - `querySettings` — the visual filter, the sort, the backend picker and the catch-all
+     *   setter behind the Limit/Skip panel controls. All `allowEditOnly`, so re-querying
+     *   when the author edits the query they are looking at is one decision.
+     * - `collectionName` and `search` — real ports an author wires, one box each.
+     * - `qp-<name>` — one box per query parameter, for the same reason as Filter Records'
+     *   `fp-`: "re-query when the search box changes but not when the category does".
+     */
+    this.registerRunOnValueChangeInput('records', 'Record changes');
+    this.registerRunOnValueChangeInput('querySettings', 'Query settings');
+
     let collectionChangedScheduled = false;
     this._internal.collectionChangedCallback = function () {
       //this can be called multiple times when adding/removing more than one item
@@ -222,7 +247,8 @@ const DbCollectionNode: NodeDefinitionOptions = {
     };
 
     this._internal.cloudStoreEvents = function (args: CloudStoreEventArgs) {
-      if (_this.isInputConnected('storageFetch') === true) return;
+      // NDA-017 §2. Was `if (_this.isInputConnected('storageFetch') === true) return;`.
+      if (!_this.shouldRunOnValueChange('records')) return;
 
       if (_this._internal.collection === undefined) return;
       if (args.collection !== _this._internal.name) return;
@@ -535,7 +561,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
     setCollectionName: function (this: DbCollectionNodeInstance, name: string) {
       this._internal.name = name;
 
-      if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
+      if (this.shouldRunOnValueChange('collectionName')) this.scheduleFetch();
       // A subscription is to a named collection; the old one is watching the wrong thing.
       this.scheduleRealtimeReconfigure();
     },
@@ -738,8 +764,10 @@ const DbCollectionNode: NodeDefinitionOptions = {
       if (signals[change.type]) this.sendSignalOnOutput(signals[change.type]);
       this.sendSignalOnOutput('changed');
 
-      // Debounced: `scheduleFetch` coalesces a burst into one query.
-      if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
+      // Debounced: `scheduleFetch` coalesces a burst into one query. Governed by the same
+      // checkbox as the cloud-store subscription — both are "the records changed underneath
+      // me", arriving by two transports.
+      if (this.shouldRunOnValueChange('records')) this.scheduleFetch();
     },
 
     handleRealtimeStatus: function (this: DbCollectionNodeInstance, status: RealtimeStatus) {
@@ -1019,12 +1047,12 @@ const DbCollectionNode: NodeDefinitionOptions = {
     setVisualFilter: function (this: DbCollectionNodeInstance, value: unknown) {
       this._internal.visualFilter = value;
 
-      if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
+      if (this.shouldRunOnValueChange('querySettings')) this.scheduleFetch();
     },
     setVisualSorting: function (this: DbCollectionNodeInstance, value: VisualSorting[]) {
       this._internal.visualSorting = value;
 
-      if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
+      if (this.shouldRunOnValueChange('querySettings')) this.scheduleFetch();
     },
     // BAK-008: full-text search term (string; empty/undefined = no-op, plain
     // query unchanged). Orthogonal to the Filter — combined server-side with
@@ -1032,22 +1060,27 @@ const DbCollectionNode: NodeDefinitionOptions = {
     setSearch: function (this: DbCollectionNodeInstance, value: string) {
       this._internal.search = value;
 
-      if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
+      if (this.shouldRunOnValueChange('search')) this.scheduleFetch();
     },
     setQueryParameter: function (this: DbCollectionNodeInstance, name: string, value: unknown) {
       this._internal.queryParameters[name] = value;
 
-      if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
+      // One box per query parameter — see the note in `initialize`.
+      if (this.shouldRunOnValueChange('qp-' + name)) this.scheduleFetch();
     },
     registerInputIfNeeded: function (this: DbCollectionNodeInstance, name: string) {
       if (this.hasInput(name)) {
         return;
       }
 
-      if (name.startsWith('qp-'))
-        return this.registerInput(name, {
+      if (name.startsWith('qp-')) {
+        this.registerInput(name, {
           set: this.setQueryParameter.bind(this, name.substring('qp-'.length))
         });
+        // Labelled with the parameter, not the port: `qp-` is an implementation prefix.
+        this.registerRunOnValueChangeInput(name, name.substring('qp-'.length));
+        return;
+      }
 
       const dynamicSignals: Record<string, () => void> = {
         storageFetch: this.scheduleFetch.bind(this)
@@ -1069,7 +1102,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
         // `userInputSetter` and land in `storageSettings`, where nothing reads it.
         backendId: ((value: string) => {
           this._internal.backendId = value;
-          if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
+          if (this.shouldRunOnValueChange('querySettings')) this.scheduleFetch();
           // BCN-008: and the subscription follows the picker, or it stays connected to
           // whichever backend happened to be selected when the node first ran.
           this.scheduleRealtimeReconfigure();
@@ -1077,10 +1110,17 @@ const DbCollectionNode: NodeDefinitionOptions = {
         realtime: this.setRealtime.bind(this) as (value: never) => void
       };
 
-      if (dynamicSetters[name])
-        return this.registerInput(name, {
+      if (dynamicSetters[name]) {
+        this.registerInput(name, {
           set: dynamicSetters[name]
         });
+        // Only the two that are genuinely value ports an author wires. `visualFilter`,
+        // `visualSort` and `backendId` are panel editors and share the `querySettings` box
+        // registered in `initialize`; `realtime` is a mode, not a value.
+        if (name === 'collectionName') this.registerRunOnValueChangeInput(name, 'Class');
+        if (name === 'search') this.registerRunOnValueChangeInput(name, 'Search');
+        return;
+      }
 
       this.registerInput(name, {
         set: userInputSetter.bind(this, name)
@@ -1098,7 +1138,7 @@ function userInputSetter(this: DbCollectionNodeInstance, name: string, value: un
   /* jshint validthis:true */
   this._internal.storageSettings[name] = value;
 
-  if (this.isInputConnected('storageFetch') === false) this.scheduleFetch();
+  if (this.shouldRunOnValueChange('querySettings')) this.scheduleFetch();
 }
 
 const _defaultJSONQuery =
@@ -1187,6 +1227,18 @@ function updatePorts(
     displayName: 'Do'
   });
 
+  // NDA-017 §2 — the editor's half of the four checkboxes that are not per-parameter. Pushed
+  // beside `Do` deliberately: they are what `Do` used to switch off, and an author reading
+  // the Actions group is exactly the author who needs to see them.
+  ports.push(
+    ...runOnChangeDynamicPorts(['collectionName', 'search', 'records', 'querySettings'], {
+      collectionName: 'Class',
+      search: 'Search',
+      records: 'Record changes',
+      querySettings: 'Query settings'
+    })
+  );
+
   // BCN-008: Subscribe To Changes. One input, and the port stays declared whatever the
   // backend is — a capability that disappears from the panel when the picker moves is
   // worse than one that says why it cannot connect. `realtimeSupportFor` answers that at
@@ -1270,6 +1322,8 @@ function updatePorts(
             displayName: input,
             group: 'Query Parameters'
           });
+          // NDA-017 §2 — the editor's half of the checkbox the runtime mints.
+          ports.push(...runOnChangeDynamicPorts(['qp-' + input], { ['qp-' + input]: input }));
         });
       }
     }

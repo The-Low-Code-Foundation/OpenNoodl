@@ -22,6 +22,7 @@ import ModelImport = require('../../../model');
 import CloudStore = require('../../../api/cloudstore');
 import QueryUtils = require('../../../api/queryutils');
 import type { VisualSorting } from '../../../api/queryutils';
+import { runOnChangeDynamicPorts } from '../../../run-on-value-change';
 
 import {
   recordBackendPickerPorts,
@@ -52,9 +53,14 @@ interface VisualFilterQuery {
  * `this` inside the Filter Records node.
  *
  * It filters an array it is *given* — client-side, in memory — which is what separates it
- * from Query Records. The `filter` input decides whether it re-runs on its own: every
- * setter here consults `isInputConnected('filter')` and stays passive when something else
- * is driving it explicitly.
+ * from Query Records.
+ *
+ * ⚠️ **NDA-017 §2 rewrote the sentence that used to be here.** It read: "The `filter` input
+ * decides whether it re-runs on its own: every setter here consults
+ * `isInputConnected('filter')` and stays passive when something else is driving it
+ * explicitly." That was an accurate description of the trap, written as if it were the
+ * design. Nothing about wiring `Filter` changes what the other ports do any more; the
+ * checkboxes do, and only when an author ticks them off.
  */
 interface FilterDbModelsInstance extends NodeInstance {
   _internal: {
@@ -101,17 +107,41 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
   displayNodeName: 'Filter Records',
   category: 'Data',
   color: 'data',
+  /**
+   * NDA-017 §2. `Filter` is this family's control signal, and it governed five kinds of
+   * thing. Four checkboxes rather than one per port, because that is how the node already
+   * describes itself and how an author thinks about it:
+   *
+   * - `items` and `enabled` — real value inputs, one box each.
+   * - `records` — the subscription to the underlying collection and the cloud-store events.
+   *   Not a port.
+   * - `filterSettings` — the visual filter, the visual sorting and the catch-all setter.
+   *   These are `allowEditOnly` panel editors, so "re-run when I edit the filter I am
+   *   looking at" is one decision, not three.
+   *
+   * The `fp-` filter *parameters* are different and do get one box each, minted in
+   * `registerInputIfNeeded`: they are ports an author wires, and "re-filter when the search
+   * text changes but not when the category does" is a thing someone will want.
+   */
+  runOnValueChange: {
+    controlSignal: 'filter',
+    inputs: ['items', 'enabled'],
+    sources: [
+      { name: 'records', displayName: 'Record changes' },
+      { name: 'filterSettings', displayName: 'Filter settings' }
+    ]
+  },
   initialize: function (this: FilterDbModelsInstance) {
     const _this = this;
 
     this._internal.collectionChangedCallback = function () {
-      if (_this.isInputConnected('filter') === true) return;
+      if (!_this.shouldRunOnValueChange('records')) return;
 
       _this.scheduleFilter();
     };
 
     this._internal.cloudStoreEvents = function (args: { collection?: string; objectId?: string }) {
-      if (_this.isInputConnected('filter') === true) return;
+      if (!_this.shouldRunOnValueChange('records')) return;
 
       if (_this._internal.visualFilter === undefined) return;
       if (_this._internal.collection === undefined) return;
@@ -162,7 +192,7 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       description: 'The records to filter, normally the Items output of a Query Records node',
       set(this: FilterDbModelsInstance, value: unknown) {
         this.bindCollection(value as CollectionLike);
-        if (this.isInputConnected('filter') === false) this.scheduleFilter();
+        if (this.shouldRunOnValueChange('items')) this.scheduleFilter();
       }
     },
     enabled: {
@@ -173,7 +203,7 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       description: 'Passes every record through unchanged when off, rather than emptying the result',
       set: function (this: FilterDbModelsInstance, value: unknown) {
         this._internal.enabled = value as boolean;
-        if (this.isInputConnected('filter') === false) this.scheduleFilter();
+        if (this.shouldRunOnValueChange('enabled')) this.scheduleFilter();
       }
     },
     filter: {
@@ -181,7 +211,7 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       group: 'Actions',
       displayName: 'Filter',
       description:
-        'Re-runs the filter, and wiring anything to this port also stops the node re-running on its own when Items, Enabled or the filter settings change',
+        'Re-runs the filter now. This is additional to it re-running when Items, Enabled, the filter settings or the records themselves change; untick any of those under Run On Value Change to stop it',
       valueChangedToTrue: function (this: FilterDbModelsInstance) {
         this.requestFilter();
       }
@@ -328,9 +358,13 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
      *
      * The register grouped these two, and the phase's own warning is that grouping predicts
      * where to read next and nothing about the answers. Read: same six trigger paths, same
-     * `isInputConnected('filter') === false` guard on every value-arrival one, same bare
-     * `if (!this._internal.collection) return;`. It is genuinely the same defect, so it gets
-     * the same fix — the flag that records whether an author asked for this run.
+     * guard on every value-arrival one, same bare `if (!this._internal.collection) return;`.
+     * It is genuinely the same defect, so it gets the same fix — the flag that records
+     * whether an author asked for this run.
+     *
+     * (That shared guard was `isInputConnected('filter') === false`; NDA-017 §2 replaced it
+     * with a per-input checkbox on both twins. The reasoning above is unaffected — the
+     * *trigger paths* are what made them twins, not what gated them.)
      */
     requestFilter: function (this: FilterDbModelsInstance) {
       this._internal.filterRequested = true;
@@ -431,17 +465,19 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
     setVisualFilter: function (this: FilterDbModelsInstance, value: unknown) {
       this._internal.visualFilter = value;
 
-      if (this.isInputConnected('filter') === false) this.scheduleFilter();
+      if (this.shouldRunOnValueChange('filterSettings')) this.scheduleFilter();
     },
     setVisualSorting: function (this: FilterDbModelsInstance, value: VisualSorting[]) {
       this._internal.visualSorting = value;
 
-      if (this.isInputConnected('filter') === false) this.scheduleFilter();
+      if (this.shouldRunOnValueChange('filterSettings')) this.scheduleFilter();
     },
     setFilterParameter: function (this: FilterDbModelsInstance, name: string, value: unknown) {
       this._internal.filterParameters[name] = value;
 
-      if (this.isInputConnected('filter') === false) this.scheduleFilter();
+      // One box per filter parameter — see the note on `runOnValueChange` above. Keyed by the
+      // *port* name (`fp-<name>`), which is what `registerRunOnValueChangeInput` minted.
+      if (this.shouldRunOnValueChange('fp-' + name)) this.scheduleFilter();
     },
     registerInputIfNeeded: function (this: FilterDbModelsInstance, name: string) {
       if (this.hasInput(name)) {
@@ -473,10 +509,14 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
           set: this.setVisualSorting.bind(this)
         });
 
-      if (name.startsWith('fp-'))
-        return this.registerInput(name, {
+      if (name.startsWith('fp-')) {
+        this.registerInput(name, {
           set: this.setFilterParameter.bind(this, name.substring('fp-'.length))
         });
+        // Labelled with the parameter, not the port: `fp-` is an implementation prefix.
+        this.registerRunOnValueChangeInput(name, name.substring('fp-'.length));
+        return;
+      }
 
       this.registerInput(name, {
         set: userInputSetter.bind(this, name)
@@ -488,7 +528,7 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
 function userInputSetter(this: FilterDbModelsInstance, name: string, value: unknown) {
   /* jshint validthis:true */
   this._internal.filterSettings[name] = value;
-  if (this.isInputConnected('filter') === false) this.scheduleFilter();
+  if (this.shouldRunOnValueChange('filterSettings')) this.scheduleFilter();
 }
 
 /**
@@ -609,6 +649,9 @@ function updatePorts(
           displayName: input,
           group: 'Filter Parameters'
         });
+        // NDA-017 §2. The runtime mints the matching checkbox in `registerInputIfNeeded`;
+        // this is the editor's half, without which it exists but cannot be ticked.
+        ports.push(...runOnChangeDynamicPorts(['fp-' + input], { ['fp-' + input]: input }));
       });
     }
   }

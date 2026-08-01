@@ -93,6 +93,13 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       inputs: ['repeaterComponent']
     }
   ],
+  // NDA-017 §2. Same two-governed-things shape as the Object node it mirrors: `Id` is a value
+  // setter, the record subscription is not a port.
+  runOnValueChange: {
+    controlSignal: 'fetch',
+    inputs: ['modelId'],
+    sources: [{ name: 'record', displayName: 'Record properties' }]
+  },
   initialize: function (this: DbModelNodeInstance) {
     const internal = this._internal;
     internal.inputValues = {};
@@ -100,7 +107,8 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
 
     const _this = this;
     this._internal.onModelChangedCallback = function (args: { name: string }) {
-      if (_this.isInputConnected('fetch')) return;
+      // Was `if (_this.isInputConnected('fetch')) return;`.
+      if (!_this.shouldRunOnValueChange('record')) return;
 
       if (_this.hasOutput('prop-' + args.name)) _this.flagOutputDirty('prop-' + args.name);
 
@@ -211,7 +219,8 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
           value = Model.create(value as Record<string, unknown>).getId(); // If this is an js object, dereference it
 
         this._internal.modelId = value as string; // Wait to fetch data
-        if (this.isInputConnected('fetch') === false) this.setModelID(value as string);
+        // NDA-017 §2. Was `if (this.isInputConnected('fetch') === false)`.
+        if (this.shouldRunOnValueChange('modelId')) this.setModelID(value as string);
         else {
           this.flagOutputDirty('id');
         }
@@ -220,7 +229,8 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
-      description: 'Re-reads the record from the backend, replacing the copy held in memory',
+      description:
+        'Re-reads the record from the backend now, replacing the copy held in memory. This is additional to Id rebinding on change and to changes being announced; untick either under Run On Value Change to stop it',
       valueChangedToTrue: function (this: DbModelNodeInstance) {
         this.scheduleFetch();
       }

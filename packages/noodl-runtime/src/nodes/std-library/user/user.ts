@@ -81,10 +81,20 @@ const UserNodeDefinition: NodeDefinitionOptions = {
     compat: 'partial',
     note: 'Sessions live in browser storage; a server render always sees a logged-out user.'
   },
+  // NDA-017 §2. `Fetch` is this family's control signal, and what it silenced here is not a
+  // value setter — the User node has no value input to suppress. It silenced the node's
+  // *subscription to the user record*, so an author who wired `Fetch` to control when the
+  // user was loaded also, invisibly, stopped every property port updating when the user
+  // changed underneath them.
+  runOnValueChange: {
+    controlSignal: 'fetch',
+    sources: [{ name: 'user', displayName: 'User properties' }]
+  },
   initialize: function (this: UserNodeInstance) {
     const _this = this;
     this._internal.onModelChangedCallback = function (args: ModelChangeEvent) {
-      if (_this.isInputConnected('fetch')) return;
+      // Was `if (_this.isInputConnected('fetch')) return;`.
+      if (!_this.shouldRunOnValueChange('user')) return;
 
       if (_this.hasOutput('prop-' + args.name)) _this.flagOutputDirty('prop-' + args.name);
 

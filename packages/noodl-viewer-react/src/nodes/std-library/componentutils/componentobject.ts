@@ -38,12 +38,20 @@ const ComponentObject: NodeDefinitionOptions = {
   category: 'Component Utilities',
   color: 'component',
   docs: 'https://docs.noodl.net/nodes/component-utilities/component-object',
+  // NDA-017 §2. `Fetch` is this family's control signal. It has no value input to suppress —
+  // what it silenced is the node's subscription to the component object, which is why the old
+  // `Changed` description had to end "unless Fetch is connected".
+  runOnValueChange: {
+    controlSignal: 'fetch',
+    sources: [{ name: 'object', displayName: 'Object properties' }]
+  },
   initialize: function (this: ComponentObjectInstance) {
     this._internal.inputValues = {};
     this._internal.dirtyValues = {};
 
     this._internal.onModelChangedCallback = (args) => {
-      if (this.isInputConnected('fetch') !== false) return;
+      // Was `if (this.isInputConnected('fetch') !== false) return;`.
+      if (!this.shouldRunOnValueChange('object')) return;
 
       if (this.hasOutput('value-' + args.name)) {
         this.flagOutputDirty('value-' + args.name);
@@ -81,7 +89,8 @@ const ComponentObject: NodeDefinitionOptions = {
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
-      description: 'Republishes every property; connecting this stops the outputs updating on their own',
+      description:
+        'Republishes every property now. This is additional to the outputs updating on their own; untick Object properties under Run On Value Change to stop that',
       valueChangedToTrue(this: ComponentObjectInstance) {
         this.scheduleFetch();
       }
@@ -92,7 +101,7 @@ const ComponentObject: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Changed',
       group: 'Events',
-      description: 'Fires when any property is written, unless Fetch is connected'
+      description: 'Fires when any property is written, unless Object properties is unticked under Run On Value Change'
     },
     fetched: {
       type: 'signal',

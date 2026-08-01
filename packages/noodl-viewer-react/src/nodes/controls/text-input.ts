@@ -39,6 +39,11 @@ const TextInputNode = {
       'Focus Events'
     ]
   },
+  // NDA-017 §2. `Set` is this family's control signal and `Text` the one value input it
+  // silenced. Note the group ordering above: the checkbox lands in its own
+  // "Run On Value Change" group, which is not in `groupPriority` and therefore sorts after
+  // the named ones — correct for a configuration affordance nobody reaches for first.
+  runOnValueChange: { controlSignal: 'set', inputs: ['startValue'] },
   getReactComponent() {
     return TextInput;
   },
@@ -114,7 +119,11 @@ const TextInputNode = {
     set: {
       group: 'Actions',
       displayName: 'Set',
-      description: 'Writes the current Text into the field; connect it when you want Text to apply on demand rather than immediately',
+      // NDA-017 §2. The old sentence is the trap written as advice: "connect it when you want
+      // Text to apply on demand" is telling the author to change one port's behaviour by
+      // wiring another.
+      description:
+        'Writes the current Text into the field now. This is additional to Text applying as it arrives; untick Text under Run On Value Change to stop that',
       type: 'signal',
       valueChangedToTrue() {
         this.scheduleAfterInputsHaveUpdated(() => {
@@ -126,7 +135,8 @@ const TextInputNode = {
       index: 18,
       displayName: 'Text',
       type: 'string',
-      description: 'The text to put in the field. Applied immediately unless Set is connected, in which case it waits for a Set pulse',
+      description:
+        'The text to put in the field. Applied as it arrives, unless you untick it under Run On Value Change, in which case it waits for a Set pulse',
       group: 'Text',
       set(value) {
         // NDA-012 (Visual), G1. `null` used to pass straight through to `props.startValue` and
@@ -144,7 +154,15 @@ const TextInputNode = {
         if (this._internal.text === text) return;
 
         this._internal.text = text;
-        if (this.isInputConnected('set') === false) {
+        // NDA-017 §2. Was `if (this.isInputConnected('set') === false)`.
+        //
+        // ⚠️ This node's two modes are the ones NDA-012 warned about as a *fixture*
+        // parameter: `Clear`'s defect lives in one and `startValue`'s in the other, and a
+        // fixture that measured a single mode read three genuine controls as failures. The
+        // modes still exist — they are now selected by the checkbox rather than by whether
+        // `Set` happens to be wired, which means a test can select one without rewiring the
+        // graph.
+        if (this.shouldRunOnValueChange('startValue')) {
           this.setText(text);
         }
       }

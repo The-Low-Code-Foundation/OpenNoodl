@@ -697,6 +697,18 @@
       "docs": "https://docs.noodl.net/nodes/data/boolean",
       "inputs": [
         {
+          "name": "runOnChange-value",
+          "displayName": "Value",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
           "name": "saveValue",
           "displayName": "Set",
           "plug": "input",
@@ -704,7 +716,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
         },
         {
           "name": "treatEmptyAs",
@@ -4747,6 +4760,18 @@
       "docs": "https://docs.noodl.net/nodes/data/color",
       "inputs": [
         {
+          "name": "runOnChange-value",
+          "displayName": "Value",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
           "name": "saveValue",
           "displayName": "Set",
           "plug": "input",
@@ -4754,7 +4779,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
         },
         {
           "name": "treatEmptyAs",
@@ -5114,7 +5140,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Value to test for truth; it is re-tested on every change unless Evaluate is connected"
+          "description": "Value to test for truth; it is re-tested on every change unless you untick it below"
         },
         {
           "name": "eval",
@@ -5126,7 +5152,19 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Tests Condition now; connecting this stops the node testing on every change, so nothing happens until it fires"
+          "description": "Tests Condition now. This is additional to Condition re-testing on change; untick it under Run On Value Change to stop that"
+        },
+        {
+          "name": "runOnChange-condition",
+          "displayName": "Condition",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Condition re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
       "outputs": [
@@ -5139,7 +5177,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "The opposite of Is True, so a false branch needs no Inverter"
+          "description": "The opposite of Is True, so a false branch needs no Inverter; null until the first test"
         },
         {
           "name": "onfalse",
@@ -5172,7 +5210,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Whether the last test found Condition true, for wiring into a value rather than branching on a signal"
+          "description": "Whether the last test found Condition true, for wiring into a value rather than branching on a signal; null until the first test"
         }
       ],
       "dynamicPorts": null,
@@ -5803,6 +5841,34 @@
             "example": "realtime"
           },
           {
+            "pattern": "runOnChange-collectionName",
+            "plug": "input",
+            "group": "Run On Value Change",
+            "valueType": "boolean",
+            "example": "runOnChange-collectionName"
+          },
+          {
+            "pattern": "runOnChange-querySettings",
+            "plug": "input",
+            "group": "Run On Value Change",
+            "valueType": "boolean",
+            "example": "runOnChange-querySettings"
+          },
+          {
+            "pattern": "runOnChange-records",
+            "plug": "input",
+            "group": "Run On Value Change",
+            "valueType": "boolean",
+            "example": "runOnChange-records"
+          },
+          {
+            "pattern": "runOnChange-search",
+            "plug": "input",
+            "group": "Run On Value Change",
+            "valueType": "boolean",
+            "example": "runOnChange-search"
+          },
+          {
             "pattern": "search",
             "plug": "input",
             "group": "Search",
@@ -6176,7 +6242,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Re-reads the record from the backend, replacing the copy held in memory"
+          "description": "Re-reads the record from the backend now, replacing the copy held in memory. This is additional to Id rebinding on change and to changes being announced; untick either under Run On Value Change to stop it"
         },
         {
           "name": "idSource",
@@ -6223,6 +6289,30 @@
           },
           "isSignal": false,
           "description": "Which repeater to take the current item from when nesting makes the nearest one ambiguous; leave blank for the nearest, and ignored unless Id Source is From repeater"
+        },
+        {
+          "name": "runOnChange-modelId",
+          "displayName": "Id",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-record",
+          "displayName": "Record properties",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Record properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
       "outputs": [
@@ -8364,7 +8454,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Re-runs the filter, and wiring anything to this port also stops the node re-running on its own when Items, Enabled or the filter settings change"
+          "description": "Re-runs the filter now. This is additional to it re-running when Items, Enabled, the filter settings or the records themselves change; untick any of those under Run On Value Change to stop it"
         },
         {
           "name": "items",
@@ -8376,6 +8466,54 @@
           },
           "isSignal": false,
           "description": "The records to filter, normally the Items output of a Query Records node"
+        },
+        {
+          "name": "runOnChange-enabled",
+          "displayName": "Enabled",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Enabled re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-filterSettings",
+          "displayName": "Filter settings",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Filter settings re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-items",
+          "displayName": "Items",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Items re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-records",
+          "displayName": "Record changes",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Record changes re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
       "outputs": [
@@ -15452,7 +15590,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Re-reads the object named by Id; connecting anything here switches the node to pull mode, so Id alone no longer rebinds it and changes to the object stop being announced"
+          "description": "Re-reads the object named by Id now. This is additional to Id rebinding on change and to changes being announced; untick either under Run On Value Change to stop it"
         },
         {
           "name": "idSource",
@@ -15512,6 +15650,30 @@
           },
           "isSignal": false,
           "description": "Which Repeater to take the item from when several are nested; leave blank to use the nearest one, and ignored unless Get Id from is From repeater"
+        },
+        {
+          "name": "runOnChange-modelId",
+          "displayName": "Id",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-object",
+          "displayName": "Object properties",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Object properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
       "outputs": [
@@ -16152,6 +16314,18 @@
       "docs": "https://docs.noodl.net/nodes/data/number",
       "inputs": [
         {
+          "name": "runOnChange-value",
+          "displayName": "Value",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
           "name": "saveValue",
           "displayName": "Set",
           "plug": "input",
@@ -16159,7 +16333,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
         },
         {
           "name": "treatEmptyAs",
@@ -24281,6 +24456,18 @@
       "docs": "https://docs.noodl.net/nodes/data/string",
       "inputs": [
         {
+          "name": "runOnChange-value",
+          "displayName": "Value",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
           "name": "saveValue",
           "displayName": "Set",
           "plug": "input",
@@ -24288,7 +24475,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
         },
         {
           "name": "treatEmptyAs",
@@ -30222,7 +30410,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Republishes every property; connecting this stops the outputs updating on their own"
+          "description": "Republishes every property now. This is additional to the outputs updating on their own; untick Object properties under Run On Value Change to stop that"
         },
         {
           "name": "properties",
@@ -30235,6 +30423,18 @@
           },
           "isSignal": false,
           "description": "Names of the values this component keeps, each becoming a matching input and output"
+        },
+        {
+          "name": "runOnChange-object",
+          "displayName": "Object properties",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Object properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
       "outputs": [
@@ -30247,7 +30447,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when any property is written, unless Fetch is connected"
+          "description": "Fires when any property is written, unless Object properties is unticked under Run On Value Change"
         },
         {
           "name": "fetched",
@@ -31330,7 +31530,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Republishes every property from the parent; connecting this stops the outputs updating on their own"
+          "description": "Republishes every property from the parent now. This is additional to the outputs updating on their own; untick Parent object under Run On Value Change to stop that"
         },
         {
           "name": "properties",
@@ -31343,6 +31543,18 @@
           },
           "isSignal": false,
           "description": "Names of the parent values to expose, each becoming a matching input and output"
+        },
+        {
+          "name": "runOnChange-object",
+          "displayName": "Parent object",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Parent object re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
           "name": "targetComponent",
@@ -45277,7 +45489,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Writes the current Text into the field; connect it when you want Text to apply on demand rather than immediately"
+          "description": "Writes the current Text into the field now. This is additional to Text applying as it arrives; untick Text under Run On Value Change to stop that"
         },
         {
           "name": "sizeMode",
@@ -45322,7 +45534,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "The text to put in the field. Applied immediately unless Set is connected, in which case it waits for a Set pulse",
+          "description": "The text to put in the field. Applied as it arrives, unless you untick it under Run On Value Change, in which case it waits for a Set pulse",
           "index": 18
         },
         {
@@ -46936,6 +47148,18 @@
           },
           "isSignal": true,
           "description": "Re-reads the signed-in user from the backend, which is also how an expired session is discovered"
+        },
+        {
+          "name": "runOnChange-user",
+          "displayName": "User properties",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on User properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
       "outputs": [

@@ -71,6 +71,15 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       inputs: ['repeaterComponent']
     }
   ],
+  // NDA-017 §2. `Fetch` is this family's control signal, and it silenced two different
+  // things — which is exactly why the old `fetch` description below had to describe a "pull
+  // mode" rather than an action. `Id` is a value setter; the object subscription is not a
+  // port at all. Both are governed now, and separately.
+  runOnValueChange: {
+    controlSignal: 'fetch',
+    inputs: ['modelId'],
+    sources: [{ name: 'object', displayName: 'Object properties' }]
+  },
   initialize: function (this: ModelNodeInstance) {
     const internal = this._internal;
     internal.inputValues = {};
@@ -78,7 +87,8 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
 
     const _this = this;
     this._internal.onModelChangedCallback = function (args: { name: string }) {
-      if (_this.isInputConnected('fetch') === true) return;
+      // Was `if (_this.isInputConnected('fetch') === true) return;`.
+      if (!_this.shouldRunOnValueChange('object')) return;
 
       if (_this.hasOutput('prop-' + args.name)) _this.flagOutputDirty('prop-' + args.name);
 
@@ -181,7 +191,8 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
           value = Model.create(value as Record<string, unknown>).getId(); // If this is an js object, dereference it
 
         this._internal.modelId = value as string; // Wait to fetch data
-        if (this.isInputConnected('fetch') === false) this.setModelID(value as string);
+        // NDA-017 §2. Was `if (this.isInputConnected('fetch') === false)`.
+        if (this.shouldRunOnValueChange('modelId')) this.setModelID(value as string);
         else {
           this.flagOutputDirty('id');
         }
@@ -197,8 +208,11 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
+      // NDA-017 §2. The old sentence had to invent a name ("pull mode") for a state the
+      // author never chose and could not see. There is no mode any more: the two things it
+      // used to switch off are two checkboxes, and this port only ever adds a trigger.
       description:
-        'Re-reads the object named by Id; connecting anything here switches the node to pull mode, so Id alone no longer rebinds it and changes to the object stop being announced',
+        'Re-reads the object named by Id now. This is additional to Id rebinding on change and to changes being announced; untick either under Run On Value Change to stop it',
       valueChangedToTrue: function (this: ModelNodeInstance) {
         this.scheduleSetModel();
       }

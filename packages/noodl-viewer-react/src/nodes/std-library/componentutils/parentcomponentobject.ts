@@ -79,11 +79,27 @@ const ParentComponentObject: NodeDefinitionOptions = {
   category: 'Component Utilities',
   color: 'component',
   docs: 'https://docs.noodl.net/nodes/component-utilities/parent-component-object',
+  /**
+   * NDA-017 §2. `Fetch` is this family's control signal, and it governed **three** sites on
+   * this node, not one: the object subscription, the rebind when an ancestor's Component
+   * Object changes identity, and the initial bind in `updateComponentState`.
+   *
+   * One checkbox covers all three deliberately. Splitting "which object" from "its
+   * properties" is right on the Object node, where `Id` is a port the author wired and can
+   * reason about separately. Here there is no such port — the binding is resolved by walking
+   * the component tree — so both halves are the same single thing from the author's side:
+   * *this node's parent object*. Two boxes would be two names for one decision.
+   */
+  runOnValueChange: {
+    controlSignal: 'fetch',
+    sources: [{ name: 'object', displayName: 'Parent object' }]
+  },
   initialize(this: ParentComponentObjectInstance) {
     this._internal.inputValues = {};
 
     this._internal.onModelChangedCallback = (args) => {
-      if (this.isInputConnected('fetch') !== false) return;
+      // Was `if (this.isInputConnected('fetch') !== false) return;`.
+      if (!this.shouldRunOnValueChange('object')) return;
 
       if (this.hasOutput('value-' + args.name)) {
         this.flagOutputDirty('value-' + args.name);
@@ -103,7 +119,8 @@ const ParentComponentObject: NodeDefinitionOptions = {
       if (this._internal.modelId !== id) {
         this._internal.modelId = id;
 
-        if (this.isInputConnected('fetch') === false) {
+        // Was `if (this.isInputConnected('fetch') === false)`.
+        if (this.shouldRunOnValueChange('object')) {
           this.setModelId(this._internal.modelId);
         }
       }
@@ -197,7 +214,8 @@ const ParentComponentObject: NodeDefinitionOptions = {
     fetch: {
       displayName: 'Fetch',
       group: 'Actions',
-      description: 'Republishes every property from the parent; connecting this stops the outputs updating on their own',
+      description:
+        'Republishes every property from the parent now. This is additional to the outputs updating on their own; untick Parent object under Run On Value Change to stop that',
       valueChangedToTrue: function (this: ParentComponentObjectInstance) {
         this.setModelId(this._internal.modelId);
       }
@@ -242,7 +260,10 @@ const ParentComponentObject: NodeDefinitionOptions = {
   methods: {
     updateComponentState(this: ParentComponentObjectInstance) {
       this._internal.modelId = this.findParentComponentStateModelId();
-      if (this.isInputConnected('fetch') === false) {
+      // Was `if (this.isInputConnected('fetch') === false)`. Unticking makes the node bind
+      // nothing until `Fetch` fires, which is exactly the behaviour connecting `Fetch` used
+      // to impose silently.
+      if (this.shouldRunOnValueChange('object')) {
         this.setModelId(this._internal.modelId);
       }
     },

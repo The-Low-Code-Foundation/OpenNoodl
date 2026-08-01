@@ -1118,7 +1118,18 @@ export interface NodeDefinitionOptions {
      */
     controlSignal: string;
     /** The value inputs that get a checkbox, keyed to their port names. */
-    inputs: string[];
+    inputs?: string[];
+    /**
+     * Change sources that are governed the same way but are **not input ports**.
+     *
+     * Most of the data families do not suppress a value setter at all — they suppress a
+     * *subscription*. `onModelChangedCallback` opens with
+     * `if (this.isInputConnected('fetch')) return;`, so wiring the control signal stops the
+     * node reacting to the record it is displaying, which is the same trap with no port to
+     * hang a checkbox on. These entries mint one anyway, and `displayName` has to be
+     * supplied because there is no port whose label could be borrowed.
+     */
+    sources?: { name: string; displayName: string }[];
   };
 
   /** Only one instance of this type may exist per project. */

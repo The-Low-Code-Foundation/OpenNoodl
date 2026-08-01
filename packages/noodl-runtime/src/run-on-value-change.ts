@@ -74,7 +74,7 @@
  * against four nodes already.
  */
 
-import type { InputPortDefinition, NodeInstance } from '@noodl/types';
+import type { InputPortDefinition, NodeInstance, RuntimeDiscoveredPort } from '@noodl/types';
 
 /** Prefix identifying a "run on value change" checkbox port. */
 export const RUN_ON_CHANGE_PREFIX = 'runOnChange-';
@@ -146,7 +146,7 @@ export function runOnChangeInputs(
 export function runOnChangeDynamicPorts(
   inputNames: string[],
   displayNames?: Record<string, string>
-): Record<string, unknown>[] {
+): RuntimeDiscoveredPort[] {
   return inputNames.map(function (name) {
     const displayName = (displayNames && displayNames[name]) || name;
     return {

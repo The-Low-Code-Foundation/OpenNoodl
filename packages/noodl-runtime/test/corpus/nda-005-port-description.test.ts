@@ -169,7 +169,11 @@ describe('NDA-005 C1: every static port of the Record family is described', () =
       module: '../../src/nodes/std-library/data/deletedbmodelpropertiesnode',
       staticPorts: 8
     },
-    { typeName: 'FilterDBModels', module: '../../src/nodes/std-library/data/filterdbmodelsnode', staticPorts: 9 }
+    // 9 + the four `runOnChange-…` checkboxes NDA-017 §2 added (`items`, `enabled`, plus the
+    // two non-port sources `records` and `filterSettings`). Their descriptions come from
+    // `runOnChangeInput`, so the coverage half of this row is satisfied by construction — the
+    // count is the half that had to be re-derived, and it is the half this row exists for.
+    { typeName: 'FilterDBModels', module: '../../src/nodes/std-library/data/filterdbmodelsnode', staticPorts: 13 }
   ];
 
   /** Every static port of one node, as `plug.name`, with whatever description it carries. */

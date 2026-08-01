@@ -84,6 +84,14 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
     docs: args.docs,
     nodeDoubleClickAction: args.nodeDoubleClickAction,
     category: 'Variables',
+    // NDA-017 §2. `Set` is this family's control signal.
+    //
+    // Constraint 4 is deliberately *not* applied here, and the distinction is worth stating:
+    // a Variable is a store, not an evaluator. `savedValue` before anything has been set
+    // reports `args.startValue`, which is the type's declared starting value and a real
+    // answer the author can see in the panel — not a number the node invented to stand in for
+    // "nothing has arrived". Abstaining with `null` would be the fabrication here.
+    runOnValueChange: { controlSignal: 'saveValue', inputs: ['value'] },
     initialize: function (this: VariableNodeInstance) {
       this._internal.currentValue = args.startValue;
       this._internal.latestValue = 0;
@@ -110,10 +118,18 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
           // `saveValue`, any more than they should overwrite `currentValue` directly.
           if (value === undefined) return;
 
-          if (this.isInputConnected('saveValue') === false) {
+          // NDA-017 §2. `latestValue` is now recorded unconditionally, and that is a fix in
+          // its own right rather than tidying. It used to be written *only* on the branch
+          // where the value was not stored, which was safe while the two branches were
+          // mutually exclusive for the life of the node — `Set` connected meant the store
+          // branch never ran. With `Set` additive both can happen, and a node that stored
+          // eagerly while leaving `latestValue` behind would revert to a stale value the next
+          // time `Set` was pulsed.
+          this._internal.latestValue = value;
+
+          // Was `if (this.isInputConnected('saveValue') === false)`.
+          if (this.shouldRunOnValueChange('value')) {
             this.setValueTo(value);
-          } else {
-            this._internal.latestValue = value;
           }
         }
       },
@@ -137,6 +153,8 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
       },
       saveValue: {
         displayName: 'Set',
+        description:
+          'Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that',
         valueChangedToTrue: function (this: VariableNodeInstance) {
           this.scheduleAfterInputsHaveUpdated(function (this: VariableNodeInstance) {
             this.setValueTo(this._internal.latestValue);

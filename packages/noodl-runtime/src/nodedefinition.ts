@@ -289,17 +289,28 @@ function defineNode(opts: NodeDefinitionOptions): NodeDefinition {
   // checkbox's label, so the panel reads as a list of this node's inputs rather than as a
   // list of internal port names.
   if (opts.runOnValueChange) {
+    const governedNames: string[] = [];
     const displayNames: Record<string, string> = {};
-    opts.runOnValueChange.inputs.forEach(function (name) {
+
+    (opts.runOnValueChange.inputs || []).forEach(function (name) {
       const governed = opts.inputs[name];
       if (!governed) {
         throw new Error(
           'Node ' + opts.name + ' declares runOnValueChange for input ' + name + ', which it does not have'
         );
       }
+      governedNames.push(name);
       if (governed.displayName) displayNames[name] = governed.displayName;
     });
-    Object.assign(opts.inputs, runOnChangeInputs(opts.runOnValueChange.inputs, displayNames));
+
+    // Sources are not ports, so there is nothing to check them against and nothing to borrow
+    // a label from — see the field's documentation for why they exist at all.
+    (opts.runOnValueChange.sources || []).forEach(function (source) {
+      governedNames.push(source.name);
+      displayNames[source.name] = source.displayName;
+    });
+
+    Object.assign(opts.inputs, runOnChangeInputs(governedNames, displayNames));
   }
 
   let inputs: SharedInputs = {};

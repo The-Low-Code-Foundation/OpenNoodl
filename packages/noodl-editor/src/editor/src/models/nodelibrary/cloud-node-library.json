@@ -1003,7 +1003,29 @@
           "plug": "input",
           "group": "Actions",
           "displayName": "Fetch",
-          "description": "Re-reads the record from the backend, replacing the copy held in memory"
+          "description": "Re-reads the record from the backend now, replacing the copy held in memory. This is additional to Id rebinding on change and to changes being announced; untick either under Run On Value Change to stop it"
+        },
+        {
+          "name": "runOnChange-modelId",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Id",
+          "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-record",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Record properties",
+          "description": "Whether a new value on Record properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
           "name": "id",
@@ -1762,7 +1784,51 @@
           "plug": "input",
           "group": "Actions",
           "displayName": "Filter",
-          "description": "Re-runs the filter, and wiring anything to this port also stops the node re-running on its own when Items, Enabled or the filter settings change"
+          "description": "Re-runs the filter now. This is additional to it re-running when Items, Enabled, the filter settings or the records themselves change; untick any of those under Run On Value Change to stop it"
+        },
+        {
+          "name": "runOnChange-items",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Items",
+          "description": "Whether a new value on Items re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-enabled",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Enabled",
+          "description": "Whether a new value on Enabled re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-records",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Record changes",
+          "description": "Whether a new value on Record changes re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-filterSettings",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Filter settings",
+          "description": "Whether a new value on Filter settings re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
           "name": "items",
@@ -1913,7 +1979,29 @@
           "plug": "input",
           "group": "Actions",
           "displayName": "Fetch",
-          "description": "Re-reads the object named by Id; connecting anything here switches the node to pull mode, so Id alone no longer rebinds it and changes to the object stop being announced"
+          "description": "Re-reads the object named by Id now. This is additional to Id rebinding on change and to changes being announced; untick either under Run On Value Change to stop it"
+        },
+        {
+          "name": "runOnChange-modelId",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Id",
+          "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-object",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Object properties",
+          "description": "Whether a new value on Object properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
           "name": "id",
@@ -2315,7 +2403,19 @@
             "allowConnectionsOnly": true
           },
           "plug": "input",
-          "displayName": "Set"
+          "displayName": "Set",
+          "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
+        },
+        {
+          "name": "runOnChange-value",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Value",
+          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
           "name": "savedValue",
@@ -2387,7 +2487,19 @@
             "allowConnectionsOnly": true
           },
           "plug": "input",
-          "displayName": "Set"
+          "displayName": "Set",
+          "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
+        },
+        {
+          "name": "runOnChange-value",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Value",
+          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
           "name": "savedValue",
@@ -2460,7 +2572,19 @@
             "allowConnectionsOnly": true
           },
           "plug": "input",
-          "displayName": "Set"
+          "displayName": "Set",
+          "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
+        },
+        {
+          "name": "runOnChange-value",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Value",
+          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
           "name": "savedValue",
@@ -2494,7 +2618,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Condition",
-          "description": "Value to test for truth; it is re-tested on every change unless Evaluate is connected"
+          "description": "Value to test for truth; it is re-tested on every change unless you untick it below"
         },
         {
           "name": "eval",
@@ -2505,7 +2629,18 @@
           "plug": "input",
           "group": "Actions",
           "displayName": "Evaluate",
-          "description": "Tests Condition now; connecting this stops the node testing on every change, so nothing happens until it fires"
+          "description": "Tests Condition now. This is additional to Condition re-testing on change; untick it under Run On Value Change to stop that"
+        },
+        {
+          "name": "runOnChange-condition",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Condition",
+          "description": "Whether a new value on Condition re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
           "name": "ontrue",
@@ -3045,6 +3180,17 @@
           "group": "Actions",
           "displayName": "Fetch",
           "description": "Re-reads the signed-in user from the backend, which is also how an expired session is discovered"
+        },
+        {
+          "name": "runOnChange-user",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "User properties",
+          "description": "Whether a new value on User properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
           "name": "id",

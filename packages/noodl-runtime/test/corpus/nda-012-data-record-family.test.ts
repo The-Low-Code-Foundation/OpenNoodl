@@ -82,7 +82,13 @@ function makeInstance(module: any, internal: Record<string, unknown>): Probe {
     hasInput: () => false,
     hasOutput: () => false,
     registerInput: () => {},
-    isInputConnected: () => false
+    isInputConnected: () => false,
+    // NDA-017 §2. This stub stands in for `Node.prototype`, so it has to carry anything the
+    // setters under test call — and `modelId`'s setter now asks whether it is ticked instead
+    // of asking whether `Fetch` is wired. `true` is the real default (absent reads as
+    // ticked), and it is also the answer that keeps D7 measuring what D7 is about: the
+    // *reachable* empty-Id path, which only runs when the setter is live.
+    shouldRunOnValueChange: () => true
   };
 
   const methods = (module.node?.methods || {}) as Record<string, (...a: unknown[]) => unknown>;
