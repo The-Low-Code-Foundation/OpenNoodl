@@ -1,8 +1,16 @@
 # Next session — Visual's per-node audit is the last thing phase 30 needs
 
 Continue on branch `cline-dev` in `/Users/richardosborne/vscode_projects/OpenNoodl`.
-Tip when this was written: `4f08103d`. The checkout is clean apart from another session's
-uncommitted phase-31 files (leave them alone — §8).
+Tip when this was written: `9d65f91b`. **The working tree is completely clean and there is exactly
+one worktree and three branches** — see §8, which is now a record of a cleanup rather than a list of
+things to step around.
+
+⚠️ **"Another session is also committing to `cline-dev`" was false, and had been false for at least
+four handovers.** Richard confirmed it on 2026-08-01: there has only ever been this one session. The
+belief cost real work — a complete 299-line OPS-010 spec sat uncommitted for days because every
+handover told the next session to leave it alone, and each inherited the instruction from the last
+without checking. **It is committed now (`9d65f91b`).** If you find uncommitted work in this repo,
+it is orphaned, not in flight: read it, and commit or discard it deliberately.
 
 ## Where things stand
 
@@ -263,16 +271,42 @@ Bring up from `dev-docs/tasks/phase-16-runtime-deploy-health/uba-e2e`:
 `bcn007_*`, `bcnorch`. ⚠️ **Never truncate `articles` or `authors`.** ⚠️ **Never pipe a probe into
 `head`** — SIGPIPE kills node partway and reads as the server having died.
 
-## §8 — Housekeeping
+## §8 — Housekeeping — the repo was cleaned up on 2026-08-01
 
-- **Another session commits to `cline-dev`.** Explicit pathspecs, never `git add -A`.
-- **Do not touch** `dev-docs/tasks/phase-31-readiness-and-operations/{PROGRESS,README}.md` or
-  `OPS-010-LAUNCH-GUIDANCE.md` — a paused session's uncommitted work, untouched all session.
-- ⚠️ **Three worktrees and branches are still on disk**, deliberately, because they hold the killed
-  workers' context: `scratchpad/wt-nda012v-{visual,controls,navrep}` on branches
-  `wt-nda012v-{visual,controls,navrep}`. **Everything worth keeping has been salvaged and committed**
-  (`a5fdc308`) — remove them with `git worktree remove` + `git branch -D` once you are satisfied.
-  The `wt-bcn*` branches are an older session's leftovers; leave them.
+**State now: one worktree, three branches, clean tree.** `git add -A` is safe again, though explicit
+pathspecs remain the better habit.
+
+| | Before | After |
+|---|---|---|
+| Worktrees | **28** | **1** (the primary) |
+| Branches | **14** | **3** — `cline-dev`, `main`, `nightly-to-main` |
+| Uncommitted files | 3 (phase-31, orphaned) | **0** |
+
+- **24 stale `.claude/worktrees/agent-*` worktrees** from AIX/PNL/DEP/batch-era sessions, plus this
+  session's three, plus `batch-c-editor-shell`, `batch-e-backend` and eight `wt-bcn*` branches — all
+  removed. ⚠️ **Every one was verified merged into `cline-dev` first** (`git branch --no-merged`) and
+  **checked for uncommitted work**; one agent worktree was dirty and its two files already existed in
+  `cline-dev`. `git branch -d` (merged-only) was used deliberately rather than `-D`, so the delete
+  itself was the proof. `.claude/worktrees` is now empty, which also fixes the standing grep trap.
+- `nightly-to-main` is the **only** unmerged branch. It is CI infrastructure — **keep it**.
+- ⚠️ **`main` is 1,007 commits behind `cline-dev`, and `origin/cline-dev` is 857 behind.** See §10.
+- ⚠️ **Five old stashes survive** and two of them (`stash@{0}`, `stash@{3}`) contain the *minified*
+  `project-examples/agent-chat/project.json` (−5,719 lines) — the known editor-launch corruption.
+  **Applying either would damage the example project.** They are AIX-era WIP whose tasks have since
+  shipped. Left in place only because dropping a stash is irreversible; Richard's call.
+- Pre-existing and unowned: `dist-types/src/api/cloudstore.d.ts` has a dangling `packages/…` import,
+  so `tsc -p noodl-viewer-react` needs `--skipLibCheck`. `@noodl/mcp` has **one** pre-existing failing
+  test. The root `tsc` has 18 pre-existing `Cannot find module '@noodl-versioning'` errors.
+
+## §10 — ⚠️ 857 commits exist only on this machine
+
+`cline-dev` is **857 commits ahead of `origin/cline-dev`** and 1,007 ahead of `main`. That is
+essentially the entire revival — every phase from 12 to 34 — living on one disk with no remote copy.
+
+This is the single largest risk to the project and it is **not a technical problem**: the remote
+exists (`github.com/The-Low-Code-Foundation/OpenNoodl`) and nothing is in conflict. It needs a
+decision about whether this work is pushed to a public repository, and that is Richard's alone —
+which is why no session has done it. **Raise it; do not action it unasked.**
 - Pre-existing and unowned: `dist-types/src/api/cloudstore.d.ts` has a dangling `packages/…` import,
   so `tsc -p noodl-viewer-react` needs `--skipLibCheck`. `@noodl/mcp` has **one** pre-existing failing
   test. The root `tsc` has 18 pre-existing `Cannot find module '@noodl-versioning'` errors.
