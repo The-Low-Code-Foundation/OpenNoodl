@@ -1850,6 +1850,39 @@ fixture that does not exist yet.
 verbatim since PLAT-003, so it ignores the component's record scope where Create, Update and both
 relation nodes honour it. Fixing it is a behaviour change for any scoped-store project. Still unowned.
 
+### DA-vi — the third silent success, in a family NDA-004 had already worked over
+
+`Remove Object From Array` reports `Done` for a removal that cannot happen.
+
+NDA-004 §2 fixed the two failures this node could *detect* — no array bound, no Object Id supplied.
+It left the one an author is most likely to hit, because from inside the node an unknown id looks
+exactly like a good one. It is not: `Model.get` mints on read, so an unknown id produces a brand-new
+object that by construction is not in the array; `Array.prototype.remove` finds `indexOf === -1` and
+returns silently (`collection.ts:606-614`); and the node then sends `Done`. **Measured: an array of
+size 1, removing an id never loaded, stays size 1 and reports success.**
+
+`collection-failure.ts`'s own header names this exact thing — *"A completion signal for work that
+went nowhere is the one thing the Failure Contract says must never happen"* — while describing the
+throwaway-array case. **The rule was written down and applied to one of its two causes.** Fixed with
+`Model.exists`, which covers the weakly-held anonymous tier too, so a record reachable only through
+the array itself is still removable; that control is the load-bearing row.
+
+⚠️ **The lesson is about how the previous pass scoped itself.** NDA-004 §2 read these three nodes
+carefully, wrote a shared helper, and stated the principle in the helper's own docstring. It still
+missed this, because it was looking for *nodes that stay silent when they fail* and this is a node
+that **succeeds loudly when it fails**. A sweep framed around one symptom will not find the other,
+even in a file it is editing.
+
+Recorded and deliberately **not** fixed: removing a record that exists but sits in a *different*
+array is still `Done`. That one is genuinely ambiguous — idempotent "make sure this is not in here"
+is a defensible reading — so it is pinned by a row rather than changed.
+
+⚠️ **`Model.get`-as-a-lookup is now four sites in this category alone**: both relation nodes
+(DA-ii), Filter Records' save handler (DA-v), and this. It is the phase's third recurring shape and
+the Data category is where it concentrates, because Data is where ids arrive as strings from
+outside the graph. **A `Model.get` whose result is only ever *read* from, or handed to something
+that compares by identity, is a `Model.exists` question wearing a `Model.get` costume.**
+
 ## What these passes did *not* cover
 
 - **76 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No

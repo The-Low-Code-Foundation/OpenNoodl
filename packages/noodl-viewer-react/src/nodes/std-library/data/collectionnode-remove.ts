@@ -67,6 +67,14 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
             return;
           }
 
+          // NDA-012 (Data). `Model.get` mints on read, so an Id nothing has loaded produces a
+          // fresh object that is by construction not in the array — the removal is a guaranteed
+          // no-op and `Done` below was reporting it as success. See `_failUnknownObjectId`.
+          if (!Model.exists(internal.modifyId)) {
+            this._failUnknownObjectId('remove', internal.modifyId);
+            return;
+          }
+
           const model = Model.get(internal.modifyId);
           internal.collection.remove(model);
           this.sendSignalOnOutput('modified');

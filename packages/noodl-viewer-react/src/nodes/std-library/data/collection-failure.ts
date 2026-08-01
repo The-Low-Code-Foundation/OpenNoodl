@@ -38,6 +38,8 @@ export interface FailableCollectionInstance extends NodeInstance {
   _failNoCollection(action: string): void;
   /** The object to insert or remove was never supplied. */
   _failNoObjectId(action: string): void;
+  /** The Object Id names a record this runtime has never loaded. */
+  _failUnknownObjectId(action: string, id: string): void;
   /** A `Do` that succeeded sheds whatever the last one raised. */
   _clearCollectionFailure(): void;
 }
@@ -154,6 +156,37 @@ export function addCollectionFailure(def: FailableCollectionDef, codePrefix: str
     },
 
     /**
+     * NDA-012 (Data) — the Object Id names a record this runtime has never loaded.
+     *
+     * `Model.get(id)` **mints a record on read** (`model.ts:232`), so handing an unknown id to
+     * `collection.remove` builds a brand-new object and asks the array to remove *that*. By
+     * identity it is not in the array, `Array.prototype.remove` finds `indexOf === -1` and
+     * returns silently — and the node then sent `Done`.
+     *
+     * Measured: an array of size 1, removing an id that was never loaded, stays size 1 while the
+     * node reports success. Identity is *not* the problem — `Model.get(id) === ` the record
+     * already in the array when that record has been loaded, and `contains` is true — so the
+     * mechanism works exactly when the record exists and can never work when it does not.
+     *
+     * That is the case this file's own header calls "the one thing the Failure Contract says must
+     * never happen": a completion signal for work that went nowhere. The header guarded it for an
+     * unresolved *array* and not for an unresolvable *object*.
+     *
+     * `Model.exists` covers both registry tiers — named and weakly-held anonymous
+     * (`model.ts:249-253`) — so a record that exists only because something still holds it is not
+     * mistaken for an absent one.
+     */
+    _failUnknownObjectId: function (this: FailableCollectionInstance, action: string, id: string) {
+      raise.call(
+        this,
+        'unknown-object-id',
+        `Nothing to ${action} — no record with the Id "${id}" has been loaded, so this would have ` +
+          'done nothing. Connect the Id from a query, a Repeater item or an Object node rather than ' +
+          'from a raw string.'
+      );
+    },
+
+    /**
      * A successful `Do` sheds the previous failure.
      *
      * The editor's key is the raised **`code`** — `createEditorWarningSubscriber` files the
@@ -171,6 +204,9 @@ export function addCollectionFailure(def: FailableCollectionDef, codePrefix: str
       const componentName = this.nodeScope.componentOwner.name;
       editorConnection.clearWarning(componentName, this.id, codePrefix + '/no-array');
       editorConnection.clearWarning(componentName, this.id, codePrefix + '/no-object-id');
+      // Added with `_failUnknownObjectId`, and it has to be added *here* or the node keeps a
+      // warning it can never shed — the trap this file exists to make unrepeatable.
+      editorConnection.clearWarning(componentName, this.id, codePrefix + '/unknown-object-id');
       editorConnection.clearWarning(componentName, this.id, 'insert-warning');
     }
   });

@@ -260,10 +260,46 @@ this table shows a category producing nothing new.
   all green at 151 types / 151 documented / 58 cloud types. **`cloud-library:check` is in the gate
   list now** — phase 34 found it had been red unnoticed.
 
-  ⚠️ **The category is 6 of 37. Two families remain**: the Array/Object/Variable family (~14 nodes)
-  and the agentic/streaming family (~16 AIX nodes — SSE, WebSocket, Global Store, Action Dispatcher,
-  Stream Buffer and siblings), plus `Run Tasks`, already covered by NDA-009. **C1 port descriptions
-  are owed for all six nodes audited so far** and are the reason the category still reads 12.7%.
+  **The Array family started the same day — `Remove Object From Array`, DA-vi.** The node reports
+  `Done` for a removal that cannot happen: `Model.get` mints on read, so an `Object Id` naming a
+  record nothing has loaded targets a brand-new object that is by construction not in the array,
+  `remove` finds `indexOf === -1` and returns, and `Done` fires. Measured: size 1 → size 1, reported
+  as success. **Fixed** with `Model.exists` — which covers the weakly-held anonymous tier, so a
+  record reachable only through the array itself is still removable, and that control is the
+  load-bearing row. 3 rows added to `nda-004-array-mutators.test.ts`; the mutation reddens exactly
+  one. Viewer jest **382 / 0**, viewer typecheck clean.
+
+  ⚠️ **DA-vi is a comment on how NDA-004 §2 scoped itself.** That pass read these three nodes
+  closely, built them a shared failure helper, and wrote the governing principle into the helper's
+  own docstring — *"a completion signal for work that went nowhere is the one thing the Failure
+  Contract says must never happen"* — and then applied it to one of that sentence's two causes. It
+  was looking for **nodes that stay silent when they fail**; this is a node that **succeeds loudly
+  when it fails**. A sweep framed around one symptom will not find the other, even in a file it is
+  editing. Also pinned rather than fixed: removing a record that exists but sits in a *different*
+  array stays `Done`, because idempotent "make sure this is not in here" is defensible.
+
+  ⚠️ **`Model.get`-used-as-a-lookup is four sites in this category alone** — both relation nodes,
+  Filter Records' save handler, and this. Banked: **a `Model.get` whose result is only read from, or
+  handed to something that compares by identity, is a `Model.exists` question wearing a `Model.get`
+  costume.** Data is where it concentrates because Data is where ids arrive as strings from outside
+  the graph.
+
+  ⚠️ **The category is 7 of 37 and this is an increment, not a finished pass.** Remaining: the rest
+  of the Array/Object/Variable family (~13 nodes — `Array`, `Array Filter`, `Array Map`,
+  `Static Array`, `Object`, `Set Object Properties`, `Create New Object`, `Variable`, `Set Variable`,
+  `Repeater Item`, `Clear Array`, `Create New Array`, `Insert Object Into Array`) and the whole
+  agentic/streaming family (~16 AIX nodes — SSE, WebSocket, Global Store ×3, Action Dispatcher,
+  Action Handler, Stream Buffer, Text Accumulator, JSON Stream Parser, Optimistic Update, Pattern
+  Extractor, State History ×3). `Run Tasks` is in this category but already audited under NDA-009.
+  **C1 port descriptions are owed for all seven audited so far**, which is why the category still
+  reads 12.7%.
+
+  **Two leads worth taking first next time**, both already evidenced here: `Insert Object Into Array`
+  has DA-vi's sibling shape (a duplicate insert is a silent no-op and still reports `Done`, measured)
+  and it is *not* obviously a defect, because minting a record by id may be how authors build arrays
+  — it needs a decision, not a fix. And **`shortDesc` is rotting across the whole family**: `Insert`,
+  `Remove`, `Array` and `Create New Array` all carry the same sentence describing the *noun* on four
+  different verbs, which is DA-iv's shape at four more sites.
 
 - **2026-07-31 (Data HELD — Richard is merging the backends into these nodes).** Told to the session
   the same day the scope was settled: a sprint is in flight to **merge all backends into the same

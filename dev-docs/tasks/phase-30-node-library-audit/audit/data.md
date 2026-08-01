@@ -544,24 +544,28 @@ Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/pattern-ex
 
 3 inputs / 3 outputs · 1 signal in / 2 signal out · docs 0% · SSR `safe` · browser
 
-Source: _(fill in)_ · Docs: [link](https://docs.noodl.net/nodes/data/array/remove-from-array)
+Source: `packages/noodl-viewer-react/src/nodes/std-library/data/collectionnode-remove.ts`, over
+`collection-failure.ts` · Docs: [link](https://docs.noodl.net/nodes/data/array/remove-from-array)
 
 | Check | Pre-filled | Verdict | Note |
 |---|---|---|---|
-| A1 |  | ⬜ | |
-| A2 |  | ⬜ | |
-| A3 |  | ⬜ | |
-| G1 |  | ⬜ | |
-| B1 | ✅ has one | ⬜ | |
-| B2 |  | ⬜ | |
-| B3 | ✅ | ⬜ | |
-| C1 | ⚠️ **0%** (0/6) | ⬜ | |
-| D1 |  | ⬜ | |
-| E1 | ✅ no dead-end types | ⬜ | |
-| F1 |  | ⬜ | |
-| H1 | declares `safe` | ⬜ | |
+| A1 |  | ✅ | `Array.prototype.remove` → `removeAtIndex` notifies `remove` and `change` (`collection.ts:630-641`). |
+| A2 |  | ✅ | `Do` re-reads the bound collection each time; nothing cached. |
+| A3 |  | ✅ | One `scheduleAfterInputsHaveUpdated` per `Do`. |
+| G1 |  | ✅ | NDA-004 §2 settled this port: both empty values unbind `Array Id`, with the reasoning in `collection-failure.ts`. |
+| B1 | ✅ has one | ⚠️ **DA-vi** | It has `Failure`/`Error` — for the two cases it could already *detect*. The case an author actually hits was silent success: an `Object Id` that names a record nothing has loaded. `Model.get` mints on read, so the removal targets a brand-new object that is by construction not in the array, `remove` finds `indexOf === -1` and returns, and the node sent **`Done`**. Measured: size 1 → size 1, reported as success. That is precisely what `collection-failure.ts`'s own header calls "the one thing the Failure Contract says must never happen" — the header guarded an unresolved *array* and not an unresolvable *object*. **Fixed** with `Model.exists` (which covers the weakly-held anonymous tier, so a record held only by the array is still removable — that control is load-bearing). 3 rows in `nda-004-array-mutators.test.ts`. |
+| B2 |  | ✅ | Raised on the NDA-004 bus via the shared `raise`. |
+| B3 | ✅ | ✅ | `Do` → `Done` \| `Failure`. |
+| C1 | ⚠️ **0%** (0/6) | ⬜ | Owed. |
+| D1 |  | ✅ | No bare string contracts. |
+| E1 | ✅ no dead-end types | ✅ | — |
+| F1 |  | ✅ | `Array Id` names the target explicitly; `resolveCollectionId` refuses to mint a throwaway. |
+| H1 | declares `safe` | ✅ | Holds only a collection reference; nothing to unwind. |
 
-**Verdict:** ⬜ not audited
+**Verdict:** ⚠️ 1 defect (DA-vi, fixed) · 🔵 **pinned, not fixed:** removing a record that *exists*
+but sits in a different array is still reported as `Done`. Genuinely ambiguous — an idempotent
+"make sure this is not in here" is defensible, and unlike the fixed case the operation is not
+impossible, merely unnecessary. Pinned by a row so it is a decision rather than an accident.
 
 ---
 

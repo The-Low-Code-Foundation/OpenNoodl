@@ -290,6 +290,84 @@ describe('NDA-004 §2: Remove Object From Array', () => {
   });
 });
 
+/**
+ * NDA-012 (Data) — the third silent success, which §2 did not reach.
+ *
+ * §2 above fixed the two cases the node could already *detect*: no array bound, no Object Id
+ * supplied. It left the one an author is most likely to hit — an Object Id that names a record
+ * nothing has loaded — because from inside the node it looks indistinguishable from a good one.
+ *
+ * It is not. `Model.get` mints on read (`model.ts:232`), so an unknown id produces a brand-new
+ * object that by construction is not in the array; `Array.prototype.remove` finds
+ * `indexOf === -1` and returns silently (`collection.ts:606-614`); and the node then sent `Done`.
+ * Measured before the fix: an array of size 1, removing an id never loaded, stays size 1 while
+ * the node reports success.
+ *
+ * That is exactly what `collection-failure.ts`'s own header calls "the one thing the Failure
+ * Contract says must never happen" — a completion signal for work that went nowhere. The header
+ * guarded it for an unresolved *array* and not for an unresolvable *object*.
+ */
+describe('NDA-012: Remove Object From Array, an Object Id nothing has loaded', () => {
+  test('fires Failure rather than Done for a removal that cannot happen', async () => {
+    const arrayId = freshArrayId();
+    Collection.get(arrayId).set([Model.get('object-a')]);
+
+    const graph = await mutatorGraph({ kind: 'remove', arrayId });
+    // A syntactically fine id that no query, repeater or Object node ever produced.
+    await pressDo(graph, 'nda012-never-loaded');
+
+    expect(graph.signalsFor('mutator')).toContain('failure');
+    expect(graph.signalsFor('mutator')).not.toContain('modified');
+    expect(graph.errors.map((e) => e.code)).toEqual(['remove-from-array/unknown-object-id']);
+    // The array is untouched — which was true before the fix too. What changed is that the node
+    // now says so.
+    expect(Collection.get(arrayId).size()).toBe(1);
+  });
+
+  /**
+   * ✅ The load-bearing control.
+   *
+   * `Model.exists` covers the weakly-held anonymous tier as well as the named one
+   * (`model.ts:249-253`). A record that exists only because the *array itself* still holds it
+   * must not be mistaken for an absent one, or this fix would break the ordinary case of
+   * removing a repeater item.
+   */
+  test('(control) a record reachable only through the array is still removable', async () => {
+    const arrayId = freshArrayId();
+    const held = Model.get('nda012-held-only-by-the-array');
+    Collection.get(arrayId).set([held]);
+
+    const graph = await mutatorGraph({ kind: 'remove', arrayId });
+    await pressDo(graph, 'nda012-held-only-by-the-array');
+
+    expect(graph.signalsFor('mutator')).toEqual(['modified']);
+    expect(graph.errors).toEqual([]);
+    expect(Collection.get(arrayId).size()).toBe(0);
+  });
+
+  /**
+   * 🔵 Recorded, not fixed: removing a record that exists but is in a *different* array is still
+   * reported as `Done`.
+   *
+   * That one is genuinely ambiguous — an idempotent "make sure this is not in here" is a
+   * defensible reading, and unlike the row above the operation is not impossible, merely
+   * unnecessary. Pinned so the current behaviour is a decision rather than an accident.
+   */
+  test('(pinned) a record in a different array is a silent no-op, by current design', async () => {
+    const arrayId = freshArrayId();
+    const otherId = freshArrayId();
+    Collection.get(arrayId).set([Model.get('object-a')]);
+    Collection.get(otherId).set([Model.get('nda012-elsewhere')]);
+
+    const graph = await mutatorGraph({ kind: 'remove', arrayId });
+    await pressDo(graph, 'nda012-elsewhere');
+
+    expect(graph.signalsFor('mutator')).toEqual(['modified']);
+    expect(graph.errors).toEqual([]);
+    expect(Collection.get(arrayId).size()).toBe(1);
+  });
+});
+
 describe('NDA-004 §2: Clear Array', () => {
   test('a Do with no array bound reports Failure rather than throwing a TypeError', async () => {
     const graph = await mutatorGraph({ kind: 'clear' });
