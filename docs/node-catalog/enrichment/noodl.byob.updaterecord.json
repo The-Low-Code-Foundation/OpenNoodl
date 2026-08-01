@@ -2,7 +2,7 @@
   "typeName": "noodl.byob.UpdateRecord",
   "summary": "Update Record (BYOB): writes changed property values onto an existing record in a self-hosted backend by id.",
   "description": "When `update` fires, the record targeted by the node's id input is patched with the values on its schema-generated property inputs. `success` returns the updated `record`; `failure` a structured `error`; `loading` spans the request. As with all BYOB nodes, dependent Query Data results must be re-fetched explicitly.",
-  "whenToUse": "Editing records on a self-hosted backend. On the managed cloud backend use Set Record Properties (SetDbModelProperties).",
+  "whenToUse": "Editing records on a self-hosted backend. On the managed cloud backend use Update Record (SetDbModelProperties).",
   "ports": {
     "update": "Signal; performs the patch.",
     "record": "The record as returned by the backend after the update."

@@ -115,6 +115,18 @@ const COLOR_SPECS = {
    */
   danger: { css: '--theme-color-danger', fallback: '#f97066' },
 
+  /**
+   * Amber, for the unhealthy ring on a node whose warnings are all `warning`
+   * level — BCN-010.
+   *
+   * The phase-23 law reserves red for danger and gives amber to warning, and
+   * until capability gating existed the distinction never came up on the canvas:
+   * every node warning was in practice an error (a missing type, an illegal
+   * child) so one red ring was right by accident. "Directus has no magic-link
+   * login" is not an error, and drawn in red it reads as a broken node.
+   */
+  warning: { css: '--theme-color-warning', fallback: '#fdb022' },
+
   /* --- Annotations (diff/review — SUB-007 / AIX-003) ---------------------- */
   annotationCreated: { css: '--theme-color-success', fallback: '#3ccb7f' },
   annotationChanged: { css: '--theme-color-warning', fallback: '#fdb022' },

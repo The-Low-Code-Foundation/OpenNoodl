@@ -19,3 +19,5 @@ export * from './realtime';
 export * from './filter';
 export * from './descriptors';
 export * from './wire';
+export * from './nodeCapabilities';
+export * from './probes';

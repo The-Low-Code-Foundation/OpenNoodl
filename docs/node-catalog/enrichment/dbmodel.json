@@ -1,8 +1,8 @@
 {
   "typeName": "DbModel",
   "summary": "Deprecated cloud record node that mixed reading, writing and deleting in one node; superseded by DbModel2 and the dedicated write nodes.",
-  "description": "DbModel (Model) is the original cloud-record node: one node that fetched, created, saved and deleted a database record via `fetch`, `new`, `insert`, `save` and `delete` signal inputs. It is deprecated and hidden from the node picker. Reading a record is now done with DbModel2 (Record); writing is split into NewDbModelProperties (Create New Record), SetDbModelProperties (Set Record Properties) and DeleteDbModelProperties (Delete Record), which are simpler to reason about because each node performs exactly one operation.",
-  "whenToUse": "Do not use in new graphs — use DbModel2 (Record) for reading and Create New Record / Set Record Properties / Delete Record for writing instead.",
+  "description": "DbModel (Model) is the original cloud-record node: one node that fetched, created, saved and deleted a database record via `fetch`, `new`, `insert`, `save` and `delete` signal inputs. It is deprecated and hidden from the node picker. Reading a record is now done with DbModel2 (Record); writing is split into NewDbModelProperties (Create Record), SetDbModelProperties (Update Record) and DeleteDbModelProperties (Delete Record), which are simpler to reason about because each node performs exactly one operation.",
+  "whenToUse": "Do not use in new graphs — use DbModel2 (Record) for reading and Create Record / Update Record / Delete Record for writing instead.",
   "runtimeBehavior": "Ports are runtime-determined: property inputs/outputs were generated per instance from the selected cloud database class schema and pushed to the editor. An authoring tool should not place this node at all; the static port list is incomplete by design.",
   "relatedNodes": ["DbModel2", "NewDbModelProperties", "SetDbModelProperties", "DeleteDbModelProperties"]
 }

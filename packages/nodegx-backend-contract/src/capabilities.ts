@@ -50,6 +50,19 @@ export interface CapabilityProbe {
   path: string;
   /** What a positive answer looks like, in prose, for whoever implements it. */
   expect: string;
+  /**
+   * Which transport settles this one. BCN-010.
+   *
+   * `expect` is prose — deliberately, because "probe the exact thing" is
+   * per-capability knowledge that no generic interpreter can recover from a
+   * status code. But a runner still has to know whether to open a socket or
+   * make a request before it can read the prose, and three of the conditional
+   * cells (`realtime.subscribe` on Directus, Parse and Supabase) are settled
+   * only by a 101 upgrade that `method`/`path` alone do not describe.
+   *
+   * Absent means `'http'`, which is what every other probe is.
+   */
+  kind?: 'http' | 'websocket';
 }
 
 /**
@@ -179,4 +192,160 @@ export function isUsable(capability: Capability): boolean {
 /** The sentence to show the user, or undefined when there is nothing to say. */
 export function reasonFor(capability: Capability): string | undefined {
   return capability.state === 'supported' ? undefined : capability.reason;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BCN-010 — resolving a cell into something a view can render
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** What a probe learned about one `conditional` cell on one instance. */
+export interface ProbeOutcome {
+  verdict: 'supported' | 'unsupported';
+  /** `Date.now()` when it was learned. Positives expire; see {@link resolveGate}. */
+  at: number;
+  /** Optional detail for the reason line — what the instance actually answered. */
+  detail?: string;
+}
+
+/** Probe outcomes for one backend instance, keyed by capability. */
+export type ProbeResults = Readonly<Partial<Record<CapabilityKey, ProbeOutcome>>>;
+
+/**
+ * How long a **positive** probe result may be believed, in milliseconds.
+ *
+ * The asymmetry is the whole point and it is the spec's trap written as a
+ * number: *"a Directus instance with WebSockets switched off after the probe
+ * will claim realtime works"*. A stale positive is a claim we cannot back; a
+ * stale negative merely under-promises. So positives expire and negatives do
+ * not — **prefer a fast negative over a cached positive.**
+ *
+ * Five minutes rather than a session: long enough that the panel is not
+ * re-probing on every repaint, short enough that a builder who turns
+ * WebSockets on and comes back does not have to restart the editor.
+ */
+export const POSITIVE_PROBE_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * One cell, resolved against an instance — the shape every view renders from.
+ *
+ * `declared` and `effective` are separate because they answer different
+ * questions. `declared` is what the descriptor says about the *type*; the panel
+ * uses it to explain that a cell is conditional at all. `effective` is what the
+ * user may do *right now* and is the only thing a disabled state should be
+ * computed from.
+ */
+export interface CapabilityGate {
+  /** What the descriptor says about the backend type. */
+  declared: CapabilityState;
+  /** What this instance can do right now. `conditional` never survives to here. */
+  effective: 'supported' | 'unsupported' | 'degraded';
+  /** May a node attempt this right now? True for `supported` and `degraded`. */
+  isUsable: boolean;
+  /**
+   * The sentence to put on screen.
+   *
+   * **Guaranteed present whenever `isUsable` is false, and whenever `effective`
+   * is `degraded`.** That guarantee is the task: a disabled port with no reason
+   * converts "this backend cannot do that" into "this is broken", and it is
+   * pinned by a test over every cell of every descriptor rather than by review.
+   */
+  reason?: string;
+  /** True when `declared === 'conditional'` and no usable probe result is in hand. */
+  isUnprobed: boolean;
+  /** The probe that would settle it, when there is one still to run. */
+  probe?: CapabilityProbe;
+}
+
+/** Options for {@link resolveGate}. */
+export interface GateOptions {
+  /** What a probe has learned about this instance, if anything. */
+  probes?: ProbeResults;
+  /** Injected clock, so the expiry rule is testable without waiting. */
+  now?: number;
+  /** Override for {@link POSITIVE_PROBE_TTL_MS}. */
+  positiveTtlMs?: number;
+}
+
+/**
+ * Resolve one capability cell into a {@link CapabilityGate}.
+ *
+ * The `conditional` rule is the descriptor's own, quoted from this module's
+ * header: *"Treating `conditional` as `unsupported` until a probe proves
+ * otherwise is what makes the editor's claim safe."* So an unprobed conditional
+ * is **not usable**, and it carries the cell's reason — which is written for
+ * exactly this reading ("Live updates need WebSockets enabled on your Directus
+ * instance. They are off by default.").
+ *
+ * @param capability the descriptor cell
+ * @param key which cell it is, so a probe result can be looked up
+ */
+export function resolveGate(capability: Capability, key: CapabilityKey, options: GateOptions = {}): CapabilityGate {
+  if (capability.state === 'supported') {
+    return { declared: 'supported', effective: 'supported', isUsable: true, isUnprobed: false };
+  }
+
+  if (capability.state === 'degraded') {
+    return {
+      declared: 'degraded',
+      effective: 'degraded',
+      isUsable: true,
+      reason: capability.reason,
+      isUnprobed: false
+    };
+  }
+
+  if (capability.state === 'unsupported') {
+    return {
+      declared: 'unsupported',
+      effective: 'unsupported',
+      isUsable: false,
+      reason: capability.reason,
+      isUnprobed: false
+    };
+  }
+
+  // `conditional`.
+  const outcome = usableOutcome(options.probes?.[key], options);
+
+  if (outcome?.verdict === 'supported') {
+    return { declared: 'conditional', effective: 'supported', isUsable: true, isUnprobed: false };
+  }
+
+  if (outcome?.verdict === 'unsupported') {
+    return {
+      declared: 'conditional',
+      effective: 'unsupported',
+      isUsable: false,
+      // The probe's own detail leads when there is one — "your instance answered
+      // X" is a better sentence than "instances may or may not" once we asked —
+      // but the declared reason is always there behind it, so the guarantee that
+      // a disabled gate carries a reason never depends on a probe writing prose.
+      reason: outcome.detail ? `${capability.reason} (${outcome.detail})` : capability.reason,
+      isUnprobed: false,
+      probe: capability.probe
+    };
+  }
+
+  return {
+    declared: 'conditional',
+    effective: 'unsupported',
+    isUsable: false,
+    reason: capability.reason,
+    isUnprobed: true,
+    probe: capability.probe
+  };
+}
+
+/**
+ * A probe outcome, or `undefined` if it may no longer be believed.
+ *
+ * Only positives expire. See {@link POSITIVE_PROBE_TTL_MS}.
+ */
+function usableOutcome(outcome: ProbeOutcome | undefined, options: GateOptions): ProbeOutcome | undefined {
+  if (!outcome) return undefined;
+  if (outcome.verdict === 'unsupported') return outcome;
+
+  const ttl = options.positiveTtlMs ?? POSITIVE_PROBE_TTL_MS;
+  const now = options.now ?? Date.now();
+  return now - outcome.at <= ttl ? outcome : undefined;
 }

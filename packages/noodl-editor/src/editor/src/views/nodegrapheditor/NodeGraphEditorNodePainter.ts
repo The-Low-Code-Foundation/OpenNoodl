@@ -317,12 +317,19 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     ctx.lineWidth = 1;
     strokeRoundRect(ctx, x, y, node.nodeSize.width, node.nodeSize.height, NodeGraphEditorNode.cornerRadius);
 
-    // Unhealthy: dashed danger ring (red is an error here, allowed)
+    // Unhealthy: a dashed ring, in the colour the *level* earns.
+    //
+    // ⚠️ BCN-010. Red is danger-only under phase 23's colour law, and until this
+    // task every node warning was in practice an error — a missing type, an
+    // illegal child — so one `theme.danger` ring was right by accident. A
+    // capability gap is the first routine `warning`: the node works, it is the
+    // *backend* that will refuse. Drawn in red it reads as a broken node, which
+    // is the exact misreading this task exists to prevent, one layer up.
     const health = node.model.getHealth();
     if (!health.healthy) {
       ctx.setLineDash([5]);
       ctx.lineWidth = 1;
-      ctx.strokeStyle = theme.danger;
+      ctx.strokeStyle = health.level === 'warning' ? theme.warning : theme.danger;
       ctx.globalAlpha = 0.7;
       strokeRoundRect(
         ctx,

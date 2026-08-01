@@ -2,6 +2,8 @@ import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
 import { NodeLibrary } from '@noodl-models/nodelibrary';
+import { capabilityProbes, gateForPort, resolveGateTarget, type GateTarget } from '@noodl-utils/capability-gating';
+import { decoratePortElement } from '@noodl-utils/capability-gating/portDecoration';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
 import View from '../../../../../../shared/ListenableView';
@@ -70,6 +72,7 @@ export class Ports extends View {
   groups: TSFixme[];
   el: HTMLElement;
   private root: Root | null = null;
+  private _unsubscribeProbes: (() => void) | null = null;
 
   constructor(args) {
     super();
@@ -78,6 +81,9 @@ export class Ports extends View {
     this._selectedTabForGroup = {};
 
     this.bindModel(this.model);
+
+    // BCN-010: a probe settles asynchronously, so the panel has to be told.
+    this._unsubscribeProbes = capabilityProbes().onChange(() => this.renderGroups());
   }
   showPopout(popout) {
     if (this.activePopout) {
@@ -131,6 +137,8 @@ export class Ports extends View {
       );
   }
   dispose() {
+    this._unsubscribeProbes && this._unsubscribeProbes();
+    this._unsubscribeProbes = null;
     this.model && this.model.off(this);
     // @ts-expect-error
     this.model && this.model.owner && this.model.owner.off(this);
@@ -145,13 +153,59 @@ export class Ports extends View {
 
     this.hidePopout();
   }
+  /**
+   * Everything the gates would render, as a string, for the re-render hash.
+   *
+   * Computed rather than snapshotted from the cache so it also moves when the
+   * *project's* backend changes, which is the switch the live pass drives.
+   */
+  private capabilitySignature(): string {
+    const typeName = this.model.type && (this.model.type.name || this.model.type.localName);
+    if (!typeName) return '';
+    const target = this.capabilityTarget();
+    const parts = [target.backendId || '', target.type || ''];
+    for (const port of this._getPorts()) {
+      const gate = gateForPort(typeName, port.name, target);
+      if (gate) parts.push(`${port.name}:${gate.effective}:${gate.reason || ''}`);
+    }
+    return parts.join('|');
+  }
+
+  /**
+   * The backend this node's ports are gated against — BCN-010.
+   *
+   * Resolved once per render rather than per row: every port on one node
+   * resolves to the same backend, and `resolveGateTarget` reads project
+   * metadata. The node's own `backendId` parameter wins when it has one (the
+   * six Record and two relation nodes, since BCN-004 step 5); everything else
+   * gets the project's active backend, which is what it resolves to at runtime.
+   */
+  private capabilityTarget(): GateTarget {
+    try {
+      const backendId = this.model.getParameter ? (this.model.getParameter('backendId') as string) : undefined;
+      return resolveGateTarget(backendId);
+    } catch (e) {
+      // A panel that cannot resolve a backend must still render its ports.
+      return {};
+    }
+  }
+
   /** Render a group's views (and their child views) and collect their elements. */
   renderParams(views): TSFixme[] {
     const els = [];
+    const target = this.capabilityTarget();
+    const typeName = this.model.type && (this.model.type.name || this.model.type.localName);
+
     for (const j in views) {
       const v = views[j];
       v.childViews && v.childViews.forEach((v) => v.render()); // Render any child views first
-      els.push(v.render());
+
+      // BCN-010: the one place every row's element passes through, whatever
+      // class produced it. See `portDecoration.ts` for why the gate is a wrapper
+      // here rather than two props on twenty-nine row classes.
+      const el = v.render();
+      const gate = typeName && v.name ? gateForPort(typeName, v.name, target) : undefined;
+      els.push(gate ? decoratePortElement(el, gate, target, v.name) : el);
     }
     return els;
   }
@@ -160,7 +214,13 @@ export class Ports extends View {
 
     const inputData = {
       ports: this._getPorts(),
-      variant: this.model.variantName
+      variant: this.model.variantName,
+      // BCN-010: without this, a probe that settles *after* the panel is open
+      // never reaches the screen — the ports have not changed, so the hash has
+      // not changed, and `renderGroups` returns early. Subscribe To Changes on
+      // Directus is exactly that case: it paints closed-because-unprobed and
+      // then a real answer arrives ~200ms later.
+      capabilities: this.capabilitySignature()
     };
 
     const _portsHash = JSON.stringify(inputData);

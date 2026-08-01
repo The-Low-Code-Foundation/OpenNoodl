@@ -2,7 +2,7 @@
   "typeName": "DeleteDbModelProperties",
   "summary": "Delete Record: permanently removes one record from the cloud database by id when its store signal fires.",
   "description": "Delete Record removes the record identified by `modelId` (or, per `idSource`, the enclosing repeater item) from its class when `store` fires. `deleted` confirms; `failure`/`error` carry access-control or missing-record problems. Query Records nodes observing the class see the record leave their results automatically.",
-  "whenToUse": "Destructive removal of cloud records. If the product needs undo or soft delete, model an 'archived' flag with Set Record Properties instead — deletion is final.",
+  "whenToUse": "Destructive removal of cloud records. If the product needs undo or soft delete, model an 'archived' flag with Update Record instead — deletion is final.",
   "ports": {
     "modelId": "Id of the record to delete.",
     "store": "Signal; performs the deletion.",

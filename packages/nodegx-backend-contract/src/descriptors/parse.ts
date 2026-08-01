@@ -159,6 +159,7 @@ export const parseDescriptor: BackendDescriptor = {
       'Live updates need a Parse LiveQuery server, which most Parse setups do not run. Check with whoever hosts yours.',
       {
         method: 'GET',
+        kind: 'websocket',
         path: '/',
         expect:
           'a 101 upgrade on the ws:// endpoint, followed by a {"op":"connected"} reply to a connect op. The HTTP API cannot answer this question. Deadline the attempt — an absent LiveQuery server is SILENT in every place a client would look.'

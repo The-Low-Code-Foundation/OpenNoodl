@@ -16,6 +16,9 @@ import type { CatalogNode, CatalogPort, NodeCatalog } from './editor-deps';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const enrichedJson = require('../../noodl-types/src/node-catalog-enriched.json');
 
+// BCN-010: the capability tables, read rather than restated.
+import { BACKEND_TYPES, capabilitiesForNode, gateFor } from '@noodl/backend-contract';
+
 // ─── Enrichment shapes (authored by SUB-005; all fields optional in practice) ──
 
 export interface NodeEnrichment {
@@ -185,6 +188,28 @@ export interface NodeTypeDetail {
   /** Hints for children rules of visual containment, when declared. */
   allowAsChild?: unknown;
   allowChildrenWithCategory?: unknown;
+  /**
+   * BCN-010 — what this node needs from the project's backend, and which
+   * backends refuse it.
+   *
+   * The editor shows this as a disabled port or a marked node with a sentence
+   * on it. An agent authoring a graph through MCP has no property panel to read,
+   * so it gets the same facts here — otherwise the one surface that cannot see
+   * the gate is the one most likely to write a graph that quietly does not work.
+   *
+   * `notOn` is written as prose per backend rather than as states, because the
+   * sentence *is* the deliverable and an agent relaying "PocketBase can't total
+   * or average records on the server" to a user is worth more than relaying
+   * `unsupported`.
+   */
+  capability?: {
+    /** The contract capability key the node as a whole needs. */
+    key?: string;
+    /** Per-port requirements, keyed by port name. */
+    ports?: Record<string, string>;
+    /** Backend type → the reason it cannot (or only partly can) serve this. */
+    notOn?: Record<string, string>;
+  };
 }
 
 export interface NodeTypeLookupMiss {
@@ -286,7 +311,39 @@ export function getNodeTypeDetail(typeName: string): NodeTypeDetail | NodeTypeLo
   const anyN = n as unknown as Record<string, unknown>;
   if (anyN.allowAsChild !== undefined) detail.allowAsChild = anyN.allowAsChild;
   if (anyN.allowChildrenWithCategory !== undefined) detail.allowChildrenWithCategory = anyN.allowChildrenWithCategory;
+  const capability = capabilityFor(typeName);
+  if (capability) detail.capability = capability;
   return detail;
+}
+
+/**
+ * The capability facts for one type, or `undefined` when it binds nothing.
+ *
+ * Reads the same two tables the editor's gate does — `NODE_CAPABILITIES` for
+ * what the node asks and `BACKEND_DESCRIPTORS` for what each backend answers —
+ * so there is no third statement of either anywhere.
+ */
+function capabilityFor(typeName: string): NodeTypeDetail['capability'] {
+  const binding = capabilitiesForNode(typeName);
+  if (!binding) return undefined;
+
+  const out: NonNullable<NodeTypeDetail['capability']> = {};
+  if (binding.node) out.key = binding.node;
+  if (binding.ports && Object.keys(binding.ports).length) out.ports = { ...binding.ports };
+
+  if (binding.node) {
+    const notOn: Record<string, string> = {};
+    for (const type of BACKEND_TYPES) {
+      // `custom` is declared by the user, so shipping its floor as a fact about
+      // a real backend would be misinformation rather than a gap.
+      if (type === 'custom') continue;
+      const gate = gateFor(type, binding.node);
+      if (gate.reason) notOn[type] = gate.reason;
+    }
+    if (Object.keys(notOn).length) out.notOn = notOn;
+  }
+
+  return Object.keys(out).length ? out : undefined;
 }
 
 // ─── Examples ─────────────────────────────────────────────────────────────────

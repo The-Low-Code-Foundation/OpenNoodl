@@ -15561,7 +15561,7 @@
     },
     {
       "typeName": "NewDbModelProperties",
-      "displayName": "Create New Record",
+      "displayName": "Create Record",
       "category": "Data",
       "isVisual": false,
       "isDeprecated": false,
@@ -22840,7 +22840,7 @@
     },
     {
       "typeName": "SetDbModelProperties",
-      "displayName": "Set Record Properties",
+      "displayName": "Update Record",
       "category": "Data",
       "isVisual": false,
       "isDeprecated": false,
@@ -23359,7 +23359,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Moment Signed URL stops working, as an ISO 8601 timestamp"
+          "description": "Moment the link stops working, as an ISO 8601 timestamp. Empty for a \"public\" link, which never expires; for a \"token\" link on Directus this is the session's expiry rather than the link's"
         },
         {
           "name": "failure",
@@ -23371,6 +23371,17 @@
           },
           "isSignal": true,
           "description": "Fires when no link could be minted — no file was set, or the backend refused the caller access — after the reason has been reported on the error channel"
+        },
+        {
+          "name": "isShareable",
+          "displayName": "Safe To Share",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "False when the link only works because it carries your own credential — sending it to someone else either fails for them or hands them your session. True for a signed or public link"
         },
         {
           "name": "success",
@@ -23403,11 +23414,30 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Link that can be fetched without a session, good until Expires At; empty until Sign has succeeded once"
+          "description": "Usable link to the file; empty until Sign has succeeded once. Read URL Kind before sharing it — on some backends this link carries your own credential rather than a signature"
+        },
+        {
+          "name": "urlKind",
+          "displayName": "URL Kind",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "How this link is protected: \"signed\" — it carries its own proof and stops working at Expires At; \"token\" — it carries your own sign-in credential; \"public\" — it needs nothing and never expires"
         }
       ],
-      "dynamicPorts": null,
-      "parameterEncoding": null
+      "dynamicPorts": {
+        "mechanisms": [
+          "runtime-discovered"
+        ],
+        "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
+      }
     },
     {
       "typeName": "Signal To Index",
@@ -27014,6 +27044,39 @@
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/upload-file",
       "inputs": [
         {
+          "name": "bucket",
+          "displayName": "Bucket (Supabase)",
+          "group": "File Location",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Supabase Storage bucket to upload into. Supabase only; there is no default, and a bucket that does not exist fails with an error that does not say so"
+        },
+        {
+          "name": "collection",
+          "displayName": "Collection (PocketBase)",
+          "group": "File Location",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "PocketBase collection holding the record the file attaches to. PocketBase only"
+        },
+        {
+          "name": "field",
+          "displayName": "Field (PocketBase)",
+          "group": "File Location",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The file-typed field on that record. PocketBase only"
+        },
+        {
           "name": "file",
           "displayName": "File",
           "group": "General",
@@ -27023,6 +27086,17 @@
           },
           "isSignal": false,
           "description": "The file to upload, as an Open File Picker node produces it"
+        },
+        {
+          "name": "path",
+          "displayName": "Path (Supabase)",
+          "group": "File Location",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Object path inside the bucket, such as avatars/me.png. Supabase only. Leave blank to use the file's own name"
         },
         {
           "name": "private",
@@ -27035,6 +27109,17 @@
           "isSignal": false,
           "default": false,
           "description": "Restricts the stored file to whoever uploaded it, so reading it later needs a Sign File URL node"
+        },
+        {
+          "name": "recordId",
+          "displayName": "Record ID (PocketBase)",
+          "group": "File Location",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Existing record to attach the file to. PocketBase only. Leave blank to create a new record as part of the upload"
         },
         {
           "name": "upload",
@@ -27150,8 +27235,16 @@
           "description": "Fires once the file is stored and Cloud File is up to date"
         }
       ],
-      "dynamicPorts": null,
-      "parameterEncoding": null
+      "dynamicPorts": {
+        "mechanisms": [
+          "runtime-discovered"
+        ],
+        "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
+      }
     },
     {
       "typeName": "Value Changed",

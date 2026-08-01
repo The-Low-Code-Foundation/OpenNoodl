@@ -40,7 +40,10 @@ const SetDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
   node: {
     name: 'SetDbModelProperties',
     docs: 'https://docs.noodl.net/nodes/data/cloud-data/set-record-properties',
-    displayNodeName: 'Set Record Properties',
+    // BCN-010 step 3. Label only — `SetDbModelProperties` is unchanged.
+    // "Update Record" is the verb the other five backends use and the one the
+    // BYOB family already used; "Set Record Properties" described the mechanism.
+    displayNodeName: 'Update Record',
     usePortAsLabel: 'collectionName',
     dynamicports: [
       {

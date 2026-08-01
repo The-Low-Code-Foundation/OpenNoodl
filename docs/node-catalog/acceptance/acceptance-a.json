@@ -1,7 +1,7 @@
 {
   "id": "acceptance-a",
   "title": "Task List Page",
-  "description": "A task-list page backed by cloud data. A Query Records node (DbCollection2) fetches records from the 'Task' class and feeds a Repeater whose item template is /Task Item; each item uses a Record node (DbModel2, idSource 'foreach') to read the task's title. A Text Input plus a Button create a new Task record via Create New Record (NewDbModelProperties); on success the input is cleared and the query is re-fetched. An empty-state Text is shown when the query's Is Empty output is true.",
+  "description": "A task-list page backed by cloud data. A Query Records node (DbCollection2) fetches records from the 'Task' class and feeds a Repeater whose item template is /Task Item; each item uses a Record node (DbModel2, idSource 'foreach') to read the task's title. A Text Input plus a Button create a new Task record via Create Record (NewDbModelProperties); on success the input is cleared and the query is re-fetched. An empty-state Text is shown when the query's Is Empty output is true.",
   "components": [
     {
       "name": "/Task List Page",
