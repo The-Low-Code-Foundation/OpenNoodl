@@ -269,35 +269,77 @@ const RouterNode = {
         }
       }
     },
+    /**
+     * NDA-012 (Visual), RT-1/RT-2/RT-3. `resetAsync` is the path `RouterHandler.registerRouter`
+     * takes when a router mounts, so it runs *before* any Navigate node fires — and NDA-004 §2
+     * gave the full failure channel to `navigateAsync` only. Three defects lived here, all of
+     * one family: **the same value is guarded on one line and dereferenced on another**, and
+     * every exit was a bare `return`.
+     *
+     * The reset path has no `args` to carry a `hasFailed`, so each drop reports on the runtime
+     * error bus instead (`FAILURE-CONTRACT.md`). The Router is the node that is wrong in all
+     * three cases — unconfigured, pointed at a page it does not own, or pointed at a component
+     * that is not a page — so it owns the provenance.
+     *
+     * ⚠️ No outcome *ports* are added here. Completion signals across the Visual family are one
+     * design gap with one collision sweep, and `OUTCOME-CONTRACT.md` / phase 35 `ERG-001` owns
+     * them. Naming them per-node now would mean naming them twice.
+     */
     async resetAsync() {
       let component: string;
       let params = {};
 
       const matchFromUrl = this.matchPageFromUrl();
-      if (matchFromUrl) {
-        if (!matchFromUrl.page) {
-          // Use the start page
-          component = this._internal.pages !== undefined ? this._internal.pages.startPage : undefined;
-          params = Object.assign({}, matchFromUrl.params, matchFromUrl.query);
-        } else {
-          // Use the matching page
-          component = matchFromUrl.page.component;
-          params = Object.assign({}, matchFromUrl.params, matchFromUrl.query);
-        }
+      if (matchFromUrl && matchFromUrl.page) {
+        // Use the matching page
+        component = matchFromUrl.page.component;
+        params = Object.assign({}, matchFromUrl.params, matchFromUrl.query);
       } else {
-        // TODO: Clean up matchPageFromUrl, in this case it returns undefined.
-        //       remainingNavigationPath is undefined, since it have to run
-        //       matchPageFromUrl to get the path. So it feels like it needs
-        //       some bigger refactoring to make it understandable.
-        component = this._internal.pages.startPage;
-        params = {};
+        // Fall back to the start page. Two ways in: the URL matched this router but named no
+        // page, or it did not match at all — `matchPageFromUrl` returns undefined when the
+        // router has no pages to match against (`:503`).
+        //
+        // RT-3: those two ways used to be two branches reading `_internal.pages` twice, once
+        // guarded and once bare, and `pages` has no `default` (`:141-152`) — so a Page Router
+        // dropped on a canvas and not yet configured threw a `TypeError` here on first mount.
+        // One read, guarded once.
+        component = this._internal.pages !== undefined ? this._internal.pages.startPage : undefined;
+        params = matchFromUrl ? Object.assign({}, matchFromUrl.params, matchFromUrl.query) : {};
       }
 
-      if (component === undefined) return; // No component specified for page
+      if (component === undefined) {
+        // Unconfigured, rather than misconfigured: distinguish the two, because "you have not
+        // filled in Pages yet" and "your Pages list has no start page" are different fixes.
+        if (this._internal.pages === undefined) {
+          this.raiseRuntimeError(
+            'router/no-pages',
+            'This Router has no Pages configured, so it has nothing to show — add the components it should route between to its Pages list'
+          );
+        } else {
+          this.raiseRuntimeError(
+            'router/no-start-page',
+            'This Router has no start page, so it has nothing to show on load — pick one in its Pages list'
+          );
+        }
+        return;
+      }
 
-      const currentPage = RouterHandler.instance.getPageInfoForComponent(component);
+      // RT-2: named `targetPage`, not `currentPage`, because calling it the current page is what
+      // made the comparison below look right. `getPageInfoForComponent` is
+      // `ComponentPageInfo | undefined`, and on a fresh router `_internal.currentPage` is
+      // undefined too — so an unresolvable start page compared *identical* to "already showing
+      // it", and the router returned having built nothing, rendered nothing and said nothing,
+      // on every reset. A permanently blank router with no diagnostic.
+      const targetPage = RouterHandler.instance.getPageInfoForComponent(component);
+      if (targetPage === undefined) {
+        this.raiseRuntimeError(
+          'router/page-not-found',
+          `"${component}" is not a page of this Router, so it cannot be shown — check the Router's Pages list`
+        );
+        return;
+      }
 
-      if (this._internal.currentPage === currentPage) {
+      if (this._internal.currentPage === targetPage) {
         //already at the correct page, keep the current page
         //update page inputs if they have changed
         //TODO: fix if a parameter goes from a value to undefined, the old value will still exist in the connection from previous navigation
@@ -320,15 +362,34 @@ const RouterNode = {
       }
 
       const content = await this.nodeScope.createNode(component, guid());
-      this._internal.currentPageComponent = content;
 
       // Find the root page node
       const pageNodes = content.nodeScope.getNodesWithType('Page');
       if (pageNodes === undefined || pageNodes.length !== 1) {
-        return; // Should be only one page root
+        // RT-1: this used to be a bare `return` *after* `currentPageComponent = content`, so a
+        // component wired as a page that is not one was built, never attached, never deleted and
+        // never reported — and the output went on pointing at it.
+        this.nodeScope.deleteNode(content);
+
+        // The children were torn down above, so the router really is showing nothing now.
+        // Leaving `currentPage` set to the page that is no longer on screen would let the
+        // identity check above absorb the *next* reset back to it — RT-2's symptom through a
+        // second door.
+        this._internal.currentPage = undefined;
+        this._internal.currentPageComponent = undefined;
+        this.flagOutputDirty('currentPageComponent');
+
+        this.raiseRuntimeError(
+          'router/component-is-not-a-page',
+          `"${component}" cannot be shown by this Router: a routed component must contain exactly one Page node, and this one has ${
+            pageNodes === undefined || pageNodes.length === 0 ? 'none' : pageNodes.length
+          }`
+        );
+        return;
       }
 
-      this._internal.currentPage = RouterHandler.instance.getPageInfoForComponent(component);
+      this._internal.currentPageComponent = content;
+      this._internal.currentPage = targetPage;
       this._internal.currentParams = params;
 
       this.flagOutputDirty('currentPageTitle');

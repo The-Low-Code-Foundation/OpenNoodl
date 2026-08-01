@@ -10,6 +10,15 @@
  * Three defects, all in one 60-line method, and all of the same family: **the same value is
  * guarded on one line and dereferenced on another.**
  *
+ * ✅ **Fixed 2026-08-01.** Every row below was written against the *defect* and has been flipped
+ * to assert the fix; each defect's control row is kept beside it, because a control that still
+ * passes is what says the fix did not simply short-circuit the method. `resetAsync` has no
+ * `args` to carry a `hasFailed`, so it reports on the runtime error bus
+ * (`FAILURE-CONTRACT.md`) — hence `raises` on the probe.
+ *
+ * ⚠️ **No outcome ports were added.** `OUTCOME-CONTRACT.md` / phase 35 `ERG-001` owns completion
+ * signals for the Visual family as one collision sweep.
+ *
  * The instance is hand-built with the definition's own methods bound onto it — the approach
  * `nda-004-navigation-failure.test.ts` established, and for its reason: `resetAsync` reaches
  * `NoodlRuntime.instance.graphModel` through `RouterHandler`, which a corpus graph does not
@@ -47,6 +56,10 @@ interface RouterProbe {
   created: string[];
   /** Nodes passed to `nodeScope.deleteNode`, in order. */
   deleted: unknown[];
+  /** `[code, message]` pairs raised on the runtime error bus, in order. */
+  raises: Array<[string, string]>;
+  /** The one node `nodeScope.createNode` hands back, so a row can assert identity. */
+  content: unknown;
 }
 
 /**
@@ -63,6 +76,7 @@ function makeRouter(options: {
 }): RouterProbe {
   const created: string[] = [];
   const deleted: unknown[] = [];
+  const raises: Array<[string, string]> = [];
 
   const content = {
     nodeScope: {
@@ -87,6 +101,11 @@ function makeRouter(options: {
     },
     flagOutputDirty() {
       /* currentPageTitle / currentPageComponent */
+    },
+    // `raiseRuntimeError` lives on `Node.prototype`, which a hand-built instance does not
+    // inherit. Recording it here is what lets a row assert the code *and* that nothing threw.
+    raiseRuntimeError: (code: string, message: string) => {
+      raises.push([code, message]);
     }
   };
 
@@ -109,7 +128,7 @@ function makeRouter(options: {
   };
   instance.createPageContainer = () => ({ addChild() {} });
 
-  return { instance, created, deleted };
+  return { instance, created, deleted, raises, content };
 }
 
 /**
@@ -127,26 +146,49 @@ function withPageInfo(info: unknown, run: () => Promise<void>) {
 
 const PAGE = { path: 'home', title: 'Home', component: '/Home' };
 
-describe('RT-3 — an unconfigured Pages list throws instead of reporting', () => {
-  // `pages` has no `default` (router.tsx:140-150), so `_internal.pages` is `undefined` until
-  // an author fills the Pages list. `resetAsync` guards exactly that read on line 272 —
-  // `this._internal.pages !== undefined ? … : undefined` — and then dereferences it bare on
-  // line 284, in the else branch of the very same `if`.
+describe('RT-3 — an unconfigured Pages list reports instead of throwing', () => {
+  // `pages` has no `default` (router.tsx:141-152), so `_internal.pages` is `undefined` until
+  // an author fills the Pages list. `resetAsync` guarded exactly that read on line 280 —
+  // `this._internal.pages !== undefined ? … : undefined` — and then dereferenced it bare on
+  // line 292, in the else branch of the very same `if`.
   //
-  // The else branch is reached whenever `matchPageFromUrl()` returns undefined, which it does
-  // when the router has no pages to match against (router.tsx:495). So this is not an exotic
+  // ⚠️ The finding cited `:272`/`:284`; the pair had shifted to `:280`/`:292` by the time it was
+  // fixed. Same two reads, same `if`/`else`, and they are now **one** read.
+  //
+  // The bare branch was reached whenever `matchPageFromUrl()` returned undefined, which it does
+  // when the router has no pages to match against (router.tsx:503). So this was not an exotic
   // path: it is a Page Router that has been dropped on a canvas and not configured yet.
-  it('throws a TypeError rather than saying the Pages list is empty', async () => {
-    const { instance } = makeRouter({ pages: undefined, matchFromUrl: undefined });
-
-    await expect(instance.resetAsync()).rejects.toThrow(TypeError);
-  });
-
-  // The control: the guarded branch, same read, same undefined, no throw.
-  it('the guarded branch on line 272 handles the identical value', async () => {
-    const { instance, created } = makeRouter({ pages: undefined, matchFromUrl: { page: undefined, params: {} } });
+  it('says the Pages list is empty rather than throwing a TypeError', async () => {
+    const { instance, created, raises } = makeRouter({ pages: undefined, matchFromUrl: undefined });
 
     await expect(instance.resetAsync()).resolves.toBeUndefined();
+
+    expect(raises).toEqual([['router/no-pages', expect.stringContaining('no Pages configured')]]);
+    expect(created).toEqual([]);
+  });
+
+  // The control: the once-guarded branch reached the same undefined by a different route, and
+  // still must not throw — nor be silent about it, which it used to be.
+  it('the other route to the same undefined reports identically', async () => {
+    const { instance, created, raises } = makeRouter({
+      pages: undefined,
+      matchFromUrl: { page: undefined, params: {} }
+    });
+
+    await expect(instance.resetAsync()).resolves.toBeUndefined();
+
+    expect(raises).toEqual([['router/no-pages', expect.stringContaining('no Pages configured')]]);
+    expect(created).toEqual([]);
+  });
+
+  // Configured but with no start page picked is a different mistake with a different fix, so it
+  // gets its own code rather than being folded into "no Pages".
+  it('a Pages list with no start page is reported separately', async () => {
+    const { instance, created, raises } = makeRouter({ pages: { startPage: undefined }, matchFromUrl: undefined });
+
+    await expect(instance.resetAsync()).resolves.toBeUndefined();
+
+    expect(raises).toEqual([['router/no-start-page', expect.stringContaining('no start page')]]);
     expect(created).toEqual([]);
   });
 });
@@ -158,61 +200,74 @@ describe('RT-2 — a start page that is not in the router index is read as "alre
   // sides are `undefined`, so a start page that resolves to nothing is indistinguishable from
   // "we are already showing it".
   //
-  // ⚠️ This was predicted as a throw and is not one. It is worse: the router returns having
-  // built nothing, rendered nothing and said nothing, and it will do so on every subsequent
+  // ⚠️ This was predicted as a throw and was not one. It was worse: the router returned having
+  // built nothing, rendered nothing and said nothing, and it did so on every subsequent
   // reset for the same reason. An app whose start page component is missing from the router
-  // index shows a permanently blank router.
-  it('the first reset builds nothing and reports nothing', async () => {
-    const { instance, created } = makeRouter({ pages: { startPage: '/Home' }, matchFromUrl: undefined });
+  // index showed a permanently blank router.
+  //
+  // The fix resolves the target *before* comparing, and a target that resolves to nothing is
+  // now its own reported outcome rather than being absorbed by an identity test against
+  // `undefined`. The variable is named `targetPage` for the same reason — calling it
+  // `currentPage` is what made the comparison read as correct.
+  it('the first reset still builds nothing, and now says why', async () => {
+    const { instance, created, raises } = makeRouter({ pages: { startPage: '/Home' }, matchFromUrl: undefined });
 
     await withPageInfo(undefined, async () => {
       await expect(instance.resetAsync()).resolves.toBeUndefined();
     });
 
+    expect(raises).toEqual([['router/page-not-found', expect.stringContaining('"/Home" is not a page of this Router')]]);
     expect(created).toEqual([]);
     expect(instance.children).toEqual([]);
     expect(instance._internal.currentPage).toBeUndefined();
   });
 
-  // Once a page HAS been shown, the identity comparison no longer absorbs it, and the bare
-  // dereference at `:328` is reached. The same field is checked before use at `:209`, `:217`
-  // and `:351`; `:328` is the one read that is not.
-  it('a later reset that resolves to nothing throws on `.title`', async () => {
-    const { instance } = makeRouter({ pages: { startPage: '/Home' }, matchFromUrl: undefined });
+  // Once a page HAS been shown, the identity comparison no longer absorbed it, and the bare
+  // dereference of `currentPage.title` further down was reached. Both rows are the same missing
+  // guard, so both are closed by resolving the target once and reporting when it is undefined.
+  it('a later reset that resolves to nothing reports rather than throwing on `.title`', async () => {
+    const { instance, raises } = makeRouter({ pages: { startPage: '/Home' }, matchFromUrl: undefined });
     instance._internal.currentPage = PAGE;
 
     await withPageInfo(undefined, async () => {
-      await expect(instance.resetAsync()).rejects.toThrow(TypeError);
+      await expect(instance.resetAsync()).resolves.toBeUndefined();
     });
+
+    expect(raises).toEqual([['router/page-not-found', expect.stringContaining('"/Home" is not a page of this Router')]]);
+    // It reported instead of navigating, so the page already on screen is left alone.
+    expect(instance._internal.currentPage).toBe(PAGE);
   });
 
-  it('the control: with page info present the same call completes', async () => {
-    const { instance, created } = makeRouter({ pages: { startPage: '/Home' }, matchFromUrl: undefined });
+  it('the control: with page info present the same call completes silently', async () => {
+    const { instance, created, raises } = makeRouter({ pages: { startPage: '/Home' }, matchFromUrl: undefined });
 
     await withPageInfo(PAGE, async () => {
       await expect(instance.resetAsync()).resolves.toBeUndefined();
     });
     expect(created).toEqual(['/Home']);
+    expect(raises).toEqual([]);
   });
 });
 
-describe('RT-1 — a routed component with no Page node is dropped, and leaks the node it made', () => {
-  // `resetAsync` creates the component (`:314`) and *then* checks that it contains exactly one
-  // `Page` node (`:318-321`). The bail is a bare `return`: the node it just created is never
-  // added to the tree and never deleted, and nothing is reported anywhere — no `hasFailed`
-  // (reset has no args to carry one), no `sendWarning`, no runtime error.
+describe('RT-1 — a routed component with no Page node is dropped, reported, and not leaked', () => {
+  // `resetAsync` creates the component and *then* checks that it contains exactly one `Page`
+  // node. The bail used to be a bare `return`: the node it had just created was never added to
+  // the tree and never deleted, and nothing was reported anywhere — no `hasFailed` (reset has
+  // no args to carry one), no `sendWarning`, no runtime error. Worse, `currentPageComponent`
+  // had already been assigned to it one line earlier, so the output went on pointing at a node
+  // that was not in the tree.
   //
   // Contrast `navigateAsync`, which NDA-004 §2 gave a code and a message for both of its drops.
-  // The reset path takes the same class of mistake — a component wired as a page that is not
-  // one — and says nothing, on the code path that runs before any Navigate node exists.
+  // The reset path took the same class of mistake — a component wired as a page that is not
+  // one — and said nothing, on the code path that runs before any Navigate node exists.
   it.each([
-    ['no Page node', 0],
-    ['two Page nodes', 2]
-  ])('%s: the created node is neither mounted nor deleted', async (_label, count) => {
-    const { instance, created, deleted } = makeRouter({
+    ['no Page node', 0, 'has none'],
+    ['two Page nodes', 2, 'has 2']
+  ])('%s: the created node is torn down and the drop is reported', async (_label, count, expectedCount) => {
+    const { instance, created, deleted, raises, content } = makeRouter({
       pages: { startPage: '/Home' },
       matchFromUrl: undefined,
-      pageNodeCount: count
+      pageNodeCount: count as number
     });
 
     await withPageInfo(PAGE, async () => {
@@ -221,14 +276,22 @@ describe('RT-1 — a routed component with no Page node is dropped, and leaks th
 
     // It was built…
     expect(created).toEqual(['/Home']);
-    // …never attached…
+    // …correctly not attached, because it is not a page…
     expect(instance.children).toEqual([]);
-    // …and never torn down.
-    expect(deleted).toEqual([]);
+    // …and now torn down rather than leaked.
+    expect(deleted).toEqual([content]);
+    // …and said so, with the count that makes the mistake diagnosable.
+    expect(raises).toEqual([
+      ['router/component-is-not-a-page', expect.stringContaining(`exactly one Page node, and this one ${expectedCount}`)]
+    ]);
+    // The children were torn down before the component was built, so the router shows nothing.
+    // Leaving `currentPage` set would let the identity check absorb the next reset back to it.
+    expect(instance._internal.currentPage).toBeUndefined();
+    expect(instance._internal.currentPageComponent).toBeUndefined();
   });
 
   it('the control: one Page node and the component is attached', async () => {
-    const { instance, created } = makeRouter({
+    const { instance, created, deleted, raises } = makeRouter({
       pages: { startPage: '/Home' },
       matchFromUrl: undefined,
       pageNodeCount: 1
@@ -240,5 +303,7 @@ describe('RT-1 — a routed component with no Page node is dropped, and leaks th
 
     expect(created).toEqual(['/Home']);
     expect(instance.children).toHaveLength(1);
+    expect(deleted).toEqual([]);
+    expect(raises).toEqual([]);
   });
 });
