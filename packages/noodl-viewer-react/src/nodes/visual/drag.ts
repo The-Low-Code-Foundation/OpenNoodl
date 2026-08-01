@@ -1,6 +1,29 @@
 import { Drag } from '../../components/visual/Drag';
 import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 
+/**
+ * NDA-012 (Visual), check `G1` — read a snap coordinate, or refuse to.
+ *
+ * The four snap ports used to store whatever arrived. A position has no representable empty
+ * state, so per `EMPTY-VALUE-CONTRACT.md` this takes the shape `Radio Button Group`'s `Value`
+ * took earlier in this phase: `undefined` and `null` abstain and leave the current position
+ * alone, rather than being coerced into one.
+ *
+ * ⚠️ The worksheet recorded the consequence of `null` as `NaN`; **it is 0**. `easeOutCubic`
+ * computes `(end - start) * … + start`, so `null` coerces to zero and the element animates to the
+ * origin — a plausible position, which is worse than a visible `NaN`. The `NaN` case is a
+ * non-numeric string, and nothing coerces a declared `number` port on arrival.
+ *
+ * Returns `undefined` for "abstain"; the caller reports anything that is neither a number nor
+ * empty, because a silent no-op on a `Value` port reads exactly like the port not existing.
+ */
+function readSnapCoordinate(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+
+  const asNumber = Number(value);
+  return Number.isFinite(asNumber) ? asNumber : Number.NaN;
+}
+
 const DragNode: ReactNodeDefinition = {
   name: 'Drag',
   docs: 'https://docs.noodl.net/nodes/utilities/drag',
@@ -48,10 +71,21 @@ const DragNode: ReactNodeDefinition = {
       group: 'Snap To Position X',
       displayName: 'Value',
       editorName: 'Value|Snap To Position X',
-      description: 'X position the element animates to when Snap To Position X — Do fires',
+      description:
+        'X position the element animates to when Snap To Position X — Do fires. An empty value leaves the current position alone',
       type: 'number',
       set(value) {
-        this._internal.snapPositionX = value;
+        const coordinate = readSnapCoordinate(value);
+        if (coordinate === undefined) return;
+        if (Number.isNaN(coordinate)) {
+          this.raiseRuntimeError(
+            'drag/snap-position-not-a-number',
+            `Snap To Position X — Value cannot be read as a number (got ${JSON.stringify(value)}), so the snap position is unchanged.`
+          );
+          return;
+        }
+
+        this._internal.snapPositionX = coordinate;
       }
     },
     'snapToPositionX.duration': {
@@ -83,10 +117,21 @@ const DragNode: ReactNodeDefinition = {
       group: 'Snap To Position Y',
       displayName: 'Value',
       editorName: 'Value|Snap To Position Y',
-      description: 'Y position the element animates to when Snap To Position Y — Do fires',
+      description:
+        'Y position the element animates to when Snap To Position Y — Do fires. An empty value leaves the current position alone',
       type: 'number',
       set(value) {
-        this._internal.snapPositionY = value;
+        const coordinate = readSnapCoordinate(value);
+        if (coordinate === undefined) return;
+        if (Number.isNaN(coordinate)) {
+          this.raiseRuntimeError(
+            'drag/snap-position-not-a-number',
+            `Snap To Position Y — Value cannot be read as a number (got ${JSON.stringify(value)}), so the snap position is unchanged.`
+          );
+          return;
+        }
+
+        this._internal.snapPositionY = coordinate;
       }
     },
     'snapToPositionY.duration': {

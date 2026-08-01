@@ -60,11 +60,15 @@ const RangeNode = {
   },
   inputs: {
     value: {
-      type: 'string',
+      // NDA-012 (Visual), E1. This was declared `type: 'string'` while the `Value` *output* is
+      // `type: 'number'`, so one Slider could not feed another without a cast and the property
+      // panel offered a text field for a number. `string → number` is in the typecast table
+      // (`nodelibraryexport.ts`), so a connection from anything textual still lands.
+      type: 'number',
       displayName: 'Value',
       group: 'General',
       description:
-        'Moves the handle to this value, clamped to Min and Max; changing it from the graph does not fire Changed',
+        'Moves the handle to this value, clamped to Min and Max; changing it from the graph does not fire Changed. An empty value leaves the handle where it is',
       index: 100,
       set(value) {
         this._setInputValue(value);
@@ -231,8 +235,32 @@ const RangeNode = {
       valuePercentChanged && this.flagOutputDirty('valuePercent');
     },
     _setInputValue(newValue) {
+      // NDA-012 (Visual), G1. This was `Math.min(this.props.max, newValue || 0)`, and the two
+      // things wrong with it were both invisible:
+      //
+      // - `null` and a legitimate `0` were the same arrival, and both clamped to `Min`. A Slider
+      //   with `Min = 10` fed `null` by a query that matched nothing silently read 10.
+      // - anything non-numeric survived `||` and became `NaN` at `Math.min`, so `props.value` was
+      //   `NaN` with nothing said anywhere. The port used to be declared `string` (E1), so that
+      //   was an ordinary arrival rather than a malformed graph.
+      //
+      // A handle position has no representable empty state, so per `EMPTY-VALUE-CONTRACT.md` the
+      // empty values abstain and leave the handle alone — the shape `Radio Button Group`'s
+      // `Value` took earlier in this phase — and a value that is not a number is reported on the
+      // runtime channel rather than coerced into a plausible one.
+      if (newValue === undefined || newValue === null || newValue === '') return;
+
+      const asNumber = Number(newValue);
+      if (!Number.isFinite(asNumber)) {
+        this.raiseRuntimeError(
+          'slider/value-not-a-number',
+          `Value cannot be read as a number (got ${JSON.stringify(newValue)}), so the handle has not moved.`
+        );
+        return;
+      }
+
       //make sure value never goes out of range
-      const value = Math.max(this.props.min, Math.min(this.props.max, newValue || 0));
+      const value = Math.max(this.props.min, Math.min(this.props.max, asNumber));
 
       const changed = value !== this.props.value;
 

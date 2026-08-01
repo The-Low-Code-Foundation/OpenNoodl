@@ -14,9 +14,9 @@
  *   the percentage moved or not. ⚠️ PLAT-003 slice 10 found this exact bug, wrote it up, and kept
  *   it verbatim in the *deprecated* `range.tsx` without ever looking at the live node.
  *
- * ⚠️ **`Slider`'s own `G1` is deliberately not fixed here and is pinned as-is below**:
- * `_setInputValue` uses `newValue || 0`, so `null` and a legitimate `0` are indistinguishable.
- * That is a separate defect from A3 and was not in this session's scope.
+ * ⚠️ **`Slider`'s own `G1` was out of scope when this file was written and is now closed** — see
+ * `nda-012-visual-value-ports.test.ts`. The row at the bottom that pinned it as open has been
+ * **inverted** rather than deleted: the fixture was already the right one.
  */
 
 /* eslint-env jest */
@@ -167,17 +167,27 @@ describe('SL-1 — Slider only flags Value Percent when the percentage moved', (
     expect(p.drivable._internal.valuePercent).toBe(30);
   }, 30000);
 
-  // ⚠️ Pinned as-is, NOT fixed. Slider's `G1`: `_setInputValue` uses `newValue || 0`, so `null`
-  // and a legitimate `0` are indistinguishable and both clamp to `Min`. A slider with `Min = 10`
-  // fed `null` silently reads 10. Recorded here so the next reader does not re-derive it.
-  it('Slider G1 is still open: null and 0 are indistinguishable, and both clamp to Min', async () => {
+  // ⚠️ **Inverted, not deleted.** This row was written to pin Slider's `G1` as *open*: `null` and
+  // a legitimate `0` both went through `newValue || 0` and both clamped to `Min`, so a slider with
+  // `Min = 10` fed `null` silently read 10. `G1` was closed later in the same phase, so the same
+  // fixture is now the regression guard for the distinction it used to record as missing. The rest
+  // of the set — the raise for a non-number, the clamping controls and the `E1` port type — is in
+  // `nda-012-visual-value-ports.test.ts`; this row stays here because this is where the claim was.
+  // ⚠️ **Both sliders move the handle off `Min` first, and that is what makes this a measurement.**
+  // `initialize` seeds `props.value = props.min` (`slider.ts:32`), so on a handle that has never
+  // moved, "abstained" and "clamped to Min" are the *same reading* — the row would pass either way.
+  // FINDINGS **B-x**, one door along: not a control in a state where the code never ran, but a
+  // control in a state where both outcomes coincide.
+  it('Slider G1 is closed: null abstains where a legitimate 0 clamps to Min', async () => {
     const withNull = await build(SliderModule, { min: 10, max: 100 });
+    withNull.drivable.setInputValue('value', 60);
     withNull.drivable.setInputValue('value', null);
 
     const withZero = await build(SliderModule, { min: 10, max: 100 });
+    withZero.drivable.setInputValue('value', 60);
     withZero.drivable.setInputValue('value', 0);
 
-    expect(withNull.drivable.props.value).toBe(10);
+    expect(withNull.drivable.props.value).toBe(60);
     expect(withZero.drivable.props.value).toBe(10);
   }, 30000);
 });

@@ -7416,7 +7416,7 @@
           },
           "isSignal": false,
           "default": 0,
-          "description": "X position the element animates to when Snap To Position X — Do fires"
+          "description": "X position the element animates to when Snap To Position X — Do fires. An empty value leaves the current position alone"
         },
         {
           "name": "snapToPositionY.do",
@@ -7455,7 +7455,7 @@
           },
           "isSignal": false,
           "default": 0,
-          "description": "Y position the element animates to when Snap To Position Y — Do fires"
+          "description": "Y position the element animates to when Snap To Position Y — Do fires. An empty value leaves the current position alone"
         },
         {
           "name": "styleCss",
@@ -46677,10 +46677,10 @@
           "group": "General",
           "plug": "input",
           "type": {
-            "name": "string"
+            "name": "number"
           },
           "isSignal": false,
-          "description": "Moves the handle to this value, clamped to Min and Max; changing it from the graph does not fire Changed",
+          "description": "Moves the handle to this value, clamped to Min and Max; changing it from the graph does not fire Changed. An empty value leaves the handle where it is",
           "index": 100
         },
         {
