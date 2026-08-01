@@ -22,7 +22,9 @@ import { getAbsoluteUrl } from '@noodl/runtime/src/utils';
  * The fix lives here rather than in `getAbsoluteUrl` on purpose. That function is in
  * `noodl-runtime` and has ~30 callers across three packages, several of which pass a value that
  * is never empty; changing its contract is a runtime-wide decision, and this is the two nodes
- * where the consequence is a network request. Filed for the runtime — see `WORKER-V-NOTES.md`.
+ * where the consequence is a network request. Filed for the runtime — see `FINDINGS.md` **DC-iii**
+ * (⚠️ the `WORKER-V-NOTES.md` this used to cite was never written: the worker that would have
+ * written it was terminated mid-task, and the reasoning was salvaged into FINDINGS instead).
  */
 export function resolveMediaSource(value: unknown): string | undefined {
   if (value === null || value === undefined || value === '') return undefined;

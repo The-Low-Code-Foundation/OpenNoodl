@@ -30,8 +30,8 @@
 |---|---|---|
 | Nodes with a machine-derived smell row | 155 | ✅ `NODE-REGISTER.md` |
 | Nodes with a pre-filled audit worksheet | 155 | ✅ `audit/`, 17 category files |
-| Nodes whose implementation has been read | **116** | 8 named by Richard + 5 from his second list + Boolean/Color, then NDA-012's sixteen categories |
-| Nodes fully audited against the 12 checks | **116** | 16 of 17 categories **complete**: Variables, Logic, Math, Events, String Manipulation, Interpolation, Javascript, Sensors, Cloud Services, Navigation, Component Utilities, Utilities, **CustomCode (5 of 5)**, Animation, Cloud, **Data (37 of 37, and `Run Tasks` closed it on 2026-08-01 — worksheet entry written, C1 0% → 100%, and it held 5 defects rather than the documentation gap it had been carried as)**. **Remaining: all of Visual.** ⚠️ Visual is **partially worked, not audited**: its C1 is 51.6% → **80.0%** and four defects are fixed, but **no Visual node has its twelve checks filled in** — its three-worker batch was killed mid-task by an account spend limit |
+| Nodes whose implementation has been read | **136** | 8 named by Richard + 5 from his second list + Boolean/Color, then NDA-012's **seventeen** categories |
+| Nodes fully audited against the 12 checks | **136** | ✅ **All 17 of 17 categories complete.** Variables, Logic, Math, Events, String Manipulation, Interpolation, Javascript, Sensors, Cloud Services, Navigation, Component Utilities, Utilities, CustomCode, Animation, Cloud, **Data (37/37)** and **Visual (20/20, closed 2026-08-01)**. The 15 out-of-scope nodes are the deprecated legacy form controls (9, Visual) and the rest of the deprecated set, by Richard's standing decision |
 | Systemic defect classes identified | 8 | A reactivity, B failure, C documentation, D string contracts, **E type dead ends**, **F implicit binding**, **G signal/value ordering** (G came from a community report, not from either pass), **H the deployed build nobody ran** |
 | Findings live-verified in the running editor | Tier 1 + NDA-014 | 2026-07-29 pass: preview runs the new collection semantics (push/index/length notify once each, synchronous, `items` identity holds, `set` = one change); zero renderer exceptions; no cyclic warnings; editor's live typecast table carries the three new casts. Catalog page empty = expected (DB query, no local data, no repeater on it) |
 
@@ -96,8 +96,8 @@ All three gating decisions were put to Richard on 2026-07-29 and he confirmed th
 | Cloud | 3 / 3 | **3** | 4 |
 | **Data** | **37 / 37** | **29** | **32** |
 | **Data — `Run Tasks`** (2026-08-01, closing the category) | (the 37th, above) | 1 | **5** |
-| **Visual** ⚠️ *partial — C1 and 4 defects only, no node's 12 checks done* | **0 / 20** | 4 | **4** |
-| **16 complete + Visual started** | **116 / 151** | **101** | **157** |
+| **Visual** | **20 / 20** | **16** | **31** |
+| **All 17 categories complete** | **136 / 151** | **117** | **188** |
 
 **Data closed 2026-08-01 at 37/37 nodes and 32 defects — 0.86 per node, the phase's lowest, and the
 reason is stated rather than inferred.** The four-worker batch read the remaining 29 nodes and found
@@ -211,6 +211,77 @@ moment NDA-003 makes `null` storable. Consistent with the second-pass calibratio
 this table shows a category producing nothing new.
 
 ## Log
+
+- **2026-08-01 (third session — Visual audited, and NDA-012 is complete at 17/17 categories).**
+  The last category. 20 in-scope nodes, twelve checks each, **31 defects across 16 of them**, and
+  **C1 closed from 80.0% to 100%** — 246 ports written, the largest single documentation block in
+  the phase. Library-wide C1 is now 90.4%.
+
+  **Two of the twelve checks were being read wrongly, and correcting them is worth more than the
+  defect count.** `B3` had been pre-filled from *"does the node have any signal output"*, which any
+  node with `Did Mount` passes; the check is whether **every signal input has a terminating signal
+  output**. Read properly, **seven of the eight Visual nodes with action inputs cannot tell a graph
+  the action finished** — and the eighth is the Repeater, which is right only because NDA-004 §3 gave
+  it `Items Rendered` for exactly this reason and recorded that list-then-scroll had until then been
+  a guessed `Delay`. That is **one design gap, not seven defects** (FINDINGS **DV-viii**), and the
+  same sentence applies verbatim to snap-then-do, scroll-then-measure and reset-then-navigate.
+  `H1` likewise is not answered by the `ssr` field: three nodes leak on delete and all three declare
+  `safe`. ⚠️ **Visual's find rate is therefore not comparable with earlier categories**, and neither
+  is Navigation's 1.88 — it was measured under the old B3 reading.
+
+  **The DB-ii predicate has now been run outside Data, and the interesting result is the ratio.**
+  687 Visual ports declare a `default` and carry a custom `set`; **242 of them differ** under a
+  differential probe (same node built bare and with one port authored at its own declared default,
+  then diffed). **Two are defects.** Data's version of this sweep found three dead nodes in fifteen.
+  The difference is a second route Visual has and Data does not — `react-component-node` copies
+  `inputProps`/`inputCss` defaults into `props`/`startStyle` — so the shape worth hunting here is not
+  "DB-ii fires" but **"DB-ii fires *and* that second route is also blocked."** The four absorbing
+  mechanisms are pinned as rows beside the defects, deliberately: without them the next person to run
+  the predicate reads 242 and files 242 defects.
+
+  ⚠️ **Live QA disproved this session's own headline finding, and the corrected version is worse.**
+  DV-ii originally claimed a freshly-dropped `Button` renders with no padding. Driven in the running
+  editor on an author-created Button whose only model parameter was `label`: the panel shows 20, the
+  model carries nothing — **and the browser computes `padding: 5px 20px` anyway**, because
+  `assets/style.css:24` happens to carry the same two numbers. `Icon`, which has no such rule,
+  computes `0px` and is the node the defect actually costs. So Button's padding is specified twice,
+  in two files, by two mechanisms, and **only the stylesheet is load-bearing** — change the port
+  default and nothing moves, change the CSS and the panel starts lying. The two copies agreeing is
+  why it has survived. **The rule this produces: a mechanism defect and its consequence are two
+  different claims, and a static measurement only ever establishes the first.**
+
+  **Where the defects concentrated.** `Page Router` has **seven failing checks and four of them are
+  in one 60-line method** — NDA-004 §2 gave `navigateAsync` a code and a message for both its drops
+  and never touched `resetAsync`, which is the path that runs when a router mounts, before any
+  Navigate node exists. An unconfigured Page Router **throws a `TypeError`** because `_internal.pages`
+  is guarded on `router.tsx:272` and dereferenced bare on `:284`, in the else branch of the same
+  `if`. A start page missing from the router index is compared by *identity* against the current
+  page, and on a fresh router both sides are `undefined`, so "resolved nothing" reads as "already
+  showing it" and the router stays **permanently blank** — that one was predicted as a throw, and
+  measuring it showed something quieter and worse. `Dropdown` has three defects in one eleven-line
+  setter (`Items = null` throws, a re-sent collection leaves two listeners, the listener is never
+  removed on delete). `Repeater`'s `if (!value) return;` is the truthiness test `DC-iii` warns
+  against, so a query that came back empty leaves the previous list on screen.
+
+  **Two answers the handover asked for.** ✅ **Slider's private `addBorderInputs` has drifted — four
+  ways** (**DV-vi**), one reachable (`borderWidth` defaults 0 there and 2 in the shared generator)
+  and three latent because nobody passes `defaults`. The per-edge cascade is re-implemented in
+  `Slider.tsx` rather than missing, and *that* has its own bug writing four invalid CSS keys. The
+  transferable part is next door: `Slider`'s `valuePercentChanged` compares against a field nothing
+  writes — and **PLAT-003 slice 10 found that exact bug, wrote four lines explaining it, and kept it
+  verbatim in the *deprecated* `range.tsx`, never looking at the live node.** ✅ **`Page`'s `Title`
+  and `Url Path` ports are dead** (**DV-vii**): `setup` derives defaults for both, the setters write
+  `_internal`, and the only readers are called by nothing in the repository — so a Page node cannot
+  set the browser tab title, though `Noodl.SEO.setTitle` exists one import away. Both live only
+  inside `setup()`, which `graph-harness` never calls; §4.4's blind spot, third time.
+
+  **Richard's three decisions this session.** Port-documentation precedence (**WD-3**) is settled:
+  **`description` is canonical**, enrichment `ports` may only add what the source cannot know, and
+  `tooltip` is display-only and derived — which is where the ~550 sentences written across the last
+  two sessions already went. `net.noodl.HTTP` should become **cloud-available** rather than reviving
+  the deprecated `REST2` (**DB-v**); that needs its own slice and is not an audit change. And Visual
+  was run **solo and sequential** rather than as a parallel batch, given what the spend limit did to
+  the last one.
 
 - **2026-08-01 (second session — Data *really* closed, Visual started and interrupted).**
   Three things were owed by the previous handover and all three are done; the fourth, Visual's

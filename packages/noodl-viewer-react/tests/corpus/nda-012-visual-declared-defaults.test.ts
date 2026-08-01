@@ -34,12 +34,23 @@ import { createCorpusGraph } from '../../../noodl-runtime/test/corpus/graph-harn
 (globalThis as unknown as { Noodl: unknown }).Noodl = { deployed: true, baseUrl: '/' };
 
 /* eslint-disable @typescript-eslint/no-var-requires */
-const ButtonModule = require('../../src/nodes/controls/button').default;
-const IconModule = require('../../src/nodes/visual/icon').default;
-const TextModule = require('../../src/nodes/visual/text').default;
-const ComponentStackModule = require('../../src/nodes/navigation/navigation-stack').default;
-const PageRouterModule = require('../../src/nodes/navigation/router').default;
+const load = (path: string): ReactModule => require(path).default as ReactModule;
+
+const ButtonModule = load('../../src/nodes/controls/button');
+const IconModule = load('../../src/nodes/visual/icon');
+const TextModule = load('../../src/nodes/visual/text');
+const ComponentStackModule = load('../../src/nodes/navigation/navigation-stack');
+const PageRouterModule = load('../../src/nodes/navigation/router');
 /* eslint-enable @typescript-eslint/no-var-requires */
+
+/** `NavigationHandler`'s private registry, which is the observable for the row below. */
+const pageStacks = () =>
+  (NavigationHandler.instance as unknown as { _pageStacks: Record<string, unknown[]> })._pageStacks;
+
+/** What `createNodeFromReactComponent` returns, as far as these rows need it. */
+interface ReactModule {
+  node: { name: string; inputs: Record<string, { default?: unknown }> };
+}
 
 interface Probed {
   style: Record<string, unknown>;
@@ -53,9 +64,11 @@ interface Probed {
  * `authored` is what they get by opening the port and typing in the value the property
  * panel was *already showing them*. Those two should be the same node.
  */
-async function bareVsAuthored(module: any, port: string, value: unknown): Promise<[Probed, Probed]> {
+async function bareVsAuthored(module: ReactModule, port: string, value: unknown): Promise<[Probed, Probed]> {
   const graph = await createCorpusGraph({
-    modules: [module],
+    // `ReactModule` names only the two fields these rows read; the harness wants the full
+    // definition, which `createNodeFromReactComponent` has already produced.
+    modules: [module as never],
     data: {
       components: [
         {
@@ -136,7 +149,7 @@ describe('V-i, what it actually costs — measured in the running editor, not in
     expect(rule.slice(0, rule.indexOf('}'))).toContain('padding: 5px 20px 5px 20px');
 
     // …and those are exactly the port defaults, which is why nobody has ever noticed.
-    const inputs = (ButtonModule as any).node.inputs;
+    const inputs = ButtonModule.node.inputs;
     expect(inputs.paddingTop.default).toBe(5);
     expect(inputs.paddingRight.default).toBe(20);
     expect(inputs.paddingBottom.default).toBe(5);
@@ -155,7 +168,7 @@ describe('V-i, what it actually costs — measured in the running editor, not in
       .filter((block) => /\.ndl-visual-icon\b/.test(block) || /\.ndl-icon-glyph\b/.test(block));
     for (const block of iconRules) expect(block).not.toContain('padding');
 
-    expect((IconModule as any).node.inputs.paddingLeft.default).toBe(5);
+    expect(IconModule.node.inputs.paddingLeft.default).toBe(5);
   });
 });
 
@@ -217,10 +230,10 @@ describe('the compensations — measured, so the next sweep can subtract them', 
     NavigationHandler.instance.registerPageStack(undefined as unknown as string, stack);
 
     // Registered under `undefined`, findable under the name an author would actually type.
-    expect((NavigationHandler.instance as any)._pageStacks['Main']).toContain(stack);
+    expect(pageStacks()['Main']).toContain(stack);
 
     NavigationHandler.instance.deregisterPageStack(undefined as unknown as string, stack);
-    expect((NavigationHandler.instance as any)._pageStacks['Main']).toBeUndefined();
+    expect(pageStacks()['Main']).toBeUndefined();
   });
 
   it('Radio Button Group: an unset parent layout is read as column, which is the default', () => {

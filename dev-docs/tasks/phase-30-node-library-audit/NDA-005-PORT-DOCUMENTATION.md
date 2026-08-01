@@ -163,6 +163,27 @@ eight nodes carry their *primary* port dynamically — `Target Page`, `Router`, 
 so the category now reads **100% documented** while the input that says where to navigate has no
 sentence anywhere. See [`audit/navigation.md`](./audit/navigation.md).
 
+## §3 — Channel precedence (settled by Richard, 2026-08-01)
+
+Three channels can carry text about a port, and until now **none of them was declared to win**
+(FINDINGS **WD-3**). ~550 sentences were written across two sessions before anyone asked. The rule:
+
+| Channel | Status |
+|---|---|
+| **`description` on the port declaration** | ✅ **Canonical.** The single source of truth. Everything else derives from it or adds to it |
+| enrichment `ports` (`node-catalog-enriched.json`) | May **only add what the source cannot know** — usage guidance, cross-node context, examples. It must not contradict `description`, and it is not a place to correct one |
+| `tooltip` | **Display-only and derived.** It is the editor's hover popup, with its own layout, images and title. It cannot serve as the description and never could — see the note at the top of this file |
+
+**Why `description` and not the enrichment file**, which would have let docs be corrected without
+touching runtime code: the truth would then live in two repositories, and the port declaration —
+the thing a person editing the node is looking at — would be the one that could quietly go stale.
+It is also simply where the ~550 sentences already are, so this rule cost nothing to adopt.
+
+⚠️ **A consequence worth stating: a `description` may name a defect.** Three Visual sentences do
+(`Repeater`'s `Items`, `Component Stack`'s `Clip Content`, `Video`'s `Pause`/`Reset`), because an
+author reading the property panel is where that warning has to land. **They come out when the
+defects are fixed** — grep for `⚠️` in the port declarations to find them.
+
 ## Success criteria
 
 1. Port documentation coverage ≥ 95% (inverting today's number), measured by

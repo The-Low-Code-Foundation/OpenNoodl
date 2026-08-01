@@ -19,9 +19,14 @@
 
 /* eslint-env jest */
 
+import type { TSFixme } from '../../typings/global';
+
 import RouterModule from '../../src/nodes/navigation/router';
 
-type AnyFn = (...args: any[]) => any;
+type AnyFn = (...args: unknown[]) => unknown;
+
+/** The hand-built instance: a bag of whatever `resetAsync` reaches for. */
+type Probe = Record<string, TSFixme>;
 
 /**
  * `resetAsync` reaches `Noodl.SEO.setTitle` as a bare global (router.tsx:328). The runtime
@@ -37,7 +42,7 @@ beforeAll(() => {
 });
 
 interface RouterProbe {
-  instance: Record<string, any>;
+  instance: Probe;
   /** Ids passed to `nodeScope.createNode`, in order. */
   created: string[];
   /** Nodes passed to `nodeScope.deleteNode`, in order. */
@@ -65,7 +70,7 @@ function makeRouter(options: {
     }
   };
 
-  const instance: Record<string, any> = {
+  const instance: Probe = {
     _internal: {
       pages: options.pages,
       currentPage: undefined,
@@ -85,7 +90,7 @@ function makeRouter(options: {
     }
   };
 
-  const methods = (RouterModule as any).node.methods as Record<string, AnyFn>;
+  const methods = (RouterModule as unknown as { node: { methods: Record<string, AnyFn> } }).node.methods;
   for (const key of Object.keys(methods)) instance[key] = methods[key].bind(instance);
 
   // Collaborators AFTER the real methods, so these win.

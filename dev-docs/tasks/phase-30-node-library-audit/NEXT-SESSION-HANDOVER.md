@@ -1,194 +1,181 @@
-# Next session — Visual's per-node audit is the last thing phase 30 needs
+# Next session — NDA-012 is complete. What phase 30 has left is small and mostly Richard's.
 
 Continue on branch `cline-dev` in `/Users/richardosborne/vscode_projects/OpenNoodl`.
-Tip when this was written: `9d65f91b`. **The working tree is completely clean and there is exactly
-one worktree and three branches** — see §8, which is now a record of a cleanup rather than a list of
-things to step around.
-
-⚠️ **"Another session is also committing to `cline-dev`" was false, and had been false for at least
-four handovers.** Richard confirmed it on 2026-08-01: there has only ever been this one session. The
-belief cost real work — a complete 299-line OPS-010 spec sat uncommitted for days because every
-handover told the next session to leave it alone, and each inherited the instruction from the last
-without checking. **It is committed now (`9d65f91b`).** If you find uncommitted work in this repo,
-it is orphaned, not in flight: read it, and commit or discard it deliberately.
+Tip when this was written: `ff62dff2` (plus this commit). **One worktree, three branches, clean
+tree.** If you find an uncommitted file it is orphaned, not in flight — read it, then commit or
+discard it deliberately.
 
 ## Where things stand
 
-**Data is CLOSED at 37/37 and 100% documented.** `Run Tasks` closed it.
+✅ **NDA-012 is done: 17 of 17 categories, 136 of 151 nodes, twelve checks each.** Visual was the
+last one and closed on 2026-08-01 — 20 in-scope nodes, **31 defects across 16 of them**, and
+**C1 100%**. Library-wide C1 is **90.4%**.
 
-**Visual is started but NOT audited, and the distinction matters.** Its C1 went **51.6% → 80.0%**
-and four defects are fixed — but **no Visual node has its twelve checks filled in**. Every entry in
-`audit/visual.md` is still `⬜`. Treat the category as unaudited work with a head start on C1.
-
-⚠️ **The three-worker Visual batch was terminated mid-task by an account monthly spend limit**, not
-by anything in the code. None of the three had committed. Their uncommitted work was reviewed,
-verified, pinned and salvaged — see §3 — but the per-node audit itself did not happen.
+The 15 nodes never audited are the deprecated set, out of scope by Richard's standing decision.
 
 | Commit | What |
 |---|---|
-| `2d7b34b8` | OB-ii's last two sites — the defects the Data batch's seam stranded |
-| `ca795e1f` | `Run Tasks` — 5 defects, 2 of them permanent wedges; C1 0% → 100% |
-| `b7c7d599` | The Visual shared-port pass — 20 sentences close 269 ports |
-| `a5fdc308` | Salvage of the killed batch — G1 on Text and the media sources, Image's empty failure port |
-| `4f08103d` | Register, findings DC-i…DC-iv, PROGRESS, and Run Tasks' worksheet entry |
+| `4e45ad28` | The DB-ii predicate over Visual — 242 hits, 2 defects, and the four absorbers pinned |
+| `9e976e62` | `Page Router`'s reset path — RT-1/RT-2/RT-3 |
+| `06396131` | The audit itself — 20/20 nodes, DV-vi, DV-vii, DV-viii |
+| `d2613cb8` | C1 80.0% → **100%**, the last 246 ports |
+| `ff62dff2` | Live QA correcting DV-ii |
 
-### Gates at `4f08103d` — I ran every one of these before *and* after
+### Gates — run before *and* after, all eight
 
 | Gate | Before | After |
 |---|---|---|
-| `packages/noodl-runtime` jest | 92/93 suites, 1734 passing | **93/94 suites, 1750 passing**, 0 failed |
-| `packages/noodl-viewer-react` jest | 36 suites, 403 passing | **37 suites, 417 passing**, 0 failed |
+| `packages/noodl-runtime` jest | 93/94 suites, 1750 passing | **93/94, 1750 passing**, 0 failed |
+| `packages/noodl-viewer-react` jest | 37 suites, 417 passing | **39 suites, 437 passing**, 0 failed |
 | runtime typecheck | clean | **clean** |
-| viewer-react typecheck | clean (`--skipLibCheck`) | **clean** |
+| viewer-react typecheck (`--skipLibCheck`) | clean | **clean** |
 | `catalog:check` | clean | **clean** |
-| `catalog:merge:check` | clean | **clean** (needed `catalog:merge`) |
-| `cloud-library:check` | clean | **clean** (needed `cloud-library:generate`) |
+| `catalog:merge:check` | clean | **clean** |
+| `cloud-library:check` | clean | **clean** |
 | editor `test:ci` | 2000 specs, 0 failures | **2000 specs, 0 failures** |
 
-⚠️ **The TSFixme ratchet is RED at the inherited `any +35` / `@ts-expect-error +1` and this session
-contributes zero.** It went to +36 and I typed the one `any` away rather than re-baselining.
-⚠️ **Do not re-baseline it.** ⚠️ **`catalog:check` passed while the other two were stale**, exactly
-as the standing trap says — run all three.
-
-**A worthwhile, unowned job**: **+28 of the +35 is phase 30's own corpus test files** —
-`nda-016-layout-sizemode.test.ts` (+12), `nda-004-navigation-failure.test.ts` (+9),
-`nda-008-stack-replace-transition.test.ts` (+7). That is our debt, not inherited debt, and typing
-those three files takes the ratchet most of the way to green.
+⚠️ **The TSFixme ratchet is RED at the inherited `any +35` / `@ts-expect-error +1`, and this session
+contributes zero.** The two new corpus files added +10 and they were typed away rather than
+re-baselined. ⚠️ **Do not re-baseline it.** The unowned job named in the last handover still stands:
+**+28 of the +35 is phase 30's own corpus test files** — `nda-016-layout-sizemode.test.ts` (+12),
+`nda-004-navigation-failure.test.ts` (+9), `nda-008-stack-replace-transition.test.ts` (+7). Typing
+those three takes the ratchet most of the way to green.
 
 ## §1 — What phase 30 has left
 
-1. **Visual's per-node audit — 20 nodes, twelve checks each.** The only substantial item. §2.
+1. ⚠️ **31 Visual defects are filed and none are fixed.** NDA-012 is explicitly a
+   verdicts-and-citations task — *"Out of scope: fixing anything"* — so this is correct, not a gap.
+   But it is now the largest open register in the phase and **§3 ranks it**.
 2. **NDA-010 §1.**
-3. **Three live-QA tails**: NDA-002, NDA-013, NDA-014 — plus **two new ones this session owes**
-   (§3.1).
+3. **Live-QA tails**: NDA-002, NDA-013, NDA-014, plus three owed from the Visual salvage (§4).
 4. **Two decisions that are Richard's**: NDA-004's deprecated-five policy, NDA-017 §1.
 
-## §2 — Visual: everything you need, already measured
+**There is no audit work left.** If you are picking this phase up to make it *finish*, the work is
+§3's fixes and §4's QA, not more reading.
 
-**20 nodes in scope of 29 in the catalog** — the nine deprecated legacy form controls are out by
-Richard's standing decision. `audit/visual.md` was **regenerated this session** and its pre-fills are
-current; ⚠️ the copy it replaced had every `C1` figure stale by 40–50 points (it showed `Button` at
-1% when the node was at 53%), so **do not trust a C1 number quoted from any older document**.
+## §2 — What Visual found, in one page
 
-### The territory, and what C1 is left in each
+**31 defects, 16 of 20 nodes, 41 ⚠️ cells excluding C1.** Full worksheet:
+[`audit/visual.md`](./audit/visual.md). Findings **DV-i…DV-viii** in
+[`FINDINGS.md`](./FINDINGS.md).
 
-| Directory | Nodes | Undocumented ports left |
+⚠️ **Two of the twelve checks were being read wrongly, and that matters more than the count.**
+
+- **`B3` had been pre-filled from "does the node have *any* signal output"**, which any node with
+  `Did Mount` passes. The check is whether **every signal input has a terminating signal output**.
+  Read properly, **seven of the eight Visual nodes with action inputs cannot tell a graph the action
+  finished**. That is **one design gap, not seven defects** (**DV-viii**) — and the eighth node is
+  the Repeater, which is right only because NDA-004 §3 gave it `Items Rendered` and recorded that
+  list-then-scroll had until then been a guessed `Delay`. The same sentence applies verbatim to
+  snap-then-do, scroll-then-measure and reset-then-navigate.
+- **`H1` is not answered by the `ssr` field.** Three nodes leak on delete and all three declare
+  `safe`.
+
+⚠️ **So Visual's find rate is not comparable with earlier categories, and neither is Navigation's
+1.88 — it was measured under the old B3 reading.** Two pre-fills have now been corrected mid-phase
+(B1 last session, B3 this one). **Before comparing any two categories' rates, check which pre-fill
+each was audited under.**
+
+### The four nodes worth reading first
+
+| Node | Failing checks | Why it is first |
 |---|---|---|
-| `noodl-viewer-react/src/nodes/visual/` | Circle, Columns, Drag, Group, Icon, Image, Text, Video (8) | ~85 |
-| `noodl-viewer-react/src/nodes/controls/` | Button, Checkbox, Dropdown (`options.ts`), Radio Button, Radio Button Group, Slider, Text Input (7) | ~140 |
-| `noodl-viewer-react/src/nodes/navigation/` | Page, Component Stack (`navigation-stack.tsx`), Page Router (`router.tsx`) (3) | 33 |
-| `nodes/std-library/data/foreach.tsx` | Repeater (1) | 7 |
-| `noodl-runtime/src/nodelibraryexport.ts:354` | Component Children (1) | 0 → record **`n/a`**, not 100% |
+| **`Page Router`** | 7 | **Four of them are in one 60-line method.** An unconfigured router **throws a `TypeError`** (`_internal.pages` guarded on `router.tsx:272`, dereferenced bare on `:284`, in the else branch of the same `if`). A start page missing from the router index is compared by *identity* against the current page, and on a fresh router both sides are `undefined` — so "resolved nothing" reads as "already showing it" and the router stays **permanently blank**. A component with no `Page` node is created then dropped by a bare `return`: never attached, never deleted, nothing reported. NDA-004 §2 gave `navigateAsync` a full failure channel and never touched `resetAsync`, which is the path that runs *first* |
+| **`Dropdown`** | 6 | **Three defects in one eleven-line setter** (`options.ts:57-67`) and one rewrite closes all three: `Items = null` throws, a re-sent collection leaves two `change` listeners, and the listener is never removed on delete |
+| **`Repeater`** | 6 | `if (!value) return;` (`foreach.tsx:212`) is the truthiness test `DC-iii` warns against by name, so a query that came back empty **leaves the previous list on screen**. Its Dynamic-template surface reports only to the editor |
+| **`Slider`** | 5 | Its private border generator (**DV-vi**) plus `_updateOutputValuePercent` comparing against a field nothing writes |
 
-**246 undocumented ports remain** of the original 593. Re-derive rather than trusting that number:
+### DV-ii, and the rule it produced
+
+⚠️ **Live QA disproved this session's own headline finding.** DV-ii originally said a freshly-dropped
+`Button` renders with no padding. Driven in the running editor on an author-created Button whose only
+model parameter was `label`: the panel shows 20, the model carries nothing — **and the browser
+computes `padding: 5px 20px` anyway**, because `assets/style.css:24` happens to carry the same two
+numbers. `Icon` has no such rule, computes `0px`, and is the node the defect actually costs.
+
+So Button's padding is specified **twice, in two files, by two mechanisms, and only the stylesheet is
+load-bearing**: change the port default and nothing moves, change the CSS and the panel starts lying.
+The two copies agreeing is why it survived.
+
+⚠️ **The rule: a mechanism defect and its consequence are two different claims, and a static
+measurement only ever establishes the first.** The corpus rows now separate them explicitly.
+
+## §3 — If you are fixing rather than auditing, this is the order
+
+Ranked by how cheap the fix is against how bad the symptom is. **None of these is specced; each is a
+slice-sized piece of work with its defect already measured and pinned.**
+
+1. **`Page Router`'s `resetAsync`** — `RT-1`/`RT-2`/`RT-3` are pinned in
+   `nda-012-page-router-reset.test.ts`, each with its control beside it, so the fix is guarded before
+   it is written. A throw on an unconfigured node and a permanently blank router are the worst two
+   symptoms in the category.
+2. **`Dropdown`'s `items` setter** — one rewrite, three defects, and the `H1` half is the same
+   `addDeleteListener` shape `Drag` already uses.
+3. **`Repeater`'s `items`** — a one-line truthiness fix, but ⚠️ **it changes behaviour an existing
+   project may lean on**: today a `null` leaves the list up. Worth Richard's opinion before shipping.
+4. **`Icon`'s padding (DV-ii)** — either drop `applyDefault: false` (no node's `defaultCss` sets
+   padding, so it protects nothing) or delete the non-zero defaults from `icon.ts` and `button.ts`
+   and let the stylesheet own it. **The second is the honest one** — it removes the duplicate rather
+   than making both copies live.
+5. **`Component Stack`'s `Clip Content` (DV-iii)**, `Radio Button Group`'s `G1` (one character:
+   `value?.toString`), `Slider`'s `valuePercentChanged` typo.
+6. **B3 as a whole (DV-viii)** — the biggest and the one to spec rather than patch. Seven nodes need
+   a completion signal; the Repeater's `Items Rendered` is the worked example.
+
+## §4 — Live QA still owed
+
+Three fixes are verified by inspection and typecheck only, and are named in
+`tests/corpus/nda-012-visual-empty-values.test.tsx` rather than left silent. **All three need a DOM
+and a frame clock, which `renderToStaticMarkup` cannot provide:**
+
+- **`Image`'s `On Error` reporting** — needs a real DOM `error` event.
+- **`Drag`'s `scale || 1` fallback** and **its snap-timer cleanup** — need a frame clock.
+
+Plus the older tails: **NDA-002, NDA-013, NDA-014**.
+
+✅ **DV-ii's live QA is done** and is the reason §2 has a correction in it. The recipe that worked,
+end to end, in about ten minutes:
 
 ```bash
-node -e 'const c=require("./packages/noodl-types/src/node-catalog.json");
-const v=c.nodes.filter(n=>n.category==="Visual"&&!n.isDeprecated);let t=0,d=0;
-for(const n of v)for(const p of [...(n.inputs||[]),...(n.outputs||[])]){t++;if(p.description)d++;}
-console.log(t,d,(d/t*100).toFixed(1)+"%");'
+nohup npm run dev:debug -- --quiet > /dev/null 2>&1 &
+until grep -q "launching Electron" .logs/dev.log; do sleep 15; done; sleep 30
+npm run cdp -- health
+# open a scratch project by grid position, not by text selector:
+npm run cdp -- click "[class*=Projects-module__Grid] > *:nth-child(4)"
+# then the two globals that matter, which only exist once a project is open:
+npm run cdp -- eval "Object.keys(window).filter(k=>/Noodl|NodeLibrary|Graph/i.test(k))"
+#   → NodeLibraryData          the port list the property panel reads
+#   → __nodeGraphEditor.model  the real project graph; .roots, each node .parameters / .getParameter
+npm run cdp -- eval "…" --target=viewer   # the preview window, for computed styles
+npm run dev:stop
 ```
 
-⚠️ The catalog spells these `isDeprecated` / `typeName`, **not** `deprecated` / `type` — the obvious
-field names return zero rows and read as "nothing is deprecated". That error has now cost this phase
-a mis-scope twice (Data's "42 nodes", Visual's "29").
-
-### Ownership rules that held, and the one that didn't
-
-- ✅ **`controls/utils.ts` to exactly one owner.** Verified: imported by exactly six files, all of
-  them the control nodes. Its shared interaction ports are **already documented** (`a5fdc308`).
-- ✅ **The orchestrator owns `react-component-node.ts` and `node-shared-port-definitions.ts`** and
-  does the shared-port pass alone. This is what `PORT-DESCRIPTION-STYLE.md` prescribes and it worked:
-  20 sentences, 269 ports, no conflicts.
-- ⚠️ **`nodes/visual/css-definition.ts` is NOT dead and NOT Visual's.** The previous handover said it
-  was "imported by nothing". It is imported by `register-nodes.js:15` and it is a **CustomCode**
-  category node, already audited. Leave it alone.
-- ⚠️ **`nodes/navigation/` is mostly the *Navigation* category**, which is closed. Only `page.ts`,
-  `navigation-stack.tsx` and `router.tsx` are Visual's. A defect in the others is a filing that
-  corrects a category believed closed.
-- ⚠️ **Nobody edits the base visual machinery** (`react-component-node.ts`, `layout.ts`). A defect
-  there is the orchestrator's.
-
-### If you parallelise again — the one rule that would have saved this session
-
-⚠️ **Tell workers to commit after every node**, and say why. Three workers died mid-task with
-everything uncommitted. The work was salvageable only because I could read their worktrees; had the
-worktrees been cleaned up first, all of it would have been lost. **Also check the spend limit before
-launching a fleet** — three agents plus an orchestrator exhausted a monthly cap in under an hour.
-
-Everything else about the seam was sound and is worth reusing verbatim: disjoint file sets, the
-catalog and `audit/`+`PROGRESS`/`FINDINGS`/`NODE-REGISTER` taken away from workers entirely, each
-worker writing worksheet rows into its own notes file in the same table format.
-
-⚠️ **Do NOT use `isolation: "worktree"`** — it branches from `origin/main`, 900+ commits behind. Build
-worktrees from `cline-dev` with the recipe in `../phase-34-one-backend-contract/NEXT-SESSION-HANDOVER.md`
-(and verify with the `require.resolve` check, or a worktree silently tests the primary's sources).
-
-### Where the defects are likely to be
-
-- **B1/B2 on the media and interaction nodes.** `Video`, `Image` and `Drag` all pre-fill `B1 ⚠️
-  none`, and three of this session's four Visual defects were there. **B2 asks whether the failure is
-  visible in a *deployed* app** — an `editorConnection.sendWarning` with no `raiseRuntimeError` beside
-  it is the defect, and it is the most common shape in this phase.
-- **G1 on the controls.** They are how an app collects data. The reachable empty values are `null`
-  and `''`, **never `undefined`** (§4.2).
-- **H1 on Page / Component Stack / Page Router / Repeater.** Lifecycle and identity is their whole
-  job, and NV-iii (one-shot state that latches) was found next door in `Close Popup` and
-  `Pop Component Stack`. `Component Stack` is the category's only non-`safe` SSR node, so H1 is a
-  real check on it.
-- **`Slider`** — its 80 remaining ports are mostly its private border generator (§3.2).
-- **`Repeater`** is the densest pre-fill in the category: 3 flagged checks on 7 ports, 0% documented,
-  and it is what the whole `foreachitem.ts` binding contract in the runtime serves.
-
-## §3 — This session's own loose ends
-
-1. ⚠️ **Two salvaged fixes are verified by inspection and typecheck only** — they need a DOM and a
-   frame clock, which `renderToStaticMarkup` cannot provide. **They are named in
-   `tests/corpus/nda-012-visual-empty-values.test.tsx` rather than left silent, and live QA owes
-   them**: `Image`'s `On Error` reporting, and `Drag`'s `scale || 1` plus its snap-timer cleanup.
-2. ⚠️ **`Slider` has a private copy of `addBorderInputs` (`slider.ts:225`).** The documentation
-   consequence is minor. **The open question is whether the two copies have drifted in *behaviour*** —
-   no fix to the shared border ports has ever reached Slider, and nobody has checked what that cost.
-3. **`Component Children`** (`noodl-runtime/src/nodelibraryexport.ts:354`) has zero static ports and
-   still needs its worksheet row, recorded **`n/a`, not 100%**.
-
-## §4 — Findings that change how you audit. All still current
-
-1. ⚠️ **The `B1`/`Fail?` pre-fill was wrong in both instruments** until last session — it matched
-   `/fail|error/i` against port **names**, so a *string* port called `Error` read as "✅ has one".
-   Fifteen categories were audited from that column. Both now require a **signal**. **Visual is the
-   first category audited with a correct pre-fill; do not compare its B1 rate with earlier ones.**
-2. ⚠️ **`Model.get(undefined)` is unreachable over a wire.** `sendValue` drops `undefined`
-   (`node.ts:635`), so the reachable empty values are `null` and `''`. A sweep hunting the
-   `undefined` spelling finds nothing and concludes the class is clean. Same line: **a value output
-   cannot be cleared**, so a stale output after a failure is runtime-wide — pin it with a row rather
-   than "fixing" it.
-3. ⚠️ **A declared `default` never runs its setter.** `registerInput` writes it into `_inputValues`
-   (`node.ts:116-118`); `NodeScope` queues only the keys the *model* carries (`nodescope.ts:148-157`).
-   Three Data nodes did nothing until an author touched an input. **The predicate is mechanical and
-   has still not been run over Visual** — `drag.ts` mirrors four defaults in `initialize` precisely
-   because of this, which is evidence the shape is present in the category.
-4. ⚠️ **`graph-harness` does not call a module's `setup`.** Six of Navigation's fifteen defects were
-   there, and it is where editor-time port derivation lives.
-5. ⚠️ **The validator being green is weak evidence** — dynamic-port nodes skip port checks.
-6. ⚠️ **A node audited for one contract is not an audited node** (DC-i, new). `Run Tasks` was worked
-   over four times by NDA-009 and nobody ever started a run. **Before trusting any "already audited"
-   claim in this phase, check *which* checks that audit ran.**
+⚠️ **`npm run cdp -- click` takes a CSS selector only** — `text=Foo` is a `querySelector` syntax
+error, and the launcher's card classes are hashed CSS-module names, so `[class*=…] > *:nth-child(n)`
+is the reliable form. ⚠️ **`VerifyFix3`/`VerifyFix4`/`bcn010-live` are previous sessions' scratch
+projects** and are the right things to open — a dev launch rewrites the project it opens.
 
 ## §5 — Waiting on Richard
 
-- ⚠️ **A cloud function cannot make an HTTP request.** `net.noodl.HTTP` is `availableIn: ['browser']`;
-  the only cloud-available general HTTP node is `REST2`, which is deprecated **and filtered out of the
-  picker**. **NDA-011 decided "deprecated, not deleted" without this fact.** FINDINGS **DB-v**.
-  **Ask about this one early — it may change what NDA-011 concluded.**
-- **Does phase 34 ship before or after the alpha?** The case for finishing the audit is stronger
-  again: phase 30 is now one category, three QA tails and two decisions.
+**Answered on 2026-08-01, and all three are now acted on:**
+
+- ✅ **Port-documentation precedence (WD-3)** — **`description` is canonical.** Enrichment `ports`
+  may only add what the source cannot know; `tooltip` is display-only and derived. That is where all
+  ~550 sentences from the last two sessions already went, so nothing needed moving. ⚠️ **This is now
+  a rule, not a preference — write it into `NDA-005-PORT-DOCUMENTATION.md` if it is not there.**
+- ✅ **A cloud function cannot make an HTTP request (DB-v)** — **make `net.noodl.HTTP` cloud-available**
+  rather than reviving the deprecated `REST2`. **This needs its own slice and is not an audit
+  change**; it is unowned and unspecced. NDA-011's "deprecated, not deleted" conclusion stands.
+- ✅ **Visual's execution** — solo and sequential, given the spend limit that killed the last batch.
+
+**Still open:**
+
+- **Does phase 34 ship before or after the alpha?** The case for finishing phase 30 is now much
+  stronger: **the audit is done**, and what is left is three QA tails and two decisions.
 - **Should `Insert Object Into Array` treat a duplicate insert as failure or idempotent success?**
 - **Should `shortDesc` exist at all?** It reaches **nobody** — not in the catalog for any core node,
   so `ContextBuilder`'s `?? node.shortDesc` cannot fire. Fifty sites declare it.
-- **Port-documentation precedence** — three channels (`description`, `tooltip`, enrichment `ports`)
-  with no declared precedence (**WD-3**). **This is now urgent**: this session wrote ~300 sentences
-  into `description` and the next category will write more.
+- **The `Repeater`'s `null` semantics** (§3.3) — the fix is one line and it changes behaviour.
 - Standing: NDA-004's deprecated-five policy, NDA-017 §1, admin-token disclosure, Q6,
   `cloudservices` vs `backendServices`, `BCN-006-LIFECYCLE-DESIGN.md` §9, nodegx `files.delete`
   defaulting to `"nobody"`.
@@ -197,56 +184,58 @@ worktrees from `cline-dev` with the recipe in `../phase-34-one-backend-contract/
 
 ### New this session
 
-- ⚠️ **The Bash cwd persists, and it bit three times** — including once where `cd packages/... && grep`
-  reported "no such file or directory" because the shell was *already* there, and once where a
-  typecheck read `exit=1` for the same reason and looked like a real failure. **Always `cd` to the
-  repo root explicitly and use absolute paths.**
-- ⚠️ **A shared port *name* is not a shared *declaration*.** `backgroundColor` looks exactly like the
-  33 names that live in shared machinery and is declared at 8 separate per-node sites. Group by
-  declaration site, not by name — and **re-measure after a bulk pass** to find what escaped it.
-- ⚠️ **A guard in the obvious place can measure as fixed while the reachable path stays broken.**
-  `dbmodelnode2.ts` has three routes to the shared record and the third runs *before* `setModelID`.
-  **Drive the input setter a wire reaches, not the method.**
-- ⚠️ **`zsh` eats `--include=*.ts` and `'\"'` in greps.** Quote glob arguments; several searches
-  returned "no matches found" or a math error and read as "nothing there".
-- ⚠️ **A scratchpad script cannot `require('ts-node')`** — module resolution starts from the script's
-  own directory. Put probes inside the package and run them as jest tests.
-- ⚠️ **Salvaging an agent's uncommitted work**: `git -C <worktree> diff > patch` then `git apply`
-  works, but `git status --short | head` will hide new untracked source files behind the
-  `node_modules` symlinks. **Filter `node_modules` out rather than truncating.**
+- ⚠️ **`audit/visual.md`'s `C1` column was stale *again* when this session opened it** — the file had
+  been regenerated before `b7c7d599`'s shared-port pass landed, so `Slider` read 27% when the node
+  was at 40% and `Text Input` read 45% when it was at 87%. **Re-derive every C1 figure from the
+  catalog before quoting it, including from the worksheet that is supposed to be authoritative.**
+- ⚠️ **A differential probe needs its identity noise named, or it reports everything.** The DB-ii
+  sweep's first run flagged all 92 of `Slider`'s ports because `props._nodeId` differs between two
+  instances, and all of `Radio Button Group`'s because `props.name` is a per-instance guid. The
+  fix is a path filter *and* a value filter — the guid is not at a predictable path.
+- ⚠️ **`renderToStaticMarkup` and the corpus graph measure the node's style object, not the page.**
+  A static measurement cannot see a stylesheet. That is exactly how DV-ii's first version got Button
+  wrong; see §2.
+- ⚠️ **A predicate firing is not a defect, and the ratio can be 121:1.** 242 of 687 Visual ports fire
+  DB-ii and two are real. **Pin the absorbing mechanisms as rows beside the defects** or the next
+  sweep files 242 findings.
+- ⚠️ **A shell heredoc plus Python plus a JS string literal is three levels of escaping**, and
+  `\\'` inside a single-quoted JS string produced a syntax error that only `catalog:generate`
+  caught — `tsc` had not been run yet. **Prefer `"…don't…"` over escaping an apostrophe.**
+- ⚠️ **`ts-jest` here targets pre-ES2015**: `[...set]` fails to compile with TS2802. Use
+  `Array.from`.
+- ⚠️ **A `.js` file with ESM syntax under `src/` is not transformed by the viewer's `ts-jest`
+  preset** — `Group/scroll-plugins/*.js` breaks any test that imports `Group`. A `moduleNameMapper`
+  stub in a throwaway config is the cheap way past it.
 
 ### Standing, and confirmed live again this session
 
-- ⚠️ **`catalog:check` can pass while `catalog:merge` and `cloud-library:check` are stale.** It did.
-  Fix with `catalog:merge` and `cloud-library:generate`.
-- ⚠️ **`packages/noodl-runtime`'s bare `npx jest` crashes** in `@jest/reporters` on a full run. Use a
-  minimal reporter (one is at `scratchpad/minimal-reporter.js`; it is 20 lines, rewrite it if gone).
-- ⚠️ **Build `noodl-runtime`'s `dist-types` first** (`npm run build:types --prefix
-  packages/noodl-runtime`) or corpus suites do not start and the run reads short.
-- ⚠️ **`echo "exit=$?"` after a pipe reports the pipe's last stage.** Redirect, then check `$?`.
-- ⚠️ **A green count with new noise beside it is not a green gate.**
-- ⚠️ **Scope greps to `packages/*/src`** — the root hits leftover worktrees and `noodl.deploy.js`.
-- ⚠️ **`noodl.deploy.js` is a gitignored artifact nothing rebuilds.** This session's runtime and
-  viewer changes do **not** reach a deployed app until
-  `npm run build --prefix packages/noodl-viewer-react` runs.
-- ⚠️ **`rm` on a tracked file is blocked by the permission classifier**; `mv` to the scratchpad works.
-  Relevant because `scripts/node-audit/worksheets.js` **never overwrites** — `mv` the file away to
-  regenerate it.
-- ⚠️ **`instanceof Collection` is `false` under `noodl-viewer-react`'s jest and `true` in the shipped
-  build.** Two branches in the Array family have never been exercised by any test.
+- ⚠️ **`catalog:check` can pass while `catalog:merge` and `cloud-library:check` are stale.** Run all
+  three. Fix with `catalog:merge` and `cloud-library:generate`.
+- ⚠️ **`packages/noodl-runtime`'s bare `npx jest` crashes** in `@jest/reporters`. Use a minimal
+  reporter — 20 lines, rewrite it if gone.
+- ⚠️ **Build `noodl-runtime`'s `dist-types` first** or corpus suites do not start and the run reads
+  short.
+- ⚠️ **The Bash cwd persists.** `cd` to the repo root explicitly and use absolute paths.
+- ⚠️ **`zsh` eats `--include=*.ts` in greps.** Quote glob arguments.
+- ⚠️ **`noodl.deploy.js` is a gitignored artifact nothing rebuilds.** This session's viewer changes
+  do **not** reach a deployed app until `npm run build --prefix packages/noodl-viewer-react` runs.
+- ⚠️ **`graph-harness` does not call a module's `setup`** — third finding in it this phase
+  (**DV-vii**, `Page`'s dead ports).
+- ⚠️ **Scope greps to `packages/*/src`** — the root hits `noodl.deploy.js`, which is minified and
+  will match almost anything.
 
 ### Editor / CDP
 
-- ✅ `--target=editor`. ⚠️ `--target=dashboard` is stale advice and falls through to the *preview*
-  window. ⚠️ `BaseDialog` renders every dialog **twice** — scope with
-  `[class*=VisibleDialog] > [class*=ChildContainer] <sel>`. ⚠️ **HMR does not reliably swap a changed
-  component** — relaunch after touching node registrations. ⚠️ **A dev launch rewrites the project it
-  opens**, on open *and* shutdown — use a scratch project. Launch detached; **never `cdp reload`**.
-- ⚠️ **Only one editor at a time across a batch** (fixed dev-server ports; `lsof -i :8574`).
+- ✅ `--target=editor` (default), `--target=viewer` for the preview. ⚠️ `--target=dashboard` is stale
+  advice. ⚠️ **A dev launch rewrites the project it opens** — use a scratch project. Launch detached;
+  **never `cdp reload`**. ⚠️ **Only one editor at a time** (`lsof -i :8574`). ⚠️ **`npm run dev:stop`
+  when you are done** — three webpack watchers otherwise recompile on every file change.
 
 ## §7 — The rig
 
-Left **running**; all three answered 200 this session:
+Not used this session. Bring up from `dev-docs/tasks/phase-16-runtime-deploy-health/uba-e2e`:
+`docker compose --profile supabase --profile aggregate up -d` and
+`docker compose --profile parse up -d`.
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8092/parse/health   # parse
@@ -254,75 +243,39 @@ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8055/server/health  # 
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8091/api/health     # pocketbase
 ```
 
-Bring up from `dev-docs/tasks/phase-16-runtime-deploy-health/uba-e2e`:
-`docker compose --profile supabase --profile aggregate up -d` and `docker compose --profile parse up -d`.
-
 - **Parse** `:8092` — app id `uba-e2e-app`, master key `uba-e2e-master-key`, mounted at `/parse`.
 - **Directus** `:8055` — `admin@example.com` / `directus-admin-pw`; static token
-  `bcnorch-static-token-1234567890` does not expire. ⚠️ CORS disabled; proxy at
-  `uba-e2e/bcn-orch-cors-proxy.mjs`.
+  `bcnorch-static-token-1234567890`. ⚠️ CORS disabled; proxy at `uba-e2e/bcn-orch-cors-proxy.mjs`.
 - **PocketBase** `:8091` — `admin@example.com` / `pocketbase-admin-pw`.
 - **PostgREST (as "Supabase")** `:8056` — no GoTrue, no Realtime.
 - **nodegx-backend** — start your own. ⚠️ Parse wire at the **root** (`/classes/…`), and
   `/api/_schema` rather than `/schemas`.
 
-⚠️ **Left on Parse**: `nda012_Owner`/`nda012_Target` (`enemies` is deliberately poisoned —
-`Relation<undefined>`, DA-ii's evidence) plus `nda012a_*`…`nda012d_*`, `bcn005_*`, `bcn004n`,
-`bcn007_*`, `bcnorch`. ⚠️ **Never truncate `articles` or `authors`.** ⚠️ **Never pipe a probe into
-`head`** — SIGPIPE kills node partway and reads as the server having died.
+⚠️ **Left on Parse**: `nda012_Owner`/`nda012_Target` (`enemies` deliberately poisoned — DA-ii's
+evidence) plus `nda012a_*`…`nda012d_*`, `bcn005_*`, `bcn004n`, `bcn007_*`, `bcnorch`.
+⚠️ **Never truncate `articles` or `authors`.** ⚠️ **Never pipe a probe into `head`** — SIGPIPE kills
+node partway and reads as the server having died.
 
-## §8 — Housekeeping — the repo was cleaned up on 2026-08-01
+## §8 — ⚠️ 857 commits exist only on this machine
 
-**State now: one worktree, three branches, clean tree.** `git add -A` is safe again, though explicit
-pathspecs remain the better habit.
+`cline-dev` is far ahead of `origin/cline-dev` and of `main` — essentially the entire revival, on one
+disk with no remote copy.
 
-| | Before | After |
-|---|---|---|
-| Worktrees | **28** | **1** (the primary) |
-| Branches | **14** | **3** — `cline-dev`, `main`, `nightly-to-main` |
-| Uncommitted files | 3 (phase-31, orphaned) | **0** |
+⚠️ **Asked on 2026-08-01. Richard's answer: "Leave it — I'll handle the remote."** A known, accepted,
+owned risk. **Do not push, and do not re-litigate it.**
 
-- **24 stale `.claude/worktrees/agent-*` worktrees** from AIX/PNL/DEP/batch-era sessions, plus this
-  session's three, plus `batch-c-editor-shell`, `batch-e-backend` and eight `wt-bcn*` branches — all
-  removed. ⚠️ **Every one was verified merged into `cline-dev` first** (`git branch --no-merged`) and
-  **checked for uncommitted work**; one agent worktree was dirty and its two files already existed in
-  `cline-dev`. `git branch -d` (merged-only) was used deliberately rather than `-D`, so the delete
-  itself was the proof. `.claude/worktrees` is now empty, which also fixes the standing grep trap.
-- `nightly-to-main` is the **only** unmerged branch. It is CI infrastructure — **keep it**.
-- ⚠️ **`main` is 1,007 commits behind `cline-dev`, and `origin/cline-dev` is 857 behind.** See §10.
-- **The stash list is empty.** Five old AIX-era stashes were exported to
-  `.git/stash-archive/*.patch` (with `INDEX.txt` naming what each was) and then cleared, on
-  Richard's instruction. ⚠️ **Two of them — now `stash-0.patch` and `stash-3.patch` — contain the
-  *minified* `project-examples/agent-chat/project.json` (−5,719 lines)**, which is the known
-  editor-launch corruption, not a real edit. **Do not apply either.** The archive is outside the
-  work tree, so it is invisible to `git status` and will never be committed by accident.
-- Pre-existing and unowned: `dist-types/src/api/cloudstore.d.ts` has a dangling `packages/…` import,
-  so `tsc -p noodl-viewer-react` needs `--skipLibCheck`. `@noodl/mcp` has **one** pre-existing failing
-  test. The root `tsc` has 18 pre-existing `Cannot find module '@noodl-versioning'` errors.
-
-## §10 — ⚠️ 857 commits exist only on this machine
-
-`cline-dev` is **857 commits ahead of `origin/cline-dev`** and 1,007 ahead of `main`. That is
-essentially the entire revival — every phase from 12 to 34 — living on one disk with no remote copy.
-
-This is the single largest risk to the project and it is **not a technical problem**: the remote
-exists (`github.com/The-Low-Code-Foundation/OpenNoodl`), nothing is in conflict, and a push would
-be a clean fast-forward.
-
-⚠️ **Asked on 2026-08-01. Richard's answer: "Leave it — I'll handle the remote."** So this is a
-known, accepted, owned risk, not an oversight. **Do not push, and do not re-litigate it** — mention
-it once if a session runs long enough that the exposure matters, and otherwise leave it with him.
-- Pre-existing and unowned: `dist-types/src/api/cloudstore.d.ts` has a dangling `packages/…` import,
-  so `tsc -p noodl-viewer-react` needs `--skipLibCheck`. `@noodl/mcp` has **one** pre-existing failing
-  test. The root `tsc` has 18 pre-existing `Cannot find module '@noodl-versioning'` errors.
+Pre-existing and unowned: `dist-types/src/api/cloudstore.d.ts` has a dangling `packages/…` import, so
+`tsc -p noodl-viewer-react` needs `--skipLibCheck`. `@noodl/mcp` has **one** pre-existing failing
+test. The root `tsc` has 18 pre-existing `Cannot find module '@noodl-versioning'` errors.
 
 ## §9 — Read these first
 
 - [`PROGRESS.md`](./PROGRESS.md) — **its newest log entry is always more current than this file.**
-  Updated in all four places: task cell, coverage table, find-rate table, log.
-- [`FINDINGS.md`](./FINDINGS.md) — **DC-i…DC-iv** at the end.
-- [`audit/data.md`](./audit/data.md) — **complete**; `Run Tasks`' entry is the worked example of a
-  twelve-check verdict block.
-- [`audit/visual.md`](./audit/visual.md) — regenerated, current pre-fills, **all entries still `⬜`**.
-- `WORKER-{A,B,C,D}-NOTES.md` — the Data batch's per-node reasoning. **There are no Visual worker
-  notes**; the three workers died before writing any.
+- [`FINDINGS.md`](./FINDINGS.md) — **DV-i…DV-viii** at the end.
+- [`audit/visual.md`](./audit/visual.md) — the 20 verdicts, and the two corrected check readings at
+  the top.
+- [`audit/data.md`](./audit/data.md) — `Run Tasks`' entry is the worked example of a twelve-check
+  verdict block.
+- ⚠️ **There are no Visual worker notes.** `media-source.ts` still cites a `WORKER-V-NOTES.md` that
+  was never written — the three workers died before writing any. The claim it points at is recorded
+  in `FINDINGS.md` under `DC-iii` instead.
