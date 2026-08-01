@@ -726,6 +726,24 @@ a wire fact.
 | `nodegx-backend-contract` | 146 passed, 0 failed |
 | `tsc` | clean — runtime, and viewer with `--skipLibCheck` (the pre-existing `dist-types/src/api/cloudstore.d.ts` dangling import) |
 | `catalog:check` | clean, committed catalog up to date |
+| editor `test:ci` | **1957 specs** — the baseline exactly — **1 failure**, and it is not this task's (below) |
+
+⚠️ **The editor's one failure is `Git local tests can handle merge with conflicts
+in project.json`**, which [REV-010](../phase-12-reanimation/REV-010-TEST-CI-NEEDS-MAIN-BUNDLE.md)
+documents precisely: `noodl-git` installs a merge driver that shells out to the
+editor **as an Electron app**, `test:ci` builds only the renderer bundle, so on a
+tree with no prior `build:editor` the driver cannot start and the spec times out.
+Steps 1–3 recorded the same failure in the same worktree.
+
+Two independent reasons it cannot be this task's, rather than one assertion:
+
+1. **The spec count is unchanged** — 1957, the stated baseline — so nothing was
+   added, removed or renamed.
+2. **None of this task's code is in the editor test bundle at all.**
+   `RestAuthAdapter`, `restAuthProfileFor`, `SUPABASE_AUTH_UNSUPPORTED`,
+   `refreshTokenRequired`, `MIN_REFRESH_SPACING_MS`, `jwtExpiryMs`, `pageSays` and
+   `htmlPageError` each return **zero** matches in
+   `packages/noodl-editor/tests/index.bundle.js`. The diff cannot reach that spec.
 
 ⚠️ Run `npm --prefix packages/noodl-runtime run build:types` first in a fresh
 worktree or four corpus suites fail to start and the run reads `79/84`.
