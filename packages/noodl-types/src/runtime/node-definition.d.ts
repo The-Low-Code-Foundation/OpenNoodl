@@ -287,11 +287,20 @@ export interface ModelLike {
 export interface ModelModule {
   new (id: string, data: Record<string, unknown>): ModelLike;
   readonly prototype: ModelLike;
-  /** Fetches — or, for an unknown or omitted id, *creates* — the record. Never fails. */
-  get(id?: string): ModelLike;
+  /**
+   * Fetches — or, for an unknown or omitted id, *creates* — the record. Never fails.
+   *
+   * ⚠️ `id` is `string | number`. Directus and PostgREST hand back JSON numbers for a
+   * record's primary key (measured, BCN-004 step 6), and the store keys a **plain
+   * object**, so `7` and `'7'` land on one record. That coercion is why the mixture has
+   * been harmless — and it is load-bearing: `WeakRegistry` already uses a `Map`, which
+   * does not coerce, so moving `models` to one would silently split every integer-keyed
+   * record in two.
+   */
+  get(id?: string | number): ModelLike;
   /** Creates a record from a plain object. `data.id` picks the id; other keys are set. */
   create(data?: Record<string, unknown>): ModelLike;
-  exists(id: string): boolean;
+  exists(id: string | number): boolean;
   /** Throws on `null`/`undefined` — see the interface note. */
   instanceOf(value: unknown): boolean;
   /** A 10-character random id. The runtime's only id generator for records. */

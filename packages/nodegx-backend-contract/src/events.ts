@@ -18,12 +18,12 @@
  * @module backend-contract/events
  */
 
-import type { AdapterRecord } from './data';
+import type { AdapterRecord, RecordId } from './data';
 
 export interface AdapterEvent {
   type: 'fetch' | 'create' | 'save' | 'delete';
   collection: string;
-  objectId?: string;
+  objectId?: RecordId;
   object?: AdapterRecord;
 }
 

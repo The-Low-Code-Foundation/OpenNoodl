@@ -105,6 +105,7 @@ import {
   type ListOption,
   type QueryOptions,
   type RelationDescriptor,
+  type RecordId,
   type RelationOptions,
   type RestWireProfile,
   type SaveOptions,
@@ -411,7 +412,9 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
    * means a PocketBase collection someone chose to call `directus_users` is
    * untouched, which a type-free prefix test would not have managed.
    */
-  private path(template: string, collection: string, id?: string): string {
+  // `id` is `RecordId`: Directus and PostgREST hand back JSON numbers, and this
+  // interpolates into a URL path where a number is a perfectly good segment.
+  private path(template: string, collection: string, id?: RecordId): string {
     const override = template.startsWith('/items/') ? directusPathOverride(collection) : undefined;
     const effective =
       override === undefined
@@ -433,7 +436,7 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
    * on the template rather than on `type === 'supabase'` so that the branch
    * describes the wire fact it depends on.
    */
-  private recordTarget(profile: RestWireProfile, collection: string, objectId: string): { path: string; params: Params } {
+  private recordTarget(profile: RestWireProfile, collection: string, objectId: RecordId): { path: string; params: Params } {
     if (profile.recordPath.includes('{id}')) {
       return { path: this.path(profile.recordPath, collection, objectId), params: [] };
     }
@@ -1438,7 +1441,7 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
     });
   }
 
-  private junctionParams(profile: RestWireProfile, pair: Record<string, string>): Params {
+  private junctionParams(profile: RestWireProfile, pair: Record<string, RecordId>): Params {
     if (profile.type === 'supabase') {
       return Object.keys(pair).map((field) => [field, `eq.${pair[field]}`] as [string, string]);
     }
@@ -1457,7 +1460,7 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
     handle: BackendHandle,
     profile: RestWireProfile,
     write: { collection: string },
-    pair: Record<string, string>,
+    pair: Record<string, RecordId>,
     callbacks: { ok: (rows: AdapterRecord[]) => void; fail: (message: string) => void }
   ): void {
     this.request(
@@ -1490,7 +1493,7 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
     handle: BackendHandle,
     profile: RestWireProfile,
     write: { collection: string; sourceField: string; targetField: string },
-    pair: Record<string, string>,
+    pair: Record<string, RecordId>,
     options: RelationOptions
   ): void {
     const done = () => this.relationChanged(handle, options, this.relationResult(options), 'remove');

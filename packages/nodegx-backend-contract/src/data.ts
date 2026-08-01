@@ -60,9 +60,32 @@ export interface FileCallbacks<TSuccess> {
   error: (err?: FileError) => void;
 }
 
+/**
+ * A record's primary key, as the backend actually hands it back.
+ *
+ * ⚠️ **Not always a string, and the declaration used to say it was.** BCN-004 step 6
+ * measured every backend in the rig: **Directus and PostgREST return JSON numbers** for
+ * `objectId`, `firstItemId` and Create's `Id`; PocketBase, `nodegx-backend` and Parse
+ * return strings. A numeric id survives `_fromJSON` into the Model store, every item in a
+ * collection agrees on the type, and feeding one back into a `Record Id` input drives a
+ * successful update *and* delete — all confirmed by re-reading, and the render confirmed
+ * separately in a deployed bundle.
+ *
+ * ⚠️ **Do not coerce the primary key to a string to make this go away.** A foreign key
+ * arrives as a number too, so `String(article.author_id) === author.objectId` would hold
+ * while `author.objectId === article.author_id` did not — coercing only the PK breaks the
+ * comparison a graph actually writes.
+ *
+ * The one place the mixture is safe by accident: `Model.get` and `Collection`'s diff key a
+ * **plain object**, so `7` and `'7'` rendezvous on one record. That is load-bearing —
+ * converting `models` to a `Map`, which does not coerce, would silently split every
+ * integer-keyed record in two.
+ */
+export type RecordId = string | number;
+
 /** One record as it crosses the adapter boundary. Always carries at least its id. */
 export interface AdapterRecord {
-  objectId?: string;
+  objectId?: RecordId;
   [field: string]: unknown;
 }
 
@@ -138,7 +161,7 @@ export interface AggregateOptions extends Callbacks<(result: Record<string, unkn
 
 export interface FetchOptions extends Callbacks<(record: AdapterRecord) => void> {
   collection: string;
-  objectId: string;
+  objectId: RecordId;
   include?: ListOption;
 }
 
@@ -158,7 +181,7 @@ export interface CreateOptions extends Callbacks<(record: AdapterRecord) => void
 
 export interface SaveOptions extends Callbacks<(record: AdapterRecord) => void> {
   collection: string;
-  objectId: string;
+  objectId: RecordId;
   /**
    * `cloudstore.js:350` strips `createdAt`/`updatedAt` before sending. Every
    * adapter needs the same server-owned-field exclusion, but the field *names*
@@ -180,14 +203,14 @@ export interface SaveOptions extends Callbacks<(record: AdapterRecord) => void> 
  */
 export interface IncrementOptions extends Callbacks<(record: AdapterRecord) => void> {
   collection: string;
-  objectId: string;
+  objectId: RecordId;
   /** Keyed by property name, valued by amount. Negative to decrement. */
   properties: Record<string, number>;
 }
 
 export interface DeleteOptions extends Callbacks<() => void> {
   collection: string;
-  objectId: string;
+  objectId: RecordId;
 }
 
 // ── Relations ──────────────────────────────────────────────────────────────
@@ -219,10 +242,10 @@ export interface DeleteOptions extends Callbacks<() => void> {
  */
 export interface RelationOptions extends Callbacks<(record: AdapterRecord) => void> {
   collection: string;
-  objectId: string;
+  objectId: RecordId;
   /** The relation field on the source record. */
   key: string;
-  targetObjectId: string;
+  targetObjectId: RecordId;
   /** The collection on the other end. */
   targetCollection?: string;
   /** @deprecated Parse-family spelling of {@link targetCollection}. Still read. */

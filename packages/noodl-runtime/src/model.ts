@@ -76,7 +76,15 @@ interface ModelConstructor {
    */
   _registrySize(): { named: number; anonymous: number };
 
-  get(id?: string): ModelLike;
+  /**
+   * ⚠️ `id` is `string | number`. Directus and PostgREST hand back JSON numbers, and this
+   * keys a **plain object** — so `7` and `'7'` rendezvous on one record. That coercion is
+   * what has made the mixture harmless all along, and it is load-bearing: `WeakRegistry`
+   * already uses a `Map`, which does not coerce, so converting `models` to one would
+   * silently split every integer-keyed record in two. Nine tests object to it; they are
+   * right.
+   */
+  get(id?: string | number): ModelLike;
   create(data?: Record<string, unknown>): ModelLike;
   exists(id: string): boolean;
   /** Throws on `null`/`undefined` — it reads `value.target` when the `instanceof` fails. */

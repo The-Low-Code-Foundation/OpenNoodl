@@ -394,7 +394,12 @@ function _deserializeJSON(data, type, modelScope) {
  * five call sites in the viewer that omit it are therefore not broken, but a sandboxed
  * preview driving those nodes shares records with the host page. See PLAT-006 notes.
  *
- * @param {{ objectId?: string } & Record<string, unknown>} item
+ * ⚠️ `objectId` is `string | number`, not `string` — this declaration said `string` while
+ * Directus and PostgREST have been handing back JSON numbers all along. See the contract's
+ * `RecordId`. `Model.get` keys a plain object, so a numeric id coerces on the way in and
+ * that is the reason the mixture has been harmless.
+ *
+ * @param {{ objectId?: string | number } & Record<string, unknown>} item
  * @param {string} [collectionName]
  * @param {import('@noodl/types').ModelScopeLike} [modelScope] omit for the process-wide store
  * @returns {import('@noodl/types').ModelLike}
