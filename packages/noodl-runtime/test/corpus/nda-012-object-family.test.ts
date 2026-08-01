@@ -41,8 +41,21 @@ import NewModelNode = require('../../src/nodes/std-library/data/newmodelnode');
 import SetModelProperties = require('../../src/nodes/std-library/data/setmodelpropertiesnode');
 import HttpNode = require('../../src/nodes/std-library/data/httpnode');
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Model = ModelImport as any;
+const Model = ModelImport;
+
+/**
+ * The two `_internal` surfaces these rows reach into, named once rather than cast at each
+ * site. Same rule as `WatcherInstance` below and as `agent/node-instances.d.ts`, whose
+ * docstring names `(node as any)` as the thing being replaced: a cast per call site is
+ * three descriptions of one object with nothing checking them against each other.
+ */
+interface ObjectNodeInstance extends NodeInstance {
+  _internal: { model?: InstanceType<typeof ModelImport> };
+}
+
+interface HttpNodeInstance extends NodeInstance {
+  _internal: { url: string };
+}
 
 interface TriggerInstance extends NodeInstance {
   go(): void;
@@ -237,8 +250,7 @@ describe('C3 — the Object node, an empty Id', () => {
     await graph.settle(3);
 
     expect(graph.signalsFor('target')).not.toContain('fetched');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((graph.node('target') as any)._internal.model).toBeUndefined();
+    expect(graph.node<ObjectNodeInstance>('target')._internal.model).toBeUndefined();
   });
 
   /**
@@ -256,8 +268,7 @@ describe('C3 — the Object node, an empty Id', () => {
     await graph.settle(3);
 
     expect(graph.signalsFor('target')).not.toContain('fetched');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((graph.node('target') as any)._internal.model).toBeUndefined();
+    expect(graph.node<ObjectNodeInstance>('target')._internal.model).toBeUndefined();
   });
 
   /**
@@ -289,10 +300,9 @@ describe('C3 — the Object node, an empty Id', () => {
     trigger.send('a', { name: 'FromLiteral' });
     await graph.settle(3);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bound = (graph.node('target') as any)._internal.model;
+    const bound = graph.node<ObjectNodeInstance>('target')._internal.model;
     expect(bound).toBeDefined();
-    expect(bound.get('name')).toBe('FromLiteral');
+    expect(bound!.get('name')).toBe('FromLiteral');
   });
 });
 
@@ -313,13 +323,11 @@ describe('Create New Object', () => {
     await graph.settle(2);
     trigger.go();
     await graph.settle(3);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const first = (graph.node('target') as any)._internal.model.getId();
+    const first = graph.node<ObjectNodeInstance>('target')._internal.model!.getId();
 
     trigger.go();
     await graph.settle(3);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const second = (graph.node('target') as any)._internal.model.getId();
+    const second = graph.node<ObjectNodeInstance>('target')._internal.model!.getId();
 
     expect(graph.signalsFor('target').filter((s) => s === 'created')).toHaveLength(2);
     expect(first).not.toBe(second);
@@ -435,8 +443,7 @@ describe('C4 — HTTP Request, a timeout is a failure', () => {
     await wait(400);
     expect(graph.node('target').getOutput('statusCode').value).toBe(200);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (graph.node('target') as any)._internal.url = base + '/slow';
+    graph.node<HttpNodeInstance>('target')._internal.url = base + '/slow';
     trigger.go();
     await graph.settle(2);
     await wait(700);
