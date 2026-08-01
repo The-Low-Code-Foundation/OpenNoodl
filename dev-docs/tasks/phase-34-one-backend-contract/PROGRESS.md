@@ -331,6 +331,7 @@ Full detail in [BCN-001-CONTRACT.md §8](./BCN-001-CONTRACT.md). Rig extended, n
 | ~~Built-in backend drops geo filters; `matchesRegex` is not a regex~~ | ✅ BCN-003 — both fixed with `node:sqlite` user-defined functions, driven live |
 | ~~`dbcollectionnode2.ts:25` imports `WhereClause` from the *server-side* persistence types~~ | ✅ BCN-003 — the type it wanted was `ParseWhere`, not `Filter` |
 | ~~One filter builder; fold `QueryPointerRule` in; **live QA in the editor**~~ | ✅ BCN-003b — done, and the live pass drove the whole chain to a real backend |
+| ⚠️ **Two creatable nodes both display "Delete Record"** — `DeleteDbModelProperties` (Parse-wire) and `noodl.byob.DeleteRecord` (BYOB). Neither is deprecated, so both reach the picker and an author cannot tell them apart. Found by phase 30's NDA-012; **Richard assigned it to phase 34 on 2026-08-01** — *"one of them is probably the old Parse system, the other BYOB, so the merge missed it"*, which is the diagnosis to test first. ⚠️ Note phase 34 already deleted the five `noodl.byob.*` types this pair's sibling set belonged to, so re-derive which two survive before renaming either | **phase 34** |
 | ⚠️ **`SchemaHandler` never populates `dbCollections`, so Query Records has no class picker, no visual filter and no visual sort in the editor.** Since WF-007 | **unowned — BCN-004 or BCN-009** |
 | A live pass on the **BYOB** side of the converged builder, against Directus | BCN-004 |
 | `relatedTo` executed against a backend rather than only authored | BCN-005 |
