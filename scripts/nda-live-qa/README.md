@@ -4,6 +4,14 @@ One project that exercises every claim the phase-30 batch shipped without watchi
 because five separate claims needed one editor launch, and rebuilding the graph by hand each time is
 where the session time goes.
 
+> **Other generators in this directory.** `make-controls-fixture.js`, `make-iconsets.js`,
+> `make-run-on-change-fixture.js` (NDA-017 §2) and `make-visual-cd-fixture.js` (NDA-012 Visual
+> streams C and D) each carry their own "what each part is for" table in the file header. Read that
+> table before changing a graph — several parts are shaped the way they are to *defeat a
+> coincidence*, and making them tidier deletes the measurement. `make-visual-cd-fixture.js` is the
+> worked example: its Video source is unplayable on purpose, and its scroll target is a child of the
+> Group on purpose.
+
 ```bash
 node scripts/nda-live-qa/make-fixture.js "<project dir>/project.json"
 node scripts/nda-live-qa/make-iconsets.js "<project dir>"      # optional, for NDA-007

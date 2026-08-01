@@ -114,18 +114,30 @@ export class Group extends React.Component<GroupProps> {
     // An unwired `Element` is a port with no opinion, not a failure — Empty-Value Contract.
     if (!noodlChild) return undefined;
 
-    // Get the ref - in React 19, we need to access the DOM element directly
-    // rather than using the deprecated findDOMNode
-    const ref = noodlChild.getRef();
-    // The ref might be a DOM element directly, or a ref object with a current property.
-    //
-    // ⚠️ `typeof HTMLElement !== 'undefined'` is load-bearing, not defensive noise: `instanceof`
-    // against an undeclared global is a `ReferenceError`, not `false`. This node declares SSR
-    // `safe`, and the server has no `HTMLElement` — so the bare `instanceof` turned a scroll
-    // action fired anywhere without a DOM into a thrown error rather than a no-op. Found by the
-    // corpus row for the reason-string contract, which runs in `testEnvironment: node`.
-    const isElement = typeof HTMLElement !== 'undefined' && ref instanceof HTMLElement;
-    const element = (isElement ? ref : ref?.current) as HTMLElement | null;
+    /**
+     * ⚠️ This was `noodlChild.getRef()`, and for an ordinary target it resolved to nothing —
+     * **always**, mounted or not.
+     *
+     * `getRef` returns `reactComponentRef`, the pre-React-19 field. The React 19 runtime reports
+     * a node's root through `setDOMElement`/`getDOMElement` instead (RUN-001), so a Text or
+     * Group on `Element` handed back a ref object whose `current` was permanently `undefined`
+     * and every `Scroll To Element` returned "no rendered DOM element — it may not be mounted".
+     * That reason is plausible and wrong: the element was mounted, and had been for as long as
+     * the page had. `getDOMElement` is a strict superset of the resolution this did by hand —
+     * `_domElement`, then a host-element inner ref, then `getRef` and (on React 18) findDOMNode.
+     *
+     * Found by driving stream C's own pre-mount fix in the editor. The queue flushed and the
+     * action reached the Group exactly as designed, and then could not find what to scroll to;
+     * the B2 diagnosis this category added is the only reason it was visible at all.
+     *
+     * ⚠️ The SSR guard the old `instanceof HTMLElement` line carried has moved into
+     * `getDOMElement` rather than been dropped — `instanceof` against an undeclared global is a
+     * `ReferenceError`, not `false`, and this node declares SSR `safe`. Guarding it at the
+     * accessor fixes it for every caller instead of only this one.
+     */
+    const element = (
+      typeof noodlChild.getDOMElement === 'function' ? noodlChild.getDOMElement() : null
+    ) as HTMLElement | null;
 
     if (!element || !element.scrollIntoView) {
       return 'the node on Element has no rendered DOM element — it may not be mounted';

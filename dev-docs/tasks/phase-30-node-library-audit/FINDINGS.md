@@ -2512,6 +2512,45 @@ for a *different* fix.
 phase, and its two most productive properties are accidental — it runs without a DOM, and it forces
 someone to state what "working" means for a path nobody had stated it for.
 
+### DV-xvii — `Scroll To Element` read the pre-React-19 accessor, and a green corpus said otherwise
+
+**Found by the stream C+D live-QA pass, 2026-08-01. Fixed in the same pass.**
+
+`Group.tsx`'s `scrollToElement` resolved its target with `noodlChild.getRef()`. `getRef` returns
+`reactComponentRef` — the **pre-React-19** field. Since `RUN-001` a node reports its root through
+`setDOMElement` / `getDOMElement`, and `reactComponentRef` is left empty, so `getRef()` handed back a
+ref object whose `current` was permanently `undefined`. **Every `Scroll To Element` aimed at an
+ordinary node therefore resolved to nothing** and returned
+`"no rendered DOM element — it may not be mounted"` about an element that had been on screen for as
+long as the page had.
+
+Three things about how it was found are worth keeping:
+
+1. **The fix that exposed it was stream C's.** Before `withInnerComponent`, the action was dropped
+   silently at the ref check and never reached the resolution at all. Before stream D's `B2`
+   diagnosis, the resolution failed silently. It took *both* of this category's own fixes landing
+   before the defect could produce a visible symptom — and then it produced a *misleading* one.
+2. ⚠️ **The reason string was plausible, specific, and wrong.** "It may not be mounted" reads like a
+   diagnosis and sent the first read of this straight at mount timing. The measurement that settled
+   it was asking the target for `getRef()` **after** the page had been idle for minutes: still
+   `{current: undefined}`. *A stable wrong answer is not a timing bug — check the settled state
+   before theorising about frames.*
+3. ⚠️ **The corpus rows for this exact contract were green, and had always been green.** They handed
+   `scrollToElement` a `{ getRef: () => ({ current: el }) }` fake, and **no real node has ever looked
+   like that**. The fake encoded an accessor nothing populates, so it tested the reason-string logic
+   perfectly and the resolution not at all.
+
+**Generalisable, and the sharpest version of it in the phase so far:** *a fake is a claim about the
+shape of the real collaborator, and nothing checks that claim.* Rows built on one can pin every
+branch of the logic under test while the feature is inert in production. When a fake stands in for a
+runtime object, name the accessor the runtime actually populates and leave the ones it does not
+populate **present and empty** — the corrected fake here keeps `getRef: () => ({current: undefined})`
+precisely so a regression to the old accessor reddens instead of quietly passing again.
+
+Also fixed: `getDOMElement` itself tested `innerRef instanceof Element` unguarded, so making it the
+shared accessor would have re-introduced the SSR `ReferenceError` `DV-xvi` item 2 removed. The guard
+now lives in the accessor rather than at one call site, which fixes it for every caller.
+
 ## What these passes did *not* cover
 
 - **76 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No

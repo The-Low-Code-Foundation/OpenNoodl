@@ -150,6 +150,21 @@ describe('B2-b — Group says why a scroll did nothing', () => {
 
   const child = (name: string) => ({ name, scrollIntoView: () => undefined });
 
+  /**
+   * A target node shaped the way the React 19 runtime actually shapes one.
+   *
+   * ⚠️ These rows used to hand `scrollToElement` a `{ getRef: () => ({ current: el }) }` fake,
+   * and **no real node has ever looked like that**. `getRef` returns `reactComponentRef`, the
+   * pre-React-19 field; since RUN-001 a node reports its root through `setDOMElement` /
+   * `getDOMElement`, and `reactComponentRef` stays empty. So the reason-string rows all passed
+   * while the feature they describe could not resolve a single real target — the fake encoded
+   * an accessor nothing populates. Found by driving stream C's pre-mount fix in the editor.
+   *
+   * `getRef` is kept on the fake, populated the way React 19 leaves it, so a regression back to
+   * the old accessor reddens these rows instead of quietly passing again.
+   */
+  const target = (el: unknown) => ({ getRef: () => ({ current: undefined }), getDOMElement: () => el });
+
   it('names the index and the length when the index is past the end', () => {
     const { instance } = groupComponent([child('a'), child('b')]);
 
@@ -167,7 +182,7 @@ describe('B2-b — Group says why a scroll did nothing', () => {
     const { instance } = groupComponent([child('a')]);
     const stranger = child('elsewhere');
 
-    const reason = instance.scrollToElement({ getRef: () => ({ current: stranger }) }, 0);
+    const reason = instance.scrollToElement(target(stranger), 0);
 
     // ⚠️ This is the sharp one. `scrollIntoView` scrolls the nearest scrollable *ancestor*, so
     // an element outside the Group does not error — it silently scrolls a different container,
@@ -178,7 +193,7 @@ describe('B2-b — Group says why a scroll did nothing', () => {
   it('reports a node that has not rendered a DOM element', () => {
     const { instance } = groupComponent([]);
 
-    expect(instance.scrollToElement({ getRef: () => null }, 0)).toContain('no rendered DOM element');
+    expect(instance.scrollToElement(target(null), 0)).toContain('no rendered DOM element');
   });
 
   it('scrolls, and says nothing, for an element it does contain', () => {
@@ -186,7 +201,32 @@ describe('B2-b — Group says why a scroll did nothing', () => {
     const inside = child('inside');
     element.children.push(inside);
 
-    expect(instance.scrollToElement({ getRef: () => ({ current: inside }) }, 0)).toBeUndefined();
+    expect(instance.scrollToElement(target(inside), 0)).toBeUndefined();
+  });
+
+  /**
+   * The defect row: **a target that has rendered must scroll, not be reported as unmounted.**
+   *
+   * This is the same node shape as `target()` above, spelled out rather than shared, because
+   * what it pins is the *accessor* and not the reason text. Against the old `getRef()` code the
+   * `current` is `undefined`, the element resolves to null, and the row gets
+   * "no rendered DOM element — it may not be mounted" — a plausible reason and the wrong one,
+   * which is exactly how this survived a green corpus. Live QA saw the Group receive the action
+   * on time (stream C's queue working) and then decline to scroll to a `SCROLL TARGET` that had
+   * been on screen the whole time.
+   */
+  it('resolves the target through getDOMElement, not the empty React-18 ref', () => {
+    const { instance, element } = groupComponent([]);
+    const rendered = child('rendered');
+    element.children.push(rendered);
+
+    const reactNineteenNode = {
+      // Populated the way React 19 leaves it: present, and empty.
+      getRef: () => ({ current: undefined }),
+      getDOMElement: () => rendered
+    };
+
+    expect(instance.scrollToElement(reactNineteenNode, 0)).toBeUndefined();
   });
 
   // The control that keeps the Empty-Value Contract honest: an unwired `Element` is a port with

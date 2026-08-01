@@ -248,3 +248,29 @@ describe('A3 — the queue does not become a leak', () => {
     expect(mount(p.node)).toHaveLength(16);
   }, 30000);
 });
+
+/**
+ * The accessor the queued action lands on — and the reason a flushed action still found nothing.
+ *
+ * ⚠️ Live QA closed the queue half of `A3` and immediately opened this: the `Scroll To Element`
+ * arrived on time, and `Group.tsx` then resolved its target through `noodlChild.getRef()`, which
+ * returns the pre-React-19 `reactComponentRef`. Since RUN-001 a node reports its root through
+ * `setDOMElement` / `getDOMElement` and `reactComponentRef` stays empty, so *every* real target
+ * resolved to nothing and reported "it may not be mounted" about an element that had been on
+ * screen the whole time. `nda-012-visual-deployed-diagnosis.test.ts` holds the resolution itself;
+ * what is pinned here is that the accessor it now depends on is safe to call without a DOM.
+ */
+describe('A3 — getDOMElement answers rather than throws where there is no DOM', () => {
+  it('returns null instead of a ReferenceError when Element is undeclared', async () => {
+    const p = await build(GroupModule);
+
+    // The pre-`_domElement` state: a component ref exists but is not a DOM element. `instanceof`
+    // against an undeclared global is a `ReferenceError`, not `false`, and this package's jest
+    // environment is `node` — the same absence a node declaring SSR `safe` meets on the server.
+    expect(typeof (globalThis as { Element?: unknown }).Element).toBe('undefined');
+    (p.node as unknown as { innerReactComponentRef: unknown }).innerReactComponentRef = { notAnElement: true };
+
+    expect(() => (p.node as unknown as { getDOMElement(): unknown }).getDOMElement()).not.toThrow();
+    expect((p.node as unknown as { getDOMElement(): unknown }).getDOMElement()).toBeNull();
+  }, 30000);
+});

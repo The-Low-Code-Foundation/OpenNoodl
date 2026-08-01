@@ -1429,8 +1429,15 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
           return this._domElement as HTMLElement;
         }
 
+        // ⚠️ `typeof Element !== 'undefined'` is load-bearing, not defensive noise: `instanceof`
+        // against an undeclared global is a `ReferenceError`, not `false`, and this accessor is
+        // reached from nodes that declare SSR `safe` (`Group`'s `Scroll To Element` is the one
+        // that found it). Without the guard, asking a node for its element anywhere without a
+        // DOM throws instead of answering "there isn't one".
+        const hasDOM = typeof Element !== 'undefined';
+
         const innerRef = this.innerReactComponentRef;
-        if (innerRef && innerRef instanceof Element) {
+        if (innerRef && hasDOM && innerRef instanceof Element) {
           return innerRef as HTMLElement;
         }
 
@@ -1442,7 +1449,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
         const ref = this.getRef();
         if (!ref) return null;
 
-        if (ref instanceof Element) {
+        if (hasDOM && ref instanceof Element) {
           return ref as unknown as HTMLElement;
         }
 
