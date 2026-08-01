@@ -38481,7 +38481,7 @@
             "name": "array"
           },
           "isSignal": false,
-          "description": "Options to offer, as an array of objects with Label and Value properties; ⚠️ an empty value currently throws"
+          "description": "Options to offer, as an array of objects with Label and Value properties; an empty value offers nothing"
         },
         {
           "name": "label",
