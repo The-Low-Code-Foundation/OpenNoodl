@@ -1,4 +1,4 @@
-# Next session — Visual (29) is the last category in NDA-012
+# Next session — Visual (20 in scope) is the last category in NDA-012
 
 Continue on branch `cline-dev` in `/Users/richardosborne/vscode_projects/OpenNoodl`.
 Tip when this was written: `bae73621`. The checkout is clean apart from another session's
@@ -6,7 +6,7 @@ uncommitted phase-31 files (leave them alone — §7).
 
 ## Where things stand
 
-**Data closed 2026-08-01 at 37/37. NDA-012 is 16 of 17 categories. Only Visual (29) remains.**
+**Data closed 2026-08-01 at 37/37. NDA-012 is 16 of 17 categories. Only Visual (20 in scope) remains.**
 
 A four-worker parallel batch read the last 29 Data nodes: **26 new defects, 13 fixed, 13 filed**,
 and the category went **12.7% → 96.8%** documented. **Zero merge conflicts across four merges.**
@@ -59,7 +59,7 @@ typing, so **this batch contributes zero**. Still unowned. **Do not re-baseline 
    is the stale one**, superseded by text earlier in the same cell. Position does not indicate
    currency in an append-only cell. **Only the date and commit stamps do.**
 
-   The real remaining shape of phase 30: **Visual (29)**, **NDA-010 §1**, three live-QA tails
+   The real remaining shape of phase 30: **Visual (20 in scope)**, **NDA-010 §1**, three live-QA tails
    (NDA-002, NDA-013, NDA-014), and two decisions that are Richard's (NDA-004's deprecated-five
    policy, NDA-017 §1).
 
@@ -101,12 +101,32 @@ Full text in FINDINGS **DB-i…DB-vi**.
    effect and all of whose ports have defaults* — **and it has never been run outside Data.** Worth
    one grep before Visual starts.
 
-## §3 — Visual (29): what is known before you start
+## §3 — Visual (20 in scope): what is known before you start
 
-- The category has **one** node at 0% documented (`For Each`) and otherwise reads well, because
-  NDA-005 §0's shared pass documented port *names* and Visual is dominated by shared names
-  (`width`, `height`, `margin`…). **So C1 is nearly free here and the twelve checks are the work** —
-  the opposite of Data, where C1 was most of it. Do not budget this like the last batch.
+⚠️ **Measured 2026-08-01, after this handover was first written, and it corrected the handover twice.
+Both errors were mine and both would have mis-scoped the batch.**
+
+**Visual is 20 nodes in scope, not 29.** The catalog holds 29, of which **9 are deprecated** — the
+legacy form controls (`Button`, `Checkbox`, `Field Set`, `Form`, `Label`, `Options`, `Radio Button`,
+`Range`, `Text Input`), which Richard's standing decision puts out of scope. Every phase-30 document
+had carried "Visual (29)" unexamined. **This is Data's "42 nodes" error repeating**, one category
+later, from the same cause: a count taken before the deprecated filter was applied.
+
+⚠️ **And C1 is NOT nearly free here — it is a bigger job than Data's was.** This section first said
+so on the strength of the *0%-node count* (one node), which is not coverage. Measured:
+
+| | Data (before its batch) | **Visual (now)** |
+|---|---|---|
+| Nodes in scope | 37 | **20** |
+| Static ports | 433 | **1,226** |
+| Documented | 55 (12.7%) | **633 (51.6%)** |
+| **Undocumented ports** | **378** | **593** |
+
+**Half the nodes but 2.8× the ports, and more undocumented ports than Data had ports.** The nine
+biggest: `Text Input` 118, `Slider` 113, `Dropdown` 111, `Group` 105, `Button` 99, `Checkbox` 96,
+`Radio Button` 95, `Video` 89, `Image` 78. **A low 0%-node count means the shared pass reached these
+nodes' shared names (`width`, `height`, `margin`), not that they are documented.**
+
 - ⚠️ **`Component Children` has ZERO static ports** and must be recorded **`n/a`, not 100%**
   (so must `Component Inputs`, `Component Outputs` and `DbConfig`, in other categories).
 - ⚠️ **The validator being green is weak evidence** — dynamic-port nodes skip port checks.
@@ -115,6 +135,32 @@ Full text in FINDINGS **DB-i…DB-vi**.
 - Visual is where **NDA-016 (`Layout.size`)**, **NDA-006 (Columns)** and **NDA-007 (icons)** already
   did deep work. Expect Component Utilities' 0.63 shape — **prior work, not exhaustion** — and say
   which it is rather than reporting a bare rate.
+
+### The territory, mapped (so the parallel/serial call is made on evidence)
+
+| Directory | Nodes | Ports |
+|---|---|---|
+| `noodl-viewer-react/src/nodes/visual/` | Circle, Columns, Drag, Group, Icon, Image, Text, Video (8) | 471 |
+| `noodl-viewer-react/src/nodes/controls/` | Button, Checkbox, Dropdown (`options.ts`), Radio Button, Radio Button Group, Slider, Text Input (7) | 676 |
+| `noodl-viewer-react/src/nodes/navigation/` | Page, Component Stack (`navigation-stack.tsx`), Page Router (`router.tsx`) (3) | 72 |
+| `nodes/std-library/data/foreach.tsx` | Repeater (1) | 7 |
+| — | Component Children (1) | 0 (`n/a`) |
+
+⚠️ **`controls/utils.ts` is the hot shared file — 6 of the 7 control nodes import it.** It is this
+category's `RestDataAdapter.ts`: **assign it to exactly one worker and say so**, or two workers edit
+it and the seam that produced zero conflicts last time produces its first.
+⚠️ **`nodes/visual/css-definition.ts` is imported by nothing** — check whether it is dead before
+anyone spends time in it.
+⚠️ **`Repeater` lives in `std-library/data/`**, the directory the last batch's Worker B owned. It is
+one node and 7 ports; **give it to whoever owns the smallest slice**, and do not let that make
+`data/` a shared directory again.
+⚠️ **Nobody should edit the base visual machinery** (`react-component-node.ts`, `layout.ts`,
+`Group.tsx` and friends) — it is shared by every node in the category and by NDA-016's fix. A defect
+there is a filing, and it belongs to the orchestrator.
+
+**Recommended shape: three workers, not four** — `visual/` (8), `controls/` (7, owning `utils.ts`),
+and `navigation/` + `Repeater` + `Component Children` (5). Controls is 55% of the ports, so if it is
+split, split it *inside* the directory by file and give `utils.ts` to one of the two explicitly.
 
 ⚠️ **One result from this batch argues against the ordering heuristic**: the fifteen agentic nodes
 had **never been read** and scored the phase's **lowest** rate (0.93), with two nodes clean, while
