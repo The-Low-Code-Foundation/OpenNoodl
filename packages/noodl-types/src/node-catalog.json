@@ -1402,6 +1402,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -1547,6 +1548,7 @@
           },
           "isSignal": false,
           "default": "contentSize",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -1694,7 +1696,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -1784,7 +1787,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many child elements are currently mounted inside this one"
         },
         {
           "name": "controlId",
@@ -2534,6 +2538,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -2713,7 +2718,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -3284,6 +3290,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -3587,7 +3594,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -6587,6 +6595,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -6706,7 +6715,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         }
       ],
       "outputs": [
@@ -6749,7 +6759,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many child elements are currently mounted inside this one"
         },
         {
           "name": "deltaX",
@@ -7667,6 +7678,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -7820,6 +7832,7 @@
           },
           "isSignal": false,
           "default": "contentSize",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -7955,7 +7968,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -8045,7 +8059,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many child elements are currently mounted inside this one"
         },
         {
           "name": "didMount",
@@ -9022,6 +9037,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -9175,6 +9191,7 @@
           },
           "isSignal": false,
           "default": "contentSize",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -9310,7 +9327,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -9400,7 +9418,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many child elements are currently mounted inside this one"
         },
         {
           "name": "didMount",
@@ -9757,6 +9776,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the bottom edge only, overriding Border Color",
           "index": 221,
           "allowVisualStates": true
         },
@@ -9775,6 +9795,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-left corner only, overriding Corner Radius",
           "index": 244,
           "allowVisualStates": true
         },
@@ -9793,6 +9814,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-right corner only, overriding Corner Radius",
           "index": 243,
           "allowVisualStates": true
         },
@@ -9824,6 +9846,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the bottom edge only, overriding Border Style; None hides that edge",
           "index": 219,
           "allowVisualStates": true
         },
@@ -9841,6 +9864,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the bottom edge in pixels, and it adds to the element's size",
           "index": 220,
           "allowVisualStates": true
         },
@@ -9855,6 +9879,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Colour of the border, which has no effect while Border Style is None",
           "index": 205,
           "allowVisualStates": true
         },
@@ -9868,6 +9893,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the left edge only, overriding Border Color",
           "index": 209,
           "allowVisualStates": true
         },
@@ -9899,6 +9925,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the left edge only, overriding Border Style; None hides that edge",
           "index": 207,
           "allowVisualStates": true
         },
@@ -9916,6 +9943,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the left edge in pixels, and it adds to the element's size",
           "index": 208,
           "allowVisualStates": true
         },
@@ -9935,6 +9963,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Rounds all four corners, except any corner that sets its own radius",
           "index": 240,
           "allowVisualStates": true
         },
@@ -9948,6 +9977,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the right edge only, overriding Border Color",
           "index": 217,
           "allowVisualStates": true
         },
@@ -9979,6 +10009,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the right edge only, overriding Border Style; None hides that edge",
           "index": 215,
           "allowVisualStates": true
         },
@@ -9996,6 +10027,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the right edge in pixels, and it adds to the element's size",
           "index": 216,
           "allowVisualStates": true
         },
@@ -10028,6 +10060,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Line style for all four edges; None hides the border and leaves Border Width and Color inactive",
           "index": 203,
           "allowVisualStates": true
         },
@@ -10041,6 +10074,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the top edge only, overriding Border Color",
           "index": 213,
           "allowVisualStates": true
         },
@@ -10059,6 +10093,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-left corner only, overriding Corner Radius",
           "index": 241,
           "allowVisualStates": true
         },
@@ -10077,6 +10112,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-right corner only, overriding Corner Radius",
           "index": 242,
           "allowVisualStates": true
         },
@@ -10108,6 +10144,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the top edge only, overriding Border Style; None hides that edge",
           "index": 211,
           "allowVisualStates": true
         },
@@ -10125,6 +10162,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the top edge in pixels, and it adds to the element's size",
           "index": 212,
           "allowVisualStates": true
         },
@@ -10143,6 +10181,7 @@
           },
           "isSignal": false,
           "default": 2,
+          "description": "Thickness of the border in pixels, which adds to the element's size unless Box Sizing accounts for it",
           "index": 204,
           "allowVisualStates": true
         },
@@ -10674,6 +10713,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -11024,6 +11064,7 @@
           },
           "isSignal": false,
           "default": "explicit",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -11159,7 +11200,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -11249,7 +11291,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many child elements are currently mounted inside this one"
         },
         {
           "name": "didMount",
@@ -11726,6 +11769,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the bottom edge only, overriding Border Color",
           "index": 221,
           "allowVisualStates": true
         },
@@ -11744,6 +11788,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-left corner only, overriding Corner Radius",
           "index": 244,
           "allowVisualStates": true
         },
@@ -11762,6 +11807,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-right corner only, overriding Corner Radius",
           "index": 243,
           "allowVisualStates": true
         },
@@ -11793,6 +11839,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the bottom edge only, overriding Border Style; None hides that edge",
           "index": 219,
           "allowVisualStates": true
         },
@@ -11810,6 +11857,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the bottom edge in pixels, and it adds to the element's size",
           "index": 220,
           "allowVisualStates": true
         },
@@ -11824,6 +11872,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Colour of the border, which has no effect while Border Style is None",
           "index": 205,
           "allowVisualStates": true
         },
@@ -11837,6 +11886,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the left edge only, overriding Border Color",
           "index": 209,
           "allowVisualStates": true
         },
@@ -11868,6 +11918,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the left edge only, overriding Border Style; None hides that edge",
           "index": 207,
           "allowVisualStates": true
         },
@@ -11885,6 +11936,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the left edge in pixels, and it adds to the element's size",
           "index": 208,
           "allowVisualStates": true
         },
@@ -11904,6 +11956,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Rounds all four corners, except any corner that sets its own radius",
           "index": 240,
           "allowVisualStates": true
         },
@@ -11917,6 +11970,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the right edge only, overriding Border Color",
           "index": 217,
           "allowVisualStates": true
         },
@@ -11948,6 +12002,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the right edge only, overriding Border Style; None hides that edge",
           "index": 215,
           "allowVisualStates": true
         },
@@ -11965,6 +12020,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the right edge in pixels, and it adds to the element's size",
           "index": 216,
           "allowVisualStates": true
         },
@@ -11997,6 +12053,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Line style for all four edges; None hides the border and leaves Border Width and Color inactive",
           "index": 203,
           "allowVisualStates": true
         },
@@ -12010,6 +12067,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the top edge only, overriding Border Color",
           "index": 213,
           "allowVisualStates": true
         },
@@ -12028,6 +12086,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-left corner only, overriding Corner Radius",
           "index": 241,
           "allowVisualStates": true
         },
@@ -12046,6 +12105,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-right corner only, overriding Corner Radius",
           "index": 242,
           "allowVisualStates": true
         },
@@ -12077,6 +12137,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the top edge only, overriding Border Style; None hides that edge",
           "index": 211,
           "allowVisualStates": true
         },
@@ -12094,6 +12155,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the top edge in pixels, and it adds to the element's size",
           "index": 212,
           "allowVisualStates": true
         },
@@ -12112,6 +12174,7 @@
           },
           "isSignal": false,
           "default": 2,
+          "description": "Thickness of the border in pixels, which adds to the element's size unless Box Sizing accounts for it",
           "index": 204,
           "allowVisualStates": true
         },
@@ -12509,6 +12572,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -12656,6 +12720,7 @@
           },
           "isSignal": false,
           "default": "contentSize",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -12815,7 +12880,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -13586,6 +13652,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the bottom edge only, overriding Border Color",
           "index": 221,
           "allowVisualStates": true
         },
@@ -13604,6 +13671,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-left corner only, overriding Corner Radius",
           "index": 244,
           "allowVisualStates": true
         },
@@ -13622,6 +13690,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-right corner only, overriding Corner Radius",
           "index": 243,
           "allowVisualStates": true
         },
@@ -13653,6 +13722,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the bottom edge only, overriding Border Style; None hides that edge",
           "index": 219,
           "allowVisualStates": true
         },
@@ -13670,6 +13740,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the bottom edge in pixels, and it adds to the element's size",
           "index": 220,
           "allowVisualStates": true
         },
@@ -13684,6 +13755,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Colour of the border, which has no effect while Border Style is None",
           "index": 205,
           "allowVisualStates": true
         },
@@ -13697,6 +13769,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the left edge only, overriding Border Color",
           "index": 209,
           "allowVisualStates": true
         },
@@ -13728,6 +13801,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the left edge only, overriding Border Style; None hides that edge",
           "index": 207,
           "allowVisualStates": true
         },
@@ -13745,6 +13819,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the left edge in pixels, and it adds to the element's size",
           "index": 208,
           "allowVisualStates": true
         },
@@ -13764,6 +13839,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Rounds all four corners, except any corner that sets its own radius",
           "index": 240,
           "allowVisualStates": true
         },
@@ -13777,6 +13853,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the right edge only, overriding Border Color",
           "index": 217,
           "allowVisualStates": true
         },
@@ -13808,6 +13885,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the right edge only, overriding Border Style; None hides that edge",
           "index": 215,
           "allowVisualStates": true
         },
@@ -13825,6 +13903,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the right edge in pixels, and it adds to the element's size",
           "index": 216,
           "allowVisualStates": true
         },
@@ -13857,6 +13936,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Line style for all four edges; None hides the border and leaves Border Width and Color inactive",
           "index": 203,
           "allowVisualStates": true
         },
@@ -13870,6 +13950,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the top edge only, overriding Border Color",
           "index": 213,
           "allowVisualStates": true
         },
@@ -13888,6 +13969,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-left corner only, overriding Corner Radius",
           "index": 241,
           "allowVisualStates": true
         },
@@ -13906,6 +13988,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-right corner only, overriding Corner Radius",
           "index": 242,
           "allowVisualStates": true
         },
@@ -13937,6 +14020,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the top edge only, overriding Border Style; None hides that edge",
           "index": 211,
           "allowVisualStates": true
         },
@@ -13954,6 +14038,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the top edge in pixels, and it adds to the element's size",
           "index": 212,
           "allowVisualStates": true
         },
@@ -13972,6 +14057,7 @@
           },
           "isSignal": false,
           "default": 2,
+          "description": "Thickness of the border in pixels, which adds to the element's size unless Box Sizing accounts for it",
           "index": 204,
           "allowVisualStates": true
         },
@@ -13986,6 +14072,7 @@
             "parentPort": "textStyle"
           },
           "isSignal": false,
+          "description": "Colour of the text itself, not of the element behind it",
           "index": 22,
           "allowVisualStates": true
         },
@@ -14013,6 +14100,7 @@
             "parentPort": "textStyle"
           },
           "isSignal": false,
+          "description": "Typeface to render the text in, either a web-safe family name or a font file added to the project",
           "index": 20,
           "allowVisualStates": true
         },
@@ -14031,6 +14119,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Height of the text, in pixels",
           "index": 21,
           "allowVisualStates": true
         },
@@ -14081,6 +14170,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Extra space added between characters; leave as Auto to use the spacing built into the font",
           "index": 23,
           "allowVisualStates": true
         },
@@ -14102,6 +14192,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Vertical space each line of text occupies; leave as Auto to follow the font",
           "index": 24,
           "allowVisualStates": true
         },
@@ -14351,6 +14442,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -14428,6 +14520,7 @@
           },
           "isSignal": false,
           "default": "contentSize",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -14476,6 +14569,7 @@
           },
           "isSignal": false,
           "default": "None",
+          "description": "Applies one of the project's saved text styles; the individual font ports below override whatever it sets",
           "index": 19,
           "allowVisualStates": true
         },
@@ -14509,6 +14603,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Forces the text to upper case, lower case or capitalised without changing the underlying value",
           "index": 25,
           "allowVisualStates": true
         },
@@ -14629,7 +14724,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -14719,7 +14815,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many child elements are currently mounted inside this one"
         },
         {
           "name": "didMount",
@@ -17086,6 +17183,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -17239,6 +17337,7 @@
           },
           "isSignal": false,
           "default": "contentSize",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -17396,7 +17495,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -18154,7 +18254,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many child elements are currently mounted inside this one"
         },
         {
           "name": "didMount",
@@ -18289,6 +18390,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -18391,7 +18493,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many child elements are currently mounted inside this one"
         },
         {
           "name": "didMount",
@@ -19709,6 +19812,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -19898,7 +20002,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -20533,6 +20638,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -20686,6 +20792,7 @@
           },
           "isSignal": false,
           "default": "contentSize",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -20911,7 +21018,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many child elements are currently mounted inside this one"
         },
         {
           "name": "didMount",
@@ -21413,6 +21521,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -21708,7 +21817,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -22248,6 +22358,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -22348,7 +22459,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many child elements are currently mounted inside this one"
         },
         {
           "name": "currentPageComponent",
@@ -22554,7 +22666,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Stops starting new tasks and ends the run once those already running finish; does nothing when no run is in progress"
         },
         {
           "name": "items",
@@ -22564,7 +22677,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The list to run the template once for; each entry becomes one task and is passed to it as a record"
         },
         {
           "name": "maxRunningTasks",
@@ -22575,7 +22689,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 10
+          "default": 10,
+          "description": "How many tasks may run at the same time; must be at least 1 or the run fails rather than starting"
         },
         {
           "name": "run",
@@ -22586,7 +22701,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Starts a run over Items; ignored while a run is already in progress"
         },
         {
           "name": "stopOnFailure",
@@ -22597,7 +22713,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "Abandons the remaining items as soon as one task fails, rather than running the whole list"
         },
         {
           "name": "taskErrorOutput",
@@ -22609,7 +22726,8 @@
             "allowEditOnly": true
           },
           "isSignal": false,
-          "default": "Error"
+          "default": "Error",
+          "description": "Name of an optional value output on the template carrying why a task failed; leave blank if it cannot say"
         },
         {
           "name": "taskFailureOutput",
@@ -22621,7 +22739,8 @@
             "allowEditOnly": true
           },
           "isSignal": false,
-          "default": "Failure"
+          "default": "Failure",
+          "description": "Name of the template's signal output that means one task failed"
         },
         {
           "name": "taskStartInput",
@@ -22633,7 +22752,8 @@
             "allowEditOnly": true
           },
           "isSignal": false,
-          "default": "Do"
+          "default": "Do",
+          "description": "Name of the template's signal input to pulse when a task begins"
         },
         {
           "name": "taskSuccessOutput",
@@ -22645,7 +22765,8 @@
             "allowEditOnly": true
           },
           "isSignal": false,
-          "default": "Success"
+          "default": "Success",
+          "description": "Name of the template's signal output that means one task finished successfully"
         },
         {
           "name": "taskTemplate",
@@ -22655,7 +22776,8 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The component to run once per item, which must expose the ports named under Template Contract"
         }
       ],
       "outputs": [
@@ -22667,7 +22789,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a run ended early, either from Abort or because Stop On Failure caught a failure"
         },
         {
           "name": "done",
@@ -22677,7 +22800,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the run has ended, whether it succeeded, failed or was aborted"
         },
         {
           "name": "failure",
@@ -22687,7 +22811,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when at least one task failed, or when the run could not start at all; which item failed is reported on the error channel"
         },
         {
           "name": "success",
@@ -22697,7 +22822,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when every task completed without failing, including when Items was empty"
         }
       ],
       "dynamicPorts": null,
@@ -24665,6 +24791,7 @@
             "parentPort": "textStyle"
           },
           "isSignal": false,
+          "description": "Colour of the text itself, not of the element behind it",
           "index": 22,
           "allowVisualStates": true
         },
@@ -24692,6 +24819,7 @@
             "parentPort": "textStyle"
           },
           "isSignal": false,
+          "description": "Typeface to render the text in, either a web-safe family name or a font file added to the project",
           "index": 20,
           "allowVisualStates": true
         },
@@ -24710,6 +24838,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Height of the text, in pixels",
           "index": 21,
           "allowVisualStates": true
         },
@@ -24750,6 +24879,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Extra space added between characters; leave as Auto to use the spacing built into the font",
           "index": 23,
           "allowVisualStates": true
         },
@@ -24771,6 +24901,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Vertical space each line of text occupies; leave as Auto to follow the font",
           "index": 24,
           "allowVisualStates": true
         },
@@ -25020,6 +25151,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -25133,6 +25265,7 @@
           },
           "isSignal": false,
           "default": "contentHeight",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -25238,6 +25371,7 @@
           },
           "isSignal": false,
           "default": "None",
+          "description": "Applies one of the project's saved text styles; the individual font ports below override whatever it sets",
           "index": 19,
           "allowVisualStates": true
         },
@@ -25271,6 +25405,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Forces the text to upper case, lower case or capitalised without changing the underlying value",
           "index": 25,
           "allowVisualStates": true
         },
@@ -25391,7 +25526,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -26235,6 +26371,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -26411,6 +26548,7 @@
           },
           "isSignal": false,
           "default": "contentSize",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -26607,7 +26745,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -27807,6 +27946,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the bottom edge only, overriding Border Color",
           "index": 221,
           "allowVisualStates": true
         },
@@ -27825,6 +27965,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-left corner only, overriding Corner Radius",
           "index": 244,
           "allowVisualStates": true
         },
@@ -27843,6 +27984,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-right corner only, overriding Corner Radius",
           "index": 243,
           "allowVisualStates": true
         },
@@ -27874,6 +28016,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the bottom edge only, overriding Border Style; None hides that edge",
           "index": 219,
           "allowVisualStates": true
         },
@@ -27891,6 +28034,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the bottom edge in pixels, and it adds to the element's size",
           "index": 220,
           "allowVisualStates": true
         },
@@ -27905,6 +28049,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Colour of the border, which has no effect while Border Style is None",
           "index": 205,
           "allowVisualStates": true
         },
@@ -27918,6 +28063,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the left edge only, overriding Border Color",
           "index": 209,
           "allowVisualStates": true
         },
@@ -27949,6 +28095,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the left edge only, overriding Border Style; None hides that edge",
           "index": 207,
           "allowVisualStates": true
         },
@@ -27966,6 +28113,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the left edge in pixels, and it adds to the element's size",
           "index": 208,
           "allowVisualStates": true
         },
@@ -27985,6 +28133,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Rounds all four corners, except any corner that sets its own radius",
           "index": 240,
           "allowVisualStates": true
         },
@@ -27998,6 +28147,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the right edge only, overriding Border Color",
           "index": 217,
           "allowVisualStates": true
         },
@@ -28029,6 +28179,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the right edge only, overriding Border Style; None hides that edge",
           "index": 215,
           "allowVisualStates": true
         },
@@ -28046,6 +28197,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the right edge in pixels, and it adds to the element's size",
           "index": 216,
           "allowVisualStates": true
         },
@@ -28078,6 +28230,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Line style for all four edges; None hides the border and leaves Border Width and Color inactive",
           "index": 203,
           "allowVisualStates": true
         },
@@ -28091,6 +28244,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the top edge only, overriding Border Color",
           "index": 213,
           "allowVisualStates": true
         },
@@ -28109,6 +28263,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-left corner only, overriding Corner Radius",
           "index": 241,
           "allowVisualStates": true
         },
@@ -28127,6 +28282,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-right corner only, overriding Corner Radius",
           "index": 242,
           "allowVisualStates": true
         },
@@ -28158,6 +28314,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the top edge only, overriding Border Style; None hides that edge",
           "index": 211,
           "allowVisualStates": true
         },
@@ -28175,6 +28332,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the top edge in pixels, and it adds to the element's size",
           "index": 212,
           "allowVisualStates": true
         },
@@ -28193,6 +28351,7 @@
           },
           "isSignal": false,
           "default": 2,
+          "description": "Thickness of the border in pixels, which adds to the element's size unless Box Sizing accounts for it",
           "index": 204,
           "allowVisualStates": true
         },
@@ -28496,6 +28655,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -28734,6 +28894,7 @@
           },
           "isSignal": false,
           "default": "contentSize",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -28890,7 +29051,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -33682,6 +33844,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the bottom edge only, overriding Border Color",
           "index": 221,
           "allowVisualStates": true
         },
@@ -33700,6 +33863,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-left corner only, overriding Corner Radius",
           "index": 244,
           "allowVisualStates": true
         },
@@ -33718,6 +33882,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-right corner only, overriding Corner Radius",
           "index": 243,
           "allowVisualStates": true
         },
@@ -33749,6 +33914,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the bottom edge only, overriding Border Style; None hides that edge",
           "index": 219,
           "allowVisualStates": true
         },
@@ -33766,6 +33932,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the bottom edge in pixels, and it adds to the element's size",
           "index": 220,
           "allowVisualStates": true
         },
@@ -33780,6 +33947,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Colour of the border, which has no effect while Border Style is None",
           "index": 205,
           "allowVisualStates": true
         },
@@ -33793,6 +33961,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the left edge only, overriding Border Color",
           "index": 209,
           "allowVisualStates": true
         },
@@ -33824,6 +33993,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the left edge only, overriding Border Style; None hides that edge",
           "index": 207,
           "allowVisualStates": true
         },
@@ -33841,6 +34011,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the left edge in pixels, and it adds to the element's size",
           "index": 208,
           "allowVisualStates": true
         },
@@ -33860,6 +34031,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Rounds all four corners, except any corner that sets its own radius",
           "index": 240,
           "allowVisualStates": true
         },
@@ -33873,6 +34045,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the right edge only, overriding Border Color",
           "index": 217,
           "allowVisualStates": true
         },
@@ -33904,6 +34077,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the right edge only, overriding Border Style; None hides that edge",
           "index": 215,
           "allowVisualStates": true
         },
@@ -33921,6 +34095,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the right edge in pixels, and it adds to the element's size",
           "index": 216,
           "allowVisualStates": true
         },
@@ -33953,6 +34128,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Line style for all four edges; None hides the border and leaves Border Width and Color inactive",
           "index": 203,
           "allowVisualStates": true
         },
@@ -33966,6 +34142,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the top edge only, overriding Border Color",
           "index": 213,
           "allowVisualStates": true
         },
@@ -33984,6 +34161,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-left corner only, overriding Corner Radius",
           "index": 241,
           "allowVisualStates": true
         },
@@ -34002,6 +34180,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-right corner only, overriding Corner Radius",
           "index": 242,
           "allowVisualStates": true
         },
@@ -34033,6 +34212,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the top edge only, overriding Border Style; None hides that edge",
           "index": 211,
           "allowVisualStates": true
         },
@@ -34050,6 +34230,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the top edge in pixels, and it adds to the element's size",
           "index": 212,
           "allowVisualStates": true
         },
@@ -34068,6 +34249,7 @@
           },
           "isSignal": false,
           "default": 2,
+          "description": "Thickness of the border in pixels, which adds to the element's size unless Box Sizing accounts for it",
           "index": 204,
           "allowVisualStates": true
         },
@@ -34196,6 +34378,7 @@
             "parentPort": "textStyle"
           },
           "isSignal": false,
+          "description": "Colour of the text itself, not of the element behind it",
           "index": 22,
           "allowVisualStates": true
         },
@@ -34234,6 +34417,7 @@
             "parentPort": "textStyle"
           },
           "isSignal": false,
+          "description": "Typeface to render the text in, either a web-safe family name or a font file added to the project",
           "index": 20,
           "allowVisualStates": true
         },
@@ -34252,6 +34436,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Height of the text, in pixels",
           "index": 21,
           "allowVisualStates": true
         },
@@ -34378,6 +34563,7 @@
           },
           "isSignal": false,
           "default": "icon",
+          "description": "Whether the icon comes from an installed icon set or from an image file, which decides the source port below",
           "index": 21,
           "allowVisualStates": true
         },
@@ -34427,6 +34613,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Extra space added between characters; leave as Auto to use the spacing built into the font",
           "index": 23,
           "allowVisualStates": true
         },
@@ -34448,6 +34635,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Vertical space each line of text occupies; leave as Auto to follow the font",
           "index": 24,
           "allowVisualStates": true
         },
@@ -34697,6 +34885,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -34850,6 +35039,7 @@
           },
           "isSignal": false,
           "default": "contentSize",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -34888,6 +35078,7 @@
           },
           "isSignal": false,
           "default": "None",
+          "description": "Applies one of the project's saved text styles; the individual font ports below override whatever it sets",
           "index": 19,
           "allowVisualStates": true
         },
@@ -34921,6 +35112,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Forces the text to upper case, lower case or capitalised without changing the underlying value",
           "index": 25,
           "allowVisualStates": true
         },
@@ -35068,7 +35260,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -35158,7 +35351,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many child elements are currently mounted inside this one"
         },
         {
           "name": "didMount",
@@ -35566,6 +35760,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the bottom edge only, overriding Border Color",
           "index": 221,
           "allowVisualStates": true
         },
@@ -35584,6 +35779,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-left corner only, overriding Corner Radius",
           "index": 244,
           "allowVisualStates": true
         },
@@ -35602,6 +35798,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-right corner only, overriding Corner Radius",
           "index": 243,
           "allowVisualStates": true
         },
@@ -35633,6 +35830,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the bottom edge only, overriding Border Style; None hides that edge",
           "index": 219,
           "allowVisualStates": true
         },
@@ -35650,6 +35848,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the bottom edge in pixels, and it adds to the element's size",
           "index": 220,
           "allowVisualStates": true
         },
@@ -35664,6 +35863,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Colour of the border, which has no effect while Border Style is None",
           "index": 205,
           "allowVisualStates": true
         },
@@ -35677,6 +35877,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the left edge only, overriding Border Color",
           "index": 209,
           "allowVisualStates": true
         },
@@ -35708,6 +35909,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the left edge only, overriding Border Style; None hides that edge",
           "index": 207,
           "allowVisualStates": true
         },
@@ -35725,6 +35927,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the left edge in pixels, and it adds to the element's size",
           "index": 208,
           "allowVisualStates": true
         },
@@ -35744,6 +35947,7 @@
           },
           "isSignal": false,
           "default": 3,
+          "description": "Rounds all four corners, except any corner that sets its own radius",
           "index": 240,
           "allowVisualStates": true
         },
@@ -35757,6 +35961,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the right edge only, overriding Border Color",
           "index": 217,
           "allowVisualStates": true
         },
@@ -35788,6 +35993,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the right edge only, overriding Border Style; None hides that edge",
           "index": 215,
           "allowVisualStates": true
         },
@@ -35805,6 +36011,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the right edge in pixels, and it adds to the element's size",
           "index": 216,
           "allowVisualStates": true
         },
@@ -35837,6 +36044,7 @@
           },
           "isSignal": false,
           "default": "solid",
+          "description": "Line style for all four edges; None hides the border and leaves Border Width and Color inactive",
           "index": 203,
           "allowVisualStates": true
         },
@@ -35850,6 +36058,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the top edge only, overriding Border Color",
           "index": 213,
           "allowVisualStates": true
         },
@@ -35868,6 +36077,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-left corner only, overriding Corner Radius",
           "index": 241,
           "allowVisualStates": true
         },
@@ -35886,6 +36096,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-right corner only, overriding Corner Radius",
           "index": 242,
           "allowVisualStates": true
         },
@@ -35917,6 +36128,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the top edge only, overriding Border Style; None hides that edge",
           "index": 211,
           "allowVisualStates": true
         },
@@ -35934,6 +36146,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the top edge in pixels, and it adds to the element's size",
           "index": 212,
           "allowVisualStates": true
         },
@@ -35952,6 +36165,7 @@
           },
           "isSignal": false,
           "default": 2,
+          "description": "Thickness of the border in pixels, which adds to the element's size unless Box Sizing accounts for it",
           "index": 204,
           "allowVisualStates": true
         },
@@ -36214,6 +36428,7 @@
           },
           "isSignal": false,
           "default": "icon",
+          "description": "Whether the icon comes from an installed icon set or from an image file, which decides the source port below",
           "index": 21,
           "allowVisualStates": true
         },
@@ -36256,6 +36471,7 @@
             "parentPort": "labeltextStyle"
           },
           "isSignal": false,
+          "description": "Colour of the text itself, not of the element behind it",
           "index": 22,
           "allowVisualStates": true
         },
@@ -36270,6 +36486,7 @@
             "parentPort": "labeltextStyle"
           },
           "isSignal": false,
+          "description": "Typeface to render the text in, either a web-safe family name or a font file added to the project",
           "index": 20,
           "allowVisualStates": true
         },
@@ -36288,6 +36505,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Height of the text, in pixels",
           "index": 21,
           "allowVisualStates": true
         },
@@ -36307,6 +36525,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Extra space added between characters; leave as Auto to use the spacing built into the font",
           "index": 23,
           "allowVisualStates": true
         },
@@ -36328,6 +36547,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Vertical space each line of text occupies; leave as Auto to follow the font",
           "index": 24,
           "allowVisualStates": true
         },
@@ -36351,6 +36571,7 @@
           },
           "isSignal": false,
           "default": "None",
+          "description": "Applies one of the project's saved text styles; the individual font ports below override whatever it sets",
           "index": 19,
           "allowVisualStates": true
         },
@@ -36384,6 +36605,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Forces the text to upper case, lower case or capitalised without changing the underlying value",
           "index": 25,
           "allowVisualStates": true
         },
@@ -36553,6 +36775,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -36846,7 +37069,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -37326,6 +37550,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the bottom edge only, overriding Border Color",
           "index": 221,
           "allowVisualStates": true
         },
@@ -37344,6 +37569,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-left corner only, overriding Corner Radius",
           "index": 244,
           "allowVisualStates": true
         },
@@ -37362,6 +37588,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-right corner only, overriding Corner Radius",
           "index": 243,
           "allowVisualStates": true
         },
@@ -37393,6 +37620,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the bottom edge only, overriding Border Style; None hides that edge",
           "index": 219,
           "allowVisualStates": true
         },
@@ -37410,6 +37638,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the bottom edge in pixels, and it adds to the element's size",
           "index": 220,
           "allowVisualStates": true
         },
@@ -37424,6 +37653,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Colour of the border, which has no effect while Border Style is None",
           "index": 205,
           "allowVisualStates": true
         },
@@ -37437,6 +37667,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the left edge only, overriding Border Color",
           "index": 209,
           "allowVisualStates": true
         },
@@ -37468,6 +37699,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the left edge only, overriding Border Style; None hides that edge",
           "index": 207,
           "allowVisualStates": true
         },
@@ -37485,6 +37717,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the left edge in pixels, and it adds to the element's size",
           "index": 208,
           "allowVisualStates": true
         },
@@ -37504,6 +37737,7 @@
           },
           "isSignal": false,
           "default": 5,
+          "description": "Rounds all four corners, except any corner that sets its own radius",
           "index": 240,
           "allowVisualStates": true
         },
@@ -37517,6 +37751,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the right edge only, overriding Border Color",
           "index": 217,
           "allowVisualStates": true
         },
@@ -37548,6 +37783,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the right edge only, overriding Border Style; None hides that edge",
           "index": 215,
           "allowVisualStates": true
         },
@@ -37565,6 +37801,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the right edge in pixels, and it adds to the element's size",
           "index": 216,
           "allowVisualStates": true
         },
@@ -37597,6 +37834,7 @@
           },
           "isSignal": false,
           "default": "solid",
+          "description": "Line style for all four edges; None hides the border and leaves Border Width and Color inactive",
           "index": 203,
           "allowVisualStates": true
         },
@@ -37610,6 +37848,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the top edge only, overriding Border Color",
           "index": 213,
           "allowVisualStates": true
         },
@@ -37628,6 +37867,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-left corner only, overriding Corner Radius",
           "index": 241,
           "allowVisualStates": true
         },
@@ -37646,6 +37886,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-right corner only, overriding Corner Radius",
           "index": 242,
           "allowVisualStates": true
         },
@@ -37677,6 +37918,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the top edge only, overriding Border Style; None hides that edge",
           "index": 211,
           "allowVisualStates": true
         },
@@ -37694,6 +37936,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the top edge in pixels, and it adds to the element's size",
           "index": 212,
           "allowVisualStates": true
         },
@@ -37712,6 +37955,7 @@
           },
           "isSignal": false,
           "default": 2,
+          "description": "Thickness of the border in pixels, which adds to the element's size unless Box Sizing accounts for it",
           "index": 204,
           "allowVisualStates": true
         },
@@ -37840,6 +38084,7 @@
             "parentPort": "textStyle"
           },
           "isSignal": false,
+          "description": "Colour of the text itself, not of the element behind it",
           "index": 22,
           "allowVisualStates": true
         },
@@ -37878,6 +38123,7 @@
             "parentPort": "textStyle"
           },
           "isSignal": false,
+          "description": "Typeface to render the text in, either a web-safe family name or a font file added to the project",
           "index": 20,
           "allowVisualStates": true
         },
@@ -37896,6 +38142,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Height of the text, in pixels",
           "index": 21,
           "allowVisualStates": true
         },
@@ -38022,6 +38269,7 @@
           },
           "isSignal": false,
           "default": "icon",
+          "description": "Whether the icon comes from an installed icon set or from an image file, which decides the source port below",
           "index": 21,
           "allowVisualStates": true
         },
@@ -38092,6 +38340,7 @@
             "parentPort": "labeltextStyle"
           },
           "isSignal": false,
+          "description": "Colour of the text itself, not of the element behind it",
           "index": 22,
           "allowVisualStates": true
         },
@@ -38106,6 +38355,7 @@
             "parentPort": "labeltextStyle"
           },
           "isSignal": false,
+          "description": "Typeface to render the text in, either a web-safe family name or a font file added to the project",
           "index": 20,
           "allowVisualStates": true
         },
@@ -38124,6 +38374,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Height of the text, in pixels",
           "index": 21,
           "allowVisualStates": true
         },
@@ -38143,6 +38394,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Extra space added between characters; leave as Auto to use the spacing built into the font",
           "index": 23,
           "allowVisualStates": true
         },
@@ -38164,6 +38416,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Vertical space each line of text occupies; leave as Auto to follow the font",
           "index": 24,
           "allowVisualStates": true
         },
@@ -38187,6 +38440,7 @@
           },
           "isSignal": false,
           "default": "None",
+          "description": "Applies one of the project's saved text styles; the individual font ports below override whatever it sets",
           "index": 19,
           "allowVisualStates": true
         },
@@ -38220,6 +38474,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Forces the text to upper case, lower case or capitalised without changing the underlying value",
           "index": 25,
           "allowVisualStates": true
         },
@@ -38239,6 +38494,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Extra space added between characters; leave as Auto to use the spacing built into the font",
           "index": 23,
           "allowVisualStates": true
         },
@@ -38260,6 +38516,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Vertical space each line of text occupies; leave as Auto to follow the font",
           "index": 24,
           "allowVisualStates": true
         },
@@ -38509,6 +38766,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -38683,6 +38941,7 @@
           },
           "isSignal": false,
           "default": "contentSize",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -38721,6 +38980,7 @@
           },
           "isSignal": false,
           "default": "None",
+          "description": "Applies one of the project's saved text styles; the individual font ports below override whatever it sets",
           "index": 19,
           "allowVisualStates": true
         },
@@ -38754,6 +39014,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Forces the text to upper case, lower case or capitalised without changing the underlying value",
           "index": 25,
           "allowVisualStates": true
         },
@@ -38911,7 +39172,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -39411,6 +39673,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the bottom edge only, overriding Border Color",
           "index": 221,
           "allowVisualStates": true
         },
@@ -39429,6 +39692,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-left corner only, overriding Corner Radius",
           "index": 244,
           "allowVisualStates": true
         },
@@ -39447,6 +39711,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-right corner only, overriding Corner Radius",
           "index": 243,
           "allowVisualStates": true
         },
@@ -39478,6 +39743,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the bottom edge only, overriding Border Style; None hides that edge",
           "index": 219,
           "allowVisualStates": true
         },
@@ -39495,6 +39761,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the bottom edge in pixels, and it adds to the element's size",
           "index": 220,
           "allowVisualStates": true
         },
@@ -39509,6 +39776,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Colour of the border, which has no effect while Border Style is None",
           "index": 205,
           "allowVisualStates": true
         },
@@ -39522,6 +39790,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the left edge only, overriding Border Color",
           "index": 209,
           "allowVisualStates": true
         },
@@ -39553,6 +39822,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the left edge only, overriding Border Style; None hides that edge",
           "index": 207,
           "allowVisualStates": true
         },
@@ -39570,6 +39840,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the left edge in pixels, and it adds to the element's size",
           "index": 208,
           "allowVisualStates": true
         },
@@ -39589,6 +39860,7 @@
           },
           "isSignal": false,
           "default": 16,
+          "description": "Rounds all four corners, except any corner that sets its own radius",
           "index": 240,
           "allowVisualStates": true
         },
@@ -39602,6 +39874,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the right edge only, overriding Border Color",
           "index": 217,
           "allowVisualStates": true
         },
@@ -39633,6 +39906,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the right edge only, overriding Border Style; None hides that edge",
           "index": 215,
           "allowVisualStates": true
         },
@@ -39650,6 +39924,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the right edge in pixels, and it adds to the element's size",
           "index": 216,
           "allowVisualStates": true
         },
@@ -39682,6 +39957,7 @@
           },
           "isSignal": false,
           "default": "solid",
+          "description": "Line style for all four edges; None hides the border and leaves Border Width and Color inactive",
           "index": 203,
           "allowVisualStates": true
         },
@@ -39695,6 +39971,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the top edge only, overriding Border Color",
           "index": 213,
           "allowVisualStates": true
         },
@@ -39713,6 +39990,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-left corner only, overriding Corner Radius",
           "index": 241,
           "allowVisualStates": true
         },
@@ -39731,6 +40009,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-right corner only, overriding Corner Radius",
           "index": 242,
           "allowVisualStates": true
         },
@@ -39762,6 +40041,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the top edge only, overriding Border Style; None hides that edge",
           "index": 211,
           "allowVisualStates": true
         },
@@ -39779,6 +40059,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the top edge in pixels, and it adds to the element's size",
           "index": 212,
           "allowVisualStates": true
         },
@@ -39797,6 +40078,7 @@
           },
           "isSignal": false,
           "default": 2,
+          "description": "Thickness of the border in pixels, which adds to the element's size unless Box Sizing accounts for it",
           "index": 204,
           "allowVisualStates": true
         },
@@ -40065,6 +40347,7 @@
           },
           "isSignal": false,
           "default": "icon",
+          "description": "Whether the icon comes from an installed icon set or from an image file, which decides the source port below",
           "index": 21,
           "allowVisualStates": true
         },
@@ -40107,6 +40390,7 @@
             "parentPort": "labeltextStyle"
           },
           "isSignal": false,
+          "description": "Colour of the text itself, not of the element behind it",
           "index": 22,
           "allowVisualStates": true
         },
@@ -40121,6 +40405,7 @@
             "parentPort": "labeltextStyle"
           },
           "isSignal": false,
+          "description": "Typeface to render the text in, either a web-safe family name or a font file added to the project",
           "index": 20,
           "allowVisualStates": true
         },
@@ -40139,6 +40424,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Height of the text, in pixels",
           "index": 21,
           "allowVisualStates": true
         },
@@ -40158,6 +40444,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Extra space added between characters; leave as Auto to use the spacing built into the font",
           "index": 23,
           "allowVisualStates": true
         },
@@ -40179,6 +40466,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Vertical space each line of text occupies; leave as Auto to follow the font",
           "index": 24,
           "allowVisualStates": true
         },
@@ -40202,6 +40490,7 @@
           },
           "isSignal": false,
           "default": "None",
+          "description": "Applies one of the project's saved text styles; the individual font ports below override whatever it sets",
           "index": 19,
           "allowVisualStates": true
         },
@@ -40235,6 +40524,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Forces the text to upper case, lower case or capitalised without changing the underlying value",
           "index": 25,
           "allowVisualStates": true
         },
@@ -40404,6 +40694,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -40697,7 +40988,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -41359,6 +41651,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -42747,7 +43040,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -43260,6 +43554,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the bottom edge only, overriding Border Color",
           "index": 221,
           "allowVisualStates": true
         },
@@ -43278,6 +43573,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-left corner only, overriding Corner Radius",
           "index": 244,
           "allowVisualStates": true
         },
@@ -43296,6 +43592,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the bottom-right corner only, overriding Corner Radius",
           "index": 243,
           "allowVisualStates": true
         },
@@ -43327,6 +43624,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the bottom edge only, overriding Border Style; None hides that edge",
           "index": 219,
           "allowVisualStates": true
         },
@@ -43344,6 +43642,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the bottom edge in pixels, and it adds to the element's size",
           "index": 220,
           "allowVisualStates": true
         },
@@ -43358,6 +43657,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Colour of the border, which has no effect while Border Style is None",
           "index": 205,
           "allowVisualStates": true
         },
@@ -43371,6 +43671,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the left edge only, overriding Border Color",
           "index": 209,
           "allowVisualStates": true
         },
@@ -43402,6 +43703,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the left edge only, overriding Border Style; None hides that edge",
           "index": 207,
           "allowVisualStates": true
         },
@@ -43419,6 +43721,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the left edge in pixels, and it adds to the element's size",
           "index": 208,
           "allowVisualStates": true
         },
@@ -43438,6 +43741,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Rounds all four corners, except any corner that sets its own radius",
           "index": 240,
           "allowVisualStates": true
         },
@@ -43451,6 +43755,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the right edge only, overriding Border Color",
           "index": 217,
           "allowVisualStates": true
         },
@@ -43482,6 +43787,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the right edge only, overriding Border Style; None hides that edge",
           "index": 215,
           "allowVisualStates": true
         },
@@ -43499,6 +43805,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the right edge in pixels, and it adds to the element's size",
           "index": 216,
           "allowVisualStates": true
         },
@@ -43531,6 +43838,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Line style for all four edges; None hides the border and leaves Border Width and Color inactive",
           "index": 203,
           "allowVisualStates": true
         },
@@ -43544,6 +43852,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the top edge only, overriding Border Color",
           "index": 213,
           "allowVisualStates": true
         },
@@ -43562,6 +43871,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-left corner only, overriding Corner Radius",
           "index": 241,
           "allowVisualStates": true
         },
@@ -43580,6 +43890,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Rounds the top-right corner only, overriding Corner Radius",
           "index": 242,
           "allowVisualStates": true
         },
@@ -43611,6 +43922,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the top edge only, overriding Border Style; None hides that edge",
           "index": 211,
           "allowVisualStates": true
         },
@@ -43628,6 +43940,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness of the top edge in pixels, and it adds to the element's size",
           "index": 212,
           "allowVisualStates": true
         },
@@ -43646,6 +43959,7 @@
           },
           "isSignal": false,
           "default": 2,
+          "description": "Thickness of the border in pixels, which adds to the element's size unless Box Sizing accounts for it",
           "index": 204,
           "allowVisualStates": true
         },
@@ -43785,6 +44099,7 @@
             "parentPort": "textStyle"
           },
           "isSignal": false,
+          "description": "Colour of the text itself, not of the element behind it",
           "index": 21,
           "allowVisualStates": true
         },
@@ -43834,6 +44149,7 @@
             "parentPort": "textStyle"
           },
           "isSignal": false,
+          "description": "Typeface to render the text in, either a web-safe family name or a font file added to the project",
           "index": 19,
           "allowVisualStates": true
         },
@@ -43852,6 +44168,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Height of the text, in pixels",
           "index": 20,
           "allowVisualStates": true
         },
@@ -43978,6 +44295,7 @@
           },
           "isSignal": false,
           "default": "icon",
+          "description": "Whether the icon comes from an installed icon set or from an image file, which decides the source port below",
           "index": 21,
           "allowVisualStates": true
         },
@@ -44038,6 +44356,7 @@
             "parentPort": "labeltextStyle"
           },
           "isSignal": false,
+          "description": "Colour of the text itself, not of the element behind it",
           "index": 22,
           "allowVisualStates": true
         },
@@ -44052,6 +44371,7 @@
             "parentPort": "labeltextStyle"
           },
           "isSignal": false,
+          "description": "Typeface to render the text in, either a web-safe family name or a font file added to the project",
           "index": 20,
           "allowVisualStates": true
         },
@@ -44070,6 +44390,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Height of the text, in pixels",
           "index": 21,
           "allowVisualStates": true
         },
@@ -44089,6 +44410,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Extra space added between characters; leave as Auto to use the spacing built into the font",
           "index": 23,
           "allowVisualStates": true
         },
@@ -44110,6 +44432,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Vertical space each line of text occupies; leave as Auto to follow the font",
           "index": 24,
           "allowVisualStates": true
         },
@@ -44133,6 +44456,7 @@
           },
           "isSignal": false,
           "default": "None",
+          "description": "Applies one of the project's saved text styles; the individual font ports below override whatever it sets",
           "index": 19,
           "allowVisualStates": true
         },
@@ -44166,6 +44490,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Forces the text to upper case, lower case or capitalised without changing the underlying value",
           "index": 25,
           "allowVisualStates": true
         },
@@ -44185,6 +44510,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Extra space added between characters; leave as Auto to use the spacing built into the font",
           "index": 22,
           "allowVisualStates": true
         },
@@ -44206,6 +44532,7 @@
           },
           "isSignal": false,
           "default": "Auto",
+          "description": "Vertical space each line of text occupies; leave as Auto to follow the font",
           "index": 23,
           "allowVisualStates": true
         },
@@ -44466,6 +44793,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -44654,6 +44982,7 @@
           },
           "isSignal": false,
           "default": "contentSize",
+          "description": "Whether Width and Height are used as given, or the element sizes itself to fit its contents",
           "index": 10,
           "allowVisualStates": true
         },
@@ -44730,6 +45059,7 @@
           },
           "isSignal": false,
           "default": "None",
+          "description": "Applies one of the project's saved text styles; the individual font ports below override whatever it sets",
           "index": 18,
           "allowVisualStates": true
         },
@@ -44763,6 +45093,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Forces the text to upper case, lower case or capitalised without changing the underlying value",
           "index": 24,
           "allowVisualStates": true
         },
@@ -44948,7 +45279,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",
@@ -46625,6 +46957,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -46717,7 +47050,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         }
       ],
       "outputs": [
@@ -46760,7 +47094,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many child elements are currently mounted inside this one"
         },
         {
           "name": "didMount",
@@ -46985,6 +47320,7 @@
           },
           "isSignal": false,
           "default": "icon",
+          "description": "Whether the icon comes from an installed icon set or from an image file, which decides the source port below",
           "index": 21,
           "allowVisualStates": true
         },
@@ -47154,6 +47490,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
           "index": 9999
         },
         {
@@ -47409,7 +47746,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
         },
         {
           "name": "visible",

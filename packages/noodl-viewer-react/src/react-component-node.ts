@@ -1606,6 +1606,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
     ReactComponentNode.inputs.variant = {
       displayName: 'Variant',
       group: 'General',
+      description: 'Name of a saved variant of this node type to apply, replacing the styling set here',
       type: {
         name: 'string',
         allowConnectionsOnly: true
@@ -1624,6 +1625,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
       index: 9999,
       type: 'boolean',
       group: 'General',
+      description: 'Removes the element from the page entirely when false, unlike Visible which leaves its space behind',
       default: true,
       set(value) {
         value = value ? true : false;
@@ -1647,6 +1649,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
     ReactComponentNode.outputs.childrenCount = {
       displayName: 'Children Count',
       type: 'number',
+      description: 'How many child elements are currently mounted inside this one',
       get() {
         return this.childrenCount;
       }

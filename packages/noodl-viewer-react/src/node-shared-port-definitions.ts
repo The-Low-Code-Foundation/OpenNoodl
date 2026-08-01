@@ -60,6 +60,16 @@ export interface TextStyleInputsOptions extends StyleTagOption {
  */
 const SIZE_MODES = ['explicit', 'contentWidth', 'contentHeight', 'contentSize'];
 
+/**
+ * `TopLeft` → `top-left`, for the corner-radius port descriptions.
+ *
+ * The suffix is also the port-name fragment (`borderTopLeftRadius`), so it cannot simply be
+ * lower-cased for prose without losing the word break.
+ */
+function humanCorner(suffix: string): string {
+  return suffix.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+}
+
 export interface DimensionsOptions {
   defaultSizeMode?: 'explicit' | 'contentHeight' | 'contentWidth' | (string & {});
   /** Wording used in the size-mode enum labels, e.g. 'Content' vs 'Text'. */
@@ -689,6 +699,7 @@ export default {
         },
         group: 'Dimensions',
         displayName: 'Size Mode',
+        description: 'Whether Width and Height are used as given, or the element sizes itself to fit its contents',
         default: defaultSizeMode,
         allowVisualStates: true,
         onChange(value) {
@@ -829,6 +840,11 @@ export default {
           index: 240 + indexOffset,
           displayName: 'Corner Radius',
           editorName: nameWithTab('Corner Radius'),
+          // NDA-005 §0 / NDA-012 (Visual) C1. Written here rather than 8 times per node: this
+          // one generator produces 5 ports on every node that rounds corners.
+          description: suffix
+            ? `Rounds the ${humanCorner(suffix)} corner only, overriding Corner Radius`
+            : 'Rounds all four corners, except any corner that sets its own radius',
           group: 'Corner Radius',
           type: {
             name: 'number',
@@ -919,6 +935,9 @@ export default {
           index: index + 1,
           displayName: 'Border Style',
           editorName: nameWithTab('Border Style'),
+          description: suffix
+            ? `Line style for the ${suffix.toLowerCase()} edge only, overriding Border Style; None hides that edge`
+            : 'Line style for all four edges; None hides the border and leaves Border Width and Color inactive',
           group: 'Border Style',
           allowVisualStates: true,
           type: {
@@ -941,6 +960,9 @@ export default {
           index: index + 2,
           displayName: 'Border Width',
           editorName: nameWithTab('Border Width'),
+          description: suffix
+            ? `Thickness of the ${suffix.toLowerCase()} edge in pixels, and it adds to the element's size`
+            : "Thickness of the border in pixels, which adds to the element's size unless Box Sizing accounts for it",
           group: 'Border Style',
           allowVisualStates: true,
           type: {
@@ -960,6 +982,9 @@ export default {
           index: index + 3,
           displayName: 'Border Color',
           editorName: nameWithTab('Border Color'),
+          description: suffix
+            ? `Colour of the ${suffix.toLowerCase()} edge only, overriding Border Color`
+            : 'Colour of the border, which has no effect while Border Style is None',
           group: 'Border Style',
           type: 'color',
           default: defaults[colorName],
@@ -1236,6 +1261,7 @@ export default {
         },
         group: 'Icon',
         displayName: 'Type',
+        description: 'Whether the icon comes from an installed icon set or from an image file, which decides the source port below',
         default: 'icon',
         allowVisualStates: true,
         index: index + 1
@@ -1421,6 +1447,7 @@ export default {
         group: group,
         displayName: 'Text Style',
         editorName: prettyName('Text Style'),
+        description: "Applies one of the project's saved text styles; the individual font ports below override whatever it sets",
         default: 'None',
         set(value) {
           this.props[textStyleInputName] = this.context.styles.getTextStyle(value);
@@ -1438,6 +1465,7 @@ export default {
         group: group,
         displayName: 'Font Family',
         editorName: prettyName('Font Family'),
+        description: 'Typeface to render the text in, either a web-safe family name or a font file added to the project',
         set(value) {
           if (value) {
             let family = value;
@@ -1466,6 +1494,7 @@ export default {
         group: group,
         displayName: 'Font Size',
         editorName: prettyName('Font Size'),
+        description: 'Height of the text, in pixels',
         targetStyleProperty: 'fontSize',
         type: {
           name: 'number',
@@ -1490,6 +1519,7 @@ export default {
         },
         displayName: 'Color',
         editorName: prettyName('Color'),
+        description: 'Colour of the text itself, not of the element behind it',
         group: group,
         targetStyleProperty: 'color',
         allowVisualStates: true,
@@ -1506,6 +1536,7 @@ export default {
         group: group,
         displayName: 'Letter Spacing',
         editorName: prettyName('Letter Spacing'),
+        description: 'Extra space added between characters; leave as Auto to use the spacing built into the font',
         targetStyleProperty: 'letterSpacing',
         type: {
           name: 'number',
@@ -1528,6 +1559,7 @@ export default {
         group: group,
         displayName: 'Line Height',
         editorName: prettyName('Line Height'),
+        description: 'Vertical space each line of text occupies; leave as Auto to follow the font',
         targetStyleProperty: 'lineHeight',
         type: {
           name: 'number',
@@ -1551,6 +1583,7 @@ export default {
         group: group,
         displayName: 'Case',
         editorName: prettyName('Case'),
+        description: 'Forces the text to upper case, lower case or capitalised without changing the underlying value',
         applyDefault: false,
         targetStyleProperty: 'textTransform',
         type: {
