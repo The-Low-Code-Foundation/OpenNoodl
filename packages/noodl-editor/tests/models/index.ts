@@ -6,6 +6,7 @@
 export * from './expression-parameter.test';
 export * from './ElementConfigRegistry.test';
 export * from './BYOBSchemaParsers.test';
+export * from './BYOBRelationSync.test';
 export * from './ByobFilterBuilder.test';
 export * from './ProjectCreationWizard.test';
 export * from './StyleAnalyzer.test';

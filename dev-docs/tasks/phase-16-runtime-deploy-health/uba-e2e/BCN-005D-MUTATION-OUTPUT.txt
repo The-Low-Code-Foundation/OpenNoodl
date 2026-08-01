@@ -1,0 +1,13 @@
+M0 baseline (unmutated):        31 passed, 0 failed
+M1 no relation endpoint:        25 passed, 6 failed
+M2 descriptors never stored:    22 passed, 9 failed
+M3 fields never enriched:       30 passed, 1 failed
+M4 PB collectionId ignored:     29 passed, 2 failed
+M5 PB hidden not propagated:    29 passed, 2 failed
+M6 PB maxSelect ignored:        29 passed, 2 failed
+M7 'could not ask' becomes []:  30 passed, 1 failed
+M8 missing columns synthesised: 29 passed, 2 failed
+M9 relationType from cardinality only: 30 passed, 1 failed
+M10 nothing stripped:           29 passed, 2 failed
+M12 PB page size not requested: 30 passed, 1 failed
+M13 restored baseline:          31 passed, 0 failed

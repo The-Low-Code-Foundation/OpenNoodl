@@ -24,8 +24,15 @@ import {
   shouldActivateOnCreate
 } from './activeBackend';
 import { getPreset } from './presets';
-import { parseSchemaResponse } from './schemaParsers';
 import {
+  applyRelationsToSchema,
+  parseRelationsResponse,
+  parseSchemaResponse,
+  relationEndpointFor,
+  schemaRequestPath
+} from './schemaParsers';
+import {
+  BackendAuthConfig,
   BackendConfig,
   BackendConfigSerialized,
   BackendServicesEvent,
@@ -44,6 +51,35 @@ import {
  */
 function generateId(): string {
   return `backend_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * The headers an **editor-only, privileged** request carries.
+ *
+ * One function because `testConnection` and `fetchSchema` had two copies of it and they
+ * had already drifted: ⚠️ the connection test honoured `method: 'basic'` and the schema
+ * fetch did not, so a `custom` backend behind HTTP basic auth could pass its own test
+ * and then sync a schema with no credential at all — a 401 reported as "Failed to fetch
+ * schema: HTTP 401" with nothing pointing at the missing header. Found while giving the
+ * relation fetch a third caller; a third copy is what turns a drift into a pattern.
+ *
+ * `adminToken` and never `publicToken`: everything built here is asking a question only
+ * the editor is allowed to ask. See `security.ts` for which of the two a published app
+ * carries.
+ */
+function adminHeaders(auth: BackendAuthConfig): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = auth.adminToken;
+
+  if (auth.method === 'bearer' && token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else if (auth.method === 'api-key' && token) {
+    headers[auth.apiKeyHeader || 'X-API-Key'] = token;
+  } else if (auth.method === 'basic' && auth.username && auth.password) {
+    headers['Authorization'] = `Basic ${btoa(`${auth.username}:${auth.password}`)}`;
+  }
+
+  return headers;
 }
 
 /**
@@ -467,27 +503,13 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
     const preset = getPreset(backendOrConfig.type);
     const endpoints = 'endpoints' in backendOrConfig ? backendOrConfig.endpoints : preset.endpoints;
 
-    // Build headers - use adminToken for schema introspection (editor-only)
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    };
-
-    // Use adminToken for testing connection (schema access requires admin permissions)
-    const token = auth.adminToken;
-
-    if (auth.method === 'bearer' && token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    } else if (auth.method === 'api-key' && token) {
-      const headerName = auth.apiKeyHeader || 'X-API-Key';
-      headers[headerName] = token;
-    } else if (auth.method === 'basic' && auth.username && auth.password) {
-      const encoded = btoa(`${auth.username}:${auth.password}`);
-      headers['Authorization'] = `Basic ${encoded}`;
-    }
+    // Use adminToken: the connection test asks the schema endpoint, which is a
+    // privileged question on every preset. See `adminHeaders`.
+    const headers = adminHeaders(auth);
 
     try {
       // Try to fetch schema endpoint as a connectivity test (requires admin token)
-      const schemaUrl = `${url}${endpoints.schema}`;
+      const schemaUrl = `${url}${schemaRequestPath(backendOrConfig.type, endpoints.schema)}`;
       const response = await fetch(schemaUrl, {
         method: 'GET',
         headers
@@ -566,23 +588,10 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
       throw new Error(`Backend not found: ${backendId}`);
     }
 
-    // Build headers - use adminToken for schema introspection (editor-only)
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    };
-
-    // Use adminToken for schema fetching (requires admin/service permissions)
-    const token = backend.auth.adminToken;
-
-    if (backend.auth.method === 'bearer' && token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    } else if (backend.auth.method === 'api-key' && token) {
-      const headerName = backend.auth.apiKeyHeader || 'X-API-Key';
-      headers[headerName] = token;
-    }
+    const headers = adminHeaders(backend.auth);
 
     try {
-      const schemaUrl = `${backend.url}${backend.endpoints.schema}`;
+      const schemaUrl = `${backend.url}${schemaRequestPath(backend.type, backend.endpoints.schema)}`;
       const response = await fetch(schemaUrl, {
         method: 'GET',
         headers
@@ -596,6 +605,14 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
 
       // Parse schema based on backend type
       const schema = this.parseSchemaResponse(backend.type, data);
+
+      // BCN-005's relation parsers, given a caller. The admin credential is still in
+      // hand here and it never will be again: relation metadata is admin-only on every
+      // REST backend (Directus 403, PocketBase 401, PostgREST has no endpoint), and a
+      // published app holds a public token. Whatever is not written down at this moment
+      // is not discoverable later.
+      const relationData = await this.fetchRelationData(backend, headers);
+      applyRelationsToSchema(schema, parseRelationsResponse(backend.type, data, relationData));
 
       // Update backend with schema
       backend.schema = schema;
@@ -611,6 +628,38 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
       const message = error instanceof Error ? error.message : 'Schema fetch failed';
       this.updateBackendStatus(backendId, 'error', message);
       throw error;
+    }
+  }
+
+  /**
+   * The backend's relation-metadata document, when it has one of its own.
+   *
+   * ⚠️ **Never fatal.** {@link relationEndpointFor} is Directus-only and Directus
+   * answers `GET /relations` with a **403** to a token that can nonetheless read
+   * `GET /fields` — a service token scoped to data, say. Rejecting the whole sync for
+   * that would turn a partial answer into no answer: the collections are still correct
+   * and the runtime still has `relationsFromCachedCollections` to fall back on. So a
+   * failure returns `undefined`, `parseRelationsResponse` turns that into "not
+   * described" rather than "none", and nothing overwrites relations a previous sync
+   * managed to read.
+   */
+  private async fetchRelationData(backend: BackendConfig, headers: Record<string, string>): Promise<unknown> {
+    const path = relationEndpointFor(backend.type);
+    if (!path) return undefined;
+
+    try {
+      const response = await fetch(`${backend.url}${path}`, { method: 'GET', headers });
+      if (!response.ok) {
+        console.warn(
+          `[BackendServices] ${backend.name}: relation metadata unavailable (HTTP ${response.status} from ${path}). ` +
+            'Relations will be inferred from the cached schema, which cannot see a junction table with extra columns.'
+        );
+        return undefined;
+      }
+      return await response.json();
+    } catch (error) {
+      console.warn(`[BackendServices] ${backend.name}: relation metadata request failed`, error);
+      return undefined;
     }
   }
 
