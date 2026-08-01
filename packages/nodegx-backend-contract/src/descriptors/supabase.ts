@@ -91,14 +91,46 @@ export const supabaseDescriptor: BackendDescriptor = {
       'The Storage endpoint is consumed over fetch, which has no upload-progress event.'
     ),
 
-    'auth.password': supported('POST /auth/v1/token?grant_type=password'),
-    'auth.signUp': supported('POST /auth/v1/signup'),
+    // ⚠️ **The four auth cells nothing has ever verified, and which no adapter serves.**
+    // Two separate facts, and both point the same way:
+    //
+    // 1. **GoTrue is not in the rig.** Like Realtime below, Supabase Auth is a separate
+    //    service; the rig's "Supabase" is one Postgres and one PostgREST container, and
+    //    BCN-006 measured every `/auth/v1/*` route as a plain 404 from PostgREST. So the
+    //    endpoints named here are read from documentation, not asked of a server.
+    // 2. **`RestAuthAdapter` does not implement Supabase.** BCN-006 shipped Directus and
+    //    PocketBase and gated Supabase deliberately, on the argument that writing an auth
+    //    flow from documentation is how a user gets locked out of their own app.
+    //
+    // They were `supported`, which claimed a capability the product does not have — flagged
+    // by BCN-006 itself rather than left. `conditional` is the correct state and it is the
+    // safe one: the editor treats it as unavailable until a probe says otherwise, so an
+    // unverified cell cannot promise anything. **Do not promote these to `supported`
+    // without both a real GoTrue to probe and an adapter that speaks to it.**
+    'auth.password': conditional(
+      'Signing in with an email and password needs Supabase Auth, and NodeGX does not support it on this backend yet.',
+      { method: 'GET', path: '/auth/v1/settings', expect: 'a settings document rather than a 404' },
+      'DOCUMENTED, NOT PROBED — BCN-006 confirmed only that no GoTrue exists in this rig to probe (every /auth/v1/* is a 404 from PostgREST), and RestAuthAdapter implements Directus and PocketBase only.'
+    ),
+    'auth.signUp': conditional(
+      'Creating accounts needs Supabase Auth, and NodeGX does not support it on this backend yet.',
+      { method: 'GET', path: '/auth/v1/settings', expect: 'a settings document rather than a 404' },
+      'DOCUMENTED, NOT PROBED — same as auth.password. POST /auth/v1/signup is read from documentation.'
+    ),
     'auth.signUpProperties': degraded(
       'Supabase keeps the login and the profile separately, so signing up takes two steps. If the second one fails the account still exists, without the profile details.',
-      'auth.users is not writable from the client; profile rows live in a public table.'
+      'auth.users is not writable from the client; profile rows live in a public table. DOCUMENTED, NOT PROBED — and moot while auth.signUp is conditional.'
     ),
-    'auth.emailVerify': supported('email confirmation is on by default for new Supabase projects'),
-    'auth.passwordReset': supported('POST /auth/v1/recover'),
+    'auth.emailVerify': conditional(
+      'Confirming an email address needs Supabase Auth, and NodeGX does not support it on this backend yet.',
+      { method: 'GET', path: '/auth/v1/settings', expect: 'a settings document rather than a 404' },
+      'DOCUMENTED, NOT PROBED. Email confirmation being on by default for new projects is a fact about Supabase, not about whether we can reach it.'
+    ),
+    'auth.passwordReset': conditional(
+      'Resetting a password needs Supabase Auth, and NodeGX does not support it on this backend yet.',
+      { method: 'GET', path: '/auth/v1/settings', expect: 'a settings document rather than a 404' },
+      'DOCUMENTED, NOT PROBED — POST /auth/v1/recover is read from documentation.'
+    ),
     'auth.oauth': conditional(
       'Signing in with Google, GitHub and the rest depends on which providers you have enabled in your Supabase dashboard.',
       { method: 'GET', path: '/auth/v1/settings', expect: 'an external section listing enabled providers' },
