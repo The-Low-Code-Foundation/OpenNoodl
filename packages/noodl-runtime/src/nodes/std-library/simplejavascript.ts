@@ -10,6 +10,8 @@ import type {
   NodeModule
 } from '@noodl/types';
 
+import { runOnChangeDynamicPorts } from '../../run-on-value-change';
+
 const JavascriptNodeParser = require('../../javascriptnodeparser');
 const { logJavaScriptNodeError } = require('../../utils');
 
@@ -169,6 +171,13 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
 
         this._internal.func = this.parseScript(script);
 
+        // ⚠️ NDA-017 §2 — the class's one surviving instance of the old guard, and this node
+        // is the reason the exception exists. Every *value* input is governed by its own
+        // checkbox now, so wiring `Run` no longer changes what they do. This port is not a
+        // value input; it carries the script itself, and it is set at load on every Function
+        // in the project. Dropping the guard here would run every `Run`-driven script once at
+        // load — including the ones that POST. See the longer note on the same line in
+        // `expression.ts`.
         if (!this.isInputConnected('run')) this.scheduleRun();
       }
     },
@@ -176,7 +185,10 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Run',
       group: 'Actions',
-      description: 'Runs the script; connecting this stops it running whenever an input changes',
+      // NDA-017 §2. The old sentence described the trap as if it were a feature; it is no
+      // longer true, and it was the only place the behaviour was written down at all.
+      description:
+        'Runs the script now. This is additional to the inputs that re-run it; untick an input under Run On Value Change to stop that one triggering a run',
       valueChangedToTrue: function (this: SimpleJavascriptNodeInstance) {
         this.scheduleRun();
       }
@@ -336,7 +348,13 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
     setScriptInputValue: function (this: SimpleJavascriptNodeInstance, name: string, value: unknown) {
       this._internal.inputValues[name] = value;
 
-      if (!this.isInputConnected('run')) this.scheduleRun();
+      // NDA-017 §2. Was `if (!this.isInputConnected('run'))`. §0 measured this node
+      // re-publishing the previous cycle's answer under exactly the conditions the community
+      // reporter described, which mattered because their stated workaround was to abandon
+      // Expression *for* this node — so the workaround bought nothing. The checkbox is named
+      // for the port (`in-<name>`), not the script variable, because that is what the author
+      // sees in the panel and what `registerRunOnValueChangeInput` mints.
+      if (this.shouldRunOnValueChange('in-' + name)) this.scheduleRun();
     },
     getScriptOutputValue: function (this: SimpleJavascriptNodeInstance, name: string) {
       if (this._isSignalType(name)) {
@@ -402,6 +420,9 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
         }
 
         this.registerInput(name, input);
+        // NDA-017 §2. Labelled with the script variable rather than the port name: `in-` is
+        // an implementation prefix and the author never typed it.
+        this.registerRunOnValueChangeInput(name, n);
       }
 
       if (name.startsWith('intype-')) {
@@ -601,7 +622,25 @@ const SimpleJavascriptNodeModule: NodeModule = {
           }
         });
 
-        context.editorConnection.sendDynamicPorts(node.id, ports);
+        // NDA-017 §2. Derived from the assembled list rather than from `scriptInputs`,
+        // because a Function's inputs arrive by two routes — the proplist above and
+        // `parseAndAddPortsFromScript` reading `Inputs.x` out of the script — and a checkbox
+        // that only covered the first would be missing on exactly the ports an author added
+        // by typing.
+        const valueInputNames: string[] = [];
+        const valueInputLabels: Record<string, string> = {};
+        ports.forEach((p) => {
+          const portName = p.name as string;
+          if (p.plug !== 'input' || !portName.startsWith('in-')) return;
+          if (valueInputNames.indexOf(portName) !== -1) return;
+          valueInputNames.push(portName);
+          valueInputLabels[portName] = portName.substring('in-'.length);
+        });
+
+        context.editorConnection.sendDynamicPorts(
+          node.id,
+          ports.concat(runOnChangeDynamicPorts(valueInputNames, valueInputLabels))
+        );
       }
 
       _updatePorts();

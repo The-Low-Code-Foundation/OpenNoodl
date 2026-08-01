@@ -179,6 +179,8 @@ export interface RuntimeNode extends NodeInstance {
   _isFirstUpdate: boolean;
   _valuesFromConnections: Record<string, unknown>;
   _expressionSubscriptions: Record<string, ExpressionSubscription>;
+  /** NDA-017 §2. Deliberate answers only; absent reads as ticked. */
+  _runOnValueChange: Record<string, boolean>;
 
   /**
    * Set false by the node scope while a component is being built, so nodes do not update

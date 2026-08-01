@@ -15,6 +15,7 @@ import type { RuntimeNode, RuntimeNodeContext } from './internal';
 
 import Node = require('./node');
 import EdgeTriggeredInput = require('./edgetriggeredinput');
+import { runOnChangeInputs } from './run-on-value-change';
 
 /**
  * The setter table shared between every instance of one node type.
@@ -281,6 +282,25 @@ function defineNode(opts: NodeDefinitionOptions): NodeDefinition {
   opts.inputs = opts.inputs || {};
   opts.outputs = opts.outputs || {};
   opts.initialize = opts.initialize || function () {};
+
+  // NDA-017 §2. Synthesised before `registerInputs` so the checkboxes are ordinary declared
+  // inputs from here on — nothing downstream (metadata, the editor export, the catalog) has
+  // to know they were generated. The governed port's own `displayName` is reused as the
+  // checkbox's label, so the panel reads as a list of this node's inputs rather than as a
+  // list of internal port names.
+  if (opts.runOnValueChange) {
+    const displayNames: Record<string, string> = {};
+    opts.runOnValueChange.inputs.forEach(function (name) {
+      const governed = opts.inputs[name];
+      if (!governed) {
+        throw new Error(
+          'Node ' + opts.name + ' declares runOnValueChange for input ' + name + ', which it does not have'
+        );
+      }
+      if (governed.displayName) displayNames[name] = governed.displayName;
+    });
+    Object.assign(opts.inputs, runOnChangeInputs(opts.runOnValueChange.inputs, displayNames));
+  }
 
   let inputs: SharedInputs = {};
 

@@ -1,5 +1,31 @@
 /**
- * NDA-017 §0 — a signal-driven node cannot tell a fresh input from a stale one.
+ * NDA-017 — a signal-driven node cannot tell a fresh input from a stale one.
+ *
+ * ## §2 has landed, and it changed what these rows measure
+ *
+ * §0 (below) reproduced the community report against a spec that offered four remedies and
+ * recommended two of them. Richard chose none of the four on 2026-08-01: the fix is a
+ * per-input **"Run on value change"** checkbox, because the defect is one level deeper than
+ * staleness — *connecting `Run` silently changes what every other port does.*
+ *
+ * That moves the contract, so it moves the rows. The three points worth having in front of
+ * you before reading any assertion below:
+ *
+ * 1. **The remedy does not make a mid-flight `Run` clairvoyant, and nothing could.** A `Run`
+ *    that fires while the producers are still in flight still reads the previous cycle's
+ *    values. What it no longer does is *stay* there: the setters are no longer passive, so
+ *    the answer corrects itself the moment the values land. Row 2 therefore asserts the
+ *    settled outcome, and keeps the synchronous instant as an explicit characterisation so
+ *    the distinction is measured rather than assumed. It was written that way after checking
+ *    the settled assertion goes red on the pre-§2 code — the "never corrects it"
+ *    characterisation that stood here before is exactly that proof.
+ * 2. **"A passive setter is the feature" is the sentence the decision overturned.** It used
+ *    to be pinned as a control. Passivity is still a feature and still pinned — but it is now
+ *    reached by unticking a box, not by wiring an unrelated port.
+ * 3. **`test.failing` reports as *passed*.** Every row here was read with that in mind: a ✓
+ *    on a `test.failing` row means the body still throws.
+ *
+ * ## §0 — the original reproduction
  *
  * From a Noodl community report (see the task spec): an Expression whose `Run` is connected
  * "gives out the same previous output" when the values feeding it have not landed yet. The
@@ -197,52 +223,79 @@ function result(graph: CorpusGraph): unknown {
   return graph.node('expr').getOutput('result').value;
 }
 
-describe('NDA-017 §0 row 1: the seed is a plausible number', () => {
-  test.failing('Run before anything has ever produced evaluates 0 + 0 and emits a real-looking 0', async () => {
+describe('NDA-017 row 1: the seed is a plausible number', () => {
+  test('Run before anything has ever produced does not emit a real-looking 0', async () => {
     const graph = await expressionGraph();
 
     // Both producers are in flight. Nothing has ever arrived on `a` or `b`.
     produce(graph, 10, 20);
     runNow(graph);
 
-    // `registerInputIfNeeded` seeded both discovered inputs to 0 (`expression.ts:117-118`), so
-    // the node evaluates `0 + 0` and publishes 0 — indistinguishable downstream from a
-    // legitimate zero. This is the NDA-004 class-B shape exactly: not silence, a plausible value.
+    // `registerInputIfNeeded` used to seed every discovered input to `0`, so the node
+    // evaluated `0 + 0` and published a zero that nothing downstream could tell from a
+    // legitimate one — the NDA-004 class-B shape exactly: not silence, a plausible value.
+    // §2 seeds `undefined` instead.
     expect(result(graph)).not.toBe(0);
   });
 
-  test('characterisation: the value it publishes instead is the seed sum', async () => {
+  test('characterisation: what it publishes instead is NaN, which is absent rather than plausible', async () => {
     const graph = await expressionGraph();
 
     produce(graph, 10, 20);
     runNow(graph);
 
-    // Kept as an ordinary row so the *mechanism* is pinned even while row 1 is red. If a future
-    // change makes this NaN or undefined instead, the diagnosis above stops being true and this
-    // is what says so.
-    expect(result(graph)).toBe(0);
+    // The mechanism, pinned. `NaN` is not an answer either — the point is that it does not
+    // *look* like one. A branch downstream takes the same path for `0` as for a real zero;
+    // nothing takes a confident path on `NaN`.
+    //
+    // If a future change makes this `0` again, the seed has been reintroduced somewhere and
+    // row 1 above is passing for a reason that has nothing to do with the fix.
+    expect(result(graph)).toBeNaN();
+  });
+
+  test('a node that has never evaluated reports null, not a confident value', async () => {
+    const graph = await expressionGraph();
+
+    // Constraint 4, and the route §0 found that no control-signal check could ever have
+    // intercepted: with `Run` connected the node never evaluates at boot, and `signalsFor`
+    // proves it, yet `connectInput` still pushes the `result` getter's answer down the wire
+    // the moment it is made. That answer used to be a confident `0`.
+    expect(graph.signalsFor('expr')).toEqual([]);
+    expect(result(graph)).toBeNull();
+
+    // The two boolean ports were the worse half, and `Is False` worst of all: `!undefined` is
+    // `true`, so an Expression that had never run asserted "my result is falsy" to every
+    // branch downstream. A claim, not an absence.
+    expect(graph.node('expr').getOutput('isTrue').value).toBeNull();
+    expect(graph.node('expr').getOutput('isFalse').value).toBeNull();
   });
 });
 
-describe('NDA-017 §0 row 2: a previous cycle’s value, which is the reported case', () => {
-  test.failing('the second Run reflects the second inputs', async () => {
+describe('NDA-017 row 2: a previous cycle’s value, which is the reported case', () => {
+  test('the stale answer corrects itself once the values land', async () => {
     const graph = await expressionGraph();
 
-    // Cycle 1, fully settled: the honest case, and it works.
+    // Cycle 1, fully settled: the honest case, and it always worked.
     produce(graph, 1, 2);
     await graph.settle(4);
     runNow(graph);
     expect(result(graph)).toBe(3);
 
-    // Cycle 2: new values are in flight when `Run` fires — the producer "couldn't run on time",
-    // in the reporter's words.
+    // Cycle 2: new values are in flight when `Run` fires — the producer "couldn't run on
+    // time", in the reporter's words.
     produce(graph, 10, 20);
     runNow(graph);
 
+    // This is the assertion that was red before §2 and is the whole of the reported defect.
+    // The values land, the setters are no longer passive, and the node re-runs. Before §2 the
+    // setters recorded the late values and scheduled nothing, so the stale answer stood until
+    // something pulsed `Run` again — which is what made it "messed up the whole logic" rather
+    // than a one-frame flicker.
+    await graph.settle(4);
     expect(result(graph)).toBe(30);
   });
 
-  test('characterisation: it re-publishes the previous cycle’s answer, and never corrects it', async () => {
+  test('characterisation: the instant Run fires it still reads the old value, and that is not what was fixed', async () => {
     const graph = await expressionGraph();
 
     produce(graph, 1, 2);
@@ -251,13 +304,15 @@ describe('NDA-017 §0 row 2: a previous cycle’s value, which is the reported c
 
     produce(graph, 10, 20);
     runNow(graph);
-    expect(result(graph)).toBe(3);
 
-    // And the correction never comes. Once the values do land, the setters record them and
-    // schedule nothing, because `Run` is connected — so the stale answer stands until something
-    // pulses `Run` again. This is the half that makes it "messed up the whole logic" rather than
-    // a one-frame flicker.
-    await graph.settle(4);
+    // Kept deliberately, and it is the honest boundary of the remedy: a `Run` fired while the
+    // producers are in flight evaluates what is there, because nothing in a dataflow graph can
+    // evaluate a value that has not arrived. Only the spec's option B — a runtime-wide
+    // in-flight concept — could even *report* this, and Richard did not take it.
+    //
+    // The author's answer for a graph that must run exactly once per fetch is unchanged and is
+    // why the `Run` port survives §2: wire `Run` to the producer's completion signal rather
+    // than to whatever kicked the producer off.
     expect(result(graph)).toBe(3);
   });
 });
@@ -334,8 +389,8 @@ function functionResult(graph: CorpusGraph): unknown {
   return graph.node('fn').getOutput('out-result').value;
 }
 
-describe('NDA-017 §0 row 4: the reporter’s workaround has the identical defect', () => {
-  test.failing('Function’s second Run reflects the second inputs', async () => {
+describe('NDA-017 row 4: the reporter’s workaround had the identical defect', () => {
+  test('Function’s second Run reflects the second inputs', async () => {
     const graph = await functionGraph();
 
     graph.node<ProducerInstance>('prodA').produce(1);
@@ -356,7 +411,7 @@ describe('NDA-017 §0 row 4: the reporter’s workaround has the identical defec
     expect(functionResult(graph)).toBe(30);
   });
 
-  test('characterisation: Function re-publishes the previous cycle’s answer too', async () => {
+  test('Function re-runs when a ticked input lands, with no Run pulse at all', async () => {
     const graph = await functionGraph();
 
     graph.node<ProducerInstance>('prodA').produce(1);
@@ -364,16 +419,17 @@ describe('NDA-017 §0 row 4: the reporter’s workaround has the identical defec
     await graph.settle(4);
     graph.node<PulseInstance>('pulse').pulse();
     await graph.settle(4);
+    expect(functionResult(graph)).toBe(3);
 
+    // No pulse this time. `setScriptInputValue` carried the same guard as Expression, so the
+    // late values used to be recorded and re-run nothing — the reporter moved from a node with
+    // this defect to a node with this defect, which is what made the finding a class rather
+    // than a node.
     graph.node<ProducerInstance>('prodA').produce(10);
     graph.node<ProducerInstance>('prodB').produce(20);
-    runNow(graph);
     await graph.settle(4);
 
-    // `setScriptInputValue` carries the same guard (`simplejavascript.ts:287`), so the late
-    // values are recorded and re-run nothing. The reporter moved from a node with this defect to
-    // a node with this defect.
-    expect(functionResult(graph)).toBe(3);
+    expect(functionResult(graph)).toBe(30);
   });
 });
 
@@ -384,7 +440,7 @@ describe('NDA-017 §0 row 4: the reporter’s workaround has the identical defec
  * "always re-evaluate on every input" would look correct while destroying the entire point of a
  * control signal.
  */
-describe('NDA-017 §0: what must keep working', () => {
+describe('NDA-017: what must keep working', () => {
   test('pinned control: with inputs settled, Run evaluates the current values', async () => {
     const graph = await expressionGraph();
 
@@ -395,32 +451,91 @@ describe('NDA-017 §0: what must keep working', () => {
     expect(result(graph)).toBe(9);
   });
 
-  test('pinned control: a passive setter is the feature — inputs alone do not evaluate', async () => {
+  /**
+   * The control the decision inverted, in its two halves.
+   *
+   * The old row asserted that with `Run` connected, values arriving evaluate nothing —
+   * "don't fire on every keystroke, fire when I say", pinned as the reason the idiom exists.
+   * That behaviour is exactly what Richard removed. It is still available and still worth
+   * pinning; what changed is how an author asks for it. Wiring an unrelated port no longer
+   * buys it silently. Unticking the box buys it, visibly.
+   */
+  test('pinned control: with every box ticked — the default — inputs alone do evaluate', async () => {
     const graph = await expressionGraph();
 
-    // `Run` is connected and never pulsed. Values arrive and are recorded; nothing evaluates.
-    // "Don't fire on every keystroke, fire when I say" is the whole reason the idiom exists, and
-    // any §1 remedy that breaks this row has cured the patient by killing them.
+    // `Run` is connected and never pulsed. Nothing has been unticked, so nothing has changed
+    // from what this graph would do with no `Run` wired at all. That is constraint 2, and it
+    // is what makes `Run` additive rather than modal.
     produce(graph, 4, 5);
     await graph.settle(4);
 
-    expect(result(graph)).toBe(0);
-    // Zero evaluations: `isTrueEv`/`isFalseEv` fire on *every* evaluation, so an empty signal log
-    // is the proof that none happened — the guard held for the whole boot, not just after it.
-    expect(graph.signalsFor('expr')).toEqual([]);
+    expect(result(graph)).toBe(9);
   });
 
-  test('the one value downstream does get is the connect-time push, not an evaluation', async () => {
+  test('pinned control: unticking an input is what makes its setter passive', async () => {
+    const graph = await expressionGraph();
+    const expr = graph.node('expr');
+
+    // The affordance, driven the way the property panel drives it. Both inputs off.
+    expr.setInputValue('runOnChange-a', false);
+    expr.setInputValue('runOnChange-b', false);
+
+    produce(graph, 4, 5);
+    await graph.settle(4);
+
+    // Nothing evaluated. `isTrueEv`/`isFalseEv` fire on *every* evaluation, so an empty signal
+    // log is the proof that none happened — and `result` is still abstaining rather than
+    // holding a fabricated zero.
+    expect(graph.signalsFor('expr')).toEqual([]);
+    expect(result(graph)).toBeNull();
+
+    // …and `Run` still works, which is the other half of "additive". An author who unticks
+    // everything has rebuilt the pre-§2 behaviour deliberately, and it behaves identically.
+    runNow(graph);
+    expect(result(graph)).toBe(9);
+  });
+
+  test('pinned control: one input still ticked is enough, and the untick is per input', async () => {
     const graph = await expressionGraph();
 
-    // Measured rather than assumed, and it is not nothing: the recorder holds a `0` before
-    // anything has evaluated or produced. `connectInput` pushes the source's current output when
-    // the wire is made, and `result`'s getter answers with the initial `cachedValue`.
-    //
-    // So a downstream node reads a confident `0` from an Expression that has never run. That is
-    // the same shape as row 1 — a plausible value standing in for "no answer yet" — arriving by a
-    // different route, and it is why row 1's remedy has to consider the boot value too.
-    expect(delivered(graph)).toEqual([0]);
+    graph.node('expr').setInputValue('runOnChange-a', false);
+
+    // `a` lands first and must trigger nothing; `b` lands and must trigger a run that sees
+    // both. Without the per-input granularity this row cannot tell "b re-ran it" from "a
+    // re-ran it", which is why `a` is produced on its own frame.
+    graph.node<ProducerInstance>('prodA').produce(4);
+    await graph.settle(4);
+    expect(result(graph)).toBeNull();
+
+    graph.node<ProducerInstance>('prodB').produce(5);
+    await graph.settle(4);
+    expect(result(graph)).toBe(9);
+  });
+
+  test('pinned control: two ticked inputs moving in one frame produce one run, not two', async () => {
+    const graph = await expressionGraph();
+
+    // Constraint 3. Both producers land on the same macrotask, so both setters fire before
+    // the node updates. `isTrueEv`/`isFalseEv` fire once per *evaluation*, so counting the
+    // signal log counts evaluations — and this is the coalescing that
+    // `hasScheduledEvaluation` has always done, pinned now because the checkboxes could very
+    // easily have been implemented by evaluating directly in the setter.
+    produce(graph, 4, 5);
+    await graph.settle(4);
+
+    expect(graph.signalsFor('expr')).toHaveLength(1);
+    expect(result(graph)).toBe(9);
+  });
+
+  test('the connect-time push is now an abstention rather than a confident zero', async () => {
+    const graph = await expressionGraph();
+
+    // Measured rather than assumed, and it is not nothing: `connectInput` pushes the source's
+    // current output when the wire is made, so the recorder holds a value before anything has
+    // evaluated or produced. It used to be `0` — a plausible value standing in for "no answer
+    // yet", arriving by a route no control-signal check could intercept, which is why §0
+    // flagged it as the thing option A would have missed.
+    expect(delivered(graph)).toEqual([null]);
     expect(graph.signalsFor('expr')).toEqual([]);
   });
 });

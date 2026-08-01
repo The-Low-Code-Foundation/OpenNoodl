@@ -7188,7 +7188,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Evaluates the expression; connecting this stops it evaluating whenever an input changes"
+          "description": "Evaluates the expression now. This is additional to the inputs that re-run it; untick an input under Run On Value Change to stop that one triggering a run"
         }
       ],
       "outputs": [
@@ -7256,7 +7256,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Whether Result is falsy"
+          "description": "Whether Result is falsy; null until the expression has been evaluated at least once"
         },
         {
           "name": "isFalseEv",
@@ -7278,7 +7278,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Whether Result is truthy"
+          "description": "Whether Result is truthy; null until the expression has been evaluated at least once"
         },
         {
           "name": "isTrueEv",
@@ -7300,7 +7300,7 @@
             "name": "*"
           },
           "isSignal": false,
-          "description": "What the expression evaluated to, or 0 when it could not be evaluated at all"
+          "description": "What the expression evaluated to; null until it has been evaluated at least once"
         }
       ],
       "dynamicPorts": {
@@ -7324,6 +7324,16 @@
             "group": "Parameters",
             "valueType": "*",
             "example": "Sa1"
+          },
+          {
+            "pattern": "runOnChange-<expression>",
+            "plug": "input",
+            "variables": {
+              "expression": "a free variable referenced in the `expression` parameter"
+            },
+            "group": "Run On Value Change",
+            "valueType": "boolean",
+            "example": "runOnChange-Sa1"
           }
         ]
       }
@@ -13354,7 +13364,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Runs the script; connecting this stops it running whenever an input changes"
+          "description": "Runs the script now. This is additional to the inputs that re-run it; untick an input under Run On Value Change to stop that one triggering a run"
         },
         {
           "name": "scriptInputs",
@@ -13475,6 +13485,16 @@
             },
             "valueType": "enum",
             "example": "outtype-Vb sp"
+          },
+          {
+            "pattern": "runOnChange-in-<scriptInput>",
+            "plug": "input",
+            "variables": {
+              "scriptInput": "the `label` of a row in the `scriptInputs` parameter"
+            },
+            "group": "Run On Value Change",
+            "valueType": "boolean",
+            "example": "runOnChange-in-Sa1"
           }
         ],
         "notes": "Names are interpolated verbatim, including spaces — a value called `bg color` produces a port called `value-true-bg color`, not `value-true-bgColor`."

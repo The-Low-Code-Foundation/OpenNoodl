@@ -11,6 +11,7 @@ import {
   validateExpression
 } from './expression-evaluator';
 import { coerceToType } from './expression-type-coercion';
+import { runOnChangeInput, runOnChangePortName, runOnValueChange } from './run-on-value-change';
 
 /**
  * A parameter whose value is computed from an expression rather than stored literally.
@@ -90,6 +91,11 @@ const Node = function Node(this: RuntimeNode, context: RuntimeNodeContext, id: s
   this._valuesFromConnections = {};
   this.updateOnDirtyFlagging = true;
 
+  // NDA-017 §2. Only ever holds *deliberate* answers — an input the author has not touched
+  // is absent here and reads as ticked. See `run-on-value-change.ts` for why the default
+  // cannot live on the port instead.
+  this._runOnValueChange = {};
+
   // Expression subscriptions: { [portName]: { unsub: unsubscribeFn, expression: string } }
   this._expressionSubscriptions = {};
 } as unknown as NodeConstructor;
@@ -147,6 +153,41 @@ Node.prototype.hasInput = function (name) {
 
 Node.prototype.registerInputIfNeeded = function () {
   //noop, can be overriden by subclasses
+};
+
+/**
+ * NDA-017 §2 — whether a new value on `inputName` should re-run this node.
+ *
+ * This is the replacement for `!this.isInputConnected('<control signal>')` at every value
+ * setter in the twelve-family class. It answers `true` for an input the author has never
+ * touched, so wiring the control signal no longer changes what the other ports do; the only
+ * thing that does is unticking a box.
+ *
+ * See `run-on-value-change.ts` for the decision this implements and the four constraints it
+ * has to hold.
+ */
+Node.prototype.shouldRunOnValueChange = function (inputName) {
+  return runOnValueChange(this, inputName);
+};
+
+/**
+ * Register the checkbox port governing an input discovered at runtime.
+ *
+ * Declared inputs get theirs from `defineNode`, which synthesises them from the
+ * `runOnValueChange` field on the node definition. The four families whose governed inputs
+ * come from user text or a schema have to mint them alongside the port they govern.
+ */
+Node.prototype.registerRunOnValueChangeInput = function (inputName, displayName) {
+  const portName = runOnChangePortName(inputName);
+  if (this.hasInput(portName)) return;
+  this.registerInput(portName, runOnChangeInput(inputName, displayName));
+};
+
+/** Drop the checkbox port for an input that no longer exists, and forget its answer. */
+Node.prototype.deregisterRunOnValueChangeInput = function (inputName) {
+  const portName = runOnChangePortName(inputName);
+  if (this.hasInput(portName)) this.deregisterInput(portName);
+  delete this._runOnValueChange[inputName];
 };
 
 /**

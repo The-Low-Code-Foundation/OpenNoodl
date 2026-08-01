@@ -178,15 +178,55 @@ describe('NDA-004 §2: what must stay silent', () => {
     expect(graph.signalsFor('expr')).not.toContain('failure');
   });
 
-  test('inputs are seeded to 0, so there is no “values have not arrived” state to fail in', async () => {
-    // Never fed. This is the boot condition that stopped the Object node getting a `Failure`
-    // port in the first §2 batch, and the reason Expression can safely have one: the discovered
-    // input already holds `0` before anything is connected to it.
+  /**
+   * ⚠️ **This row's premise was withdrawn by NDA-017 §2, and the row is stronger for it.**
+   *
+   * It used to be titled *"inputs are seeded to 0, so there is no 'values have not arrived'
+   * state to fail in"*, and that was the stated reason Expression could safely have a
+   * `Failure` port when the Object node could not: `registerInputIfNeeded` seeded every
+   * discovered input to `0`, so the node never passed through a window in which its ports
+   * existed and held nothing.
+   *
+   * NDA-017 §2 deleted that seed on purpose — a `0` standing in for "nothing has arrived" is
+   * the same fabrication the whole task is about, one level below the one it was reported
+   * for. So the window now exists, and what this row measures is that **the node abstains in
+   * it rather than failing in it**, which is what the Failure Contract required all along:
+   * an unset input is not a failure.
+   *
+   * Two mechanisms hold it, and both are load-bearing. `_scheduleAutomaticEvaluation` will
+   * not evaluate at load while a discovered input has never delivered — without it,
+   * `a.missing.deeper` throws at boot and raises `expression/threw` at a node the author has
+   * not yet wired. And `result` abstains with `null` until something has actually been
+   * computed, rather than reporting the `2` that a nobody-supplied `0` used to produce.
+   */
+  test('an input that has never arrived is abstained on, not failed on', async () => {
+    // Never fed.
     const graph = await graphWith('a + 2');
 
     expect(graph.errors).toEqual([]);
     expect(graph.signalsFor('expr')).not.toContain('failure');
-    expect(graph.node('expr').getOutput('result').value).toBe(2);
+    expect(graph.node('expr').getOutput('result').value).toBeNull();
+  });
+
+  test('an expression that would throw over an unarrived input does not report at load', async () => {
+    // The regression this gate was reinstated for, pinned so it cannot come back quietly.
+    // `undefined.missing` throws; with the old `0` seed `(0).missing` was merely undefined and
+    // the throw happened one property later, which is why nothing caught this until the seed
+    // moved. Either way the author has supplied nothing and must hear nothing.
+    const graph = await graphWith('a.missing.deeper');
+
+    expect(graph.errors).toEqual([]);
+    expect(graph.signalsFor('expr')).not.toContain('failure');
+  });
+
+  test('pinned control: an expression with no inputs at all still evaluates at load', async () => {
+    // The other side of the gate. `2 + 2` has nothing to wait for, so abstaining would be a
+    // node that never produces its answer — and the gate is keyed on there *being* discovered
+    // inputs precisely so this case is untouched.
+    const graph = await graphWith('2 + 2');
+
+    expect(graph.node('expr').getOutput('result').value).toBe(4);
+    expect(graph.errors).toEqual([]);
   });
 });
 

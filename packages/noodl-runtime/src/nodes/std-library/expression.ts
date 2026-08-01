@@ -12,6 +12,7 @@ import type {
 } from '@noodl/types';
 
 import Node = require('../../node');
+import { runOnChangeDynamicPorts } from '../../run-on-value-change';
 
 const difference = require('lodash.difference');
 const ExpressionEvaluator = require('../../expression-evaluator');
@@ -41,6 +42,39 @@ interface ExpressionNodeInstance extends NodeInstance {
     hasScheduledEvaluation: boolean;
     code?: string;
     cachedValue: unknown;
+    /**
+     * NDA-017 §2 constraint 4. False until the node has produced a real answer, and what
+     * makes `null` distinguishable from a legitimately-null result.
+     */
+    hasEvaluated: boolean;
+    /**
+     * Whether any discovered input has ever delivered a value.
+     *
+     * Gates *automatic* evaluation — the `expression` setter at load, and a Noodl global
+     * moving. An explicit `Run` is never gated: the author asked.
+     *
+     * ⚠️ This exists because of a regression the §2 seed change caused and the NDA-004 §2
+     * corpus caught. With inputs seeded to `undefined` rather than `0`, an expression like
+     * `a.missing.deeper` *throws at load* — before anything has arrived — and
+     * `_reportFailure` duly raised `expression/threw` and pulsed `Failure`. That is precisely
+     * the state the Failure Contract says must never fire: "an unset input is not a failure,
+     * and a `Failure` port that fires on those trains authors to ignore it." The old `0` seed
+     * hid it by making the boot evaluation succeed on a value nobody supplied — the same
+     * trade the whole task is about, one level down.
+     *
+     * A node with no discovered inputs (`2 + 2`) is not gated. It has nothing to wait for.
+     */
+    anyInputArrived: boolean;
+    /**
+     * The identifiers the *current* expression actually references.
+     *
+     * Distinct from `inputNames`, which is `Object.keys(scope)` and therefore also holds
+     * ports that exist only because something is wired to them. `2 + 2` with a stray
+     * connection on `a` has one registered input and references none, and gating on the
+     * registered set made that node abstain forever waiting for a value its expression would
+     * not have read. Gate on what the expression asked for.
+     */
+    referencedPorts: string[];
     /** The full function body, preamble included — not the raw text the author typed. */
     currentExpression: string;
     compiledFunction?: (...args: unknown[]) => unknown;
@@ -63,6 +97,10 @@ interface ExpressionNodeInstance extends NodeInstance {
   /** Mutable here: `registerInputIfNeeded` seeds a value before the port exists. */
   _inputValues: Record<string, unknown>;
   _scheduleEvaluateExpression(): void;
+  /** Schedule an evaluation nobody explicitly asked for. See `anyInputArrived`. */
+  _scheduleAutomaticEvaluation(): void;
+  /** Record a value arrival and re-run if this input is ticked. */
+  _onInputValueArrived(name: string, value: unknown): void;
   _calculateExpression(): unknown;
   _compileFunction(): (...args: unknown[]) => unknown | undefined;
   _reportFailure(code: string, message: string, detail?: unknown): void;
@@ -85,7 +123,14 @@ const ExpressionNode: NodeDefinitionOptions = {
     internal.hasScheduledEvaluation = false;
 
     internal.code = undefined;
-    internal.cachedValue = 0;
+    // NDA-017 §2 constraint 4: `null`, not `0`. This value is not private — `connectInput`
+    // pushes the `result` getter's answer downstream the moment a wire is made, so whatever
+    // starts here is what a consumer reads from a node that has never run. It used to be a
+    // confident `0`.
+    internal.cachedValue = null;
+    internal.hasEvaluated = false;
+    internal.anyInputArrived = false;
+    internal.referencedPorts = [];
     internal.currentExpression = '';
     internal.compiledFunction = undefined;
     internal.inputNames = [];
@@ -114,25 +159,53 @@ const ExpressionNode: NodeDefinitionOptions = {
         return;
       }
 
-      this._internal.scope[name] = 0;
-      this._inputValues[name] = 0;
+      // NDA-017 §2. `undefined`, not `0`. The seed was the first of the four routes §0 found
+      // to a plausible-looking answer from a node that has nothing to answer with: an
+      // `a + b` whose producers have not landed evaluated `0 + 0` and published a `0` that no
+      // downstream branch can tell from a legitimate one. `undefined` makes the same
+      // evaluation produce `NaN` — still not an answer, but a visibly absent one rather than
+      // a plausible one, which is the whole of NDA-004's class-B distinction.
+      this._internal.scope[name] = undefined;
+      this._inputValues[name] = undefined;
 
       this.registerInput(name, {
         set: function (this: ExpressionNodeInstance, value: unknown) {
-          this._internal.scope[name] = value;
-          if (!this.isInputConnected('run')) this._scheduleEvaluateExpression();
+          this._onInputValueArrived(name, value);
         }
       });
+      this.registerRunOnValueChangeInput(name);
+    },
+    _onInputValueArrived: function (this: ExpressionNodeInstance, name: string, value: unknown) {
+      this._internal.scope[name] = value;
+      this._internal.anyInputArrived = true;
+      // NDA-017 §2. This used to read `if (!this.isInputConnected('run'))`, so wiring `Run`
+      // made every value port on the node passive without saying so anywhere. Now the only
+      // thing that makes a port passive is the author unticking it, and `Run` is additive.
+      if (this.shouldRunOnValueChange(name)) this._scheduleEvaluateExpression();
+    },
+    _scheduleAutomaticEvaluation: function (this: ExpressionNodeInstance) {
+      const internal = this._internal;
+      if (internal.referencedPorts.length > 0 && !internal.anyInputArrived) return;
+      this._scheduleEvaluateExpression();
     },
     _scheduleEvaluateExpression: function (this: ExpressionNodeInstance) {
       const internal = this._internal;
+      // The coalescing constraint (NDA-017 §2 constraint 3) is this flag, and it predates the
+      // task: three ticked inputs moving in one frame all land here, the first arms the
+      // callback and the other two find it armed. Which is why the checkbox has to gate the
+      // *call* to this method and must never be allowed to shortcut into a direct evaluation.
       if (internal.hasScheduledEvaluation === false) {
         internal.hasScheduledEvaluation = true;
         this.flagDirty();
         this.scheduleAfterInputsHaveUpdated(function (this: ExpressionNodeInstance) {
           const lastValue = internal.cachedValue;
+          const hadEvaluated = internal.hasEvaluated;
           internal.cachedValue = this._calculateExpression();
-          if (lastValue !== internal.cachedValue) {
+          internal.hasEvaluated = true;
+          // `!hadEvaluated` is load-bearing: the very first evaluation moves the outputs off
+          // `null` even when it happens to land on the same value the getters were reporting,
+          // and without it a first result that is itself null or 0 would never be flagged.
+          if (!hadEvaluated || lastValue !== internal.cachedValue) {
             this.flagOutputDirty('result');
             this.flagOutputDirty('isTrue');
             this.flagOutputDirty('isFalse');
@@ -151,11 +224,20 @@ const ExpressionNode: NodeDefinitionOptions = {
      * whose expression is broken re-reports on every input change, which for a reactive node is
      * every frame something upstream moves: the channel would drown in one author's typo.
      *
-     * `Failure` is safe on this node for a reason worth stating, because the Object node in the
-     * first §2 batch failed the same test: `registerInputIfNeeded` seeds every discovered input
-     * to `0`, not `undefined`. There is no window in which the ports exist but hold nothing, so
-     * "the values have not arrived yet" is not a state this node passes through on the way to
-     * working.
+     * ⚠️ **The reason `Failure` was safe on this node has been withdrawn — NDA-017 §2.** This
+     * comment used to say that `registerInputIfNeeded` seeds every discovered input to `0`
+     * rather than `undefined`, so there was no window in which the ports existed but held
+     * nothing, so "the values have not arrived yet" was not a state the node passed through.
+     * That was true and it is now deliberately false: the seed is `undefined`, precisely so a
+     * node with nothing to answer with stops answering `0`. Both readings were correct about
+     * their own question — the `0` that made `Failure` safe is the same `0` that made a stale
+     * evaluation indistinguishable from a real one.
+     *
+     * `Failure` stays safe anyway, but for a different and narrower reason: this method is
+     * only reached from `_calculateExpression`, which fires it for a *compile* failure or a
+     * *thrown* expression. Neither is an unarrived-input state. An expression evaluated over
+     * `undefined` inputs produces `NaN` and reports nothing, which is the Empty-Value
+     * Contract's abstain, not a failure.
      */
     _reportFailure: function (this: ExpressionNodeInstance, code: string, message: string, detail?: unknown) {
       const internal = this._internal;
@@ -266,6 +348,7 @@ const ExpressionNode: NodeDefinitionOptions = {
         internal.compiledFunction = undefined;
 
         const newInputs = parsePorts(value);
+        internal.referencedPorts = newInputs;
 
         const inputsToAdd: string[] = difference(newInputs, internal.inputNames);
         const inputsToRemove: string[] = difference(internal.inputNames, newInputs);
@@ -273,6 +356,7 @@ const ExpressionNode: NodeDefinitionOptions = {
         const self = this;
         inputsToRemove.forEach(function (name) {
           self.deregisterInput(name);
+          self.deregisterRunOnValueChangeInput(name);
           delete internal.scope[name];
         });
 
@@ -283,13 +367,14 @@ const ExpressionNode: NodeDefinitionOptions = {
 
           self.registerInput(name, {
             set: function (this: ExpressionNodeInstance, value: unknown) {
-              internal.scope[name] = value;
-              if (!this.isInputConnected('run')) this._scheduleEvaluateExpression();
+              this._onInputValueArrived(name, value);
             }
           });
+          self.registerRunOnValueChangeInput(name);
 
-          internal.scope[name] = 0;
-          self._inputValues[name] = 0;
+          // See `registerInputIfNeeded` for why this is `undefined` and no longer `0`.
+          internal.scope[name] = undefined;
+          self._inputValues[name] = undefined;
         });
 
         // Detect dependencies for reactive updates
@@ -310,37 +395,78 @@ const ExpressionNode: NodeDefinitionOptions = {
           internal.unsubscribe = ExpressionEvaluator.subscribeToChanges(
             internal.noodlDependencies,
             function () {
-              if (!self.isInputConnected('run')) {
-                self._scheduleEvaluateExpression();
-              }
+              // A Noodl global moving is a value arrival like any other; it just has no port
+              // to hang a checkbox on, so it is treated as always-ticked. Routed through the
+              // gate for the same reason the load path is: an expression reading both a
+              // global and a port must not evaluate over a port that has never delivered.
+              self._scheduleAutomaticEvaluation();
             },
             self.context && self.context.modelScope
           );
         }
 
         internal.inputNames = Object.keys(internal.scope);
-        if (!this.isInputConnected('run')) this._scheduleEvaluateExpression();
+        // ⚠️ NDA-017 §2 — **the one place the old guard survives, deliberately.**
+        //
+        // Every *value* setter on this node is now governed by its own checkbox, so wiring
+        // `Run` no longer changes what any of them do. This is not a value setter: it is the
+        // port carrying the node's own definition, and it runs at load on every Expression in
+        // the project.
+        //
+        // Making it unconditional would be the literal reading of "Run is purely additive",
+        // and on Expression it would be harmless — the node is pure. The identical line in
+        // the Function node is not: a Function with `Run` wired to a button and a script that
+        // POSTs would fire that POST once, at load, in every project that already exists. The
+        // class has to hold one rule, so the rule is that the *command* semantics of a
+        // control signal still govern the definition port — "when I change the code, don't
+        // run it; I'll say when" — while the value ports are governed by the checkboxes.
+        //
+        // Surfaced in the handover rather than buried here, because it is the one place the
+        // build does not do what the decision says word for word.
+        //
+        // `_scheduleAutomaticEvaluation` rather than the scheduler directly: see
+        // `anyInputArrived` for the NDA-004 regression that distinction exists to prevent.
+        if (!this.isInputConnected('run')) this._scheduleAutomaticEvaluation();
       }
     },
     run: {
       group: 'Actions',
       displayName: 'Run',
       type: 'signal',
-      description: 'Evaluates the expression; connecting this stops it evaluating whenever an input changes',
+      // NDA-017 §2. The old sentence — "connecting this stops it evaluating whenever an input
+      // changes" — described the trap accurately and was the only place it was written down.
+      // It is no longer true: `Run` adds a trigger and takes nothing away.
+      description:
+        'Evaluates the expression now. This is additional to the inputs that re-run it; untick an input under Run On Value Change to stop that one triggering a run',
       valueChangedToTrue: function (this: ExpressionNodeInstance) {
         this._scheduleEvaluateExpression();
       }
     }
   },
   outputs: {
+    /**
+     * ## NDA-017 §2 constraint 4 — the three ports below abstain until there is an answer
+     *
+     * These getters are not only read by the inspector. `connectInput` pushes a source's
+     * current output down a wire the moment it is made, so whatever they return before the
+     * node has evaluated is what a consumer receives from a node that has never run. §0
+     * measured that: a downstream Recorder held a confident `0` from an Expression with `Run`
+     * wired, no pulse ever sent, and `signalsFor` empty for the whole of boot.
+     *
+     * `Is False` was the worst of the three, because `!undefined` is `true`: an Expression
+     * that had never evaluated asserted *"my result is falsy"* to every branch downstream,
+     * which is a claim and not an absence. All three now answer `null` until
+     * `hasEvaluated` — the Empty-Value Contract's abstain, for ports whose empty state is
+     * genuinely "no answer yet" rather than a representable zero.
+     */
     result: {
       group: 'Result',
       type: '*',
       displayName: 'Result',
-      description: 'What the expression evaluated to, or 0 when it could not be evaluated at all',
+      description: 'What the expression evaluated to; null until it has been evaluated at least once',
       getter: function (this: ExpressionNodeInstance) {
-        if (!this._internal.currentExpression) {
-          return 0;
+        if (!this._internal.hasEvaluated) {
+          return null;
         }
 
         return this._internal.cachedValue;
@@ -350,10 +476,10 @@ const ExpressionNode: NodeDefinitionOptions = {
       group: 'Result',
       type: 'boolean',
       displayName: 'Is True',
-      description: 'Whether Result is truthy',
+      description: 'Whether Result is truthy; null until the expression has been evaluated at least once',
       getter: function (this: ExpressionNodeInstance) {
-        if (!this._internal.currentExpression) {
-          return false;
+        if (!this._internal.hasEvaluated) {
+          return null;
         }
 
         return !!this._internal.cachedValue;
@@ -363,10 +489,10 @@ const ExpressionNode: NodeDefinitionOptions = {
       group: 'Result',
       type: 'boolean',
       displayName: 'Is False',
-      description: 'Whether Result is falsy',
+      description: 'Whether Result is falsy; null until the expression has been evaluated at least once',
       getter: function (this: ExpressionNodeInstance) {
-        if (!this._internal.currentExpression) {
-          return true;
+        if (!this._internal.hasEvaluated) {
+          return null;
         }
 
         return !this._internal.cachedValue;
@@ -566,7 +692,10 @@ function updatePorts(nodeId: string, expression: string, editorConnection: Edito
     };
   });
 
-  editorConnection.sendDynamicPorts(nodeId, ports);
+  // NDA-017 §2. The runtime mints the matching checkbox in `registerInputIfNeeded`; this is
+  // the editor's half, without which the affordance the whole decision is about would exist
+  // only as a port nobody can see.
+  editorConnection.sendDynamicPorts(nodeId, ports.concat(runOnChangeDynamicPorts(portNames) as never[]));
 }
 
 function evalCompileWarnings(editorConnection: EditorConnectionLike, node: GraphNodeModel) {

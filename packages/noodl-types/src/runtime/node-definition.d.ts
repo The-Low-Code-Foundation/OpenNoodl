@@ -143,6 +143,32 @@ export interface NodeInstance {
    */
   registerInputIfNeeded(name: string): void;
 
+  /**
+   * NDA-017 §2 — whether a new value on `inputName` should re-run this node.
+   *
+   * Use this in a value setter in place of `!this.isInputConnected('<control signal>')`.
+   * That guard made every value port passive the moment the control signal was wired, which
+   * is the trap Richard's 2026-08-01 decision removes: connecting `Run` must add a trigger,
+   * not silently change what the other ports do.
+   *
+   * Answers `true` for an input the author has never touched, so the no-`Run` behaviour is
+   * the default and only an explicit untick makes a setter passive.
+   *
+   * @see `packages/noodl-runtime/src/run-on-value-change.ts`
+   */
+  shouldRunOnValueChange(inputName: string): boolean;
+
+  /**
+   * Mint the checkbox port for an input this node discovered at runtime.
+   *
+   * Declared inputs get theirs from {@link NodeDefinitionOptions.runOnValueChange}; only the
+   * families whose governed inputs come from user text or a schema need to call this.
+   */
+  registerRunOnValueChangeInput(inputName: string, displayName?: string): void;
+
+  /** Counterpart of {@link registerRunOnValueChangeInput} for a discovered input that went away. */
+  deregisterRunOnValueChangeInput(inputName: string): void;
+
   // --- outputs ------------------------------------------------------------
   hasOutput(name: string): boolean;
   getOutput(name: string): OutputPropertyLike;
@@ -1072,6 +1098,28 @@ export interface NodeDefinitionOptions {
   exportDynamicPorts?: boolean;
   /** The node instantiates a component, so its ports come from that component. */
   haveComponentPorts?: boolean;
+
+  /**
+   * NDA-017 §2 — declare this node a member of the control-signal class.
+   *
+   * `defineNode` synthesises one `runOnChange-<input>` checkbox port per named input, so a
+   * family joins the class in three lines. The setters themselves still have to be changed:
+   * replace `!this.isInputConnected('<controlSignal>')` with
+   * {@link NodeInstance.shouldRunOnValueChange}.
+   *
+   * Omit for the four families whose governed inputs are discovered rather than declared —
+   * they call {@link NodeInstance.registerRunOnValueChangeInput} as each port appears.
+   */
+  runOnValueChange?: {
+    /**
+     * The control signal that used to make every value setter passive. Recorded rather than
+     * used: it is what a reader of the definition needs to know to understand why these
+     * ports exist, and the catalog surfaces it.
+     */
+    controlSignal: string;
+    /** The value inputs that get a checkbox, keyed to their port names. */
+    inputs: string[];
+  };
 
   /** Only one instance of this type may exist per project. */
   singleton?: boolean;

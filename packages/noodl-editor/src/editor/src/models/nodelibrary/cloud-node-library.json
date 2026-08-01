@@ -538,7 +538,7 @@
           "plug": "input",
           "group": "Actions",
           "displayName": "Run",
-          "description": "Evaluates the expression; connecting this stops it evaluating whenever an input changes"
+          "description": "Evaluates the expression now. This is additional to the inputs that re-run it; untick an input under Run On Value Change to stop that one triggering a run"
         },
         {
           "name": "result",
@@ -668,7 +668,7 @@
           "plug": "input",
           "group": "Actions",
           "displayName": "Run",
-          "description": "Runs the script; connecting this stops it running whenever an input changes"
+          "description": "Runs the script now. This is additional to the inputs that re-run it; untick an input under Run On Value Change to stop that one triggering a run"
         },
         {
           "name": "success",
