@@ -1,0 +1,120 @@
+=== BCN-007 steps 2–7 — the file wires, measured ===
+
+=== 1. Directus — /files, the asset URL, and what "sign" can even mean here ===
+  PASS  POST /files status: 200
+  ....  id: "9f331ffe-64c2-4e84-88fa-23a60d32640c"
+  ....  filename_disk: "9f331ffe-64c2-4e84-88fa-23a60d32640c.png"
+  ....  type / filesize: "image/png / 70"
+
+  1a. Can an <img src> ever work? Three candidate URL shapes:
+  PASS  GET /assets/{id} with an Authorization header: 200
+  PASS  GET /assets/{id} bare (what <img src> sends): 403
+  PASS  GET /assets/{id}?access_token=<jwt> — no header at all: 200
+  ....    served content-type: "image/png"
+  PASS    ...and the bytes match: true
+  ....  GET /files/{id}?access_token= status (is the param global?): 200
+
+  1b. Expiry — the JWT carries its own exp; read it rather than waiting 15 minutes:
+  ....  jwt exp (unix): 1785570979
+  ....  jwt iat (unix): 1785570079
+  ....  ttl seconds implied by the jwt: 900
+  PASS  the token carries an exp at all: "number"
+  ....  GET /assets/{id}?access_token=<tampered> status: 403
+  PASS  a tampered token is refused (so the URL really is credential-gated): true
+
+  1c. Deletion — the spec claims Directus refuses to delete a referenced file:
+  ....  create bcn007_docs.attachment field status: 200
+  ....  create referencing row status: 200
+  ....  DELETE /files/{id} while referenced — status: 204
+  ....    body: ""
+  FAIL  the spec says Directus REFUSES a referenced delete — does it?: false (expected true)
+  ....  GET /files/{id} after the referenced delete: 403
+  ....  the referencing row afterwards: {"id":1,"title":"bcn007 referenced","attachment":"9f331ffe-64c2-4e84-88fa-23a60d32640c"}
+  ....  DELETE /files/{id} unreferenced — status: 204
+  PASS  reading the asset after deletion fails: true
+  ....    status: 403
+  ....  ...and the token URL after deletion: 403
+
+  1d. System collections: BYOB reached /users, RestDataAdapter would send /items/directus_users
+  ....  GET /items/directus_users status: 403
+  ....    body: "{\"errors\":[{\"message\":\"You don't have permission to access this.\",\"extensions\":{\"code\":\"FORBIDDEN\"}}]}"
+  ....  GET /users status: 200
+  PASS  the two paths are NOT interchangeable (this is the gap): false
+  ....  GET /users?limit&fields&sort status (same query dialect?): 200
+  ....    shape: ["data"]
+  ....    first row keys: ["id","email"]
+  ....  GET /items/directus_files status: 403
+
+=== 2. Supabase — is there a Storage service at all? ===
+  ....  GET /storage/v1/bucket: "404 {}"
+  ....  GET /storage/v1/object/list/public: "404 {}"
+  ....  GET /storage/v1/object/public/public/x.png: "404 {}"
+  ....  GET /storage/v1/object/sign/public/x.png: "404 {}"
+  ....  GET / (what IS this service?): "200 {\"swagger\":\"2.0\",\"info\":{\"description\":\"\",\"title\":\"standard public schema\",\"version\":\"12.2.3 (519615d)\"},\"host\":\"0.0.0.0:3000\",\"basePath\":\"/\",\"schemes\":[\"http\"],\"consumes\":[\"application/json\",\"applica"
+  PASS  nothing on :8056 answers a Storage route with a Storage shape: true
+
+=== 3. PocketBase — a file is a record field, and its handle is three parts ===
+  ....  admin token acquired: "eyJhbGciOiJI…"
+  ....  create bcn007_docs status: 200
+
+  3a. Upload is a record create, not a file create:
+  PASS  multipart record create status: 200
+  ....  record: {"attachment":"bcn007_pb_g235k8arvj.png","collectionId":"pbc_3275634095","collectionName":"bcn007_docs","gallery":[],"id":"yxghrg6oancqeu6","secret":"bcn007_secret_fc3ea05p0v.png","title":"bcn007 pb"}
+  ....  the field value is a bare FILENAME string: "bcn007_pb_g235k8arvj.png"
+  PASS  …a string, not an object with a url: "string"
+  ....  the three parts of the handle: ["bcn007_docs","yxghrg6oancqeu6","bcn007_pb_g235k8arvj.png"]
+  ....  does the record carry a size or a content type anywhere?: {"keys":["attachment","collectionId","collectionName","gallery","id","secret","title"],"anySize":false,"anyType":false}
+
+  3b. Serving the file:
+  PASS  GET /api/files/{c}/{id}/{name} bare — public field: 200
+  ....    content-type: "image/png"
+  PASS    bytes match: true
+  ....  …addressed by collectionId instead of collectionName: 200
+  FAIL  a PROTECTED field is refused without a token: false (expected true)
+  ....    status: 200
+
+  3c. POST /api/files/token — the "sign" equivalent:
+  PASS  POST /api/files/token status: 200
+  ....  token prefix: "eyJhbGciOiJI…"
+  ....  file-token jwt payload: {"collectionId":"pbc_3142635823","exp":1785570261,"id":"cwfl73cuxhsd4jo","type":"file"}
+  ....  file-token ttl seconds: undefined
+  PASS  a protected file IS readable with ?token=: 200
+  ....  is the ttl short enough to observe expiry in a live run?: false
+
+  3d. Deletion — the spec says "PocketBase deletes with the record":
+  PASS  PATCH {field: null} status: 200
+  ....  the field after clearing: ""
+  PASS  the file stops serving once the field is cleared: true
+  ....    status: 404
+  ....  protected file still served before the record delete: 200
+  ....  DELETE record status: 204
+  PASS  deleting the record takes its files with it: true
+  ....    status: 404
+
+  3e. Can a file be attached to an existing record (PATCH multipart)?
+  ....  plain record created: "wfccopjch12i4w8"
+  PASS  PATCH multipart onto an existing record: 200
+  ....    resulting field value: "bcn007_patched_kvgno6974f.png"
+  ....  multi-file field after two PATCHes (second used `gallery+`): ["g19lun3g4z6q_8fyh4d3u3y.png","g2g8f7k74b1v_gmj14lewo2.png"]
+
+=== 4. nodegx-backend — does a signed URL ACTUALLY expire? (ttl set to 3s) ===
+  PASS  POST /files/{name} status: 201
+  ....  upload body: {"url":"http://127.0.0.1:8110/files/bbbbe9fdadf8f3bc_bcn007-expiry.png","name":"bbbbe9fdadf8f3bc_bcn007-expiry.png","size":70,"contentType":"image/png"}
+  PASS  a real 201 carries contentType: "image/png"
+  PASS  …and size: 70
+  PASS  GET /files/{name}/sign status: 200
+  ....  signed: {"url":"http://127.0.0.1:8110/files/bbbbe9fdadf8f3bc_bcn007-expiry.png?exp=1785570084&sig=54c8bddfd007f2582c16faf9521d755caddea568fc52a37b67ae97f2e058daa6","expiresAt":"2026-08-01T07:41:24.000Z","ttlSeconds":3}
+  PASS  ttlSeconds honours the configured 3: 3
+  PASS  the signed url serves immediately: 200
+  waiting 4s for the signature to expire…
+  FAIL  ⚠️ the signed url STOPS serving after its ttl: false (expected true)
+  ....    status after expiry: 200
+  ....    body after expiry: "�PNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001\b\u0006\u0000\u0000\u0000\u001f\u0015ĉ\u0000\u0000\u0000\rIDATx�cd��P\u000f\u0000\u0003�\u0001�Z4}k\u0000\u0000\u0000\u0000IEND�B`�"
+  ....  unsigned GET of the private file (dev-open is ON in this rig): 200
+  ....  DELETE /files/{name} status: 200
+  PASS  the file stops serving after deletion: true
+  ....    status: 404
+  PASS  deleting an already-deleted file answers 200 (idempotent, per BCN-007 §2.4): 200
+  PASS  …and so does a name that never existed: 200
+
+=== 32 checks, 3 failures ===

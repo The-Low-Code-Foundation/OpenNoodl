@@ -49,6 +49,58 @@ describe('export tests', function () {
     NodeLibrary.instance.unregisterModule(ProjectModel.instance);
   });
 
+  // BCN phase 34, orchestrator pass. `json.metadata` is a deep copy of the whole project
+  // metadata block and only `cloudservices` was ever overridden, so `backendServices` rode
+  // along verbatim — admin tokens included. The export JSON becomes `window.projectData`
+  // in the deployed app, so every configured backend's admin token was readable from the
+  // browser console of the shipped site. Measured in a real browser against a real deploy
+  // bundle before it was fixed.
+  describe('backend credentials in the export', function () {
+    function exportWithBackends() {
+      ProjectModel.instance = ProjectModel.fromJSON(projectWithBackends);
+      NodeLibrary.instance.registerModule(ProjectModel.instance);
+      ProjectModel.instance.setRootNode(ProjectModel.instance.findNodeWithId('Group-1'));
+      const json = Exporter.exportToJSON(ProjectModel.instance);
+      NodeLibrary.instance.unregisterModule(ProjectModel.instance);
+      return json;
+    }
+
+    it('strips adminToken — types.ts declares it editor-only and the runtime never reads it', function () {
+      const json = exportWithBackends();
+      const backend = json.metadata.backendServices.backends[0];
+
+      expect(backend.auth.adminToken).toBeUndefined();
+      // The whole serialised export, because a token that survives anywhere in it is
+      // published — asserting only on the field would miss a second copy.
+      expect(JSON.stringify(json)).not.toContain('ADMIN-TOKEN-MUST-NOT-SHIP');
+    });
+
+    it('keeps publicToken and basic-auth credentials — a deployed app needs them', function () {
+      const backend = exportWithBackends().metadata.backendServices.backends[0];
+
+      // `handleFor` hands this to every adapter as `handle.publicToken`. Stripping it
+      // would break the deployed app rather than protect it.
+      expect(backend.auth.publicToken).toBe('public-token-must-ship');
+      expect(backend.auth.username).toBe('basic-user');
+      expect(backend.auth.password).toBe('basic-pass');
+    });
+
+    it('leaves the project model itself untouched — the export copies, it does not mutate', function () {
+      exportWithBackends();
+
+      expect(ProjectModel.instance.metadata.backendServices.backends[0].auth.adminToken).toBe(
+        'ADMIN-TOKEN-MUST-NOT-SHIP'
+      );
+    });
+
+    it('carries the converged selection, which is what a deployed app resolves from', function () {
+      const backendServices = exportWithBackends().metadata.backendServices;
+
+      expect(backendServices.version).toBe(2);
+      expect(backendServices.activeBackendId).toBe('backend_test');
+    });
+  });
+
   function matchBundle(bundle, componentIndex) {
     function arrayHasSameElements(a, b) {
       //check if equal but ignore order
@@ -491,6 +543,45 @@ describe('export tests', function () {
         }
       }
     ]
+  };
+
+  // A converged project (BCN-009 step 2: `version: 2`) with one external backend
+  // carrying every credential shape `BackendAuthConfig` allows.
+  var projectWithBackends = {
+    components: [
+      {
+        name: '/comp2',
+        graph: {
+          roots: [
+            {
+              id: 'Group-1',
+              type: 'group'
+            }
+          ]
+        }
+      }
+    ],
+    metadata: {
+      backendServices: {
+        version: 2,
+        activeBackendId: 'backend_test',
+        backends: [
+          {
+            id: 'backend_test',
+            name: 'Test Directus',
+            type: 'directus',
+            url: 'http://example.invalid',
+            auth: {
+              method: 'bearer',
+              adminToken: 'ADMIN-TOKEN-MUST-NOT-SHIP',
+              publicToken: 'public-token-must-ship',
+              username: 'basic-user',
+              password: 'basic-pass'
+            }
+          }
+        ]
+      }
+    }
   };
 
   // Second project for cross project reference

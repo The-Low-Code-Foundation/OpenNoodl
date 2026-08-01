@@ -1,0 +1,118 @@
+=== BCN-007 step 6 — the live pass, through Upload File / Cloud File / Sign File URL ===
+
+============================================================================
+nodegx — upload → read as an <img> → sign → delete → read again
+============================================================================
+  PASS  nodegx: Upload File fires Success
+  PASS  nodegx: Cloud File output is a file object
+  PASS  nodegx: Cloud File publishes a URL
+  ....  url: http://127.0.0.1:8110/files/f5bc394b2a7ae69b_bcn007-driver.png
+  ....  name: "bcn007-driver.png"
+  ....  contentType: "image/png"
+  ....  size: 70
+  PASS  nodegx: the Cloud File URL serves to an anonymous <img> (expected true)
+  PASS  nodegx: …and the bytes are the PNG that was uploaded
+  PASS  nodegx: …served as image/png, so an <img> will actually render it
+  PASS  nodegx: Sign File URL fires Success
+  ....  signed url:  http://127.0.0.1:8110/files/f5bc394b2a7ae69b_bcn007-driver.png?exp=1785572702&sig=91076ead5b867918456d78f4580fc926e745d8a8cd07c8e61bcf40515ae42808
+  ....  expiresAt:   "2026-08-01T08:25:02.000Z"
+  ....  ttlSeconds:  3
+  PASS  nodegx: URL Kind reads what this backend actually mints
+  PASS  nodegx: Safe To Share agrees with URL Kind
+  PASS  nodegx: the signed/token URL serves with no session at all
+  PASS  nodegx: …and its bytes are the PNG too
+  PASS  nodegx: deleteFile reports success
+  PASS  nodegx: ⚠️ the file no longer serves after the delete
+  ....  read after delete: 404
+
+============================================================================
+directus — upload → read as an <img> → sign → delete → read again
+============================================================================
+  PASS  directus: Upload File fires Success
+  PASS  directus: Cloud File output is a file object
+  PASS  directus: Cloud File publishes a URL
+  ....  url: http://localhost:8055/assets/71ad6a09-385b-4feb-b825-db1dfa408f1d
+  ....  name: "71ad6a09-385b-4feb-b825-db1dfa408f1d"
+  ....  contentType: "image/png"
+  ....  size: 70
+  PASS  directus: the Cloud File URL serves to an anonymous <img> (expected false)
+  NOTE  directus: unauthenticated GET answered 403 — this URL is not an <img src>
+  PASS  directus: Sign File URL fires Success
+  ....  signed url:  http://localhost:8055/assets/71ad6a09-385b-4feb-b825-db1dfa408f1d?access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjJkY2ZkNmY2LWUyNTMtNGIxZi1hZWQ3LWY2MjRiODNmNzMwYyIsInJvbGUiOiIwMWUzNjExZi1kNzU1LTQwYjItOThlYi1iMjJkY2U2YTY3ZjYiLCJhcHBfYWNjZXNzIjp0cnVlLCJhZG1pbl9hY2Nlc3MiOnRydWUsImlhdCI6MTc4NTU3MjY5OCwiZXhwIjoxNzg1NTczNTk4LCJpc3MiOiJkaXJlY3R1cyJ9.Ozk3B8yKWU1uahJjVnB3ZdZ-_1aJ6EaYfYlbPbKbuGA
+  ....  expiresAt:   "2026-08-01T08:39:58.000Z"
+  ....  ttlSeconds:  898
+  PASS  directus: URL Kind reads what this backend actually mints
+  PASS  directus: Safe To Share agrees with URL Kind
+  PASS  directus: the signed/token URL serves with no session at all
+  PASS  directus: …and its bytes are the PNG too
+  PASS  directus: deleteFile reports success
+  PASS  directus: ⚠️ the file no longer serves after the delete
+  ....  read after delete: 403
+
+============================================================================
+pocketbase — upload → read as an <img> → sign → delete → read again
+============================================================================
+  PASS  pocketbase: Upload File fires Success
+  PASS  pocketbase: Cloud File output is a file object
+  PASS  pocketbase: Cloud File publishes a URL
+  ....  url: http://localhost:8091/api/files/bcn007_files/c7qmcgc1fsfes14/bcn007_driver_9u8e9kh9bs.png
+  ....  name: "driver_9u8e9kh9bs.png"
+  ....  contentType: undefined
+  ....  size: undefined
+  PASS  pocketbase: the Cloud File URL serves to an anonymous <img> (expected true)
+  PASS  pocketbase: …and the bytes are the PNG that was uploaded
+  PASS  pocketbase: …served as image/png, so an <img> will actually render it
+  PASS  pocketbase: Sign File URL fires Success
+  ....  signed url:  http://localhost:8091/api/files/bcn007_files/c7qmcgc1fsfes14/bcn007_driver_9u8e9kh9bs.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2xsZWN0aW9uSWQiOiJwYmNfMzE0MjYzNTgyMyIsImV4cCI6MTc4NTU3Mjg4MCwiaWQiOiJjd2ZsNzNjdXhoc2Q0am8iLCJ0eXBlIjoiZmlsZSJ9.7u7_5LxbBsiXVP-wEN4szG_jgQ1NKo4oFqKbtjzNC9M
+  ....  expiresAt:   "2026-08-01T08:28:00.000Z"
+  ....  ttlSeconds:  180
+  PASS  pocketbase: URL Kind reads what this backend actually mints
+  PASS  pocketbase: Safe To Share agrees with URL Kind
+  PASS  pocketbase: the signed/token URL serves with no session at all
+  PASS  pocketbase: …and its bytes are the PNG too
+  PASS  pocketbase: deleteFile reports success
+  PASS  pocketbase: ⚠️ the file no longer serves after the delete
+  ....  read after delete: 404
+
+============================================================================
+supabase — upload → read as an <img> → sign → delete → read again
+============================================================================
+  PASS  supabase: Upload File fires Success
+  PASS  supabase: Cloud File output is a file object
+  PASS  supabase: Cloud File publishes a URL
+  ....  url: http://localhost:8157/storage/v1/object/public/bcn007-driver/driver/bcn007.png
+  ....  name: "bcn007-driver/driver/bcn007.png"
+  ....  contentType: undefined
+  ....  size: undefined
+  PASS  supabase: the Cloud File URL serves to an anonymous <img> (expected true)
+  PASS  supabase: …and the bytes are the PNG that was uploaded
+  PASS  supabase: …served as image/png, so an <img> will actually render it
+  PASS  supabase: Sign File URL fires Success
+  ....  signed url:  http://localhost:8157/storage/v1/object/sign/bcn007-driver/driver/bcn007.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJiY24wMDctZHJpdmVyL2RyaXZlci9iY24wMDcucG5nIiwiaWF0IjoxNzg1NTcyNzAwLCJleHAiOjE3ODU1NzMwMDB9.eiUmwUCFrHtvSu9COd98uIjUUR6dX2hrp3z5c6TXbjg
+  ....  expiresAt:   "2026-08-01T08:30:00.000Z"
+  ....  ttlSeconds:  300
+  PASS  supabase: URL Kind reads what this backend actually mints
+  PASS  supabase: Safe To Share agrees with URL Kind
+  PASS  supabase: the signed/token URL serves with no session at all
+  PASS  supabase: …and its bytes are the PNG too
+  PASS  supabase: deleteFile reports success
+  PASS  supabase: ⚠️ the file no longer serves after the delete
+  ....  read after delete: 400
+
+============================================================================
+nodegx-backend — a signed URL that really expires, watched
+============================================================================
+  PASS  nodegx: a PRIVATE upload succeeds through the node
+  PASS  nodegx: ⚠️ the plain URL of a private file is refused anonymously
+  PASS  nodegx: Sign File URL succeeds
+  PASS  nodegx: URL Kind reads "signed"
+  PASS  nodegx: Safe To Share reads true for a real signature
+  ....  ttlSeconds: 3
+  PASS  nodegx: the signed URL serves anonymously right now
+  ....  waiting 5s for the signature to expire…
+  PASS  nodegx: ⚠️ THE SIGNED URL STOPS SERVING once its TTL passes
+
+============================================================================
+Result
+============================================================================
+  57 passed, 0 failed

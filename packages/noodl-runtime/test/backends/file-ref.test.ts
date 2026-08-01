@@ -20,7 +20,15 @@ jest.mock('../../noodl-runtime', () => ({
 import type { BackendHandle } from '@noodl/backend-contract';
 
 import { ParseWireAdapter } from '../../src/api/backends/ParseWireAdapter';
-import { normalizeFileRef, normalizeSignedFileUrl, PARSE_FILE_FIELDS } from '../../src/api/backends/fileRef';
+import {
+  DIRECTUS_FILE_FIELDS,
+  POCKETBASE_FILE_FIELDS,
+  PARSE_FILE_FIELDS,
+  SUPABASE_FILE_FIELDS,
+  jwtExpiry,
+  normalizeFileRef,
+  normalizeSignedFileUrl
+} from '../../src/api/backends/fileRef';
 
 const handle: BackendHandle = {
   id: '_active_',
@@ -274,5 +282,103 @@ describe('the Parse wire, through the normaliser', () => {
     FakeXHR.instances[0].finish(403, { error: 'This file is private.', code: 119 });
 
     expect(errors).toEqual([{ error: 'This file is private.', code: 119 }]);
+  });
+});
+
+// ── BCN-007 steps 2–3: the three other wires, and the expiry claim ─────────
+
+describe('the wire field maps, as the servers actually answered', () => {
+  it('maps a real Directus payload with `id` as the handle, not filename_disk', () => {
+    // ⚠️ The correction step 1 could not have made: it wrote `filename_disk` as
+    // the stored handle from documentation. `DELETE /files/{id}` and
+    // `/assets/{id}` are both keyed by the UUID, and `filename_disk` is that
+    // UUID plus an extension — close enough to look right in a log and wrong
+    // for any file whose type Directus could not name.
+    const ref = normalizeFileRef(
+      {
+        id: '9f331ffe-64c2-4e84-88fa-23a60d32640c',
+        filename_disk: '9f331ffe-64c2-4e84-88fa-23a60d32640c.png',
+        filename_download: 'bcn007-directus.png',
+        type: 'image/png',
+        filesize: 70
+      },
+      DIRECTUS_FILE_FIELDS,
+      (name) => `https://directus.example/assets/${name}`
+    );
+
+    expect(ref).toEqual({
+      name: '9f331ffe-64c2-4e84-88fa-23a60d32640c',
+      url: 'https://directus.example/assets/9f331ffe-64c2-4e84-88fa-23a60d32640c',
+      id: '9f331ffe-64c2-4e84-88fa-23a60d32640c',
+      filename: 'bcn007-directus.png',
+      contentType: 'image/png',
+      size: 70
+    });
+    expect(ref.name).not.toContain('.png');
+  });
+
+  it("reports Supabase's contentType and size as ABSENT, because the upload response has neither", () => {
+    // Measured: `POST /object/{bucket}/{path}` answers `{"Key":…,"Id":…}` and
+    // nothing else. They exist on a *second* call to `/object/list/{bucket}`.
+    // Absent rather than `''`/`0`, so a node can tell "the backend did not say"
+    // from "this file is empty".
+    const ref = normalizeFileRef(
+      { Key: 'bcn007-public/bcn007/probe.png', Id: '37452565-5dd4-48a8-b0ed-e61d61dbafe7' },
+      SUPABASE_FILE_FIELDS,
+      (key) => `https://p.supabase.co/storage/v1/object/public/${key}`,
+      { kind: 'bucket', bucket: 'bcn007-public', path: 'bcn007/probe.png' }
+    );
+
+    expect('contentType' in ref).toBe(false);
+    expect('size' in ref).toBe(false);
+    expect(ref.name).toBe('bcn007-public/bcn007/probe.png');
+    expect(ref.target).toEqual({ kind: 'bucket', bucket: 'bcn007-public', path: 'bcn007/probe.png' });
+  });
+
+  it("carries PocketBase's three-part handle in `target`, because `name` cannot hold it", () => {
+    // Step 1 refused to invent a delimited composite and said so at the point
+    // where the temptation was. This is the decision it deferred: a
+    // discriminated union beside the name, not a string with separators in it.
+    const ref = normalizeFileRef({ name: 'bcn007_pb_g235k8arvj.png' }, POCKETBASE_FILE_FIELDS, () => 'https://pb/x', {
+      kind: 'record',
+      collection: 'bcn007_docs',
+      recordId: 'yxghrg6oancqeu6',
+      field: 'attachment'
+    });
+
+    expect(ref.name).toBe('bcn007_pb_g235k8arvj.png');
+    expect(ref.name).not.toContain('/');
+    expect(ref.target).toEqual({
+      kind: 'record',
+      collection: 'bcn007_docs',
+      recordId: 'yxghrg6oancqeu6',
+      field: 'attachment'
+    });
+  });
+});
+
+describe('jwtExpiry — the only place three backends state a link is temporary', () => {
+  const jwt = (claims: Record<string, unknown>) =>
+    ['e30', Buffer.from(JSON.stringify(claims)).toString('base64url'), 'sig'].join('.');
+
+  it('reads the exp a PocketBase file token carries', () => {
+    // The real payload shape, copied from the probe: no `iat`, so a ttl can
+    // only come from `exp` minus the clock.
+    const exp = Math.floor(Date.now() / 1000) + 180;
+    const result = jwtExpiry(jwt({ collectionId: 'pbc_3142635823', exp, id: 'cwfl73cuxhsd4jo', type: 'file' }));
+    expect(result?.expiresAt).toBe(new Date(exp * 1000).toISOString());
+    expect(result?.ttlSeconds).toBeGreaterThan(170);
+    expect(result?.ttlSeconds).toBeLessThanOrEqual(180);
+  });
+
+  it('⚠️ answers undefined for a token that is not a JWT, rather than "expires now"', () => {
+    // A Directus STATIC token never expires and is not a JWT. Reporting
+    // `expiresAt` as the epoch — or as now — would render on the node's port as
+    // a link that has already died.
+    expect(jwtExpiry('a-static-directus-token')).toBeUndefined();
+    expect(jwtExpiry(undefined)).toBeUndefined();
+    expect(jwtExpiry('a.b.c')).toBeUndefined();
+    expect(jwtExpiry(jwt({ sub: 'no-exp-claim' }))).toBeUndefined();
+    expect(jwtExpiry(jwt({ exp: 'soon' }))).toBeUndefined();
   });
 });

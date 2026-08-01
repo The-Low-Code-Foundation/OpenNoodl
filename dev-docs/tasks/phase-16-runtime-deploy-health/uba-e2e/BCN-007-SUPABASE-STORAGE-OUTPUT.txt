@@ -1,0 +1,59 @@
+=== BCN-007 — Supabase Storage, measured ===
+
+--- 1. buckets ---
+  ....  create bucket bcn007-public (public=true): "200 {\"name\":\"bcn007-public\"}"
+  ....  create bucket bcn007-private (public=false): "200 {\"name\":\"bcn007-private\"}"
+
+--- 2. upload: POST /object/{bucket}/{path} ---
+  PASS  raw-bytes upload status: 200
+  ....  raw-bytes upload body: "{\"Key\":\"bcn007-public/bcn007/probe.png\",\"Id\":\"37452565-5dd4-48a8-b0ed-e61d61dbafe7\"}"
+  ....  multipart upload status: 200
+  ....    body: "{\"Key\":\"bcn007-public/bcn007/multipart.png\",\"Id\":\"69e62370-d565-4021-84a6-c977ea01ecc4\"}"
+  ....  upload response keys: ["Key","Id"]
+  PASS  (guard) the upload succeeded, so the absence checks below mean something: true
+  PASS  ⚠️ does the upload response carry a url?: false
+  PASS  …a size?: false
+  PASS  …a content type?: false
+
+--- 3. where do contentType and size come from? ---
+  ....  GET /object/info/public/{bucket}/{path}: "200"
+  ....    headers: {"content-type":"application/json; charset=utf-8","content-length":"284","etag":"\"f829b914fc47cfc9c0747c119c27cf1b\""}
+  ....  POST /object/list/{bucket} status: 200
+  ....    first entry: {"name":"multipart.png","id":"69e62370-d565-4021-84a6-c977ea01ecc4","updated_at":"2026-08-01T07:50:00.866Z","created_at":"2026-08-01T07:50:00.866Z","last_accessed_at":"2026-08-01T07:50:00.866Z","metadata":{"eTag":"\"f829b914fc47cfc9c0747c119c27cf1b\"","size":70,"mimetype":"image/png","cacheControl":"no-cache","lastModified":"2026-08-01T07:50:00.863Z","contentLength":70,"httpStatusCode":200}}
+
+--- 4. the public URL, with no credential at all ---
+  PASS  GET /object/public/{bucket}/{path} bare: 200
+  ....    content-type: "image/png"
+  PASS    bytes match: true
+
+--- 5. a PRIVATE bucket ---
+  ....  private upload status: 200
+  PASS  (guard) the private upload succeeded: 200
+  PASS  ⚠️ the /object/public/ url of a PRIVATE bucket is refused: 400
+  ....    status: 400
+
+--- 6. POST /object/sign/{bucket}/{path} — a real signed URL ---
+  PASS  sign status: 200
+  ....  sign body: {"signedURL":"/object/sign/bcn007-private/bcn007/secret.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJiY24wMDctcHJpdmF0ZS9iY24wMDcvc2VjcmV0LnBuZyIsImlhdCI6MTc4NTU3MDYwMCwiZXhwIjoxNzg1NTcwNjAzfQ.cpSn0V5_MjGDvEjXN6gViZ-Jz_iIuaJqOYcpZbi68Ok"}
+  PASS  ⚠️ the response is a RELATIVE url, not an absolute one: true
+  ....  composed absolute url: "http://localhost:8112/object/sign/bcn007-private/bcn007/secret.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJiY24wMDctcHJpdmF0ZS9iY24wMDcvc2VjcmV0LnBuZyIsImlhdCI6MTc4NTU3MDYwMCwiZXhwIjoxNzg1NTcwNjAzfQ.cpSn0V5_MjGDvEjXN6gViZ-Jz_iIuaJqOYcpZbi68Ok"
+  PASS  the signed url serves with NO credential: 200
+  ....  signed-url jwt payload: {"url":"bcn007-private/bcn007/secret.png","iat":1785570600,"exp":1785570603}
+  ....  measured ttl seconds (expiresIn was 3): 2
+  waiting 5s…
+  PASS  ⚠️ THE SIGNED URL EXPIRES: true
+  ....    status after expiry: 400
+  ....    body after expiry: "{\"statusCode\":\"400\",\"error\":\"InvalidJWT\",\"message\":\"jwt expired\"}"
+  ....  a tampered token: 400
+
+--- 7. delete ---
+  ....  DELETE /object/{bucket}/{path} status: 200
+  ....    body: "{\"message\":\"Successfully deleted\"}"
+  PASS  the file stops serving after deletion: true
+  ....    status: 400
+  ....  DELETE a path that never existed: "400 {\"statusCode\":\"404\",\"error\":\"not_found\",\"message\":\"Object not found\"}"
+
+--- 8. anon key vs service key ---
+  ....  upload with the ANON key (no RLS policies granted): "400 {\"statusCode\":\"403\",\"error\":\"Unauthorized\",\"message\":\"new row violates row-level security policy\"}"
+
+=== 14 checks, 0 failures ===

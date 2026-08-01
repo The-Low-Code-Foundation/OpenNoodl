@@ -81,11 +81,33 @@ export const supabaseDescriptor: BackendDescriptor = {
       'BCN-005 live: with PRIMARY KEY (article_id, tag_id) the M2M embed answers 200 and POST with Prefer: resolution=merge-duplicates makes the add idempotent; with a surrogate id primary key the identical two tables answer PGRST200 "no matches were found" and no request recovers the relation'
     ),
 
-    'files.upload': supported('Supabase Storage: POST /storage/v1/object/{bucket}/{path}'),
-    'files.sign': supported('POST /storage/v1/object/sign/{bucket}/{path}'),
-    'files.delete': supported('DELETE /storage/v1/object/{bucket}/{path}'),
-    'files.private': supported('private buckets are the Supabase Storage default'),
-
+    // ── Files — BCN-007 steps 2/5/7 ──────────────────────────────────────
+    //
+    // ⚠️ **These five were the only Supabase cells in the descriptor written
+    // from documentation that BCN-007 could turn into measurements.** The rig
+    // has never had a Storage service — `:8056` is plain PostgREST and answers
+    // every `/storage/v1/*` with a bare `404 {}` — and BCN-006 hit the same wall
+    // on auth and correctly refused to flip anything, moving four cells to
+    // `conditional` instead. Rather than repeat that here, BCN-007 stood a real
+    // `supabase/storage-api` up against the rig's existing `supabase-db` and
+    // probed it; the service is in `docker-compose.yml` under the `supabase`
+    // profile so the measurement is reproducible.
+    //
+    // Probe: `BCN-007-SUPABASE-STORAGE-OUTPUT.txt`, 14 checks, 0 failures.
+    'files.upload': degraded(
+      'Supabase keeps files in a Storage bucket, so the Upload File node needs a Bucket and a Path. There is no default bucket, and a bucket name that does not exist fails with a message that does not say so.',
+      'BCN-007 live: POST /storage/v1/object/{bucket}/{path} answers 200 with {Key, Id} — and NOTHING ELSE. No url, no size, no content type; those exist only on a second call to POST /object/list/{bucket}, so an upload reports them absent rather than making a round trip to dress the answer up'
+    ),
+    'files.sign': supported(
+      'BCN-007 live: POST /storage/v1/object/sign/{bucket}/{path} with {expiresIn} answers 200 and the link EXPIRES — verified by waiting it out, after which it answers 400 InvalidJWT "jwt expired". ⚠️ The signedURL it returns is RELATIVE (/object/sign/…), so it resolves against the app\'s own origin and 404s there unless the adapter puts the origin and the /storage/v1 mount back'
+    ),
+    'files.delete': degraded(
+      'Deleting a file that is not there is an error on Supabase rather than a no-op, so a Delete File node that runs twice reports a failure the second time.',
+      'BCN-007 live: DELETE /storage/v1/object/{bucket}/{path} answers 200 {"message":"Successfully deleted"} and the public URL then 400s. A path that never existed answers 400 with statusCode 404 "Object not found" — NOT idempotent, unlike nodegx-backend, which answers 200 for an unknown name by design'
+    ),
+    'files.private': supported(
+      'BCN-007 live: a bucket created public:false serves 400 on /object/public/{bucket}/{path} while an identical public:true bucket serves 200 with the bytes. Privacy is the bucket\'s, not the file\'s, and row-level security applies on top — an upload with the anon key was refused with "new row violates row-level security policy"'
+    ),
     'files.progress': degraded(
       "Upload progress isn't reported by Supabase — the file still uploads, the bar just won't move.",
       'The Storage endpoint is consumed over fetch, which has no upload-progress event.'
