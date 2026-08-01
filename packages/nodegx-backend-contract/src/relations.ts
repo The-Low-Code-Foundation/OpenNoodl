@@ -413,6 +413,116 @@ export function relationsFromPocketBase(collections: readonly PocketBaseCollecti
   return result;
 }
 
+// ── The cached schema ──────────────────────────────────────────────────────
+
+/**
+ * The normalised schema NodeGX already stores in project metadata, structurally.
+ *
+ * Typed here rather than imported because the real `SchemaCollection` lives in
+ * `noodl-runtime` and this package must not depend on it — but the runtime is
+ * where the only relation data available at run time actually is.
+ */
+export interface CachedRelationField {
+  name?: string;
+  relationTarget?: string;
+  relationType?: string;
+  primaryKey?: boolean;
+}
+export interface CachedRelationCollection {
+  name?: string;
+  fields?: readonly CachedRelationField[];
+}
+
+const TO_MANY = ['one-to-many', 'many-to-many'];
+
+/**
+ * Relations recoverable from the schema NodeGX has **already cached**, with no
+ * further requests.
+ *
+ * ⚠️ **This exists because the authoritative parsers above cannot run at run
+ * time.** Relation metadata is admin-only on all three backends (403/403/401,
+ * measured), so `relationsFromDirectus` and friends belong to the editor's
+ * schema sync. Until that sync stores their output, this is what a running app
+ * has — and it is a strict subset. What it recovers and what it does not:
+ *
+ * | | Recovered here | Needs the metadata endpoint |
+ * |---|---|---|
+ * | many-to-one | ✅ from `relationTarget` | |
+ * | one-to-many reverse | ✅ inverted from the same field | |
+ * | many-to-many via a junction | ✅ **under the target collection's name** | the parent's own alias name (`tags`) |
+ * | PocketBase relation fields | | ⚠️ the editor's parser recovers **none** — it reads `collection.schema` and 0.23 renamed that to `fields` |
+ *
+ * The M2M naming difference is the one to know about: Directus calls the field
+ * `tags` and this calls it `bcn005_tags`, because the alias is not in the cached
+ * schema and inventing the name it *probably* has is the kind of guess this
+ * phase exists to remove. A relation found under the wrong name refuses with a
+ * sentence; a relation found under a guessed name writes somewhere.
+ */
+export function relationsFromCachedCollections(
+  collections: readonly CachedRelationCollection[] | undefined
+): RelationDescriptor[] {
+  const list = (collections ?? []).filter((collection) => collection.name);
+  const result: RelationDescriptor[] = [];
+
+  for (const collection of list) {
+    const name = collection.name as string;
+    const fields = collection.fields ?? [];
+    const foreignKeys = fields.filter(
+      (field) => field.name && field.relationTarget && !TO_MANY.includes(field.relationType ?? '')
+    );
+
+    // A junction: nothing but its key and two foreign keys.
+    const others = fields.filter((field) => !field.primaryKey && !field.relationTarget);
+    if (foreignKeys.length === 2 && others.length === 0) {
+      const [left, right] = foreignKeys;
+      for (const [near, far] of [
+        [left, right],
+        [right, left]
+      ] as const) {
+        result.push({
+          collection: near.relationTarget as string,
+          field: far.relationTarget as string,
+          target: far.relationTarget as string,
+          cardinality: 'many',
+          write: {
+            kind: 'junction',
+            collection: name,
+            sourceField: near.name as string,
+            targetField: far.name as string,
+            // Unknowable from a cached schema — a unique constraint on the pair
+            // is not something any of the three parsers records. Assuming the
+            // safe answer costs a read; assuming the other one stores the pair
+            // twice.
+            idempotent: false
+          }
+        });
+      }
+      continue;
+    }
+
+    for (const field of fields) {
+      if (!field.name || !field.relationTarget) continue;
+      if (TO_MANY.includes(field.relationType ?? '')) continue;
+      result.push({
+        collection: name,
+        field: field.name,
+        target: field.relationTarget,
+        cardinality: 'one',
+        write: { kind: 'foreignKey', field: field.name, on: 'source' }
+      });
+      result.push({
+        collection: field.relationTarget,
+        field: name,
+        target: name,
+        cardinality: 'many',
+        write: { kind: 'foreignKey', field: field.name, on: 'target' }
+      });
+    }
+  }
+
+  return result;
+}
+
 // ── Parse family ───────────────────────────────────────────────────────────
 
 /** One class of a Parse-shaped schema response, in either envelope. */

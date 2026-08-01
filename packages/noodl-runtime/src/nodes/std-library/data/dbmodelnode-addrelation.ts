@@ -93,8 +93,12 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
 
           // BCN-004 step 5: the store the `Backend` input names. This node shares
           // `addBaseInfo` with the Record family, so it gets the picker port; resolving it
-          // here is what keeps the port honest. A REST backend refuses relation editing
-          // with the descriptor's own sentence (BCN-005 owns making it work).
+          // here is what keeps the port honest.
+          //
+          // BCN-005 made this work on the three REST backends too. Where it cannot —
+          // a relation the synced schema does not describe, because relation metadata
+          // is admin-only on all three — the adapter refuses with a sentence naming
+          // the field and the fix, and it lands on `setError` below.
           const cloudstore = _this.cloudStore();
           if (!cloudstore) return;
 
@@ -103,7 +107,10 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
             objectId: model.getId(),
             key: internal.relationProperty,
             targetObjectId: targetModelId,
-            targetClass: (_this.nodeScope.modelScope || Model).get(targetModelId)._class,
+            // BCN-005 renamed this on the contract: `targetCollection` is the neutral
+            // name, matching `collection` two lines up, and `targetClass` stays a
+            // deprecated alias for `Noodl.Records`'s public `targetClassName`.
+            targetCollection: (_this.nodeScope.modelScope || Model).get(targetModelId)._class,
             success: function (response: Record<string, unknown>) {
               for (const _key in response) {
                 model.set(_key, response[_key]);

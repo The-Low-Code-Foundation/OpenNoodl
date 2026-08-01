@@ -31,6 +31,7 @@ const CloudFile = require('./cloudfile');
 const { ParseWireAdapter } = require('./backends/ParseWireAdapter');
 const { RestDataAdapter } = require('./backends/RestDataAdapter');
 const { makeRestSerializer, filterSchemaFor } = require('./backends/restSerialize');
+const { relationsFromCachedCollections } = require('@noodl/backend-contract');
 const { resolveBackendFromRuntime, ACTIVE_BACKEND } = require('./backends/resolveBackend');
 
 class CloudStore {
@@ -67,7 +68,14 @@ class CloudStore {
             collections: () => (this._target ? this._target.collections : []),
             toJSON: _toJSON
           }),
-          schemaFor: (collectionName) => filterSchemaFor(this._target ? this._target.collections : [], collectionName)
+          schemaFor: (collectionName) => filterSchemaFor(this._target ? this._target.collections : [], collectionName),
+          // BCN-005. ⚠️ Derived from the **cached** schema, which is a strict
+          // subset of what the backends' relation-metadata endpoints describe —
+          // and it has to be, because those endpoints are admin-only
+          // (Directus 403, PostgREST has none, PocketBase 401) and a running app
+          // holds a user token. A relation this cannot see is one the adapter
+          // refuses by name rather than guessing a junction table for.
+          relationsFor: () => relationsFromCachedCollections(this._target ? this._target.collections : [])
         })
       : new ParseWireAdapter({
           // The module-scope serialiser, not the scope-bound `this._serializeObject`

@@ -213,15 +213,43 @@ describe('the serializeObject hook RestDataAdapter defaults to the identity', ()
 });
 
 describe('the filter schema handed to the translators', () => {
-  it('carries the backend’s own type names and a relation target', () => {
+  it('carries the backend’s own type names, a relation target and its cardinality', () => {
     expect(filterSchemaFor(DIRECTUS.schema.collections, 'articles')).toEqual({
       collection: 'articles',
       properties: {
         id: { type: 'integer' },
         payload: { type: 'json' },
         published_at: { type: 'dateTime' },
-        author: { type: 'integer', targetClass: 'authors' }
+        // ⚠️ `cardinality` is BCN-005's, and it is load-bearing rather than
+        // decorative: PocketBase spells a filter across a to-many relation
+        // `tags.label ?= 'x'` and across a to-one `author.city = 'x'`, and a
+        // live 0.30.0 answers the first spelling used on a to-many with **no
+        // rows** — no error, no warning. `relationType` is the cached schema's
+        // word for it and this is where it crosses into the translators.
+        author: { type: 'integer', targetClass: 'authors', cardinality: 'one' }
       }
+    });
+  });
+
+  it('marks a to-many relation as such, which is the case that changes the query', () => {
+    const withM2M = {
+      collections: [
+        {
+          name: 'articles',
+          fields: [
+            { name: 'tags', type: 'alias', relationTarget: 'tags', relationType: 'many-to-many' as const },
+            { name: 'kids', type: 'alias', relationTarget: 'kids', relationType: 'one-to-many' as const },
+            // No `relationType` recorded: left undefined rather than guessed, so
+            // a schema written before this field existed behaves as it used to.
+            { name: 'mystery', type: 'integer', relationTarget: 'other' }
+          ]
+        }
+      ]
+    };
+    expect(filterSchemaFor(withM2M.collections, 'articles')?.properties).toEqual({
+      tags: { type: 'alias', targetClass: 'tags', cardinality: 'many' },
+      kids: { type: 'alias', targetClass: 'kids', cardinality: 'many' },
+      mystery: { type: 'integer', targetClass: 'other' }
     });
   });
 

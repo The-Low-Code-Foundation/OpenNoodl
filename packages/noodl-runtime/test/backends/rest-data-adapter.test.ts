@@ -950,6 +950,60 @@ describe('relations', () => {
       expect(fake.param('select')).toBe('*,author_id:authors(*)');
     });
 
+    it('⚠️ hoists PocketBase’s `expand`, which leaves the field holding the id', async () => {
+      // Found by the first live run. PocketBase does not nest the related record
+      // onto the field — `author` stays a 15-character id and the record arrives
+      // under a sibling `expand`. The contract promises one shape.
+      const fake = new FakeFetch().reply({
+        body: {
+          items: [{ id: '1', author: 'aaa', expand: { author: { id: 'aaa', city: 'London' } } }]
+        }
+      });
+      const success = jest.fn();
+      withRelations(fake).query(pocketbase, {
+        collection: 'articles',
+        include: ['author'],
+        success,
+        error: jest.fn()
+      });
+      await settle();
+      expect(fake.param('expand')).toBe('author');
+      expect(success.mock.calls[0][0][0].author).toEqual({ id: 'aaa', city: 'London' });
+    });
+
+    it('⚠️ sends a Directus M2M FILTER through the junction, or it is a 403', async () => {
+      // The second thing the live run found, and the same two-hop fact as the
+      // read: `{"tags":{"label":…}}` answers 403 "no permission to access field
+      // label in collection articles_tags" — indistinguishable from a real
+      // permission failure. The adapter merges the descriptor's `readPath` into
+      // the schema the translator sees, so no caller has to know.
+      const fake = new FakeFetch().reply({ body: { data: [] } });
+      withRelations(fake).query(directus, {
+        collection: 'articles',
+        where: { 'tags.label': { equalTo: 'algebra' } },
+        success: jest.fn(),
+        error: jest.fn()
+      });
+      await settle();
+      expect(JSON.parse(fake.param('filter')!)).toEqual({ tags: { tag_id: { label: { _eq: 'algebra' } } } });
+    });
+
+    it('⚠️ quantifies a PocketBase to-many filter from the descriptor, with no schemaFor at all', async () => {
+      // `tags.label = "x"` means *every* related record matches, and returns
+      // nothing on a record with two tags. The cardinality comes from the
+      // relation descriptor, so an adapter built without `schemaFor` is still
+      // right — which is what the live pass runs.
+      const fake = new FakeFetch().reply({ body: { items: [] } });
+      withRelations(fake).query(pocketbase, {
+        collection: 'articles',
+        where: { 'tags.label': { equalTo: 'algebra' } },
+        success: jest.fn(),
+        error: jest.fn()
+      });
+      await settle();
+      expect(fake.param('filter')).toBe('tags.label ?= "algebra"');
+    });
+
     it('passes an include through unchanged when the descriptor knows nothing about it', async () => {
       // The pre-BCN-005 behaviour, which is right whenever the caller named the
       // table or the FK column — both measured working.

@@ -457,9 +457,42 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
   private translateOptions(handle: BackendHandle, collection: string) {
     return {
       backend: handle.type,
-      schema: this.schemaFor ? this.schemaFor(collection, handle) : undefined,
+      schema: this.filterSchema(handle, collection),
       probed: this.probedFilterOperators
     };
+  }
+
+  /**
+   * The schema a translator sees, with the relation facts folded in.
+   *
+   * ⚠️ **Both of the facts merged here were found by a live request failing**,
+   * and neither is reachable from the cached field schema alone:
+   *
+   * - **`cardinality`** decides whether PocketBase gets `tags.label = 'x'` or
+   *   `tags.label ?= 'x'`. The first returns **no rows** against a record with
+   *   two tags — 200, empty, no warning.
+   * - **`path`** turns a Directus M2M prefix into its junction path. Without it
+   *   the filter answers **403**, indistinguishable from a permission failure.
+   *
+   * Merged here rather than asked of `schemaFor` because the relation
+   * descriptors are the authority on both, and a caller that supplied a schema
+   * without them would otherwise be silently wrong in the two worst ways. The
+   * relation entry wins on those two keys and leaves everything else alone.
+   */
+  private filterSchema(handle: BackendHandle, collection: string): FilterSchema | undefined {
+    const base = this.schemaFor ? this.schemaFor(collection, handle) : undefined;
+    const relations = (this.relationsFor?.(handle) ?? []).filter((relation) => relation.collection === collection);
+    if (relations.length === 0) return base;
+
+    const properties: NonNullable<FilterSchema['properties']> = Object.assign({}, base?.properties);
+    for (const relation of relations) {
+      properties[relation.field] = Object.assign({}, properties[relation.field], {
+        targetClass: relation.target,
+        cardinality: relation.cardinality,
+        ...(relation.readPath ? { path: relation.readPath } : {})
+      });
+    }
+    return { collection: base?.collection ?? collection, properties };
   }
 
   // ── Query & read ─────────────────────────────────────────────────────────
@@ -1499,15 +1532,36 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
     include: string[],
     record: AdapterRecord
   ): AdapterRecord {
+    if (include.length === 0) return record;
     let result = record;
+    const copy = () => {
+      if (result === record) result = Object.assign({}, record);
+      return result;
+    };
+
+    // ⚠️ **PocketBase does not nest the related record onto the field.** It
+    // leaves the field holding the id and puts the record under a sibling
+    // `expand` object — so `article.author` is a 15-character string where
+    // Directus and PostgREST both give the author. Measured; it is what the
+    // first live run of this adapter found. The contract's `include` promises
+    // "the related record nested", one option, one shape, so it is hoisted.
+    // `expand` is left in place: it is stripped on the way back out by
+    // `SERVER_OWNED_FIELDS`, and anything already reading it keeps working.
+    const expand = record.expand as Record<string, unknown> | undefined;
+    if (expand && typeof expand === 'object') {
+      for (const field of include) {
+        if (!(field in expand)) continue;
+        copy()[field] = expand[field];
+      }
+    }
+
     for (const field of include) {
       const relation = this.relation(handle, collection, field);
       const key = relation?.readUnwrapKey;
       if (!key) continue;
       const value = result[field];
       if (!Array.isArray(value)) continue;
-      if (result === record) result = Object.assign({}, record);
-      result[field] = value.map((entry) =>
+      copy()[field] = value.map((entry) =>
         entry && typeof entry === 'object' && key in (entry as Record<string, unknown>)
           ? (entry as Record<string, unknown>)[key]
           : entry

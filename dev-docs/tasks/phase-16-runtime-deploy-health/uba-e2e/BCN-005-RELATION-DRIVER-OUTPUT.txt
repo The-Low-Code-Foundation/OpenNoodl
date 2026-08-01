@@ -1,0 +1,89 @@
+BCN-005 relation live pass — 2026-08-01T06:38:09.176Z
+
+==========================================================================
+DIRECTUS 11 — relations through RestDataAdapter
+==========================================================================
+  PASS  GET /relations yields the M2M as a junction write
+  PASS  …with a TWO-hop read path, because one hop returns junction rows
+  PASS  and the O2M reverse puts the foreign key on the TARGET
+  PASS  the to-one relation comes back as a NESTED RECORD, not the id it already had
+  PASS  a dotted filter across the relation narrows the PARENT rows
+  PASS  addRelation succeeds
+  PASS  a second member goes on the same relation
+  PASS  both related records read back, with their own fields
+  PASS  …and reports SUCCESS rather than a duplicate-key error
+  PASS  ⚠️ adding a member that is already there changes nothing, as a Parse Relation would
+  PASS  ⚠️ a dotted filter across a to-MANY relation returns the one matching parent
+  PASS  removeRelation succeeds
+  PASS  …and removes ONLY the member named, leaving the other
+  PASS  and the relation is EMPTY once both are removed
+  PASS  removing a member that is not there reports success, not an error
+  PASS  ⚠️ a relation the synced schema does not describe is REFUSED, not guessed at
+          refused with: NodeGX does not know how "no_such_relation" relates bcn005_articles to "tags" on this directus backend. Refresh the back
+  PASS  a one-to-many add succeeds
+  PASS  ⚠️ …and writes the foreign key on the CHILD, not on the collection it was addressed to
+  control: the ONE-hop include answers [{"id":4,"article_id":1,"tag_id":1}]
+           the TWO-hop include answers [{"tag_id":{"id":1,"label":"algebra"}}]
+           — junction rows versus tags, both with a 200. Nothing downstream could tell.
+  PASS  ⚠️ the cached schema recovers the junction, but names it after the TARGET, not the alias
+
+==========================================================================
+POSTGREST v12.2.3 as the Supabase wire — relations through RestDataAdapter
+==========================================================================
+  PASS  ⚠️ the composite-PK junction is seen as a junction
+  control: with BOTH junctions present the M2M embed answers 200
+  PASS  ⚠️ a surrogate-key junction is NOT emitted, because PostgREST cannot embed through it
+  PASS  the to-one relation comes back as a NESTED RECORD, not the id it already had
+  PASS  a dotted filter across the relation narrows the PARENT rows
+  PASS  addRelation succeeds
+  PASS  a second member goes on the same relation
+  PASS  both related records read back, with their own fields
+  PASS  …and reports SUCCESS rather than a duplicate-key error
+  PASS  ⚠️ adding a member that is already there changes nothing, as a Parse Relation would
+  PASS  ⚠️ a dotted filter across a to-MANY relation returns the one matching parent
+  PASS  removeRelation succeeds
+  PASS  …and removes ONLY the member named, leaving the other
+  PASS  and the relation is EMPTY once both are removed
+  PASS  removing a member that is not there reports success, not an error
+  PASS  ⚠️ a relation the synced schema does not describe is REFUSED, not guessed at
+          refused with: NodeGX does not know how "no_such_relation" relates bcn005_articles to "tags" on this supabase backend. Refresh the back
+  control: the same insert WITHOUT merge-duplicates answers 201 then 409
+           — so the adapter's idempotent add is the Prefer header, not luck.
+
+==========================================================================
+POCKETBASE 0.30.0 — relations through RestDataAdapter (first ever exercise)
+==========================================================================
+  PASS  a relation field resolves its target from the collection ID
+  PASS  ⚠️ the collections carry `fields`, not `schema` — which is what the editor parser reads
+  PASS  the to-one relation comes back as a NESTED RECORD, not the id it already had
+  PASS  a dotted filter across the relation narrows the PARENT rows
+  PASS  addRelation succeeds
+  PASS  a second member goes on the same relation
+  PASS  both related records read back, with their own fields
+  PASS  …and reports SUCCESS rather than a duplicate-key error
+  PASS  ⚠️ adding a member that is already there changes nothing, as a Parse Relation would
+  PASS  ⚠️ a dotted filter across a to-MANY relation returns the one matching parent
+  PASS  removeRelation succeeds
+  PASS  …and removes ONLY the member named, leaving the other
+  PASS  and the relation is EMPTY once both are removed
+  PASS  removing a member that is not there reports success, not an error
+  PASS  ⚠️ a relation the synced schema does not describe is REFUSED, not guessed at
+          refused with: NodeGX does not know how "no_such_relation" relates bcn005_articles to "tags" on this pocketbase backend. Refresh the ba
+  control: on a parent with TWO tags, `tags.label = "algebra"` returns 0 rows and `?=` returns 1
+           — which is why the schema's cardinality has to reach the translator.
+
+==========================================================================
+PARSE SERVER 7.3.0 — `relatedTo`, executed rather than authored
+==========================================================================
+  PASS  addRelation through the contract's NEW `targetCollection` field
+  PASS  …and the deprecated `targetClass` alias still works
+  PASS  the neutral relatedTo translates to Parse's own operator
+  PASS  ⚠️ relatedTo returns ONLY the related record — executed for the first time
+  control: unfiltered, the collection answers ["algebra","compilers"]
+           — two rows, so a relatedTo that dropped its condition would be visible.
+  PASS  removeRelation succeeds
+  PASS  and relatedTo then returns nothing
+
+==========================================================================
+55 passed, 0 failed
+==========================================================================
