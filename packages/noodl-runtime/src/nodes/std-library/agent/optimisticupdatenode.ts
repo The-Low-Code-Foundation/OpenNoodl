@@ -130,7 +130,6 @@ function generateTransactionId(): string {
 const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.OptimisticUpdate',
   displayNodeName: 'Optimistic Update',
-  shortDesc: 'Writes a store key immediately, then keeps it or puts it back when the server answers.',
   category: 'Data',
   color: 'data',
   usePortAsLabel: 'key',

@@ -20,7 +20,6 @@ interface ComponentOutputsNodeInstance extends NodeInstance {
 const ComponentOutputsNode: NodeDefinitionOptions = {
   category: 'Component Utilities',
   name: 'Component Outputs',
-  shortDesc: 'This node is used to define the outputs of a component.',
   docs: 'https://docs.noodl.net/nodes/component-utilities/component-outputs',
   panels: [
     {

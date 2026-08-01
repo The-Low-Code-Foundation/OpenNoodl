@@ -30,7 +30,6 @@ function internalOf(node: JsonStreamParserNodeInstance): ParserInternal {
 const JSONStreamParserNode: NodeDefinitionOptions = {
   name: 'net.noodl.JSONStreamParser',
   displayNodeName: 'JSON Stream Parser',
-  shortDesc: 'Parses NDJSON, concatenated JSON or a single JSON document out of stream fragments.',
   category: 'Data',
   color: 'data',
   docs: 'https://docs.noodl.net/nodes/data/json-stream-parser',

@@ -19,7 +19,6 @@ interface NumberBlendNodeInstance extends NodeInstance {
 const NumberBlend: NodeDefinitionOptions = {
   name: 'Number Blend',
   docs: 'https://docs.noodl.net/nodes/interpolation/number-blend',
-  shortDesc: 'Computes a result output based on blending (linearly interpolating) between the inputs.',
   category: 'Interpolation',
   deprecated: true,
   initialize: function (this: NumberBlendNodeInstance) {

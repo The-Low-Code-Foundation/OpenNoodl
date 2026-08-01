@@ -25,7 +25,6 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
     docs: 'https://docs.noodl.net/nodes/data/cloud-data/add-record-relation',
     displayNodeName: 'Add Record Relation',
     usePortAsLabel: 'collectionName',
-    // shortDesc: "Stores any amount of properties and can be used standalone or together with Collections and For Each nodes.",
     inputs: {
       store: {
         displayName: 'Do',

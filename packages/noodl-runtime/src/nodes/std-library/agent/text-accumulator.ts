@@ -59,7 +59,6 @@ function describeBadChunk(value: unknown): string {
 const TextAccumulatorNode: NodeDefinitionOptions = {
   name: 'net.noodl.TextAccumulator',
   displayNodeName: 'Text Accumulator',
-  shortDesc: 'Accumulates stream fragments into text, and splits complete messages off a delimiter.',
   category: 'Data',
   color: 'data',
   docs: 'https://docs.noodl.net/nodes/data/text-accumulator',

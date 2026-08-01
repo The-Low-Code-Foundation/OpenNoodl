@@ -51,7 +51,6 @@ export interface VariableEmptyOption {
 export interface VariableDefinitionArgs {
   name: string;
   docs?: string;
-  shortDesc?: string;
   nodeDoubleClickAction?: NodeDefinitionOptions['nodeDoubleClickAction'];
   /**
    * The port type. Note this is the whole spec object, not a name — `inputs.value.type`
@@ -83,7 +82,6 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
   return {
     name: args.name,
     docs: args.docs,
-    shortDesc: args.shortDesc,
     nodeDoubleClickAction: args.nodeDoubleClickAction,
     category: 'Variables',
     initialize: function (this: VariableNodeInstance) {

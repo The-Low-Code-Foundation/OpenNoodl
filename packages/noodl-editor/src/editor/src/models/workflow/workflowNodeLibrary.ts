@@ -304,7 +304,6 @@ function nodeTypeForKind(spec: StepKindSpec, catalog?: StepKindCatalog): NodeLib
     displayNodeName: spec.displayName,
     category: spec.category,
     color: colorForCategory(spec.category),
-    shortDesc: spec.summary,
     docs: '',
     allowAsChild: false,
     allowAsExportRoot: false,
@@ -433,7 +432,6 @@ export function buildTriggerNodeTypes(): NodeLibraryDataNodeType[] {
       // `data`, from the existing five-key taxonomy — a trigger is where the
       // run's data comes from. No new colour, per phase 23's law.
       color: 'data',
-      shortDesc: TRIGGER_DISPLAY[triggerType].summary,
       docs: '',
       allowAsChild: false,
       allowAsExportRoot: false,

@@ -19,7 +19,6 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
   name: 'CollectionRemove',
   docs: 'https://docs.noodl.net/nodes/data/array/remove-from-array',
   displayNodeName: 'Remove Object From Array',
-  shortDesc: 'Takes an object, named by its id, out of a shared array.',
   category: 'Data',
   usePortAsLabel: 'collectionId',
   color: 'data',

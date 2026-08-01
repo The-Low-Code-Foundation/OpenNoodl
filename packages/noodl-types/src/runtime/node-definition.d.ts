@@ -1051,8 +1051,6 @@ export interface NodeDefinitionOptions {
   displayNodeName?: string;
   /** Fallback for {@link displayNodeName}. */
   displayName?: string;
-  /** One-line description for the node picker. */
-  shortDesc?: string;
   /** URL of the node's documentation page. */
   docs?: string;
   /** Extra terms the node picker matches on. */
@@ -1155,7 +1153,6 @@ export interface NodeMetadata {
   outputs: Record<string, OutputPortMetadata>;
 
   displayNodeName?: string;
-  shortDesc?: string;
   docs?: string;
   searchTags?: string[];
   color?: NodeColorName;

@@ -213,7 +213,6 @@ const defaultDuration = 300;
 const AnimationNode: NodeDefinitionOptions = {
   name: 'Animation',
   docs: 'https://docs.noodl.net/nodes/animation/animation',
-  shortDesc: 'Node that can animate any number of values, with different types of easing curves.',
   category: 'Animation',
   deprecated: true,
   ssr: {

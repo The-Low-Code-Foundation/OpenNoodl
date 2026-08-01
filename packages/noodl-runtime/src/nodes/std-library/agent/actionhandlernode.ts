@@ -58,7 +58,6 @@ function internalOf(node: NodeInstance): HandlerInternal {
 const ActionHandlerNode: NodeDefinitionOptions = {
   name: 'net.noodl.ActionHandler',
   displayNodeName: 'Action Handler',
-  shortDesc: 'Registers one action type a backend is allowed to trigger, and what happens when it does.',
   category: 'Data',
   color: 'data',
   usePortAsLabel: 'actionType',

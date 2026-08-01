@@ -130,7 +130,6 @@ function dispatcherOf(node: NodeInstance): ActionDispatcher {
 const ActionDispatcherNode: NodeDefinitionOptions = {
   name: 'net.noodl.ActionDispatcher',
   displayNodeName: 'Action Dispatcher',
-  shortDesc: 'Executes actions sent by a backend, restricted to a vocabulary this graph registered.',
   category: 'Data',
   color: 'data',
   usePortAsLabel: 'channel',

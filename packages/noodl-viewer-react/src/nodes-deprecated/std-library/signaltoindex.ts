@@ -14,7 +14,6 @@ interface SignalToIndexNodeInstance extends NodeInstance {
 const SignalToIndexNode: NodeDefinitionOptions = {
   name: 'Signal To Index',
   docs: 'https://docs.noodl.net/nodes/logic/signal-to-index',
-  shortDesc: 'Maps signal inputs to their index value.',
   category: 'Logic',
   deprecated: true,
   initialize: function (this: SignalToIndexNodeInstance) {

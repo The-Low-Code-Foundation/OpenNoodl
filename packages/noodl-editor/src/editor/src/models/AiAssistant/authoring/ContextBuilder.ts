@@ -225,7 +225,7 @@ export class AuthoringContextBuilder {
     const enriched = enrichedNode(typeName)?.enrichment;
     const lines: string[] = [`### ${typeName}${node.category ? ` (${node.category})` : ''}`];
     if (node.isVisual) lines.push('Visual node — place it in the visual hierarchy via `parent`.');
-    const summary = enriched?.summary ?? node.shortDesc;
+    const summary = enriched?.summary;
     if (summary) lines.push(summary);
     if (enriched?.description && enriched.description !== summary) lines.push(enriched.description);
     if (enriched?.whenToUse) lines.push(`When to use: ${enriched.whenToUse}`);

@@ -101,7 +101,6 @@ function rgbaToHex(rgba: RGBA) {
 const StatesNode: NodeDefinitionOptions = {
   name: 'States',
   docs: 'https://docs.noodl.net/nodes/utilities/logic/states',
-  shortDesc: 'Define states with values and this node can interpolate between these values when the state is changed.',
   category: 'Animation',
   ssr: {
     compat: 'partial',

@@ -33,7 +33,6 @@ interface TransitionNodeInstance extends NodeInstance {
 const TransitionNode: NodeDefinitionOptions = {
   name: 'Transition',
   docs: 'https://docs.noodl.net/nodes/animation/transition',
-  shortDesc: 'This node can interpolate smooothely for the current value to a target value.',
   category: 'Animation',
   deprecated: true,
   ssr: {

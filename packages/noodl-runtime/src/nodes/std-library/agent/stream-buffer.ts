@@ -28,7 +28,6 @@ function internalOf(node: StreamBufferNodeInstance): BufferInternal {
 const StreamBufferNode: NodeDefinitionOptions = {
   name: 'net.noodl.StreamBuffer',
   displayNodeName: 'Stream Buffer',
-  shortDesc: 'Batches items from a stream and flushes them on a count, an interval, or on demand.',
   category: 'Data',
   color: 'data',
   docs: 'https://docs.noodl.net/nodes/data/stream-buffer',

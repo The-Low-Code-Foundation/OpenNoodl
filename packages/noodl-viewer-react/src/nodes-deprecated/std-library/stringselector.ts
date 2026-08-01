@@ -15,7 +15,6 @@ interface StringSelectorNodeInstance extends NodeInstance {
 const StringSelectorNode: NodeDefinitionOptions = {
   name: 'String Selector',
   displayNodeName: 'Index To String',
-  shortDesc: 'Choose between multiple strings.',
   category: 'Utilities',
   deprecated: true,
   initialize: function (this: StringSelectorNodeInstance) {

@@ -44,7 +44,6 @@ function counter(
 const SSENode: NodeDefinitionOptions = {
   name: 'net.noodl.SSE',
   displayNodeName: 'Server-Sent Events',
-  shortDesc: 'Consumes a server-sent-events stream, with connection state and errors as outputs.',
   category: 'Data',
   color: 'data',
   docs: 'https://docs.noodl.net/nodes/data/sse',

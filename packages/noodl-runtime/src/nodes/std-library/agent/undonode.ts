@@ -39,7 +39,6 @@ const UNDO_ERROR_CODE = 'undo/operation-failed';
 const UndoNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.StateHistory.Undo',
   displayNodeName: 'Undo / Redo',
-  shortDesc: 'Steps a global store back and forward through the history a State History node recorded.',
   category: 'Data',
   color: 'data',
   usePortAsLabel: 'storeName',

@@ -99,7 +99,6 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
   name: 'FilterDBModels',
   docs: 'https://docs.noodl.net/nodes/data/cloud-data/filter-records',
   displayNodeName: 'Filter Records',
-  shortDesc: 'Filter, sort and limit array',
   category: 'Data',
   color: 'data',
   initialize: function (this: FilterDbModelsInstance) {

@@ -43,7 +43,6 @@ function parseKeys(keys: string | undefined): string[] {
 const SubscribeToStoreNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.GlobalStore.Subscribe',
   displayNodeName: 'Subscribe to Store',
-  shortDesc: 'Reacts when named keys of a global store change, without any wiring between components.',
   category: 'Data',
   color: 'data',
   usePortAsLabel: 'keys',

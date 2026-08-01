@@ -50,7 +50,6 @@ function parseKeys(keys: string | undefined): string[] {
 const StateHistoryNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.StateHistory',
   displayNodeName: 'State History',
-  shortDesc: 'Records changes to a global store so they can be undone, redone or replayed.',
   category: 'Data',
   color: 'data',
   usePortAsLabel: 'storeName',

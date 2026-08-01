@@ -42,7 +42,6 @@ const SNAPSHOT_ERROR_CODE = 'state-snapshot/operation-failed';
 const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.StateSnapshot',
   displayNodeName: 'State Snapshot',
-  shortDesc: 'Saves a named checkpoint of a global store, and puts it back on demand.',
   category: 'Data',
   color: 'data',
   usePortAsLabel: 'snapshotName',

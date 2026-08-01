@@ -110,7 +110,6 @@ const WebSocketNode: NodeDefinitionOptions = {
   docs: 'https://docs.noodl.net/nodes/data/websocket',
   category: 'Data',
   color: 'data',
-  shortDesc: 'Two-way real-time connection to a WebSocket server, with visible connection state.',
   searchTags: [
     'websocket',
     'ws',

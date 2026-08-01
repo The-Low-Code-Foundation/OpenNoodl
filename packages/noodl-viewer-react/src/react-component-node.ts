@@ -785,7 +785,6 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
     name: def.name,
     docs: def.docs,
     displayNodeName: def.displayNodeName || def.displayName,
-    shortDesc: '',
     category: 'Visual',
     deprecated: def.deprecated,
     ssr: def.ssr,

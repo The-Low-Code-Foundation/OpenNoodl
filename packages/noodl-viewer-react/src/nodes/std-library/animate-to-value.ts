@@ -32,7 +32,6 @@ const AnimateToValue: NodeDefinitionOptions = {
   name: 'net.noodl.animatetovalue',
   docs: 'https://docs.noodl.net/nodes/logic/animate-to-value',
   displayName: 'Animate To Value',
-  shortDesc: 'This node can interpolate smooothely from the current value to a target value.',
   category: 'Animation',
   ssr: {
     compat: 'partial',

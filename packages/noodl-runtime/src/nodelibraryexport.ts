@@ -48,7 +48,6 @@ interface NodeExportMetadata {
   version?: unknown;
   displayNodeName?: unknown;
   nodeDoubleClickAction?: unknown;
-  shortDesc?: unknown;
   module?: unknown;
   deprecated?: unknown;
   haveComponentPorts?: unknown;
@@ -81,7 +80,6 @@ interface ExportedNodeType {
   version?: unknown;
   displayNodeName?: unknown;
   nodeDoubleClickAction?: unknown;
-  shortDesc?: unknown;
   module?: unknown;
   deprecated?: boolean;
   haveComponentPorts?: boolean;
@@ -352,7 +350,6 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike) {
     nodetypes: [
       {
         name: 'Component Children',
-        shortDesc: 'This node is a placeholder for where children of this component will be inserted.',
         docs: 'https://docs.noodl.net/nodes/component-utilities/component-children',
         color: 'component',
         allowAsChild: true,
@@ -390,9 +387,6 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike) {
     }
     if (nodeMetadata.nodeDoubleClickAction) {
       nodeObj.nodeDoubleClickAction = nodeMetadata.nodeDoubleClickAction;
-    }
-    if (nodeMetadata.shortDesc) {
-      nodeObj.shortDesc = nodeMetadata.shortDesc;
     }
     if (nodeMetadata.module) {
       nodeObj.module = nodeMetadata.module;

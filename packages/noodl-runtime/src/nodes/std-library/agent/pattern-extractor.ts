@@ -25,7 +25,6 @@ function internalOf(node: PatternExtractorNodeInstance): ExtractorInternal {
 const PatternExtractorNode: NodeDefinitionOptions = {
   name: 'net.noodl.PatternExtractor',
   displayNodeName: 'Pattern Extractor',
-  shortDesc: 'Extracts matches and capture groups from text with a regular expression.',
   // 'Data' rather than 'String Manipulation': this exists to serve streams, and the
   // AGENT-007 family is only discoverable if it sits together in the palette.
   category: 'Data',

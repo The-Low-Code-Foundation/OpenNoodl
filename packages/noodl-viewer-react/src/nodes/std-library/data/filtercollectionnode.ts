@@ -139,7 +139,6 @@ const FilterCollectionNode: NodeDefinitionOptions = {
   name: 'Filter Collection',
   docs: 'https://docs.noodl.net/nodes/data/array/array-filter',
   displayNodeName: 'Array Filter',
-  shortDesc: 'Filter, sort and limit array',
   category: 'Data',
   color: 'data',
   initialize: function (this: FilterCollectionInstance) {

@@ -32,7 +32,6 @@ interface ScriptDownloaderNodeInstance extends NodeInstance {
 const ScriptDownloadDefinition: NodeDefinitionOptions = {
   name: 'Script Downloader',
   docs: 'https://docs.noodl.net/nodes/javascript/script-downloader',
-  shortDesc: 'Script Downloader allows you load external Javascript libraries. ',
   category: 'Javascript',
   color: 'javascript',
   deprecated: true,

@@ -94,7 +94,6 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
   name: 'DbModel',
   docs: 'https://docs.noodl.net/nodes/cloud-services/model',
   displayNodeName: 'Model',
-  shortDesc: 'Database model',
   category: 'Cloud Services',
   usePortAsLabel: '$ndlCollectionName',
   color: 'data',

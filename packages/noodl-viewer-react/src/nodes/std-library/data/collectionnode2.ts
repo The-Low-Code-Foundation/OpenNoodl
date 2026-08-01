@@ -44,7 +44,6 @@ const CollectionNode: NodeDefinitionOptions = {
   name: 'Collection2',
   docs: 'https://docs.noodl.net/nodes/data/array/array-node',
   displayNodeName: 'Array',
-  shortDesc: 'Binds to a shared array by id and reports its items, count and changes.',
   category: 'Data',
   usePortAsLabel: 'collectionId',
   color: 'data',

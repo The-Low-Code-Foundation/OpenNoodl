@@ -56,8 +56,6 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
   name: 'Model2',
   docs: 'https://docs.noodl.net/nodes/data/object/object-node',
   displayNodeName: 'Object',
-  shortDesc:
-    'Stores any amount of properties and can be used standalone or together with Collections and For Each nodes.',
   category: 'Data',
   usePortAsLabel: 'modelId',
   color: 'data',

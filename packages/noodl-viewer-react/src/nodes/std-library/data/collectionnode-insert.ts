@@ -19,7 +19,6 @@ const CollectionInsertNode: NodeDefinitionOptions = {
   name: 'CollectionInsert',
   docs: 'https://docs.noodl.net/nodes/data/array/insert-into-array',
   displayNodeName: 'Insert Object Into Array',
-  shortDesc: 'Adds an object, named by its id, to a shared array.',
   category: 'Data',
   usePortAsLabel: 'collectionId',
   color: 'data',

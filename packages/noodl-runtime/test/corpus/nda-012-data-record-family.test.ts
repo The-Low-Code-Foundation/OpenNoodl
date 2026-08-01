@@ -270,25 +270,59 @@ describe('D4 — Remove Record Relation, the same gap', () => {
   });
 });
 
-describe('D5 — Delete Record describes deleting', () => {
+describe('D5 — `shortDesc` is gone, and stays gone', () => {
   /**
-   * ⚠️ **This corrects a string that currently reaches nobody, and the row says so rather
-   * than implying a user-visible repair.**
+   * ⚠️ **This row used to pin a corrected string; the field it corrected has since been
+   * deleted, so it now pins the deletion.**
    *
-   * `shortDesc` carried Create Record's sentence — "Stores any amount of properties…" — on the
-   * node that deletes one. But it is not exported to the node catalog (regenerating after the
-   * change produced a byte-identical file), and its only consumer is the AI authoring loop's
-   * `ContextBuilder.ts:228`, as `enriched?.summary ?? node.shortDesc`. Delete Record *has* an
-   * enrichment summary, so the fallback never fires for it.
+   * The original finding was that `shortDesc` carried Create Record's sentence — "Stores any
+   * amount of properties…" — on the node that deletes one, and the row was careful to say the
+   * string reached nobody: not exported to the node catalog (regenerating after the change
+   * produced a byte-identical file), and its only consumer the AI authoring loop's
+   * `ContextBuilder.ts:228`, as `enriched?.summary ?? node.shortDesc`, where every node's
+   * enrichment summary wins.
    *
-   * The fix is kept because the field is wrong and the next reader of that file should not have
-   * to re-derive that it is shadowed. What the row pins is the string, not an outcome.
+   * ✅ **Richard decided on 2026-08-01 to delete the field rather than wire it up**, against the
+   * `description`-is-canonical rule settled the same day: wiring it would create a second source
+   * for a sentence enrichment already supplies. So the honest guarantee is no longer "the
+   * sentence is right" but "there is no second source to get wrong", and that is what these two
+   * rows measure.
+   *
+   * ⚠️ One correction to the record: the claim was that `shortDesc` is in the catalog for *no*
+   * core node. It was in fact there for exactly one — `Component Children` — from a hardcoded
+   * literal in `nodelibraryexport.ts`, not from any node definition. The conclusion still held,
+   * because that node has an enrichment summary too, so the fallback could not fire for it
+   * either. The literal is deleted with the rest.
    */
-  it("does not carry Create Record's sentence", () => {
+  it('Delete Record no longer declares one', () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const DeleteRecord = require('../../src/nodes/std-library/data/deletedbmodelpropertiesnode');
-    expect(DeleteRecord.node.shortDesc).not.toMatch(/Stores any amount of properties/);
-    expect(DeleteRecord.node.shortDesc).toMatch(/[Dd]elete/);
+    expect(DeleteRecord.node.shortDesc).toBeUndefined();
+  });
+
+  // The ratchet. A field with no readers comes back one node at a time, and the point of
+  // deleting it is that there is nowhere for a sentence to hide from the enrichment pipeline.
+  it('no source file in this package declares one', () => {
+    /* eslint-disable @typescript-eslint/no-var-requires */
+    const fs = require('fs');
+    const path = require('path');
+    /* eslint-enable @typescript-eslint/no-var-requires */
+
+    const root = path.join(__dirname, '..', '..', 'src');
+    const offenders: string[] = [];
+
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (/\.(ts|tsx|js|jsx)$/.test(entry.name) && fs.readFileSync(full, 'utf8').includes('shortDesc')) {
+          offenders.push(path.relative(root, full));
+        }
+      }
+    };
+    walk(root);
+
+    expect(offenders).toEqual([]);
   });
 });
 

@@ -82,7 +82,6 @@ const LogicBuilderNode: NodeDefinitionOptions = {
   name: 'Logic Builder',
   docs: 'https://docs.noodl.net/nodes/logic/logic-builder',
   displayNodeName: 'Logic Builder',
-  shortDesc: 'Build logic visually with blocks',
   category: 'CustomCode',
   color: 'javascript',
   nodeDoubleClickAction: {

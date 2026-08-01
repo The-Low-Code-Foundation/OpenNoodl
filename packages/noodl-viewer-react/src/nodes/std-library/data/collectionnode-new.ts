@@ -20,7 +20,6 @@ const CollectionNewNode: NodeDefinitionOptions = {
   name: 'CollectionNew',
   docs: 'https://docs.noodl.net/nodes/data/array/create-new-array',
   displayNodeName: 'Create New Array',
-  shortDesc: 'Creates a fresh array with a generated id, optionally seeded from another array.',
   category: 'Data',
   color: 'data',
   initialize: function () {},

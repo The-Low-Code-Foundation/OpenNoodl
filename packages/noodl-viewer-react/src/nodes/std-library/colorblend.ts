@@ -41,8 +41,6 @@ const rgb2: RGB = [0, 0, 0];
 const ColorBlendNode: NodeDefinitionOptions = {
   name: 'Color Blend',
   docs: 'https://docs.noodl.net/nodes/utilities/color-blend',
-  shortDesc:
-    'Given any number of input colors this node can interpolate between these and give the result color as output.',
   category: 'Interpolation',
   getInspectInfo(this: ColorBlendInstance) {
     return [{ type: 'color', value: this._internal.resultColor }];

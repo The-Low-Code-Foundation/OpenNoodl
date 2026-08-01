@@ -14,7 +14,6 @@ interface GyroscopeNodeInstance extends NodeInstance {
 const GyroscopeNode: NodeDefinitionOptions = {
   name: 'Gyroscope',
   docs: 'https://docs.noodl.net/nodes/sensors/device-orientation',
-  shortDesc: 'The orientation of a device. Works on phones, tablets and other devices with the required sensors.',
   displayNodeName: 'Device Orientation',
   category: 'Sensors',
   deprecated: true,

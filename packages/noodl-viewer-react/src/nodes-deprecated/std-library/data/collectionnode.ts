@@ -55,7 +55,6 @@ const CollectionNode: NodeDefinitionOptions = {
   name: 'Collection',
   docs: 'https://docs.noodl.net/nodes/data/array',
   displayNodeName: 'Array',
-  shortDesc: 'A collection of models, mainly used together with a For Each Node.',
   category: 'Data',
   usePortAsLabel: 'collectionId',
   color: 'data',

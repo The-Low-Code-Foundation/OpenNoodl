@@ -20,7 +20,6 @@ interface ComponentInputsNodeInstance extends NodeInstance {
 
 const ComponentInputsNode: NodeDefinitionOptions = {
   name: 'Component Inputs',
-  shortDesc: 'This node is used to define the inputs of a component.',
   docs: 'https://docs.noodl.net/nodes/component-utilities/component-inputs',
   panels: [
     {

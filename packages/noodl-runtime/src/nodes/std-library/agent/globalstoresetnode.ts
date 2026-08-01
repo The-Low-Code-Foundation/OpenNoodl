@@ -33,7 +33,6 @@ const SET_ERROR_CODE = 'global-store/set-failed';
 const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.GlobalStore.Set',
   displayNodeName: 'Set Global Store',
-  shortDesc: 'Writes a key in a named global store; every subscriber to that key reacts.',
   category: 'Data',
   color: 'data',
   usePortAsLabel: 'key',

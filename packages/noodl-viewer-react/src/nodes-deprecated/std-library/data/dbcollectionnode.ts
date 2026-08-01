@@ -193,7 +193,6 @@ const DbCollectionNode: NodeDefinitionOptions = {
   name: 'DbCollection',
   docs: 'https://docs.noodl.net/nodes/cloud-services/collection',
   displayNodeName: 'Query Collection',
-  shortDesc: 'A database collection.',
   category: 'Cloud Services',
   usePortAsLabel: 'collectionName',
   color: 'data',

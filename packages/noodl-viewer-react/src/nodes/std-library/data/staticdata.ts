@@ -114,7 +114,6 @@ const CSVNode: NodeDefinitionOptions = {
   name: 'Static Data',
   docs: 'https://docs.noodl.net/nodes/data/array/static-array',
   displayNodeName: 'Static Array',
-  shortDesc: 'Store static data to populate a Collection with items.',
   category: 'Data',
   color: 'data',
   nodeDoubleClickAction: [

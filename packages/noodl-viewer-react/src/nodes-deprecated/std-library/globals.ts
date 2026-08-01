@@ -25,7 +25,6 @@ interface GlobalsNodeInstance extends NodeInstance {
 
 const GlobalsNode: NodeDefinitionOptions = {
   name: 'Globals',
-  shortDesc: 'A node used to communicate values across the project.',
   category: 'Utilities',
   color: 'component',
   deprecated: true, // use variable instead

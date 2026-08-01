@@ -35,7 +35,6 @@ interface GlobalStoreNodeInstance extends NodeInstance {
 const GlobalStoreNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.GlobalStore',
   displayNodeName: 'Global Store',
-  shortDesc: 'Shared, observable state that any component can read and write by name.',
   category: 'Data',
   color: 'data',
   usePortAsLabel: 'storeName',

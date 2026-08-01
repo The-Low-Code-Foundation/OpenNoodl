@@ -90,7 +90,6 @@ export interface NodeLibraryDataConnectionColors {
 export interface NodeLibraryDataNodeType {
   runtimeTypes?: RuntimeType[];
   name: string;
-  shortDesc: string;
   docs: string;
   color: string;
   allowAsChild: boolean;

@@ -12,7 +12,6 @@ const { NodeDefinition } = require('../../../../noodl-runtime');
 const StringNode = VariableBase.createDefinition({
   name: 'String',
   docs: 'https://docs.noodl.net/nodes/data/string',
-  shortDesc: 'Contains a string (text).',
   startValue: '',
   nodeDoubleClickAction: {
     focusPort: 'value'

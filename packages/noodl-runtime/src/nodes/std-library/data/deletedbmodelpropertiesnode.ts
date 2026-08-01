@@ -17,10 +17,6 @@ const DeleteDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
     name: 'DeleteDbModelProperties',
     docs: 'https://docs.noodl.net/nodes/data/cloud-data/delete-record',
     displayNodeName: 'Delete Record',
-    // NDA-012 (Data): this used to carry Create Record's sentence verbatim — "Stores any
-    // amount of properties…" — on the node that deletes one. A copy-paste, and the one
-    // string in the definition that the picker shows an author before they commit to the node.
-    shortDesc: 'Deletes a record from the backend, given its Id.',
     inputs: {
       store: {
         displayName: 'Do',

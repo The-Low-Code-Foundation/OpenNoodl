@@ -68,7 +68,6 @@ const MapCollectionNode: NodeDefinitionOptions = {
   name: 'Map Collection',
   docs: 'https://docs.noodl.net/nodes/data/array/array-map',
   displayNodeName: 'Array Map',
-  shortDesc: 'Map array fields',
   category: 'Data',
   color: 'data',
   initialize: function (this: MapCollectionInstance) {
