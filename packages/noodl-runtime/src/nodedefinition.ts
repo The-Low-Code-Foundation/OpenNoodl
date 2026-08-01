@@ -44,7 +44,15 @@ function registerInput(object: SharedInputs, metadata: NodeMetadata, name: strin
     //color and textStyles are used for style updates
     //array and object are for supporting eval:ing strings — both are edited as a literal
     //in the property panel, so the value that reaches setInputValue is the typed text
-    const typesToSaveInInput = ['color', 'textStyle', 'array', 'object'];
+    //
+    //NDA-014: `string` is here for the *outbound* half of the object/array <-> string
+    //typecasts (`node.ts` setInputValue, PORT-TYPE-CONTRACT.md §"object → string"). That
+    //branch keys off `inputTypeName === 'string'`, so while `string` was absent from this
+    //list it could never be true for a declared port and the cast was unreachable on every
+    //graph — the editor's typecast table permitted the connection, the value arrived, and a
+    //Text node rendered `[object Object]`. Found by wiring it in the running editor; there
+    //was no corpus row, so nothing was measuring the half that had been written.
+    const typesToSaveInInput = ['color', 'textStyle', 'array', 'object', 'string'];
 
     typesToSaveInInput.forEach((type) => {
       if (input.type && (input.type === type || (input.type as PortType).name === type)) {

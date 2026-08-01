@@ -8,6 +8,8 @@ interface OutputPropertyArgs {
   /** The node this port belongs to. Required. */
   owner: RuntimeNode;
   name: string;
+  /** The port's declared type, carried so a connection can apply a typecast (NDA-014). */
+  type?: unknown;
   onFirstConnectionAdded?: (this: RuntimeNode) => void;
   onLastConnectionRemoved?: (this: RuntimeNode) => void;
 }
@@ -31,6 +33,11 @@ const OutputProperty = function OutputProperty(this: RuntimeOutputProperty, args
   this.connections = [];
   this.owner = args.owner;
   (this as { name: string }).name = args.name;
+  // NDA-014: the *declared* type of this port, kept so the object/array -> string typecast
+  // can be scoped to what the typecast table actually describes — a wire between two
+  // declared ports. Without it the cast could only key off the runtime shape of the value,
+  // which also catches an object handed to a `*` port or set directly through the API.
+  (this as { type?: unknown }).type = args.type;
   this.onFirstConnectionAdded = args.onFirstConnectionAdded;
   this.onLastConnectionRemoved = args.onLastConnectionRemoved;
 
@@ -131,7 +138,9 @@ Object.defineProperties(OutputProperty.prototype, {
 
       for (var i = 0, len = this.connections.length; i < len; i++) {
         var connection = this.connections[i];
-        connection.node._setValueFromConnection(connection.inputPortName, value);
+        // The declared type travels with the value: the receiving node needs to know it came
+        // from an `object`/`array` port to apply the string typecast (NDA-014).
+        connection.node._setValueFromConnection(connection.inputPortName, value, this.type);
       }
     }
   },

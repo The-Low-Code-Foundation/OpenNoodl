@@ -454,10 +454,20 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
         return;
       }
 
-      if (name.startsWith('out-'))
+      if (name.startsWith('out-')) {
+        const label = name.substring('out-'.length);
+        // NDA-014: the author picks this output's type in the `scriptOutputs` proplist, which
+        // is stored as the `outtype-<label>` parameter — the same expression the editor-side
+        // port list uses below. Registering the port *without* it left every Function output
+        // untyped at runtime, so the object -> string typecast (which is scoped to a wire
+        // between two declared ports) could not recognise the very case the contract names:
+        // "a Function `object` output wired to a Text node shows JSON".
+        const declaredType = this.model && this.model.parameters && this.model.parameters['outtype-' + label];
         return this.registerOutput(name, {
-          getter: this.getScriptOutputValue.bind(this, name.substring('out-'.length))
+          type: (declaredType as string) || '*',
+          getter: this.getScriptOutputValue.bind(this, label)
         });
+      }
     }
   }
 };

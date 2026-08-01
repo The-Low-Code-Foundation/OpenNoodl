@@ -377,34 +377,14 @@ Node.prototype.setInputValue = function (name, value) {
         });
       }
     }
-  } else if (inputTypeName === 'string' && value !== null && typeof value === 'object') {
-    // The outbound half of the object/array <-> string typecasts
-    // (PORT-TYPE-CONTRACT.md): the table lets an object output reach a string
-    // input, and the useful string form is JSON. Values with a toString of
-    // their own (Date, via the long-standing date -> string cast) keep the
-    // String() rendering they have always had — only values that would print
-    // "[object Object]" (or an array's bare join) get the JSON treatment.
-    if (Array.isArray(value) || String(value) === '[object Object]') {
-      try {
-        value = JSON.stringify(value);
-      } catch (e) {
-        // Circular structures cannot be a string; deliver '' rather than throw
-        // mid-update. Same guarded reporting as the parse branch above.
-        value = '';
-        if (this.context.editorConnection && this.nodeScope && this.nodeScope.componentOwner) {
-          this.context.editorConnection.sendWarning(
-            this.nodeScope.componentOwner.name,
-            this.id,
-            'unstringifiable-object-' + name,
-            {
-              showGlobally: true,
-              message: 'Could not convert object to string<br>' + e.toString()
-            }
-          );
-        }
-      }
-    }
   }
+  // NOTE: the *outbound* half of the object/array <-> string typecasts is deliberately NOT
+  // here. It lives in `_setValueFromConnection`, because a typecast is a contract between two
+  // **declared ports** and this function is also the ordinary API for setting a parameter.
+  // Applying it here converted an object handed straight to a string port, which broke two
+  // tested behaviours that depend on seeing the raw value — `net.noodl.TextAccumulator`
+  // naming a mis-wired object chunk (NDA-004 B1), and the `Object` node dereferencing a plain
+  // object wired to `Id` (NDA-012 C3). See `_setValueFromConnection`.
 
   input.set.call(this, value);
 };
@@ -422,6 +402,7 @@ Node.prototype.registerOutput = function (name, output) {
     owner: this,
     getter: output.get || output.getter,
     name: name,
+    type: output.type,
     onFirstConnectionAdded: output.onFirstConnectionAdded,
     onLastConnectionRemoved: output.onLastConnectionRemoved
   });
@@ -747,7 +728,58 @@ Node.prototype.raiseRuntimeError = function (code: string, message: string, deta
   });
 };
 
-Node.prototype._setValueFromConnection = function (inputName, value) {
+/**
+ * A value arriving over a wire.
+ *
+ * `sourceType` is the *declared* type of the output port it came from, and it is what scopes
+ * the object/array -> string typecast (PORT-TYPE-CONTRACT.md). The table describes a cast
+ * between two declared ports, so all three of these must hold: the source port is declared
+ * `object`/`array`, the target input is declared `string`, and the value really is an object.
+ *
+ * ⚠️ **Narrowed from the contract's literal wording on purpose.** It says "a non-null
+ * `object`/`array` value arriving at a `string`-typed input is `JSON.stringify`ed", which is
+ * phrased in terms of the *runtime shape* of the value. Implemented that way it also fires
+ * for an object arriving from a `*` port and for one set directly through `setInputValue`,
+ * and it broke two deliberately pinned behaviours: `net.noodl.TextAccumulator` refusing an
+ * object chunk and naming the mis-wiring (NDA-004 B1), and the `Object` node dereferencing a
+ * plain object wired to `Id` from a `*` output (NDA-012 C3). Both are cases the typecast
+ * table never claimed. The wording is worth amending to match.
+ */
+Node.prototype._setValueFromConnection = function (inputName, value, sourceType) {
+  const sourceTypeName =
+    typeof sourceType === 'string' ? sourceType : sourceType && (sourceType as { name?: string }).name;
+
+  if ((sourceTypeName === 'object' || sourceTypeName === 'array') && value !== null && typeof value === 'object') {
+    const input = this._inputs[inputName];
+    const targetType = input && input.type;
+    const targetTypeName = typeof targetType === 'string' ? targetType : targetType && targetType.name;
+
+    if (targetTypeName === 'string') {
+      // Values with a `toString` of their own — a Date, via the long-standing date -> string
+      // cast — are left alone: only values that would print "[object Object]" (or an array's
+      // bare join, which looks deceptively reasonable) get the JSON treatment.
+      if (Array.isArray(value) || String(value) === '[object Object]') {
+        try {
+          value = JSON.stringify(value);
+        } catch (e) {
+          // Circular structures cannot be a string; deliver '' rather than throw mid-update.
+          value = '';
+          if (this.context.editorConnection && this.nodeScope && this.nodeScope.componentOwner) {
+            this.context.editorConnection.sendWarning(
+              this.nodeScope.componentOwner.name,
+              this.id,
+              'unstringifiable-object-' + inputName,
+              {
+                showGlobally: true,
+                message: 'Could not convert object to string<br>' + e.toString()
+              }
+            );
+          }
+        }
+      }
+    }
+  }
+
   this._valuesFromConnections[inputName] = value;
   this.queueInput(inputName, value);
 };

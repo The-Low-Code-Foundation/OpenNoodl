@@ -127,6 +127,8 @@ export interface RuntimeOutputProperty {
   readonly value: unknown;
   getter: (this: RuntimeNode) => unknown;
   owner: RuntimeNode;
+  /** The port's declared type, used to scope the object/array -> string typecast (NDA-014). */
+  type?: unknown;
   connections: OutputConnection[];
   onFirstConnectionAdded?: (this: RuntimeNode) => void;
   onLastConnectionRemoved?: (this: RuntimeNode) => void;
@@ -223,7 +225,7 @@ export interface RuntimeNode extends NodeInstance {
   _evaluateExpressionParameter(paramValue: unknown, portName: string): unknown;
   _updateDependencies(): void;
   _performDirtyUpdate(): void;
-  _setValueFromConnection(inputName: string, value: unknown): void;
+  _setValueFromConnection(inputName: string, value: unknown, sourceType?: unknown): void;
   _setPulseFromConnection(inputName: string): void;
   _hasInputBeenSetFromAConnection(inputName: string): boolean;
   _onNodeDeleted(): void;

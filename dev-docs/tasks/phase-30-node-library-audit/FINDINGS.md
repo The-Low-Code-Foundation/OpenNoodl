@@ -2551,6 +2551,87 @@ Also fixed: `getDOMElement` itself tested `innerRef instanceof Element` unguarde
 shared accessor would have re-introduced the SSR `ReferenceError` `DV-xvi` item 2 removed. The guard
 now lives in the accessor rather than at one call site, which fixes it for every caller.
 
+## The Tier-1 live-QA tails (2026-08-01, ninth session)
+
+### TT-i — the `object → string` typecast has never been able to fire
+
+**The reported symptom, and the one PORT-TYPE-CONTRACT.md leads with**: *"wire it to a Text node and
+see it"*. NDA-014 §2 added the table entry, `setInputValue` gained the JSON conversion, the editor's
+live typecast table was checked on 2026-07-29 — and wiring a Function's `object` output to a Text
+node in the running editor still rendered **`[object Object]`**.
+
+Three separate things had to be true for the cast to work and only the first was:
+
+1. The **table** permits `object → string`. ✅ It always did, and that is what the 07-29 pass checked.
+2. The **receiving port** must be recognisable as `string`. ❌ `nodedefinition.ts:47` copied a
+   declared port's type onto the instance only for `color`/`textStyle`/`array`/`object`, so *every*
+   declared `string` port in the library had **no type at runtime**. The branch keys off
+   `inputTypeName === 'string'`, so it could never be true on any graph.
+3. The **sending port** must be recognisable as `object`. ❌ The Function node registers its
+   author-declared outputs through `registerOutputIfNeeded`, which passed **no type at all** — the
+   author's choice lives in the `outtype-<label>` parameter, which the editor-side port list reads
+   and the runtime registration did not.
+
+⚠️ **There was no corpus row for any of it.** Not a row that passed for the wrong reason — no row.
+The half that had been written was measured by nothing, which is how a contract's headline example
+shipped unable to run. Nine rows now cover it (`nda-014-outbound-string-cast.test.ts`).
+
+⚠️ **And the first eight of those rows would still have missed it.** They emit from a corpus node
+that declares `type: 'object'` the ordinary way, so they went green against a runtime the editor was
+still rendering `[object Object]` on. Only the ninth — which instantiates the **real** Function node
+and lets it register its own ports — reddens when the Function-node half is reverted. Same lesson as
+`DV-xvii`, arrived at from the other direction: *a fake that declares its ports the easy way is a
+claim about the real collaborator, and the easy way is exactly what the real one does not do.*
+
+### TT-ii — the contract's wording, implemented literally, breaks two pinned behaviours
+
+The contract says "a non-null `object`/`array` value arriving at a **`string`-typed** input is
+`JSON.stringify`ed" — phrased as a property of the **runtime shape of the value**. Implemented that
+way (the obvious reading, and the first thing built), it fired in two places the typecast *table*
+never described, and the existing suite caught both:
+
+- **`net.noodl.TextAccumulator`** refuses an object chunk and names the mis-wiring instead of
+  appending `[object Object]` (NDA-004 B1, 5 rows). It can only do that while the raw object reaches
+  its setter — and those tests call `setInputValue` **directly**, with no connection and no source
+  port at all.
+- **The `Object` node** dereferences a plain JS object wired to `Id` into a record (NDA-012 C3,
+  pinned as a control precisely because "one character away from breaking this"). Its source is a
+  `*` output.
+
+The cast is now scoped to what the table actually describes — **a wire between two declared ports**:
+source declared `object`/`array`, target declared `string`. Both behaviours survive, and two rows
+pin the *scope* so a future widening reddens rather than silently regressing them.
+**The contract's wording is worth amending to match; that is Richard's call, not this session's.**
+
+⚠️ Generalises: **a contract phrased over values will over-apply if the thing it describes is a
+relationship between ports.** Both counter-examples were already tested, and neither was found by
+reading the contract — they were found by running the suite.
+
+### TT-iii — the QA fixture cannot serve the criteria that name it
+
+NDA-002 criterion 3 and NDA-013 criterion 4 both name "the QA fixture". It has since been replaced
+(the NodeGX QA Fixture superseded *Shine Phase 2*), and the replacement contains:
+
+- **no `For Each` node at all** — so NDA-013's "the QA fixture's repeater graphs render identically"
+  names graphs that do not exist;
+- Collection consumers that are **only** the two DB-backed nodes, with no local data;
+- two Function nodes wired to **nothing**.
+
+Checked against it alone, all three criteria would have gone green having exercised none of the code
+they name. ⚠️ **A criterion that names an instrument by name goes stale when the instrument is
+replaced, and nothing in either document points at the other.**
+
+### TT-iv — the warnings chip and the Problems panel are two different systems
+
+The QA fixture shows **`3`** on the toolbar chip and **`0 errors · 2 warnings`** in the Problems
+panel, and both are correct: the chip reads `instance.warningsAmount` (the editor **warnings
+service**, fed by `editorConnection.sendWarning` — which is where a `runtime/cyclic-loop` surfaces),
+while the Problems panel lists **semantic-validator** findings (here, two `Unknown node type
+"Markdown"`). ⚠️ **Reading the Problems panel to check for cyclic-loop warnings is the wrong
+instrument** and would have reported a clean fixture either way. The load-bearing readings are the
+chip being **absent entirely** on the churn fixture (`warningsAmount === 0`) and `runtime/cyclic-loop`
+appearing **0 times** in `.logs/dev.log`.
+
 ## What these passes did *not* cover
 
 - **76 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No

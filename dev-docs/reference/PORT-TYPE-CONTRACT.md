@@ -50,6 +50,25 @@ worse than the fence it replaced. Same guarded-reporting pattern as the eval bra
 structures raise through the error channel and deliver `''`). Scope the mirror to inputs whose
 declared type is `string` — do not stringify into `*` inputs, which legitimately receive objects.
 
+> ⚠️ **Amended 2026-08-01 after building it, and the wording above is the pre-amendment text.**
+> The clause is phrased over the **runtime shape of the value** ("a non-null `object`/`array` value
+> arriving at a `string`-typed input"). Implemented literally it also fires for an object handed to
+> a string port **directly through `setInputValue`** — which is not a wire at all — and for one
+> arriving from a `*`-typed *output*. Both break behaviours that were already pinned:
+> `net.noodl.TextAccumulator` refusing an object chunk and naming the mis-wiring (NDA-004 B1), and
+> the `Object` node dereferencing a plain object wired to `Id` (NDA-012 C3).
+>
+> **As built, the cast is a property of a wire between two declared ports**: source declared
+> `object`/`array`, target declared `string`, applied in `_setValueFromConnection`. That is what the
+> table above actually describes — a cast *from* one port type *to* another. Rows
+> `NDA-014 scope: …` in `nda-014-outbound-string-cast.test.ts` pin it.
+>
+> ⚠️ Two things had to be plumbed before the cast could fire at all, and neither was obvious from
+> this document: a declared `string` port carried **no type at runtime** (`nodedefinition.ts`
+> `typesToSaveInInput`), and the Function node registered its author-declared outputs with **no
+> type** (`registerOutputIfNeeded`, where the type lives in the `outtype-<label>` parameter). See
+> FINDINGS `TT-i`. **Richard to confirm the amended wording.**
+
 ### Function/Script output enum
 
 With the casts in place, choosing `Object` on a Function output is no longer strictly worse than
