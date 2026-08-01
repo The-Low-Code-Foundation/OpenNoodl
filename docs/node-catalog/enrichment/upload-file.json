@@ -8,9 +8,17 @@
     "private": "Boolean, default false. When true the backend ACLs the upload to its uploader instead of leaving it public — the resulting cloudfile's plain `url` then only works for the uploader (or an admin); use Sign File URL to get a usable link back out.",
     "upload": "Signal; starts the upload.",
     "cloudFile": "The stored file's handle, valid from `success` onward.",
-    "progressLoadedPercent": "Number level 0–100 while uploading; drive progress UI from here."
+    "progressLoadedPercent": "Number level 0–100 while uploading; drive progress UI from here.",
+    "bucket": "Supabase Storage bucket to upload into. Supabase only, and there is no default.",
+    "path": "Object path inside the bucket, e.g. avatars/me.png. Supabase only; blank uses the file's own name.",
+    "collection": "PocketBase collection holding the record the file attaches to. PocketBase only.",
+    "recordId": "The record the file attaches to. PocketBase only.",
+    "field": "The file-typed field on that record. PocketBase only."
   },
-  "examples": ["cloud-create-record-with-upload", "cloud-sign-private-file-url"],
+  "examples": [
+    "cloud-create-record-with-upload",
+    "cloud-sign-private-file-url"
+  ],
   "patterns": [
     "Picker `success` → `upload`, upload `success` → record write: three nodes, each owning one step.",
     "`private: true` uploads pair with Sign File URL: wire the same `success` signal to both the record write and the signer."
@@ -19,5 +27,12 @@
     "Treating `cloudFile` as set before `success` fired — sequence record writes on the success signal.",
     "Setting `private: true` and then binding `cloudFile.url` straight to an Image/link — a private file's plain url 403s for anyone but the uploader; sign it first."
   ],
-  "relatedNodes": ["Open File Picker", "Cloud File", "Sign File URL", "NewDbModelProperties", "SetDbModelProperties"]
+  "relatedNodes": [
+    "Open File Picker",
+    "Cloud File",
+    "Sign File URL",
+    "NewDbModelProperties",
+    "SetDbModelProperties"
+  ],
+  "runtimeBehavior": "A `backendId` (Backend) input is registered at runtime rather than declared, so it appears only once a project has more than one backend — the node then uploads through whichever backend the picker names instead of the project's `cloudservices` endpoint (BCN-007 step 6). A backend id naming nothing is an error, never a silent fallback. The static inputs are also **per backend, not universal**: `bucket` and `path` are Supabase Storage only, and `collection`/`recordId`/`field` are PocketBase only, because PocketBase stores a file as a field on a record rather than as an object of its own. Leave them unset on the built-in, Parse and Directus backends. BCN-010 gates the node on `files.upload`, so a backend that cannot accept an upload marks the node with the reason before it is triggered."
 }

@@ -2139,6 +2139,20 @@
           "displayName": "Signed URL"
         },
         {
+          "name": "urlKind",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "URL Kind"
+        },
+        {
+          "name": "isShareable",
+          "type": "boolean",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Safe To Share"
+        },
+        {
           "name": "expiresAt",
           "type": "string",
           "plug": "output",

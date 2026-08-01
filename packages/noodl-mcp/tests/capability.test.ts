@@ -24,8 +24,15 @@ describe('capability facts on get_node_type', () => {
     // The sentence, not the state — an agent relaying "Directus has no
     // magic-link login" to a user is worth more than relaying `unsupported`.
     expect(c?.notOn?.directus).toContain('no magic-link login');
-    // Supabase can, so it must NOT appear.
-    expect(c?.notOn?.supabase).toBeUndefined();
+    // The built-in backend can — BAK-004 shipped passwordless — so it must NOT
+    // appear. `notOn` lists what a builder would hit, not every backend there is.
+    expect(c?.notOn?.nodegx).toBeUndefined();
+    // ⚠️ Supabase DOES appear, and that is the interesting case: its cell is
+    // `conditional` and unprobed, which the gate reads as unavailable. An agent
+    // told "magic links are first-class in Supabase" would author a flow that
+    // cannot run, because that is a fact about Supabase and not about whether
+    // NodeGX can reach it (BCN-006). The reason says exactly that.
+    expect(c?.notOn?.supabase).toContain('does not support it on this backend yet');
   });
 
   it('carries port-level gates', () => {

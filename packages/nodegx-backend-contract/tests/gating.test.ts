@@ -215,8 +215,20 @@ describe('gateFor', () => {
   it('the live-pass cells are what the live pass expects to find', () => {
     // Pinned so that a later flip of any of these announces itself here rather
     // than by silently changing what the criterion-3 demonstration shows.
+    //
+    // ⚠️ **It has already earned its keep once.** BCN-010's live pass showed
+    // Request Magic Link disabled on Directus and *enabled on Supabase* — the
+    // pairing the spec names. BCN-006 then moved `supabase.auth.magicLink` to
+    // `conditional` on the same reasoning BCN-010 applied to Supabase realtime:
+    // magic links being first-class in Supabase is a fact about Supabase, not
+    // about whether we can reach them, and every `/auth/v1/*` 404s in the rig.
+    // That is the right cell. It is re-pinned here rather than relaxed, and the
+    // enabled-somewhere half of the demonstration moves to the built-in backend,
+    // where BAK-004 actually shipped passwordless.
     expect(gateFor('directus', 'auth.magicLink').isUsable).toBe(false);
-    expect(gateFor('supabase', 'auth.magicLink').isUsable).toBe(true);
+    expect(gateFor('supabase', 'auth.magicLink').isUsable).toBe(false);
+    expect(gateFor('supabase', 'auth.magicLink').declared).toBe('conditional');
+    expect(gateFor('nodegx', 'auth.magicLink').isUsable).toBe(true);
     expect(gateFor('directus', 'realtime.subscribe').declared).toBe('conditional');
     expect(gateFor('directus', 'realtime.subscribe').isUnprobed).toBe(true);
     expect(gateFor('pocketbase', 'data.aggregate').isUsable).toBe(false);
