@@ -331,3 +331,32 @@
   height: 32px;
   color: var(--theme-color-fg-default);
 }
+
+/* BCN-010 — a port the chosen backend cannot serve.
+   The control is dimmed and inert; the sentence under it is the deliverable.
+   Amber rather than red: phase 23's colour law reserves red for danger, and
+   "this backend does not do that" is information, not an error. */
+.property-capability-gated {
+  display: block;
+}
+
+.property-capability-gated-control {
+  pointer-events: none;
+  opacity: 0.35;
+  filter: saturate(0.4);
+}
+
+.property-capability-reason {
+  margin: 2px 8px 8px 8px;
+  padding-left: 6px;
+  border-left: 2px solid var(--theme-color-warning);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  line-height: 1.35;
+  opacity: 0.85;
+}
+
+/* A `degraded` port still works, so it is not dimmed — only annotated. */
+.property-capability-gated[data-capability-state='degraded'] .property-capability-reason {
+  border-left-color: var(--theme-color-notice-dim);
+}

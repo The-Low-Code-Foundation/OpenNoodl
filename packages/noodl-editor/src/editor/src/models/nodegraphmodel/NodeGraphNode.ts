@@ -9,6 +9,7 @@ import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
 import { UnknownNodeType } from '@noodl-models/nodelibrary/UnknownNodeType';
 import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
 import { WarningsModel } from '@noodl-models/warningsmodel';
+import { capabilityWarningFor } from '@noodl-utils/capability-gating/nodeWarning';
 
 import Model from '../../../../shared/model';
 import { ParameterValueResolver } from '../../utils/ParameterValueResolver';
@@ -1007,6 +1008,25 @@ export class NodeGraphNode extends Model {
             level: 'error'
           }
         : undefined
+    );
+
+    // BCN-010 — what the chosen backend cannot do, on the node that would try it.
+    //
+    // Raised through `WarningsModel` rather than as a new canvas affordance
+    // because that is the seam that already reaches every surface a builder
+    // looks at: the titlebar icon, the hover tooltip carrying the sentence, the
+    // component-tree dot and the top-bar count — and `EditorEventBindings`
+    // repaints the canvas on `warningsChanged`, so nothing else has to know.
+    //
+    // ⚠️ `level: 'warning'`, never `'error'`, and `showGlobally: false`. This is
+    // not a broken node: it is a node that will report a refusal at runtime, and
+    // the whole point of saying so here is that the builder finds out *before*
+    // then. Counting it globally would put a permanent number in the top bar for
+    // every project whose backend does not do everything, which is every project.
+    const capabilityWarning = capabilityWarningFor(this);
+    WarningsModel.instance.setWarning(
+      { component: this.owner.owner, node: this, key: 'node-capability' },
+      capabilityWarning ? { message: capabilityWarning, level: 'warning' } : undefined
     );
 
     // Merge conflicts

@@ -15561,7 +15561,7 @@
     },
     {
       "typeName": "NewDbModelProperties",
-      "displayName": "Create New Record",
+      "displayName": "Create Record",
       "category": "Data",
       "isVisual": false,
       "isDeprecated": false,
@@ -22840,7 +22840,7 @@
     },
     {
       "typeName": "SetDbModelProperties",
-      "displayName": "Set Record Properties",
+      "displayName": "Update Record",
       "category": "Data",
       "isVisual": false,
       "isDeprecated": false,

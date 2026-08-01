@@ -56,7 +56,9 @@
     },
     {
       "from": "color",
-      "to": []
+      "to": [
+        "string"
+      ]
     },
     {
       "from": "enum",
@@ -64,7 +66,9 @@
     },
     {
       "from": "object",
-      "to": []
+      "to": [
+        "string"
+      ]
     },
     {
       "from": "domelement",
@@ -93,7 +97,8 @@
     {
       "from": "array",
       "to": [
-        "collection"
+        "collection",
+        "string"
       ]
     }
   ],
@@ -275,6 +280,50 @@
           "displayName": "Template"
         },
         {
+          "name": "taskStartInput",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Template Contract",
+          "displayName": "Start Input",
+          "default": "Do"
+        },
+        {
+          "name": "taskSuccessOutput",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Template Contract",
+          "displayName": "Success Output",
+          "default": "Success"
+        },
+        {
+          "name": "taskFailureOutput",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Template Contract",
+          "displayName": "Failure Output",
+          "default": "Failure"
+        },
+        {
+          "name": "taskErrorOutput",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Template Contract",
+          "displayName": "Error Output",
+          "default": "Error"
+        },
+        {
           "name": "run",
           "type": {
             "name": "signal",
@@ -332,6 +381,7 @@
         "fetch"
       ],
       "displayNodeName": "REST",
+      "deprecated": true,
       "docs": "https://docs.noodl.net/nodes/data/rest",
       "shortDocs": "https://docs.noodl.net/nodes/data/rest-short.md",
       "category": "Data",
@@ -467,7 +517,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Expression"
+          "displayName": "Expression",
+          "description": "JavaScript expression whose value becomes Result; every identifier in it becomes an input port"
         },
         {
           "name": "run",
@@ -477,7 +528,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Run"
+          "displayName": "Run",
+          "description": "Evaluates the expression; connecting this stops it evaluating whenever an input changes"
         },
         {
           "name": "result",
@@ -513,6 +565,20 @@
           "plug": "output",
           "group": "Events",
           "displayName": "On False"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error"
         },
         {
           "name": "asString",
@@ -559,7 +625,8 @@
             "allowEditOnly": true
           },
           "plug": "input",
-          "group": "Script Inputs"
+          "group": "Script Inputs",
+          "description": "Names of the values the script reads from Inputs, each becoming an input port"
         },
         {
           "name": "scriptOutputs",
@@ -568,7 +635,8 @@
             "allowEditOnly": true
           },
           "plug": "input",
-          "group": "Script Outputs"
+          "group": "Script Outputs",
+          "description": "Names of the values the script writes to Outputs, each becoming an output port"
         },
         {
           "name": "functionScript",
@@ -579,7 +647,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Script"
+          "displayName": "Script",
+          "description": "JavaScript run when Run fires, reading Inputs.name and writing Outputs.name"
         },
         {
           "name": "run",
@@ -589,7 +658,29 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Run"
+          "displayName": "Run",
+          "description": "Runs the script; connecting this stops it running whenever an input changes"
+        },
+        {
+          "name": "success",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error"
         }
       ]
     },
@@ -619,7 +710,8 @@
             "editorType": "logic-builder-workspace"
           },
           "plug": "input",
-          "displayName": "Logic Blocks"
+          "displayName": "Logic Blocks",
+          "description": "The block program itself, authored in the block editor — it decides which ports this node has, so editing it adds and removes ports"
         },
         {
           "name": "generatedCode",
@@ -629,7 +721,8 @@
             "editorType": "logic-builder-hidden"
           },
           "plug": "input",
-          "displayName": "Generated Code"
+          "displayName": "Generated Code",
+          "description": "The JavaScript the block editor writes out of Logic Blocks and the runtime actually executes; it is overwritten on every block edit, so hand edits do not survive"
         },
         {
           "name": "run",
@@ -640,15 +733,28 @@
           "plug": "input",
           "group": "Signals",
           "displayName": "Run",
-          "editorName": "hidden"
+          "description": "Runs the block program once; the blocks never run on their own, so a value arriving at an input changes nothing until this fires"
+        },
+        {
+          "name": "success",
+          "type": "signal",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Failure"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Error",
-          "editorName": "hidden"
+          "displayName": "Error"
         }
       ]
     },
@@ -709,6 +815,90 @@
           "plug": "output",
           "group": "Error",
           "displayName": "Error"
+        },
+        {
+          "name": "subscribed",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Realtime",
+          "displayName": "Subscribed"
+        },
+        {
+          "name": "realtimeStatus",
+          "type": "string",
+          "plug": "output",
+          "group": "Realtime",
+          "displayName": "Realtime Status"
+        },
+        {
+          "name": "realtimeError",
+          "type": "object",
+          "plug": "output",
+          "group": "Realtime",
+          "displayName": "Realtime Error"
+        },
+        {
+          "name": "realtimeFailure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Realtime",
+          "displayName": "Realtime Failure"
+        },
+        {
+          "name": "created",
+          "type": "signal",
+          "plug": "output",
+          "group": "Realtime",
+          "displayName": "Record Created"
+        },
+        {
+          "name": "updated",
+          "type": "signal",
+          "plug": "output",
+          "group": "Realtime",
+          "displayName": "Record Updated"
+        },
+        {
+          "name": "deleted",
+          "type": "signal",
+          "plug": "output",
+          "group": "Realtime",
+          "displayName": "Record Deleted"
+        },
+        {
+          "name": "changed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Realtime",
+          "displayName": "Records Changed"
+        },
+        {
+          "name": "changedEvent",
+          "type": "string",
+          "plug": "output",
+          "group": "Realtime",
+          "displayName": "Change Type"
+        },
+        {
+          "name": "changedRecord",
+          "type": "object",
+          "plug": "output",
+          "group": "Realtime",
+          "displayName": "Changed Record"
+        },
+        {
+          "name": "changedRecords",
+          "type": "array",
+          "plug": "output",
+          "group": "Realtime",
+          "displayName": "Changed Records"
+        },
+        {
+          "name": "changedRecordId",
+          "type": "string",
+          "plug": "output",
+          "group": "Realtime",
+          "displayName": "Changed Record Id"
         }
       ]
     },
@@ -733,7 +923,22 @@
               },
               "plug": "input",
               "group": "General",
-              "displayName": "Id"
+              "displayName": "Id",
+              "description": "Id of the record to read; ignored unless Id Source is Specify explicitly"
+            }
+          ]
+        },
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = foreach",
+          "ports": [
+            {
+              "name": "repeaterComponent",
+              "type": "component",
+              "plug": "input",
+              "group": "General",
+              "displayName": "Repeater Component",
+              "description": "Which repeater to take the current item from when nesting makes the nearest one ambiguous; leave blank for the nearest, and ignored unless Id Source is From repeater"
             }
           ]
         }
@@ -758,7 +963,16 @@
           "plug": "input",
           "group": "General",
           "displayName": "Id Source",
+          "description": "Whether the record is named by Id or taken from the repeater this node sits inside",
           "default": "explicit"
+        },
+        {
+          "name": "repeaterComponent",
+          "type": "component",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Repeater Component",
+          "description": "Which repeater to take the current item from when nesting makes the nearest one ambiguous; leave blank for the nearest, and ignored unless Id Source is From repeater"
         },
         {
           "name": "modelId",
@@ -768,7 +982,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the record to read; ignored unless Id Source is Specify explicitly"
         },
         {
           "name": "fetch",
@@ -778,7 +993,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Fetch"
+          "displayName": "Fetch",
+          "description": "Re-reads the record from the backend, replacing the copy held in memory"
         },
         {
           "name": "id",
@@ -819,7 +1035,7 @@
     },
     {
       "name": "SetDbModelProperties",
-      "displayNodeName": "Set Record Properties",
+      "displayNodeName": "Update Record",
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/set-record-properties",
       "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/set-record-properties-short.md",
       "category": "Data",
@@ -866,6 +1082,19 @@
               "plug": "input",
               "group": "General",
               "displayName": "Id"
+            }
+          ]
+        },
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = foreach",
+          "ports": [
+            {
+              "name": "repeaterComponent",
+              "type": "component",
+              "plug": "input",
+              "group": "General",
+              "displayName": "Repeater Component"
             }
           ]
         }
@@ -942,6 +1171,13 @@
           "displayName": "Id Source",
           "default": "explicit",
           "tooltip": "Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater."
+        },
+        {
+          "name": "repeaterComponent",
+          "type": "component",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Repeater Component"
         },
         {
           "name": "modelId",
@@ -1021,6 +1257,19 @@
               "displayName": "Id"
             }
           ]
+        },
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = foreach",
+          "ports": [
+            {
+              "name": "repeaterComponent",
+              "type": "component",
+              "plug": "input",
+              "group": "General",
+              "displayName": "Repeater Component"
+            }
+          ]
         }
       ],
       "ports": [
@@ -1055,6 +1304,13 @@
           "displayName": "Id Source",
           "default": "explicit",
           "tooltip": "Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater."
+        },
+        {
+          "name": "repeaterComponent",
+          "type": "component",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Repeater Component"
         },
         {
           "name": "modelId",
@@ -1099,7 +1355,7 @@
     },
     {
       "name": "NewDbModelProperties",
-      "displayNodeName": "Create New Record",
+      "displayNodeName": "Create Record",
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/create-new-record",
       "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/create-new-record-short.md",
       "category": "Data",
@@ -1193,6 +1449,19 @@
               "displayName": "Id"
             }
           ]
+        },
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = foreach",
+          "ports": [
+            {
+              "name": "repeaterComponent",
+              "type": "component",
+              "plug": "input",
+              "group": "General",
+              "displayName": "Repeater Component"
+            }
+          ]
         }
       ],
       "ports": [
@@ -1227,6 +1496,13 @@
           "displayName": "Id Source",
           "default": "explicit",
           "tooltip": "Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater."
+        },
+        {
+          "name": "repeaterComponent",
+          "type": "component",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Repeater Component"
         },
         {
           "name": "modelId",
@@ -1304,6 +1580,19 @@
               "displayName": "Id"
             }
           ]
+        },
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = foreach",
+          "ports": [
+            {
+              "name": "repeaterComponent",
+              "type": "component",
+              "plug": "input",
+              "group": "General",
+              "displayName": "Repeater Component"
+            }
+          ]
         }
       ],
       "ports": [
@@ -1338,6 +1627,13 @@
           "displayName": "Id Source",
           "default": "explicit",
           "tooltip": "Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater."
+        },
+        {
+          "name": "repeaterComponent",
+          "type": "component",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Repeater Component"
         },
         {
           "name": "modelId",
@@ -1450,6 +1746,20 @@
           "plug": "output",
           "group": "Events",
           "displayName": "Filtered"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error"
         }
       ]
     },
@@ -1478,6 +1788,19 @@
               "displayName": "Id"
             }
           ]
+        },
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = foreach",
+          "ports": [
+            {
+              "name": "repeaterComponent",
+              "type": "component",
+              "plug": "input",
+              "group": "General",
+              "displayName": "Repeater Component"
+            }
+          ]
         }
       ],
       "ports": [
@@ -1501,6 +1824,13 @@
           "group": "General",
           "displayName": "Get Id from",
           "default": "explicit"
+        },
+        {
+          "name": "repeaterComponent",
+          "type": "component",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Repeater Component"
         },
         {
           "name": "modelId",
@@ -1581,6 +1911,19 @@
               "displayName": "Id"
             }
           ]
+        },
+        {
+          "name": "conditionalports/extended",
+          "condition": "idSource = foreach",
+          "ports": [
+            {
+              "name": "repeaterComponent",
+              "type": "component",
+              "plug": "input",
+              "group": "General",
+              "displayName": "Repeater Component"
+            }
+          ]
         }
       ],
       "ports": [
@@ -1616,6 +1959,13 @@
           "default": "explicit"
         },
         {
+          "name": "repeaterComponent",
+          "type": "component",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Repeater Component"
+        },
+        {
           "name": "modelId",
           "type": {
             "name": "string",
@@ -1649,6 +1999,20 @@
           "plug": "output",
           "group": "General",
           "displayName": "Id"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
         }
       ]
     },
@@ -1708,7 +2072,8 @@
           "type": "cloudfile",
           "plug": "input",
           "group": "General",
-          "displayName": "Cloud File"
+          "displayName": "Cloud File",
+          "description": "Stored file to read, as an Upload File node or a record property produces it; any other value leaves the previous file in place"
         },
         {
           "name": "url",
@@ -1723,6 +2088,97 @@
           "plug": "output",
           "group": "General",
           "displayName": "Name"
+        },
+        {
+          "name": "contentType",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Content Type"
+        },
+        {
+          "name": "size",
+          "type": "number",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Size"
+        }
+      ]
+    },
+    {
+      "name": "Sign File URL",
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/sign-file-url",
+      "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/sign-file-url-short.md",
+      "category": "Cloud Services",
+      "color": "data",
+      "ports": [
+        {
+          "name": "file",
+          "type": "cloudfile",
+          "plug": "input",
+          "group": "General",
+          "displayName": "File",
+          "description": "Stored file to mint a link for, as an Upload File node or a record property produces it; any other value leaves the previous file in place"
+        },
+        {
+          "name": "sign",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Sign",
+          "description": "Mints a fresh link for File, refused for a caller who could not read the file directly"
+        },
+        {
+          "name": "url",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Signed URL"
+        },
+        {
+          "name": "expiresAt",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Expires At"
+        },
+        {
+          "name": "ttlSeconds",
+          "type": "number",
+          "plug": "output",
+          "group": "General",
+          "displayName": "TTL (Seconds)"
+        },
+        {
+          "name": "success",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Success"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error"
+        },
+        {
+          "name": "errorStatus",
+          "type": "number",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error Status Code"
         }
       ]
     },
@@ -1752,7 +2208,30 @@
           },
           "plug": "input",
           "displayName": "Value",
+          "description": "The empty-value contract (dev-docs/reference/EMPTY-VALUE-CONTRACT.md): `undefined` abstains and leaves the Variable's stored value untouched. `null` is a real value — it clears the Variable, is stored, and fires Changed. What \"cleared\" is stored as is controlled by `Treat empty as` (null by default).",
           "default": 0
+        },
+        {
+          "name": "treatEmptyAs",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Null (default)",
+                "value": "null"
+              },
+              {
+                "label": "Zero (0)",
+                "value": "zero"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced",
+          "displayName": "Treat empty as",
+          "description": "Back-compat for graphs written before Variables were nullable. `null` (default) keeps a cleared value distinguishable from a real 0. Choosing another option restores the pre-NDA-003 coercion for authors who relied on it.",
+          "default": "null"
         },
         {
           "name": "saveValue",
@@ -1801,7 +2280,30 @@
           },
           "plug": "input",
           "displayName": "Value",
+          "description": "The empty-value contract (dev-docs/reference/EMPTY-VALUE-CONTRACT.md): `undefined` abstains and leaves the Variable's stored value untouched. `null` is a real value — it clears the Variable, is stored, and fires Changed. What \"cleared\" is stored as is controlled by `Treat empty as` (null by default).",
           "default": ""
+        },
+        {
+          "name": "treatEmptyAs",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Null (default)",
+                "value": "null"
+              },
+              {
+                "label": "Empty string (\"\")",
+                "value": "empty-string"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced",
+          "displayName": "Treat empty as",
+          "description": "Back-compat for graphs written before Variables were nullable. `null` (default) keeps a cleared value distinguishable from a real \"\". Choosing another option restores the pre-NDA-003 coercion for authors who relied on it.",
+          "default": "null"
         },
         {
           "name": "saveValue",
@@ -1851,7 +2353,30 @@
           },
           "plug": "input",
           "displayName": "Value",
+          "description": "The empty-value contract (dev-docs/reference/EMPTY-VALUE-CONTRACT.md): `undefined` abstains and leaves the Variable's stored value untouched. `null` is a real value — it clears the Variable, is stored, and fires Changed. What \"cleared\" is stored as is controlled by `Treat empty as` (null by default).",
           "default": false
+        },
+        {
+          "name": "treatEmptyAs",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Null (default)",
+                "value": "null"
+              },
+              {
+                "label": "False",
+                "value": "false"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced",
+          "displayName": "Treat empty as",
+          "description": "Back-compat for graphs written before Variables were nullable. `null` (default) keeps a cleared value distinguishable from a real false. Choosing another option restores the pre-NDA-003 coercion for authors who relied on it.",
+          "default": "null"
         },
         {
           "name": "saveValue",
@@ -1893,7 +2418,8 @@
           "type": "boolean",
           "plug": "input",
           "group": "General",
-          "displayName": "Condition"
+          "displayName": "Condition",
+          "description": "Value to test for truth; it is re-tested on every change unless Evaluate is connected"
         },
         {
           "name": "eval",
@@ -1903,7 +2429,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Evaluate"
+          "displayName": "Evaluate",
+          "description": "Tests Condition now; connecting this stops the node testing on every change, so nothing happens until it fires"
         },
         {
           "name": "ontrue",
@@ -1973,13 +2500,15 @@
           "name": "trueString",
           "type": "string",
           "plug": "input",
-          "displayName": "String for true"
+          "displayName": "String for true",
+          "description": "Text published on Current Value while Selector is true"
         },
         {
           "name": "falseString",
           "type": "string",
           "plug": "input",
-          "displayName": "String for false"
+          "displayName": "String for false",
+          "description": "Text published on Current Value while Selector is false"
         },
         {
           "name": "input",
@@ -1987,7 +2516,8 @@
             "name": "boolean"
           },
           "plug": "input",
-          "displayName": "Selector"
+          "displayName": "Selector",
+          "description": "Which of the two strings to publish; anything that is not true counts as false"
         },
         {
           "name": "currentValue",
@@ -2016,6 +2546,7 @@
           "type": "string",
           "plug": "input",
           "displayName": "Format",
+          "description": "Template in which {year} {yearShort} {month} {monthShort} {date} {hours} {minutes} {seconds} are replaced and everything else is copied through",
           "default": "{year}-{month}-{date}"
         },
         {
@@ -2024,7 +2555,8 @@
             "name": "date"
           },
           "plug": "input",
-          "displayName": "Date"
+          "displayName": "Date",
+          "description": "The instant to render; a string arriving here is parsed as a date first"
         },
         {
           "name": "currentValue",
@@ -2062,6 +2594,7 @@
           },
           "plug": "input",
           "displayName": "Input String",
+          "description": "The string to look up among the numbered inputs",
           "index": 1
         },
         {
@@ -2070,6 +2603,7 @@
           "plug": "input",
           "group": "Mappings",
           "displayName": "Default",
+          "description": "Published when Input String matches none of the numbered inputs",
           "index": 1000
         },
         {
@@ -2093,7 +2627,8 @@
             "name": "boolean"
           },
           "plug": "input",
-          "displayName": "Value"
+          "displayName": "Value",
+          "description": "Value to negate; anything falsy counts as false, and leaving it unset keeps Result unset too"
         },
         {
           "name": "result",
@@ -2114,6 +2649,7 @@
           "type": "number",
           "plug": "input",
           "displayName": "Start",
+          "description": "Position of the first character to keep, counting from zero; a negative value counts back from the end",
           "default": 0
         },
         {
@@ -2121,6 +2657,7 @@
           "type": "number",
           "plug": "input",
           "displayName": "End",
+          "description": "Position to stop before; leave it unset to run to the end of the string, since setting it to 0 yields nothing",
           "default": 0
         },
         {
@@ -2130,6 +2667,7 @@
           },
           "plug": "input",
           "displayName": "String",
+          "description": "Text to take the substring from; it must not be cleared to null, which raises an error rather than yielding an empty result",
           "default": ""
         },
         {
@@ -2155,7 +2693,8 @@
             "multiline": true
           },
           "plug": "input",
-          "displayName": "Format"
+          "displayName": "Format",
+          "description": "Template text; each {placeholder} becomes an input port, and a placeholder used twice fills only the first time"
         },
         {
           "name": "formatted",
@@ -2179,7 +2718,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Increase Count"
+          "displayName": "Increase Count",
+          "description": "Adds one to the count, or does nothing at all when Limits Enabled and the count is already at Max Value"
         },
         {
           "name": "decrease",
@@ -2189,7 +2729,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Decrease Count"
+          "displayName": "Decrease Count",
+          "description": "Subtracts one from the count, or does nothing at all when Limits Enabled and the count is already at Min Value"
         },
         {
           "name": "reset",
@@ -2199,13 +2740,15 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Reset To Start"
+          "displayName": "Reset To Start",
+          "description": "Puts the count back to Start Value"
         },
         {
           "name": "startValue",
           "type": "number",
           "plug": "input",
           "displayName": "Start Value",
+          "description": "Count to begin at and to return to on Reset; setting it announces a change on Count Changed at page load",
           "default": 0
         },
         {
@@ -2216,6 +2759,7 @@
           "plug": "input",
           "group": "Limits",
           "displayName": "Min Value",
+          "description": "Lowest count Decrease will reach, ignored unless Limits Enabled",
           "default": 0
         },
         {
@@ -2226,6 +2770,7 @@
           "plug": "input",
           "group": "Limits",
           "displayName": "Max Value",
+          "description": "Highest count Increase will reach, ignored unless Limits Enabled",
           "default": 0
         },
         {
@@ -2236,6 +2781,7 @@
           "plug": "input",
           "group": "Limits",
           "displayName": "Limits Enabled",
+          "description": "Whether Min Value and Max Value bound the count; without it the count runs unbounded in both directions",
           "default": false
         },
         {
@@ -2265,13 +2811,86 @@
             "allowConnectionsOnly": true
           },
           "plug": "input",
-          "displayName": "New"
+          "displayName": "New",
+          "description": "Generates a fresh id, replacing the one on Id"
         },
         {
           "name": "guid",
           "type": "string",
           "plug": "output",
           "displayName": "Id"
+        },
+        {
+          "name": "generated",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Generated"
+        }
+      ]
+    },
+    {
+      "name": "On App Error",
+      "displayNodeName": "On App Error",
+      "category": "Utilities",
+      "color": "component",
+      "ports": [
+        {
+          "name": "filter",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Filter",
+          "description": "Only errors whose Code starts with this text are reported; leave blank to catch every error in the app"
+        },
+        {
+          "name": "error",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error"
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Message"
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Code"
+        },
+        {
+          "name": "nodeId",
+          "type": "string",
+          "plug": "output",
+          "group": "Source",
+          "displayName": "Node Id"
+        },
+        {
+          "name": "componentName",
+          "type": "string",
+          "plug": "output",
+          "group": "Source",
+          "displayName": "Component Name"
+        },
+        {
+          "name": "nodeType",
+          "type": "string",
+          "plug": "output",
+          "group": "Source",
+          "displayName": "Node Type"
+        },
+        {
+          "name": "errorObject",
+          "type": "object",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Error Object"
         }
       ]
     },
@@ -2291,21 +2910,24 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Do"
+          "displayName": "Do",
+          "description": "Writes the values below to the signed-in user; does nothing at all while nobody is signed in"
         },
         {
           "name": "email",
           "type": "string",
           "plug": "input",
           "group": "General",
-          "displayName": "Email"
+          "displayName": "Email",
+          "description": "New email address for the signed-in user; leave blank to keep the current one"
         },
         {
           "name": "username",
           "type": "string",
           "plug": "input",
           "group": "General",
-          "displayName": "Username"
+          "displayName": "Username",
+          "description": "New username for the signed-in user; leave blank to keep the current one"
         },
         {
           "name": "success",
@@ -2346,7 +2968,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Fetch"
+          "displayName": "Fetch",
+          "description": "Re-reads the signed-in user from the backend, which is also how an expired session is discovered"
         },
         {
           "name": "id",
@@ -3010,6 +3633,13 @@
           "displayName": "By-Reference Keys"
         },
         {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
           "name": "error",
           "type": "string",
           "plug": "output",
@@ -3102,6 +3732,13 @@
           "plug": "output",
           "group": "Events",
           "displayName": "Restored"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
         },
         {
           "name": "error",
@@ -4359,6 +4996,20 @@
           "plug": "output",
           "group": "Events",
           "displayName": "Cleared"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error"
         }
       ]
     },
@@ -4791,6 +5442,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Allow Unauthenticated",
+          "description": "Whether a request with no valid session token is allowed to run this function at all",
           "default": false
         },
         {
@@ -4800,7 +5452,8 @@
             "allowEditOnly": true
           },
           "plug": "input",
-          "group": "Parameters"
+          "group": "Parameters",
+          "description": "Names to pull out of the request body, each becoming an output"
         },
         {
           "name": "receive",
@@ -4845,7 +5498,8 @@
                 "allowEditOnly": true
               },
               "plug": "input",
-              "group": "Parameters"
+              "group": "Parameters",
+              "description": "Names to return in the response body, each becoming an input to supply it"
             }
           ]
         },
@@ -4858,7 +5512,8 @@
               "type": "string",
               "plug": "input",
               "group": "General",
-              "displayName": "Error Message"
+              "displayName": "Error Message",
+              "description": "Message returned to the caller; used only when Status is Failure"
             }
           ]
         }
@@ -4877,14 +5532,16 @@
             "allowEditOnly": true
           },
           "plug": "input",
-          "group": "Parameters"
+          "group": "Parameters",
+          "description": "Names to return in the response body, each becoming an input to supply it"
         },
         {
           "name": "errorMessage",
           "type": "string",
           "plug": "input",
           "group": "General",
-          "displayName": "Error Message"
+          "displayName": "Error Message",
+          "description": "Message returned to the caller; used only when Status is Failure"
         },
         {
           "name": "send",
@@ -4894,7 +5551,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Send"
+          "displayName": "Send",
+          "description": "Sends the response and ends the request, which can only happen once"
         },
         {
           "name": "status",
@@ -4914,7 +5572,29 @@
           "plug": "input",
           "group": "General",
           "displayName": "Status",
+          "description": "Whether the caller gets a 200 carrying Parameters or a 400 carrying Error Message",
           "default": "success"
+        },
+        {
+          "name": "sent",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Sent"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error"
         }
       ]
     },
@@ -4938,7 +5618,8 @@
           "type": "string",
           "plug": "input",
           "group": "General",
-          "displayName": "To"
+          "displayName": "To",
+          "description": "Address the message goes to; the send fails outright when this is blank"
         },
         {
           "name": "template",
@@ -4962,6 +5643,7 @@
           "plug": "input",
           "group": "Content",
           "displayName": "Template",
+          "description": "Which stored template to render, or None to use Subject, Text Body and HTML Body instead",
           "default": "none"
         },
         {
@@ -4972,28 +5654,32 @@
           },
           "plug": "input",
           "group": "Content",
-          "displayName": "Template Variables"
+          "displayName": "Template Variables",
+          "description": "Values substituted into the template placeholders, and ignored when Template is None"
         },
         {
           "name": "subject",
           "type": "string",
           "plug": "input",
           "group": "Content",
-          "displayName": "Subject"
+          "displayName": "Subject",
+          "description": "Subject line of the message, and ignored when Template is set"
         },
         {
           "name": "text",
           "type": "string",
           "plug": "input",
           "group": "Content",
-          "displayName": "Text Body"
+          "displayName": "Text Body",
+          "description": "Plain-text body of the message, and ignored when Template is set"
         },
         {
           "name": "html",
           "type": "string",
           "plug": "input",
           "group": "Content",
-          "displayName": "HTML Body"
+          "displayName": "HTML Body",
+          "description": "HTML body sent alongside Text Body; optional, and ignored when Template is set"
         },
         {
           "name": "send",
@@ -5003,7 +5689,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Do"
+          "displayName": "Do",
+          "description": "Sends the message"
         },
         {
           "name": "sent",
@@ -5046,6 +5733,7 @@
           "plug": "input",
           "group": "Aggregates",
           "displayName": "Aggregates",
+          "description": "Names of the aggregates to compute, each of which gets its own property and operation inputs",
           "index": 100
         },
         {
@@ -5187,7 +5875,8 @@
             "name": "System",
             "items": [
               "Screen Resolution",
-              "Open File Picker"
+              "Open File Picker",
+              "On App Error"
             ]
           },
           {
@@ -5264,6 +5953,7 @@
               "RemoveDbModelRelation",
               "Cloud File",
               "Upload File",
+              "Sign File URL",
               "CloudFunction2",
               "DbConfig"
             ]

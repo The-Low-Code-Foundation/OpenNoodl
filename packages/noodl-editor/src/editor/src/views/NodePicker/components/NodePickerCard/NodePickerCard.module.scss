@@ -103,3 +103,36 @@
     display: inline-block;
   }
 }
+
+/* BCN-010 — the project's backend cannot serve this node.
+   Dimmed and badged, never removed: the card still inserts, and the reason
+   takes over the meta line so the answer is in the list rather than in silence.
+   Amber, not red — phase 23 reserves red for danger, and a capability gap is
+   information. */
+.is-unavailable {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--theme-color-warning) 55%, var(--theme-color-border-default));
+
+  .Glyph {
+    opacity: 0.5;
+  }
+
+  .Name {
+    color: var(--theme-color-fg-default);
+    opacity: 0.75;
+  }
+
+  .Meta {
+    color: var(--theme-color-warning-dim);
+    white-space: normal;
+    overflow: visible;
+  }
+}
+
+.Unavailable {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--theme-color-warning);
+  font-size: 14px;
+}

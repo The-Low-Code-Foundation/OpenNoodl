@@ -17,6 +17,7 @@
  * says which one it was.
  */
 import { INodeType } from '@noodl-types/nodeTypes';
+import { pickerCapabilityReason } from '@noodl-utils/capability-gating/pickerReason';
 
 import { INodeIndex, INodeIndexCategory } from '@noodl-utils/createnodeindex';
 
@@ -55,6 +56,20 @@ export interface PickerItem {
   rank: number;
   /** Character range of the query inside `label`, for highlighting. */
   highlight: [number, number] | null;
+  /**
+   * BCN-010 — the chosen backend cannot serve this node, and why.
+   *
+   * ⚠️ **The row stays in the list.** The spec is explicit and it is easy to get
+   * backwards: *"Hiding it answers the question 'why can't I do X on Directus?'
+   * with silence; showing it disabled answers it in place."* Deprecation in this
+   * picker works by *exclusion* (`createnodeindex.ts` drops anything
+   * `getCreateStatus` refuses), and routing capability through the same seam
+   * would have made a Directus project's Request Magic Link simply not exist.
+   *
+   * `undefined` means "nothing to say", which is both "no binding" and
+   * "supported here".
+   */
+  unavailableReason?: string;
 }
 
 export interface PickerGroup {
@@ -232,7 +247,8 @@ function toItem(node: FlatNode, match: Match | null, isSearching: boolean): Pick
     meta,
     reason,
     rank: match?.rank ?? -1,
-    highlight: match?.highlight ?? null
+    highlight: match?.highlight ?? null,
+    unavailableReason: pickerCapabilityReason(node.type.name)
   };
 }
 

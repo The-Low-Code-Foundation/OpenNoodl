@@ -36,19 +36,30 @@ export function NodePickerCard({ item, isCursored, onHover, onLeave, onClick }: 
 
   const iconName = item.kind === 'action' ? IconName.Chat : nodeIconName(item.name);
 
+  // BCN-010. The card is still clickable — the node can be placed, and once
+  // placed it carries the same sentence on the canvas. What changes is that the
+  // builder is told before they wire anything to it rather than after.
+  const unavailable = item.unavailableReason;
+
   return (
     <button
       ref={ref}
       type="button"
-      className={classNames(css['Root'], css[`Root--tint-${item.tint}`], isCursored && css['is-cursored'])}
+      className={classNames(
+        css['Root'],
+        css[`Root--tint-${item.tint}`],
+        isCursored && css['is-cursored'],
+        unavailable && css['is-unavailable']
+      )}
       onMouseEnter={() => onHover(item)}
       onMouseLeave={onLeave}
       onClick={(event) => {
         event.stopPropagation();
         onClick(item);
       }}
-      title={item.label}
+      title={unavailable ? `${item.label} — ${unavailable}` : item.label}
       data-test={`node-picker-card-${item.name}`}
+      data-capability-unavailable={unavailable ? 'true' : undefined}
     >
       <span className={css['Glyph']}>
         {iconName ? <Icon icon={iconName} /> : <span className={css['GlyphLetter']}>{initialOf(item.label)}</span>}
@@ -56,10 +67,16 @@ export function NodePickerCard({ item, isCursored, onHover, onLeave, onClick }: 
 
       <span className={css['Text']}>
         <span className={css['Name']}>{highlight(item)}</span>
-        <span className={css['Meta']}>{item.meta}</span>
+        <span className={css['Meta']}>{unavailable ? unavailable : item.meta}</span>
       </span>
 
-      <span className={css['Enter']}>⏎</span>
+      {unavailable ? (
+        <span className={css['Unavailable']} aria-label="Not available on this backend">
+          <Icon icon={IconName.WarningTriangle} />
+        </span>
+      ) : (
+        <span className={css['Enter']}>⏎</span>
+      )}
     </button>
   );
 }

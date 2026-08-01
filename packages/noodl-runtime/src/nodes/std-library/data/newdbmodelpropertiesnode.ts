@@ -35,7 +35,28 @@ const NewDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
   node: {
     name: 'NewDbModelProperties',
     docs: 'https://docs.noodl.net/nodes/data/cloud-data/create-new-record',
-    displayName: 'Create New Record',
+    // BCN-010 step 3 — the label, not the type name.
+    //
+    // `NewDbModelProperties` stays exactly as it is: type names appear in every
+    // saved project and renaming one churns all of them, while a label appears
+    // only in the picker and on an unlabelled node's titlebar. The two are easy
+    // to conflate in a file that carries both, which is why this comment is here
+    // and not in a commit message.
+    //
+    // ⚠️ **This creates a creatable label collision, deliberately and visibly**,
+    // with `noodl.byob.CreateRecord` — which already reads "Create Record". So
+    // does the Update Record relabel, against `noodl.byob.UpdateRecord`, and
+    // "Delete Record" was already colliding before this task started. Three
+    // pending collisions, all closed by the same four type deletions.
+    //
+    // The spec's precondition for this rename is *"with the BYOB types gone"*
+    // and they are **not** gone: BCN-004 step 7 is blocked on Directus system
+    // collections, which `RestDataAdapter` cannot yet reach. The alternative —
+    // leaving the padding until the deletion lands — puts the rename in someone
+    // else's commit as a thing to remember. Instead all three are enumerated in
+    // `duplicate-labels.test.js`, which fails if a *fourth* appears and fails
+    // again when the types go and the list is not emptied.
+    displayName: 'Create Record',
     usePortAsLabel: 'collectionName',
     inputs: {
       store: {

@@ -148,25 +148,40 @@ export const supabaseDescriptor: BackendDescriptor = {
     // plain 404 from PostgREST, ws://…/realtime/v1/websocket errors in 5ms, and
     // ports 4000 and 54321 are silent.
     //
-    // It stays `conditional` because that is what the product documentation
-    // describes and `conditional` is already the safe state — the editor treats
-    // it as unavailable until a probe says otherwise, so an unverified cell
-    // cannot promise anything. It must NOT be promoted to `supported` by anyone
-    // who has not run a real Supabase stack.
-    //
     // ⚠️ **BCN-008 proper did not change this, and the reason is worth stating.** The
     // transports shipped for the other four backends; **none was written for Supabase**,
     // because writing a Phoenix-channel decoder from documentation is the exact habit this
     // phase exists to end. So at runtime `realtimeSupportFor('supabase')` answers
-    // `unsupported`, while this cell says `conditional` — a disagreement that is deliberate
-    // and recorded rather than papered over. They are answers to different questions
-    // ("could a Supabase project have realtime?" vs "can NodeGX speak to it?"), and BCN-010
-    // is where one of them has to give. Until then the reason below says the true thing.
-    'realtime.subscribe': conditional(
+    // `unsupported`, while this cell said `conditional` — a disagreement that BCN-008
+    // recorded rather than papered over, with the note that **"BCN-010 is where one of
+    // them has to give."**
+    //
+    // ## BCN-010: it gives here, and to `unsupported`.
+    //
+    // The two cells were answers to different questions — "could a Supabase project have
+    // realtime?" versus "can NodeGX speak to it?" — and that was a defensible split right
+    // up until a *port* started reading this one. `conditional` is not a neutral hedge to a
+    // gate: it is a promise that a probe can settle the question, and the editor now acts
+    // on the answer. If `/realtime/v1/api/tenants/realtime/health` ever answered on a real
+    // Supabase project, this cell would **enable Subscribe To Changes on a node with no
+    // transport underneath it** — a port that looks available, accepts a wire, and then
+    // reports `CAPABILITY_UNAVAILABLE` at runtime. That is the silent gap the phase exists
+    // to prevent, manufactured by the gate itself.
+    //
+    // So the cell now answers the question the gate is actually asking, which is the second
+    // one. Nothing was measured to make this change and nothing needed to be: the evidence
+    // is `realtime/UnavailableTransport.ts` and the absence of a Phoenix decoder in the
+    // repo, both of which are facts about our code rather than about anyone's server. The
+    // probe is dropped with the state, because there is no question left for it to settle.
+    // The reason string is unchanged — it already said the true thing.
+    //
+    // ⚠️ **This is a promotion of honesty, not of capability.** If a Phoenix-channel
+    // transport is ever written, this goes back to `conditional` *with* its probe, and the
+    // evidence line below is the reading list for whoever does it.
+    'realtime.subscribe': unsupported(
       'NodeGX cannot subscribe to Supabase Realtime yet — it speaks Phoenix channels and no transport has been ' +
         'written for it (BCN-008). Turning Realtime on in your Supabase dashboard will not make this work.',
-      { method: 'GET', path: '/realtime/v1/api/tenants/realtime/health', expect: 'a healthy response, plus the table being in the supabase_realtime publication' },
-      'Realtime is per-table opt-in via the publication, not a project-wide switch. DOCUMENTED, NOT PROBED — BCN-008 confirmed only that no Realtime service exists in this rig to probe. The delete payload in particular (postgres_changes sends old_record with the primary key alone unless the table is REPLICA IDENTITY FULL) is unmeasured, and that is exactly the field RUN-003 got wrong on Directus by reading rather than asking.'
+      'Realtime is per-table opt-in via the publication, not a project-wide switch. DOCUMENTED, NOT PROBED — BCN-008 confirmed only that no Realtime service exists in this rig to probe. The delete payload in particular (postgres_changes sends old_record with the primary key alone unless the table is REPLICA IDENTITY FULL) is unmeasured, and that is exactly the field RUN-003 got wrong on Directus by reading rather than asking. BCN-010 moved this from `conditional` to `unsupported` so that no probe can enable a port with no transport behind it; the probe it used to carry was GET /realtime/v1/api/tenants/realtime/health.'
     )
   }),
 

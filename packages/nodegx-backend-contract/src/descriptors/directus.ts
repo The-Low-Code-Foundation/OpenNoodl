@@ -149,6 +149,7 @@ export const directusDescriptor: BackendDescriptor = {
       'Live updates need WebSockets enabled on your Directus instance. They are off by default.',
       {
         method: 'GET',
+        kind: 'websocket',
         path: '/websocket',
         expect:
           'a 101 upgrade. Nothing else settles it — /server/info says nothing about websockets even when they are on. Give up after a deadline: a Directus server that does not upgrade a path fires NEITHER error NOR close (measured silent for 20s).'
