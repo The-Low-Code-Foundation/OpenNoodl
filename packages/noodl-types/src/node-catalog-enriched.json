@@ -4578,7 +4578,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Re-reads the array named by Id and rebinds this node to it"
+          "description": "Re-reads the array named by Id and rebinds this node to it. This is additional to Id rebinding on change and to array changes being announced; untick either under Run On Value Change to stop it"
         },
         {
           "name": "items",
@@ -4590,6 +4590,30 @@
           },
           "isSignal": false,
           "description": "undefined leaves this Array's current collection alone (no opinion supplied). null clears it — every item is removed and Changed fires once, the same as connecting an empty collection."
+        },
+        {
+          "name": "runOnChange-array",
+          "displayName": "Array contents",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Array contents re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-collectionId",
+          "displayName": "Id",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
       "outputs": [
@@ -9198,7 +9222,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Runs the filter now and replaces Items with the result"
+          "description": "Runs the filter now and replaces Items with the result. This is additional to it re-running when Items, Enabled, the filter settings or the array contents change; untick any of those under Run On Value Change to stop it"
         },
         {
           "name": "items",
@@ -9209,7 +9233,7 @@
             "name": "array"
           },
           "isSignal": false,
-          "description": "Array to filter; the node re-runs whenever this array changes, unless Filter is connected"
+          "description": "Array to filter; the node re-runs whenever this array changes, unless you untick it under Run On Value Change"
         },
         {
           "name": "refresh",
@@ -9222,6 +9246,54 @@
           },
           "isSignal": true,
           "description": "Runs the filter now — the same action as Filter, under the name the rest of the Array family uses"
+        },
+        {
+          "name": "runOnChange-array",
+          "displayName": "Array contents",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Array contents re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-enabled",
+          "displayName": "Enabled",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Enabled re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-filterSettings",
+          "displayName": "Filter settings",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Filter settings re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-items",
+          "displayName": "Items",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Items re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
       "outputs": [
@@ -30499,7 +30571,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Re-reads the variable named by Name and refreshes Value"
+          "description": "Re-reads the variable named by Name and refreshes Value. This is additional to Name rebinding on change and to changes being announced; untick either under Run On Value Change to stop it"
         },
         {
           "name": "name",
@@ -30513,6 +30585,30 @@
           },
           "isSignal": false,
           "description": "Which app-wide variable this node reads and writes"
+        },
+        {
+          "name": "runOnChange-name",
+          "displayName": "Name",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Name re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+        },
+        {
+          "name": "runOnChange-variable",
+          "displayName": "Variable changes",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Whether a new value on Variable changes re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
           "name": "value",

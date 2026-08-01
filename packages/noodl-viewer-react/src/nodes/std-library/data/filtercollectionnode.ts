@@ -141,9 +141,20 @@ const FilterCollectionNode: NodeDefinitionOptions = {
   displayNodeName: 'Array Filter',
   category: 'Data',
   color: 'data',
+  // NDA-017 §2. The twin `filterdbmodelsnode.ts` names in its own NDA-004 comment, and it
+  // gets the same treatment: `items` and `enabled` are value setters, the collection
+  // subscription and the panel-edited filter settings are not ports.
+  runOnValueChange: {
+    controlSignal: 'filter',
+    inputs: ['items', 'enabled'],
+    sources: [
+      { name: 'array', displayName: 'Array contents' },
+      { name: 'filterSettings', displayName: 'Filter settings' }
+    ]
+  },
   initialize: function (this: FilterCollectionInstance) {
     this._internal.collectionChangedCallback = () => {
-      if (this.isInputConnected('filter') === true) return;
+      if (!this.shouldRunOnValueChange('array')) return;
 
       this.scheduleFilter();
     };
@@ -175,11 +186,11 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       type: 'array',
       displayName: 'Items',
       description:
-        'Array to filter; the node re-runs whenever this array changes, unless Filter is connected',
+        'Array to filter; the node re-runs whenever this array changes, unless you untick it under Run On Value Change',
       group: 'General',
       set(this: FilterCollectionInstance, value: CollectionLike) {
         this.bindCollection(value);
-        if (this.isInputConnected('filter') === false) this.scheduleFilter();
+        if (this.shouldRunOnValueChange('items')) this.scheduleFilter();
       }
     },
     enabled: {
@@ -190,14 +201,15 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       default: true,
       set: function (this: FilterCollectionInstance, value: boolean) {
         this._internal.enabled = value;
-        if (this.isInputConnected('filter') === false) this.scheduleFilter();
+        if (this.shouldRunOnValueChange('enabled')) this.scheduleFilter();
       }
     },
     filter: {
       type: 'signal',
       group: 'Actions',
       displayName: 'Filter',
-      description: 'Runs the filter now and replaces Items with the result',
+      description:
+        'Runs the filter now and replaces Items with the result. This is additional to it re-running when Items, Enabled, the filter settings or the array contents change; untick any of those under Run On Value Change to stop it',
       valueChangedToTrue: function (this: FilterCollectionInstance) {
         this.requestFilter();
       }
@@ -345,15 +357,19 @@ const FilterCollectionNode: NodeDefinitionOptions = {
     /**
      * NDA-004 §2 — the family's genuinely mixed case, and what makes the `Failure` port safe.
      *
-     * `scheduleFilter` is reached six ways: the `Filter` and `Refresh` signals, and — only when
-     * `filter` is *not* wired — the `items` setter, the `enabled` setter, any `filter…` setting
-     * arriving, and the source collection's own change callback. The last four are value
-     * arrivals, so failing in the scheduler would report on the ordinary boot path: this is the
-     * Object node's trap, in a node that also has a real `Do`.
+     * `scheduleFilter` is reached six ways: the `Filter` and `Refresh` signals, and — when the
+     * corresponding box is ticked — the `items` setter, the `enabled` setter, any `filter…`
+     * setting arriving, and the source collection's own change callback. The last four are
+     * value arrivals, so failing in the scheduler would report on the ordinary boot path: this
+     * is the Object node's trap, in a node that also has a real `Do`.
      *
      * The distinction the register asked for therefore exists already, in inverted form — every
-     * value-arrival path is guarded by `isInputConnected('filter') === false`. What was missing
-     * was a record of *which* kind of run this is, and that is all `filterRequested` is.
+     * value-arrival path is gated on the author having left it ticked. What was missing was a
+     * record of *which* kind of run this is, and that is all `filterRequested` is.
+     *
+     * (Those gates read `isInputConnected('filter') === false` until NDA-017 §2. The reasoning
+     * above is unaffected: it turns on *which paths* reach the scheduler, not on what gated
+     * them — and all four are still value arrivals.)
      */
     requestFilter: function (this: FilterCollectionInstance) {
       this._internal.filterRequested = true;
@@ -469,7 +485,7 @@ const FilterCollectionNode: NodeDefinitionOptions = {
 
 function userInputSetter(this: FilterCollectionInstance, name: string, value: string | number | boolean) {
   this._internal.filterSettings[name] = value;
-  if (this.isInputConnected('filter') === false) this.scheduleFilter();
+  if (this.shouldRunOnValueChange('filterSettings')) this.scheduleFilter();
 }
 
 function updatePorts(

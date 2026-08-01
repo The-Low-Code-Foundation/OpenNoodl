@@ -47,10 +47,20 @@ const CollectionNode: NodeDefinitionOptions = {
   category: 'Data',
   usePortAsLabel: 'collectionId',
   color: 'data',
+  // NDA-017 §2. Not in the spec's twelve-row table, but the identical idiom on a creatable
+  // non-deprecated node — `Id` is a value setter, the collection subscription is not a port,
+  // and wiring `Fetch` silenced both.
+  runOnValueChange: {
+    controlSignal: 'fetch',
+    inputs: ['collectionId'],
+    sources: [{ name: 'array', displayName: 'Array contents' }]
+  },
   initialize: function (this: CollectionNodeInstance) {
     let collectionChangedScheduled = false;
     this._internal.collectionChangedCallback = () => {
-      if (this.isInputConnected('fetch') === true) return; // Ignore if we have explicit fetch connection
+      // Was `if (this.isInputConnected('fetch') === true) return;` — "ignore if we have
+      // explicit fetch connection", which is the trap named in its own comment.
+      if (!this.shouldRunOnValueChange('array')) return;
 
       //this can be called multiple times when adding/removing more than one item
       //so optimize by only updating outputs once
@@ -105,7 +115,7 @@ const CollectionNode: NodeDefinitionOptions = {
       set: function (this: CollectionNodeInstance, value: string | CollectionLike) {
         if (value instanceof Collection) value = value.getId(); // Can be passed as collection as well
         this._internal.collectionId = value as string; // Wait to fetch data
-        if (this.isInputConnected('fetch') === false) this.setCollectionID(value as string);
+        if (this.shouldRunOnValueChange('collectionId')) this.setCollectionID(value as string);
         else {
           this.flagOutputDirty('id');
         }
@@ -135,7 +145,8 @@ const CollectionNode: NodeDefinitionOptions = {
     },
     fetch: {
       displayName: 'Fetch',
-      description: 'Re-reads the array named by Id and rebinds this node to it',
+      description:
+        'Re-reads the array named by Id and rebinds this node to it. This is additional to Id rebinding on change and to array changes being announced; untick either under Run On Value Change to stop it',
       group: 'Actions',
       valueChangedToTrue: function (this: CollectionNodeInstance) {
         this.scheduleSetCollection();
@@ -241,7 +252,7 @@ const CollectionNode: NodeDefinitionOptions = {
     _copySourceItems: function (this: CollectionNodeInstance) {
       const internal = this._internal;
 
-      if (internal.collection === undefined && this.isInputConnected('fetch') === false)
+      if (internal.collection === undefined && this.shouldRunOnValueChange('collectionId'))
         this.setCollection(Collection.get());
       // `Collection#set` (src/collection.ts, out of scope here) treats a falsy source —
       // `null` included — as an empty array, which is the null path the empty-value

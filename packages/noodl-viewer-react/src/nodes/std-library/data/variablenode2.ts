@@ -46,11 +46,21 @@ const VariableNodeDefinition: NodeDefinitionOptions = {
   category: 'Data',
   usePortAsLabel: 'name',
   color: 'data',
+  // NDA-017 §2. Not in the spec's twelve-row table; identical idiom. Distinct from the
+  // *runtime* Variable nodes (`variablebase.ts`), whose control signal is `Set` and whose
+  // governed input is `Value` — here it is `Fetch`, and what it governed is which variable
+  // the node is looking at plus whether it notices that variable changing elsewhere.
+  runOnValueChange: {
+    controlSignal: 'fetch',
+    inputs: ['name'],
+    sources: [{ name: 'variable', displayName: 'Variable changes' }]
+  },
   initialize: function (this: VariableNodeInstance) {
     const internal = this._internal;
 
     this._internal.onModelChangedCallback = (args: ModelChangeEvent) => {
-      if (!this.isInputConnected('fetch') && args.name === internal.name) {
+      // Was `if (!this.isInputConnected('fetch') && …)`.
+      if (this.shouldRunOnValueChange('variable') && args.name === internal.name) {
         this.sendSignalOnOutput('changed');
         this.flagOutputDirty('value');
       }
@@ -130,7 +140,7 @@ const VariableNodeDefinition: NodeDefinitionOptions = {
       description: 'Which app-wide variable this node reads and writes',
       group: 'General',
       set: function (this: VariableNodeInstance, value: string) {
-        if (this.isInputConnected('fetch') === false) this.setVariableName(value);
+        if (this.shouldRunOnValueChange('name')) this.setVariableName(value);
         else {
           this._internal.name = value; // Wait to fetch data
           this.flagOutputDirty('name');
@@ -139,7 +149,8 @@ const VariableNodeDefinition: NodeDefinitionOptions = {
     },
     fetch: {
       displayName: 'Fetch',
-      description: 'Re-reads the variable named by Name and refreshes Value',
+      description:
+        'Re-reads the variable named by Name and refreshes Value. This is additional to Name rebinding on change and to changes being announced; untick either under Run On Value Change to stop it',
       group: 'Actions',
       valueChangedToTrue: function (this: VariableNodeInstance) {
         this.setVariableName(this._internal.name);
