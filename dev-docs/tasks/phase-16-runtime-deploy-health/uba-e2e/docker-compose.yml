@@ -46,6 +46,62 @@ services:
       supabase-db:
         condition: service_healthy
 
+  # ── Supabase STORAGE (profile: supabase) — BCN-007 ───────────────────────
+  #
+  # ⚠️ **Supabase Storage had never been in this rig**, and two tasks in a row
+  # noticed. BCN-006 found every `/auth/v1/*` was a plain 404 from PostgREST and
+  # correctly refused to flip its Supabase auth cells, moving four to
+  # `conditional`. BCN-007 found the same of every `/storage/v1/*` — the probe
+  # output is in `BCN-007-FILES-PROBE-OUTPUT.txt` §2 — and rather than implement
+  # a file adapter from documentation and flip five cells, added this.
+  #
+  # Storage is a **separate service from PostgREST**, which is the spec's own
+  # trap: *"a file 403 will look like a data 403 and have a different cause"*. In
+  # a real Supabase project both sit behind one origin; here they are two ports,
+  # which is why the live driver points a second handle at 8112.
+  #
+  #   docker compose --profile supabase up -d
+  #   node bcn-007-supabase-storage-probe.mjs
+  #
+  # The keys are HS256 JWTs signed with JWT_SECRET below, `{"role":"anon"}` and
+  # `{"role":"service_role"}`. They are development fixtures for a loopback
+  # container and are checked in for the same reason every other password in
+  # this file is.
+  supabase-storage:
+    profiles: ["supabase"]
+    image: supabase/storage-api:v1.11.13
+    ports:
+      - "8112:5000"
+    environment:
+      # ⚠️ `JWT_SECRET` is the one the image actually reads. The first attempt
+      # set only `AUTH_JWT_SECRET`/`PGRST_JWT_SECRET` — both documented names —
+      # and every request answered `403 "invalid signature"`, which reads
+      # exactly like a wrong key rather than a wrong env var. All three are set.
+      JWT_SECRET: "bcn007-supabase-storage-jwt-secret-at-least-32-chars"
+      AUTH_JWT_SECRET: "bcn007-supabase-storage-jwt-secret-at-least-32-chars"
+      PGRST_JWT_SECRET: "bcn007-supabase-storage-jwt-secret-at-least-32-chars"
+      ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg1NTcwNDM1LCJleHAiOjE4MTcxMDY0MzV9.hUQcMWJhqUohRH-QETm6PaOV_BfWrLe_ilQBtd_b8eg"
+      SERVICE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3ODU1NzA0MzUsImV4cCI6MTgxNzEwNjQzNX0.Bhz31eOF0V-CoEhYeFL_lF-jhxg42FPFO6pa6RjgaGY"
+      DATABASE_URL: "postgres://postgres:supabase-e2e-pw@supabase-db:5432/app"
+      # storage-api creates its own `storage` schema and roles on first run. It
+      # touches nothing in `public`, so the BCN-001/003/004/005 fixtures in this
+      # database are unaffected.
+      DB_INSTALL_ROLES: "true"
+      POSTGREST_URL: "http://supabase-rest:3000"
+      STORAGE_BACKEND: "file"
+      FILE_STORAGE_BACKEND_PATH: "/var/lib/storage"
+      FILE_SIZE_LIMIT: "52428800"
+      TENANT_ID: "bcn007"
+      REGION: "local"
+      GLOBAL_S3_BUCKET: "bcn007"
+      # `sharp` is an optional dependency in our own subsystem and image
+      # transformation is explicitly out of BCN-007's scope; off here so the
+      # service does not need an imgproxy sidecar to start.
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+
   # ── Aggregate-capability probe stack (profile: aggregate) ────────────────
   # BCN-001 §5.3 left two descriptor cells unverified because they are facts
   # about other people's products: can PocketBase and Supabase aggregate?

@@ -285,7 +285,71 @@ export interface FileRef {
   filename?: string;
   contentType?: string;
   size?: number;
+  /**
+   * Where the file lives, for the two backends where a name is not an address.
+   *
+   * See {@link FileTarget}. Absent on the Parse-wire backends and on Directus,
+   * whose files are independent objects addressed by one string.
+   */
+  target?: FileTarget;
 }
+
+/**
+ * Where a file lives, on a backend that does not store files independently.
+ *
+ * BCN-007 step 1 left this undecided **on purpose** and said so at the point
+ * where the temptation was: *"PocketBase's handle is not one string. A file
+ * there is addressed by (collection, record id, filename) and is meaningless
+ * without its record. `FileRef.name` cannot hold that, and inventing a delimited
+ * composite here would decide step 3 by accident."*
+ *
+ * This is the decision, and the spec asked for it in these words: *"Either the
+ * capability is `degraded` … or `uploadFile` takes an optional record target
+ * that the other backends ignore. Prefer the latter if it does not distort the
+ * contract; prefer the former over a lie."*
+ *
+ * **Both, in the end, and for different reasons.** The target is here because a
+ * composite handle stuffed into `name` would be a lie that typechecks — the
+ * classic plausible-wrong-value this phase exists to remove. And the descriptor
+ * cells are *also* `degraded`, because a target is something the app author has
+ * to supply and cannot be guessed: an Upload File node with no Collection set is
+ * a file with nowhere to live, and `degraded` is what puts that in front of them
+ * before they ship rather than after.
+ *
+ * A discriminated union rather than one bag of optional strings, because the two
+ * are not the same idea wearing different names. Measured, both of them:
+ *
+ * - `record` — **PocketBase.** A file *is* a field on a record. Uploading is a
+ *   multipart create-or-update of that record; deleting is a `PATCH` setting the
+ *   field to `null`; and deleting the record takes its files with it. All three
+ *   observed — `BCN-007-FILES-PROBE-OUTPUT.txt` §3.
+ * - `bucket` — **Supabase Storage.** A file is an object at a path inside a
+ *   named bucket, and the bucket's `public` flag decides whether the plain URL
+ *   works at all. Neither the bucket nor the path can be defaulted: a guessed
+ *   bucket name is a 400 the user cannot diagnose. Observed —
+ *   `BCN-007-SUPABASE-STORAGE-OUTPUT.txt`.
+ *
+ * The other three backends **ignore this field entirely**, which is what makes
+ * it safe to put on the shared options: it is never read where it has no
+ * meaning, rather than being read and quietly mistranslated.
+ */
+export type FileTarget =
+  | {
+      readonly kind: 'record';
+      /** PocketBase collection name. */
+      readonly collection: string;
+      /** The record the file hangs off. Absent on an upload that creates one. */
+      readonly recordId?: string;
+      /** The `file`-typed field on that record. */
+      readonly field: string;
+    }
+  | {
+      readonly kind: 'bucket';
+      /** Supabase Storage bucket. Its `public` flag decides what the plain URL does. */
+      readonly bucket: string;
+      /** Object path inside the bucket, `/`-separated. */
+      readonly path: string;
+    };
 
 /**
  * What kind of URL a backend just handed back — and the reason this is on the
@@ -361,6 +425,20 @@ export interface UploadFileOptions extends FileCallbacks<(result: FileRef) => vo
    * file still uploads, the bar just never moves.
    */
   onUploadProgress?: (progress: { loaded: number; total: number }) => void;
+  /**
+   * Where to put the file, on the two backends that need to be told.
+   *
+   * Ignored by `nodegx`, `parse` and `directus`, which store files
+   * independently. **Required** by `pocketbase` and `supabase` — see
+   * {@link FileTarget} — and their adapters refuse with a sentence rather than
+   * guessing a bucket name or attaching the file to nothing.
+   *
+   * On a `record` target `recordId` may be omitted, which means *create* the
+   * record as part of the upload. That is not a convenience: PocketBase has no
+   * way to store a file without a record, so an upload with neither an existing
+   * record nor permission to make one has genuinely nowhere to go.
+   */
+  target?: FileTarget;
 }
 
 /**
@@ -375,6 +453,8 @@ export interface UploadFileOptions extends FileCallbacks<(result: FileRef) => vo
  */
 export interface SignFileUrlOptions extends FileCallbacks<(result: SignedFileUrl) => void> {
   name: string;
+  /** See {@link FileTarget}. Carried back from the `FileRef` the upload returned. */
+  target?: FileTarget;
 }
 
 /**
@@ -387,6 +467,8 @@ export interface SignFileUrlOptions extends FileCallbacks<(result: SignedFileUrl
  */
 export interface DeleteFileOptions extends FileCallbacks<(response?: Record<string, unknown>) => void> {
   file: { name: string };
+  /** See {@link FileTarget}. Carried back from the `FileRef` the upload returned. */
+  target?: FileTarget;
 }
 
 // ── The contract ───────────────────────────────────────────────────────────

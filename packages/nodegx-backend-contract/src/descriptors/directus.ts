@@ -104,11 +104,27 @@ export const directusDescriptor: BackendDescriptor = {
       'BCN-005 live: POST junction row 200; the same pair posted twice creates a second row, so addRelation reads before it writes. DELETE of a pair that never existed answers 204, so a remove cannot report "was not there"'
     ),
 
-    'files.upload': supported('POST /files, multipart'),
-    'files.sign': supported('Directus asset tokens on /assets/{id}'),
-    'files.delete': supported('DELETE /files/{id}'),
-    'files.private': supported('folder and role permissions on directus_files'),
-    'files.progress': supported('XHR upload path is client-side'),
+    // ── Files — BCN-007 steps 2/5/7, every cell measured ─────────────────
+    // Probes: BCN-004-FILES-PROBE-OUTPUT.txt (16 checks) and
+    // BCN-007-FILES-PROBE-OUTPUT.txt §1 / BCN-007-FILES-PROBE2-OUTPUT.txt §1.
+    'files.upload': supported(
+      'BCN-007 live: POST /files multipart answers 200 (not 201) with the stored file; the field map is filename_download / type / filesize and `id` is the handle'
+    ),
+    'files.sign': degraded(
+      'A Directus file link carries your own sign-in rather than a signature, so it works for you and not for anyone you send it to — and it stops working when you sign out. The Sign File URL node reports this on its URL Kind output.',
+      'BCN-007 live: Directus has no per-asset token to mint. /assets/{id} answers 403 with no credential and 200 with ?access_token=<the session JWT>; a tampered token is 403. The JWT declares a 900s life, which is the SESSION\'s expiry, not the link\'s'
+    ),
+    'files.delete': supported(
+      'BCN-007 live: DELETE /files/{id} answers 204. ⚠️ The spec\'s claim that Directus refuses to delete a REFERENCED file is FALSE — measured with a real directus_files relation created via POST /relations, the delete succeeds and the referencing row\'s field becomes null. Reading a deleted file is 403, the same answer as for a file that never existed, so an adapter cannot report which happened'
+    ),
+    'files.private': degraded(
+      'Files on Directus are only as private as the role permissions on directus_files, which NodeGX does not set for you. A file uploaded through NodeGX is readable by whoever your Directus roles say it is.',
+      'BCN-007 live: /assets/{id} is 403 for an anonymous caller on a default install, so files are NOT public by default — but there is no per-file privacy flag for an upload to set, unlike the X-NodeGX-File-Private header ours takes'
+    ),
+    'files.progress': degraded(
+      'The upload works but the progress bar will not move on this backend.',
+      '⚠️ CORRECTED by BCN-007. This cell read `supported` with the evidence "XHR upload path is client-side", which was written before RestDataAdapter existed — that adapter is built on `fetch`, and `fetch` has no upload-progress event. Nothing synthetic is emitted: a bar that jumps 0→100 tells an author their instrumentation works when it does not'
+    ),
 
     'auth.password': supported('POST /auth/login'),
     'auth.signUp': conditional(
