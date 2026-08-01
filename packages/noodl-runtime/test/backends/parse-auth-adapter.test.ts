@@ -233,7 +233,22 @@ describe('logOut', () => {
 });
 
 describe('signUp', () => {
-  test('stores the username and profile fields alongside what the backend returned', () => {
+  /**
+   * ⚠️ **This test asserted the defect until BCN-006 step 4.**
+   *
+   * It used to expect exactly `{objectId, sessionToken, username, nickname}` —
+   * no `email`, no `emailVerified` — because that is what the code did, and the
+   * suite was written during step 2 whose whole claim was that nothing changed.
+   * It therefore *pinned* the bug: `Current.email` was `undefined` after a
+   * sign-up, so the ordinary "we sent a link to {email}" screen rendered
+   * `undefined`, and `emailVerified` never populated at all.
+   *
+   * Both were reproduced live twice on fresh users (BCN-006-007-LIVE-QA §1.1) and
+   * pinned at the wire in step 4: `POST /users` answers
+   * `{objectId, createdAt, sessionToken}` and nothing else, so whatever the client
+   * does not merge is simply lost.
+   */
+  test('stores the email and a verification flag as well as the username and profile fields', () => {
     const { adapter, storage } = makeAdapter();
     adapter.signUp(handle, {
       username: 'ada',
@@ -249,8 +264,40 @@ describe('signUp', () => {
       objectId: 'u1',
       sessionToken: 'r:tok',
       username: 'ada',
-      nickname: 'A'
+      nickname: 'A',
+      // The caller supplied it and the response cannot carry it.
+      email: 'ada@example.com',
+      // An account created a millisecond ago cannot have had its address
+      // confirmed, so this is a fact about this user rather than a default.
+      emailVerified: false
     });
+  });
+
+  test('omits `email` entirely when none was supplied, rather than storing undefined', () => {
+    const { adapter, storage } = makeAdapter();
+    adapter.signUp(handle, { username: 'ada', password: 'pw', success: () => {}, error: () => {} });
+    FakeXHR.instances[0].complete(201, { objectId: 'u1', sessionToken: 'r:tok' });
+
+    const stored = JSON.parse(storage[KEY] as string);
+    expect('email' in stored).toBe(false);
+    expect(stored.emailVerified).toBe(false);
+  });
+
+  test('lets the backend and the caller outrank the verification default', () => {
+    // Ours never answers `emailVerified`, but a stock Parse Server with
+    // verification switched on can — and a project may pass it as a property.
+    // Inventing `false` over either would be the fix becoming its own defect.
+    const { adapter, storage } = makeAdapter();
+    adapter.signUp(handle, {
+      username: 'ada',
+      password: 'pw',
+      properties: { emailVerified: true },
+      success: () => {},
+      error: () => {}
+    });
+    FakeXHR.instances[0].complete(201, { objectId: 'u1', sessionToken: 'r:tok' });
+
+    expect(JSON.parse(storage[KEY] as string).emailVerified).toBe(true);
   });
 
   test('sends the serialised profile fields with the credentials', () => {
@@ -377,5 +424,104 @@ describe('two backends, two sessions', () => {
     expect(adapter.sessionStore(handle).key).toBe('Parse/app-id-123/currentUser');
     expect(adapter.sessionStore(other).key).toBe('Parse/app-id-999/currentUser');
     expect(adapter.sessionStore(handle)).toBe(adapter.sessionStore(handle));
+  });
+});
+
+/**
+ * The two HTML-page endpoints — **branches no test had ever reached**.
+ *
+ * BCN-006-007-LIVE-QA §1.2 recorded that its run "did not reach it", and step 2's
+ * notes listed the inverted `indexOf` as preserved-on-purpose. Step 4 measured
+ * what these endpoints actually do and fixed both the inversion and the worse
+ * defect beside it; these are the tests that were not previously possible,
+ * because covering a branch requires first deciding what it should do.
+ *
+ * The page bodies below are the real ones, copied from a running backend.
+ */
+const VERIFY_OK = '<!doctype html><html><head><title>Verified</title></head><body><h2 class="ok">Successfully verified your email</h2></body></html>';
+const VERIFY_BAD =
+  '<!doctype html><html><head><meta charset="utf-8"><title>Invalid link</title></head><body>' +
+  '<h2 class="err">Invalid Verification Link</h2><p>This verification link is invalid, expired, or already used.</p></body></html>';
+const RESET_BAD =
+  '<!doctype html><html><head><meta charset="utf-8"><title>Invalid link</title></head><body>' +
+  '<h2 class="err">Invalid Link</h2><p>This reset link is invalid, expired, or already used.</p></body></html>';
+
+describe('verifyEmail and resetPassword read an HTML page', () => {
+  function run(method: 'verifyEmail' | 'resetPassword', status: number, page: string) {
+    const { adapter } = makeAdapter();
+    const outcome: string[] = [];
+    const options = {
+      username: 'ada',
+      token: 't',
+      newPassword: 'pw',
+      success: () => outcome.push('success'),
+      error: (e?: string) => outcome.push('error:' + e)
+    };
+    adapter[method](handle, options as never);
+    // The LAST instance — `FakeXHR.instances` is reset per test, not per call, and
+    // several of these drive two requests in one test.
+    FakeXHR.instances[FakeXHR.instances.length - 1].complete(status, page);
+    return outcome;
+  }
+
+  test('a success page succeeds', () => {
+    expect(run('verifyEmail', 200, VERIFY_OK)).toEqual(['success']);
+  });
+
+  test('⚠️ an invalid-link page reports the link, not a phrase found at index 1', () => {
+    // The bug: `if (response.indexOf('Invalid Verification Link'))` — a match at
+    // index 0 reads as FALSE and an absent phrase (-1) reads as TRUE, so the
+    // condition was inverted for every input except a match at index 1 or later.
+    // These pages open with `<!doctype html>`, so a match is never at index 0 and
+    // the old code limped to the right answer here — while reporting the SAME
+    // answer for a page that says nothing of the kind. That is the next test.
+    expect(run('verifyEmail', 200, VERIFY_BAD)).toEqual(['error:Invalid verification token']);
+  });
+
+  test('⚠️ an unrecognised 200 page no longer claims the token was invalid', () => {
+    // This is what the inversion actually cost: `indexOf(...) === -1` is truthy,
+    // so ANY page the code could not identify — a login wall, a proxy notice, a
+    // maintenance page — was confidently reported as "Invalid verification token"
+    // and the third branch was dead code. It now says what it knows.
+    expect(run('verifyEmail', 200, '<html><body>502 Bad Gateway</body></html>')).toEqual(['error:Failed to verify email']);
+    expect(run('resetPassword', 200, '<html><body>502 Bad Gateway</body></html>')).toEqual(['error:Failed to reset password']);
+  });
+
+  test('⚠️ a 400 no longer hands the node an entire HTML document as its error string', () => {
+    // The defect that was in no register, found by measurement in step 4: an
+    // invalid link answers **400** with the page, `_makeRequest` routes any
+    // non-2xx to `error` as `{error: responseText}`, and both methods forwarded
+    // it verbatim — so the Verify Email node's `error` output carried
+    // `<!doctype html>` and inline CSS for a builder to wire to a text label.
+    // `UserServiceCallbacks` is explicit that these two "substitute a message of
+    // their own". They did not.
+    const verify = run('verifyEmail', 400, VERIFY_BAD);
+    expect(verify).toEqual(['error:Invalid verification token']);
+    expect(verify[0]).not.toContain('<');
+
+    const reset = run('resetPassword', 400, RESET_BAD);
+    expect(reset).toEqual(['error:Invalid or expired reset link']);
+    expect(reset[0]).not.toContain('<');
+  });
+
+  test('a reset no longer reports a failure about email verification', () => {
+    // Both failure strings in `resetPassword` were copied from `verifyEmail`, so
+    // a user resetting a password was told their *email* had failed to verify.
+    const outcome = run('resetPassword', 200, RESET_BAD);
+    expect(outcome).toEqual(['error:Invalid or expired reset link']);
+    expect(outcome[0]).not.toContain('email');
+  });
+
+  test('a non-HTML error is passed through untouched, because it is already a sentence', () => {
+    const { adapter } = makeAdapter();
+    const outcome: string[] = [];
+    adapter.verifyEmail(handle, {
+      username: 'ada',
+      token: 't',
+      success: () => outcome.push('success'),
+      error: (e?: string) => outcome.push('error:' + e)
+    });
+    FakeXHR.instances[0].complete(500, { error: 'Database is offline' });
+    expect(outcome).toEqual(['error:Database is offline']);
   });
 });

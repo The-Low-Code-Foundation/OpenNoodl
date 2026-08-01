@@ -301,6 +301,19 @@ export interface RestAuthAdapterOptions {
    */
   lifecycle?: TokenLifecycle;
   now?: () => number;
+  /**
+   * Is there a browser tab that outlives a request?
+   *
+   * Defaults to the controller's own `isBrowserTab`, which is the SSR and
+   * cloud-runtime guard: a server render has a `localStorage` **mock** installed
+   * by RUN-002's harness, so "is there storage" concludes "browser" and would arm
+   * a fifteen-minute timer holding a refresh token once per render, in a
+   * long-lived Node process.
+   *
+   * Injectable because the unit suite runs under `testEnvironment: 'node'`, where
+   * that guard is correctly false and would switch off the very paths under test.
+   */
+  isBrowserTab?: () => boolean;
 }
 
 /**
@@ -318,6 +331,7 @@ export class RestAuthAdapter extends AuthEvents implements IAuthAdapter {
   private readonly probedCapabilities: readonly CapabilityKey[];
   private readonly lifecycleOverride?: TokenLifecycle;
   private readonly now: () => number;
+  private readonly isBrowserTabImpl?: () => boolean;
 
   private readonly stores = new Map<string, SessionStore>();
   private readonly controllers = new Map<string, TokenLifecycleController>();
@@ -329,6 +343,7 @@ export class RestAuthAdapter extends AuthEvents implements IAuthAdapter {
     this.probedCapabilities = options.probedCapabilities ?? [];
     this.lifecycleOverride = options.lifecycle;
     this.now = options.now ?? Date.now;
+    this.isBrowserTabImpl = options.isBrowserTab;
     this.createStore =
       options.createStore ??
       ((handle) =>
@@ -386,6 +401,7 @@ export class RestAuthAdapter extends AuthEvents implements IAuthAdapter {
         lifecycle: this.lifecycleFor(handle),
         store: this.sessionStore(handle),
         now: this.now,
+        isBrowserTab: this.isBrowserTabImpl,
         // PocketBase refreshes with the access token. Without this the
         // controller's own "this sign-in cannot be renewed" guard would sign
         // every PocketBase user out at the first scheduled refresh.
@@ -408,7 +424,11 @@ export class RestAuthAdapter extends AuthEvents implements IAuthAdapter {
 
   /** Release timers and storage listeners. For tests and for a torn-down runtime. */
   dispose(): void {
-    for (const controller of this.controllers.values()) controller.stop();
+    // `forEach`, not `for…of` over `.values()`. The viewer's ts-jest program
+    // targets pre-ES2015 (PLAT-003's recorded trap), and a Map iterator there is
+    // a `TS2802` that fails the *consumer's* suite rather than this package's —
+    // so the runtime typecheck stays green and the viewer's does not.
+    this.controllers.forEach((controller) => controller.stop());
     this.controllers.clear();
   }
 
@@ -695,10 +715,21 @@ export class RestAuthAdapter extends AuthEvents implements IAuthAdapter {
 
       const init =
         profile.type === 'directus'
-          ? // ⚠️ `mode: 'json'` is required. Without it Directus sets the new
-            // refresh token as an httpOnly **cookie** and the JSON body carries
-            // no `refresh_token` — so the next refresh has nothing to present
-            // and the user is signed out one token lifetime later.
+          ? // `mode: 'json'` is **explicit, not required** — and the distinction was
+            // measured rather than assumed. This comment first claimed it was
+            // required, on the documentation-shaped reasoning that Directus would
+            // otherwise set the new refresh token as an httpOnly cookie and leave
+            // the body without one. Mutation-testing the live driver disproved it:
+            // omitting `mode` on Directus 11 returns
+            // `{expires, refresh_token, access_token}` and sets no cookie, exactly
+            // as `mode: 'json'` does — the default already is json, and
+            // `mode: 'cookie'` is in fact a 400 when the token comes in the body.
+            //
+            // Kept anyway, because "the default happens to be what we want" is a
+            // weaker guarantee than saying which one we want, and the cookie shape
+            // would break the lifecycle silently one token lifetime later. But it
+            // is belt-and-braces, and a reader should not be told a default is a
+            // requirement.
             { method: 'POST', path, body: { refresh_token: session.refreshToken, mode: 'json' } }
           : { method: 'POST', path, token: session.sessionToken, body: {} };
 
