@@ -477,6 +477,17 @@ export interface RealtimeTransportProfile {
 
 const PROBE = 'bcn-008-realtime-probe.mjs, 2026-07-31';
 
+/**
+ * The second run, and the one that closed BCN-008's success criterion 2.
+ *
+ * The probe above asked the servers what they do. This one drove the **shipped**
+ * transports (`noodl-runtime/src/api/backends/realtime`) against the same servers and then
+ * **restarted the backend underneath each live subscription** — which the measurement pass
+ * could not do, because two other workers shared the rig. Reconnect-and-resubscribe was
+ * unverified for every transport until this run, the shipped Directus one included.
+ */
+const DRIVER = 'bcn-008-realtime-driver.ts + bcn-008-node-driver.ts, 2026-08-01';
+
 const DIRECTUS_RT: RealtimeTransportProfile = {
   type: 'directus',
   transport: 'websocket',
@@ -495,7 +506,11 @@ const DIRECTUS_RT: RealtimeTransportProfile = {
   connectFailure:
     "open in single-digit ms on success; a bad token gives {type:'auth',status:'error',error:{code:'AUTH_FAILED'}} ~10ms after the send, then close ~2ms later",
   measured: true,
-  evidence: `${PROBE}: numeric pk 2 arrived as data:["2"]; ping at 30016ms; silent client closed at 60035ms, code 1005`
+  evidence:
+    `${PROBE}: numeric pk 2 arrived as data:["2"]; ping at 30016ms; silent client closed at 60035ms, code 1005. ` +
+    `${DRIVER}: \`docker restart uba-e2e-directus-1\` under a live subscription → interrupted → subscribed → a row ` +
+    `written AFTER the restart was delivered, at the transport AND through a real Query Records node. 72s of client ` +
+    `silence did NOT drop the subscription (removing the pong makes exactly that check fail).`
 };
 
 const POCKETBASE_RT: RealtimeTransportProfile = {
@@ -512,7 +527,12 @@ const POCKETBASE_RT: RealtimeTransportProfile = {
   connectFailure:
     'the stream is plain fetch/EventSource: a dead host rejects the request. An unknown clientId on the subscription POST is 404 {"message":"Missing or invalid client id."}',
   measured: true,
-  evidence: `${PROBE}: SSE event name is the COLLECTION name, not "change"; data is {record,action}; a superuser-only collection accepted an anonymous subscription with 204 and then delivered nothing`
+  evidence:
+    `${PROBE}: SSE event name is the COLLECTION name, not "change"; data is {record,action}; a superuser-only ` +
+    `collection accepted an anonymous subscription with 204 and then delivered nothing. ` +
+    `${DRIVER}: \`docker restart uba-e2e-pocketbase-1\` under a live subscription → reconnected, re-POSTed the ` +
+    `subscription set with the fresh clientId, and delivered a row written after the restart. The accepted-then-silent ` +
+    `case was re-measured through the shipped transport: it reports \`subscribed\` and receives nothing.`
 };
 
 const NODEGX_RT: RealtimeTransportProfile = {
@@ -526,7 +546,12 @@ const NODEGX_RT: RealtimeTransportProfile = {
   connectFailure:
     'fetch rejects for an unreachable host; an unknown clientId is 404; an unsupported filter is 200 with rejected[].reason',
   measured: true,
-  evidence: `${PROBE}: heartbeat comment ": heartbeat" at 25026ms; a Last-Event-ID reconnect answers connected then resync{reason:"reconnect"} with a FRESH clientId`
+  evidence:
+    `${PROBE}: heartbeat comment ": heartbeat" at 25026ms; a Last-Event-ID reconnect answers connected then ` +
+    `resync{reason:"reconnect"} with a FRESH clientId. ` +
+    `${DRIVER}: the backend process killed and relaunched under a live subscription (the rig has no nodegx-backend ` +
+    `container) → reconnected, re-registered, delivered a row written after the restart, and raised 2 resync frames. ` +
+    `Also confirmed live that a 200 carrying rejected[] is NOT a subscription.`
 };
 
 /**

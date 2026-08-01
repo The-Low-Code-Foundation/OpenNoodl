@@ -5510,6 +5510,61 @@
       "inputs": [],
       "outputs": [
         {
+          "name": "changed",
+          "displayName": "Records Changed",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Any of the three, and also the backend saying the view may be stale after a reconnect — the one to react to if you do not care which happened"
+        },
+        {
+          "name": "changedEvent",
+          "displayName": "Change Type",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "create, update, delete, init or resync"
+        },
+        {
+          "name": "changedRecord",
+          "displayName": "Changed Record",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false,
+          "description": "The record the change was about. ⚠️ Null on a delete against Directus, which sends only the key — use Changed Record Id, which every backend fills"
+        },
+        {
+          "name": "changedRecordId",
+          "displayName": "Changed Record Id",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The id of the changed record, always a string — even where the backend's primary key is an integer"
+        },
+        {
+          "name": "changedRecords",
+          "displayName": "Changed Records",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every record in the change frame; some backends batch"
+        },
+        {
           "name": "count",
           "displayName": "Count",
           "group": "General",
@@ -5519,6 +5574,28 @@
           },
           "isSignal": false,
           "description": "How many records are in Items, which Limit caps — turn on Fetch total count for the uncapped figure"
+        },
+        {
+          "name": "created",
+          "displayName": "Record Created",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Another client created a record in this collection"
+        },
+        {
+          "name": "deleted",
+          "displayName": "Record Deleted",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Another client deleted a record from this collection"
         },
         {
           "name": "error",
@@ -5585,6 +5662,61 @@
           },
           "isSignal": false,
           "description": "Records the query matched, in the order Sort asks for; empty before the first query has run"
+        },
+        {
+          "name": "realtimeError",
+          "displayName": "Realtime Error",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false,
+          "description": "The last realtime failure, with a code and whether retrying can help; null until one happens"
+        },
+        {
+          "name": "realtimeFailure",
+          "displayName": "Realtime Failure",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a subscription cannot connect, is rejected, or has been given up on"
+        },
+        {
+          "name": "realtimeStatus",
+          "displayName": "Realtime Status",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "connecting, subscribed, interrupted or stopped. Four states rather than a boolean, because \"connecting for the first time\" and \"dropped and retrying\" want different things on screen"
+        },
+        {
+          "name": "subscribed",
+          "displayName": "Subscribed",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while the backend has confirmed the subscription and is delivering changes"
+        },
+        {
+          "name": "updated",
+          "displayName": "Record Updated",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Another client updated a record in this collection"
         }
       ],
       "dynamicPorts": {
@@ -5608,6 +5740,13 @@
             "group": "General",
             "valueType": "enum",
             "example": "collectionName"
+          },
+          {
+            "pattern": "realtime",
+            "plug": "input",
+            "group": "Realtime",
+            "valueType": "boolean",
+            "example": "realtime"
           },
           {
             "pattern": "search",
@@ -47187,157 +47326,6 @@
           "runtime-discovered"
         ],
         "description": "Filter/parameter ports are derived from the configured query definition."
-      },
-      "parameterEncoding": {
-        "known": false,
-        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
-      }
-    },
-    {
-      "typeName": "noodl.byob.SubscribeToChanges",
-      "displayName": "Subscribe To Changes",
-      "category": "Data",
-      "isVisual": false,
-      "isDeprecated": false,
-      "inNodePicker": true,
-      "availableIn": [
-        "browser"
-      ],
-      "providedBy": "noodl-viewer-react",
-      "ssr": {
-        "compat": "client-only",
-        "note": "A live subscription is meaningless in a server render and would leak a socket per request; the node activates in the browser after hydration."
-      },
-      "docs": "https://docs.noodl.net/nodes/data/byob/subscribe-to-changes",
-      "searchTags": [
-        "byob",
-        "realtime",
-        "subscribe",
-        "websocket",
-        "live",
-        "changes",
-        "events",
-        "directus",
-        "backend"
-      ],
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "changed",
-          "displayName": "Changed",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "changedRecord",
-          "displayName": "Changed Record",
-          "group": "Event",
-          "plug": "output",
-          "type": {
-            "name": "object"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "changedRecordId",
-          "displayName": "Changed Record Id",
-          "group": "Event",
-          "plug": "output",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "changedRecords",
-          "displayName": "Changed Records",
-          "group": "Event",
-          "plug": "output",
-          "type": {
-            "name": "array"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "created",
-          "displayName": "Created",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "deleted",
-          "displayName": "Deleted",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "error",
-          "displayName": "Error",
-          "group": "Status",
-          "plug": "output",
-          "type": {
-            "name": "object"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "eventType",
-          "displayName": "Event Type",
-          "group": "Event",
-          "plug": "output",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "failure",
-          "displayName": "Failure",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "subscribed",
-          "displayName": "Subscribed",
-          "group": "Status",
-          "plug": "output",
-          "type": {
-            "name": "boolean"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "updated",
-          "displayName": "Updated",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        }
-      ],
-      "dynamicPorts": {
-        "mechanisms": [
-          "runtime-discovered"
-        ],
-        "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
       },
       "parameterEncoding": {
         "known": false,

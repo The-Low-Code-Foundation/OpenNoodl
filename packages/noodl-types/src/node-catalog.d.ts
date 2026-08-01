@@ -156,7 +156,6 @@ export type NodeTypeName =
   | 'noodl.byob.CreateRecord'
   | 'noodl.byob.DeleteRecord'
   | 'noodl.byob.QueryData'
-  | 'noodl.byob.SubscribeToChanges'
   | 'noodl.byob.UpdateRecord'
   | 'noodl.cloud.aggregate'
   | 'noodl.cloud.request'

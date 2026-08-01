@@ -709,8 +709,7 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike) {
             'noodl.byob.QueryData',
             'noodl.byob.CreateRecord',
             'noodl.byob.UpdateRecord',
-            'noodl.byob.DeleteRecord',
-            'noodl.byob.SubscribeToChanges'
+            'noodl.byob.DeleteRecord'
           ]
         },
         {

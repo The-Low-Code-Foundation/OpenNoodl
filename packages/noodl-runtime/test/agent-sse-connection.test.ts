@@ -32,7 +32,9 @@ import {
 } from '../src/nodes/std-library/agent/sse-connection';
 import type { SseFrame } from '../src/nodes/std-library/agent/stream-parsers';
 
-const { nextReconnectDelay } = require('../src/nodes/std-library/data/byob-realtime');
+// BCN-008 deleted `byob-realtime.ts`; the same arithmetic now lives in the contract, where
+// five transports share it rather than two.
+const { nextReconnectDelay } = require('@noodl/backend-contract/realtime');
 
 // ============================================================================
 // Doubles
@@ -323,7 +325,7 @@ describe('backoffDelay', () => {
     expect(backoffDelay(999, 1000, 30000)).toBe(30000);
   });
 
-  it('agrees with byob-realtime for the default parameters', () => {
+  it('agrees with the contract\'s nextReconnectDelay for the default parameters', () => {
     // The two implementations exist only because this one is parameterised. If they
     // ever diverge, that is a bug in one of them and this fails.
     for (let attempt = 0; attempt < 12; attempt++) {

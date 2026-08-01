@@ -36,9 +36,11 @@ import * as SchemaPorts from './schema-ports';
 
 import Node = require('../../../node');
 import ByobUtils = require('./byob-utils');
-import ByobRealtime = require('./byob-realtime');
 
-const { RealtimeSSEConnection, isNodeGXRealtime } = ByobRealtime;
+// BCN-008 retired `byob-realtime.ts`: there is one set of transports now, in
+// `api/backends/realtime`, and this node uses the same one Query Records does.
+import { createRealtimeSubscription, isNodeGXRealtime } from '../../../api/backends/realtime';
+import type { RealtimeSubscription } from '../../../api/backends/realtime';
 
 /** The shape the `error` output carries. */
 interface ByobError {
@@ -89,12 +91,6 @@ interface ConnectedCondition {
   conditionId?: string;
 }
 
-/** The part of a realtime connection this node uses — see `byob-subscribe.ts`. */
-interface RealtimeTransport {
-  connect(): void;
-  dispose(): void;
-}
-
 /**
  * `this` inside the BYOB Query Data node.
  *
@@ -130,7 +126,7 @@ interface QueryDataInstance extends NodeInstance {
     lastRequestUrl?: string;
     hasScheduledFetch?: boolean;
     hasScheduledLiveReconfigure?: boolean;
-    liveConnection?: RealtimeTransport | null;
+    liveConnection?: RealtimeSubscription | null;
   };
   _storeInputValue(name: string, value: unknown): void;
   _storeFilterPortValue(name: string, value: unknown): void;
@@ -339,23 +335,28 @@ const QueryDataNode: NodeDefinitionOptions = {
       const backendConfig = this.resolveBackend();
       if (!backendConfig || !isNodeGXRealtime(backendConfig.type)) return;
 
-      this._internal.liveConnection = new RealtimeSSEConnection({
-        baseUrl: backendConfig.url,
-        token: backendConfig.token,
-        collection,
-        onEvent: (event) => {
-          // Any create/update/delete/resync means the result set may have moved;
-          // re-run the query (debounced).
-          if (event === 'create' || event === 'update' || event === 'delete' || event === 'resync') {
-            this.scheduleFetch();
-          }
+      this._internal.liveConnection = createRealtimeSubscription(
+        {
+          id: 'byob',
+          type: backendConfig.type as never,
+          name: 'Backend',
+          url: backendConfig.url,
+          sessionToken: backendConfig.token
         },
-        onStatus: () => {},
-        onError: (err) => {
-          console.warn('[BYOB Query Data] Live subscription error:', err);
+        {
+          collection,
+          primaryKey: 'objectId',
+          onEvent: (change) => {
+            // Any create/update/delete/resync means the result set may have moved;
+            // re-run the query (debounced). `init` is a confirmation snapshot, not a
+            // change, and re-fetching on it would double every connect.
+            if (change.type !== 'init') this.scheduleFetch();
+          },
+          onError: (err) => {
+            console.warn('[BYOB Query Data] Live subscription error:', err);
+          }
         }
-      });
-      this._internal.liveConnection.connect();
+      );
     },
 
     teardownLive: function (this: QueryDataInstance) {

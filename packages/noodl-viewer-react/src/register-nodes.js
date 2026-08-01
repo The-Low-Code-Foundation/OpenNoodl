@@ -68,7 +68,6 @@ export default function registerNodes(noodlRuntime) {
     require('@noodl/runtime/src/nodes/std-library/data/byob-create-record'),
     require('@noodl/runtime/src/nodes/std-library/data/byob-update-record'),
     require('@noodl/runtime/src/nodes/std-library/data/byob-delete-record'),
-    require('@noodl/runtime/src/nodes/std-library/data/byob-subscribe'),
 
     //require('./nodes/std-library/variables/number'), // moved to runtime
     //require('./nodes/std-library/variables/string'),
