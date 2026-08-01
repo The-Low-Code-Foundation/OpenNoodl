@@ -62,7 +62,12 @@ const DragNode: ReactNodeDefinition = {
       valueChangedToTrue() {
         this.scheduleAfterInputsHaveUpdated(() => {
           const { snapPositionX, snapDurationX } = this._internal;
-          this.innerReactComponentRef && this.innerReactComponentRef.snapToPositionX(snapPositionX, snapDurationX);
+          // NDA-012 (Visual) A3, third instance. The worksheet filed this under `B1` — "a
+          // `Do` before the component mounts is dropped … with no report" — so the *class* was
+          // split across two checks on three nodes. The drop is closed here with the same
+          // `withInnerComponent` the Group and Video cells used; the missing report is `B1`'s
+          // and stays with ERG-001.
+          this.withInnerComponent((inner) => inner.snapToPositionX(snapPositionX, snapDurationX));
         });
       }
     },
@@ -108,7 +113,7 @@ const DragNode: ReactNodeDefinition = {
       valueChangedToTrue() {
         this.scheduleAfterInputsHaveUpdated(() => {
           const { snapPositionY, snapDurationY } = this._internal;
-          this.innerReactComponentRef && this.innerReactComponentRef.snapToPositionY(snapPositionY, snapDurationY);
+          this.withInnerComponent((inner) => inner.snapToPositionY(snapPositionY, snapDurationY));
         });
       }
     },

@@ -50,6 +50,7 @@ jest.mock('../../src/components/visual/Group/scroll-plugins/slide-scroll-plugin'
 /* eslint-disable @typescript-eslint/no-var-requires */
 const VideoModule = require('../../src/nodes/visual/video').default;
 const GroupModule = require('../../src/nodes/visual/group').default;
+const DragModule = require('../../src/nodes/visual/drag').default;
 /* eslint-enable @typescript-eslint/no-var-requires */
 
 interface DrivableNode extends NodeInstance {
@@ -92,7 +93,10 @@ function mount(node: DrivableNode): string[] {
     reset: () => calls.push('reset'),
     setSourceObject: (v: unknown) => calls.push('setSourceObject:' + JSON.stringify(v)),
     scrollToIndex: (i: number, d: number) => calls.push(`scrollToIndex:${i}:${d}`),
-    scrollToElement: (e: unknown, d: number) => calls.push(`scrollToElement:${String(e)}:${d}`)
+    scrollToElement: (e: unknown, d: number) => calls.push(`scrollToElement:${String(e)}:${d}`),
+    snapToPositionX: (v: number, d: number) => calls.push(`snapToPositionX:${v}:${d}`),
+    snapToPositionY: (v: number, d: number) => calls.push(`snapToPositionY:${v}:${d}`),
+    stopSnapTimers: () => calls.push('stopSnapTimers')
   };
   node.innerReactComponentRef = inner;
   node._flushPendingInnerActions();
@@ -195,6 +199,40 @@ describe('A3 — Group scroll actions, which the worksheet filed as an asymmetry
     p.graph.update();
 
     expect(calls).toEqual(['scrollToIndex:7:50']);
+  }, 30000);
+});
+
+/**
+ * ⚠️ **The third instance, and the worksheet filed it under a different check.**
+ *
+ * `Drag`'s cell reads `B1 | ⚠️ none | a Do before the component mounts is dropped by
+ * `this.innerReactComponentRef && …` with no report`. The *drop* is this A3 class, in a third
+ * node; the *missing report* is genuinely `B1` and stays with ERG-001. So the class was split
+ * across two checks on three nodes, and counting `A3` cells would have found two of them.
+ */
+describe('A3 — Drag, the instance filed under B1', () => {
+  it('Snap To Position X survives arriving before mount', async () => {
+    const p = await build(DragModule);
+
+    p.node.setInputValue('snapToPositionX.value', 120);
+    p.node.setInputValue('snapToPositionX.duration', 400);
+    pulse(p.node, 'snapToPositionX.do');
+    p.graph.update();
+
+    expect(mount(p.node)).toEqual(['snapToPositionX:120:400']);
+  }, 30000);
+
+  it('Snap To Position Y too', async () => {
+    const p = await build(DragModule);
+
+    p.node.setInputValue('snapToPositionY.value', 60);
+    pulse(p.node, 'snapToPositionY.do');
+    p.graph.update();
+
+    // 300 is the declared default, mirrored in `initialize` — see `DB-ii`: a declared default
+    // never runs its setter, so the mirror is what puts it in `_internal`. Reading it back here
+    // is incidental cover for that.
+    expect(mount(p.node)).toEqual(['snapToPositionY:60:300']);
   }, 30000);
 });
 
