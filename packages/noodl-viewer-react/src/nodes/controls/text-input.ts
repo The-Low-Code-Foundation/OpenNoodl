@@ -46,18 +46,20 @@ const TextInputNode = {
     this.props.startValue = '';
     this.props.id = this._internal.controlId = 'input-' + guid();
 
-    // NDA-012 (Visual), the third `DV-ii` instance. `placeHolderOpacity` declares `default: 0.5`
-    // and its setter is the only writer of the injected `::placeholder` rule — and a declared
-    // default never runs its setter, so an untouched Text Input got the browser's placeholder
-    // opacity instead of the 0.5 its panel showed.
+    // NDA-012 (Visual), the third `DV-ii` instance — and it is **not a defect**, for the same
+    // reason Button's padding was not: `assets/style.css`'s `.ndl-controls-textinput::placeholder`
+    // already carries `opacity: 0.5`, so the number the panel shows is the number that renders,
+    // and `placeHolderOpacity`'s setter is the *override*, not the only writer.
     //
-    // ⚠️ Made real rather than deleted, which is the opposite call from `Icon`/`Button`'s padding
-    // earlier in this phase, and the reason is that the pixels are **already** inconsistent:
-    // `Dropdown` spells the same setting `placeholderOpacity` as an `inputProp`
-    // (`options.ts:142`), where the framework's default→props copy applies it, and renders it at
-    // `Select.tsx:129`. Two sibling controls showed placeholders at two different opacities. The
-    // mirror is the shape `Drag`'s four snap defaults use in this same pass.
-    Utils.updateStylesForClass(this._internal.controlId, { placeholderOpacity: 0.5 }, _styleTemplate);
+    // ⚠️ Measured, after a mirror had been written here and committed on the strength of reading
+    // the source. Live, with both injected per-instance rules deleted from the document, the
+    // computed `::placeholder` opacity is still 0.5. The mirror moved no pixels and made the same
+    // number specified three times, so it is gone again. The worksheet's claim that an untouched
+    // Text Input gets the browser's opacity is wrong.
+    //
+    // The duplication that *is* real is the one Button has: the value lives in the stylesheet and
+    // in the port default, and only the stylesheet is load-bearing until an author touches the
+    // port. Pinned in `nda-012-visual-declared-defaults.test.ts` so an edit to either copy fails.
   },
   inputProps: {
     type: {

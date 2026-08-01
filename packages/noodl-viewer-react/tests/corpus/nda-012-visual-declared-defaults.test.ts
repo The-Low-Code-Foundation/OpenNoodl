@@ -242,80 +242,75 @@ describe('V-ii — Component Stack said it clips and did not', () => {
   }, 30000);
 });
 
-describe('V-iv — Text Input showed a placeholder opacity it never applied', () => {
-  // The third `DV-ii` instance, and the one where the two sibling controls disagreed.
+describe('V-iv — Text Input’s placeholder opacity is Button’s case, not Icon’s', () => {
+  // The third `DV-ii` instance, and ⚠️ **it is not a defect** — which is the same correction
+  // Button's needed, arrived at the same way, one node later.
   //
-  // `placeHolderOpacity` declares `default: 0.5` and its setter is the **only** writer of the
-  // injected `.<controlId>::placeholder { opacity }` rule. DB-ii blocks that setter, and there is
-  // no `inputProp`/`inputCss` route to fall back on, so an untouched Text Input rendered its
-  // placeholder at the browser's opacity while the panel read 0.5.
+  // The mechanism is real: `placeHolderOpacity` declares `default: 0.5`, DB-ii means its setter
+  // never runs for that default, and there is no `inputProp`/`inputCss` route to fall back on.
+  // The *consequence* is nothing, because `assets/style.css` already carries
+  // `.ndl-controls-textinput::placeholder { opacity: 0.5 }`. The panel's number and the rendered
+  // number agree; the setter is the override, not the only writer.
   //
-  // ✅ **Fixed 2026-08-01 by making it real, not by deleting it** — the opposite call from
-  // Button/Icon's padding above, and the reason is that the pixels were *already* inconsistent:
-  // `Dropdown` spells the same setting `placeholderOpacity` as an `inputProp` (`options.ts:142`),
-  // where `initialize`'s default→props copy applies it, and renders it at `Select.tsx:129`. Two
-  // controls that look the same to an author showed placeholders at two different opacities.
+  // ⚠️ A mirror was written into `initialize` on the strength of reading the source, committed,
+  // and then **measured live and reverted**: with both injected per-instance rules deleted from a
+  // running preview, the computed `::placeholder` opacity is still 0.5. It moved no pixels and made
+  // one number specified three times. FINDINGS `DV-ii`'s own rule — *a mechanism defect and its
+  // consequence are two different claims* — caught by the instrument that states it, on the third
+  // instance of the same finding.
   //
-  // ⚠️ `Utils.updateStylesForClass` returns early when `document` is undefined (`utils.ts:27`),
-  // and the viewer corpus runs under `testEnvironment: node`. So this row **stubs a document** —
-  // without it the call is a no-op and the row passes having measured nothing, which is FINDINGS
-  // B-x's shape.
-  const injected: string[] = [];
-  let priorDocument: unknown;
+  // So these rows do what Button's do: keep the load-bearing copy load-bearing.
 
-  beforeAll(() => {
-    priorDocument = (globalThis as Record<string, unknown>).document;
+  it('the stylesheet is the copy that renders, and it still carries 0.5', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fs = require('fs');
+    const css = fs.readFileSync(__dirname + '/../../src/assets/style.css', 'utf8');
+
+    const rule = css.slice(css.indexOf('.ndl-controls-textinput::placeholder {'));
+    expect(rule.slice(0, rule.indexOf('}'))).toContain('opacity: 0.5');
+  });
+
+  it('the port default agrees with it, so the panel is not lying', () => {
+    // The pair is what makes the duplication harmless. If either copy is edited alone, one of
+    // these two rows fails — which is the only protection a value written in two files can have.
+    expect(TextInputModule.node.inputs.placeHolderOpacity.default).toBe(0.5);
+  });
+
+  it('nothing mirrors it into initialize, so the number is written twice and not three times', async () => {
+    // ⚠️ `Utils.updateStylesForClass` returns early when `document` is undefined (`utils.ts:27`)
+    // and the viewer corpus runs under `testEnvironment: node`, so this row **stubs a document**.
+    // Without it the call is a no-op and the row passes having measured nothing — FINDINGS B-x.
+    const injected: string[] = [];
+    const priorDocument = (globalThis as Record<string, unknown>).document;
     (globalThis as Record<string, unknown>).document = {
-      createElement: () => {
-        const element = {
-          set innerHTML(value: string) {
-            injected.push(value);
-          }
-        };
-        return element;
-      },
+      createElement: () => ({
+        set innerHTML(value: string) {
+          injected.push(value);
+        }
+      }),
       head: { appendChild: () => undefined }
     };
-  });
 
-  afterAll(() => {
-    (globalThis as Record<string, unknown>).document = priorDocument;
-  });
+    try {
+      // One node authored at 0.9, one untouched. Exactly one rule should be injected: the
+      // override. A mirror in `initialize` would produce two.
+      await bareVsAuthored(TextInputModule, 'placeHolderOpacity', 0.9);
 
-  it('an untouched Text Input injects the 0.5 its panel shows', async () => {
-    injected.length = 0;
-    await bareVsAuthored(TextInputModule, 'placeHolderOpacity', 0.5);
-
-    // Two nodes are built, and the rule is written for both — the point is that the *bare* one
-    // gets it, which before the fix it did not.
-    expect(injected.length).toBeGreaterThanOrEqual(2);
-    for (const rule of injected) expect(rule).toContain('opacity: 0.5');
+      expect(injected).toHaveLength(1);
+      expect(injected[0]).toContain('opacity: 0.9');
+    } finally {
+      (globalThis as Record<string, unknown>).document = priorDocument;
+    }
   }, 30000);
 
-  it('the control: an authored value still overrides the mirrored default', async () => {
-    injected.length = 0;
-    await bareVsAuthored(TextInputModule, 'placeHolderOpacity', 0.9);
-
-    // The setter runs for the authored node and writes over the initialize-time rule, so the
-    // override half — the half that always worked — still works.
-    expect(injected.some((rule) => rule.includes('opacity: 0.9'))).toBe(true);
-  }, 30000);
-
-  // The comparison that decided the direction of the fix, pinned so the two cannot silently drift
-  // apart again — and asserted on the *behaviour*, not the declaration, because
-  // `createNodeFromReactComponent` folds `inputProps` into `inputs` and the two routes are
-  // indistinguishable on the created node.
-  //
-  // A bare Dropdown carries the value in `props` because `initialize`'s default→props copy ran.
-  // That is the route Text Input's port never had, and the reason its 0.5 had to be mirrored by
-  // hand rather than the declaration deleted.
+  // Kept from the reverted version, because the comparison is still worth having: `Dropdown`
+  // reaches the same setting by the route that *is* applied at initialize, so its 0.5 is real
+  // without a stylesheet. Two nodes, two spellings, two mechanisms, one number — and, as it turns
+  // out, the same rendered result.
   it('Dropdown reaches the same setting by the route that IS applied at initialize', async () => {
     const [bare] = await bareVsAuthored(DropdownModule, 'placeholderOpacity', 0.5);
 
     expect(bare.props.placeholderOpacity).toBe(0.5);
-    // Text Input's port declares the same number and has no such route — the mirror above is what
-    // stands in for it.
-    expect(TextInputModule.node.inputs.placeHolderOpacity.default).toBe(0.5);
   }, 30000);
 });
 
