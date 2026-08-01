@@ -14,12 +14,22 @@
  * the phase exists to remove.
  *
  * It is one `Backends` section now, one `+`, and every card carries the same
- * statement of what choosing that backend publishes into the app. What still
- * differs underneath is *storage*: three metadata homes, listed on
- * `BackendPreset.configuredBy`. Converging them is BCN-009 step 2, which reaches
- * into the runtime's `resolveBackend` and the exporter's injection and is
- * deliberately a separate change — the list does not have to wait for it, and
- * this file is the seam that lets it not.
+ * statement of what choosing that backend publishes into the app.
+ *
+ * ## BCN-009 step 2: one selection, and this file owns it
+ *
+ * The list was one; the *selection* was not. `cloudservices` bound the record,
+ * auth and file nodes and `backendServices.activeBackendId` bound the BYOB ones,
+ * independently, so **two cards could say ACTIVE at once** — one of them for a
+ * backend that was stopped — and a user had no way to tell which backend their
+ * app would use.
+ *
+ * There is one id now, `BackendServices.activeBackendId`, it may name the
+ * endpoint (`ENDPOINT_BACKEND_ID`), and this panel is the single place that hands
+ * it to a card. No card decides for itself that it is active; that is how there
+ * came to be two. The endpoint's *configuration* still lives in `cloudservices` —
+ * see `models/BackendServices/activeBackend.ts` for what converged, what did not,
+ * and why.
  *
  * @module BackendServicesPanel
  * @since 1.2.0
@@ -32,8 +42,11 @@ import {
   BackendServices,
   BackendServicesEvent,
   BackendSwitchDisclosure,
-  describeBackendSwitch
+  ENDPOINT_BACKEND_ID,
+  describeBackendSwitch,
+  describeSelectionConflict
 } from '@noodl-models/BackendServices';
+import { endpointBackendType, endpointDisplayName } from '@noodl-models/BackendServices/backendList';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { getCloudServices, setCloudServices } from '@noodl-models/projectmodel.editor';
 
@@ -60,7 +73,16 @@ import { BackendSwitchDialog } from './SecurityDisclosure/BackendSwitchDialog';
 
 export function BackendServicesPanel() {
   const [backends, setBackends] = useState(BackendServices.instance.backends);
-  const [activeBackendId, setActiveBackendId] = useState<string | null>(BackendServices.instance.activeBackendId);
+  /**
+   * The project's one active backend id. May be {@link ENDPOINT_BACKEND_ID}.
+   *
+   * Held here rather than read per-card so that every card in the list is drawn
+   * from the same answer — the defect this step fixes was two cards each deciding
+   * for itself.
+   */
+  const [activeBackendId, setActiveBackendId] = useState<string | undefined>(
+    BackendServices.instance.activeBackendId
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isAddDialogVisible, setIsAddDialogVisible] = useState(false);
   const [hasActivity, setHasActivity] = useState(false);
@@ -104,8 +126,12 @@ export function BackendServicesPanel() {
     setBackends([...BackendServices.instance.backends]);
   });
 
-  useEventListener(BackendServices.instance, BackendServicesEvent.ActiveBackendChanged, (id: string | null) => {
-    setActiveBackendId(id);
+  // Raised both by `setActiveBackend` and by the project's endpoint changing,
+  // because the endpoint is half of what the selection can name — starting a
+  // local backend in a project with none moves the badge without any card here
+  // being told.
+  useEventListener(BackendServices.instance, BackendServicesEvent.ActiveBackendChanged, () => {
+    setActiveBackendId(BackendServices.instance.activeBackendId);
   });
 
   // Delete confirmation dialog for external backends
@@ -176,27 +202,26 @@ export function BackendServicesPanel() {
    * different types. Confirming a switch between two Directus backends is a
    * dialog that says nothing, and a dialog that says nothing is how people learn
    * to click through the ones that do.
+   *
+   * **BCN-009 step 2 widened it to the endpoint on both sides.** Before, the
+   * endpoint was not a thing you could switch *to* or *from* — it was active by
+   * existing — so the largest switch in the product, built-in-to-Directus and
+   * back, was the one switch with no comparison in front of it.
    */
-  const handleSetActive = useCallback(
-    (id: string) => {
-      const target = BackendServices.instance.getBackend(id);
-      const current = BackendServices.instance.activeBackend;
+  const handleSetActive = useCallback((id: string) => {
+    const from = describeSelectableBackend(BackendServices.instance.activeBackendId);
+    const to = describeSelectableBackend(id);
 
-      if (target && current && current.id !== target.id && current.type !== target.type) {
-        setPendingSwitch({
-          id,
-          disclosure: describeBackendSwitch(current.type, target.type, {
-            from: current.name,
-            to: target.name
-          })
-        });
-        return;
-      }
+    if (from && to && from.id !== to.id && from.type !== to.type) {
+      setPendingSwitch({
+        id,
+        disclosure: describeBackendSwitch(from.type, to.type, { from: from.name, to: to.name })
+      });
+      return;
+    }
 
-      BackendServices.instance.setActiveBackend(id);
-    },
-    []
-  );
+    BackendServices.instance.setActiveBackend(id);
+  }, []);
 
   const handleConfirmSwitch = useCallback(() => {
     if (pendingSwitch) BackendServices.instance.setActiveBackend(pendingSwitch.id);
@@ -234,6 +259,34 @@ export function BackendServicesPanel() {
     !getCloudServicesEndpoint() &&
     !isAddLocalVisible &&
     !isEndpointEditRequested;
+
+  // BCN-009 step 2: the one case the migration will not resolve on the project's
+  // behalf, because either answer silently repoints a family of nodes. Said out
+  // loud on both cards, with the resolution one click away, rather than shown as
+  // a second ACTIVE badge.
+  const conflictingBackendId = BackendServices.instance.conflictingBackendId;
+  const conflictNote = (() => {
+    if (!conflictingBackendId) return undefined;
+    const active = describeSelectableBackend(activeBackendId);
+    const conflict = BackendServices.instance.getBackend(conflictingBackendId);
+    if (!active || !conflict) return undefined;
+    return describeSelectionConflict(active.name, conflict.name);
+  })();
+
+  /**
+   * Is the project's endpoint a backend this editor runs, and is it up?
+   *
+   * Matched on the port, which is how the endpoint was written in the first place
+   * (`onStart` below). Live-QA 3.2: without this the card draws a green tick for
+   * a port with nothing listening on it.
+   */
+  const endpointLocalStatus = (() => {
+    const endpoint = getCloudServicesEndpoint();
+    if (!endpoint) return undefined;
+    const match = localBackends.find((b) => endpoint.includes(`:${b.port}`));
+    if (!match) return undefined;
+    return match.running ? ('running' as const) : ('stopped' as const);
+  })();
 
   return (
     <BasePanel title="Backend Services" hasActivityBlocker={hasActivity} hasContentScroll>
@@ -315,6 +368,11 @@ export function BackendServicesPanel() {
               <CloudServicesEndpointSection
                 isEditingRequested={isEndpointEditRequested}
                 onEditingClosed={() => setIsEndpointEditRequested(false)}
+                isActive={activeBackendId === ENDPOINT_BACKEND_ID}
+                onSetActive={() => handleSetActive(ENDPOINT_BACKEND_ID)}
+                onDisconnected={() => BackendServices.instance.endpointRemoved()}
+                conflictNote={activeBackendId === ENDPOINT_BACKEND_ID ? conflictNote : undefined}
+                localStatus={endpointLocalStatus}
               />
 
               {localBackends.map((backend) => (
@@ -358,6 +416,7 @@ export function BackendServicesPanel() {
                   key={backend.id}
                   backend={backend}
                   isActive={backend.id === activeBackendId}
+                  conflictNote={backend.id === conflictingBackendId ? conflictNote : undefined}
                   onSetActive={() => handleSetActive(backend.id)}
                   onDelete={() => handleDeleteBackend(backend.id)}
                   onTestConnection={() => handleTestConnection(backend.id)}
@@ -407,4 +466,26 @@ function getCloudServicesEndpoint(): string | undefined {
   const project = ProjectModel.instance;
   if (!project) return undefined;
   return getCloudServices(project).endpoint;
+}
+
+/**
+ * The three facts the switch disclosure needs about a selectable backend.
+ *
+ * One function for both kinds, because the whole point of step 2 is that "the
+ * project's backend" is one question. `undefined` for an id that names nothing —
+ * an empty project on the `from` side, which is the case with nothing to compare.
+ */
+function describeSelectableBackend(id: string | undefined) {
+  if (!id) return undefined;
+
+  if (id === ENDPOINT_BACKEND_ID) {
+    const project = ProjectModel.instance;
+    const endpoint = project ? getCloudServices(project) : undefined;
+    if (!endpoint?.endpoint) return undefined;
+    const type = endpointBackendType(endpoint.type);
+    return { id, type, name: endpointDisplayName(type) };
+  }
+
+  const backend = BackendServices.instance.getBackend(id);
+  return backend ? { id: backend.id, type: backend.type, name: backend.name } : undefined;
 }

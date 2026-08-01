@@ -1,7 +1,7 @@
 # Phase 33 — Progress
 
 **Track R — Alpha Launch**
-**All 5 tasks specced as of 2026-07-30. None started.**
+**6 tasks specced. ALPHA-005 complete; ALPHA-006 added 2026-07-31.**
 **Phase overview:** [README.md](./README.md)
 
 ## Status vocabulary
@@ -15,8 +15,9 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | [ALPHA-001](./ALPHA-001-FIRST-HOUR.md) The cold-install first hour | 1 | 📋 Specced | Discharges seven tasks' owed live-QA in one pass. Part A can start as soon as the tree is clean; Part B needs ALPHA-002 |
 | [ALPHA-002](./ALPHA-002-RELEASE-CUT.md) A release that reaches a Mac | 1 | 📋 Specced | **The v0.1.0 draft has no macOS artifacts at all.** The credential half is human-only and is the long pole |
 | [ALPHA-003](./ALPHA-003-CRASH-AND-FEEDBACK.md) Find out when it breaks | 2 | 📋 Specced | Depends on ALPHA-005 — nothing transmits before a policy names it |
-| [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 📋 Specced | Blocked on phase 30 Tier 1 + NDA-005. Node reference is **generated**, never authored |
+| [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 📋 Specced | **Re-scoped 2026-07-31** — platform half moved to ALPHA-006; retains the authored concept set, getting-started and troubleshooting. Blocked on ALPHA-006 |
 | [ALPHA-005](./ALPHA-005-LEGAL-SURFACE.md) The paperwork that ships with a binary | 2 | ✅ **Complete** | 2026-07-30. `PRIVACY.md` + `TERMS.md` written from the code, licence fields added, both reachable from the Application/Help menus and shown at first run. **Criterion 5 (an outside reader) is owed** — see below |
+| [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) The docs platform, and the old site's disposition | 2 | 📋 Specced | Blocked on phase 30 Tier 1. **§1 (help panel reads the bundled catalog) is independently valuable and should go first** — it closes all 54 undocumented nodes on its own |
 
 ## Recommended order
 
@@ -27,8 +28,11 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 3. **ALPHA-001 Part A** — as soon as the working tree is clean.
 4. **ALPHA-003**.
 5. **ALPHA-001 Part B** — needs the build from step 1.
-6. **ALPHA-004** — after phase 30 Tier 1 lands, so the node reference has something
-   true to generate from.
+6. **ALPHA-006 §1** — the help panel off the network. Independent of everything else
+   here, and it closes all 54 undocumented nodes without a website existing.
+7. **ALPHA-006** — the rest, after phase 30 Tier 1 lands so the node reference has
+   something true to generate from.
+8. **ALPHA-004** — once there is a site to write into.
 
 ## Findings register
 
@@ -44,7 +48,9 @@ phases 25 and 27 — check the highest existing number before allocating.
 | F66 | **The update check polls GitHub every 60 seconds, forever.** `update-not-available` re-arms a 60s timer, so an idle editor makes ~1,440 requests a day. The retry-on-error path does the same | `packages/noodl-editor/src/main/src/autoupdater.js:44-48` | ALPHA-002 |
 | F67 | `packages/noodl-editor/package.json` is **committed minified onto a single line** with no trailing newline, so every diff touching it is unreadable | — | ALPHA-002 (touching that file anyway) |
 | F68 | The About window read `Copyright (c) 2023 Future Platforms AB` and the menu item said "About Application" | `packages/noodl-editor/src/main/main.js:562-568` | ✅ **Fixed 2026-07-30** — now "About NodeGX", GPL-3.0 with the fork attribution kept |
-| F69 | The Help Center's links still point at **`docs.noodl.net`**, the Noodl forum and the Noodl Discord, and its Algolia index is `docs_2-9` — Noodl's old documentation index | `packages/noodl-editor/src/editor/src/views/HelpCenter/HelpCenter.tsx` | ALPHA-004 |
+| F69 | The Help Center's links still point at **`docs.noodl.net`**, the Noodl forum and the Noodl Discord, and its Algolia index is `docs_2-9` — Noodl's old documentation index | `packages/noodl-editor/src/editor/src/views/HelpCenter/HelpCenter.tsx` | ALPHA-006 §6 |
+| F70 | **54 of 156 nodes (35%) have no working documentation page.** Every `docs` URL in `node-catalog.json` was resolved against the docs repo's file list: 102 hit a real page, **6 point at the wrong path**, **33 point at a page that does not exist**, **15 nodes have no `docs` URL at all**. It is not a random 35% — it is precisely the NodeGX-era library: all five BYOB nodes, the whole realtime family, the entire agentic-UI/state set, Logic Builder, email, magic-link/OAuth. `docs-parser.ts:75` swallows the 404, so the help panel shows nothing rather than an error | `packages/noodl-types/src/node-catalog.json` × `The-Low-Code-Foundation/opennoodl-docs`, measured 2026-07-31 | ALPHA-006 §1 |
+| F71 | **The docs site is the editor's content CDN, not a docs site.** `getDocsEndpoint()` has 10 call sites across **7 payload types**, and 6 are not documentation: the prefab/module library index and zips, the Learn lesson index, the new-project templates, the tutorials list, the what's-new feed. Moving or archiving that origin silently empties the **Library panel, the Learn lesson list and the new-project template picker** — all three fail without an error. Two served paths have no consumer at all (`static/nodepickerdefaults/`, `static/version.json`) | `packages/noodl-editor/src/editor/src/utils/getDocsEndpoint.ts` + 10 consumers, 2026-07-31 | ALPHA-006 §5 |
 
 ## Pre-existing findings this phase adopts
 
@@ -132,3 +138,34 @@ evidence, not speculation — each was measured.
   an HTML comment (stripped before display). Richard needs to supply the publishing
   entity, a contact address, and governing law before a public build. Everything
   else in both documents is verified against the code.
+
+- **2026-07-31 — ALPHA-006 specced, ALPHA-004 re-scoped.** Richard asked whether the
+  docs should be rewritten from scratch on a modern framework. Reviewing
+  `The-Low-Code-Foundation/opennoodl-docs` answered half of that: **it is already
+  Docusaurus 3.1** with MDX, SCSS and local search, so there is no framework upgrade
+  to make. The content model is what needs replacing.
+
+  Two findings made this its own task rather than an ALPHA-004 note. **F70** — 35% of
+  the node library has no working page, concentrated entirely in what we built since
+  the revival. **F71** — the docs origin serves seven payload types, six of them not
+  documentation, so "move the docs into the repo" silently empties three panels if
+  done naively.
+
+  The disposition of the old repo's 431 authored files was measured, not estimated:
+  ~41k words of node pages are **superseded** by the enriched catalog (156/156 nodes
+  already carry better prose); `javascript/` (~8k) **ports near-verbatim** — checked
+  against `noodl-js-api.ts`, it accurately covers 13 of the 14 real namespaces, and
+  needs `Config` and `Env` adding; ~52k words of guides yield maybe 10k of salvaged
+  concepts; ~35k words **delete** because they describe the Noodl Cloud Service and
+  Dashboard (deleted by WF-007), Noodl-hosted git, AWS/GCP backend setup (superseded
+  by phases 19/26), and a Figma plugin with **zero** references left in the editor
+  source. The prefab library's 179 files / ~60k words stay on the content host, not
+  in this monorepo — they are coupled to the payload, and they are how the 413 MB
+  gets back in.
+
+  Richard's instinct to drop the assets is right and is the largest single saving:
+  1,621 PNGs and 315 MP4s all show the pre-refresh editor and are wrong after phases
+  23–28.
+
+  **Nothing built.** Four documents touched: ALPHA-006 created, ALPHA-004 re-scoped,
+  README and this file updated.

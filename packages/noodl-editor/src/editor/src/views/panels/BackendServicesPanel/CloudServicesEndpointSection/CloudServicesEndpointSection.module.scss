@@ -11,10 +11,20 @@
   min-width: 0;
 
   background-color: var(--theme-color-bg-3);
-  border: 1px solid var(--theme-color-primary);
+  /* BCN-009 step 2: the accent border used to be unconditional, for the same
+   * reason the ACTIVE badge was — this card assumed it was the project's
+   * backend. It is one candidate in one selection now, so the accent follows the
+   * selection, exactly as `BackendCard` already did. */
+  border: 1px solid var(--theme-color-border-default);
   border-radius: 6px;
   padding: 12px;
   margin-bottom: 8px;
+  transition: border-color 0.2s ease;
+
+  &.Active {
+    border-color: var(--theme-color-primary);
+    background-color: var(--theme-color-bg-2);
+  }
 }
 
 .Header {
@@ -114,5 +124,11 @@
   > * {
     flex: 1 1 96px;
     min-width: 0;
+  }
+
+  /* `Set active` owns its own row above Edit/Disconnect, the way `BackendCard`'s
+   * primary action does. Two rows need the gap between them. */
+  & + & {
+    margin-top: 6px;
   }
 }

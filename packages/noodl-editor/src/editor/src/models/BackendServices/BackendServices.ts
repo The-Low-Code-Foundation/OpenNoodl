@@ -11,6 +11,18 @@
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { Model } from '@noodl-utils/model';
 
+import {
+  BACKEND_SELECTION_VERSION,
+  BackendSelectionSources,
+  ENDPOINT_BACKEND_ID,
+  canConvergeSilently,
+  namesABackend,
+  resolveActiveBackendId,
+  selectionAfterDelete,
+  selectionAfterEndpointRemoved,
+  selectionConflict,
+  shouldActivateOnCreate
+} from './activeBackend';
 import { getPreset } from './presets';
 import { parseSchemaResponse } from './schemaParsers';
 import {
@@ -79,7 +91,11 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
 
   private _isLoading = false;
   private _backends: BackendConfig[] = [];
-  private _activeBackendId: string | undefined;
+  /** `activeBackendId` exactly as stored. Read {@link activeBackendId} for the answer. */
+  private _storedActiveBackendId: string | undefined;
+  private _version: number | undefined;
+  /** The group handle for the `cloudServicesChanged` subscription. */
+  private _projectListenerGroup = {};
 
   // ============================================================================
   // Getters
@@ -93,13 +109,59 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
     return this._backends;
   }
 
+  /**
+   * Everything the selection rules read, gathered from both metadata keys.
+   *
+   * `hasEndpoint` is read from `ProjectModel` on every call rather than cached,
+   * because the endpoint can be written from three places — this panel's endpoint
+   * card, WF-004's auto-fill when a local backend starts, and a version-control
+   * revert — and a cached copy would show an ACTIVE badge on a card whose
+   * backend the project no longer points at.
+   */
+  private get selectionSources(): BackendSelectionSources {
+    const project = ProjectModel.instance;
+    const cloudservices = project ? project.getMetaData('cloudservices') : undefined;
+
+    return {
+      version: this._version,
+      storedActiveBackendId: this._storedActiveBackendId,
+      backendIds: this._backends.map((b) => b.id),
+      hasEndpoint: Boolean(cloudservices && cloudservices.endpoint)
+    };
+  }
+
+  /**
+   * The project's one active backend — BCN-009 step 2.
+   *
+   * May be {@link ENDPOINT_BACKEND_ID}, which is not in {@link backends} and has
+   * no `BackendConfig`; see {@link isEndpointActive}. Derived rather than stored
+   * so that a project saved by any previous build answers this correctly without
+   * being rewritten on open.
+   */
   get activeBackendId(): string | undefined {
-    return this._activeBackendId;
+    return resolveActiveBackendId(this.selectionSources);
+  }
+
+  /** Is the project's `cloudservices` endpoint the active backend? */
+  get isEndpointActive(): boolean {
+    return this.activeBackendId === ENDPOINT_BACKEND_ID;
+  }
+
+  /**
+   * The second backend a legacy project is still bound to, if it has one.
+   *
+   * `undefined` for every converged project. See
+   * `activeBackend.ts::selectionConflict` for why this is surfaced rather than
+   * resolved on the user's behalf.
+   */
+  get conflictingBackendId(): string | undefined {
+    return selectionConflict(this.selectionSources);
   }
 
   get activeBackend(): BackendConfig | undefined {
-    if (!this._activeBackendId) return undefined;
-    return this._backends.find((b) => b.id === this._activeBackendId);
+    const id = this.activeBackendId;
+    if (!id) return undefined;
+    return this._backends.find((b) => b.id === id);
   }
 
   // ============================================================================
@@ -123,11 +185,20 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
 
       if (metadata) {
         this._backends = metadata.backends.map(deserializeBackend);
-        this._activeBackendId = metadata.activeBackendId;
+        this._storedActiveBackendId = metadata.activeBackendId;
+        this._version = metadata.version;
       } else {
         this._backends = [];
-        this._activeBackendId = undefined;
+        this._storedActiveBackendId = undefined;
+        this._version = undefined;
       }
+
+      // BCN-009 step 2: nothing is written here. The converged selection is
+      // derived from what is already stored, so opening a project rewrites
+      // nothing (F46 — the autosave allowlist exists because a load-time write
+      // is indistinguishable from an edit). The migration lands on the next
+      // deliberate save, in `saveToProject`.
+      this.watchEndpoint(project);
 
       this.notifyListeners(BackendServicesEvent.BackendsChanged);
     } finally {
@@ -136,11 +207,31 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
   }
 
   /**
+   * Re-announce the active backend when the project's endpoint changes.
+   *
+   * The endpoint is half of the converged selection and is written from places
+   * that know nothing about this model — WF-004's auto-fill when a local backend
+   * starts, the endpoint card, a version-control revert. Without this, starting a
+   * local backend in a project with no endpoint would move the ACTIVE badge and
+   * nothing would repaint.
+   */
+  private watchEndpoint(project: ProjectModel): void {
+    project.off(this._projectListenerGroup);
+    project.on(
+      'cloudServicesChanged',
+      () => this.notifyListeners(BackendServicesEvent.ActiveBackendChanged, this.activeBackendId),
+      this._projectListenerGroup
+    );
+  }
+
+  /**
    * Reset the service (for project switching)
    */
   reset(): void {
+    ProjectModel.instance?.off(this._projectListenerGroup);
     this._backends = [];
-    this._activeBackendId = undefined;
+    this._storedActiveBackendId = undefined;
+    this._version = undefined;
     this._isLoading = false;
     this.notifyListeners(BackendServicesEvent.BackendsChanged);
   }
@@ -150,7 +241,24 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
   // ============================================================================
 
   /**
-   * Save backends to project metadata
+   * Save backends to project metadata — and, on the way, converge the selection.
+   *
+   * ## The migration lives here, and it is three lines
+   *
+   * BCN-009 step 2 asks for one storage for "which backend is this project's",
+   * migrated for existing projects. This is the write half of it. It runs on the
+   * next save a user causes — never on load — and it records the value that is
+   * *already true*: {@link activeBackendId} derives what both node families
+   * resolve today, so writing it down moves nothing. Everything after that is a
+   * deliberate choice with the switch dialog in front of it.
+   *
+   * ⚠️ **The one case it refuses.** A legacy project can have two active
+   * backends that genuinely differ — the endpoint binding the record, auth and
+   * file nodes while `activeBackendId` binds the BYOB ones. Either value written
+   * as *the* selection silently repoints one family, so the metadata is left in
+   * legacy form (no `version`, `activeBackendId` untouched) and the panel shows
+   * the conflict with a one-click resolution. See
+   * `activeBackend.ts::selectionConflict`.
    */
   private saveToProject(): void {
     const project = ProjectModel.instance;
@@ -159,10 +267,22 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
       return;
     }
 
+    const sources = this.selectionSources;
+    const converging = canConvergeSilently(sources);
+
+    if (converging) {
+      // Persist the derived answer, so the next reader does not have to derive
+      // it — and so the runtime, which cannot see two keys at once for a
+      // deployed app, gets one.
+      this._storedActiveBackendId = resolveActiveBackendId(sources);
+      this._version = BACKEND_SELECTION_VERSION;
+    }
+
     const metadata: BackendServicesMetadata = {
       backends: this._backends.map(serializeBackend),
-      activeBackendId: this._activeBackendId
+      activeBackendId: this._storedActiveBackendId
     };
+    if (this._version !== undefined) metadata.version = this._version;
 
     project.setMetaData('backendServices', metadata);
     project.notifyListeners('backendServicesChanged');
@@ -208,11 +328,20 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
       updatedAt: now
     };
 
+    // ⚠️ BCN-009 step 2 / live-QA finding 3.3. The old rule here was
+    // `this._backends.length === 1` — the first *`backendServices`* backend,
+    // counted without reference to the endpoint the project was already using.
+    // In a project with a built-in backend running, that made a freshly added
+    // Directus active on creation: the change that takes a project from
+    // publishing nothing to publishing a token, made with no dialog and no
+    // badge movement the user was looking at. It now activates only into an
+    // empty project. See `activeBackend.ts::shouldActivateOnCreate`.
+    const activate = shouldActivateOnCreate(this.selectionSources);
+
     this._backends.push(backend);
 
-    // If this is the first backend, make it active
-    if (this._backends.length === 1) {
-      this._activeBackendId = backend.id;
+    if (activate) {
+      this._storedActiveBackendId = backend.id;
       this.notifyListeners(BackendServicesEvent.ActiveBackendChanged, backend.id);
     }
 
@@ -260,12 +389,17 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
       return false;
     }
 
+    const wasActive = this.activeBackendId;
     this._backends.splice(index, 1);
 
-    // If we deleted the active backend, clear it or pick another
-    if (this._activeBackendId === id) {
-      this._activeBackendId = this._backends.length > 0 ? this._backends[0].id : undefined;
-      this.notifyListeners(BackendServicesEvent.ActiveBackendChanged, this._activeBackendId);
+    // If we deleted the active backend, fall back — to the endpoint when there
+    // is one, because that is what the record, auth and file nodes are bound to.
+    // Picking the first surviving REST backend instead would repoint all of them
+    // to satisfy a list order.
+    const next = selectionAfterDelete(id, wasActive, this.selectionSources);
+    if (next !== wasActive) {
+      this._storedActiveBackendId = next;
+      this.notifyListeners(BackendServicesEvent.ActiveBackendChanged, next);
     }
 
     this.saveToProject();
@@ -275,17 +409,46 @@ export class BackendServices extends Model<BackendServicesEvent, BackendServices
   }
 
   /**
-   * Set the active backend
+   * Set the project's one active backend.
+   *
+   * BCN-009 step 2: `id` may be {@link ENDPOINT_BACKEND_ID}, which is not in
+   * {@link backends} — it names the project's `cloudservices` pointer, and is the
+   * same synthetic id the runtime's per-node picker already saves. Accepting it
+   * here is the whole of how `_endpoint_` survives the convergence: the id does
+   * not change, it merely becomes storable.
    */
   setActiveBackend(id: string | undefined): void {
-    if (id && !this._backends.find((b) => b.id === id)) {
+    if (id && !namesABackend(id, this.selectionSources)) {
       console.warn(`[BackendServices] Backend not found: ${id}`);
       return;
     }
 
-    this._activeBackendId = id;
+    this._storedActiveBackendId = id;
+    // Selecting is itself the deliberate act the migration waits for, so the
+    // write below always converges — there is no ambiguity left to preserve.
+    this._version = BACKEND_SELECTION_VERSION;
     this.saveToProject();
     this.notifyListeners(BackendServicesEvent.ActiveBackendChanged, id);
+  }
+
+  /**
+   * Re-point the selection after the project's `cloudservices` endpoint is removed.
+   *
+   * Called by the endpoint card's Disconnect. A selection naming an endpoint that
+   * no longer exists is a project whose nodes resolve nothing, so it falls back
+   * to the only other thing there is.
+   */
+  endpointRemoved(): void {
+    // `activeBackendId` is read *before* the caller clears `cloudservices` in
+    // the ordinary case, but reading it here is safe either way: once the
+    // endpoint is gone the derivation cannot answer `_endpoint_` anyway.
+    const previous = this._storedActiveBackendId ?? this.activeBackendId;
+    this._storedActiveBackendId = selectionAfterEndpointRemoved(
+      previous,
+      this._backends.map((b) => b.id)
+    );
+    this.saveToProject();
+    this.notifyListeners(BackendServicesEvent.ActiveBackendChanged, this.activeBackendId);
   }
 
   // ============================================================================

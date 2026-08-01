@@ -10,7 +10,7 @@
 | **Priority** | 🟠 High |
 | **Difficulty** | 🟡 Medium — the writing is easy; not writing the node reference twice is the discipline |
 | **Estimated Time** | 1–1.5 wks |
-| **Prerequisites** | **Phase 30 Tier 1**, and NDA-005 far enough along that port descriptions are real |
+| **Prerequisites** | **[ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md)** — there is no site to write into until it lands. Transitively: **Phase 30 Tier 1**, and NDA-005 far enough along that port descriptions are real |
 | **Branch** | commit directly to `cline-dev` |
 | **Recommended executor** | 🔵 **Fable 5** — this decides a vocabulary the product, the AI prompts and the lessons all reuse |
 
@@ -18,6 +18,21 @@
 
 A person who has downloaded NodeGX and never seen a node graph can build something
 that works, without asking us.
+
+## Scope change, 2026-07-31
+
+This task originally owned both the authored documentation *and* the platform it
+lives on. Reviewing the old docs site
+(`The-Low-Code-Foundation/opennoodl-docs`) showed the platform half to be far larger
+than assumed — that origin is the editor's content CDN for **seven** payload types,
+only one of which is documentation, and 54 of 156 nodes have no working page. It is
+now [**ALPHA-006**](./ALPHA-006-DOCS-PLATFORM.md).
+
+**Moved out of this task:** the site, the generator, the CI staleness gate, the old
+repo's disposition, the endpoint split, and F69.
+**Retained:** everything that must be written by a person — §1, §2 and §4 below, and
+all five acceptance criteria. Criterion 1 is still the real test, and no amount of
+generated reference satisfies it.
 
 ## Current state
 
@@ -76,13 +91,12 @@ One path, start to finish, that produces something real. Not a tour. It ends wit
 working app the user made, and it uses the same fixture path ALPHA-001 walks, so the
 two tasks pressure-test each other.
 
-### 3. The node reference (generated)
+### 3. The node reference (generated) — **moved to [ALPHA-006 §3](./ALPHA-006-DOCS-PLATFORM.md)**
 
-From the enriched catalog NDA-005 produces. Per node: what it is for, its ports with
-descriptions and types, its failure outputs, and its contract notes. A build step,
-with a CI check that it is not stale — the same shape as the existing
-`cloud-library:check` gate, and for the same reason: a silent regeneration is how a
-node quietly appears or disappears.
+Unchanged in intent: generated from the enriched catalog, with a CI staleness gate.
+It sits with the site that renders it. This task must not author node prose; where it
+needs a node explained better, the fix goes into `docs/node-catalog/enrichment/`,
+where the editor, the validator and the AI authoring loop all read it.
 
 ### 4. Troubleshooting (authored, harvested)
 
