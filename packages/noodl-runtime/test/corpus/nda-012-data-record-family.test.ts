@@ -40,6 +40,9 @@ interface Probe {
   validateInputs(): string | undefined;
   scheduleAddRelation(): void;
   scheduleRemoveRelation(): void;
+  /** D6/D7 — OB-ii. */
+  setModelID(id: string): void;
+  scheduleStore(): void;
   [k: string]: unknown;
 }
 
@@ -69,7 +72,15 @@ function makeInstance(module: any, internal: Record<string, unknown>): Probe {
     scheduleAfterInputsHaveUpdated(cb: () => void) {
       cb();
     },
+    // D6/D7 drive the CRUD verbs, which run their work inside `scheduleOnce` and gate it on
+    // the editor-warning check. Both are additive: nothing D1–D5 exercises calls them.
+    scheduleOnce(_key: string, cb: () => void) {
+      cb();
+    },
+    checkWarningsBeforeCloudOp: () => true,
+    clearWarnings() {},
     hasInput: () => false,
+    hasOutput: () => false,
     registerInput: () => {},
     isInputConnected: () => false
   };
@@ -91,6 +102,9 @@ function makeInstance(module: any, internal: Record<string, unknown>): Probe {
       (instance.requests as Record<string, unknown>[]).push(options);
     },
     removeRelation: (options: Record<string, unknown>) => {
+      (instance.requests as Record<string, unknown>[]).push(options);
+    },
+    save: (options: Record<string, unknown>) => {
       (instance.requests as Record<string, unknown>[]).push(options);
     }
   });
@@ -275,5 +289,112 @@ describe('D5 — Delete Record describes deleting', () => {
     const DeleteRecord = require('../../src/nodes/std-library/data/deletedbmodelpropertiesnode');
     expect(DeleteRecord.node.shortDesc).not.toMatch(/Stores any amount of properties/);
     expect(DeleteRecord.node.shortDesc).toMatch(/[Dd]elete/);
+  });
+});
+
+/**
+ * **D6/D7 — OB-ii's last two sites.**
+ *
+ * Worker C fixed this shape in the Object family (`modelcrudbase.ts`, `modelnode2.ts`) and
+ * found it byte-for-byte in these two files, which were another worker's territory. Filed and
+ * unowned until now; these rows are the fix and its measurement.
+ *
+ * `Model.get` is create-on-read and `Model.get('')` / `Model.get(null)` are the **named** tier
+ * — one process-wide record per spelling. Measured before the fix:
+ *
+ * ```
+ * Set Record  Id=null  bound "null"  → signals ["stored"]  Model._models['null'].data {name:'Ada'}
+ * Set Record  Id=""    bound ""      → signals ["stored"]  Model._models[''].data    {name:'Ada'}
+ * Record      Id=null  (input setter) bound k5OLL681g0 — a *fresh anonymous* record per null
+ * ```
+ *
+ * So a blank Id bound every Record node in the app to one shared record, wrote into it, and
+ * answered **Success**. In this family that is also DA-ii's mechanism arriving by a second
+ * road: a minted record has `_class === undefined`, the value proved to burn a Parse class
+ * schema when it reaches a relation write.
+ */
+describe('D6 — a Record CRUD verb with an empty Id', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const SetRecord = require('../../src/nodes/std-library/data/setdbmodelpropertiesnode');
+
+  it.each([
+    ['null', null],
+    ['blank', '']
+  ])('binds nothing and fails rather than writing into a shared record (%s)', (_label, empty) => {
+    const p = makeInstance(SetRecord, {
+      collectionId: 'Owner',
+      inputValues: { name: 'Ada' },
+      storeType: 'local'
+    });
+
+    p.setModelID(empty as unknown as string);
+    expect(p._internal.model).toBeUndefined();
+
+    p.scheduleStore();
+
+    // The failure path was already here — every verb answers a missing model with
+    // `setError('Missing Record Id')`, which fires `Failure`, fills `Error` and raises on the
+    // bus. The fix routes the empty spellings into it instead of past it.
+    expect(p.signals).toEqual(['failure']);
+    expect(p.errors).toEqual(['Missing Record Id']);
+
+    // And nothing was written into the process-wide record named by that spelling.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((Model as any)._models[String(empty)]?.data).toBeUndefined();
+  });
+
+  it('control: a real Id still mints on read, binds, and stores', () => {
+    const p = makeInstance(SetRecord, {
+      collectionId: 'Owner',
+      inputValues: { name: 'Ada' },
+      storeType: 'local'
+    });
+
+    // ⚠️ This is the family's feature and the fix had to leave it alone: a named record that
+    // nothing has loaded is *supposed* to spring into existence, because that is what lets a
+    // graph name a record before the query that fills it has run.
+    p.setModelID('owner-d6');
+    expect((p._internal.model as { getId(): string }).getId()).toBe('owner-d6');
+
+    p.scheduleStore();
+
+    expect(p.errors).toEqual([]);
+    expect(p.signals).toEqual(['stored']);
+    expect(Model.get('owner-d6').get('name')).toBe('Ada');
+  });
+});
+
+describe('D7 — the Record node with an empty Id', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const RecordNode = require('../../src/nodes/std-library/data/dbmodelnode2');
+
+  it.each([
+    ['null', null],
+    ['blank', '']
+  ])('binds nothing through the input setter a wire actually reaches (%s)', (_label, empty) => {
+    const p = makeInstance(RecordNode, { collectionId: 'Owner' });
+
+    // ⚠️ Driving `modelId.set` rather than `setModelID` is the point of this row. `null`
+    // never reached `setModelID` — `typeof null === 'object'` diverted it into
+    // `Model.create(null)` one step earlier, so a guard in `setModelID` alone would have
+    // measured as fixed while the reachable path stayed broken.
+    RecordNode.node.inputs.modelId.set.call(p, empty);
+
+    expect(p._internal.model).toBeUndefined();
+    expect(p.signals).toEqual([]);
+  });
+
+  it('control: a plain JS object wired to Id is still dereferenced', () => {
+    const p = makeInstance(RecordNode, { collectionId: 'Owner' });
+    RecordNode.node.inputs.modelId.set.call(p, { id: 'owner-d7', name: 'Bob' });
+
+    expect((p._internal.model as { getId(): string }).getId()).toBe('owner-d7');
+    expect(Model.get('owner-d7').get('name')).toBe('Bob');
+  });
+
+  it('control: a never-seen id still binds and mints', () => {
+    const p = makeInstance(RecordNode, { collectionId: 'Owner' });
+    RecordNode.node.inputs.modelId.set.call(p, 'owner-d7-unseen');
+    expect((p._internal.model as { getId(): string }).getId()).toBe('owner-d7-unseen');
   });
 });

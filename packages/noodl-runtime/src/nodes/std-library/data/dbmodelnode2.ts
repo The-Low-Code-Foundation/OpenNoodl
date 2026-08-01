@@ -201,7 +201,15 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       set: function (this: DbModelNodeInstance, value: unknown) {
         if (value instanceof Model) value = (value as ModelLike).getId();
         // Can be passed as model as well
-        else if (typeof value === 'object') value = Model.create(value as Record<string, unknown>).getId(); // If this is an js object, dereference it
+        //
+        // NDA-012 (Data) **OB-ii**, third route: `value !== null` is load-bearing.
+        // `typeof null === 'object'`, so a cleared Id used to reach `Model.create(null)`,
+        // whose `data ? data : {}` then reads `Model.get(undefined)` — a brand-new
+        // **anonymous** record, minted afresh on *every* `null`. Measured: `null` bound
+        // `k5OLL681g0`, a record nothing in the graph can name and no backend has ever seen.
+        // This runs *before* `setModelID`, so the guard added there cannot see it.
+        else if (typeof value === 'object' && value !== null)
+          value = Model.create(value as Record<string, unknown>).getId(); // If this is an js object, dereference it
 
         this._internal.modelId = value as string; // Wait to fetch data
         if (this.isInputConnected('fetch') === false) this.setModelID(value as string);
@@ -232,7 +240,22 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
     setCollectionID: function (this: DbModelNodeInstance, id: string) {
       this._internal.collectionId = id;
     },
+    /**
+     * NDA-012 (Data) **OB-ii** — see `dbmodelcrudbase.ts`'s `setModelID` for the full shape.
+     * An empty `Id` bound the process-wide record named by that spelling (`Model.get('')`)
+     * rather than binding nothing, so every Record node with a blank Id shared one record.
+     *
+     * `setModel(undefined)` is the right answer here rather than an error: this node has no
+     * action port to fail on, and its `setModel` already handles an absent model (the
+     * PLAT-003 §27.3 guard). It simply binds nothing and stays quiet, which is what a value
+     * input being cleared should do.
+     */
     setModelID: function (this: DbModelNodeInstance, id: string) {
+      if (id === undefined || id === null || id === '') {
+        this.setModel(undefined);
+        return;
+      }
+
       const model = (this.nodeScope.modelScope || Model).get(id);
       // this._internal.modelIsNew = false;
       this.setModel(model);

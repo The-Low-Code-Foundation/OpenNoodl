@@ -428,7 +428,36 @@ function _addModelId(def: DbCrudNodeModule, opts?: { includeInputs?: boolean; in
       this._internal.collectionId = id;
       this.clearWarnings();
     },
+    /**
+     * NDA-012 (Data) **OB-ii**, the Record family's half — the same shape the Object family
+     * carried in `modelcrudbase.ts`, and here it is worse.
+     *
+     * `Model.get` is create-on-read, and `Model.get('')` / `Model.get(null)` land in the
+     * **named** tier (`model.ts:213-236`): one process-wide record per spelling, strong-held
+     * for the life of the page. So a blank `Id` used to bind every Record node in the app to
+     * the *same* record, write into it, and answer **`Success`** — measured
+     * `Model._models['null'].data === {name:'Ada'}` with `signals ['stored']` and no error.
+     *
+     * For the Record family that is DA-ii's mechanism by a second road: a minted record has
+     * `_class === undefined`, which is the value proved to burn a Parse class schema
+     * (`Relation<undefined>`) when it reaches a relation write, and `Update`/`Delete Record`
+     * would address `objectId: ''` against `className: undefined`.
+     *
+     * Clearing the binding rather than refusing here is deliberate, and it is why this needs
+     * no new failure path: every verb already answers a missing model with
+     * `setError('Missing Record Id')`, which fires `Failure`, fills `Error` and raises on the
+     * runtime bus. The empty spellings now reach the message that was always waiting for them.
+     *
+     * ⚠️ The create-on-read for a *real* id is the family's feature and had to survive — a
+     * named record that nothing has loaded is supposed to spring into existence. A control row
+     * holds that line.
+     */
     setModelID: function (this: DbModelIdInstance, id: string) {
+      if (id === undefined || id === null || id === '') {
+        this.setModel(undefined);
+        return;
+      }
+
       const model = (this.nodeScope.modelScope || Model).get(id);
       this.setModel(model);
     },
