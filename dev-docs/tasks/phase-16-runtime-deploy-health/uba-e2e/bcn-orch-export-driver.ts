@@ -188,7 +188,10 @@ function projectJSON() {
               // The type's own comment: "This token is NOT published to the deployed app."
               adminToken: ADMIN_TOKEN_SENTINEL,
               // The type's own comment: "This token WILL be published."
-              publicToken: DIRECTUS_TOKEN
+              publicToken: DIRECTUS_TOKEN,
+              // No runtime reader; must not be published either.
+              username: 'BASIC-USER-MUST-NOT-SHIP',
+              password: 'BASIC-PASS-MUST-NOT-SHIP'
             },
             createdAt: '2026-08-01T00:00:00.000Z',
             updatedAt: '2026-08-01T00:00:00.000Z'
