@@ -89,8 +89,11 @@ interface ForEachInstance extends NodeInstance {
      * their mounted component instead of every item being rebuilt on each update.
      */
     collection: CollectionLike;
-    /** Whatever is connected to `items`. May be a plain array. */
-    items?: CollectionLike;
+    /**
+     * Whatever is connected to `items`. May be a plain array, and may be `null` — an empty
+     * value clears the list rather than being ignored (see `inputs.items`).
+     */
+    items?: CollectionLike | null;
     itemNodes: ForEachItemNode[];
     /** Which `itemOutputSignal-…` outputs the editor asked for, keyed without the prefix. */
     itemOutputSignals: Record<string, boolean>;
@@ -121,7 +124,8 @@ interface ForEachInstance extends NodeInstance {
   updateTarget(targetId: string | undefined): void;
   scheduleRefresh(): void;
   unbindCurrentCollection(): void;
-  bindCollection(collection: CollectionLike): void;
+  /** `null`/`undefined` are ordinary arrivals and mean "clear the list" — see `inputs.items`. */
+  bindCollection(collection: CollectionLike | null | undefined): void;
   getTemplateForModel(model: ModelLike): string | undefined;
   _mapInputs(itemNode: ForEachItemNode, model: ModelLike): void;
   addItem(model: ModelLike, index: number): Promise<void>;
@@ -208,9 +212,28 @@ const ForEachDefinition: NodeDefinitionOptions = {
       group: 'Data',
       displayName: 'Items',
       type: 'array',
-      description: 'The array or query result to repeat over; \u26a0\ufe0f an empty value is currently ignored rather than clearing the list',
-      set: function (this: ForEachInstance, value: CollectionLike) {
-        if (!value) return;
+      description:
+        'The array or query result to repeat over; an empty value clears the list, including null and an empty array',
+      /**
+       * NDA-012 (Visual), `DC-iii`. `if (!value) return;` was the truthiness test that finding
+       * warns against by name: a query that came back `null` left the previous list on screen,
+       * which is the most misleading thing a Repeater can do \u2014 the graph has moved on and the
+       * page has not.
+       *
+       * \u2705 **Decided by Richard 2026-08-01: it clears.** Empty array, `null`, anything falsy.
+       * *"a repeater should absolutely clear itself\u2026 We're not catering to existing projects
+       * anymore."* So no dual path and no back-compat branch \u2014 the guard is simply gone.
+       *
+       * \u26a0\ufe0f **This is a deliberate, recorded divergence from `EMPTY-VALUE-CONTRACT.md`**, whose
+       * table has `undefined` abstaining at a port input. Richard's decision was "anything
+       * falsy", and the contract's own documentation duty is the mechanism for a port that
+       * differs \u2014 hence the sentence in `description` above. In practice the two rarely
+       * disagree: `node.ts` skips the initial seed from an upstream that has produced nothing,
+       * so an `undefined` reaching here was actively sent.
+       *
+       * The identity guard below stays: re-sending the same collection is not a change.
+       */
+      set: function (this: ForEachInstance, value: CollectionLike | null | undefined) {
         if (value === this._internal.items) return;
         this.bindCollection(value);
         //this.scheduleRefresh();
@@ -338,7 +361,7 @@ const ForEachDefinition: NodeDefinitionOptions = {
       Collection.instanceOf(collection) && collection.off('change', this._internal.onItemsCollectionChanged);
       this._internal.items = undefined;
     },
-    bindCollection: function (this: ForEachInstance, collection: CollectionLike) {
+    bindCollection: function (this: ForEachInstance, collection: CollectionLike | null | undefined) {
       const internal = this._internal;
 
       this.unbindCurrentCollection();
@@ -663,8 +686,16 @@ const ForEachDefinition: NodeDefinitionOptions = {
       this.scheduleAfterInputsHaveUpdated(() => {
         this._internal.hasScheduledCopyItems = false;
 
-        if (this._internal.items === undefined) return;
-
+        // NDA-012 (Visual), `DC-iii` — the *second* half of the same guard. Removing
+        // `if (!value) return;` from the setter is not enough on its own: this method used to
+        // bail on `items === undefined` too, so a cleared Repeater would still have kept its
+        // list. `Collection.set` already handles a falsy source (`src = src || []`,
+        // collection.ts:485), so clearing needs no special case beyond letting it through.
+        //
+        // The `remove` events that `set` raises are queued as operations (`initialize`), so
+        // `didWork` is true and `Items Rendered` fires — a graph waiting on the list stays live.
+        // ⚠️ Clearing a list that is *already* empty queues nothing and so signals nothing;
+        // that is the `Run Tasks` empty-list shape and `OUTCOME-CONTRACT.md` / ERG-001 owns it.
         const repeaterDisabledWhenUnmounted = NoodlRuntime.instance.getProjectSettings().repeaterDisabledWhenUnmounted;
 
         if (repeaterDisabledWhenUnmounted && !this.isMounted) {

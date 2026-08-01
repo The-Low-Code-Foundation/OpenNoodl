@@ -9452,7 +9452,7 @@
             "name": "array"
           },
           "isSignal": false,
-          "description": "The array or query result to repeat over; ⚠️ an empty value is currently ignored rather than clearing the list"
+          "description": "The array or query result to repeat over; an empty value clears the list, including null and an empty array"
         },
         {
           "name": "refresh",
