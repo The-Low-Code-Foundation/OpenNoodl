@@ -82,6 +82,37 @@ export class Drag extends React.Component<DragProps, State> {
       .start();
   }
 
+  /**
+   * Stop both snap animations — NDA-012 (Visual), check H1.
+   *
+   * `TimerScheduler` keeps a running timer in `runningTimers` until something stops it
+   * (`timerscheduler.ts`), and neither unmounting the component nor deleting the node does.
+   * A Drag node whose page navigates away mid-snap therefore kept being ticked every frame,
+   * calling `setState` on an unmounted component and `positionX`/`positionY` on a node that may
+   * be gone — and holding the whole instance reachable through the scheduler.
+   *
+   * This is `FINDINGS.md` SR-vi's defect, in a fifth node. That sweep fixed `Animate To Value`,
+   * `Transition`, `States` and `Animation` and noted that `Delay` had always been correct — and
+   * every one of those five is filed under `Animation` or `Utilities`. Drag is a **Visual**
+   * node that happens to animate, so no per-category read would have put it beside them. Same
+   * lesson as SR-viii's fifth script host: *a class named by its exemplars inherits their
+   * category*, and the defining property here is `createTimer`, not the folder.
+   *
+   * Called from two places on purpose. Unmount covers navigation and a Repeater dropping an
+   * item; the node's `addDeleteListener` (see `drag.ts`) covers deletion in the editor, which
+   * does not necessarily unmount first.
+   */
+  stopSnapTimers() {
+    this.snapToPositionXTimer && this.snapToPositionXTimer.stop();
+    this.snapToPositionYTimer && this.snapToPositionYTimer.stop();
+    this.snapToPositionXTimer = undefined;
+    this.snapToPositionYTimer = undefined;
+  }
+
+  componentWillUnmount() {
+    this.stopSnapTimers();
+  }
+
   componentDidMount() {
     const x = this.props.inputPositionX ? this.props.inputPositionX : 0;
     const y = this.props.inputPositionY ? this.props.inputPositionY : 0;
@@ -148,7 +179,15 @@ export class Drag extends React.Component<DragProps, State> {
         axis={props.axis}
         bounds={bounds}
         disabled={props.enabled === false}
-        scale={props.scale || 0}
+        /**
+         * NDA-012 (Visual). `props.scale || 0` was a divide by zero waiting for an empty value.
+         * `react-draggable` divides every pointer delta by `scale`, so a `0` makes each delta
+         * `Infinity` and the element jumps out of the document on the first movement. Measured:
+         * `undefined`, `null` and a typed `0` all reached the library as `0`; the declared port
+         * default of `1` only saved the untouched case. `1` is the identity, which is what the
+         * fallback for "no scale given" always meant.
+         */
+        scale={props.scale || 1}
         position={{ x: this.state.x, y: this.state.y }}
         onStart={(e, data) => {
           setDragValues(data, props);

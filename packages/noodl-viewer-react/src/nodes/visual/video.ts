@@ -1,8 +1,7 @@
-import { getAbsoluteUrl } from '@noodl/runtime/src/utils';
-
 import { Video } from '../../components/visual/Video';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
 import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
+import { resolveMediaSource } from './media-source';
 
 const VideoNode: ReactNodeDefinition = {
   name: 'Video',
@@ -79,12 +78,22 @@ const VideoNode: ReactNodeDefinition = {
         this.innerReactComponentRef && this.innerReactComponentRef.reset();
       }
     },
+    /**
+     * NDA-012 (Visual), check G1 — see `media-source.ts`.
+     *
+     * A cleared Source used to be resolved to the literal path `/null`, which the browser
+     * fetched, 404'd, and reported through NDA-004 §2's own `Playback Failure` port. So the
+     * failure surface built in that pass was firing for an *empty* input as well as a broken
+     * one — the Failure Contract's "must not raise on a legitimate empty result", reached from
+     * the empty-value side rather than the failure side.
+     */
     src: {
       displayName: 'Source',
       group: 'Video',
       type: 'string',
+      description: 'URL or project file to play; leave blank to load nothing rather than fail on a missing source',
       set(src) {
-        this.props.dom.src = getAbsoluteUrl(src);
+        this.props.dom.src = resolveMediaSource(src);
         this.forceUpdate();
       }
     },
@@ -92,8 +101,9 @@ const VideoNode: ReactNodeDefinition = {
       displayName: 'Poster',
       group: 'Video',
       type: 'image',
+      description: 'Still image shown until the video has enough data to play; leave blank to show nothing',
       set(src) {
-        this.props.dom.poster = getAbsoluteUrl(src);
+        this.props.dom.poster = resolveMediaSource(src);
         this.forceUpdate();
       }
     }

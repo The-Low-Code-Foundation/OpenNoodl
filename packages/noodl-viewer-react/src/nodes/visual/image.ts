@@ -1,8 +1,7 @@
-import { getAbsoluteUrl } from '@noodl/runtime/src/utils';
-
 import { Image } from '../../components/visual/Image';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
 import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
+import { resolveMediaSource } from './media-source';
 
 const ImageNode: ReactNodeDefinition = {
   name: 'Image',
@@ -84,8 +83,10 @@ const ImageNode: ReactNodeDefinition = {
       },
       index: 30,
       allowVisualStates: true,
+      description:
+        'URL or project file to display; leave blank to show nothing rather than request a missing image',
       set(url) {
-        this.props.dom.src = getAbsoluteUrl(url);
+        this.props.dom.src = resolveMediaSource(url);
         this.forceUpdate();
       }
     }
@@ -115,13 +116,34 @@ const ImageNode: ReactNodeDefinition = {
       displayName: 'On Load',
       propPath: 'dom',
       type: 'signal',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the image has finished downloading and is on screen'
     },
+    /**
+     * NDA-012 (Visual), checks B1/B2 — the port that existed and carried nothing.
+     *
+     * `FINDINGS.md` B-ii records, in passing, that *"`Image` has had an `On Error` port all
+     * along; `Video` never got one"*, and NDA-004 §2 then built Video's failure surface
+     * properly: a signal, an `Error` string beside it, and a `raiseRuntimeError` so the
+     * diagnosis exists in a deployed app. **Image was left with the signal alone.** That is
+     * B-xi's shape exactly — *"a bare signal reproduces 'no information' one level up"* — and
+     * B-viii's lesson about a fix scoped by node rather than by shape, one file apart.
+     *
+     * `propPath` is deliberately gone. As a straight DOM forward this fired the element's own
+     * `error` event and stopped there; the handler now lives in `Image.tsx` so the same event
+     * can reach all three surfaces. The port keeps its name, so an existing wire is untouched.
+     */
     onError: {
       displayName: 'On Error',
-      propPath: 'dom',
       type: 'signal',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when the image could not be loaded, after the reason has been reported on Error'
+    },
+    imageError: {
+      displayName: 'Error',
+      type: 'string',
+      group: 'Events',
+      description: 'Why the image could not be loaded, naming the source that failed'
     }
   }
 };

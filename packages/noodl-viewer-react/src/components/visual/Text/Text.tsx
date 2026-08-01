@@ -21,6 +21,25 @@ export interface TextProps extends Noodl.ReactProps {
   dom: Record<string, unknown>;
 }
 
+/**
+ * What an empty `Text` value renders as — NDA-012 (Visual), check G1.
+ *
+ * This used to be a bare `String(props.text)`, which is the Empty-Value Contract's headline
+ * defect in the one place an author cannot miss it: **the literal four characters `null`
+ * painted on the page.** `String(null)` is `'null'` and `String(undefined)` is
+ * `'undefined'`, and both are ordinary arrivals here — a record property that has not been
+ * filled in, a Function node's early return, a Repeater item's missing field. The same
+ * `String(value)` cast is recorded in `FINDINGS.md` class A2 against the String *variable*,
+ * where the garbage at least stays inside the graph; here it is on screen.
+ *
+ * `null` clears, per the contract. Every other value keeps its old rendering, and that is
+ * deliberate rather than incidental: `0` and `false` are legitimate things to put in a Text
+ * node, and a truthiness test here would blank both.
+ */
+export function renderableText(value: unknown): string {
+  return value === null || value === undefined ? '' : String(value);
+}
+
 export function Text(props: TextProps) {
   // React.ElementType collapses the intrinsic-elements union; with the ref prop added,
   // the raw union exceeds the compiler's representation limit (TS2590).
@@ -56,7 +75,7 @@ export function Text(props: TextProps) {
       {...PointerListeners(props)}
       style={style}
     >
-      {String(props.text)}
+      {renderableText(props.text)}
     </Component>
   );
 }

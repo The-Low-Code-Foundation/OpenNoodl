@@ -6618,7 +6618,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Animates the element to Value on the X axis; does nothing if it is already there"
         },
         {
           "name": "snapToPositionX.duration",
@@ -12733,6 +12734,7 @@
             "name": "image"
           },
           "isSignal": false,
+          "description": "URL or project file to display; leave blank to show nothing rather than request a missing image",
           "index": 30,
           "allowVisualStates": true
         },
@@ -12998,6 +13000,17 @@
           "description": "Fires when the pointer moves over this element or any of its children"
         },
         {
+          "name": "imageError",
+          "displayName": "Error",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the image could not be loaded, naming the source that failed"
+        },
+        {
           "name": "onClick",
           "displayName": "Click",
           "group": "Events",
@@ -13016,7 +13029,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the image could not be loaded, after the reason has been reported on Error"
         },
         {
           "name": "onLoad",
@@ -13026,7 +13040,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the image has finished downloading and is on screen"
         },
         {
           "name": "pointerDown",
@@ -28840,7 +28855,8 @@
           "type": {
             "name": "image"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Still image shown until the video has enough data to play; leave blank to show nothing"
         },
         {
           "name": "reset",
@@ -28906,7 +28922,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "URL or project file to play; leave blank to load nothing rather than fail on a missing source"
         },
         {
           "name": "srcObject",
@@ -33832,6 +33849,7 @@
             "name": "boolean"
           },
           "isSignal": false,
+          "description": "Stops clicks and touches that land on this control from reaching anything behind it",
           "index": 450
         },
         {
@@ -34404,7 +34422,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Lets the user interact with this control; when off it still renders and occupies its space but ignores clicks, touches and typing"
         },
         {
           "name": "fontFamily",
@@ -35373,7 +35392,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Reports back whether this control is currently accepting interaction, following the Enabled input"
         },
         {
           "name": "focusState",
@@ -35383,7 +35403,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while this control holds keyboard focus, so typing and Enter go to it"
         },
         {
           "name": "hoverEnd",
@@ -35393,7 +35414,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pointer leaves this control, including when it leaves while a button is still held"
         },
         {
           "name": "hoverStart",
@@ -35403,7 +35425,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pointer moves onto this control"
         },
         {
           "name": "hoverState",
@@ -35413,7 +35436,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while the pointer is over this control; stays false on touch devices with no pointer"
         },
         {
           "name": "onBlur",
@@ -35423,7 +35447,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when keyboard focus leaves this control, which is the usual place to validate what was entered"
         },
         {
           "name": "onClick",
@@ -35443,7 +35468,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires the moment this control takes keyboard focus, whether from a click, a tab or a Focus action"
         },
         {
           "name": "pointerDown",
@@ -35453,7 +35479,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires as a mouse button or finger goes down on this control, before any click has completed"
         },
         {
           "name": "pointerUp",
@@ -35463,7 +35490,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the mouse button or finger is lifted, and also when a touch is cancelled by the system"
         },
         {
           "name": "pressedState",
@@ -35473,7 +35501,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while a mouse button or finger is held down on this control, and false again the moment it is released or slides off"
         },
         {
           "name": "screenPositionX",
@@ -35748,6 +35777,7 @@
             "name": "boolean"
           },
           "isSignal": false,
+          "description": "Stops clicks and touches that land on this control from reaching anything behind it",
           "index": 450
         },
         {
@@ -36328,7 +36358,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Lets the user interact with this control; when off it still renders and occupies its space but ignores clicks, touches and typing"
         },
         {
           "name": "height",
@@ -37180,7 +37211,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Reports back whether this control is currently accepting interaction, following the Enabled input"
         },
         {
           "name": "focusState",
@@ -37190,7 +37222,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while this control holds keyboard focus, so typing and Enter go to it"
         },
         {
           "name": "hoverEnd",
@@ -37200,7 +37233,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pointer leaves this control, including when it leaves while a button is still held"
         },
         {
           "name": "hoverStart",
@@ -37210,7 +37244,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pointer moves onto this control"
         },
         {
           "name": "hoverState",
@@ -37220,7 +37255,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while the pointer is over this control; stays false on touch devices with no pointer"
         },
         {
           "name": "onBlur",
@@ -37230,7 +37266,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when keyboard focus leaves this control, which is the usual place to validate what was entered"
         },
         {
           "name": "onChange",
@@ -37250,7 +37287,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires the moment this control takes keyboard focus, whether from a click, a tab or a Focus action"
         },
         {
           "name": "pointerDown",
@@ -37260,7 +37298,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires as a mouse button or finger goes down on this control, before any click has completed"
         },
         {
           "name": "pointerUp",
@@ -37270,7 +37309,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the mouse button or finger is lifted, and also when a touch is cancelled by the system"
         },
         {
           "name": "pressedState",
@@ -37280,7 +37320,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while a mouse button or finger is held down on this control, and false again the moment it is released or slides off"
         },
         {
           "name": "screenPositionX",
@@ -37538,6 +37579,7 @@
             "name": "boolean"
           },
           "isSignal": false,
+          "description": "Stops clicks and touches that land on this control from reaching anything behind it",
           "index": 450
         },
         {
@@ -38110,7 +38152,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Lets the user interact with this control; when off it still renders and occupies its space but ignores clicks, touches and typing"
         },
         {
           "name": "fontFamily",
@@ -39275,7 +39318,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Reports back whether this control is currently accepting interaction, following the Enabled input"
         },
         {
           "name": "focusState",
@@ -39285,7 +39329,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while this control holds keyboard focus, so typing and Enter go to it"
         },
         {
           "name": "hoverEnd",
@@ -39295,7 +39340,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pointer leaves this control, including when it leaves while a button is still held"
         },
         {
           "name": "hoverStart",
@@ -39305,7 +39351,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pointer moves onto this control"
         },
         {
           "name": "hoverState",
@@ -39315,7 +39362,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while the pointer is over this control; stays false on touch devices with no pointer"
         },
         {
           "name": "onBlur",
@@ -39325,7 +39373,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when keyboard focus leaves this control, which is the usual place to validate what was entered"
         },
         {
           "name": "onChange",
@@ -39345,7 +39394,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires the moment this control takes keyboard focus, whether from a click, a tab or a Focus action"
         },
         {
           "name": "pointerDown",
@@ -39355,7 +39405,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires as a mouse button or finger goes down on this control, before any click has completed"
         },
         {
           "name": "pointerUp",
@@ -39365,7 +39416,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the mouse button or finger is lifted, and also when a touch is cancelled by the system"
         },
         {
           "name": "pressedState",
@@ -39375,7 +39427,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while a mouse button or finger is held down on this control, and false again the moment it is released or slides off"
         },
         {
           "name": "screenPositionX",
@@ -39661,6 +39714,7 @@
             "name": "boolean"
           },
           "isSignal": false,
+          "description": "Stops clicks and touches that land on this control from reaching anything behind it",
           "index": 450
         },
         {
@@ -40218,7 +40272,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Lets the user interact with this control; when off it still renders and occupies its space but ignores clicks, touches and typing"
         },
         {
           "name": "fillColor",
@@ -41100,7 +41155,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Reports back whether this control is currently accepting interaction, following the Enabled input"
         },
         {
           "name": "focusState",
@@ -41110,7 +41166,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while this control holds keyboard focus, so typing and Enter go to it"
         },
         {
           "name": "hoverEnd",
@@ -41120,7 +41177,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pointer leaves this control, including when it leaves while a button is still held"
         },
         {
           "name": "hoverStart",
@@ -41130,7 +41188,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pointer moves onto this control"
         },
         {
           "name": "hoverState",
@@ -41140,7 +41199,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while the pointer is over this control; stays false on touch devices with no pointer"
         },
         {
           "name": "onBlur",
@@ -41150,7 +41210,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when keyboard focus leaves this control, which is the usual place to validate what was entered"
         },
         {
           "name": "onFocus",
@@ -41160,7 +41221,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires the moment this control takes keyboard focus, whether from a click, a tab or a Focus action"
         },
         {
           "name": "pointerDown",
@@ -41170,7 +41232,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires as a mouse button or finger goes down on this control, before any click has completed"
         },
         {
           "name": "pointerUp",
@@ -41180,7 +41243,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the mouse button or finger is lifted, and also when a touch is cancelled by the system"
         },
         {
           "name": "pressedState",
@@ -41190,7 +41254,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while a mouse button or finger is held down on this control, and false again the moment it is released or slides off"
         },
         {
           "name": "screenPositionX",
@@ -41435,6 +41500,7 @@
             "name": "boolean"
           },
           "isSignal": false,
+          "description": "Stops clicks and touches that land on this control from reaching anything behind it",
           "index": 450
         },
         {
@@ -41459,7 +41525,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Lets the user interact with this control; when off it still renders and occupies its space but ignores clicks, touches and typing"
         },
         {
           "name": "marginBottom",
@@ -43141,7 +43208,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Reports back whether this control is currently accepting interaction, following the Enabled input"
         },
         {
           "name": "focusState",
@@ -43151,7 +43219,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while this control holds keyboard focus, so typing and Enter go to it"
         },
         {
           "name": "hoverEnd",
@@ -43161,7 +43230,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pointer leaves this control, including when it leaves while a button is still held"
         },
         {
           "name": "hoverStart",
@@ -43171,7 +43241,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pointer moves onto this control"
         },
         {
           "name": "hoverState",
@@ -43181,7 +43252,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while the pointer is over this control; stays false on touch devices with no pointer"
         },
         {
           "name": "onBlur",
@@ -43191,7 +43263,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when keyboard focus leaves this control, which is the usual place to validate what was entered"
         },
         {
           "name": "onChange",
@@ -43211,7 +43284,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires the moment this control takes keyboard focus, whether from a click, a tab or a Focus action"
         },
         {
           "name": "pointerDown",
@@ -43221,7 +43295,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires as a mouse button or finger goes down on this control, before any click has completed"
         },
         {
           "name": "pointerUp",
@@ -43231,7 +43306,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the mouse button or finger is lifted, and also when a touch is cancelled by the system"
         },
         {
           "name": "pressedState",
@@ -43241,7 +43317,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while a mouse button or finger is held down on this control, and false again the moment it is released or slides off"
         },
         {
           "name": "screenPositionX",
@@ -43531,6 +43608,7 @@
             "name": "boolean"
           },
           "isSignal": false,
+          "description": "Stops clicks and touches that land on this control from reaching anything behind it",
           "index": 450
         },
         {
@@ -44125,7 +44203,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Lets the user interact with this control; when off it still renders and occupies its space but ignores clicks, touches and typing"
         },
         {
           "name": "focus",
@@ -45382,7 +45461,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Reports back whether this control is currently accepting interaction, following the Enabled input"
         },
         {
           "name": "focusState",
@@ -45392,7 +45472,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while this control holds keyboard focus, so typing and Enter go to it"
         },
         {
           "name": "hoverEnd",
@@ -45402,7 +45483,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pointer leaves this control, including when it leaves while a button is still held"
         },
         {
           "name": "hoverStart",
@@ -45412,7 +45494,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pointer moves onto this control"
         },
         {
           "name": "hoverState",
@@ -45422,7 +45505,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while the pointer is over this control; stays false on touch devices with no pointer"
         },
         {
           "name": "onBlur",
@@ -45432,7 +45516,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when keyboard focus leaves this control, which is the usual place to validate what was entered"
         },
         {
           "name": "onEnter",
@@ -45452,7 +45537,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires the moment this control takes keyboard focus, whether from a click, a tab or a Focus action"
         },
         {
           "name": "onTextChanged",
@@ -45473,7 +45559,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires as a mouse button or finger goes down on this control, before any click has completed"
         },
         {
           "name": "pointerUp",
@@ -45483,7 +45570,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the mouse button or finger is lifted, and also when a touch is cancelled by the system"
         },
         {
           "name": "pressedState",
@@ -45493,7 +45581,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while a mouse button or finger is held down on this control, and false again the moment it is released or slides off"
         },
         {
           "name": "screenPositionX",
