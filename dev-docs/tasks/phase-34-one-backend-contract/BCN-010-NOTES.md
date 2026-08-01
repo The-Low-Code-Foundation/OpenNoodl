@@ -593,7 +593,7 @@ Baselines from the handover in brackets where they differ.
 | `nodegx-backend-contract` | **199 passed, 0 failed** *(169)* |
 | `noodl-runtime` | **1740 passed, 0 failed**, 90/91 suites *(1682/1695, 89 suites; the unpassed suite is the env-gated `agent-live-endpoint`, as before)* |
 | `noodl-viewer-react` | **379 passed** *(373)* |
-| `noodl-editor` `test:ci` | **1998 specs, 0 failures** *(1963)* |
+| `noodl-editor` `test:ci` | **2000 specs, 0 failures** *(1963)* |
 | `noodl-mcp` | **75 passed, 2 failed** — see below |
 | `npm run catalog:check` | ✅ 155 node types, 90 with dynamic ports |
 | `npm run catalog:merge:check` | ✅ 155/155 documented, 50 examples |
