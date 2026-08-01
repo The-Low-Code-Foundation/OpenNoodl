@@ -77,26 +77,32 @@ const GroupNode: ReactNodeDefinition = {
       type: 'signal',
       index: 505,
       valueChangedToTrue() {
+        // NDA-012 (Visual) A3. Both scroll actions used to test `innerReactComponentRef`, and
+        // at *different times* — this one inside `scheduleAfterInputsHaveUpdated`, its sibling
+        // before scheduling — so a `Do` in the frame the Group mounts was honoured by one and
+        // dropped by the other. Neither placement worked: the ref commits after the graph
+        // update either way. `withInnerComponent` waits for the ref itself.
+        //
+        // The scheduling stays. It is not the guard — it is what lets `Index` and `Duration`
+        // land in the same frame as the `Do` that reads them.
         this.scheduleAfterInputsHaveUpdated(() => {
-          if (!this.innerReactComponentRef) return;
           const childIndex = this._internal.scrollIndex;
           const duration = this._internal.scrollIndexDuration;
-          this.innerReactComponentRef.scrollToIndex(childIndex, duration);
+          this.withInnerComponent((inner) => inner.scrollToIndex(childIndex, duration));
         });
       }
     },
     'scrollToElement.do': {
       displayName: 'Scroll To Element - Do',
-      description: 'Scrolls to the element on Element. \u26a0\ufe0f Dropped silently if it fires in the same frame the Group mounts',
+      description: 'Scrolls to the element on Element; fired in the same frame the Group mounts, it is held until the Group exists rather than dropped',
       group: 'Scroll To Element',
       type: 'signal',
       index: 500,
       valueChangedToTrue() {
-        if (!this.innerReactComponentRef) return;
         this.scheduleAfterInputsHaveUpdated(() => {
           const element = this._internal.scrollElement;
           const duration = this._internal.scrollElementDuration;
-          this.innerReactComponentRef.scrollToElement(element, duration);
+          this.withInnerComponent((inner) => inner.scrollToElement(element, duration));
         });
       }
     },

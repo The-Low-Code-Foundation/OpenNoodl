@@ -152,7 +152,7 @@ Source: [`nodes/visual/group.ts`](../../../../packages/noodl-viewer-react/src/no
 |---|---|---|
 | A1 | `n/a` | — |
 | A2 | `n/a` | — |
-| A3 | ⚠️ | the two scroll actions guard `innerReactComponentRef` at **different times**: `scrollToIndex.do` checks inside `scheduleAfterInputsHaveUpdated` ([`group.ts:79`](../../../../packages/noodl-viewer-react/src/nodes/visual/group.ts#L79)), `scrollToElement.do` checks **before** scheduling ([`:92`](../../../../packages/noodl-viewer-react/src/nodes/visual/group.ts#L92)). A `Do` that arrives in the frame the Group mounts is honoured by one and dropped by the other |
+| A3 | ✅ | ~~the two scroll actions guard `innerReactComponentRef` at **different times**~~ — **fixed 2026-08-01, and the cell's diagnosis was incomplete.** This was filed as an *asymmetry*, with `scrollToIndex.do`'s check inside `scheduleAfterInputsHaveUpdated` reading as the careful version. ⚠️ **Neither placement worked.** The ref is assigned by React's ref callback, which commits *after* the graph update — so `scheduleAfterInputsHaveUpdated` narrows the window and does not close it, and making the two agree would have closed this cell and fixed nothing. Both now use `withInnerComponent` (`react-component-node.ts`), which waits for the ref itself. 11 rows in `nda-012-visual-premount-actions.test.ts`; reverting Group reddens exactly its 2 and reverting Video reddens exactly Video's 7 |
 | G1 | ✅ | `scrollToElement.element` accepts a reference; an empty one lands as `undefined` and the scroll is a no-op |
 | B1 | ⚠️ **none** | `Scroll To Element` with an element that is not a descendant, and `Scroll To Index` past the end, both do nothing and report nothing |
 | B2 | ⚠️ | there is no report at all, so there is nothing for a deployed app to lose |
@@ -303,14 +303,14 @@ Source: [`nodes/visual/video.ts`](../../../../packages/noodl-viewer-react/src/no
 |---|---|---|
 | A1 | `n/a` | — |
 | A2 | `n/a` | — |
-| A3 | ⚠️ | all four actions no-op silently when `innerReactComponentRef` is null ([`video.ts:51`](../../../../packages/noodl-viewer-react/src/nodes/visual/video.ts#L51), `:62`, `:70`, `:78`) — a `Play` in the frame the node mounts is swallowed, unlike `Group`'s scroll actions which at least defer |
+| A3 | ✅ | ~~all four actions no-op silently when `innerReactComponentRef` is null~~ — **fixed 2026-08-01** via `withInnerComponent`, which queues and flushes from the ref callback. ⚠️ **"unlike `Group`'s scroll actions which at least defer" was wrong**: Group deferred to the end of the *graph* update, which is still before React commits, so it dropped them too. One shape, two nodes, and the comparison in this cell was the misleading part. `srcObject` took the same treatment — it is the only path the source object has. The queue is capped at 16 so an unmounted node cannot grow without limit |
 | G1 | ✅ | closed this phase — a cleared `Source` no longer resolves to `/null` and no longer fires `Playback Failure` |
 | B1 | ✅ | `Playback Failure` + `Error` |
 | B2 | ✅ | distinct codes on the runtime channel (`video/play-rejected`, `video/media-error`) |
 | B3 | ⚠️ | four action inputs, two terminators. `Play`→`On Play` ✅ and `Pause`→`On Pause` ✅, but **`Restart` and `Reset` have no completion signal at all** |
 | C1 | ✅ **100%** (89/89) | closed this session — 22 ports written |
 | D1 | ✅ | — |
-| E1 | ⚠️ | **`pause` and `reset` are declared `type: 'boolean'` and implemented with `valueChangedToTrue`** ([`video.ts:65-80`](../../../../packages/noodl-viewer-react/src/nodes/visual/video.ts#L65-L80)) while `play` and `restart` are `type: 'signal'`. So the panel offers a toggle for something that is a pulse, and setting `Pause` back to `false` does nothing — you must use `Play`. Four ports, one contract, two spellings |
+| E1 | ✅ | ~~**`pause` and `reset` are declared `type: 'boolean'`**~~ — **fixed 2026-08-01**: both are `type: 'signal'`, matching `play` and `restart`. ⚠️ **No behaviour changed, and that is the finding.** Declaring `valueChangedToTrue` already replaces `type` with the signal type (`nodedefinition.ts`, `registerInput`), so the runtime and the catalog always called these signals — the `boolean` was read only by the *editor panel*, which is precisely where the wrong affordance was drawn. A declaration that contradicts itself is a defect in one reader even when every other reader ignores it |
 | F1 | `n/a` | — |
 | H1 | ✅ | declares `safe`; the element is React's |
 

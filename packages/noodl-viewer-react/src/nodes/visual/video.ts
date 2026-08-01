@@ -38,19 +38,25 @@ const VideoNode: ReactNodeDefinition = {
       type: 'mediastream',
       default: null,
       set(value) {
-        this.innerReactComponentRef && this.innerReactComponentRef.setSourceObject(value);
+        // Same treatment as the four actions below, and for the same reason: this is the only
+        // path the source object takes, so one that arrives before mount used to be lost with
+        // nothing to say so.
+        this.withInnerComponent((inner) => inner.setSourceObject(value));
       }
     },
     play: {
       type: 'signal',
       group: 'Video Actions',
       displayName: 'Play',
-      description: 'Starts or resumes playback. \u26a0\ufe0f Dropped silently if it fires before the element exists',
+      description: 'Starts or resumes playback; fired before the element exists, it is held until the element exists rather than dropped',
       tooltip: {
         standard: 'Play the video'
       },
       valueChangedToTrue() {
-        this.innerReactComponentRef && this.innerReactComponentRef.play();
+        // NDA-012 (Visual) A3. Was `this.innerReactComponentRef && …`, which drops the action
+        // when it arrives in the frame the node mounts — React's ref callback commits after
+        // the graph update that delivered the signal. See `withInnerComponent`.
+        this.withInnerComponent((inner) => inner.play());
       }
     },
     restart: {
@@ -62,25 +68,39 @@ const VideoNode: ReactNodeDefinition = {
         standard: 'Restart the video from the beginning'
       },
       valueChangedToTrue() {
-        this.innerReactComponentRef && this.innerReactComponentRef.restart();
+        this.withInnerComponent((inner) => inner.restart());
       }
     },
+    /**
+     * NDA-012 (Visual) check E1 — `pause` and `reset` are `signal`, like `play` and `restart`.
+     *
+     * They were declared `type: 'boolean'` and implemented with `valueChangedToTrue`, which is
+     * the *signal* mechanism: the panel offered a toggle for something that is a pulse, and
+     * setting `Pause` back to `false` did nothing at all — you had to use `Play`. Four ports,
+     * one contract, two spellings, and the two spellings disagreed about what the port was.
+     *
+     * ⚠️ **Declaring `valueChangedToTrue` already replaces `type` with the signal type**
+     * (`nodedefinition.ts`, `registerInput`), so the runtime and the catalog have always
+     * called these signals. The `boolean` was only ever read by the *editor* panel, which is
+     * exactly where the wrong affordance was being drawn. Saying `signal` here changes no
+     * behaviour; it stops the declaration contradicting itself.
+     */
     pause: {
-      type: 'boolean',
+      type: 'signal',
       group: 'Video Actions',
       displayName: 'Pause',
-      description: 'Pauses on a false-to-true change. \u26a0\ufe0f Declared boolean but behaves as a pulse: setting it back to false does not resume, use Play',
+      description: 'Pauses playback',
       valueChangedToTrue() {
-        this.innerReactComponentRef && this.innerReactComponentRef.pause();
+        this.withInnerComponent((inner) => inner.pause());
       }
     },
     reset: {
-      type: 'boolean',
+      type: 'signal',
       group: 'Video Actions',
       displayName: 'Reset',
-      description: 'Stops playback and seeks to the beginning on a false-to-true change. \u26a0\ufe0f Declared boolean but behaves as a pulse',
+      description: 'Stops playback and seeks to the beginning',
       valueChangedToTrue() {
-        this.innerReactComponentRef && this.innerReactComponentRef.reset();
+        this.withInnerComponent((inner) => inner.reset());
       }
     },
     /**

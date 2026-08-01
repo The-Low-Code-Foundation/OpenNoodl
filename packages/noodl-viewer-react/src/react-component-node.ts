@@ -266,6 +266,15 @@ export interface ReactNodeInstance extends NodeInstance {
    * including the null on unmount.
    */
   setDOMElement(element: Element | null): void;
+  /**
+   * NDA-012 (Visual) A3 — run an action on the inner React component, deferring it until
+   * there is one rather than dropping it. Use in place of
+   * `this.innerReactComponentRef && this.innerReactComponentRef.doThing()`.
+   */
+  withInnerComponent(action: (inner: any) => void): void;
+  /** Queued {@link withInnerComponent} actions; drained by the wrapper's ref callback. */
+  _pendingInnerActions?: ((inner: any) => void)[];
+  _flushPendingInnerActions(): void;
   /** The node this one renders inside, hopping out of the component if it is a root. */
   getVisualParentNode(): ReactNodeInstance | undefined;
 
@@ -617,6 +626,9 @@ class NoodlReactComponent extends React.Component<NoodlReactComponentProps> {
     const props: Record<string, any> = {
       ref: (ref: unknown) => {
         noodlNode.innerReactComponentRef = ref;
+        // NDA-012 (Visual) A3. Actions that arrived before the component existed run now —
+        // this is the moment the null-ref guards were losing them at.
+        if (ref) noodlNode._flushPendingInnerActions();
         // When the inner component is itself a host element this ref IS the
         // root DOM node. Class/function components report their root through
         // setDOMElement instead (their own root ref commits before this one,
@@ -1370,6 +1382,45 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
         if (this.boundingBoxObserver) {
           this.boundingBoxObserver.setTarget((element as HTMLElement) || null);
         }
+      },
+      /**
+       * NDA-012 (Visual) check A3 — run an imperative action on the inner React component,
+       * or hold it until there is one.
+       *
+       * The idiom this replaces is
+       * `this.innerReactComponentRef && this.innerReactComponentRef.play()`, and it is not a
+       * guard so much as a coin toss: the ref is assigned by React's ref callback, which
+       * commits *after* the graph update that delivered the signal. A `Play` or a
+       * `Scroll To Element` that arrives in the frame the node mounts therefore hits a null
+       * ref and is dropped, with nothing logged and no output to say so.
+       *
+       * `scheduleAfterInputsHaveUpdated` — which `Group`'s `Scroll To Index` uses and its
+       * `Scroll To Element` does not — narrows the window but does not close it: it defers to
+       * the end of the graph update, still before React commits. Waiting for the ref itself is
+       * the only thing that actually answers the question, so this queues and the ref callback
+       * flushes.
+       *
+       * ⚠️ A node that never mounts would otherwise accumulate for ever, so the queue is
+       * capped. An author holding a button down against an unmounted node should not grow the
+       * heap, and replaying two hundred queued `Play`s at mount would be its own defect.
+       */
+      withInnerComponent(action) {
+        if (this.innerReactComponentRef) {
+          action(this.innerReactComponentRef);
+          return;
+        }
+        if (!this._pendingInnerActions) this._pendingInnerActions = [];
+        if (this._pendingInnerActions.length >= 16) this._pendingInnerActions.shift();
+        this._pendingInnerActions.push(action);
+      },
+      /** Called by the wrapper's ref callback once the inner component exists. */
+      _flushPendingInnerActions() {
+        const pending = this._pendingInnerActions;
+        if (!pending || pending.length === 0) return;
+        // Cleared *before* running, so an action that queues another does not re-enter this
+        // list while it is being drained.
+        this._pendingInnerActions = [];
+        for (const action of pending) action(this.innerReactComponentRef);
       },
       getDOMElement() {
         // Built-ins report their root through setDOMElement; host-element

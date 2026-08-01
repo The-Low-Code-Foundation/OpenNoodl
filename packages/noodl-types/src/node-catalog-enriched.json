@@ -12267,7 +12267,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Scrolls to the element on Element. ⚠️ Dropped silently if it fires in the same frame the Group mounts",
+          "description": "Scrolls to the element on Element; fired in the same frame the Group mounts, it is held until the Group exists rather than dropped",
           "index": 500
         },
         {
@@ -31665,7 +31665,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Pauses on a false-to-true change. ⚠️ Declared boolean but behaves as a pulse: setting it back to false does not resume, use Play"
+          "description": "Pauses playback"
         },
         {
           "name": "play",
@@ -31677,7 +31677,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Starts or resumes playback. ⚠️ Dropped silently if it fires before the element exists"
+          "description": "Starts or resumes playback; fired before the element exists, it is held until the element exists rather than dropped"
         },
         {
           "name": "pointerEventsEnabled",
@@ -31767,7 +31767,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Stops playback and seeks to the beginning on a false-to-true change. ⚠️ Declared boolean but behaves as a pulse"
+          "description": "Stops playback and seeks to the beginning"
         },
         {
           "name": "restart",
