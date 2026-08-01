@@ -1,0 +1,38 @@
+=== BCN-007 probe 3 — a private file with a real owner ===
+
+  ....  signup status: 201
+  ....  user: {"objectId":"36a4d24a-58a0-4841-a97b-06b1caa11d7f","hasSession":true}
+  PASS  a signed-in end user exists: "string"
+
+--- private upload, as the USER ---
+  PASS  upload status: 201
+  ....  body: {"url":"http://127.0.0.1:8110/files/42ae552e1c3fc8fe_bcn007-owned.png","name":"42ae552e1c3fc8fe_bcn007-owned.png","size":70,"contentType":"image/png"}
+  PASS  the owner can read it with their session: 200
+  PASS  ⚠️ anonymous cannot read a private file: true
+  ....    status: 403
+  PASS  a DIFFERENT signed-in user cannot read it either: true
+  ....    status: 403
+
+--- sign, then watch it expire (ttl is 3s in this data dir) ---
+  PASS  sign status: 200
+  ....  signed: {"url":"http://127.0.0.1:8110/files/42ae552e1c3fc8fe_bcn007-owned.png?exp=1785570359&sig=c01fa3c432cf2e30ac2efffc0ba3a8bf3c3d3d142eaa3cb2bdd3c586df7e8a9d","expiresAt":"2026-08-01T07:45:59.000Z","ttlSeconds":3}
+  PASS  ttlSeconds is the configured 3: 3
+  PASS  the signed url serves ANONYMOUSLY — the whole point of signing: 200
+  PASS  a tampered signature is refused: true
+  ....    status: 403
+  PASS  and the bare url (signature stripped) is refused: true
+  waiting 4.2s…
+  PASS  ⚠️ THE SIGNED URL STOPS SERVING AFTER ITS TTL: true
+  ....    status after expiry: 403
+  ....    body after expiry: "{\"error\":\"This file is private.\",\"code\":119,\"requestId\":\"9a5cc2cd-bdb3-40d4-9d19-07661d8a06d6\"}"
+
+--- delete ---
+  ....  DELETE status (master key): 200
+  PASS  the owner can no longer read it after deletion: 404
+
+--- a public upload, for contrast ---
+  PASS  a non-private file serves anonymously: 200
+  ....  signing a public file: {"url":"http://127.0.0.1:8110/files/2c4b6cacd65fe512_bcn007-public.png?exp=1785570363&sig=07dcf4b218ae8ebea96e557ff70ed2acd1fdf354bf75f323b07f968d2cbd564b","expiresAt":"2026-08-01T07:46:03.000Z","ttlSeconds":3}
+  PASS  ⚠️ an EXPIRED signature on a PUBLIC file still serves — the file was never gated: 200
+
+=== 14 checks, 0 failures ===
