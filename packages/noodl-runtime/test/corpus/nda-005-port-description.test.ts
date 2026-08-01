@@ -127,3 +127,112 @@ describe('NDA-005: a port description survives compilation', () => {
     expect(metadata.outputs.savedValue.description).toContain('Can be `null`');
   });
 });
+
+/**
+ * NDA-005 C1 for the Record family — NDA-012 (Data).
+ *
+ * **Why a ratchet rather than a spot-check.** The six nodes below get most of their ports from
+ * `dbmodelcrudbase`'s five mixins, so a sentence written once covers up to five nodes and a
+ * *mixin* that stops carrying `description` silently un-documents all of them at once. C1 is
+ * measured out of the node catalog, which is regenerated on someone else's schedule, so nothing
+ * else in this repository would notice.
+ *
+ * ⚠️ **The denominator is static ports only, and that is the honest number rather than the
+ * flattering one** (NDA-005 §2). Every one of these nodes also carries dynamic ports —
+ * `backendId`, `collectionName`, `relationProperty`, `prop-<field>`, `acl-<id>-<field>`,
+ * `visualFilter`, … — pushed through `sendSchemaPorts`, and the wire format they travel on has
+ * **no `description` field at all**. They cannot be documented from here and are not counted
+ * here; §2(c) owns that gap. A node whose ports are all dynamic would read `0/0` and must be
+ * reported as `n/a`, never as 100%.
+ */
+describe('NDA-005 C1: every static port of the Record family is described', () => {
+  /** The family, by the type name the catalog keys on. */
+  const RECORD_FAMILY: { typeName: string; module: string; staticPorts: number }[] = [
+    { typeName: 'AddDbModelRelation', module: '../../src/nodes/std-library/data/dbmodelnode-addrelation', staticPorts: 9 },
+    {
+      typeName: 'RemoveDbModelRelation',
+      module: '../../src/nodes/std-library/data/dbmodelnode-removerelation',
+      staticPorts: 9
+    },
+    {
+      typeName: 'NewDbModelProperties',
+      module: '../../src/nodes/std-library/data/newdbmodelpropertiesnode',
+      staticPorts: 7
+    },
+    {
+      typeName: 'SetDbModelProperties',
+      module: '../../src/nodes/std-library/data/setdbmodelpropertiesnode',
+      staticPorts: 11
+    },
+    {
+      typeName: 'DeleteDbModelProperties',
+      module: '../../src/nodes/std-library/data/deletedbmodelpropertiesnode',
+      staticPorts: 8
+    },
+    { typeName: 'FilterDBModels', module: '../../src/nodes/std-library/data/filterdbmodelsnode', staticPorts: 9 }
+  ];
+
+  /** Every static port of one node, as `plug.name`, with whatever description it carries. */
+  function describedPorts(module: string): { name: string; description?: string }[] {
+    // Both shapes appear in this directory: five nodes are `{node, setup}` modules and one is
+    // the definition itself. `defineNode` wants the definition.
+    const loaded = require(module);
+    const definition = (loaded.node || loaded) as NodeDefinitionOptions;
+    const metadata = metadataFor(definition);
+
+    return [
+      ...Object.keys(metadata.inputs).map((name) => ({ name: `in.${name}`, description: metadata.inputs[name].description })),
+      ...Object.keys(metadata.outputs).map((name) => ({
+        name: `out.${name}`,
+        description: metadata.outputs[name].description
+      }))
+    ];
+  }
+
+  test.each(RECORD_FAMILY)('$typeName: all $staticPorts static ports carry a description', ({ module, staticPorts }) => {
+    const ports = describedPorts(module);
+
+    // The count is pinned as well as the coverage: a mixin that stops contributing a port would
+    // otherwise raise coverage by shrinking the denominator, which is exactly the failure §2
+    // names.
+    expect(ports).toHaveLength(staticPorts);
+
+    const undocumented = ports.filter((port) => !port.description).map((port) => port.name);
+    expect(undocumented).toEqual([]);
+  });
+
+  /**
+   * The whole point of documenting on the mixin. `idSource` is contributed by
+   * `dbmodelcrudbase.addModelId` and reaches four of the six nodes; before this pass it was the
+   * family's *only* covered port, and it was covered by the flattened-tooltip fallback rather
+   * than by a sentence anyone wrote for the catalog (§0).
+   */
+  test('C1: a description written once on a mixin reaches every node that applies it', () => {
+    for (const typeName of ['AddDbModelRelation', 'SetDbModelProperties', 'DeleteDbModelProperties']) {
+      const entry = RECORD_FAMILY.find((row) => row.typeName === typeName);
+      const ports = describedPorts(entry.module);
+
+      const idSource = ports.find((port) => port.name === 'in.idSource');
+      expect(idSource.description).toContain('Repeater');
+    }
+  });
+
+  /**
+   * ⚠️ The measurement §2 exists to stop being reported as coverage. Nothing asserts a sentence
+   * here, because there is nowhere to put one: this row fails the day `RuntimeDiscoveredPort`
+   * grows a `description` the port builders can fill in, which is the signal to come back.
+   */
+  test('C1: the dynamic ports of this family have no description channel to fill', () => {
+    const { recordRelationPorts } = require('../../src/nodes/std-library/data/record-ports');
+
+    const ports = recordRelationPorts({
+      selectedCollection: { name: 'nda012d_Owner', fields: [{ name: 'friends', type: 'relation' }] },
+      collections: [],
+      parameters: {}
+    });
+
+    expect(ports).toHaveLength(1);
+    expect(ports[0].name).toBe('relationProperty');
+    expect(ports[0].description).toBeUndefined();
+  });
+});

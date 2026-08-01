@@ -25,6 +25,7 @@ const DeleteDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
       store: {
         displayName: 'Do',
         group: 'Actions',
+        description: 'Deletes the record named by Id from its Class in the backend',
         valueChangedToTrue: function (this: DeleteDbModelPropertiesInstance) {
           this.storageDelete();
         }
@@ -34,7 +35,9 @@ const DeleteDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
       deleted: {
         type: 'signal',
         displayName: 'Success',
-        group: 'Events'
+        group: 'Events',
+        description:
+          'Fires once the backend has deleted the record and everything bound to it has been told that it is gone'
       }
     },
     methods: {

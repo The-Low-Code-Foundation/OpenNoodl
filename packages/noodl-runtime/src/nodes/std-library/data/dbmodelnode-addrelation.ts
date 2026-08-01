@@ -30,6 +30,7 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
       store: {
         displayName: 'Do',
         group: 'Actions',
+        description: 'Adds the record named by Target Record Id to the chosen Relation on the record named by Id',
         valueChangedToTrue: function (this: AddRelationInstance) {
           this.scheduleAddRelation();
         }
@@ -39,7 +40,8 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
       relationAdded: {
         type: 'signal',
         displayName: 'Success',
-        group: 'Events'
+        group: 'Events',
+        description: 'Fires once the relation has been written and the record has been refreshed from the response'
       }
     },
     methods: {

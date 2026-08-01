@@ -160,6 +160,7 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       type: 'array',
       displayName: 'Items',
       group: 'General',
+      description: 'The records to filter, normally the Items output of a Query Records node',
       set(this: FilterDbModelsInstance, value: unknown) {
         this.bindCollection(value as CollectionLike);
         if (this.isInputConnected('filter') === false) this.scheduleFilter();
@@ -170,6 +171,7 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'Enabled',
       default: true,
+      description: 'Passes every record through unchanged when off, rather than emptying the result',
       set: function (this: FilterDbModelsInstance, value: unknown) {
         this._internal.enabled = value as boolean;
         if (this.isInputConnected('filter') === false) this.scheduleFilter();
@@ -179,6 +181,8 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       type: 'signal',
       group: 'Actions',
       displayName: 'Filter',
+      description:
+        'Re-runs the filter, and wiring anything to this port also stops the node re-running on its own when Items, Enabled or the filter settings change',
       valueChangedToTrue: function (this: FilterDbModelsInstance) {
         this.requestFilter();
       }
@@ -189,6 +193,7 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       type: 'array',
       displayName: 'Items',
       group: 'General',
+      description: 'The records that matched, after Sorting, Skip and Limit have been applied',
       getter: function (this: FilterDbModelsInstance) {
         return this._internal.filteredCollection;
       }
@@ -197,6 +202,7 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'First Record Id',
       group: 'General',
+      description: 'Id of the first record in the result, and nothing at all when the result is empty',
       getter: function (this: FilterDbModelsInstance) {
         if (this._internal.filteredCollection !== undefined) {
           const firstItem = this._internal.filteredCollection.get(0);
@@ -218,6 +224,7 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Count',
       group: 'General',
+      description: 'How many records are in the result after Skip and Limit, not how many matched the filter',
       getter: function (this: FilterDbModelsInstance) {
         return this._internal.filteredCollection ? this._internal.filteredCollection.size() : 0;
       }
@@ -225,18 +232,21 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
     modified: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Filtered'
+      displayName: 'Filtered',
+      description: 'Fires each time the result has been rebuilt, including when the same records come back'
     },
     // NDA-004 §2 — see `scheduleFilter`. Array Filter's twin, structurally and in its fix.
     failure: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Failure'
+      displayName: 'Failure',
+      description: 'Fires when the filter could not be applied, or when Filter was triggered with nothing on Items'
     },
     error: {
       group: 'Events',
       type: 'string',
       displayName: 'Error',
+      description: 'Why the most recent failed run failed, kept after a later run succeeds',
       getter: function (this: FilterDbModelsInstance) {
         return this._internal.lastError;
       }
