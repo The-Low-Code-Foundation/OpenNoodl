@@ -75,14 +75,35 @@ describe('export tests', function () {
       expect(JSON.stringify(json)).not.toContain('ADMIN-TOKEN-MUST-NOT-SHIP');
     });
 
-    it('keeps publicToken and basic-auth credentials — a deployed app needs them', function () {
+    it('strips basic-auth credentials too — nothing at runtime reads them', function () {
+      const json = exportWithBackends();
+      const backend = json.metadata.backendServices.backends[0];
+
+      // The first version of the fix kept these, reasoning that a basic-auth backend
+      // needs them at runtime. It does not: `handleFor` copies only `publicToken` and
+      // `sessionToken`, so an adapter cannot see them. Their only reader is the editor's
+      // own schema introspection — exactly what `adminToken` is for.
+      expect(backend.auth.username).toBeUndefined();
+      expect(backend.auth.password).toBeUndefined();
+      expect(JSON.stringify(json)).not.toContain('basic-user');
+      expect(JSON.stringify(json)).not.toContain('basic-pass');
+    });
+
+    it('keeps publicToken — `handleFor` hands it to every adapter', function () {
       const backend = exportWithBackends().metadata.backendServices.backends[0];
 
-      // `handleFor` hands this to every adapter as `handle.publicToken`. Stripping it
-      // would break the deployed app rather than protect it.
+      // Stripping this would break the deployed app rather than protect it.
       expect(backend.auth.publicToken).toBe('public-token-must-ship');
-      expect(backend.auth.username).toBe('basic-user');
-      expect(backend.auth.password).toBe('basic-pass');
+      expect(backend.auth.method).toBe('bearer');
+    });
+
+    it('publishes nothing outside the allow-list — a new credential field must not ship by default', function () {
+      const backend = exportWithBackends().metadata.backendServices.backends[0];
+
+      // The point of the allow-list. `unknownFutureSecret` is in the fixture precisely
+      // because a deny-list would publish it, and a reviewer adding a field to
+      // `BackendAuthConfig` should not have to remember this file.
+      expect(Object.keys(backend.auth).sort()).toEqual(['method', 'publicToken']);
     });
 
     it('leaves the project model itself untouched — the export copies, it does not mutate', function () {
@@ -576,7 +597,10 @@ describe('export tests', function () {
               adminToken: 'ADMIN-TOKEN-MUST-NOT-SHIP',
               publicToken: 'public-token-must-ship',
               username: 'basic-user',
-              password: 'basic-pass'
+              password: 'basic-pass',
+              // Stands in for a credential field added to BackendAuthConfig after this
+              // test was written. A deny-list would publish it; the allow-list must not.
+              unknownFutureSecret: 'FUTURE-SECRET-MUST-NOT-SHIP'
             }
           }
         ]
