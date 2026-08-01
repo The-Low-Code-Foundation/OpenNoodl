@@ -41,6 +41,17 @@ const RUNTIME_DYNAMIC_MECHANISMS = new Set([
 
 export type Plug = 'input' | 'output';
 
+/**
+ * NDA-017 §2's port prefix. Duplicated from `@noodl/runtime`'s `run-on-value-change.ts`
+ * rather than imported: the validator runs in the editor, in the MCP server and in a CLI, and
+ * must not pull the runtime in for one string. `catalog:check` is what keeps the two honest —
+ * the ports appear in the generated catalog under this exact name.
+ */
+const RUN_ON_CHANGE_PREFIX = 'runOnChange-';
+
+/** See {@link CatalogIndex.completionSignalOutputNames} for why `failure` is absent. */
+const COMPLETION_SIGNAL_NAMES = new Set(['success', 'done', 'completed', 'fetched', 'stored', 'saved']);
+
 export class CatalogIndex {
   private readonly byType = new Map<string, CatalogNode>();
   /** typeName → plug → Set<portName> (static + declared-port-group names). */
@@ -149,6 +160,52 @@ export class CatalogIndex {
     const node = this.byType.get(typeName);
     if (!node) return [];
     return node.inputs.filter((p) => p.isSignal).map((p) => p.name);
+  }
+
+  /**
+   * NDA-017 — is this one of the node families whose value inputs are governed by
+   * per-input "Run on value change" checkboxes?
+   *
+   * Derived from the catalog rather than listed here, so the set cannot drift from what the
+   * runtime actually ships. Two mechanisms, because §2 covered both fixed- and
+   * discovered-input families: a family with fixed value inputs declares its
+   * `runOnChange-<input>` ports statically, and a family whose inputs are discovered
+   * (`Expression`, `Function`, `DbCollection2`) can only describe the pattern in
+   * `parameterEncoding`.
+   */
+  isRunOnValueChangeFamily(typeName: string): boolean {
+    const node = this.byType.get(typeName);
+    if (!node) return false;
+    if (node.inputs.some((p) => p.name.startsWith(RUN_ON_CHANGE_PREFIX))) return true;
+    const enc = node.parameterEncoding as unknown;
+    return !!enc && JSON.stringify(enc).includes(RUN_ON_CHANGE_PREFIX);
+  }
+
+  /** The value-input names a `runOnChange-<input>` port governs, when statically declared. */
+  runOnChangeGovernedInputs(typeName: string): string[] {
+    const node = this.byType.get(typeName);
+    if (!node) return [];
+    return node.inputs
+      .filter((p) => p.name.startsWith(RUN_ON_CHANGE_PREFIX))
+      .map((p) => p.name.slice(RUN_ON_CHANGE_PREFIX.length));
+  }
+
+  /**
+   * Signal outputs that mean *"the work this node was asked to do has finished"*.
+   *
+   * This is what makes a producer **asynchronous** for the purposes of NDA-017: a node that
+   * publishes a completion signal is one whose value outputs land some time after it was
+   * triggered, which is the entire precondition for the staleness the report described.
+   *
+   * ⚠️ `failure` is deliberately **not** on its own sufficient and is not listed. Plenty of
+   * synchronous nodes report a failure — `Expression` raises one for a compile error — so
+   * treating it as an async marker would sweep in most of the library. The names here are the
+   * ones NDA-004 §2/§3 established as *completion* signals.
+   */
+  completionSignalOutputNames(typeName: string): string[] {
+    const node = this.byType.get(typeName);
+    if (!node) return [];
+    return node.outputs.filter((p) => p.isSignal && COMPLETION_SIGNAL_NAMES.has(p.name)).map((p) => p.name);
   }
 
   // ── Type compatibility ──────────────────────────────────────────────────────

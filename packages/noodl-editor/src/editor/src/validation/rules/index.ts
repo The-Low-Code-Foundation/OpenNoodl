@@ -4,7 +4,7 @@
  * The canonical, ordered list of rules. Order is "value order" (the order a
  * reader most wants to see problems in): duplicate id → unknown type → missing
  * port → dangling connection → unresolved component ref → orphaned node → type
- * mismatch.
+ * mismatch → mis-sequenced control signal.
  *
  * `duplicateNodeId` leads because a colliding id undermines every rule after
  * it: the others resolve nodes by id, so if the primary key is not unique their
@@ -21,6 +21,7 @@ import { danglingConnection } from './danglingConnection';
 import { unresolvedComponentRef } from './unresolvedComponentRef';
 import { orphanedNode } from './orphanedNode';
 import { typeIncompatibleConnection } from './typeIncompatibleConnection';
+import { signalDrivenStaleInput } from './signalDrivenStaleInput';
 
 export const ALL_RULES: Rule[] = [
   duplicateNodeId,
@@ -29,7 +30,8 @@ export const ALL_RULES: Rule[] = [
   danglingConnection,
   unresolvedComponentRef,
   orphanedNode,
-  typeIncompatibleConnection
+  typeIncompatibleConnection,
+  signalDrivenStaleInput
 ];
 
 export {
@@ -39,7 +41,8 @@ export {
   danglingConnection,
   unresolvedComponentRef,
   orphanedNode,
-  typeIncompatibleConnection
+  typeIncompatibleConnection,
+  signalDrivenStaleInput
 };
 
 export * from './types';

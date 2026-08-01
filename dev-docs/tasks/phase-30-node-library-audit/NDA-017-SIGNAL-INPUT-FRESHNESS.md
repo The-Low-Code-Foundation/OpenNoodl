@@ -25,7 +25,9 @@
 >
 > **✅ §2 is built and live-verified** (`213cf337`, `b6dc078a`, `21eda2b0`, + the live-QA fixes,
 > 2026-08-01) — fifteen node families, the twelve in the table plus three the table missed.
-> Criteria 1–5 are met. ⚠️ **Only criterion 6's semantic-validator half remains open.**
+> **All six criteria are met as of 2026-08-01.** Criterion 6's semantic-validator half landed as
+> the `signal-driven-stale-input` rule — ⚠️ **narrowed from the criterion's literal wording, which
+> would flag the canonical correct graph.** See [Success criteria](#success-criteria) 6.
 >
 > ⚠️ **Live QA found three defects that every jest row missed, and two of them predate this
 > task.** See [§3 — live QA](#3--live-qa). If you take one thing from this file: the corpus set
@@ -402,11 +404,36 @@ method.
    defects, one of which made unticking a box break the node.
 5. ✅ `expression.ts`'s NDA-004 comment is rewritten in place, and so is the corpus row that
    asserted the same premise.
-6. ⚠️ **Half.** Every control signal in the class now says in its `description` that it is
-   *additional* and points at the checkbox group — seven descriptions that stated the trap as if
-   it were the design are gone. The semantic-validator half (flagging a `Run` driven by something
-   other than its inputs' producers) is **not** built; the checkbox makes the mis-sequenced graph
-   much less costly, but it does not make it visible.
+6. ✅ **Both halves, 2026-08-01.** Every control signal in the class says in its `description`
+   that it is *additional* and points at the checkbox group — seven descriptions that stated the
+   trap as if it were the design are gone. The semantic-validator half is now built as
+   `signal-driven-stale-input`
+   ([`rules/signalDrivenStaleInput.ts`](../../../packages/noodl-editor/src/editor/src/validation/rules/signalDrivenStaleInput.ts)),
+   `warning`, on by default, 7 rows in `rules.test.ts`.
+
+   ⚠️ **It is deliberately not the rule this criterion asks for, and the literal one is
+   unbuildable.** The criterion says *"a `Run` driven by something other than its inputs'
+   producers"*. A Button driving `Run` while the values come from Text Inputs is the single most
+   common **correct** graph in the library — it is the reporter's own working graph — and the
+   literal reading flags every one of them. This module treats false positives as its primary
+   risk, and a rule that fires on the canonical correct pattern is a rule nobody leaves on.
+
+   The rule narrows to the condition that actually makes a `Run` unsafe: **the value comes from
+   an asynchronous producer and the signal does not wait for it.** All three must hold — the
+   consumer is in one of §2's families (derived from the catalog's `runOnChange-*` ports, not
+   listed in the validator); a connected value input comes from a producer publishing a
+   *completion* signal (`Success`/`Done`/…, which is what "asynchronous" means here — `Failure`
+   alone does not qualify, or most of the library would); and no connected signal input is
+   reachable backwards over signal wires from that producer's completion. When the third fails,
+   the graph is the correct dataflow answer `run-on-value-change.ts` names as the reason `Run` is
+   kept, and nothing is reported.
+
+   **Measured against the false-positive corpus before it was written up: 12 firings, all in one
+   legacy project (`git-repo-utf8`), 0 in the other eight, 0 errors introduced.** Every firing is
+   the reported defect's own shape — a `Condition` reading `net.noodl.user.User`'s value with
+   `eval` driven by something that does not wait for `fetched`, and a `Function` reading a
+   collection the same way. Three of the seven test rows are controls, each a graph the literal
+   reading would have flagged.
 
 ## Out of scope
 

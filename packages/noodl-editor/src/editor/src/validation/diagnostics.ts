@@ -54,6 +54,11 @@ export enum DiagnosticCode {
   UnresolvedComponentRef = 'unresolved-component-ref',
   OrphanedNode = 'orphaned-node',
   TypeIncompatibleConnection = 'type-incompatible-connection',
+  /**
+   * NDA-017: a control signal fires without waiting for the asynchronous producer of a value
+   * it reads, so the node evaluates against whatever arrived last.
+   */
+  SignalDrivenStaleInput = 'signal-driven-stale-input',
   /** Info-level: a port check was skipped because the node determines the port at runtime. */
   DynamicPortSkipped = 'dynamic-port-skipped'
 }
