@@ -11,7 +11,10 @@
     "accessControl": "Edit-only list of access rules; each rule expands into its own Target/Read/Write inputs (see runtimeBehavior). With no rules the record gets the class default (public) permissions."
   },
   "runtimeBehavior": "Ports are runtime-determined: `collectionName` (Class) is registered as an edit-only enum of the project's classes plus _User/_Role, and each schema property of the chosen class becomes a value input `prop-<name>` typed from the schema. Each entry in the `accessControl` list additionally spawns `acl-<ruleId>-target` (user/everyone/role), then `acl-<ruleId>-userid` or `acl-<ruleId>-role`, plus `acl-<ruleId>-read` and `acl-<ruleId>-write` booleans. An authoring tool should set `collectionName` in parameters and drive `prop-<name>` inputs it knows from the class schema.",
-  "examples": ["cloud-create-record-with-upload"],
+  "examples": [
+    "cloud-create-record-with-upload",
+    "cloud-record-crud"
+  ],
   "patterns": [
     "Text Input `text` → `prop-<name>`, Button `onClick` → `store`: the minimal create form.",
     "`created` → a navigation or Event Sender, with `id` as payload: jump straight to the new record's detail page."
@@ -19,5 +22,10 @@
   "antiPatterns": [
     "Re-fetching a Query Records node after `created` — live queries already receive the new record; only re-fetch when the query is not live."
   ],
-  "relatedNodes": ["SetDbModelProperties", "DeleteDbModelProperties", "DbModel2", "DbCollection2", "noodl.byob.CreateRecord"]
+  "relatedNodes": [
+    "SetDbModelProperties",
+    "DeleteDbModelProperties",
+    "DbModel2",
+    "DbCollection2"
+  ]
 }

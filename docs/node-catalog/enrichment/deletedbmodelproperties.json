@@ -9,9 +9,16 @@
     "deleted": "Signal; the server confirmed removal."
   },
   "runtimeBehavior": "Class choice and id sourcing are schema/editor-driven (declared-port-groups + runtime-discovered); the port set follows the configured class, and `idSource` can bind the id to the enclosing repeater item instead of the input.",
-  "examples": ["cloud-record-relations"],
+  "examples": [
+    "cloud-record-relations",
+    "cloud-record-crud"
+  ],
   "antiPatterns": [
     "Wiring a click straight to `store` with no confirmation step for user-facing deletes."
   ],
-  "relatedNodes": ["SetDbModelProperties", "NewDbModelProperties", "DbCollection2", "noodl.byob.DeleteRecord"]
+  "relatedNodes": [
+    "SetDbModelProperties",
+    "NewDbModelProperties",
+    "DbCollection2"
+  ]
 }

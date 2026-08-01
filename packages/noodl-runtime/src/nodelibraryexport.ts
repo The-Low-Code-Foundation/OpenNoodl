@@ -696,21 +696,17 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike) {
             'net.noodl.user.VerifyEmail',
             'net.noodl.user.SendEmailVerification',
             'net.noodl.user.ResetPassword',
-            'net.noodl.user.RequestPasswordReset'
+            'net.noodl.user.RequestPasswordReset',
+            // BCN-010 found these two registered, not deprecated, and absent from this
+            // index — so unreachable in the picker, which is the same silent gap the
+            // deleted BYOB family was retired to avoid.
+            'net.noodl.user.RequestMagicLink',
+            'net.noodl.user.SignInWith'
           ]
         },
         {
           name: 'External Data',
           items: ['net.noodl.HTTP', 'REST2']
-        },
-        {
-          name: 'BYOB Data',
-          items: [
-            'noodl.byob.QueryData',
-            'noodl.byob.CreateRecord',
-            'noodl.byob.UpdateRecord',
-            'noodl.byob.DeleteRecord'
-          ]
         },
         {
           // AIX-005. A type absent from this index is absent from the add-node

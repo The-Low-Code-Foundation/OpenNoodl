@@ -6442,7 +6442,8 @@
         "examples": [
           "repeater-query-records",
           "send-event-across-components",
-          "cloud-byob-live-refresh"
+          "cloud-record-live-refresh",
+          "cloud-record-crud"
         ],
         "patterns": [
           "`items` → Repeater `items`, with record properties delivered to the item component via Component Inputs: the canonical list page.",
@@ -7187,7 +7188,8 @@
         },
         "runtimeBehavior": "Class choice and id sourcing are schema/editor-driven (declared-port-groups + runtime-discovered); the port set follows the configured class, and `idSource` can bind the id to the enclosing repeater item instead of the input.",
         "examples": [
-          "cloud-record-relations"
+          "cloud-record-relations",
+          "cloud-record-crud"
         ],
         "antiPatterns": [
           "Wiring a click straight to `store` with no confirmation step for user-facing deletes."
@@ -7195,8 +7197,7 @@
         "relatedNodes": [
           "SetDbModelProperties",
           "NewDbModelProperties",
-          "DbCollection2",
-          "noodl.byob.DeleteRecord"
+          "DbCollection2"
         ]
       }
     },
@@ -17078,7 +17079,8 @@
         },
         "runtimeBehavior": "Ports are runtime-determined: `collectionName` (Class) is registered as an edit-only enum of the project's classes plus _User/_Role, and each schema property of the chosen class becomes a value input `prop-<name>` typed from the schema. Each entry in the `accessControl` list additionally spawns `acl-<ruleId>-target` (user/everyone/role), then `acl-<ruleId>-userid` or `acl-<ruleId>-role`, plus `acl-<ruleId>-read` and `acl-<ruleId>-write` booleans. An authoring tool should set `collectionName` in parameters and drive `prop-<name>` inputs it knows from the class schema.",
         "examples": [
-          "cloud-create-record-with-upload"
+          "cloud-create-record-with-upload",
+          "cloud-record-crud"
         ],
         "patterns": [
           "Text Input `text` → `prop-<name>`, Button `onClick` → `store`: the minimal create form.",
@@ -17091,8 +17093,7 @@
           "SetDbModelProperties",
           "DeleteDbModelProperties",
           "DbModel2",
-          "DbCollection2",
-          "noodl.byob.CreateRecord"
+          "DbCollection2"
         ]
       }
     },
@@ -25063,7 +25064,8 @@
         },
         "runtimeBehavior": "Ports are runtime-determined: `collectionName` (Class) is registered as an edit-only enum of the project's classes plus _User/_Role, and each schema property of the chosen class becomes a value input `prop-<name>` typed from the schema. Access Control rules spawn `acl-<ruleId>-*` inputs like on Create Record. An authoring tool should set `collectionName` in parameters and drive the `prop-<name>` inputs it intends to change.",
         "examples": [
-          "cloud-edit-record"
+          "cloud-edit-record",
+          "cloud-record-crud"
         ],
         "patterns": [
           "DbModel2 `prop-<name>` → Text Input `startValue`, edited `text` → `prop-<name>`, Button `onClick` → `store`: prefill, edit, save.",
@@ -25075,8 +25077,7 @@
         "relatedNodes": [
           "DbModel2",
           "NewDbModelProperties",
-          "DeleteDbModelProperties",
-          "noodl.byob.UpdateRecord"
+          "DeleteDbModelProperties"
         ]
       }
     },
@@ -48599,7 +48600,7 @@
       "category": "Cloud Services",
       "isVisual": false,
       "isDeprecated": false,
-      "inNodePicker": false,
+      "inNodePicker": true,
       "availableIn": [
         "browser"
       ],
@@ -49111,7 +49112,7 @@
       "category": "Cloud Services",
       "isVisual": false,
       "isDeprecated": false,
-      "inNodePicker": false,
+      "inNodePicker": true,
       "availableIn": [
         "browser"
       ],
@@ -50799,536 +50800,6 @@
       }
     },
     {
-      "typeName": "noodl.byob.CreateRecord",
-      "displayName": "Create Record",
-      "category": "Data",
-      "isVisual": false,
-      "isDeprecated": false,
-      "inNodePicker": true,
-      "availableIn": [
-        "browser"
-      ],
-      "providedBy": "noodl-viewer-react",
-      "ssr": {
-        "compat": "safe"
-      },
-      "docs": "https://docs.noodl.net/nodes/data/byob/create-record",
-      "searchTags": [
-        "byob",
-        "create",
-        "insert",
-        "add",
-        "data",
-        "database",
-        "records",
-        "directus",
-        "api",
-        "backend"
-      ],
-      "inputs": [
-        {
-          "name": "create",
-          "displayName": "Create",
-          "group": "Actions",
-          "plug": "input",
-          "type": {
-            "name": "signal",
-            "allowConnectionsOnly": true
-          },
-          "isSignal": true
-        }
-      ],
-      "outputs": [
-        {
-          "name": "error",
-          "displayName": "Error",
-          "group": "Status",
-          "plug": "output",
-          "type": {
-            "name": "object"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "failure",
-          "displayName": "Failure",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "loading",
-          "displayName": "Loading",
-          "group": "Status",
-          "plug": "output",
-          "type": {
-            "name": "boolean"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "record",
-          "displayName": "Record",
-          "group": "Results",
-          "plug": "output",
-          "type": {
-            "name": "object"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "recordId",
-          "displayName": "Record ID",
-          "group": "Results",
-          "plug": "output",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        }
-      ],
-      "dynamicPorts": {
-        "mechanisms": [
-          "runtime-discovered"
-        ],
-        "description": "Property input ports are derived from the configured record schema."
-      },
-      "parameterEncoding": {
-        "known": false,
-        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
-      },
-      "enrichment": {
-        "typeName": "noodl.byob.CreateRecord",
-        "summary": "Create Record (BYOB): inserts a record into a self-hosted backend class, returning the new record and its id.",
-        "description": "The bring-your-own-backend Create Record posts a new record with the property values on its schema-generated inputs when `create` fires. `success` delivers `record` (the created object) and `recordId`; `failure` delivers a structured `error`. `loading` is a boolean level for progress UI. Unlike the classic cloud-data family, BYOB results do not live-update — pair writes with an explicit re-fetch of any Query Data feeding the UI.",
-        "whenToUse": "Creating records against a self-hosted/BYOB backend. On the managed cloud backend use Create Record (NewDbModelProperties) instead.",
-        "ports": {
-          "create": "Signal; performs the insert.",
-          "recordId": "The new record's id — hand it to Update/Delete Record or store it for navigation.",
-          "loading": "Boolean level, true while the request is in flight."
-        },
-        "runtimeBehavior": "Class choice and per-property inputs are generated from the backend schema (runtime-discovered); the static surface is only the trigger and result ports.",
-        "examples": [
-          "cloud-byob-crud"
-        ],
-        "patterns": [
-          "`success` → the list query's `fetch`: BYOB writes refresh reads explicitly."
-        ],
-        "relatedNodes": [
-          "noodl.byob.QueryData",
-          "noodl.byob.UpdateRecord",
-          "noodl.byob.DeleteRecord",
-          "NewDbModelProperties"
-        ]
-      }
-    },
-    {
-      "typeName": "noodl.byob.DeleteRecord",
-      "displayName": "Delete Record",
-      "category": "Data",
-      "isVisual": false,
-      "isDeprecated": false,
-      "inNodePicker": true,
-      "availableIn": [
-        "browser"
-      ],
-      "providedBy": "noodl-viewer-react",
-      "ssr": {
-        "compat": "safe"
-      },
-      "docs": "https://docs.noodl.net/nodes/data/byob/delete-record",
-      "searchTags": [
-        "byob",
-        "delete",
-        "remove",
-        "data",
-        "database",
-        "records",
-        "directus",
-        "api",
-        "backend"
-      ],
-      "inputs": [
-        {
-          "name": "delete",
-          "displayName": "Delete",
-          "group": "Actions",
-          "plug": "input",
-          "type": {
-            "name": "signal",
-            "allowConnectionsOnly": true
-          },
-          "isSignal": true
-        }
-      ],
-      "outputs": [
-        {
-          "name": "error",
-          "displayName": "Error",
-          "group": "Status",
-          "plug": "output",
-          "type": {
-            "name": "object"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "failure",
-          "displayName": "Failure",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "loading",
-          "displayName": "Loading",
-          "group": "Status",
-          "plug": "output",
-          "type": {
-            "name": "boolean"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        }
-      ],
-      "dynamicPorts": {
-        "mechanisms": [
-          "runtime-discovered"
-        ],
-        "description": "Parameter ports are derived from the configured record identification."
-      },
-      "parameterEncoding": {
-        "known": false,
-        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
-      },
-      "enrichment": {
-        "typeName": "noodl.byob.DeleteRecord",
-        "summary": "Delete Record (BYOB): removes a record from a self-hosted backend by id when triggered.",
-        "description": "When `delete` fires, the record targeted by the node's id input is removed from its class on the BYOB backend. `success`/`failure` (with structured `error`) report the outcome and `loading` spans the request. Deletion is final, and dependent Query Data nodes see the change only on their next `fetch`.",
-        "whenToUse": "Destructive removal on a self-hosted backend. On the managed cloud backend use Delete Record (DeleteDbModelProperties). Prefer a soft-delete flag via Update Record when undo matters.",
-        "ports": {
-          "delete": "Signal; performs the removal."
-        },
-        "runtimeBehavior": "Class choice and the id input are schema-generated (runtime-discovered).",
-        "examples": [
-          "cloud-byob-crud"
-        ],
-        "relatedNodes": [
-          "noodl.byob.QueryData",
-          "noodl.byob.UpdateRecord",
-          "DeleteDbModelProperties"
-        ]
-      }
-    },
-    {
-      "typeName": "noodl.byob.QueryData",
-      "displayName": "Query Data",
-      "category": "Data",
-      "isVisual": false,
-      "isDeprecated": false,
-      "inNodePicker": true,
-      "availableIn": [
-        "browser"
-      ],
-      "providedBy": "noodl-viewer-react",
-      "ssr": {
-        "compat": "safe"
-      },
-      "docs": "https://docs.noodl.net/nodes/data/byob/query-data",
-      "searchTags": [
-        "byob",
-        "query",
-        "data",
-        "database",
-        "records",
-        "directus",
-        "supabase",
-        "api",
-        "backend",
-        "rest"
-      ],
-      "inputs": [
-        {
-          "name": "fetch",
-          "displayName": "Fetch",
-          "group": "Actions",
-          "plug": "input",
-          "type": {
-            "name": "signal",
-            "allowConnectionsOnly": true
-          },
-          "isSignal": true
-        }
-      ],
-      "outputs": [
-        {
-          "name": "count",
-          "displayName": "Count",
-          "group": "Results",
-          "plug": "output",
-          "type": {
-            "name": "number"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "error",
-          "displayName": "Error",
-          "group": "Status",
-          "plug": "output",
-          "type": {
-            "name": "object"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "failure",
-          "displayName": "Failure",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "firstRecord",
-          "displayName": "First Record",
-          "group": "Results",
-          "plug": "output",
-          "type": {
-            "name": "object"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "loading",
-          "displayName": "Loading",
-          "group": "Status",
-          "plug": "output",
-          "type": {
-            "name": "boolean"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "records",
-          "displayName": "Records",
-          "group": "Results",
-          "plug": "output",
-          "type": {
-            "name": "array"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "totalCount",
-          "displayName": "Total Count",
-          "group": "Results",
-          "plug": "output",
-          "type": {
-            "name": "number"
-          },
-          "isSignal": false
-        }
-      ],
-      "dynamicPorts": {
-        "mechanisms": [
-          "runtime-discovered"
-        ],
-        "description": "Filter/parameter ports are derived from the configured query definition."
-      },
-      "parameterEncoding": {
-        "known": false,
-        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
-      },
-      "enrichment": {
-        "typeName": "noodl.byob.QueryData",
-        "summary": "Query Data (BYOB): fetches records from a self-hosted backend class on demand into a records array.",
-        "description": "The bring-your-own-backend query: when `fetch` fires it runs the configured query against the BYOB backend and emits `records` (array), `count`, `totalCount`, and `firstRecord`. `loading` covers the request window; `success`/`failure` sequence follow-ups. Results are a snapshot by default — writers re-trigger `fetch` when they finish. Against the NodeGX backend, turning on the `Live` input keeps the results current automatically: the node opens a realtime (SSE) subscription to the collection and re-runs the query (debounced) whenever a matching record changes, so the server re-applies the real filter/sort/paging each time.",
-        "whenToUse": "Reading lists from a self-hosted backend. Turn on `Live` for a hands-off live list on a NodeGX backend; for Directus, pair with a Subscribe To Changes node instead. On the managed cloud backend prefer Query Records (DbCollection2), which keeps results live in-process.",
-        "ports": {
-          "fetch": "Signal; runs the query. Wire a mount signal or a refresh event here.",
-          "live": "Boolean, default false. On a NodeGX backend, keeps results live by re-running the query when records change (realtime SSE). No effect on backends without SSE realtime — use Subscribe To Changes there.",
-          "records": "The result array; feeds a Repeater like any items source.",
-          "totalCount": "Total matching records server-side, independent of paging — drive pagination from this."
-        },
-        "runtimeBehavior": "Class selection, filter-value inputs, paging inputs and the `Live` toggle are generated from the backend schema and the query configuration (runtime-discovered); only the trigger/result surface is static. `Live` re-runs the existing query on each change, so filter/sort/limit stay authoritative on the server; bursts of changes coalesce into a single debounced re-fetch.",
-        "examples": [
-          "cloud-byob-crud",
-          "cloud-byob-live-refresh"
-        ],
-        "antiPatterns": [
-          "Polling on a timer — turn on `Live` (NodeGX) or pair with Subscribe To Changes (Directus) instead.",
-          "Expecting `Live` to work against a backend without SSE realtime — only the NodeGX backend serves it."
-        ],
-        "relatedNodes": [
-          "noodl.byob.CreateRecord",
-          "noodl.byob.UpdateRecord",
-          "noodl.byob.DeleteRecord",
-          "DbCollection2",
-          "For Each"
-        ]
-      }
-    },
-    {
-      "typeName": "noodl.byob.UpdateRecord",
-      "displayName": "Update Record",
-      "category": "Data",
-      "isVisual": false,
-      "isDeprecated": false,
-      "inNodePicker": true,
-      "availableIn": [
-        "browser"
-      ],
-      "providedBy": "noodl-viewer-react",
-      "ssr": {
-        "compat": "safe"
-      },
-      "docs": "https://docs.noodl.net/nodes/data/byob/update-record",
-      "searchTags": [
-        "byob",
-        "update",
-        "edit",
-        "modify",
-        "data",
-        "database",
-        "records",
-        "directus",
-        "api",
-        "backend"
-      ],
-      "inputs": [
-        {
-          "name": "update",
-          "displayName": "Update",
-          "group": "Actions",
-          "plug": "input",
-          "type": {
-            "name": "signal",
-            "allowConnectionsOnly": true
-          },
-          "isSignal": true
-        }
-      ],
-      "outputs": [
-        {
-          "name": "error",
-          "displayName": "Error",
-          "group": "Status",
-          "plug": "output",
-          "type": {
-            "name": "object"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "failure",
-          "displayName": "Failure",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "loading",
-          "displayName": "Loading",
-          "group": "Status",
-          "plug": "output",
-          "type": {
-            "name": "boolean"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "record",
-          "displayName": "Record",
-          "group": "Results",
-          "plug": "output",
-          "type": {
-            "name": "object"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        }
-      ],
-      "dynamicPorts": {
-        "mechanisms": [
-          "runtime-discovered"
-        ],
-        "description": "Property input ports are derived from the configured record schema."
-      },
-      "parameterEncoding": {
-        "known": false,
-        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
-      },
-      "enrichment": {
-        "typeName": "noodl.byob.UpdateRecord",
-        "summary": "Update Record (BYOB): writes changed property values onto an existing record in a self-hosted backend by id.",
-        "description": "When `update` fires, the record targeted by the node's id input is patched with the values on its schema-generated property inputs. `success` returns the updated `record`; `failure` a structured `error`; `loading` spans the request. As with all BYOB nodes, dependent Query Data results must be re-fetched explicitly.",
-        "whenToUse": "Editing records on a self-hosted backend. On the managed cloud backend use Update Record (SetDbModelProperties).",
-        "ports": {
-          "update": "Signal; performs the patch.",
-          "record": "The record as returned by the backend after the update."
-        },
-        "runtimeBehavior": "Class choice, the id input and per-property inputs are schema-generated (runtime-discovered).",
-        "examples": [
-          "cloud-byob-crud"
-        ],
-        "relatedNodes": [
-          "noodl.byob.QueryData",
-          "noodl.byob.CreateRecord",
-          "SetDbModelProperties"
-        ]
-      }
-    },
-    {
       "typeName": "noodl.cloud.aggregate",
       "displayName": "Aggregate Records",
       "category": "Cloud Services",
@@ -51940,8 +51411,8 @@
     "version": "1.0.0",
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
-      "documented": 155,
-      "total": 155
+      "documented": 151,
+      "total": 151
     }
   },
   "compatibility": {
@@ -53239,294 +52710,6 @@
       ]
     },
     {
-      "id": "cloud-byob-crud",
-      "title": "Bring-your-own-backend: query, create, update, delete",
-      "description": "The noodl.byob.* family talks to a self-hosted backend with the same shapes as the classic cloud-data nodes but generic record objects: Query Data fetches on demand into `records` (no live re-query — refetch explicitly), Create/Update/Delete Record act on ids and fire success/failure, and every node exposes a `loading` boolean for progress UI. After any write, the query's `fetch` is re-triggered to refresh the list.",
-      "demonstrates": [
-        "noodl.byob.QueryData",
-        "noodl.byob.CreateRecord",
-        "noodl.byob.UpdateRecord",
-        "noodl.byob.DeleteRecord"
-      ],
-      "components": [
-        {
-          "name": "/Notes Admin",
-          "nodes": [
-            {
-              "id": "root",
-              "type": "Group",
-              "label": "Admin",
-              "parameters": {
-                "flexDirection": "column"
-              },
-              "children": [
-                "add_btn",
-                "rename_btn",
-                "delete_btn",
-                "notes_repeater"
-              ]
-            },
-            {
-              "id": "add_btn",
-              "type": "net.noodl.controls.button",
-              "label": "Add",
-              "parent": "root",
-              "parameters": {
-                "label": "New note"
-              }
-            },
-            {
-              "id": "rename_btn",
-              "type": "net.noodl.controls.button",
-              "label": "Rename",
-              "parent": "root",
-              "parameters": {
-                "label": "Rename selected"
-              }
-            },
-            {
-              "id": "delete_btn",
-              "type": "net.noodl.controls.button",
-              "label": "Delete",
-              "parent": "root",
-              "parameters": {
-                "label": "Delete selected"
-              }
-            },
-            {
-              "id": "notes_repeater",
-              "type": "For Each",
-              "label": "Notes",
-              "parent": "root",
-              "parameters": {
-                "template": "/Note Row"
-              }
-            },
-            {
-              "id": "notes_query",
-              "type": "noodl.byob.QueryData",
-              "label": "Fetch notes",
-              "parameters": {
-                "collection": "Note"
-              }
-            },
-            {
-              "id": "create_note",
-              "type": "noodl.byob.CreateRecord",
-              "label": "Create note",
-              "parameters": {
-                "collection": "Note"
-              }
-            },
-            {
-              "id": "update_note",
-              "type": "noodl.byob.UpdateRecord",
-              "label": "Update note",
-              "parameters": {
-                "collection": "Note"
-              }
-            },
-            {
-              "id": "delete_note",
-              "type": "noodl.byob.DeleteRecord",
-              "label": "Delete note",
-              "parameters": {
-                "collection": "Note"
-              }
-            }
-          ],
-          "connections": [
-            {
-              "fromId": "notes_query",
-              "fromProperty": "records",
-              "toId": "notes_repeater",
-              "toProperty": "items"
-            },
-            {
-              "fromId": "add_btn",
-              "fromProperty": "onClick",
-              "toId": "create_note",
-              "toProperty": "create"
-            },
-            {
-              "fromId": "rename_btn",
-              "fromProperty": "onClick",
-              "toId": "update_note",
-              "toProperty": "update"
-            },
-            {
-              "fromId": "delete_btn",
-              "fromProperty": "onClick",
-              "toId": "delete_note",
-              "toProperty": "delete"
-            },
-            {
-              "fromId": "create_note",
-              "fromProperty": "success",
-              "toId": "notes_query",
-              "toProperty": "fetch"
-            },
-            {
-              "fromId": "update_note",
-              "fromProperty": "success",
-              "toId": "notes_query",
-              "toProperty": "fetch"
-            },
-            {
-              "fromId": "delete_note",
-              "fromProperty": "success",
-              "toId": "notes_query",
-              "toProperty": "fetch"
-            }
-          ]
-        },
-        {
-          "name": "/Note Row",
-          "nodes": [
-            {
-              "id": "row",
-              "type": "Group",
-              "label": "Row",
-              "parameters": {
-                "flexDirection": "row"
-              },
-              "children": [
-                "title_text"
-              ]
-            },
-            {
-              "id": "title_text",
-              "type": "Text",
-              "label": "Title",
-              "parent": "row"
-            },
-            {
-              "id": "row_inputs",
-              "type": "Component Inputs",
-              "label": "Record in"
-            }
-          ],
-          "connections": [
-            {
-              "fromId": "row_inputs",
-              "fromProperty": "title",
-              "toId": "title_text",
-              "toProperty": "text"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "cloud-byob-live-refresh",
-      "title": "A list that keeps itself current, with Subscribe To Changes",
-      "description": "A query is a snapshot — it only refreshes when `Do` fires. Turning on **Subscribe To Changes** closes that gap on the Query Records node itself: it holds a live subscription on the collection and fires `Changed` whenever any client creates, updates or deletes a record, so wiring `Changed` → `Do` keeps the list current without polling. `Subscribed` drives a small 'live' indicator so people can see when realtime updates are actually running, and `Realtime Status` says which of connecting/subscribed/interrupted it is in. Works on every backend whose descriptor allows it — SSE on the built-in backend and PocketBase, a WebSocket on Directus.",
-      "demonstrates": [
-        "DbCollection2"
-      ],
-      "components": [
-        {
-          "name": "/Live Notes",
-          "nodes": [
-            {
-              "id": "root",
-              "type": "Group",
-              "label": "Live notes",
-              "parameters": {
-                "flexDirection": "column"
-              },
-              "children": [
-                "live_badge",
-                "notes_repeater"
-              ]
-            },
-            {
-              "id": "live_badge",
-              "type": "Text",
-              "label": "Live indicator",
-              "parent": "root",
-              "parameters": {
-                "text": "● live"
-              }
-            },
-            {
-              "id": "notes_repeater",
-              "type": "For Each",
-              "label": "Notes",
-              "parent": "root",
-              "parameters": {
-                "template": "/Note Row"
-              }
-            },
-            {
-              "id": "notes_query",
-              "type": "DbCollection2",
-              "label": "Notes",
-              "parameters": {
-                "collectionName": "Note",
-                "realtimeEnabled": true
-              }
-            }
-          ],
-          "connections": [
-            {
-              "fromId": "notes_query",
-              "fromProperty": "items",
-              "toId": "notes_repeater",
-              "toProperty": "items"
-            },
-            {
-              "fromId": "notes_query",
-              "fromProperty": "changed",
-              "toId": "notes_query",
-              "toProperty": "storageFetch"
-            },
-            {
-              "fromId": "notes_query",
-              "fromProperty": "subscribed",
-              "toId": "live_badge",
-              "toProperty": "visible"
-            }
-          ]
-        },
-        {
-          "name": "/Note Row",
-          "nodes": [
-            {
-              "id": "row",
-              "type": "Group",
-              "label": "Row",
-              "parameters": {
-                "flexDirection": "row"
-              },
-              "children": [
-                "title_text"
-              ]
-            },
-            {
-              "id": "title_text",
-              "type": "Text",
-              "label": "Title",
-              "parent": "row"
-            },
-            {
-              "id": "row_inputs",
-              "type": "Component Inputs",
-              "label": "Record in"
-            }
-          ],
-          "connections": [
-            {
-              "fromId": "row_inputs",
-              "fromProperty": "title",
-              "toId": "title_text",
-              "toProperty": "text"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "id": "cloud-create-record-with-upload",
       "title": "Create a record with an uploaded file attachment",
       "description": "The create-with-attachment flow: Open File Picker hands the picked browser file to Upload File, which stores it in cloud storage and outputs a `cloudFile`. Cloud File exposes that file's `url`, previewed in an Image (the cloudfile→image cast). When the upload succeeds, Create Record (NewDbModelProperties) writes a new 'Attachment' record whose properties — including the file — are set on the node's schema-generated inputs. Database Config (DbConfig) is the singleton that points the app at its cloud backend; it has no wires, its presence and parameters configure the connection.",
@@ -53913,6 +53096,296 @@
               "fromId": "line_inputs",
               "fromProperty": "title",
               "toId": "line_text",
+              "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cloud-record-crud",
+      "title": "Records on a REST backend: query, create, update, delete",
+      "description": "One Record family serves every backend. Query Records fetches on demand into `items` (re-trigger `storageFetch` to refresh — a query with realtime off does not re-query itself), Create/Update/Delete Record each act on a `store` signal and answer `created`/`stored`/`deleted`, and Update and Delete take the record's `modelId`. After any write the query's `storageFetch` is re-triggered to refresh the list. No node here names a backend, so all five resolve the project's selected one; set the `Backend` input to point a single node somewhere else.",
+      "demonstrates": [
+        "DbCollection2",
+        "NewDbModelProperties",
+        "SetDbModelProperties",
+        "DeleteDbModelProperties"
+      ],
+      "components": [
+        {
+          "name": "/Notes Admin",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Admin",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "add_btn",
+                "rename_btn",
+                "delete_btn",
+                "notes_repeater"
+              ]
+            },
+            {
+              "id": "add_btn",
+              "type": "net.noodl.controls.button",
+              "label": "Add",
+              "parent": "root",
+              "parameters": {
+                "label": "New note"
+              }
+            },
+            {
+              "id": "rename_btn",
+              "type": "net.noodl.controls.button",
+              "label": "Rename",
+              "parent": "root",
+              "parameters": {
+                "label": "Rename selected"
+              }
+            },
+            {
+              "id": "delete_btn",
+              "type": "net.noodl.controls.button",
+              "label": "Delete",
+              "parent": "root",
+              "parameters": {
+                "label": "Delete selected"
+              }
+            },
+            {
+              "id": "notes_repeater",
+              "type": "For Each",
+              "label": "Notes",
+              "parent": "root",
+              "parameters": {
+                "template": "/Note Row"
+              }
+            },
+            {
+              "id": "notes_query",
+              "type": "DbCollection2",
+              "label": "Fetch notes",
+              "parameters": {
+                "collectionName": "Note"
+              }
+            },
+            {
+              "id": "create_note",
+              "type": "NewDbModelProperties",
+              "label": "Create note",
+              "parameters": {
+                "collectionName": "Note"
+              }
+            },
+            {
+              "id": "update_note",
+              "type": "SetDbModelProperties",
+              "label": "Update note",
+              "parameters": {
+                "collectionName": "Note",
+                "idSource": "value"
+              }
+            },
+            {
+              "id": "delete_note",
+              "type": "DeleteDbModelProperties",
+              "label": "Delete note",
+              "parameters": {
+                "collectionName": "Note",
+                "idSource": "value"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "notes_query",
+              "fromProperty": "items",
+              "toId": "notes_repeater",
+              "toProperty": "items"
+            },
+            {
+              "fromId": "add_btn",
+              "fromProperty": "onClick",
+              "toId": "create_note",
+              "toProperty": "store"
+            },
+            {
+              "fromId": "rename_btn",
+              "fromProperty": "onClick",
+              "toId": "update_note",
+              "toProperty": "store"
+            },
+            {
+              "fromId": "delete_btn",
+              "fromProperty": "onClick",
+              "toId": "delete_note",
+              "toProperty": "store"
+            },
+            {
+              "fromId": "create_note",
+              "fromProperty": "created",
+              "toId": "notes_query",
+              "toProperty": "storageFetch"
+            },
+            {
+              "fromId": "update_note",
+              "fromProperty": "stored",
+              "toId": "notes_query",
+              "toProperty": "storageFetch"
+            },
+            {
+              "fromId": "delete_note",
+              "fromProperty": "deleted",
+              "toId": "notes_query",
+              "toProperty": "storageFetch"
+            }
+          ]
+        },
+        {
+          "name": "/Note Row",
+          "nodes": [
+            {
+              "id": "row",
+              "type": "Group",
+              "label": "Row",
+              "parameters": {
+                "flexDirection": "row"
+              },
+              "children": [
+                "title_text"
+              ]
+            },
+            {
+              "id": "title_text",
+              "type": "Text",
+              "label": "Title",
+              "parent": "row"
+            },
+            {
+              "id": "row_inputs",
+              "type": "Component Inputs",
+              "label": "Record in"
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "row_inputs",
+              "fromProperty": "title",
+              "toId": "title_text",
+              "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cloud-record-live-refresh",
+      "title": "A list that keeps itself current, with Subscribe To Changes",
+      "description": "A query is a snapshot — it only refreshes when `Do` fires. Turning on **Subscribe To Changes** closes that gap on the Query Records node itself: it holds a live subscription on the collection and fires `Changed` whenever any client creates, updates or deletes a record, so wiring `Changed` → `Do` keeps the list current without polling. `Subscribed` drives a small 'live' indicator so people can see when realtime updates are actually running, and `Realtime Status` says which of connecting/subscribed/interrupted it is in. Works on every backend whose descriptor allows it — SSE on the built-in backend and PocketBase, a WebSocket on Directus.",
+      "demonstrates": [
+        "DbCollection2"
+      ],
+      "components": [
+        {
+          "name": "/Live Notes",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Live notes",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "live_badge",
+                "notes_repeater"
+              ]
+            },
+            {
+              "id": "live_badge",
+              "type": "Text",
+              "label": "Live indicator",
+              "parent": "root",
+              "parameters": {
+                "text": "● live"
+              }
+            },
+            {
+              "id": "notes_repeater",
+              "type": "For Each",
+              "label": "Notes",
+              "parent": "root",
+              "parameters": {
+                "template": "/Note Row"
+              }
+            },
+            {
+              "id": "notes_query",
+              "type": "DbCollection2",
+              "label": "Notes",
+              "parameters": {
+                "collectionName": "Note",
+                "realtimeEnabled": true
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "notes_query",
+              "fromProperty": "items",
+              "toId": "notes_repeater",
+              "toProperty": "items"
+            },
+            {
+              "fromId": "notes_query",
+              "fromProperty": "changed",
+              "toId": "notes_query",
+              "toProperty": "storageFetch"
+            },
+            {
+              "fromId": "notes_query",
+              "fromProperty": "subscribed",
+              "toId": "live_badge",
+              "toProperty": "visible"
+            }
+          ]
+        },
+        {
+          "name": "/Note Row",
+          "nodes": [
+            {
+              "id": "row",
+              "type": "Group",
+              "label": "Row",
+              "parameters": {
+                "flexDirection": "row"
+              },
+              "children": [
+                "title_text"
+              ]
+            },
+            {
+              "id": "title_text",
+              "type": "Text",
+              "label": "Title",
+              "parent": "row"
+            },
+            {
+              "id": "row_inputs",
+              "type": "Component Inputs",
+              "label": "Record in"
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "row_inputs",
+              "fromProperty": "title",
+              "toId": "title_text",
               "toProperty": "text"
             }
           ]

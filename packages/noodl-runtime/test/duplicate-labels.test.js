@@ -56,11 +56,7 @@ const catalog = require('../../noodl-types/src/node-catalog.json');
  *
  * **When the four types are deleted, empty this array.** This test will say so.
  */
-const PENDING_TYPE_DELETION = [
-  { label: 'Create Record', types: ['NewDbModelProperties', 'noodl.byob.CreateRecord'] },
-  { label: 'Delete Record', types: ['DeleteDbModelProperties', 'noodl.byob.DeleteRecord'] },
-  { label: 'Update Record', types: ['SetDbModelProperties', 'noodl.byob.UpdateRecord'] }
-];
+const PENDING_TYPE_DELETION = [];
 
 /**
  * A deprecated type shadowing the modern one that replaced it.

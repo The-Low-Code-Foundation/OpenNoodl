@@ -13,7 +13,10 @@
     "accessControl": "Edit-only list of access rules applied with the save; each rule expands into its own Target/Read/Write inputs."
   },
   "runtimeBehavior": "Ports are runtime-determined: `collectionName` (Class) is registered as an edit-only enum of the project's classes plus _User/_Role, and each schema property of the chosen class becomes a value input `prop-<name>` typed from the schema. Access Control rules spawn `acl-<ruleId>-*` inputs like on Create Record. An authoring tool should set `collectionName` in parameters and drive the `prop-<name>` inputs it intends to change.",
-  "examples": ["cloud-edit-record"],
+  "examples": [
+    "cloud-edit-record",
+    "cloud-record-crud"
+  ],
   "patterns": [
     "DbModel2 `prop-<name>` → Text Input `startValue`, edited `text` → `prop-<name>`, Button `onClick` → `store`: prefill, edit, save.",
     "'From repeater' `idSource` inside a list row: one node updates whichever record the row represents."
@@ -21,5 +24,9 @@
   "antiPatterns": [
     "Setting `storeProperties` to 'All' to 'be safe' — it uploads the record's entire local data and can overwrite fields other users changed; send only what the form edits."
   ],
-  "relatedNodes": ["DbModel2", "NewDbModelProperties", "DeleteDbModelProperties", "noodl.byob.UpdateRecord"]
+  "relatedNodes": [
+    "DbModel2",
+    "NewDbModelProperties",
+    "DeleteDbModelProperties"
+  ]
 }
