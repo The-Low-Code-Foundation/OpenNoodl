@@ -169,8 +169,18 @@ export function BackendCard({
       {/* Schema Info */}
       {backend.schema && backend.schema.collections.length > 0 && (
         <div className={css.SchemaInfo}>
-          <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
+          <Text textType={TextType.Shy} style={{ fontSize: '11px' }} testId={`backend-schema-info-${backend.id}`}>
             {backend.schema.collections.length} collection{backend.schema.collections.length !== 1 ? 's' : ''}
+            {/* BCN-005 schema sync: relations are read here or nowhere. Relation metadata
+                is admin-only on every REST backend, so this line is the only feedback a
+                user gets that the privileged half of the sync succeeded — a backend whose
+                token can read `/fields` but not `/relations` syncs collections and no
+                relations, and without this the two outcomes look identical. Shown only
+                when there are some: "0 relations" on a backend that has none would read
+                as a failure. */}
+            {backend.schema.relations && backend.schema.relations.length > 0
+              ? `, ${backend.schema.relations.length} relation${backend.schema.relations.length !== 1 ? 's' : ''}`
+              : ''}
           </Text>
         </div>
       )}

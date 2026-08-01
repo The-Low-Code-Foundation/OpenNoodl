@@ -1,3 +1,4 @@
+import { withoutEditorOnlyCredentials } from '@noodl-models/BackendServices/publishSafe';
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { CloudServiceMetadataDataFormat, ProjectModel } from '@noodl-models/projectmodel';
 import { getComponentIndex, removeBundlesFromIndex } from './bundler';
@@ -38,8 +39,14 @@ export function exportComponentsToJSON(
 
   json.metadata = project ? project.metadata : undefined;
 
-  // Take a copy of metadata so that it can be modified without affecting the original
-  json.metadata = project?.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {};
+  // Take a copy of metadata so that it can be modified without affecting the original.
+  // ⚠️ `withoutEditorOnlyCredentials` is not optional here: `backendServices` carries the
+  // admin token the editor uses for schema introspection, whose own docstring promises it
+  // is "NOT published to the deployed app" — and until BCN-005's schema sync went looking
+  // for it, nothing anywhere kept that promise. See models/BackendServices/publishSafe.ts.
+  json.metadata = withoutEditorOnlyCredentials(
+    project?.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {}
+  );
 
   // Override the cloud services metadata
   if (args?.environment === null) {
@@ -118,8 +125,14 @@ export function exportToJSON(projectModel: ProjectModel, args?: ExportToJSONOpti
 
   json.metadata = project ? project.metadata : undefined;
 
-  // Take a copy of metadata so that it can be modified without affecting the original
-  json.metadata = project?.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {};
+  // Take a copy of metadata so that it can be modified without affecting the original.
+  // ⚠️ `withoutEditorOnlyCredentials` is not optional here: `backendServices` carries the
+  // admin token the editor uses for schema introspection, whose own docstring promises it
+  // is "NOT published to the deployed app" — and until BCN-005's schema sync went looking
+  // for it, nothing anywhere kept that promise. See models/BackendServices/publishSafe.ts.
+  json.metadata = withoutEditorOnlyCredentials(
+    project?.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {}
+  );
 
   // Override the cloud services metadata
   if (args?.environment === null) {

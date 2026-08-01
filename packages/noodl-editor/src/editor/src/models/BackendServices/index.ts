@@ -13,6 +13,7 @@ export { BackendServices } from './BackendServices';
 export * from './activeBackend';
 export * from './types';
 export * from './presets';
+export * from './publishSafe';
 export * from './schemaParsers';
 export * from './security';
 export * from './securityFindings';

@@ -8,7 +8,7 @@
  * @since 1.2.0
  */
 
-import type { BackendType } from '@noodl/backend-contract';
+import type { BackendType, RelationDescriptor } from '@noodl/backend-contract';
 
 import { IModel } from '@noodl-utils/model';
 
@@ -151,6 +151,27 @@ export interface CachedSchema {
   version: string;
   fetchedAt: Date;
   collections: SchemaCollection[];
+  /**
+   * Every relation the backend's own metadata describes — BCN-005's parsers,
+   * stored so a running app can read them.
+   *
+   * ⚠️ **This has to be stored because it cannot be discovered.** Relation
+   * metadata is admin-only on every REST backend (Directus `GET /relations`
+   * 403, PocketBase `GET /api/collections` 401, PostgREST has no endpoint at
+   * all), and a published app holds a public or session token, never the admin
+   * one. The editor is the only place in the product that can ask the question,
+   * so the answer is written down here at sync time and carried to the adapter
+   * by `resolveBackend`.
+   *
+   * Absent on every schema synced before this landed, and on a `custom`
+   * backend, which has no relation model. The runtime falls back to
+   * `relationsFromCachedCollections` — a strict subset which misses PocketBase
+   * relation fields and any junction carrying an extra column, and which names
+   * a many-to-many after the target collection rather than the parent's own
+   * alias. That fallback is why an absent value is a degradation and not a
+   * failure.
+   */
+  relations?: RelationDescriptor[];
 }
 
 /**
@@ -200,6 +221,8 @@ export interface BackendConfigSerialized {
     version: string;
     fetchedAt: string;
     collections: SchemaCollection[];
+    /** See {@link CachedSchema.relations}. Plain JSON — no dates, no credentials. */
+    relations?: RelationDescriptor[];
   };
   status: ConnectionStatus;
   lastSynced?: string;
