@@ -165,6 +165,12 @@ sentence anywhere. See [`audit/navigation.md`](./audit/navigation.md).
 
 ## §3 — Channel precedence (settled by Richard, 2026-08-01)
 
+> ✅ **Also written into the normative reference**, 2026-08-01 — see
+> [`PORT-DESCRIPTION-STYLE.md` § Which channel wins](../../reference/PORT-DESCRIPTION-STYLE.md#which-channel-wins).
+> A rule that lives only in a task spec is a rule the next person writing a description will not
+> read: the style guide is what a node author is pointed at, and it did not mention the enrichment
+> channel at all.
+
 Three channels can carry text about a port, and until now **none of them was declared to win**
 (FINDINGS **WD-3**). ~550 sentences were written across two sessions before anyone asked. The rule:
 

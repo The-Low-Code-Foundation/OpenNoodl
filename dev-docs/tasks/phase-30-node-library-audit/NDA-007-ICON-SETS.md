@@ -103,12 +103,14 @@ and the property-panel thumbnail — two more copies of the font splat, on this 
 
 ## Success criteria
 
-1. 🔵 A custom SVG sprite set can be added to a project, appears in the picker, and renders in the
+1. ✅ A custom SVG sprite set can be added to a project, appears in the picker, and renders in the
    app — **demonstrated end to end live in the editor** (`899ab676`): a set installed in a project
    shows drawn previews in the picker, the pick stores `{kind:'sprite',url,symbolId}`, the thumbnail
-   renders it, and the app renders it at the authored size and colour. **A deployed build is still
-   owed**; `noodl_modules/` is not in the deploy ignore list, so the URL is expected to resolve, but
-   expected is not verified.
+   renders it, and the app renders it at the authored size and colour. ✅ **And in a deployed build**
+   (2026-07-30): `noodl_modules/` ships verbatim, the font stylesheet is injected, and the sprite
+   `<use>` resolves over http with `getBBox()` 40×38. The witness discriminates — removing the asset
+   gives `0×0` and **no console error anywhere**, which is why a non-zero bounding box is the check
+   and "it looks right" is not.
 2. ✅ Existing font-based icons render byte-identically. ⚠️ **Not** by the screenshot corpus, which
    photographs editor chrome and cannot see this node — the wrong instrument. Verified instead by a
    row pinning `iconValueForGlyph`'s exact key set (`class`, `code`, `codeAsClass`, **no `kind`**)

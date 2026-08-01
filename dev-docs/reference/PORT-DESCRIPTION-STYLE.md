@@ -44,6 +44,30 @@ the popup stays rich, the catalog gets the sentence.
 reading an old node and wondering why its careful `description` never appeared anywhere, that is
 why — three of them had been sitting on the Variables nodes since NDA-003.
 
+## Which channel wins
+
+There is a **third** channel the table above does not mention, and three channels with no declared
+winner is how they drift. Settled by Richard on 2026-08-01:
+
+| Channel | Status |
+| --- | --- |
+| **`description` on the port declaration** | ✅ **Canonical.** The single source of truth. Everything else derives from it or adds to it |
+| enrichment `ports` in `docs/node-catalog/enrichment/*.json` | May **only add what the source cannot know** — usage guidance, cross-node context, examples. It must not contradict `description`, and it is **not** a place to correct one |
+| `tooltip` | **Display-only and derived**, per the table above |
+
+**Why the port declaration and not the enrichment file**, which would have let docs be corrected
+without touching runtime code: the truth would then live in two repositories, and the port
+declaration — the thing a person editing the node is looking at — would be the one that could
+quietly go stale.
+
+⚠️ **A consequence worth stating: a `description` may name a defect.** Several do, because an
+author reading the property panel is where that warning has to land. They come out when the defect
+is fixed — grep for `⚠️` in the port declarations to find them.
+
+⚠️ **And one for the enrichment channel: a `description` that changes makes the enriched catalog
+stale, not wrong.** `npm run catalog:merge:check` is the gate; regenerate rather than hand-editing
+the merged file.
+
 ## The rules
 
 1. **One sentence. No trailing period.** The panel and the catalog both add their own punctuation

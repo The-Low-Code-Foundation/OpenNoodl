@@ -124,6 +124,10 @@ chose for autofold over painting blank.
    (1200/900/700/450), `8913a6fb`.
 4. ✅ Masonry over a repeater renders, ordering documented on the port tooltip and in
    `computeMasonryOffsets`.
-5. 🔵 Live-verified in the editor (`b33b1b3e`: computed tops and container height match, and a height
-   change re-packs). **A deployed build is still owed** — the SSR/first-paint path is asserted by row
-   D7 through `react-dom/server` but has not been seen in a real deploy.
+5. ✅ Live-verified in the editor (`b33b1b3e`: computed tops and container height match, and a height
+   change re-packs) **and in a deployed build** (`cc28a4be`, 2026-07-30). ⚠️ The deployed leg was
+   worth running: masonry itself was right (tops `0,0,0,40,90,60,160`, height 230) but the **first
+   paint was a zero-width strip**. `width: calc(100% + (${marginX}px)` was one parenthesis short,
+   which the CSSOM silently repairs on the client and a serialised `style` attribute does not —
+   dropping `width` and `box-sizing` together. Row D7 stayed green throughout, because
+   `react-dom/server` was never the part that differed.
