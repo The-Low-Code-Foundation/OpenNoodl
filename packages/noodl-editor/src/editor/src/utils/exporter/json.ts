@@ -1,4 +1,3 @@
-import { withoutEditorOnlyCredentials } from '@noodl-models/BackendServices/publishSafe';
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { CloudServiceMetadataDataFormat, ProjectModel } from '@noodl-models/projectmodel';
 import { getComponentIndex, removeBundlesFromIndex } from './bundler';
@@ -16,6 +15,49 @@ export type ExportToJSONOptions = {
 
   ignoreComponentFilter?: (component: ComponentModel) => boolean;
 };
+
+/**
+ * Take the export's copy of the project metadata, with editor-only credentials removed.
+ *
+ * ## Why this exists
+ *
+ * `json.metadata` is a deep copy of the *whole* project metadata block, and only
+ * `cloudservices` is overridden below. Everything else rides along verbatim — including
+ * `backendServices`, which holds one entry per configured backend, each with an `auth`
+ * object. `BackendServices/types.ts` says of one of its fields:
+ *
+ * > Admin token for schema introspection (editor-only).
+ * > **This token is NOT published to the deployed app.**
+ *
+ * That was a promise nothing kept. The export JSON becomes `window.projectData` in the
+ * deployed app, so the admin token of every backend the user ever configured was readable
+ * from the browser console of the shipped site — measured, in a real browser, against a
+ * real deploy bundle (BCN orchestrator pass, phase 34).
+ *
+ * ## What is stripped, and what deliberately is not
+ *
+ * Only `adminToken`. It has **zero** readers in `packages/noodl-runtime` — it exists for
+ * schema introspection, which only the editor does — so removing it costs a deployed app
+ * nothing.
+ *
+ * `publicToken` stays: the same file documents it as *"WILL be published"*, and it is what
+ * `resolveBackend.ts::handleFor` hands the adapters as `handle.publicToken`. So do
+ * `username`/`password`, because a backend configured for basic auth needs them at
+ * runtime. Those are the user's declared choice and BCN-009's security disclosure is what
+ * tells them so; a silent strip would break their app instead of informing them.
+ */
+function exportMetadata(project: ProjectModel | undefined): TSFixme {
+  const metadata = project?.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {};
+
+  const backends = metadata?.backendServices?.backends;
+  if (Array.isArray(backends)) {
+    for (const backend of backends) {
+      if (backend?.auth && 'adminToken' in backend.auth) delete backend.auth.adminToken;
+    }
+  }
+
+  return metadata;
+}
 
 export function exportComponentsToJSON(
   projectModel: ProjectModel,
@@ -37,16 +79,9 @@ export function exportComponentsToJSON(
   json.components = components.map((component) => exportComponent(component));
   json.componentIndex = {};
 
-  json.metadata = project ? project.metadata : undefined;
-
-  // Take a copy of metadata so that it can be modified without affecting the original.
-  // ⚠️ `withoutEditorOnlyCredentials` is not optional here: `backendServices` carries the
-  // admin token the editor uses for schema introspection, whose own docstring promises it
-  // is "NOT published to the deployed app" — and until BCN-005's schema sync went looking
-  // for it, nothing anywhere kept that promise. See models/BackendServices/publishSafe.ts.
-  json.metadata = withoutEditorOnlyCredentials(
-    project?.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {}
-  );
+  // A copy, so it can be modified without affecting the original — and with the
+  // editor-only credentials removed. See `exportMetadata`.
+  json.metadata = exportMetadata(project);
 
   // Override the cloud services metadata
   if (args?.environment === null) {
@@ -123,16 +158,9 @@ export function exportToJSON(projectModel: ProjectModel, args?: ExportToJSONOpti
   json.rootComponent = rootComponent.name;
   json.rootNode = root.id;
 
-  json.metadata = project ? project.metadata : undefined;
-
-  // Take a copy of metadata so that it can be modified without affecting the original.
-  // ⚠️ `withoutEditorOnlyCredentials` is not optional here: `backendServices` carries the
-  // admin token the editor uses for schema introspection, whose own docstring promises it
-  // is "NOT published to the deployed app" — and until BCN-005's schema sync went looking
-  // for it, nothing anywhere kept that promise. See models/BackendServices/publishSafe.ts.
-  json.metadata = withoutEditorOnlyCredentials(
-    project?.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {}
-  );
+  // A copy, so it can be modified without affecting the original — and with the
+  // editor-only credentials removed. See `exportMetadata`.
+  json.metadata = exportMetadata(project);
 
   // Override the cloud services metadata
   if (args?.environment === null) {

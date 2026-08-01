@@ -27,7 +27,7 @@ jest.mock('../../noodl-runtime', () => ({
 }));
 
 import { DATA_ADAPTER_METHODS } from '@noodl/backend-contract';
-import type { BackendHandle, RelationDescriptor } from '@noodl/backend-contract';
+import type { BackendHandle, RelationDescriptor, UploadFileOptions } from '@noodl/backend-contract';
 
 import {
   RestDataAdapter,
@@ -52,6 +52,15 @@ interface Reply {
   /** Raw text, for the empty-body cases a JSON body cannot express. */
   text?: string;
   headers?: Record<string, string>;
+}
+
+/** A JSON body, or the raw string when it is not JSON at all. */
+function safeParse(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }
 
 class FakeFetch {
@@ -84,7 +93,18 @@ class FakeFetch {
       url,
       method: init?.method ?? 'GET',
       headers: init?.headers ?? {},
-      body: init?.body === undefined ? undefined : JSON.parse(init.body)
+      // ⚠️ BCN-007 widened `FetchLike`'s body beyond `string`, and this used to
+      // be an unconditional `JSON.parse`. A `FormData` body would have thrown
+      // here — which is the *good* failure — but a raw-bytes body would not,
+      // and either way the recorded call has to keep the body a test can look
+      // inside. So the non-string shapes are kept as-is and asserted on
+      // directly (`instanceof FormData`, `body.get('file')`).
+      body:
+        init?.body === undefined
+          ? undefined
+          : typeof init.body === 'string'
+            ? safeParse(init.body)
+            : init.body
     });
 
     const reply = this.replies.shift() ?? { status: 200, body: {} };
@@ -585,11 +605,17 @@ describe('pocketbase', () => {
 // ── Refusals that are somebody else's task ─────────────────────────────────
 
 describe('what this adapter does not do', () => {
-  it('refuses the file methods with a FileError envelope, not a bare string', async () => {
+  it('still reports file errors as a FileError envelope, not a bare string', async () => {
+    // BCN-002's correction: the three file callbacks take `{error, status}`
+    // where the eleven data ones take a string, and two node call sites read
+    // `.error`. BCN-007 implemented these methods; the envelope must survive.
+    // `{name: 'a.png'}` is exactly what the contract's `file` type permits and
+    // it has no bytes — so this also pins the guard that catches it *before*
+    // anything is sent. Uploading a `{}` body would be a 200 storing nothing.
     const error = jest.fn();
-    make(new FakeFetch()).uploadFile(directus, { file: { name: 'a.png' }, success: jest.fn(), error });
+    make(new FakeFetch()).uploadFile(supabase, { file: { name: 'a.png' }, success: jest.fn(), error });
     expect(typeof error.mock.calls[0][0]).toBe('object');
-    expect(error.mock.calls[0][0].error).toMatch(/not available yet/);
+    expect(error.mock.calls[0][0].error).toMatch(/is not a file/);
   });
 
   it('refuses a whole-record search on the two backends that have no parameter for it', async () => {
@@ -1046,5 +1072,341 @@ describe('relations', () => {
     adapter.addRelation(pocketbase, { ...relationCall(), success: jest.fn(), error: jest.fn() });
     await settle();
     expect(seen).toHaveLength(1);
+  });
+});
+
+// ── Files — BCN-007 steps 2–5 ──────────────────────────────────────────────
+//
+// The same honest framing this file opens with: **these cannot prove the task.**
+// The live driver (`uba-e2e/bcn-007-file-driver.ts`) is the deliverable and it
+// runs against four real servers. What is pinned here is the set of things that
+// would be **silent** if they were wrong — each a plausible wrong value rather
+// than an error:
+//
+//  1. An upload body is sent RAW. `JSON.stringify` of a Blob is `{}`, which
+//     every one of these backends stores and answers 200 for.
+//  2. A multipart request does NOT carry `Content-Type: application/json`.
+//     `fetch` only picks a boundary when the header is absent.
+//  3. Directus's handle is `id`, not `filename_disk`. Both look like a filename.
+//  4. A Directus `FileRef.url` carries NO credential. The alternative persists
+//     the caller's session token into the user's database.
+//  5. A missing target REFUSES. A half-built one composes `.../undefined/...`,
+//     which is a well-formed request addressing nothing.
+//  6. `signFileUrl` reports `token` on two backends and `signed` on one. A
+//     uniform `signed` would tell an author a Directus link is shareable.
+
+/**
+ * `UploadFileOptions` as a caller really builds it: `file` is typed
+ * `{name, type?}` on the contract — the structural subset the Parse wire needed
+ * — but what every caller passes is a real `File`, which has bytes.
+ */
+function uploadArgs(extra: Partial<UploadFileOptions> = {}): UploadFileOptions {
+  const blob = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }) as Blob & { name?: string };
+  blob.name = 'photo.png';
+  return Object.assign(
+    {
+      file: blob as unknown as { name: string; type?: string },
+      success: jest.fn(),
+      error: jest.fn()
+    },
+    extra
+  );
+}
+
+describe('files — the wire', () => {
+  it('sends a Directus upload as multipart, with no JSON content type', async () => {
+    const fake = new FakeFetch().reply({ body: { data: { id: 'uuid-1', filename_download: 'photo.png', type: 'image/png', filesize: 70 } } });
+    const success = jest.fn();
+    make(fake).uploadFile(directus, uploadArgs({ success, error: jest.fn() }));
+    await settle();
+
+    expect(fake.last.url).toBe('https://directus.example/files');
+    expect(fake.last.method).toBe('POST');
+    // ⚠️ Not `undefined` — ABSENT. A header set to undefined is still a header
+    // on some fetch implementations.
+    expect('Content-Type' in fake.last.headers).toBe(false);
+    expect(fake.last.headers.Authorization).toBe('Bearer tok-d');
+    // The body must be the FormData itself, never a stringified anything.
+    expect(fake.last.body).toBeInstanceOf(FormData);
+    expect((fake.last.body as FormData).get('file')).toBeInstanceOf(Blob);
+  });
+
+  it("normalises Directus's field names, and uses `id` as the handle rather than filename_disk", async () => {
+    const fake = new FakeFetch().reply({
+      body: {
+        data: {
+          id: 'uuid-1',
+          filename_disk: 'uuid-1.png',
+          filename_download: 'my photo.png',
+          type: 'image/png',
+          filesize: 70
+        }
+      }
+    });
+    const success = jest.fn();
+    make(fake).uploadFile(directus, uploadArgs({ success, error: jest.fn() }));
+    await settle();
+
+    expect(success).toHaveBeenCalledWith({
+      name: 'uuid-1',
+      url: 'https://directus.example/assets/uuid-1',
+      id: 'uuid-1',
+      filename: 'my photo.png',
+      contentType: 'image/png',
+      size: 70
+    });
+  });
+
+  it('never puts a credential in a Directus FileRef.url — that URL gets persisted into a record', async () => {
+    const fake = new FakeFetch().reply({ body: { data: { id: 'uuid-1' } } });
+    const success = jest.fn();
+    make(fake).uploadFile({ ...directus, sessionToken: 'live-session-jwt' }, uploadArgs({ success, error: jest.fn() }));
+    await settle();
+    expect(success.mock.calls[0][0].url).toBe('https://directus.example/assets/uuid-1');
+    expect(success.mock.calls[0][0].url).not.toContain('live-session-jwt');
+  });
+
+  it('sends a Supabase upload as raw bytes to the Storage mount, not to PostgREST', async () => {
+    const fake = new FakeFetch().reply({ body: { Key: 'avatars/me.png', Id: 'obj-1' } });
+    const success = jest.fn();
+    make(fake).uploadFile(
+      supabase,
+      uploadArgs({
+        target: { kind: 'bucket', bucket: 'avatars', path: 'me.png' },
+        success,
+        error: jest.fn()
+      })
+    );
+    await settle();
+
+    expect(fake.last.url).toBe('https://project.supabase.co/storage/v1/object/avatars/me.png');
+    expect(fake.last.headers['Content-Type']).toBe('image/png');
+    expect(fake.last.body).toBeInstanceOf(Blob);
+    // ⚠️ `{Key, Id}` and nothing else — measured. No contentType, no size, and
+    // they must be ABSENT rather than defaulted: a size of 0 and "we were not
+    // told" are different facts.
+    expect(success).toHaveBeenCalledWith({
+      name: 'avatars/me.png',
+      url: 'https://project.supabase.co/storage/v1/object/public/avatars/me.png',
+      id: 'obj-1',
+      target: { kind: 'bucket', bucket: 'avatars', path: 'me.png' }
+    });
+  });
+
+  it('refuses a Supabase upload with no bucket rather than composing a path with `undefined` in it', async () => {
+    const fake = new FakeFetch();
+    const error = jest.fn();
+    make(fake).uploadFile(supabase, uploadArgs({ success: jest.fn(), error }));
+    await settle();
+    expect(fake.calls).toHaveLength(0);
+    expect(error.mock.calls[0][0].error).toMatch(/Storage bucket/);
+  });
+
+  it('creates a PocketBase record when no record id is given, and patches one when it is', async () => {
+    const created = new FakeFetch().reply({ body: { id: 'rec1', collectionName: 'docs', attachment: 'photo_abc.png' } });
+    const success = jest.fn();
+    make(created).uploadFile(
+      pocketbase,
+      uploadArgs({ target: { kind: 'record', collection: 'docs', field: 'attachment' }, success, error: jest.fn() })
+    );
+    await settle();
+    expect(created.last.method).toBe('POST');
+    expect(created.last.url).toBe('https://pb.example/api/collections/docs/records');
+    expect(success).toHaveBeenCalledWith({
+      name: 'photo_abc.png',
+      url: 'https://pb.example/api/files/docs/rec1/photo_abc.png',
+      target: { kind: 'record', collection: 'docs', recordId: 'rec1', field: 'attachment' }
+    });
+
+    const patched = new FakeFetch().reply({ body: { id: 'rec1', attachment: 'photo_abc.png' } });
+    make(patched).uploadFile(
+      pocketbase,
+      uploadArgs({
+        target: { kind: 'record', collection: 'docs', field: 'attachment', recordId: 'rec1' },
+        success: jest.fn(),
+        error: jest.fn()
+      })
+    );
+    await settle();
+    expect(patched.last.method).toBe('PATCH');
+    expect(patched.last.url).toBe('https://pb.example/api/collections/docs/records/rec1');
+  });
+
+  it('reports a PocketBase field that names no file as an error, not as a success with an undefined url', async () => {
+    // ⚠️ The plausible-wrong-value case: a 200 whose body simply has no such
+    // field. Left alone, `FileRef.url` reads ".../undefined" and `CloudFile`
+    // hands an <img> a link to nothing.
+    const fake = new FakeFetch().reply({ body: { id: 'rec1', title: 'no file here' } });
+    const error = jest.fn();
+    const success = jest.fn();
+    make(fake).uploadFile(
+      pocketbase,
+      uploadArgs({ target: { kind: 'record', collection: 'docs', field: 'attachment' }, success, error })
+    );
+    await settle();
+    expect(success).not.toHaveBeenCalled();
+    expect(error.mock.calls[0][0].error).toMatch(/does not name a file/);
+  });
+});
+
+describe('files — signing, and the difference the node has to show', () => {
+  it('reports a Directus link as `token`, with the session\'s own expiry', async () => {
+    // A JWT whose exp is 900s ahead — the shape Directus mints, measured.
+    const exp = Math.floor(Date.now() / 1000) + 900;
+    const jwt = ['e30', Buffer.from(JSON.stringify({ exp })).toString('base64url'), 'sig'].join('.');
+    const success = jest.fn();
+    make(new FakeFetch()).signFileUrl({ ...directus, sessionToken: jwt }, { name: 'uuid-1', success, error: jest.fn() });
+    await settle();
+
+    const result = success.mock.calls[0][0];
+    expect(result.kind).toBe('token');
+    expect(result.url).toBe(`https://directus.example/assets/uuid-1?access_token=${encodeURIComponent(jwt)}`);
+    expect(result.expiresAt).toBe(new Date(exp * 1000).toISOString());
+  });
+
+  it('reports a Supabase link as `signed`, and makes the RELATIVE signedURL absolute', async () => {
+    // ⚠️ Measured: `signedURL` comes back as `/object/sign/…`. Handed to an
+    // <img src> as-is it resolves against the APP's origin and 404s there,
+    // which reads to a user as a broken file rather than a wrong URL.
+    const fake = new FakeFetch().reply({ body: { signedURL: '/object/sign/avatars/me.png?token=abc' } });
+    const success = jest.fn();
+    make(fake).signFileUrl(supabase, {
+      name: 'avatars/me.png',
+      target: { kind: 'bucket', bucket: 'avatars', path: 'me.png' },
+      success,
+      error: jest.fn()
+    });
+    await settle();
+
+    expect(fake.last.url).toBe('https://project.supabase.co/storage/v1/object/sign/avatars/me.png');
+    expect(fake.last.body).toEqual({ expiresIn: 300 });
+    expect(success.mock.calls[0][0]).toEqual({
+      url: 'https://project.supabase.co/storage/v1/object/sign/avatars/me.png?token=abc',
+      kind: 'signed'
+    });
+  });
+
+  it('reports a PocketBase link as `token`, from POST /api/files/token', async () => {
+    const fake = new FakeFetch().reply({ body: { token: 'file-token' } });
+    const success = jest.fn();
+    make(fake).signFileUrl(pocketbase, {
+      name: 'photo_abc.png',
+      target: { kind: 'record', collection: 'docs', recordId: 'rec1', field: 'attachment' },
+      success,
+      error: jest.fn()
+    });
+    await settle();
+
+    expect(fake.last.url).toBe('https://pb.example/api/files/token');
+    expect(success.mock.calls[0][0]).toEqual({
+      url: 'https://pb.example/api/files/docs/rec1/photo_abc.png?token=file-token',
+      kind: 'token'
+    });
+  });
+
+  it('does not claim an expiry for a token that has none', async () => {
+    // A Directus STATIC token is not a JWT and never expires. `expiresAt` must
+    // be absent rather than a fabricated moment — "no expiry we can see" and
+    // "expires now" would otherwise render the same.
+    const success = jest.fn();
+    make(new FakeFetch()).signFileUrl({ ...directus, sessionToken: 'a-static-token' }, { name: 'x', success, error: jest.fn() });
+    await settle();
+    expect(success.mock.calls[0][0]).toEqual({
+      url: 'https://directus.example/assets/x?access_token=a-static-token',
+      kind: 'token'
+    });
+  });
+});
+
+describe('files — deletion', () => {
+  it('deletes a Directus file by id', async () => {
+    const fake = new FakeFetch().reply({ status: 204, text: '' });
+    const success = jest.fn();
+    make(fake).deleteFile(directus, { file: { name: 'uuid-1' }, success, error: jest.fn() });
+    await settle();
+    expect(fake.last.method).toBe('DELETE');
+    expect(fake.last.url).toBe('https://directus.example/files/uuid-1');
+    expect(success).toHaveBeenCalled();
+  });
+
+  it('clears the PocketBase field rather than deleting anything', async () => {
+    const fake = new FakeFetch().reply({ body: { id: 'rec1', attachment: '' } });
+    make(fake).deleteFile(pocketbase, {
+      file: { name: 'photo_abc.png' },
+      target: { kind: 'record', collection: 'docs', recordId: 'rec1', field: 'attachment' },
+      success: jest.fn(),
+      error: jest.fn()
+    });
+    await settle();
+    expect(fake.last.method).toBe('PATCH');
+    expect(fake.last.url).toBe('https://pb.example/api/collections/docs/records/rec1');
+    expect(fake.last.body).toEqual({ attachment: null });
+  });
+
+  it('refuses a PocketBase delete with no record id — there is nothing to patch', async () => {
+    const fake = new FakeFetch();
+    const error = jest.fn();
+    make(fake).deleteFile(pocketbase, {
+      file: { name: 'photo_abc.png' },
+      target: { kind: 'record', collection: 'docs', field: 'attachment' },
+      success: jest.fn(),
+      error
+    });
+    await settle();
+    expect(fake.calls).toHaveLength(0);
+    // ⚠️ NOT the upload sentence. Delete File has no Collection or Field input,
+    // so "set Collection and Field on the node" would name ports that are not
+    // there. The message has to name the real cause: a file read back off a
+    // saved record lost its location, because `_serializeObject` persists a
+    // File as `{__type, url, name}`.
+    expect(error.mock.calls[0][0].error).toMatch(/came from a saved record/);
+    expect(error.mock.calls[0][0].error).not.toMatch(/Set Collection and Field/);
+  });
+});
+
+// ── Directus system collections — BCN-010's precondition ───────────────────
+
+describe('directus system collections', () => {
+  it('sends a query on directus_users to /users, not /items/directus_users', async () => {
+    // ⚠️ `/items/directus_users` answers 403 "You don't have permission to
+    // access this" — WITH AN ADMIN TOKEN. A user whose permissions are fine
+    // would read that message and go looking in the wrong place.
+    const fake = new FakeFetch().reply({ body: { data: [{ id: 'u1', email: 'a@b.c' }], meta: { filter_count: 1 } } });
+    make(fake).query(directus, { collection: 'directus_users', success: jest.fn(), error: jest.fn() });
+    await settle();
+    expect(fake.last.url.split('?')[0]).toBe('https://directus.example/users');
+  });
+
+  it('keeps the {id} suffix on a single-record path', async () => {
+    const fake = new FakeFetch().reply({ body: { data: { id: 'u1' } } });
+    make(fake).fetch(directus, { collection: 'directus_users', objectId: 'u1', success: jest.fn(), error: jest.fn() });
+    await settle();
+    expect(fake.last.url.split('?')[0]).toBe('https://directus.example/users/u1');
+  });
+
+  it('leaves ordinary collections alone', async () => {
+    const fake = new FakeFetch().reply({ body: { data: [], meta: { filter_count: 0 } } });
+    make(fake).query(directus, { collection: 'articles', success: jest.fn(), error: jest.fn() });
+    await settle();
+    expect(fake.last.url.split('?')[0]).toBe('https://directus.example/items/articles');
+  });
+
+  it('does NOT rewrite a PocketBase collection that happens to be called directus_users', async () => {
+    // The rewrite is keyed on the `/items/` template rather than on the name,
+    // so a user free to name a PocketBase collection anything is not caught by
+    // a Directus convention.
+    const fake = new FakeFetch().reply({ body: { items: [], totalItems: 0 } });
+    make(fake).query(pocketbase, { collection: 'directus_users', success: jest.fn(), error: jest.fn() });
+    await settle();
+    expect(fake.last.url.split('?')[0]).toBe('https://pb.example/api/collections/directus_users/records');
+  });
+
+  it('falls back to /items for a directus_ collection with no mapped endpoint', async () => {
+    // Deliberate: inventing `/somethingnew` by stripping the prefix would
+    // answer 404, which reads as "this collection does not exist".
+    const fake = new FakeFetch().reply({ body: { data: [], meta: { filter_count: 0 } } });
+    make(fake).query(directus, { collection: 'directus_somethingnew', success: jest.fn(), error: jest.fn() });
+    await settle();
+    expect(fake.last.url.split('?')[0]).toBe('https://directus.example/items/directus_somethingnew');
   });
 });

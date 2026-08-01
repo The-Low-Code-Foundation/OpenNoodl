@@ -8,13 +8,13 @@ been wrong once.
 
 | | |
 |---|---|
-| Territory | `packages/noodl-editor/src/editor/src/models/BackendServices/`, `.../views/panels/BackendServicesPanel/`, plus **two lines** in `utils/exporter/json.ts` (§4) |
+| Territory | `packages/noodl-editor/src/editor/src/models/BackendServices/` and `.../views/panels/BackendServicesPanel/` — **nothing outside them in the merged result** (§4) |
 | Live driver | [`uba-e2e/bcn-005d-schema-sync-driver.mjs`](../phase-16-runtime-deploy-health/uba-e2e/bcn-005d-schema-sync-driver.mjs) — output in `BCN-005D-SCHEMA-SYNC-OUTPUT.txt` |
 | Payload capture | [`uba-e2e/bcn-005d-schema-capture.mjs`](../phase-16-runtime-deploy-health/uba-e2e/bcn-005d-schema-capture.mjs) |
 | Mutation harness | [`uba-e2e/bcn-005d-mutate.sh`](../phase-16-runtime-deploy-health/uba-e2e/bcn-005d-mutate.sh) — output in `BCN-005D-MUTATION-OUTPUT.txt` |
 | Live result | **31 checks, 31 passing, 0 failing** against Directus 11, PostgREST 12.2.3, PocketBase 0.30.0 and Parse Server 7.3.0 |
 | Mutation tests | **11 run, 11 discriminate.** ⚠️ Two of them passed **31/31 first time** — §7 |
-| Editor gate | `npm run test:ci` — **1992 specs, 0 failures** (was 1963; +29). Run three times: green, ⚠️ one Git flake, green — §11 |
+| Editor gate | `npm run test:ci` — **1991 specs, 0 failures** post-merge (was 1963; +24 net after §4's deletion). Run four times, ⚠️ one Git flake in run 2 that is not mine — §11 |
 | `tsc --noEmit` | `typecheck:editor` **0**, `typecheck:editor-tests` **0** |
 | `lint:ci` | ✅ 828 errors vs a 3916 baseline — **3088 under** |
 | `hex-color-ratchet` | ✅ `noodl-editor` 16 vs baseline 16 — holding |
@@ -239,11 +239,9 @@ the sync succeeded — a backend whose token reads `/fields` but not `/relations
 collections and no relations, and without this the two outcomes look identical. Hidden at
 zero: `"0 relations"` on a backend that has none reads as a failure.
 
-### `publishSafe.ts` + two lines in `utils/exporter/json.ts` — §4
-
 ---
 
-## 4. ⚠️ The admin token was being published, and had been all along
+## 4. ⚠️ The admin token was being published — found twice, in the same week
 
 `BackendAuthConfig.adminToken` has carried this docstring since RUN-003:
 
@@ -255,7 +253,11 @@ export — `JSON.parse(JSON.stringify(project.metadata))` — and `backendServic
 its keys, so every `backends[].auth.adminToken` shipped inside the deployed bundle.
 Nothing stripped it anywhere; the promise lived only in the comment.
 
-Measured in the running editor rather than argued (§6, step 8):
+**Why it went unnoticed:** the project's own `project.json` is *not* copied into a deploy
+— `build/ignore.ts` excludes it by name, and the deploy popup says so in the UI
+(`"1 will not: project.json (1)"`). So the export JSON was the one and only vector.
+
+Measured in the running editor before the merge (§6, step 8):
 
 ```
 liveHasAdminToken:      true                        <- the editor keeps it, so re-sync works
@@ -265,33 +267,43 @@ tokenAnywhereInExport:  false                       <- the string appears nowher
 liveStillHasToken:      true                        <- nothing was mutated out from under the editor
 ```
 
-**Why it went unnoticed:** the project's own `project.json` is *not* copied into a deploy
-— `build/ignore.ts` excludes it by name, and the deploy popup says so in the UI
-(`"1 will not: project.json (1)"`). So the export JSON was the one and only vector.
+### ⚠️ Convergent discovery — and the duplicate was deleted, not merged
 
-**Why stripping is safe, measured rather than assumed.** Every adapter takes its
-credential from `BackendHandle`, and `resolveBackend.ts::handleFor` builds one from
-**`publicToken` and `sessionToken` only**. `adminToken`, `username` and `password` have
-no reader anywhere in `noodl-runtime` or `noodl-viewer-react`.
+**The BCN orchestrator found the same leak from the deploy side, in the same week**, and
+their fix (`exportMetadata` in `exporter/json.ts`, plus specs in
+`tests/nodegraph/export.js`) landed on `cline-dev` first — measured against a **real
+deploy bundle in a real browser**, which is stronger evidence than this task's in-process
+export was. The two implementations collided on merge.
 
-**What is deliberately *not* stripped.** `publicToken` stays. It is published on purpose
-and `security.ts` says so on the card before the user picks the backend — hiding a
-credential the product has already disclosed is not a security improvement.
+**Theirs was taken and mine deleted.** `BackendServices/publishSafe.ts` and its six specs
+are gone from this branch. Two implementations of one rule, each covered by its own spec,
+is exactly how two rules stay silently different — the drift this phase exists to remove.
+The merge is therefore the *right* outcome of a duplicated effort, and the duplication is
+worth recording: two workers reading the same docstring both noticed it was false.
 
-⚠️ **A second channel exists and is out of scope.** `ViewerConnection`'s
-`ProjectModel.metadataChanged` handler sends the **raw** metadata straight to the preview,
-bypassing `exportToJSON` entirely. That is a local preview window on the user's own
-machine, not a publish, so it is not a leak — but anyone who later routes that channel
-anywhere else needs to know it does not pass through `withoutEditorOnlyCredentials`.
+### ⚠️ One measured disagreement, for the orchestrator to settle
 
-### The deviation this represents
+`exportMetadata` strips **only** `adminToken`, and keeps `username`/`password` on the
+stated grounds that *"a backend configured for basic auth needs them at runtime"*.
 
-`utils/exporter/json.ts` is **outside my two territory directories**. The sanitiser itself
-lives inside them (`BackendServices/publishSafe.ts`); the exporter change is one import
-and one wrapped expression at each of two call sites. It is editor-only, so it cannot
-collide with workers A/B/C (runtime and contract). Flagging it and leaving a live
-credential leak in place for a directory boundary seemed the wrong trade — but it is the
-one edit in this task that a reviewer should look at with territory in mind.
+**Measured, nothing reads either field.** `resolveBackend.ts::handleFor` builds a
+`BackendHandle` from `publicToken` and `sessionToken` only; `RestDataAdapter` reads
+`handle.sessionToken || handle.publicToken`; and the sole `'basic'` handling anywhere in
+`noodl-runtime` or `noodl-viewer-react` is the **HTTP Request node**, which takes its
+credentials from its own ports and never from `backendServices`. So a `custom` backend's
+basic-auth password is published in plaintext to no purpose — a *second* credential
+shipping on a stale premise about who needs it.
+
+Not changed here: it is the orchestrator's file and their call, and the argument is about
+their reason rather than their code. My own sanitiser stripped all three.
+
+### ⚠️ A second channel exists and is out of scope
+
+`ViewerConnection`'s `ProjectModel.metadataChanged` handler sends the **raw** metadata
+straight to the preview, bypassing `exportToJSON` — and therefore `exportMetadata` —
+entirely. That is a local preview window on the user's own machine, not a publish, so it
+is not a leak. Anyone who later routes that channel anywhere else needs to know it does
+not pass through the sanitiser.
 
 ---
 
@@ -552,22 +564,27 @@ Every one of these was run in this worktree; none are quoted from a handover.
 
 | Gate | Command | Result |
 |---|---|---|
-| Editor specs | `npm run test:ci` (in `packages/noodl-editor`) | **1992 specs, 0 failures** — run 1 green, run 2 ⚠️, run 3 green |
+| Editor specs | `npm run test:ci` (in `packages/noodl-editor`) | pre-merge **1992, 0 failures** (runs 1 and 3; ⚠️ run 2 below); **post-merge 1991, 0 failures** |
 | Editor sources | `npm run typecheck:editor` | 0 |
 | Editor specs (types) | `npm run typecheck:editor-tests` | 0 |
 | ESLint ratchet | `npm run lint:ci` | 828 vs baseline 3916 — **3088 under** |
 | Hex colours | `node scripts/hex-color-ratchet.js` | `noodl-editor` 16 = baseline 16 |
 | TSFixme | `node scripts/tsfixme-ratchet.js` | ⚠️ **RED, inherited** — twelve files grown, **none mine**; **not re-baselined** |
-| Live sync driver | `node bcn-005d-schema-sync-driver.mjs` | **31 passed, 0 failed** |
+| Live sync driver | `node bcn-005d-schema-sync-driver.mjs` | **31 passed, 0 failed** (as run pre-merge, incl. 4 credential checks against the now-deleted `publishSafe.ts`) |
 | Mutations | `./bcn-005d-mutate.sh` | **11 run, 11 discriminate** |
 
 ⚠️ **Run 2 failed one spec and it was not mine.** `Git local tests can handle merge with
 conflicts in project.json` — `Expected 'test-branch' to be 'main'`. It uses real temporary
 git repositories, has nothing to do with `BackendServices`, and passed in runs 1 and 3
-under different random seeds. Recorded rather than swept: the flake instrument was fixed
-in `35c6f3db` and this is *not* that flake, so if it recurs it is a real intermittent in
-the git specs and worth someone's attention. Spec count was **1992 in all three runs**, so
-nothing was skipped.
+under different random seeds, and again after the merge. Recorded rather than swept: the
+flake instrument was fixed in `35c6f3db` and this is *not* that flake, so if it recurs it
+is a real intermittent in the git specs and worth someone's attention. Spec count was
+**1992 in all three pre-merge runs**, so nothing was skipped; the post-merge **1991** is
+1992 minus §4's six deleted credential specs plus five that arrived on `cline-dev`.
+
+Every gate above was re-run **after** merging `cline-dev` (which brought Worker A's
+BCN-007 files work and the orchestrator's export fix): `typecheck:editor` 0,
+`typecheck:editor-tests` 0, `test:ci` 1991/0, `lint:ci` 3088 under, hex ratchet holding.
 
 The `nodegx-backend` on port 8113 was **not started** — no code path in this task talks to
 it, and the Parse-family branch was measured against Parse Server 7.3.0 instead (§5.2).
@@ -583,8 +600,11 @@ variable rather than a decision.
 ## 10. For the register
 
 - ⚠️ **The admin token was published in every export** and had been since RUN-003, in
-  direct contradiction of its own docstring. Fixed; the fix touches `exporter/json.ts`,
-  outside this task's territory (§4).
+  direct contradiction of its own docstring. **Found independently by two workers in the
+  same week**; the orchestrator's fix landed first and the duplicate here was deleted (§4).
+- ⚠️ **`username`/`password` are still published**, kept by `exportMetadata` on the
+  grounds that basic auth needs them at runtime — and **measured, nothing in the runtime
+  or the viewer reads either field** (§4). The orchestrator's call.
 - ⚠️ **`GET /api/collections` is paginated at 30** and the PocketBase preset never asked
   for more — collections *and* relations silently dropped past thirty (§1.2).
 - ⚠️ **PocketBase relation fields had no target** and `hidden` was not propagated, so an

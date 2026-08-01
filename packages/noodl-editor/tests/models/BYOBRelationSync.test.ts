@@ -30,7 +30,6 @@ import {
   relationEndpointFor,
   schemaRequestPath
 } from '../../src/editor/src/models/BackendServices/schemaParsers';
-import { withoutEditorOnlyCredentials } from '../../src/editor/src/models/BackendServices/publishSafe';
 import type { CachedSchema, SchemaCollection } from '../../src/editor/src/models/BackendServices/types';
 
 const DIRECTUS_FIELDS = {
@@ -1125,83 +1124,30 @@ describe('Parse schema sync, against Parse Server 7.3.0', () => {
   });
 });
 
-// ─── the credential ──────────────────────────────────────────────────────────
-
 /**
- * ⚠️ `BackendAuthConfig.adminToken` says "This token is NOT published to the deployed
- * app". Until this landed, `exporter/json.ts` deep-copied the whole metadata object into
- * the export and nothing stripped it, so the promise lived only in a comment.
+ * The credential half of this task's brief — *"keep the admin key out of anything
+ * published"* — is **not tested here**, deliberately.
+ *
+ * ⚠️ `adminToken`'s docstring has promised since RUN-003 that it is "NOT published to the
+ * deployed app", and until phase 34 nothing kept that promise: `exporter/json.ts`
+ * deep-copies the whole metadata block into the export. This task found it from the
+ * schema-sync side and the BCN orchestrator found it from the deploy side, independently
+ * and in the same week. **The orchestrator's fix landed on `cline-dev` first** —
+ * `exportMetadata` in `exporter/json.ts`, covered by `tests/nodegraph/export.js`
+ * (`"strips adminToken — types.ts declares it editor-only and the runtime never reads
+ * it"`) — and it is measured against a real deploy bundle in a real browser, which is
+ * stronger evidence than this task's in-process export was.
+ *
+ * So the duplicate sanitiser written here was **deleted rather than merged**. Two
+ * implementations of one rule is precisely the drift this phase exists to remove, and a
+ * second one covered by a second spec is how they stay silently different.
+ *
+ * One measured disagreement is carried forward instead of encoded here — see
+ * `BCN-005-NOTES-SCHEMASYNC.md` §4: `exportMetadata` keeps `username`/`password` on the
+ * stated grounds that *"a backend configured for basic auth needs them at runtime"*, and
+ * **nothing in `noodl-runtime` or `noodl-viewer-react` reads either field**.
+ * `resolveBackend.ts::handleFor` builds a `BackendHandle` from `publicToken` and
+ * `sessionToken` only; the sole `'basic'` handling in the runtime is the HTTP Request
+ * node, which takes its credentials from its own ports. That is the orchestrator's call
+ * to make on their own file, not something to encode in a spec from over here.
  */
-describe('withoutEditorOnlyCredentials', () => {
-  const metadata = () => ({
-    cloudservices: { endpoint: 'https://example.com', appId: 'app' },
-    backendServices: {
-      version: 2,
-      activeBackendId: 'b1',
-      backends: [
-        {
-          id: 'b1',
-          name: 'Rig Directus',
-          type: 'directus',
-          url: 'http://localhost:8055',
-          auth: {
-            method: 'bearer',
-            adminToken: 'SECRET-ADMIN-TOKEN',
-            publicToken: 'public-anon-token',
-            apiKeyHeader: 'X-API-Key'
-          },
-          schema: { version: '1', fetchedAt: '2026-08-01T00:00:00.000Z', collections: [], relations: [] }
-        },
-        {
-          id: 'b2',
-          name: 'Basic auth API',
-          type: 'custom',
-          url: 'http://localhost:9000',
-          auth: { method: 'basic', username: 'admin', password: 'hunter2' }
-        }
-      ]
-    }
-  });
-
-  it('removes the admin token and the basic-auth pair', () => {
-    const safe = withoutEditorOnlyCredentials(metadata()) as ReturnType<typeof metadata>;
-    const auth = safe.backendServices.backends[0].auth as Record<string, unknown>;
-
-    expect(auth.adminToken).toBeUndefined();
-    expect(JSON.stringify(safe)).not.toContain('SECRET-ADMIN-TOKEN');
-    expect(JSON.stringify(safe)).not.toContain('hunter2');
-    expect(JSON.stringify(safe)).not.toContain('"username"');
-  });
-
-  it('keeps the public token, which is published on purpose and disclosed on the card', () => {
-    const safe = withoutEditorOnlyCredentials(metadata()) as ReturnType<typeof metadata>;
-    const auth = safe.backendServices.backends[0].auth as Record<string, unknown>;
-
-    expect(auth.publicToken).toBe('public-anon-token');
-    expect(auth.method).toBe('bearer');
-    expect(auth.apiKeyHeader).toBe('X-API-Key');
-  });
-
-  it('keeps the synced schema, which is the whole point of storing it', () => {
-    const safe = withoutEditorOnlyCredentials(metadata()) as ReturnType<typeof metadata>;
-    expect(safe.backendServices.backends[0].schema).toBeDefined();
-    expect(safe.backendServices.activeBackendId).toBe('b1');
-    expect(safe.cloudservices.appId).toBe('app');
-  });
-
-  it('does not mutate the object it was given', () => {
-    const original = metadata();
-    withoutEditorOnlyCredentials(original);
-    expect((original.backendServices.backends[0].auth as Record<string, unknown>).adminToken).toBe(
-      'SECRET-ADMIN-TOKEN'
-    );
-  });
-
-  it('passes through metadata with no backendServices at all', () => {
-    expect(withoutEditorOnlyCredentials({ cloudservices: { appId: 'a' } })).toEqual({ cloudservices: { appId: 'a' } });
-    expect(withoutEditorOnlyCredentials({})).toEqual({});
-    expect(withoutEditorOnlyCredentials({ backendServices: { backends: 'nope' } })).toEqual({
-      backendServices: { backends: 'nope' }
-    } as never);
-  });
-});

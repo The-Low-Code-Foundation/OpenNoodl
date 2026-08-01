@@ -1,6 +1,17 @@
+import type { FileTarget } from '@noodl/backend-contract';
 import CloudFile from '@noodl/runtime/src/api/cloudfile';
 import CloudStore from '@noodl/runtime/src/api/cloudstore';
-import type { InspectInfo, NodeDefinitionOptions, NodeInstance } from '@noodl/types';
+import { recordBackendPickerPorts, recordSchemaContext } from '@noodl/runtime/src/nodes/std-library/data/record-ports';
+import { sendSchemaPorts, staticPortNames } from '@noodl/runtime/src/nodes/std-library/data/schema-ports';
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  InspectInfo,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance
+} from '@noodl/types';
 
 /** What `CloudStore.uploadFile`'s `error` callback is given, and what `setError` reads. */
 interface UploadError {
@@ -12,8 +23,16 @@ interface UploadError {
 interface UploadFileInstance extends NodeInstance {
   _internal: {
     file?: File;
+    /** BCN-007 step 6 — see `registerInputIfNeeded`. */
+    backendId?: string;
     /** BAK-006 follow-up: upload as a private (owner-only, ACL'd) file. */
     private?: boolean;
+    /** BCN-007 step 3 — see the `File Location` input group. */
+    bucket?: string;
+    path?: string;
+    collection?: string;
+    recordId?: string;
+    field?: string;
     cloudFile?: unknown;
     error?: unknown;
     errorStatus?: number;
@@ -21,6 +40,13 @@ interface UploadFileInstance extends NodeInstance {
     progressLoaded?: number;
   };
   setError(err: UploadError | string): void;
+  fileTarget(): FileTarget | undefined;
+  cloudStore(): CloudStoreLike | undefined;
+}
+
+/** The subset of `CloudStore` this node uses. `cloudstore.js` is still JavaScript. */
+interface CloudStoreLike {
+  uploadFile(options: Record<string, unknown>): void;
 }
 
 /** NDA-004 §2 — see `setError`. Also the editor's warning key; the bus keys by `code`. */
@@ -63,6 +89,71 @@ const UploadFile: NodeDefinitionOptions = {
         this._internal.private = value;
       }
     },
+    // ── BCN-007 step 3: File Location ────────────────────────────────────
+    //
+    // ⚠️ **Two of the five backends cannot store a file without being told
+    // where**, and neither value can be guessed:
+    //
+    //   Supabase    an object at a path inside a named bucket
+    //   PocketBase  a field on a record in a collection
+    //
+    // The spec asked for either an optional target on `uploadFile` or a
+    // `degraded` capability, *"prefer the latter [target] if it does not
+    // distort the contract; prefer the former over a lie"*. Both shipped: the
+    // target is here, and `files.upload` on those two backends is `degraded`,
+    // because an Upload File node with these blank is a file with nowhere to
+    // live and the author should be told before they ship rather than after.
+    //
+    // Every one of them is **inert on NodeGX, Parse and Directus**, which store
+    // files independently — their adapters never read the target.
+    bucket: {
+      group: 'File Location',
+      displayName: 'Bucket (Supabase)',
+      type: 'string',
+      description:
+        'Supabase Storage bucket to upload into. Supabase only; there is no default, and a bucket that does not exist fails with an error that does not say so',
+      set(this: UploadFileInstance, value: string) {
+        this._internal.bucket = value;
+      }
+    },
+    path: {
+      group: 'File Location',
+      displayName: 'Path (Supabase)',
+      type: 'string',
+      description:
+        'Object path inside the bucket, such as avatars/me.png. Supabase only. Leave blank to use the file\'s own name',
+      set(this: UploadFileInstance, value: string) {
+        this._internal.path = value;
+      }
+    },
+    collection: {
+      group: 'File Location',
+      displayName: 'Collection (PocketBase)',
+      type: 'string',
+      description: 'PocketBase collection holding the record the file attaches to. PocketBase only',
+      set(this: UploadFileInstance, value: string) {
+        this._internal.collection = value;
+      }
+    },
+    recordId: {
+      group: 'File Location',
+      displayName: 'Record ID (PocketBase)',
+      type: 'string',
+      description:
+        'Existing record to attach the file to. PocketBase only. Leave blank to create a new record as part of the upload',
+      set(this: UploadFileInstance, value: string) {
+        this._internal.recordId = value;
+      }
+    },
+    field: {
+      group: 'File Location',
+      displayName: 'Field (PocketBase)',
+      type: 'string',
+      description: 'The file-typed field on that record. PocketBase only',
+      set(this: UploadFileInstance, value: string) {
+        this._internal.field = value;
+      }
+    },
     upload: {
       type: 'signal',
       displayName: 'Upload',
@@ -77,9 +168,13 @@ const UploadFile: NodeDefinitionOptions = {
             return;
           }
 
-          CloudStore.instance.uploadFile({
+          const store = this.cloudStore();
+          if (!store) return;
+
+          store.uploadFile({
             file,
             private: this._internal.private,
+            target: this.fileTarget(),
             onUploadProgress: (p: { total: number; loaded: number }) => {
               this._internal.progressTotal = p.total;
               this._internal.progressLoaded = p.loaded;
@@ -95,7 +190,13 @@ const UploadFile: NodeDefinitionOptions = {
             // discarded by the `CloudFile` constructor. Typed as the contract's shape
             // structurally rather than imported, because `cloudstore.js` is still
             // JavaScript and declares this callback `unknown` (PLAT-006 residual).
-            success: (response: { name: string; url: string; contentType?: string; size?: number }) => {
+            success: (response: {
+              name: string;
+              url: string;
+              contentType?: string;
+              size?: number;
+              target?: FileTarget;
+            }) => {
               this._internal.cloudFile = new CloudFile(response);
               this.flagOutputDirty('cloudFile');
               this.sendSignalOnOutput('success');
@@ -182,6 +283,86 @@ const UploadFile: NodeDefinitionOptions = {
     }
   },
   methods: {
+    /**
+     * The Backend picker's input, registered on demand.
+     *
+     * ⚠️ **BCN-007 step 6 found this node could not reach any backend but the
+     * legacy one, and nothing had noticed.** It called `CloudStore.instance` —
+     * the module-level singleton that always resolves `cloudservices` — while
+     * BCN-004 step 5 gave the six Record nodes `CloudStore.forBackend`. So an
+     * adapter could implement `uploadFile` for Directus perfectly and an Upload
+     * File node in a graph would still post to the built-in backend. The live
+     * driver caught it on its first run, on all four backends at once, as a
+     * transport failure with an empty error message.
+     *
+     * Registered through `registerInputIfNeeded` rather than declared as a
+     * static input, which is the Record family's own pattern
+     * (`dbmodelcrudbase.ts:112`): the port is a **dynamic** one whose enum is
+     * built from the project's backends, so a static declaration would fix its
+     * type at a moment when there is no project metadata.
+     */
+    registerInputIfNeeded(this: UploadFileInstance, name: string) {
+      if (this.hasInput(name)) return;
+      if (name === 'backendId') {
+        this.registerInput(name, {
+          set: (value: unknown) => {
+            this._internal.backendId = value as string;
+          }
+        });
+      }
+    },
+    /**
+     * The store this node writes through — the routed one, not the singleton.
+     *
+     * A backend id naming nothing is an **error with a sentence**, never a
+     * fallback to the default: falling back would upload the user's file to a
+     * different backend from the one the graph names, silently. Same rule, and
+     * the same sentence, as `dbmodelcrudbase.ts::cloudStoreForScope`.
+     */
+    cloudStore(this: UploadFileInstance): CloudStoreLike | undefined {
+      const store = (CloudStore as unknown as {
+        forBackend(modelScope: unknown, backendId: string | undefined): CloudStoreLike | undefined;
+      }).forBackend(this.nodeScope ? this.nodeScope.modelScope : undefined, this._internal.backendId);
+
+      if (!store) {
+        this.setError(
+          `The backend this node is set to ("${this._internal.backendId}") is not configured in this project.`
+        );
+      }
+      return store;
+    },
+    /**
+     * The five File Location inputs, as the one thing the contract takes.
+     *
+     * ⚠️ **A partly-filled group produces `undefined`, not a partial target.**
+     * A `{kind:'record'}` with no collection would reach the adapter, pass its
+     * `target?.kind !== 'record'` guard, and then compose a URL containing the
+     * string `undefined` — a request that looks well-formed and addresses
+     * nothing. The adapter's refusal sentence, which names the inputs to fill
+     * in, is a strictly better outcome than a 404 from a fabricated path.
+     *
+     * `bucket` wins if both groups are filled, and the two are never both
+     * meaningful: a project has one backend selected, and only one of the two
+     * backends reads either group.
+     */
+    fileTarget(this: UploadFileInstance): FileTarget | undefined {
+      const { bucket, path, collection, recordId, field, file } = this._internal;
+
+      if (bucket) {
+        // Path defaults to the file's own name — the one value here that CAN be
+        // derived, because the file always has one and an object must have a
+        // path. Bucket cannot: there is no conventional default bucket name.
+        return { kind: 'bucket', bucket, path: path || file?.name || '' };
+      }
+
+      if (collection && field) {
+        return recordId
+          ? { kind: 'record', collection, field, recordId }
+          : { kind: 'record', collection, field };
+      }
+
+      return undefined;
+    },
     // `err` is a string on the "no file" path and an object from CloudStore. `hasOwnProperty`
     // on a string primitive boxes it and returns false, so both paths work.
     setError(this: UploadFileInstance, err: UploadError | string) {
@@ -201,6 +382,48 @@ const UploadFile: NodeDefinitionOptions = {
   }
 };
 
+/**
+ * The Backend dropdown, emitted into the editor.
+ *
+ * Only the picker: unlike the Record family this node has no Collection or
+ * field ports to derive, so `recordSchemaContext` is used purely for the
+ * backend list it resolves out of both metadata keys. Importing the Record
+ * family's helper rather than writing a second one is the point — BCN-004's
+ * `hideWhenSingleBackend` counts `cloudservices` as a backend, and a
+ * hand-rolled copy here would have re-introduced the defect where a project
+ * with the built-in backend plus one other counted as "one" and hid the picker.
+ */
+function updatePorts(
+  nodeId: string,
+  parameters: Record<string, unknown>,
+  editorConnection: EditorConnectionLike,
+  graphModel: GraphModelLike
+) {
+  const ctx = recordSchemaContext(graphModel, parameters);
+  sendSchemaPorts(editorConnection, nodeId, recordBackendPickerPorts(ctx), {
+    staticPorts: staticPortNames(UploadFile)
+  });
+}
+
 export default {
-  node: UploadFile
+  node: UploadFile,
+  setup(context: NodeContextLike, graphModel: GraphModelLike) {
+    if (!context.editorConnection || !context.editorConnection.isRunningLocally()) return;
+
+    function manage(node: GraphNodeModel) {
+      updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+      node.on('parameterUpdated', () => updatePorts(node.id, node.parameters, context.editorConnection, graphModel));
+      // The picker's enum is built from this key, so it has to be re-emitted
+      // when a backend is added or removed — not only when a parameter changes.
+      graphModel.on('metadataChanged.backendServices', () =>
+        updatePorts(node.id, node.parameters, context.editorConnection, graphModel)
+      );
+      graphModel.on('metadataChanged.cloudservices', () =>
+        updatePorts(node.id, node.parameters, context.editorConnection, graphModel)
+      );
+    }
+
+    graphModel.on('nodeAdded.Upload File', manage);
+    for (const node of graphModel.getNodesWithType('Upload File')) manage(node);
+  }
 };

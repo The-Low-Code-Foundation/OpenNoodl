@@ -63,7 +63,20 @@ export const nodegxDescriptor: BackendDescriptor = {
     'relations.addRemove': supported(`PUT with __op AddRelation/RemoveRelation — ${WIRE}:90${DRIVEN}, both directions`),
 
     'files.upload': supported(`BAK-006 file storage v2${DRIVEN} with the app id alone, where a stock Parse Server refuses outright`),
-    'files.sign': supported(`BAK-006: SigV4 presign, or a local signed URL${DRIVEN}, returning a url with exp and sig`),
+    // ⚠️ BCN-007 step 6 drove the expiry, which nothing had. With
+    // `signedUrlTtlSeconds` set to 3 and enforcement on, the link served
+    // anonymously, a tampered signature was refused (403), the bare URL with
+    // the signature stripped was refused, and the link answered 403 "This file
+    // is private" once the ttl passed. That is the whole claim, verified.
+    //
+    // ⚠️ …and one thing an author has to know, which the same run found: an
+    // EXPIRED signature on a **public** file still serves 200, because the file
+    // was never gated. Signing a public file produces a link with an expiry
+    // that does nothing. Reported on the Sign File URL node rather than only
+    // here — see its `URL Kind` output.
+    'files.sign': supported(
+      `BAK-006: SigV4 presign, or a local signed URL${DRIVEN}, returning a url with exp and sig. BCN-007 live: the signature really expires (403 after the ttl) and a tampered one is refused — but on a file that was never private, an expired link still serves`
+    ),
     // BCN-007 step 5, for the one backend whose delete route is in this repo and
     // could be read line by line. Three semantics, all from
     // `nodegx-backend/src/server/files.ts`'s `delete`, and each one is something
@@ -86,7 +99,22 @@ export const nodegxDescriptor: BackendDescriptor = {
     'files.delete': supported(
       `BAK-006${DRIVEN} with the app id alone, where upstream Parse needs the master key. Permanent (blob + _Files row + cached thumbnails), idempotent on an unknown name (200, not 404), and leaves File-typed record properties pointing at a URL that now 404s — files.ts delete()`
     ),
-    'files.private': supported('X-NodeGX-File-Private header — cloudstore.js:446, ours by construction'),
+    // ⚠️ **Degraded, not supported, and BCN-007's live pass is why.** A private
+    // upload is ACL'd to `ctx.principal.kind === 'user' ? principal.userId :
+    // null` (`files.ts::upload`), so an upload made by anything that is not a
+    // signed-in end user — an admin token, a master key, a cloud function, a
+    // deploy script — stores a record marked private **with no owner**. Nothing
+    // then excludes anybody, and the file serves to anonymous callers.
+    // Measured both ways in one run: uploaded as the admin, the plain URL served
+    // 200 to an anonymous caller; uploaded as a signed-in user, the same request
+    // was 403 and a second signed-in user was 403 too.
+    //
+    // The header works. What it cannot do is make a file private on behalf of
+    // nobody, and an author reading "supported" would not expect that.
+    'files.private': degraded(
+      'A private upload is locked to the person who made it, so a file uploaded by anything other than a signed-in user — an admin tool, a cloud function — ends up private with no owner, and stays readable by everyone.',
+      'BCN-007 live, security enforced: uploaded as a signed-in user, the plain URL is 403 for anonymous AND for a second signed-in user. Uploaded with the master key, the identical request with X-NodeGX-File-Private: true serves 200 to anonymous — files.ts::upload sets owner=null for a non-user principal'
+    ),
     'files.progress': supported('XHR upload path reports progress'),
 
     'auth.password': supported('nodegx-backend/src/server/users.ts'),
