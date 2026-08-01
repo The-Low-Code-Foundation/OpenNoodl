@@ -52,7 +52,18 @@ function analyse(n) {
     total,
     documented,
     docPct: total ? Math.round((documented / total) * 100) : 100,
-    hasFailure: outs.some((p) => /fail|error/i.test(p.name) || /fail|error/i.test(p.displayName || '')),
+    /**
+     * ⚠️ A failure surface is a **signal** named like one, not any port named like one.
+     *
+     * This used to test names only, so a node with a *string* output called `Error` and no failure
+     * signal at all pre-filled as "✅ has one" — and NDA-012's Data pass found four such nodes in a
+     * single directory, every one of them stamped ✅. **Fifteen categories were audited from this
+     * column before anyone read it.** `register.js` had the identical bug in its `Fail?` column.
+     *
+     * It is a pre-fill, not a verdict, and the phase's rule that a blank verdict is not a pass is
+     * the only thing that limited the damage. Keep it honest anyway.
+     */
+    hasFailure: outs.some((p) => p.isSignal === true && /fail|error/i.test(p.name + ' ' + (p.displayName || ''))),
     deadTypes: [...ins, ...outs].filter((p) => ['object', 'array'].includes(typeName(p.type)))
   };
 }

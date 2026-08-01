@@ -1883,6 +1883,125 @@ the Data category is where it concentrates, because Data is where ids arrive as 
 outside the graph. **A `Model.get` whose result is only ever *read* from, or handed to something
 that compares by identity, is a `Model.exists` question wearing a `Model.get` costume.**
 
+## NDA-012 Data — closing the category (2026-08-01), 29 nodes in a four-worker batch
+
+Data closed at 37/37. 26 new defects, 13 fixed and 13 filed. Per-node detail is in
+`WORKER-{A,B,C,D}-NOTES.md`; what follows is only what reaches outside the nodes it was found in.
+
+### DB-i — the two instrument defects, which outrank every node finding here
+
+**(a) The `B1` pre-fill has been answering a different question for fifteen categories.**
+`scripts/node-audit/worksheets.js:55` derives the machine-filled `B1` column by matching
+`/fail|error/i` against output **names**. A node with a *string* port called `Error` and no failure
+signal at all therefore reads **"✅ has one"**. Worker A found four such nodes in one directory —
+they ended a signal input on an error string with no signal and no raise, while five siblings in the
+same directory have both. **Every category audited so far read that column**, and the phase's own
+rule about pre-filled data — that it is a hint, not a verdict — is the only thing that has been
+protecting it.
+
+**(b) `Model.get(undefined)` cannot be reached over a connection.** `Node.prototype.sendValue`
+returns early on `undefined` (`node.ts:635`), so the reachable empty values are `null` and `''`.
+The phase's third recurring shape has been written down as *"a create-on-read lookup fed by a value
+that can be absent"* and its canonical spelling has been `Model.get(undefined)` since NDA-004 §2 —
+which reached it through an **internal walk**, not a wire. ⚠️ **A sweep hunting the `undefined`
+spelling over connections would find nothing and conclude the class was clean.** `typeof null ===
+'object'` is what actually routes a cleared value into `Model.create(null)`.
+
+The same line has a second consequence Worker C had to design around: **a value output cannot be
+cleared.** Flagging an output whose value is `undefined` sends nothing, so the downstream input keeps
+what it last received — which is why `HTTP Request`'s stale `Status Code` after a failure is pinned
+by a row rather than fixed.
+
+### DB-ii — a declared `default` never runs its setter, and three nodes did nothing at all
+
+`registerInput` writes a declared `default` straight into `_inputValues` (`node.ts:116-118`), and
+`NodeScope` queues for update only the keys the *model* carries (`nodescope.ts:148-157`). So a port
+that has a default and no authored parameter is **never set**, and any node whose real work happens
+in a setter side effect does nothing until an author touches an input.
+
+`Global Store`, `Subscribe to Store` and `State History` were all built that way. **Fixed.**
+
+⚠️ **It was invisible from the canvas, and that is the transferable part.** The property panel shows
+the default, so the node looks configured; and `Global Store`'s `State` getter reads the manager
+directly, so *reading* the node worked — only the reactions were missing. **"It declares a default,
+therefore it behaves as configured" is false in this runtime**, and the predicate — *a node whose
+real work is a setter side effect and all of whose ports have defaults* — is mechanical, so it can
+be swept for. It found three dead nodes in fifteen and **has never been run outside Data.**
+
+### DB-iii — the third recurring shape has a fourth site, and it is a *shared* record
+
+`Model.get('')` and `Model.get(null)` are the **named** tier: one record per spelling, kept for the
+life of the process and shared by every node in that state. `Set Object Properties` with `Id = null`
+wrote into `Model._models['null']` and fired `Done` — a write reported as a success, into a record
+no id can read back, colliding silently with every other node whose Id happened to be blank.
+
+**One shape, four sites, two of them still open**: `dbmodelcrudbase.ts:423` and `dbmodelnode2.ts:235`
+carry it byte-for-byte, and in the Record family it lands on **DA-ii's schema-burning mechanism**.
+Worker C could not fix them (Worker D's territory) and Worker D was descriptions-only, so they are
+filed and **unowned**. That is a cost of the parallel seam and it is recorded as one.
+
+### DB-iv — new code carried fewer defects than old code, which contradicts the standing warning
+
+The fifteen agentic/streaming nodes are the newest in the library (AIX-005) and **had never been
+read by any pass**. The phase's standing rule is that unread means unaudited, not clean — and the
+expectation from the hold was that the *newest* code, the phase-34 backend merge, would carry fresh
+instances of the known classes.
+
+Both predictions went the other way. The never-read new code scored **0.93 per node, the lowest in
+the phase**, with two nodes completely clean. The batch's worst defects were in the **oldest** code:
+the Object family's dirty-value flush, and `Variable` writing a key literally named `undefined`.
+
+⚠️ **This does not retire the warning** — the same never-read directory is where DB-ii's three dead
+nodes were. It qualifies it: *unread* predicts nothing about density either way, and a category's
+age is not the ordering heuristic it looks like.
+
+### DB-v — a cloud function cannot make an HTTP request
+
+Found by pushing on a worker's stale-premise report rather than filing it.
+
+| | `availableIn` | deprecated | in picker |
+|---|---|---|---|
+| `net.noodl.HTTP` | `["browser"]` | no | yes |
+| `REST2` | `["browser","cloud"]` | **yes** | **no** |
+
+Across all 57 cloud-available types the only other candidates are `Sign File URL` and
+`noodl.cloud.request` — and the latter is the function's **incoming** trigger (`singleton`, *"Fires
+when a request arrives"*), not a client. **So there is no pickable outgoing-HTTP node in a cloud
+function at all.**
+
+⚠️ **The attribution matters and is easy to get wrong.** This is *not* caused by DA-i. The editor has
+always filtered deprecated types out of the picker (`componentmodel.ts:292-295`); DA-i only made the
+catalog mirror it. **DA-i did not create the hole — it made it discoverable**, which is the argument
+for that fix rather than against it. NDA-011 decided *"deprecated, not deleted"* without this fact in
+front of it.
+
+### DB-vi — a green count with new noise beside it is not a green gate
+
+The runtime suite began reporting *"a worker process has failed to exit gracefully"* while showing
+**0 failures**. Bisected: `Optimistic Update — an Apply that works` leaves the transaction open, and
+an open transaction owns a rollback `setTimeout` until something commits, rolls back or deletes the
+node. **The product code was correct** — `_onNodeDeleted` clears it — so this was test teardown.
+
+Three things worth keeping. **A single test file runs in-band**, so the leak was invisible when the
+suite was run alone and appeared only once a second file forced a worker process — *"it passes on its
+own"* was true and meaningless. **`--detectOpenHandles` reported nothing**, because it forces
+in-band; the bisect had to be by pairing. And the fix is to **delete the node**, not to fake timers,
+because `_onNodeDeleted` clearing that timer is the H1 contract the family is being audited against —
+so the teardown doubles as its control.
+
+### Checked and clean — recorded so they are not re-raised
+
+- **`instanceof Collection` answers differently in jest and in the shipped build.** `class
+  CollectionImpl extends Array {}` at `target: es5` makes it `false` under `noodl-viewer-react`'s
+  ts-jest and `true` in the product. Measured at both targets. It briefly read as an A1 defect; it is
+  not, but **two `instanceof Collection` branches in the Array family have never been exercised by
+  any test** and one existing corpus premise rests on the jest answer.
+- **`shortDesc` reaches nobody, and DA-iv named the wrong cause.** DA-iv attributed it to enrichment
+  summaries shadowing the fallback. The real cause is one level up: `build-catalog.js` writes
+  `shortDesc` on a single hard-coded line and it is **not in the catalog for any core node**, so
+  `ContextBuilder`'s `?? node.shortDesc` cannot fire regardless of enrichment. Fifty sites declare it.
+  Whether it should exist at all is a decision for Richard.
+
 ## What these passes did *not* cover
 
 - **76 of 155 nodes** have only their machine-derived smell row in `NODE-REGISTER.md`. No

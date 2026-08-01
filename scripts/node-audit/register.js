@@ -18,6 +18,22 @@ const isSignal = (p) => p.isSignal === true;
 const matches = (ports, re) => ports.some((p) => re.test(p.name) || re.test(p.displayName || ''));
 
 /**
+ * A failure surface is a **signal** named like one.
+ *
+ * ⚠️ This used to be `matches(outs, /fail|error/i)`, which tests names only — so a node with a
+ * *string* output called `Error` and no failure signal at all read as having a failure surface, and
+ * the `Fail?` column said nothing was wrong. NDA-012's Data pass found four nodes in one directory
+ * in exactly that state (`worksheets.js` had the identical bug in its `B1` pre-fill, and **fifteen
+ * categories were audited from that column**).
+ *
+ * The `Failure` signal + `Error` string pair is the house convention, so requiring the signal is
+ * what "can this node tell anyone it failed?" actually means. Applying this changed **zero** cells
+ * at the time it was written — the four nodes that exposed it had just been fixed — so it is a
+ * guard against the class coming back, not a re-scoring of the register.
+ */
+const hasFailureSignal = (ports) => ports.some((p) => isSignal(p) && /fail|error/i.test(p.name + ' ' + (p.displayName || '')));
+
+/**
  * Verdicts are hand-written; keep them keyed across regenerations by the **rendered** node cell,
  * suffix and all.
  *
@@ -82,7 +98,7 @@ function main() {
     const outSig = outs.filter(isSignal);
     const total = ins.length + outs.length;
     const doc = total ? Math.round([...ins, ...outs].filter((p) => p.description).length / total * 100) : 100;
-    const fail = inSig.length > 0 && outSig.length > 0 && !matches(outs, /fail|error/i) ? '⚠️' : '';
+    const fail = inSig.length > 0 && outSig.length > 0 && !hasFailureSignal(outs) ? '⚠️' : '';
     const mute = inSig.length > 0 && outSig.length === 0 ? '⚠️' : '';
     const name = n.displayName + (n.isDeprecated ? ' _(deprecated)_' : '');
     lines.push(
