@@ -45,6 +45,19 @@ const TextInputNode = {
   initialize() {
     this.props.startValue = '';
     this.props.id = this._internal.controlId = 'input-' + guid();
+
+    // NDA-012 (Visual), the third `DV-ii` instance. `placeHolderOpacity` declares `default: 0.5`
+    // and its setter is the only writer of the injected `::placeholder` rule — and a declared
+    // default never runs its setter, so an untouched Text Input got the browser's placeholder
+    // opacity instead of the 0.5 its panel showed.
+    //
+    // ⚠️ Made real rather than deleted, which is the opposite call from `Icon`/`Button`'s padding
+    // earlier in this phase, and the reason is that the pixels are **already** inconsistent:
+    // `Dropdown` spells the same setting `placeholderOpacity` as an `inputProp`
+    // (`options.ts:142`), where the framework's default→props copy applies it, and renders it at
+    // `Select.tsx:129`. Two sibling controls showed placeholders at two different opacities. The
+    // mirror is the shape `Drag`'s four snap defaults use in this same pass.
+    Utils.updateStylesForClass(this._internal.controlId, { placeholderOpacity: 0.5 }, _styleTemplate);
   },
   inputProps: {
     type: {
@@ -114,11 +127,23 @@ const TextInputNode = {
       description: 'The text to put in the field. Applied immediately unless Set is connected, in which case it waits for a Set pulse',
       group: 'Text',
       set(value) {
-        if (this._internal.text === value) return;
+        // NDA-012 (Visual), G1. `null` used to pass straight through to `props.startValue` and
+        // into the `<input>`'s `value` (`TextInput.tsx:66`), which makes a controlled input
+        // uncontrolled — and `null` is an ordinary arrival from any query that matched nothing.
+        //
+        // A string port *has* a representable empty value, so `EMPTY-VALUE-CONTRACT.md` applies
+        // directly: `null` clears (the `E1`/`E2` rule — a string set to `null` empties and does
+        // not read `"null"`) and `undefined` abstains. That is deliberately *not* the treatment
+        // `Drag` and `Slider` got in the same pass, where a position has no empty value to clear
+        // to.
+        if (value === undefined) return;
 
-        this._internal.text = value;
+        const text = value === null ? '' : value;
+        if (this._internal.text === text) return;
+
+        this._internal.text = text;
         if (this.isInputConnected('set') === false) {
-          this.setText(value);
+          this.setText(text);
         }
       }
     },
@@ -231,9 +256,24 @@ const TextInputNode = {
       this.innerReactComponentRef.blur();
     },
     clear() {
+      // NDA-012 (Visual), A1. This blanked `props.startValue` and the DOM and left the node's own
+      // copy of the text holding the old string. `Set` reads `_internal.text`, so a later `Set`
+      // pulse **restored text the author had explicitly cleared** — and it also did not flag
+      // `onTextChanged` while unmounted, which `setText` immediately below is careful to do, so a
+      // `Clear` before first mount left the `Text` output reading the old value.
+      this._internal.text = '';
       this.props.startValue = '';
+
       if (this.innerReactComponentRef) {
+        // Unconditional, unlike `setText`'s `hasFocus()` guard, and the asymmetry is deliberate:
+        // `setText` must not fight the typist mid-edit, but an explicit `Clear` that skipped a
+        // focused field would be a dead button for the person using it. The component's own
+        // `setText` flags `onTextChanged` on the way through.
         this.innerReactComponentRef.setText('');
+      } else if (this.outputPropValues['onTextChanged'] !== '') {
+        //text component isn't mounted yet, set the output manually — as `setText` does
+        this.outputPropValues['onTextChanged'] = '';
+        this.flagOutputDirty('onTextChanged');
       }
     },
     setText(text) {

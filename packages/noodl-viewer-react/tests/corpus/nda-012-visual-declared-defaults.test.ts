@@ -41,6 +41,8 @@ const IconModule = load('../../src/nodes/visual/icon');
 const TextModule = load('../../src/nodes/visual/text');
 const ComponentStackModule = load('../../src/nodes/navigation/navigation-stack');
 const PageRouterModule = load('../../src/nodes/navigation/router');
+const TextInputModule = load('../../src/nodes/controls/text-input');
+const DropdownModule = load('../../src/nodes/controls/options');
 /* eslint-enable @typescript-eslint/no-var-requires */
 
 /** `NavigationHandler`'s private registry, which is the observable for the row below. */
@@ -237,6 +239,83 @@ describe('V-ii — Component Stack said it clips and did not', () => {
 
     expect(bare.style.overflow).toBeUndefined();
     expect(authored.style.overflow).toBeUndefined();
+  }, 30000);
+});
+
+describe('V-iv — Text Input showed a placeholder opacity it never applied', () => {
+  // The third `DV-ii` instance, and the one where the two sibling controls disagreed.
+  //
+  // `placeHolderOpacity` declares `default: 0.5` and its setter is the **only** writer of the
+  // injected `.<controlId>::placeholder { opacity }` rule. DB-ii blocks that setter, and there is
+  // no `inputProp`/`inputCss` route to fall back on, so an untouched Text Input rendered its
+  // placeholder at the browser's opacity while the panel read 0.5.
+  //
+  // ✅ **Fixed 2026-08-01 by making it real, not by deleting it** — the opposite call from
+  // Button/Icon's padding above, and the reason is that the pixels were *already* inconsistent:
+  // `Dropdown` spells the same setting `placeholderOpacity` as an `inputProp` (`options.ts:142`),
+  // where `initialize`'s default→props copy applies it, and renders it at `Select.tsx:129`. Two
+  // controls that look the same to an author showed placeholders at two different opacities.
+  //
+  // ⚠️ `Utils.updateStylesForClass` returns early when `document` is undefined (`utils.ts:27`),
+  // and the viewer corpus runs under `testEnvironment: node`. So this row **stubs a document** —
+  // without it the call is a no-op and the row passes having measured nothing, which is FINDINGS
+  // B-x's shape.
+  const injected: string[] = [];
+  let priorDocument: unknown;
+
+  beforeAll(() => {
+    priorDocument = (globalThis as Record<string, unknown>).document;
+    (globalThis as Record<string, unknown>).document = {
+      createElement: () => {
+        const element = {
+          set innerHTML(value: string) {
+            injected.push(value);
+          }
+        };
+        return element;
+      },
+      head: { appendChild: () => undefined }
+    };
+  });
+
+  afterAll(() => {
+    (globalThis as Record<string, unknown>).document = priorDocument;
+  });
+
+  it('an untouched Text Input injects the 0.5 its panel shows', async () => {
+    injected.length = 0;
+    await bareVsAuthored(TextInputModule, 'placeHolderOpacity', 0.5);
+
+    // Two nodes are built, and the rule is written for both — the point is that the *bare* one
+    // gets it, which before the fix it did not.
+    expect(injected.length).toBeGreaterThanOrEqual(2);
+    for (const rule of injected) expect(rule).toContain('opacity: 0.5');
+  }, 30000);
+
+  it('the control: an authored value still overrides the mirrored default', async () => {
+    injected.length = 0;
+    await bareVsAuthored(TextInputModule, 'placeHolderOpacity', 0.9);
+
+    // The setter runs for the authored node and writes over the initialize-time rule, so the
+    // override half — the half that always worked — still works.
+    expect(injected.some((rule) => rule.includes('opacity: 0.9'))).toBe(true);
+  }, 30000);
+
+  // The comparison that decided the direction of the fix, pinned so the two cannot silently drift
+  // apart again — and asserted on the *behaviour*, not the declaration, because
+  // `createNodeFromReactComponent` folds `inputProps` into `inputs` and the two routes are
+  // indistinguishable on the created node.
+  //
+  // A bare Dropdown carries the value in `props` because `initialize`'s default→props copy ran.
+  // That is the route Text Input's port never had, and the reason its 0.5 had to be mirrored by
+  // hand rather than the declaration deleted.
+  it('Dropdown reaches the same setting by the route that IS applied at initialize', async () => {
+    const [bare] = await bareVsAuthored(DropdownModule, 'placeholderOpacity', 0.5);
+
+    expect(bare.props.placeholderOpacity).toBe(0.5);
+    // Text Input's port declares the same number and has no such route — the mirror above is what
+    // stands in for it.
+    expect(TextInputModule.node.inputs.placeHolderOpacity.default).toBe(0.5);
   }, 30000);
 });
 
