@@ -9,7 +9,7 @@
     "statusCode": "Number level with the HTTP status of the last response.",
     "failure": "Signal; wire error display/retry here, with `error` carrying the message."
   },
-  "runtimeBehavior": "Header and body inputs are runtime-registered from the node's method/headers configuration; only the core trigger/result surface is static.",
+  "runtimeBehavior": "Header and body inputs are runtime-registered from the node's method/headers configuration; only the core trigger/result surface is static. NDA-012: exceeding `timeout` fires `failure` with a message naming the timeout — `canceled` fires only for an explicit `cancel`. `statusCode` and `response` keep the *previous* request's answer when a request never reached the server, because a value output cannot be cleared. Deleting the node does not abandon a request already in flight.",
   "examples": ["code-http-request-with-error-handling"],
   "patterns": [
     "`failure` → Condition `eval` with `result` → error text `visible`: errors as levels, not pulses."

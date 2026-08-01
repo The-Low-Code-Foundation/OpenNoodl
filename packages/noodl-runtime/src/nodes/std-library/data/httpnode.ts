@@ -218,6 +218,8 @@ const HttpNode: NodeDefinitionOptions = {
       displayName: 'URL',
       group: 'Request',
       default: '',
+      description:
+        'Address the request is sent to; any {name} in it becomes a Path Parameter input, and leaving it blank fails the request rather than sending one',
       set: function (this: HttpNodeInstance, value: unknown) {
         this._internal.url = value as string;
       }
@@ -226,6 +228,7 @@ const HttpNode: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Fetch',
       group: 'Actions',
+      description: 'Sends the request using the values currently on the inputs',
       valueChangedToTrue: function (this: HttpNodeInstance) {
         this.scheduleFetch();
       }
@@ -234,6 +237,7 @@ const HttpNode: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Cancel',
       group: 'Actions',
+      description: 'Abandons a request that is still in flight, which answers on Canceled rather than Failure',
       valueChangedToTrue: function (this: HttpNodeInstance) {
         this.cancelFetch();
       }
@@ -246,6 +250,8 @@ const HttpNode: NodeDefinitionOptions = {
       type: '*',
       displayName: 'Response',
       group: 'Response',
+      description:
+        'Body the server sent, parsed as JSON when it said so and as text otherwise; it keeps the previous body when a request never reached the server',
       getter: function (this: HttpNodeInstance) {
         return this._internal.response;
       }
@@ -254,6 +260,8 @@ const HttpNode: NodeDefinitionOptions = {
       type: 'number',
       displayName: 'Status Code',
       group: 'Response',
+      description:
+        'HTTP status the server answered with; it keeps the previous status when a request timed out or never reached the server',
       getter: function (this: HttpNodeInstance) {
         return this._internal.statusCode;
       }
@@ -262,6 +270,7 @@ const HttpNode: NodeDefinitionOptions = {
       type: 'object',
       displayName: 'Response Headers',
       group: 'Response',
+      description: 'Every header the server returned, keyed by lower-cased header name',
       getter: function (this: HttpNodeInstance) {
         return this._internal.responseHeaders;
       }
@@ -269,22 +278,27 @@ const HttpNode: NodeDefinitionOptions = {
     success: {
       type: 'signal',
       displayName: 'Success',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires once the server has answered with a 2xx status and Response is up to date'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      group: 'Events'
+      group: 'Events',
+      description:
+        'Fires when the request could not be completed — no URL, a network error, a timeout, an unparseable body, or a non-2xx status — after the reason has been put on Error'
     },
     canceled: {
       type: 'signal',
       displayName: 'Canceled',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires only when Cancel abandoned a request in flight; a timeout answers on Failure instead'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Events',
+      description: 'What went wrong with the last request, in one sentence; unchanged when a request succeeds',
       getter: function (this: HttpNodeInstance) {
         return this._internal.error;
       }
@@ -570,7 +584,23 @@ const HttpNode: NodeDefinitionOptions = {
       const abortController = new AbortController();
       this._internal.abortController = abortController;
 
+      /**
+       * NDA-012 (Data) — which of the two aborts this was.
+       *
+       * `AbortController` gives the `catch` one `AbortError` for both the author's `Cancel`
+       * and this node's own timeout, and the handler used to answer `canceled` for both.
+       * **Measured against a local `node:http` server: a request that exceeded `Timeout (ms)`
+       * fired `Canceled`, left `Error` `undefined`, and raised nothing** — so the node's own
+       * documented failure mode was reported on the one port an author only wires when they
+       * asked for the abort themselves, with no diagnosis anywhere.
+       *
+       * Per-invocation rather than on `_internal`, so overlapping requests cannot answer for
+       * each other.
+       */
+      let timedOut = false;
+
       const timeoutId = setTimeout(() => {
+        timedOut = true;
         abortController.abort();
       }, timeout);
 
@@ -617,10 +647,15 @@ const HttpNode: NodeDefinitionOptions = {
           clearTimeout(timeoutId);
           this._internal.abortController = null;
 
-          if (error.name === 'AbortError') {
+          if (error.name === 'AbortError' && !timedOut) {
+            // The author pressed Cancel. Nothing went wrong, so nothing is reported.
             this.sendSignalOnOutput('canceled');
           } else {
-            this._internal.error = error.message || 'Network error';
+            // A timeout is a failure with a cause worth naming — the number that produced it
+            // is the one the author can change, so the message states it (FAILURE-CONTRACT).
+            this._internal.error = timedOut
+              ? `Request timed out after ${timeout} ms`
+              : error.message || 'Network error';
             this.flagOutputDirty('error');
             this.sendSignalOnOutput('failure');
           }
@@ -700,7 +735,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'Headers',
     type: { name: 'stringlist', allowEditOnly: true },
     plug: 'input',
-    group: 'Headers'
+    group: 'Headers',
+    description: 'Names the request headers to send; each name listed here gets its own value input'
   });
 
   // Generate input ports for each header
@@ -727,7 +763,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'Query Parameters',
     type: { name: 'stringlist', allowEditOnly: true },
     plug: 'input',
-    group: 'Query Parameters'
+    group: 'Query Parameters',
+    description: 'Names the query-string parameters to append to the URL; each name listed here gets its own value input'
   });
 
   // Generate input ports for each query param
@@ -768,7 +805,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     },
     default: 'GET',
     plug: 'input',
-    group: 'Request'
+    group: 'Request',
+    description: 'HTTP verb the request is sent with; GET, HEAD and OPTIONS send no body and hide the Body group'
   });
 
   // Body type selector (only shown for POST/PUT/PATCH)
@@ -789,7 +827,9 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
       },
       default: 'json',
       plug: 'input',
-      group: 'Body'
+      group: 'Body',
+      description:
+        'How the body is encoded, which decides both the Content-Type sent and whether a null field value is kept or omitted'
     });
 
     // Body fields configuration - comma-separated list
@@ -800,7 +840,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
         displayName: 'Body Fields',
         type: { name: 'stringlist', allowEditOnly: true },
         plug: 'input',
-        group: 'Body'
+        group: 'Body',
+        description: 'Names the fields to put in the request body; each name listed here gets its own value and type input'
       });
 
       // Type options for body fields
@@ -834,7 +875,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
             },
             default: 'string',
             plug: 'input',
-            group: 'Body'
+            group: 'Body',
+            description: 'Type the matching value input accepts and is sent as'
           });
 
           // Value input for this field (type matches selected type)
@@ -862,7 +904,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
         displayName: 'Body',
         type: { name: 'string', allowEditOnly: true, codeeditor: 'json' },
         plug: 'input',
-        group: 'Body'
+        group: 'Body',
+        description: 'Body sent verbatim, with no encoding applied and no Content-Type added for you'
       });
     }
   }
@@ -883,7 +926,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     },
     default: 'none',
     plug: 'input',
-    group: 'Authentication'
+    group: 'Authentication',
+    description: 'Credential scheme to apply, which decides which credential inputs appear below'
   });
 
   // Auth-specific inputs
@@ -894,7 +938,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
       displayName: 'Token',
       type: 'string',
       plug: 'input',
-      group: 'Authentication'
+      group: 'Authentication',
+      description: 'Token sent as "Authorization: Bearer …"; leave blank and no Authorization header is sent at all'
     });
   } else if (authType === 'basic') {
     ports.push({
@@ -902,14 +947,16 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
       displayName: 'Username',
       type: 'string',
       plug: 'input',
-      group: 'Authentication'
+      group: 'Authentication',
+      description: 'Half of the Basic credential; no Authorization header is sent unless both this and Password are set'
     });
     ports.push({
       name: 'auth-authPassword',
       displayName: 'Password',
       type: 'string',
       plug: 'input',
-      group: 'Authentication'
+      group: 'Authentication',
+      description: 'Half of the Basic credential; no Authorization header is sent unless both this and Username are set'
     });
   } else if (authType === 'apiKey') {
     ports.push({
@@ -917,14 +964,16 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
       displayName: 'Key Name',
       type: 'string',
       plug: 'input',
-      group: 'Authentication'
+      group: 'Authentication',
+      description: 'Header or query-parameter name the key is sent under; nothing is sent unless Key Value is set too'
     });
     ports.push({
       name: 'auth-authApiKeyValue',
       displayName: 'Key Value',
       type: 'string',
       plug: 'input',
-      group: 'Authentication'
+      group: 'Authentication',
+      description: 'The key itself; nothing is sent unless Key Name is set too'
     });
     ports.push({
       name: 'auth-authApiKeyLocation',
@@ -938,7 +987,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
       },
       default: 'header',
       plug: 'input',
-      group: 'Authentication'
+      group: 'Authentication',
+      description: 'Whether the API key travels as a request header or as a query-string parameter'
     });
   }
 
@@ -949,7 +999,9 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     type: 'number',
     default: 30000,
     plug: 'input',
-    group: 'Request'
+    group: 'Request',
+    description:
+      'Time before the request is abandoned, in milliseconds; abandoning it fires Failure, not Canceled, and 0 or blank means 30000'
   });
 
   // Response mapping - add output names, then specify JSONPath for each
@@ -960,7 +1012,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'Output Fields',
     type: { name: 'stringlist', allowEditOnly: true },
     plug: 'input',
-    group: 'Response Mapping'
+    group: 'Response Mapping',
+    description: 'Names the values to pull out of the response; each name listed here gets a Path input and an output port'
   });
 
   // Signal inputs - MUST be in dynamic ports for editor to show them
@@ -969,7 +1022,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'Fetch',
     type: 'signal',
     plug: 'input',
-    group: 'Actions'
+    group: 'Actions',
+    description: 'Sends the request using the values currently on the inputs'
   });
 
   ports.push({
@@ -977,7 +1031,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'Cancel',
     type: 'signal',
     plug: 'input',
-    group: 'Actions'
+    group: 'Actions',
+    description: 'Abandons a request that is still in flight, which answers on Canceled rather than Failure'
   });
 
   // URL input - also needs to be in dynamic ports
@@ -986,7 +1041,9 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'URL',
     type: 'string',
     plug: 'input',
-    group: 'Request'
+    group: 'Request',
+    description:
+      'Address the request is sent to; any {name} in it becomes a Path Parameter input, and leaving it blank fails the request rather than sending one'
   });
 
   // Generate path input ports and output ports for each response mapping
@@ -1004,7 +1061,9 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
         type: 'string',
         default: '$',
         plug: 'input',
-        group: 'Response Mapping'
+        group: 'Response Mapping',
+        description:
+          'Where to read this value from in the response, as $.a.b or $.items[0].c; $ is the whole body, and a path that matches nothing yields no value'
       });
 
       // Output port for the extracted value
@@ -1013,7 +1072,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
         displayName: name,
         type: '*',
         plug: 'output',
-        group: 'Response'
+        group: 'Response',
+        description: 'Value read out of the response at ' + name + ' Path, refreshed on every answer'
       });
     }
   }
@@ -1024,7 +1084,9 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'Response',
     type: '*',
     plug: 'output',
-    group: 'Response'
+    group: 'Response',
+    description:
+      'Body the server sent, parsed as JSON when it said so and as text otherwise; it keeps the previous body when a request never reached the server'
   });
 
   ports.push({
@@ -1032,7 +1094,9 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'Status Code',
     type: 'number',
     plug: 'output',
-    group: 'Response'
+    group: 'Response',
+    description:
+      'HTTP status the server answered with; it keeps the previous status when a request timed out or never reached the server'
   });
 
   ports.push({
@@ -1040,7 +1104,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'Response Headers',
     type: 'object',
     plug: 'output',
-    group: 'Response'
+    group: 'Response',
+    description: 'Every header the server returned, keyed by lower-cased header name'
   });
 
   ports.push({
@@ -1048,7 +1113,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'Success',
     type: 'signal',
     plug: 'output',
-    group: 'Events'
+    group: 'Events',
+    description: 'Fires once the server has answered with a 2xx status and Response is up to date'
   });
 
   ports.push({
@@ -1056,7 +1122,9 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'Failure',
     type: 'signal',
     plug: 'output',
-    group: 'Events'
+    group: 'Events',
+    description:
+      'Fires when the request could not be completed — no URL, a network error, a timeout, an unparseable body, or a non-2xx status — after the reason has been put on Error'
   });
 
   ports.push({
@@ -1064,7 +1132,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'Canceled',
     type: 'signal',
     plug: 'output',
-    group: 'Events'
+    group: 'Events',
+    description: 'Fires only when Cancel abandoned a request in flight; a timeout answers on Failure instead'
   });
 
   ports.push({
@@ -1072,7 +1141,8 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     displayName: 'Error',
     type: 'string',
     plug: 'output',
-    group: 'Events'
+    group: 'Events',
+    description: 'What went wrong with the last request, in one sentence; unchanged when a request succeeds'
   });
 
   editorConnection.sendDynamicPorts(nodeId, ports);
