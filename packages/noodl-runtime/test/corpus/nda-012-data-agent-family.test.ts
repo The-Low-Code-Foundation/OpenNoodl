@@ -451,6 +451,19 @@ describe('B1 — a signal input that cannot do its work reports a failure', () =
 
     expect(graph.node<WatcherInstance>('watcher')._internal.pulses).toBe(0);
     expect(graph.errors).toEqual([]);
+
+    /**
+     * An Apply that succeeds leaves the transaction *open*, and an open transaction owns a
+     * rollback `setTimeout` (`optimisticupdatenode.ts:524`) until something commits, rolls
+     * back or deletes the node. Leaving it armed made the whole package's run report
+     * "a worker process has failed to exit gracefully" — 0 failures, and a new warning that
+     * had not been there before.
+     *
+     * Deleting the node is the honest teardown rather than `jest.useFakeTimers`, because
+     * `_onNodeDeleted` clearing that timer is the H1 contract this family is being audited
+     * against — so the cleanup doubles as the control for it.
+     */
+    (graph.node('subject') as unknown as CorpusNode)._onNodeDeleted();
   });
 
   it('Action Handler — Complete with no action in flight', async () => {

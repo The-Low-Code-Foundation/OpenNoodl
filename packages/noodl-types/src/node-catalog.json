@@ -175,7 +175,7 @@
           },
           "isSignal": false,
           "default": "explicit",
-          "description": "Choose if you want to specify the Id explicitly, or if you want it to be that of the current record in a repeater."
+          "description": "Whether the record comes from the Id input or from the record the surrounding Repeater is on"
         },
         {
           "name": "modelId",
@@ -187,7 +187,8 @@
             "identifierDisplayName": "Object Ids",
             "identifierOf": "ModelName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
         },
         {
           "name": "repeaterComponent",
@@ -197,7 +198,8 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one"
         },
         {
           "name": "store",
@@ -208,7 +210,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Adds the record named by Target Record Id to the chosen Relation on the record named by Id"
         },
         {
           "name": "targetId",
@@ -219,7 +222,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record at the other end of the relation, which must come from a Query Records or Record output so that its class is known"
         }
       ],
       "outputs": [
@@ -231,7 +235,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the most recent attempt failed, kept after a later attempt succeeds"
         },
         {
           "name": "failure",
@@ -241,7 +246,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the backend refused the operation or the node had nothing valid to send, with the reason on Error"
         },
         {
           "name": "id",
@@ -251,7 +257,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
         },
         {
           "name": "relationAdded",
@@ -261,7 +268,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the relation has been written and the record has been refreshed from the response"
         }
       ],
       "dynamicPorts": {
@@ -4276,7 +4284,8 @@
             "identifierDisplayName": "Array Ids",
             "identifierOf": "CollectionName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the shared array to bind to; the first node to use an id creates the array, and every later node naming it reaches the same one"
         },
         {
           "name": "fetch",
@@ -4287,7 +4296,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Re-reads the array named by Id and rebinds this node to it"
         },
         {
           "name": "items",
@@ -4310,7 +4320,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the bound array gains or loses items; suppressed while Fetch is connected"
         },
         {
           "name": "count",
@@ -4320,7 +4331,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many objects the bound array holds"
         },
         {
           "name": "fetched",
@@ -4330,7 +4342,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once Fetch has rebound this node and the outputs are up to date"
         },
         {
           "name": "firstItemId",
@@ -4340,7 +4353,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the first object in the array, or empty while the array holds nothing"
         },
         {
           "name": "id",
@@ -4350,7 +4364,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the array this node is currently bound to"
         },
         {
           "name": "items",
@@ -4360,7 +4375,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The bound array itself, for a Repeater or another Array node to read"
         }
       ],
       "dynamicPorts": null,
@@ -4391,7 +4407,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Removes every item from the array, or fires Failure if no array is bound"
         },
         {
           "name": "collectionId",
@@ -4403,7 +4420,8 @@
             "identifierDisplayName": "Array Ids",
             "identifierOf": "CollectionName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the array to empty; clearing it unbinds the node, and the next Do then fails rather than emptying a throwaway array"
         }
       ],
       "outputs": [
@@ -4415,7 +4433,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last attempt changed nothing, in one sentence; empty until something fails"
         },
         {
           "name": "failure",
@@ -4425,7 +4444,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the array or the object could not be resolved, so nothing was changed"
         },
         {
           "name": "modified",
@@ -4435,7 +4455,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the array holds no items"
         }
       ],
       "dynamicPorts": null,
@@ -4466,7 +4487,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Adds the object named by Object Id to the array, or fires Failure if either cannot be resolved"
         },
         {
           "name": "collectionId",
@@ -4478,7 +4500,8 @@
             "identifierDisplayName": "Array Ids",
             "identifierOf": "CollectionName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the array to insert into; clearing it unbinds the node, and the next Do then fails rather than writing to a throwaway array"
         },
         {
           "name": "modifyId",
@@ -4489,7 +4512,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the object to insert; a record with this id is created if none has been loaded yet"
         }
       ],
       "outputs": [
@@ -4501,7 +4525,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last attempt changed nothing, in one sentence; empty until something fails"
         },
         {
           "name": "failure",
@@ -4511,7 +4536,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the array or the object could not be resolved, so nothing was changed"
         },
         {
           "name": "modified",
@@ -4521,7 +4547,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires after the insert has been applied, including when the object was already in the array and nothing changed"
         }
       ],
       "dynamicPorts": null,
@@ -4551,7 +4578,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Contents to copy into the new array when Do fires; leave unconnected to start empty"
         },
         {
           "name": "new",
@@ -4562,7 +4590,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Creates a fresh array with a generated id and copies Items into it"
         }
       ],
       "outputs": [
@@ -4574,7 +4603,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the new array exists and Id is up to date"
         },
         {
           "name": "id",
@@ -4584,7 +4614,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the array made by the last Do — give it to an Array node or a mutator to reach the same array; empty until Do has fired"
         }
       ],
       "dynamicPorts": null,
@@ -4616,7 +4647,8 @@
             "identifierDisplayName": "Array Ids",
             "identifierOf": "CollectionName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the array to remove from; clearing it unbinds the node, and the next Do then fails rather than acting on a throwaway array"
         },
         {
           "name": "modifyId",
@@ -4627,7 +4659,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the object to remove; the record must already have been loaded, or the removal is refused instead of quietly doing nothing"
         },
         {
           "name": "remove",
@@ -4638,7 +4671,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Removes the object named by Object Id from the array, or fires Failure if either cannot be resolved"
         }
       ],
       "outputs": [
@@ -4650,7 +4684,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last attempt changed nothing, in one sentence; empty until something fails"
         },
         {
           "name": "failure",
@@ -4660,7 +4695,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the array or the object could not be resolved, so nothing was changed"
         },
         {
           "name": "modified",
@@ -4670,7 +4706,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the object is no longer in the array"
         }
       ],
       "dynamicPorts": null,
@@ -6326,7 +6363,7 @@
           },
           "isSignal": false,
           "default": "explicit",
-          "description": "Choose if you want to specify the Id explicitly, or if you want it to be that of the current record in a repeater."
+          "description": "Whether the record comes from the Id input or from the record the surrounding Repeater is on"
         },
         {
           "name": "modelId",
@@ -6338,7 +6375,8 @@
             "identifierDisplayName": "Object Ids",
             "identifierOf": "ModelName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
         },
         {
           "name": "repeaterComponent",
@@ -6348,7 +6386,8 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one"
         },
         {
           "name": "store",
@@ -6359,7 +6398,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Deletes the record named by Id from its Class in the backend"
         }
       ],
       "outputs": [
@@ -6371,7 +6411,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the backend has deleted the record and everything bound to it has been told that it is gone"
         },
         {
           "name": "error",
@@ -6381,7 +6422,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the most recent attempt failed, kept after a later attempt succeeds"
         },
         {
           "name": "failure",
@@ -6391,7 +6433,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the backend refused the operation or the node had nothing valid to send, with the reason on Error"
         },
         {
           "name": "id",
@@ -6401,7 +6444,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
         }
       ],
       "dynamicPorts": {
@@ -8110,7 +8154,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "When false the input array passes straight through — unfiltered, unsorted and unlimited"
         },
         {
           "name": "filter",
@@ -8121,7 +8166,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Runs the filter now and replaces Items with the result"
         },
         {
           "name": "items",
@@ -8131,7 +8177,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Array to filter; the node re-runs whenever this array changes, unless Filter is connected"
         },
         {
           "name": "refresh",
@@ -8142,7 +8189,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Runs the filter now — the same action as Filter, under the name the rest of the Array family uses"
         }
       ],
       "outputs": [
@@ -8154,7 +8202,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many records passed the filter, after Skip and Limit have been applied"
         },
         {
           "name": "error",
@@ -8164,7 +8213,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last run failed, in one sentence; empty until something fails"
         },
         {
           "name": "failure",
@@ -8174,7 +8224,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the filter could not be applied — a pattern that will not compile, or a Filter pulse with no array connected"
         },
         {
           "name": "firstItemId",
@@ -8184,7 +8235,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the first record that passed, or empty when nothing matched"
         },
         {
           "name": "items",
@@ -8194,7 +8246,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "A new array holding the records that passed, in sort order; the input array is never modified"
         },
         {
           "name": "modified",
@@ -8204,7 +8257,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the filter has run and Items is up to date"
         }
       ],
       "dynamicPorts": {
@@ -8244,7 +8298,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Passes every record through unchanged when off, rather than emptying the result"
         },
         {
           "name": "filter",
@@ -8255,7 +8310,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Re-runs the filter, and wiring anything to this port also stops the node re-running on its own when Items, Enabled or the filter settings change"
         },
         {
           "name": "items",
@@ -8265,7 +8321,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The records to filter, normally the Items output of a Query Records node"
         }
       ],
       "outputs": [
@@ -8277,7 +8334,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many records are in the result after Skip and Limit, not how many matched the filter"
         },
         {
           "name": "error",
@@ -8287,7 +8345,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the most recent failed run failed, kept after a later run succeeds"
         },
         {
           "name": "failure",
@@ -8297,7 +8356,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the filter could not be applied, or when Filter was triggered with nothing on Items"
         },
         {
           "name": "firstItemId",
@@ -8307,7 +8367,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the first record in the result, and nothing at all when the result is empty"
         },
         {
           "name": "items",
@@ -8317,7 +8378,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The records that matched, after Sorting, Skip and Limit have been applied"
         },
         {
           "name": "modified",
@@ -8327,7 +8389,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires each time the result has been rebuilt, including when the same records come back"
         }
       ],
       "dynamicPorts": {
@@ -8535,7 +8598,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Tells the Repeater the exit work is finished and this item may now be destroyed; needed only when Try Remove is connected"
         }
       ],
       "outputs": [
@@ -8547,7 +8611,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once this repeated item has been created and Item Id is available"
         },
         {
           "name": "itemId",
@@ -8557,7 +8622,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record this repeated item was created for"
         },
         {
           "name": "tryRemove",
@@ -8567,7 +8633,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires before the Repeater destroys this item, and holds the removal until Remove Completed is pulsed — connect it only if something must run first"
         }
       ],
       "dynamicPorts": null,
@@ -14904,7 +14971,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Array to map; the node re-runs whenever this array reports a change"
         },
         {
           "name": "mapScript",
@@ -14916,7 +14984,8 @@
             "codeeditor": "javascript"
           },
           "isSignal": false,
-          "default": "map({\n\t// Here you add mappings between the input object and the mapped output object.\n\t//myOutputProp: 'inputProp',\n\t//anotherProperty: function(object) { return object.get('someProperty') + ' ' + object.get('otherProp') }\n})\n"
+          "default": "map({\n\t// Here you add mappings between the input object and the mapped output object.\n\t//myOutputProp: 'inputProp',\n\t//anotherProperty: function(object) { return object.get('someProperty') + ' ' + object.get('otherProp') }\n})\n",
+          "description": "Script run once per record, declaring the output properties through map({ … }); each entry is either a source property name or a function of the record"
         },
         {
           "name": "refresh",
@@ -14927,7 +14996,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Re-runs the mapping now, for a source array that changed without notifying"
         }
       ],
       "outputs": [
@@ -14939,7 +15009,30 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many records the last successful mapping produced"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the last mapping failed, in one sentence; empty until something fails"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the script could not be compiled, or threw while mapping a record"
         },
         {
           "name": "items",
@@ -14949,7 +15042,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "A new array of records built by the script; the source array is never modified"
         },
         {
           "name": "modified",
@@ -14959,7 +15053,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the mapping has run and Items is up to date"
         }
       ],
       "dynamicPorts": null,
@@ -15162,7 +15257,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Re-reads the object named by Id; connecting anything here switches the node to pull mode, so Id alone no longer rebinds it and changes to the object stop being announced"
         },
         {
           "name": "idSource",
@@ -15184,7 +15280,8 @@
             ]
           },
           "isSignal": false,
-          "default": "explicit"
+          "default": "explicit",
+          "description": "Where the object comes from: the Id input, or the item of the Repeater this node sits inside"
         },
         {
           "name": "modelId",
@@ -15196,7 +15293,8 @@
             "identifierDisplayName": "Object Ids",
             "identifierOf": "ModelName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the object to bind to, which is created the first time it is named; an Object or a plain JS object may be wired here instead, and null or blank binds nothing"
         },
         {
           "name": "properties",
@@ -15207,7 +15305,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names the properties to read and write; each name listed here gets an input, an output and a Changed signal"
         },
         {
           "name": "repeaterComponent",
@@ -15217,7 +15316,8 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which Repeater to take the item from when several are nested; leave blank to use the nearest one, and ignored unless Get Id from is From repeater"
         }
       ],
       "outputs": [
@@ -15229,7 +15329,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires whenever any property of the bound object changes, from this node or from anywhere else"
         },
         {
           "name": "fetched",
@@ -15239,7 +15340,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once a new object has been bound and its property outputs are up to date"
         },
         {
           "name": "id",
@@ -15249,7 +15351,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the object this node is bound to, whether that came from the Id input or from a repeater item"
         }
       ],
       "dynamicPorts": {
@@ -15587,6 +15690,7 @@
             "autoName": "Rule"
           },
           "isSignal": false,
+          "description": "Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; backends that have no per-record access control ignore them",
           "index": 1000
         },
         {
@@ -15598,7 +15702,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of an existing record whose properties seed the new one before the property inputs are applied over them; leave blank to start empty"
         },
         {
           "name": "store",
@@ -15609,7 +15714,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Creates a record in the chosen Class from the property inputs and sends it to the backend"
         }
       ],
       "outputs": [
@@ -15621,7 +15727,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the backend has stored the new record and Id carries the Id it was given"
         },
         {
           "name": "error",
@@ -15631,7 +15738,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the most recent attempt failed, kept after a later attempt succeeds"
         },
         {
           "name": "failure",
@@ -15641,7 +15749,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the backend refused the operation or the node had nothing valid to send, with the reason on Error"
         },
         {
           "name": "id",
@@ -15651,7 +15760,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
         }
       ],
       "dynamicPorts": {
@@ -15755,7 +15865,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Creates a new object with a generated id and writes the property values currently on the inputs"
         },
         {
           "name": "properties",
@@ -15766,7 +15877,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names the properties to write; each name listed here gets a value input and a type selector"
         }
       ],
       "outputs": [
@@ -15778,7 +15890,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the new object exists, its properties are written and Id names it"
         },
         {
           "name": "id",
@@ -15788,7 +15901,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the object this node acted on, which is how a newly created one is picked up downstream"
         }
       ],
       "dynamicPorts": {
@@ -21910,7 +22024,7 @@
           },
           "isSignal": false,
           "default": "explicit",
-          "description": "Choose if you want to specify the Id explicitly, or if you want it to be that of the current record in a repeater."
+          "description": "Whether the record comes from the Id input or from the record the surrounding Repeater is on"
         },
         {
           "name": "modelId",
@@ -21922,7 +22036,8 @@
             "identifierDisplayName": "Object Ids",
             "identifierOf": "ModelName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
         },
         {
           "name": "repeaterComponent",
@@ -21932,7 +22047,8 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one"
         },
         {
           "name": "store",
@@ -21943,7 +22059,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Removes the record named by Target Record Id from the chosen Relation on the record named by Id"
         },
         {
           "name": "targetId",
@@ -21954,7 +22071,8 @@
             "name": "string",
             "allowConnectionsOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record at the other end of the relation, which must come from a Query Records or Record output so that its class is known"
         }
       ],
       "outputs": [
@@ -21966,7 +22084,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the most recent attempt failed, kept after a later attempt succeeds"
         },
         {
           "name": "failure",
@@ -21976,7 +22095,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the backend refused the operation or the node had nothing valid to send, with the reason on Error"
         },
         {
           "name": "id",
@@ -21986,7 +22106,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
         },
         {
           "name": "relationRemoved",
@@ -21996,7 +22117,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the backend has accepted the removal, which is also what happens when the relation was not there to begin with"
         }
       ],
       "dynamicPorts": {
@@ -22734,7 +22856,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Writes Value into the named variable, or fires Failure when no Name is set"
         },
         {
           "name": "name",
@@ -22746,7 +22869,8 @@
             "identifierDisplayName": "Variable names",
             "identifierOf": "VariableName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which app-wide variable to write; leaving it blank refuses the write rather than storing it somewhere unreadable"
         },
         {
           "name": "setWith",
@@ -22792,7 +22916,8 @@
             ]
           },
           "isSignal": false,
-          "default": "*"
+          "default": "*",
+          "description": "Chooses the type of the Value port; Empty string stores \"\" and needs no Value, Object and Array accept an id as well as a value, and Boolean is coerced"
         }
       ],
       "outputs": [
@@ -22804,7 +22929,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the variable has been written and every Variable node reading it has been notified"
         },
         {
           "name": "error",
@@ -22814,7 +22940,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the write was refused, in one sentence; empty until something fails"
         },
         {
           "name": "failure",
@@ -22824,7 +22951,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when nothing was stored because no variable Name is set"
         }
       ],
       "dynamicPorts": {
@@ -22866,6 +22994,7 @@
             "autoName": "Rule"
           },
           "isSignal": false,
+          "description": "Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; backends that have no per-record access control ignore them",
           "index": 1000
         },
         {
@@ -22889,7 +23018,7 @@
           },
           "isSignal": false,
           "default": "explicit",
-          "description": "Choose if you want to specify the Id explicitly, or if you want it to be that of the current record in a repeater."
+          "description": "Whether the record comes from the Id input or from the record the surrounding Repeater is on"
         },
         {
           "name": "modelId",
@@ -22901,7 +23030,8 @@
             "identifierDisplayName": "Object Ids",
             "identifierOf": "ModelName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
         },
         {
           "name": "repeaterComponent",
@@ -22911,7 +23041,8 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one"
         },
         {
           "name": "store",
@@ -22922,7 +23053,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Writes the property inputs onto the record named by Id, and on to the backend unless Store to is Local only"
         },
         {
           "name": "storeProperties",
@@ -22943,7 +23075,8 @@
             ]
           },
           "isSignal": false,
-          "default": "specified"
+          "default": "specified",
+          "description": "Whether to send only the properties wired on this node or every property the record holds; not offered when Store to is Local only"
         },
         {
           "name": "storeType",
@@ -22964,7 +23097,8 @@
             ]
           },
           "isSignal": false,
-          "default": "cloud"
+          "default": "cloud",
+          "description": "Whether the change is sent to the backend as well as applied to the in-memory record, or only held locally"
         }
       ],
       "outputs": [
@@ -22976,7 +23110,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the most recent attempt failed, kept after a later attempt succeeds"
         },
         {
           "name": "failure",
@@ -22986,7 +23121,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the backend refused the operation or the node had nothing valid to send, with the reason on Error"
         },
         {
           "name": "id",
@@ -22996,7 +23132,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
         },
         {
           "name": "stored",
@@ -23006,7 +23143,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the record has been updated, waiting for the backend to answer unless Store to is Local only"
         }
       ],
       "dynamicPorts": {
@@ -23145,7 +23283,8 @@
             ]
           },
           "isSignal": false,
-          "default": "explicit"
+          "default": "explicit",
+          "description": "Where the object comes from: the Id input, or the item of the Repeater this node sits inside"
         },
         {
           "name": "modelId",
@@ -23157,7 +23296,8 @@
             "identifierDisplayName": "Object Ids",
             "identifierOf": "ModelName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the object to act on, which is created the first time it is named; an Object may be wired here instead, and null or blank binds nothing so Do fails"
         },
         {
           "name": "properties",
@@ -23168,7 +23308,8 @@
             "name": "stringlist",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Names the properties to write; each name listed here gets a value input and a type selector"
         },
         {
           "name": "repeaterComponent",
@@ -23178,7 +23319,8 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which Repeater to take the item from when several are nested; leave blank to use the nearest one, and ignored unless Id Source is From repeater"
         },
         {
           "name": "store",
@@ -23189,7 +23331,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Writes the property values currently on the inputs onto the object named by Id"
         }
       ],
       "outputs": [
@@ -23201,7 +23344,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why no object was bound, and what to set so that one is"
         },
         {
           "name": "failure",
@@ -23211,7 +23355,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when there was no object to act on, so nothing was written, after the reason has been put on Error"
         },
         {
           "name": "id",
@@ -23221,7 +23366,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the object this node acted on, which is how a newly created one is picked up downstream"
         },
         {
           "name": "stored",
@@ -23231,7 +23377,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the properties have been written onto the object and anything watching it has been told"
         }
       ],
       "dynamicPorts": {
@@ -23741,7 +23888,8 @@
             "allowEditOnly": true,
             "codeeditor": "text"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Rows of comma-separated values whose first row names the properties; every cell is read as a string, so use JSON if numbers must stay numbers — ignored unless Type is CSV"
         },
         {
           "name": "json",
@@ -23753,7 +23901,8 @@
             "allowEditOnly": true,
             "codeeditor": "json"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "An array of objects authored inline; unlike CSV it keeps numbers and booleans as they are — ignored unless Type is JSON"
         },
         {
           "name": "type",
@@ -23775,7 +23924,8 @@
             ]
           },
           "isSignal": false,
-          "default": "csv"
+          "default": "csv",
+          "description": "Which of the two authoring formats below is read"
         }
       ],
       "outputs": [
@@ -23787,7 +23937,30 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many rows the last successful parse produced"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the JSON could not be parsed, in one sentence; empty until a parse fails"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the authored JSON could not be parsed, leaving Items as it was"
         },
         {
           "name": "items",
@@ -23797,7 +23970,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The authored rows, as an array of records; unchanged while the JSON cannot be parsed"
         }
       ],
       "dynamicPorts": {
@@ -27429,7 +27603,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Re-reads the variable named by Name and refreshes Value"
         },
         {
           "name": "name",
@@ -27441,7 +27616,8 @@
             "identifierDisplayName": "Variable names",
             "identifierOf": "VariableName"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Which app-wide variable this node reads and writes"
         },
         {
           "name": "value",
@@ -27451,7 +27627,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Stores this value in the named variable as soon as it arrives; refused, loudly, when Name is empty"
         }
       ],
       "outputs": [
@@ -27463,7 +27640,30 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the named variable is written from anywhere in the app"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the last write was refused, in one sentence; empty until something fails"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a value arrived but could not be stored because no Name is set"
         },
         {
           "name": "fetched",
@@ -27473,7 +27673,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once Fetch has rebound this node and Value is up to date"
         },
         {
           "name": "name",
@@ -27483,7 +27684,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The variable name this node is currently bound to"
         },
         {
           "name": "value",
@@ -27493,7 +27695,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Current contents of the named variable, or empty until something writes it"
         }
       ],
       "dynamicPorts": null,
@@ -29097,7 +29300,7 @@
             "name": "*"
           },
           "isSignal": false,
-          "description": "An action object, an array of them to run in order, or JSON text holding either."
+          "description": "An action object, an array of them to run in order, or JSON text holding either"
         },
         {
           "name": "allowedKeys",
@@ -29108,7 +29311,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Comma-separated keys the built-in store actions may write. Blank means any key of the configured store. Setting any key also refuses CLEAR_STORE."
+          "description": "Comma-separated keys the built-in store actions may write; blank means any key, and setting any key also refuses CLEAR_STORE"
         },
         {
           "name": "builtIns",
@@ -29119,7 +29322,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Comma-separated built-in action names this dispatcher may execute: SET_STORE, MERGE_STORE, DELETE_STORE_KEY, CLEAR_STORE. Empty — the default — means a server cannot write to the store at all; everything must go through an Action Handler you wired."
+          "description": "Comma-separated built-in action names this dispatcher may execute; empty, the default, means a server cannot write to the store at all"
         },
         {
           "name": "cancel",
@@ -29130,7 +29333,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Discards everything queued and abandons anything in flight, reporting how many were dropped"
         },
         {
           "name": "channel",
@@ -29142,7 +29346,7 @@
           },
           "isSignal": false,
           "default": "default",
-          "description": "Names the handler registry this dispatcher draws on. Leave as \"default\" unless two independent flows must not see each other."
+          "description": "Names the handler registry this dispatcher draws on; leave it as default unless two independent flows must not see each other"
         },
         {
           "name": "dispatch",
@@ -29153,7 +29357,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Admits whatever is on Action and runs it, or refuses it with a reason"
         },
         {
           "name": "handlerTimeout",
@@ -29165,7 +29370,7 @@
           },
           "isSignal": false,
           "default": 30000,
-          "description": "How long a handler has to signal Complete or Fail before the action is failed. 0 waits forever."
+          "description": "Milliseconds a handler has to signal Complete or Fail before the action is failed; 0 waits forever"
         },
         {
           "name": "maxQueueSize",
@@ -29177,7 +29382,7 @@
           },
           "isSignal": false,
           "default": 100,
-          "description": "Bound on queued actions. Overflow refuses the newest so accepted actions keep their order. 0 is unbounded."
+          "description": "Bound on queued actions; overflow refuses the newest so accepted actions keep their order; 0 is unbounded"
         },
         {
           "name": "rateLimit",
@@ -29189,7 +29394,7 @@
           },
           "isSignal": false,
           "default": 0,
-          "description": "Max actions executed per window. 0 is unlimited. Excess actions are refused, not delayed."
+          "description": "Actions executed per window before the rest are refused rather than delayed; 0 is unlimited"
         },
         {
           "name": "rateLimitWindow",
@@ -29200,7 +29405,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 60000
+          "default": 60000,
+          "description": "Length of the rate-limit window in milliseconds; ignored unless Rate Limit is set"
         },
         {
           "name": "storeName",
@@ -29212,7 +29418,7 @@
           },
           "isSignal": false,
           "default": "app",
-          "description": "The only store the built-in actions can write. A store named inside an incoming action is ignored — the graph chooses the store, not the server."
+          "description": "The only store the built-in actions can write; a store named inside an incoming action is ignored"
         },
         {
           "name": "waitForHandler",
@@ -29224,7 +29430,7 @@
           },
           "isSignal": false,
           "default": 2000,
-          "description": "How long an action waits for its handler to appear before being refused as unknown — the window in which a component can still mount. 0 refuses immediately. Everything behind it waits too, because order is preserved."
+          "description": "Milliseconds an action waits for its handler to appear before being refused as unknown; everything behind it waits too"
         }
       ],
       "outputs": [
@@ -29236,7 +29442,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the action currently being executed, taken from the message when it carried one"
         },
         {
           "name": "actionType",
@@ -29246,7 +29453,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Type of the action currently being executed"
         },
         {
           "name": "cancelled",
@@ -29256,7 +29464,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once Cancel All has emptied the queue"
         },
         {
           "name": "cancelledCount",
@@ -29266,7 +29475,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many actions Cancel All has discarded since the page loaded"
         },
         {
           "name": "completed",
@@ -29276,7 +29486,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once an action has finished and Result holds its answer"
         },
         {
           "name": "completedCount",
@@ -29286,7 +29497,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many actions have completed since the page loaded"
         },
         {
           "name": "dispatched",
@@ -29296,7 +29508,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when an action has been accepted and is about to run"
         },
         {
           "name": "failed",
@@ -29306,7 +29519,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when an accepted action ran and did not succeed, whether the handler said so or the deadline passed"
         },
         {
           "name": "failedCount",
@@ -29316,7 +29530,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many accepted actions have failed since the page loaded"
         },
         {
           "name": "idle",
@@ -29326,7 +29541,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the queue has drained after doing at least one thing"
         },
         {
           "name": "isExecuting",
@@ -29336,7 +29552,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while an action is running, which is the cue for a busy indicator"
         },
         {
           "name": "lastError",
@@ -29346,7 +29563,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The most recent failure or refusal, whichever happened last"
         },
         {
           "name": "payload",
@@ -29356,7 +29574,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The data the current action carried, taken from its payload or data field, or the whole action when it has neither"
         },
         {
           "name": "queueSize",
@@ -29366,7 +29585,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many actions are waiting behind the one being executed"
         },
         {
           "name": "refusalMessage",
@@ -29376,7 +29596,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The refusal in a sentence an app author can show or log"
         },
         {
           "name": "refusalReason",
@@ -29386,7 +29607,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why it was refused, as one of invalid, unknown, not-allowed, rate-limited or queue-full"
         },
         {
           "name": "refused",
@@ -29396,7 +29618,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when an action was not run at all, which is the output to watch for anything a server can talk to"
         },
         {
           "name": "refusedCount",
@@ -29406,7 +29629,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many actions have been refused since the page loaded"
         },
         {
           "name": "refusedType",
@@ -29416,7 +29640,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Type of the refused action, or blank when the message was too malformed to have one"
         },
         {
           "name": "result",
@@ -29426,7 +29651,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "What the handler or built-in returned for the action that just completed"
         },
         {
           "name": "waitingFor",
@@ -29436,7 +29662,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Action type holding the head of the queue because its handler has not registered yet; blank when nothing is waiting"
         }
       ],
       "dynamicPorts": null,
@@ -29478,7 +29705,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "The exact action type this handler accepts, e.g. OPEN_SESSION. Registering it is what makes it executable at all."
+          "description": "The exact action type this handler accepts; registering it is what makes it executable at all"
         },
         {
           "name": "autoComplete",
@@ -29490,7 +29717,7 @@
           },
           "isSignal": false,
           "default": true,
-          "description": "Report the action complete as soon as Trigger has been sent. Turn off when a later step must wait for this one to finish, and wire Complete or Fail yourself."
+          "description": "Reports the action complete as soon as Trigger has been sent; turn it off when a later step must finish first"
         },
         {
           "name": "channel",
@@ -29502,7 +29729,7 @@
           },
           "isSignal": false,
           "default": "default",
-          "description": "Must match the Channel on the Action Dispatcher that should be able to reach this handler."
+          "description": "Must match the Channel on the Action Dispatcher that should be able to reach this handler"
         },
         {
           "name": "complete",
@@ -29513,7 +29740,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Reports the action finished, so the dispatcher runs whatever is queued behind it; ignored unless Auto Complete is off"
         },
         {
           "name": "enabled",
@@ -29525,7 +29753,7 @@
           },
           "isSignal": false,
           "default": true,
-          "description": "Turning this off unregisters the handler, so the action is refused as unknown rather than quietly ignored."
+          "description": "Turning this off unregisters the handler, so the action is refused as unknown rather than quietly ignored"
         },
         {
           "name": "errorMessage",
@@ -29535,7 +29763,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Reason handed back to the dispatcher when Fail is signalled; a generic one is used when this is blank"
         },
         {
           "name": "fail",
@@ -29546,7 +29775,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Reports the action failed, so the dispatcher fires Failed with Error Message as the reason"
         },
         {
           "name": "result",
@@ -29557,7 +29787,7 @@
             "name": "*"
           },
           "isSignal": false,
-          "description": "Handed back to the dispatcher as the Result of this action when it completes."
+          "description": "Handed back to the dispatcher as the Result of this action when it completes"
         }
       ],
       "outputs": [
@@ -29569,7 +29799,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the action currently being handled, so a later Complete can be matched to it"
         },
         {
           "name": "error",
@@ -29579,7 +29810,19 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the handler could not register, or why the last Complete or Fail had nothing to act on"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when Complete or Fail was signalled with no action in flight"
         },
         {
           "name": "payload",
@@ -29589,7 +29832,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The data the action carried, taken from its payload or data field, or the whole action when it has neither"
         },
         {
           "name": "registered",
@@ -29599,7 +29843,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while this handler is in the allow-list, which needs both an Action Type and Enabled"
         },
         {
           "name": "trigger",
@@ -29609,7 +29854,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a dispatcher has an action of this type to run; whatever is wired downstream is the capability this grants"
         },
         {
           "name": "triggeredCount",
@@ -29619,7 +29865,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many actions this handler has been asked to run since the page loaded"
         }
       ],
       "dynamicPorts": null,
@@ -29749,7 +29996,8 @@
           "type": {
             "name": "object"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Keys to fill in on stores that do not already have them, as an object or as JSON text; live values are never overwritten"
         },
         {
           "name": "persist",
@@ -29760,7 +30008,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "Keeps the store in browser storage so it survives a reload; under SSR and cloud functions there is no storage and Error says so"
         },
         {
           "name": "storageKey",
@@ -29770,7 +30019,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name to store the persisted copy under, defaulting to Store Name; ignored unless Persist is on"
         },
         {
           "name": "storeName",
@@ -29781,7 +30031,8 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "app"
+          "default": "app",
+          "description": "Names the store this node reads; several nodes may share a name and every one of them sees the same state"
         }
       ],
       "outputs": [
@@ -29793,7 +30044,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Comma-separated keys that changed in the notification that fired State Changed"
         },
         {
           "name": "error",
@@ -29803,7 +30055,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "What the store could not do, prefixed by the phase it happened in: persist, load, clone or subscriber"
         },
         {
           "name": "ready",
@@ -29813,7 +30066,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the store has been created and configured, so a graph can sequence its first read"
         },
         {
           "name": "state",
@@ -29823,7 +30077,8 @@
           "type": {
             "name": "object"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The whole store as a live object; write through Set Global Store rather than mutating it"
         },
         {
           "name": "stateChanged",
@@ -29833,7 +30088,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once per commit to the store, however many keys that commit touched"
         },
         {
           "name": "storeId",
@@ -29843,7 +30099,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The id of the Model backing this store, so a Function node can reach the same state through Noodl.Object"
         }
       ],
       "dynamicPorts": null,
@@ -29873,7 +30130,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Key to write; a Set with no key is refused rather than dropped"
         },
         {
           "name": "merge",
@@ -29884,7 +30142,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "Shallow-merges into the existing value when both the old and the new value are plain objects, instead of replacing it"
         },
         {
           "name": "set",
@@ -29895,7 +30154,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Writes Value at Key, reading both as of the end of the current frame"
         },
         {
           "name": "storeName",
@@ -29906,7 +30166,8 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "app"
+          "default": "app",
+          "description": "Names the store to write; must match the Store Name of the Global Store node that owns it"
         },
         {
           "name": "transaction",
@@ -29917,7 +30178,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "Holds the notification until the end of the current microtask so several writers in one turn produce a single change"
         },
         {
           "name": "value",
@@ -29927,7 +30189,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Value to write, of any type; null is stored as null and is not coerced to a blank string"
         }
       ],
       "outputs": [
@@ -29939,7 +30202,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the write has been applied and every subscriber has been told"
         },
         {
           "name": "error",
@@ -29949,7 +30213,19 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last write failed; blank once a write succeeds"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the write could not be made, most often because Key is empty"
         }
       ],
       "dynamicPorts": null,
@@ -29980,7 +30256,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Comma-separated keys to watch. Leave blank to react to every change in the store."
+          "description": "Comma-separated keys to watch; leave blank to react to every change in the store"
         },
         {
           "name": "storeName",
@@ -29991,7 +30267,8 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "app"
+          "default": "app",
+          "description": "Names the store to watch; must match the Store Name of the Global Store node that owns it"
         }
       ],
       "outputs": [
@@ -30003,7 +30280,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when one of the watched keys changed, and not for a commit that touched only other keys"
         },
         {
           "name": "changedKeys",
@@ -30013,7 +30291,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Comma-separated keys that changed in the notification that fired Changed"
         },
         {
           "name": "previousValue",
@@ -30023,7 +30302,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The same projection as Value, as it was immediately before the change that fired Changed"
         },
         {
           "name": "value",
@@ -30033,7 +30313,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The watched value: one key gives that key, several give an object of just those keys, none gives the whole store"
         }
       ],
       "dynamicPorts": null,
@@ -30072,7 +30353,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Abandons a request that is still in flight, which answers on Canceled rather than Failure"
         },
         {
           "name": "fetch",
@@ -30083,7 +30365,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Sends the request using the values currently on the inputs"
         },
         {
           "name": "url",
@@ -30094,7 +30377,8 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": ""
+          "default": "",
+          "description": "Address the request is sent to; any {name} in it becomes a Path Parameter input, and leaving it blank fails the request rather than sending one"
         }
       ],
       "outputs": [
@@ -30106,7 +30390,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires only when Cancel abandoned a request in flight; a timeout answers on Failure instead"
         },
         {
           "name": "error",
@@ -30116,7 +30401,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "What went wrong with the last request, in one sentence; unchanged when a request succeeds"
         },
         {
           "name": "failure",
@@ -30126,7 +30412,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the request could not be completed — no URL, a network error, a timeout, an unparseable body, or a non-2xx status — after the reason has been put on Error"
         },
         {
           "name": "response",
@@ -30136,7 +30423,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Body the server sent, parsed as JSON when it said so and as text otherwise; it keeps the previous body when a request never reached the server"
         },
         {
           "name": "responseHeaders",
@@ -30146,7 +30434,8 @@
           "type": {
             "name": "object"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Every header the server returned, keyed by lower-cased header name"
         },
         {
           "name": "statusCode",
@@ -30156,7 +30445,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "HTTP status the server answered with; it keeps the previous status when a request timed out or never reached the server"
         },
         {
           "name": "success",
@@ -30166,7 +30456,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the server has answered with a 2xx status and Response is up to date"
         }
       ],
       "dynamicPorts": {
@@ -30216,7 +30507,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The next fragment of the stream; boundaries may fall anywhere, including inside a string"
         },
         {
           "name": "clear",
@@ -30227,7 +30519,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Discards the pending text, the parsed values and the error counter"
         },
         {
           "name": "format",
@@ -30252,7 +30545,8 @@
             ]
           },
           "isSignal": false,
-          "default": "ndjson"
+          "default": "ndjson",
+          "description": "How values are framed on this stream: one per line, any concatenation of complete values, or one whole document"
         },
         {
           "name": "maxLength",
@@ -30264,7 +30558,7 @@
           },
           "isSignal": false,
           "default": 1048576,
-          "description": "Cap on unparsed text held while waiting for a value to complete. Exceeding it clears the buffer and reports an error, rather than growing without limit on a malformed stream."
+          "description": "Cap on unparsed text held while a value completes; exceeding it clears the buffer and reports an error rather than growing forever"
         },
         {
           "name": "parse",
@@ -30275,7 +30569,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Appends the current Chunk and emits every value that is now complete; the chunk is retained between pulses"
         }
       ],
       "outputs": [
@@ -30287,7 +30582,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the pending text and the values have been discarded"
         },
         {
           "name": "error",
@@ -30297,7 +30593,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last value or line would not parse; kept until the next failure or a Clear"
         },
         {
           "name": "errorCount",
@@ -30307,7 +30604,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many values have failed to parse since the last Clear"
         },
         {
           "name": "failure",
@@ -30317,7 +30615,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires for each value or line that could not be parsed, and when the pending text exceeded Max Pending"
         },
         {
           "name": "isComplete",
@@ -30327,7 +30626,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True when the last Parse left nothing pending, so every value so far was whole"
         },
         {
           "name": "parsed",
@@ -30337,7 +30637,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The last complete value the most recent Parse produced"
         },
         {
           "name": "pendingCharacters",
@@ -30347,7 +30648,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Text held back because a value is not complete yet; persistently non-zero means Format does not match the stream"
         },
         {
           "name": "success",
@@ -30357,7 +30659,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a Parse yielded at least one value, so a chunk that merely advanced an incomplete value stays quiet"
         },
         {
           "name": "valueCount",
@@ -30367,7 +30670,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many values have been parsed since the last Clear, across every Parse"
         },
         {
           "name": "values",
@@ -30377,7 +30681,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Every value completed by the most recent Parse, in order"
         }
       ],
       "dynamicPorts": null,
@@ -30408,7 +30713,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Writes Optimistic Value at Key now and opens a transaction the server response will resolve"
         },
         {
           "name": "commit",
@@ -30419,7 +30725,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Confirms the update, so the optimistic value becomes the truth"
         },
         {
           "name": "errorMessage",
@@ -30430,7 +30737,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Reason reported on Error when this update is rolled back. Wire the server error here."
+          "description": "Reason reported on Error when this update is rolled back; wire the server error here"
         },
         {
           "name": "key",
@@ -30440,7 +30747,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Key to write optimistically; an Apply with no key is refused rather than dropped"
         },
         {
           "name": "onDispose",
@@ -30463,7 +30771,7 @@
           },
           "isSignal": false,
           "default": "rollback",
-          "description": "What happens to updates still in flight when this node is removed. Rolling back keeps the store honest; keeping the value suits fire-and-forget actions the user navigates away from."
+          "description": "What happens to updates still in flight when this node is removed: put the old value back, or keep the value that was shown"
         },
         {
           "name": "optimisticValue",
@@ -30473,7 +30781,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Value to show immediately, before the server has confirmed anything"
         },
         {
           "name": "rollback",
@@ -30484,7 +30793,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Puts the old value back, unless something else has written the key since"
         },
         {
           "name": "storeName",
@@ -30495,7 +30805,8 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "app"
+          "default": "app",
+          "description": "Names the store holding the key this update writes"
         },
         {
           "name": "timeout",
@@ -30507,7 +30818,7 @@
           },
           "isSignal": false,
           "default": 30000,
-          "description": "Roll back automatically after this long with no answer. Zero disables the deadline."
+          "description": "Milliseconds to wait for an answer before rolling back on its own; 0 waits forever"
         },
         {
           "name": "transactionId",
@@ -30518,7 +30829,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Leave blank to let the node generate one. Set it to commit or roll back a specific update when several are in flight."
+          "description": "Names the update to commit or roll back when several are in flight; leave blank to generate one and resolve to the oldest"
         }
       ],
       "outputs": [
@@ -30530,7 +30841,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the optimistic value is in the store and the transaction is open"
         },
         {
           "name": "committed",
@@ -30540,7 +30852,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once an update has been confirmed and its value is the truth"
         },
         {
           "name": "error",
@@ -30550,7 +30863,19 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last update failed or was undone; blank once an Apply succeeds"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the node refused to act: no Key, a transaction id already open, or no such update to resolve"
         },
         {
           "name": "isCommitted",
@@ -30560,7 +30885,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True when the last update to resolve was confirmed"
         },
         {
           "name": "isPending",
@@ -30570,7 +30896,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True while at least one update is waiting for an answer"
         },
         {
           "name": "isRolledBack",
@@ -30580,7 +30907,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True when the last update to resolve was undone, whether by Rollback, by the deadline, or by disposal"
         },
         {
           "name": "pendingCount",
@@ -30590,7 +30918,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many updates are open at once, which can be more than one when responses come back out of order"
         },
         {
           "name": "previousValue",
@@ -30600,7 +30929,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "What the key held immediately before the most recent Apply; blank when the key did not exist"
         },
         {
           "name": "rolledBack",
@@ -30610,7 +30940,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once an update has been undone, including when the value was left alone because something newer had written the key"
         },
         {
           "name": "timedOut",
@@ -30620,7 +30951,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires alongside Rolled Back when it was the deadline rather than the graph that ended the update"
         },
         {
           "name": "transactionId",
@@ -30630,7 +30962,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the most recent Apply; carry it through the request and hand it back to resolve that update specifically"
         },
         {
           "name": "value",
@@ -30640,7 +30973,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "What the key holds right now, following writes made by anything, not only by this node"
         }
       ],
       "dynamicPorts": null,
@@ -30816,7 +31150,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Runs Pattern over Text and reports what it found"
         },
         {
           "name": "extractAll",
@@ -30827,7 +31162,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "Collects every match into Matches instead of stopping at the first one"
         },
         {
           "name": "flags",
@@ -30838,7 +31174,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Regex flags: i (ignore case), m (multiline), s (dot matches newline), u (unicode). g is controlled by Extract All."
+          "description": "Regex flags i, m, s, u and y; g is controlled by Extract All and a g written here is ignored"
         },
         {
           "name": "pattern",
@@ -30849,7 +31185,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "A JavaScript regular expression, without the surrounding slashes. Capture groups appear on Groups."
+          "description": "A JavaScript regular expression without the surrounding slashes; capture groups appear on Groups"
         },
         {
           "name": "text",
@@ -30859,7 +31195,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The text to search"
         }
       ],
       "outputs": [
@@ -30871,7 +31208,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the pattern could not be used: it is blank, or it is not a valid regular expression"
         },
         {
           "name": "failure",
@@ -30881,7 +31219,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pattern itself is unusable, which is a bug to fix rather than a result"
         },
         {
           "name": "firstGroup",
@@ -30891,7 +31230,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The first capture group of the first match, which is the whole answer for a pattern like (\\d+)%"
         },
         {
           "name": "found",
@@ -30901,7 +31241,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pattern ran and matched at least once"
         },
         {
           "name": "groups",
@@ -30911,7 +31252,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Capture groups of the first match; an optional group that did not participate is a blank string, not a hole"
         },
         {
           "name": "match",
@@ -30921,7 +31263,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The first match, or blank when nothing matched"
         },
         {
           "name": "matchCount",
@@ -30931,7 +31274,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many matches were found, which is at most one unless Extract All is on"
         },
         {
           "name": "matches",
@@ -30941,7 +31285,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Every match when Extract All is on, otherwise just the first"
         },
         {
           "name": "namedGroups",
@@ -30951,7 +31296,8 @@
           "type": {
             "name": "object"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Named capture groups of the first match, keyed by name"
         },
         {
           "name": "notFound",
@@ -30961,7 +31307,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the pattern ran and matched nothing, which is an ordinary outcome rather than a mistake"
         }
       ],
       "dynamicPorts": null,
@@ -31007,7 +31354,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "Opens the stream as soon as a URL is available, without waiting for a Connect signal"
         },
         {
           "name": "autoReconnect",
@@ -31018,7 +31366,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Retries after a failure with a growing backoff; turning it off reports the failure and stops"
         },
         {
           "name": "body",
@@ -31028,7 +31377,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Request body, sent as JSON unless it is already a string; ignored for GET and HEAD"
         },
         {
           "name": "connect",
@@ -31039,7 +31389,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Opens the stream, replacing any connection already open and resetting the retry count"
         },
         {
           "name": "dedupeById",
@@ -31051,7 +31402,7 @@
           },
           "isSignal": false,
           "default": true,
-          "description": "Drop events whose id has already been seen, so a reconnect that resumes from the last event id cannot re-deliver messages. Turn off if your server reuses ids for distinct events."
+          "description": "Drops events whose id has already been seen, so a reconnect that resumes cannot re-deliver messages"
         },
         {
           "name": "disconnect",
@@ -31062,7 +31413,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Closes the stream and stops retrying"
         },
         {
           "name": "eventTypes",
@@ -31073,7 +31425,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Comma-separated named event types to subscribe to. Only needed for the EventSource transport, which delivers a named event only to a listener registered in advance; the Fetch transport delivers every event type."
+          "description": "Comma-separated named event types to subscribe to; only needed for the EventSource transport, as Fetch delivers every type"
         },
         {
           "name": "headers",
@@ -31083,7 +31435,8 @@
           "type": {
             "name": "object"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Request headers as an object, for bearer tokens and the like; ignored by the EventSource transport, which cannot set them"
         },
         {
           "name": "maxReconnectDelay",
@@ -31094,7 +31447,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 30000
+          "default": 30000,
+          "description": "Ceiling on the backoff in milliseconds, however many failures there have been"
         },
         {
           "name": "maxRetries",
@@ -31106,7 +31460,7 @@
           },
           "isSignal": false,
           "default": 0,
-          "description": "0 means keep retrying. Otherwise the connection reports an error after this many consecutive failures."
+          "description": "Consecutive failures allowed before the connection gives up and reports an error; 0 keeps retrying"
         },
         {
           "name": "method",
@@ -31135,7 +31489,8 @@
             ]
           },
           "isSignal": false,
-          "default": "GET"
+          "default": "GET",
+          "description": "HTTP method for the request; anything other than GET needs the Fetch transport"
         },
         {
           "name": "reconnectDelay",
@@ -31147,7 +31502,7 @@
           },
           "isSignal": false,
           "default": 1000,
-          "description": "First retry delay. Doubles per consecutive failure, up to the maximum."
+          "description": "First retry delay in milliseconds, doubling per consecutive failure up to Max Reconnect Delay"
         },
         {
           "name": "reconnectOnStreamEnd",
@@ -31159,7 +31514,7 @@
           },
           "isSignal": false,
           "default": false,
-          "description": "Reconnect when the server closes the stream cleanly. Off by default: an agent response stream is finite, and reconnecting would re-issue the request and start the response again."
+          "description": "Reconnects when the server closes the stream cleanly; off by default because reconnecting an agent stream re-issues the request"
         },
         {
           "name": "textPath",
@@ -31170,7 +31525,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Where the text lives inside a JSON payload, as a dot path — for an OpenAI-compatible endpoint, choices.0.delta.content. Leave blank for a stream that sends bare text. Whatever it names ends up on the Text output, which is always a string."
+          "description": "Where the text lives inside a JSON payload, as a dot path such as choices.0.delta.content; leave blank for a stream of bare text"
         },
         {
           "name": "transport",
@@ -31195,7 +31550,8 @@
             ]
           },
           "isSignal": false,
-          "default": "auto"
+          "default": "auto",
+          "description": "How the stream is fetched: Fetch carries headers and a body, EventSource lets the browser handle reconnection, Auto prefers Fetch"
         },
         {
           "name": "url",
@@ -31205,7 +31561,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Endpoint to stream from; changing it while connected reconnects to the new one"
         },
         {
           "name": "withCredentials",
@@ -31216,7 +31573,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "Sends cookies and HTTP auth to a cross-origin endpoint, which the server must also allow"
         }
       ],
       "outputs": [
@@ -31228,7 +31586,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True only while the stream is open and frames may arrive"
         },
         {
           "name": "connectionState",
@@ -31238,7 +31597,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Where the connection is: idle, connecting, open, reconnecting, closed or error"
         },
         {
           "name": "data",
@@ -31248,7 +31608,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The event payload, parsed as JSON when it is JSON and handed over as text when it is not"
         },
         {
           "name": "deliverySemantics",
@@ -31258,7 +31619,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "What this stream actually guarantees, derived from whether the server sends ids: at-most-once, at-least-once or at-least-once-deduped"
         },
         {
           "name": "duplicatesSuppressed",
@@ -31268,7 +31630,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many replayed events Dedupe By Id has dropped on this connection"
         },
         {
           "name": "eventType",
@@ -31278,7 +31641,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The event name the server sent, or message when it sent none"
         },
         {
           "name": "lastError",
@@ -31288,7 +31652,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "What went wrong most recently, including the reason a retry was scheduled"
         },
         {
           "name": "lastEventId",
@@ -31298,7 +31663,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The furthest id the server has reported, which is the point a reconnect resumes from"
         },
         {
           "name": "lastMessageTime",
@@ -31308,7 +31674,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "When the last event arrived, as milliseconds since the epoch; useful for spotting a stalled stream"
         },
         {
           "name": "messageCount",
@@ -31318,7 +31685,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many events have been delivered on this connection, not counting suppressed duplicates"
         },
         {
           "name": "onClose",
@@ -31328,7 +31696,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the stream has stopped for good, whether it ended cleanly or gave up"
         },
         {
           "name": "onError",
@@ -31338,7 +31707,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the stream failed or dropped, whether or not a retry is going to follow"
         },
         {
           "name": "onMessage",
@@ -31348,7 +31718,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once per event, after Data, Raw and Text already hold it"
         },
         {
           "name": "onOpen",
@@ -31358,7 +31729,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the stream has been established"
         },
         {
           "name": "raw",
@@ -31368,7 +31740,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The event payload exactly as it arrived, before any parsing"
         },
         {
           "name": "retryCount",
@@ -31378,7 +31751,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Consecutive failed attempts in the current outage; back to zero once the stream opens"
         },
         {
           "name": "text",
@@ -31388,7 +31762,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The one data output guaranteed to be a string: Raw when no Text Path is set, the field at that path when one is, blank when it does not resolve"
         }
       ],
       "dynamicPorts": null,
@@ -31630,7 +32005,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Throws the history away and starts again from the live state"
         },
         {
           "name": "coalesceMs",
@@ -31642,7 +32018,7 @@
           },
           "isSignal": false,
           "default": 0,
-          "description": "Fold successive changes to the same keys within this many milliseconds into one undo step, so typing is one undo rather than one per keystroke. 0 records every change separately."
+          "description": "Window in milliseconds within which successive changes to the same keys fold into one undo step; 0 records every change separately"
         },
         {
           "name": "enabled",
@@ -31654,7 +32030,7 @@
           },
           "isSignal": false,
           "default": true,
-          "description": "Turning this off pauses recording. The history already collected is kept."
+          "description": "Turning this off pauses recording and keeps the entries already collected"
         },
         {
           "name": "maxHistory",
@@ -31666,7 +32042,7 @@
           },
           "isSignal": false,
           "default": 50,
-          "description": "How many entries to keep. The oldest are dropped first. An unbounded history is a memory leak."
+          "description": "How many entries to keep before the oldest is dropped, never below two and never dropping the current one"
         },
         {
           "name": "storeName",
@@ -31677,7 +32053,8 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "app"
+          "default": "app",
+          "description": "Names the global store to record; one tracker per store is enough, and two on the same store share one history"
         },
         {
           "name": "trackKeys",
@@ -31688,7 +32065,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Comma-separated keys to record. Blank records the whole store. Undo then writes only these keys and leaves the rest alone. Changing this clears the history."
+          "description": "Comma-separated keys to record; leave blank to record the whole store, and note that changing this clears the history"
         }
       ],
       "outputs": [
@@ -31700,7 +32077,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Comma-separated keys an undo cannot fully restore because they hold live objects rather than data"
         },
         {
           "name": "canRedo",
@@ -31710,7 +32088,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True when an undo has been made and there is a later entry to step forward to"
         },
         {
           "name": "canUndo",
@@ -31720,7 +32099,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True when there is an earlier entry to step back to"
         },
         {
           "name": "currentIndex",
@@ -31730,7 +32110,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Where in the history the store is sitting; -1 when nothing is being tracked"
         },
         {
           "name": "fullyRestorable",
@@ -31740,7 +32121,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "False when some entry holds a Collection, a Model or a function, which a snapshot can only keep by reference"
         },
         {
           "name": "history",
@@ -31750,7 +32132,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "One entry per recorded change, each with its index, timestamp, description and changed keys, but not its state"
         },
         {
           "name": "historyChanged",
@@ -31760,7 +32143,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires whenever an entry is added, the position moves, or the history is cleared"
         },
         {
           "name": "historySize",
@@ -31770,7 +32154,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many entries the history holds, including the baseline it started from"
         }
       ],
       "dynamicPorts": null,
@@ -31801,7 +32186,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Moves the store to the entry named by Target Index"
         },
         {
           "name": "redo",
@@ -31812,7 +32198,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Steps the store forward one entry, doing nothing when it is already at the end"
         },
         {
           "name": "storeName",
@@ -31823,7 +32210,8 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "app"
+          "default": "app",
+          "description": "Names the store to step through; a State History node must already be tracking it"
         },
         {
           "name": "targetIndex",
@@ -31834,7 +32222,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Entry to move to when Jump To is signalled, counting from zero; ignored by Undo and Redo"
         },
         {
           "name": "undo",
@@ -31845,7 +32234,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Steps the store back one entry, doing nothing when it is already at the beginning"
         }
       ],
       "outputs": [
@@ -31857,7 +32247,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Comma-separated keys the restored entry put back as the same live object rather than as a copy"
         },
         {
           "name": "error",
@@ -31867,7 +32258,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last step failed; blank once one succeeds"
         },
         {
           "name": "failure",
@@ -31877,7 +32269,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the step could not be made, because nothing is tracking the store or Target Index is outside the history"
         },
         {
           "name": "fullyRestorable",
@@ -31887,7 +32280,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "False when the entry just restored held live objects a snapshot could only keep by reference"
         },
         {
           "name": "jumped",
@@ -31897,7 +32291,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the store holds the entry Target Index named"
         },
         {
           "name": "redone",
@@ -31907,7 +32302,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a step forward actually happened, and not when the history was already at its end"
         },
         {
           "name": "undone",
@@ -31917,7 +32313,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a step back actually happened, and not when the history was already at its beginning"
         }
       ],
       "dynamicPorts": null,
@@ -31948,7 +32345,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Puts a checkpoint back as an ordinary write, so it appears in the history and can itself be undone"
         },
         {
           "name": "save",
@@ -31959,7 +32357,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Copies the store as it is now and keeps it under Snapshot Name"
         },
         {
           "name": "snapshotData",
@@ -31970,7 +32369,7 @@
             "name": "object"
           },
           "isSignal": false,
-          "description": "Snapshot to restore instead of the named one — a previously exported \"Snapshot\" output. Leave blank to restore by name."
+          "description": "A previously exported Snapshot to restore instead of the named one; leave blank to restore by name"
         },
         {
           "name": "snapshotName",
@@ -31980,7 +32379,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name to save this checkpoint under, and the name Restore looks up; required to save"
         },
         {
           "name": "storeName",
@@ -31991,7 +32391,8 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "app"
+          "default": "app",
+          "description": "Names the store to snapshot or restore into"
         }
       ],
       "outputs": [
@@ -32003,7 +32404,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Comma-separated keys the checkpoint holds as live objects, so restoring will not undo changes made to them since"
         },
         {
           "name": "error",
@@ -32013,7 +32415,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last save or restore failed; blank once one succeeds"
         },
         {
           "name": "failure",
@@ -32023,7 +32426,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the checkpoint could not be saved or put back, most often an unnamed or unknown checkpoint"
         },
         {
           "name": "fullyRestorable",
@@ -32033,7 +32437,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "False when the checkpoint holds a Collection, a Model or a function, which it can only keep by reference"
         },
         {
           "name": "restored",
@@ -32043,7 +32448,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the store holds the checkpoint again"
         },
         {
           "name": "saved",
@@ -32053,7 +32459,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the checkpoint has been taken and Snapshot holds it"
         },
         {
           "name": "snapshot",
@@ -32063,7 +32470,8 @@
           "type": {
             "name": "object"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The checkpoint just saved or restored, as plain data that can be written to a file and fed back into Snapshot Data"
         }
       ],
       "dynamicPorts": null,
@@ -32107,7 +32515,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Buffers the current Data, flushing straight away if that reaches Flush Size"
         },
         {
           "name": "clear",
@@ -32118,7 +32527,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Discards the buffer and resets both counters without flushing"
         },
         {
           "name": "data",
@@ -32128,7 +32538,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The next item to buffer, of any type; its value is retained between pulses of Add"
         },
         {
           "name": "flush",
@@ -32139,7 +32550,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Hands the whole buffer to Flushed Data now; an empty buffer is a legitimate no-op"
         },
         {
           "name": "flushInterval",
@@ -32151,7 +32563,7 @@
           },
           "isSignal": false,
           "default": 0,
-          "description": "Flush automatically this often while items are buffered. 0 disables interval flushing."
+          "description": "Flush automatically this often in milliseconds while items are buffered; 0 disables interval flushing"
         },
         {
           "name": "flushSize",
@@ -32163,7 +32575,7 @@
           },
           "isSignal": false,
           "default": 0,
-          "description": "Flush automatically once this many items are buffered. 0 disables size-based flushing."
+          "description": "Flush automatically once this many items are buffered; 0 disables size-based flushing"
         },
         {
           "name": "maxSize",
@@ -32175,7 +32587,7 @@
           },
           "isSignal": false,
           "default": 10000,
-          "description": "Hard cap on buffered items. Overflow drops the oldest and is reported on Dropped Items. 0 means no cap."
+          "description": "Hard cap on buffered items; overflow drops the oldest and is counted on Dropped Items; 0 means no cap"
         }
       ],
       "outputs": [
@@ -32187,7 +32599,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Items waiting to be flushed, oldest first"
         },
         {
           "name": "bufferSize",
@@ -32197,7 +32610,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many items are waiting, which is what Flush Size is compared against"
         },
         {
           "name": "cleared",
@@ -32207,7 +32621,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the buffer has been discarded"
         },
         {
           "name": "droppedItems",
@@ -32217,7 +32632,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many items Max Size has discarded from the front since the last Clear"
         },
         {
           "name": "error",
@@ -32227,7 +32643,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last Add was refused; blank until one is"
         },
         {
           "name": "failure",
@@ -32237,7 +32654,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when Add ran before any value had arrived on Data, so nothing was buffered"
         },
         {
           "name": "flushCount",
@@ -32247,7 +32665,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many flushes have happened since the last Clear"
         },
         {
           "name": "flushed",
@@ -32257,7 +32676,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once Flushed Data holds a new batch, and not for a flush that found nothing"
         },
         {
           "name": "flushedData",
@@ -32267,7 +32687,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The batch handed over by the most recent flush; a stable array that later Adds do not mutate"
         },
         {
           "name": "overflowed",
@@ -32277,7 +32698,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when Max Size has just discarded something"
         }
       ],
       "dynamicPorts": null,
@@ -32320,7 +32742,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Appends the current Chunk, which is retained between pulses, so a second Add with no new chunk appends it again"
         },
         {
           "name": "chunk",
@@ -32330,7 +32753,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The next fragment of text to append; wire a stream Text output, not its Data output, which is JSON-parsed and is usually an object"
         },
         {
           "name": "clear",
@@ -32341,7 +32765,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Empties the buffer, the messages and both dropped counts"
         },
         {
           "name": "delimiter",
@@ -32353,7 +32778,7 @@
           },
           "isSignal": false,
           "default": "\n",
-          "description": "Message boundary. Leave empty to accumulate everything without splitting — the mode a token stream wants."
+          "description": "Message boundary to split complete messages off; leave empty to accumulate everything, which is what a token stream wants"
         },
         {
           "name": "maxLength",
@@ -32365,7 +32790,7 @@
           },
           "isSignal": false,
           "default": 1048576,
-          "description": "Cap on the pending buffer. Overflow drops the oldest characters and is reported on Dropped Characters."
+          "description": "Cap on the pending buffer in characters; overflow drops the oldest and is counted on Dropped Characters"
         },
         {
           "name": "maxMessages",
@@ -32377,7 +32802,7 @@
           },
           "isSignal": false,
           "default": 1000,
-          "description": "Cap on retained complete messages; the oldest are dropped first. 0 keeps them all, which grows forever."
+          "description": "Cap on retained complete messages, oldest dropped first; 0 keeps them all, which grows forever"
         }
       ],
       "outputs": [
@@ -32389,7 +32814,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Everything appended since the last Clear that has not yet been split off as a complete message"
         },
         {
           "name": "byteCount",
@@ -32399,7 +32825,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Length of Accumulated in UTF-8 bytes, which differs from Character Count for anything outside ASCII"
         },
         {
           "name": "changed",
@@ -32409,7 +32836,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires whenever an Add appended something, which is the cue to redraw"
         },
         {
           "name": "characterCount",
@@ -32419,7 +32847,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Length of Accumulated in characters"
         },
         {
           "name": "cleared",
@@ -32429,7 +32858,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once the buffer and the messages have been emptied"
         },
         {
           "name": "droppedCharacters",
@@ -32439,7 +32869,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many characters Max Length has discarded from the front since the last Clear"
         },
         {
           "name": "droppedMessages",
@@ -32449,7 +32880,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many complete messages Max Messages has discarded since the last Clear"
         },
         {
           "name": "error",
@@ -32459,7 +32891,19 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why the last chunk was refused; blank once a chunk of text arrives"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a chunk was not text and nothing was appended, which usually means the wrong stream output is wired"
         },
         {
           "name": "lastMessage",
@@ -32469,7 +32913,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The most recent complete message, which is what a chat surface usually wants"
         },
         {
           "name": "messageCount",
@@ -32479,7 +32924,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many complete messages are being retained, which is not how many have arrived"
         },
         {
           "name": "messageReceived",
@@ -32489,7 +32935,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once per Add that completed at least one message, not once per message"
         },
         {
           "name": "messages",
@@ -32499,7 +32946,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Complete messages split off the delimiter, oldest first, capped at Max Messages"
         },
         {
           "name": "overflowed",
@@ -32509,7 +32957,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when Max Length or Max Messages has just discarded something"
         }
       ],
       "dynamicPorts": null,
@@ -32556,7 +33005,7 @@
           },
           "isSignal": false,
           "default": true,
-          "description": "Connect as soon as a URL is available, without waiting for a Connect signal."
+          "description": "Connect as soon as a URL is available, without waiting for a Connect signal"
         },
         {
           "name": "autoReconnect",
@@ -32567,7 +33016,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Retries after an unsolicited close with a growing backoff; turning it off reports the close as an error"
         },
         {
           "name": "connect",
@@ -32578,7 +33028,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Opens the socket, replacing one already open without reporting a close"
         },
         {
           "name": "disconnect",
@@ -32589,7 +33040,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Closes the socket and cancels any pending reconnect"
         },
         {
           "name": "heartbeatInterval",
@@ -32601,7 +33053,7 @@
           },
           "isSignal": false,
           "default": 0,
-          "description": "Send Heartbeat Message this often while open. 0 disables it. Only enable this if your server expects the message — it is application data, not a protocol ping frame."
+          "description": "Milliseconds between heartbeats while the socket is open; 0 disables it, and only enable it if your server expects the message"
         },
         {
           "name": "heartbeatMessage",
@@ -32612,7 +33064,8 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "ping"
+          "default": "ping",
+          "description": "Application text sent as the heartbeat; it is not a protocol ping frame"
         },
         {
           "name": "heartbeatReply",
@@ -32624,7 +33077,7 @@
           },
           "isSignal": false,
           "default": "pong",
-          "description": "Exact text the server answers a heartbeat with. It is measured as Latency, hidden from On Message, and — if it stops arriving — treated as a dead connection. Leave empty to only send heartbeats."
+          "description": "Exact text the server answers a heartbeat with; it is measured as Latency, hidden from On Message, and its absence is treated as a dead connection"
         },
         {
           "name": "jitter",
@@ -32636,7 +33089,7 @@
           },
           "isSignal": false,
           "default": true,
-          "description": "Spread reconnect attempts randomly across the second half of each backoff window."
+          "description": "Spreads reconnect attempts randomly across the second half of each backoff window, so a fleet does not return in lockstep"
         },
         {
           "name": "maxQueueSize",
@@ -32648,7 +33101,7 @@
           },
           "isSignal": false,
           "default": 100,
-          "description": "Messages the queue holds before further Sends are refused and counted in Dropped. 0 or less means unlimited, which can grow without bound during a long outage."
+          "description": "Messages the queue holds before further Sends are refused and counted as dropped; 0 or less is unlimited and can grow during a long outage"
         },
         {
           "name": "maxReconnectDelay",
@@ -32659,7 +33112,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 30000
+          "default": 30000,
+          "description": "Ceiling on the backoff in milliseconds, however many attempts there have been"
         },
         {
           "name": "maxRetries",
@@ -32671,7 +33125,7 @@
           },
           "isSignal": false,
           "default": 10,
-          "description": "Reconnect attempts allowed per outage. 0 disables retrying; a negative value means unlimited."
+          "description": "Reconnect attempts allowed per outage; 0 disables retrying and a negative value means unlimited"
         },
         {
           "name": "message",
@@ -32682,7 +33136,7 @@
             "name": "*"
           },
           "isSignal": false,
-          "description": "Value to send. Objects are JSON-serialized; ArrayBuffers and typed arrays are sent as binary frames."
+          "description": "Value to send; objects are JSON-serialised, and ArrayBuffers and typed arrays go as binary frames"
         },
         {
           "name": "messageType",
@@ -32708,7 +33162,7 @@
           },
           "isSignal": false,
           "default": "auto",
-          "description": "Auto sends binary values as binary and everything else as text. Binary forces text and objects to be UTF-8 encoded first."
+          "description": "Auto sends binary values as binary and everything else as text; Binary encodes text and objects as UTF-8 first"
         },
         {
           "name": "protocols",
@@ -32719,7 +33173,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Comma-separated WebSocket subprotocols to offer during the handshake."
+          "description": "Comma-separated WebSocket subprotocols to offer during the handshake"
         },
         {
           "name": "reconnectDelay",
@@ -32731,7 +33185,7 @@
           },
           "isSignal": false,
           "default": 1000,
-          "description": "First backoff delay. Each further attempt doubles it, up to Max Reconnect Delay."
+          "description": "First backoff delay in milliseconds; each further attempt doubles it up to Max Reconnect Delay"
         },
         {
           "name": "send",
@@ -32742,7 +33196,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Hands the current Message to the socket, or applies the When Disconnected policy"
         },
         {
           "name": "url",
@@ -32752,7 +33207,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Endpoint to connect to, which must start with ws:// or wss://; changing it reconnects to the new one"
         },
         {
           "name": "whenDisconnected",
@@ -32778,7 +33234,7 @@
           },
           "isSignal": false,
           "default": "queue",
-          "description": "What a Send does while the connection is not open. Queue holds it (in order) until the socket reopens; Drop discards it and counts it; Report Error also sets Last Error and fires On Error."
+          "description": "What a Send does while the socket is not open: hold it in order, discard and count it, or also report an error"
         }
       ],
       "outputs": [
@@ -32790,7 +33246,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "WebSocket close code from the last close, or 1006 when the socket died without one"
         },
         {
           "name": "closeReason",
@@ -32800,7 +33257,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Reason the server gave for closing, which is often blank"
         },
         {
           "name": "connected",
@@ -32810,7 +33268,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True only while the socket is open and messages can be sent without queueing"
         },
         {
           "name": "connectionState",
@@ -32820,7 +33279,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Where the connection is: idle, connecting, open, reconnecting, closed or error"
         },
         {
           "name": "droppedCount",
@@ -32830,7 +33290,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Messages that will never be sent, whether discarded by policy, by a full queue, or by the node being removed"
         },
         {
           "name": "lastError",
@@ -32840,7 +33301,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "What went wrong most recently, including why a reconnect was scheduled or abandoned"
         },
         {
           "name": "latency",
@@ -32850,7 +33312,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Round trip of the last heartbeat in milliseconds; 0 until one has been measured"
         },
         {
           "name": "onClose",
@@ -32860,7 +33323,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires whenever the socket goes down, whether or not a reconnect is going to follow"
         },
         {
           "name": "onError",
@@ -32870,7 +33334,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when something went wrong: a failed connect, a refused send, a dead heartbeat, or a give-up"
         },
         {
           "name": "onMessage",
@@ -32880,7 +33345,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once per message, after Received already holds it; heartbeat replies are not messages"
         },
         {
           "name": "onMessageSent",
@@ -32890,7 +33356,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a message has been handed to the socket, including a queued one flushed on reopen; not for heartbeats"
         },
         {
           "name": "onOpen",
@@ -32900,7 +33367,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires every time the socket opens, including after a reconnect"
         },
         {
           "name": "onReconnect",
@@ -32910,7 +33378,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires on every open after the first; a WebSocket cannot resume, so this is the cue to re-fetch rather than assume continuity"
         },
         {
           "name": "queueSize",
@@ -32920,7 +33389,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Messages held because the socket was not open when Send ran"
         },
         {
           "name": "received",
@@ -32930,7 +33400,8 @@
           "type": {
             "name": "*"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The last message, parsed as JSON when it is JSON and handed over as text when it is not"
         },
         {
           "name": "receivedIsBinary",
@@ -32940,7 +33411,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "True when the last message was a binary frame, in which case Received holds the buffer"
         },
         {
           "name": "receivedRaw",
@@ -32950,7 +33422,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The last text message exactly as it arrived; blank for a binary frame"
         },
         {
           "name": "retryCount",
@@ -32960,7 +33433,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Attempts made during the current outage; back to zero once the socket opens"
         }
       ],
       "dynamicPorts": null,

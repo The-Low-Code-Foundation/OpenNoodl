@@ -1064,6 +1064,7 @@
               "plug": "input",
               "group": "General",
               "displayName": "Properties to  store",
+              "description": "Whether to send only the properties wired on this node or every property the record holds; not offered when Store to is Local only",
               "default": "specified"
             }
           ]
@@ -1081,7 +1082,8 @@
               },
               "plug": "input",
               "group": "General",
-              "displayName": "Id"
+              "displayName": "Id",
+              "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
             }
           ]
         },
@@ -1094,7 +1096,8 @@
               "type": "component",
               "plug": "input",
               "group": "General",
-              "displayName": "Repeater Component"
+              "displayName": "Repeater Component",
+              "description": "Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one"
             }
           ]
         }
@@ -1108,7 +1111,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Do"
+          "displayName": "Do",
+          "description": "Writes the property inputs onto the record named by Id, and on to the backend unless Store to is Local only"
         },
         {
           "name": "storeProperties",
@@ -1128,6 +1132,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Properties to  store",
+          "description": "Whether to send only the properties wired on this node or every property the record holds; not offered when Store to is Local only",
           "default": "specified"
         },
         {
@@ -1148,6 +1153,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Store to",
+          "description": "Whether the change is sent to the backend as well as applied to the in-memory record, or only held locally",
           "default": "cloud"
         },
         {
@@ -1169,6 +1175,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Id Source",
+          "description": "Whether the record comes from the Id input or from the record the surrounding Repeater is on",
           "default": "explicit",
           "tooltip": "Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater."
         },
@@ -1177,7 +1184,8 @@
           "type": "component",
           "plug": "input",
           "group": "General",
-          "displayName": "Repeater Component"
+          "displayName": "Repeater Component",
+          "description": "Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one"
         },
         {
           "name": "modelId",
@@ -1188,7 +1196,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
         },
         {
           "name": "accessControl",
@@ -1200,6 +1209,7 @@
           "plug": "input",
           "group": "Access Control Rules",
           "displayName": "Access Control Rules",
+          "description": "Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; backends that have no per-record access control ignore them",
           "index": 1000
         },
         {
@@ -1254,7 +1264,8 @@
               },
               "plug": "input",
               "group": "General",
-              "displayName": "Id"
+              "displayName": "Id",
+              "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
             }
           ]
         },
@@ -1267,7 +1278,8 @@
               "type": "component",
               "plug": "input",
               "group": "General",
-              "displayName": "Repeater Component"
+              "displayName": "Repeater Component",
+              "description": "Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one"
             }
           ]
         }
@@ -1281,7 +1293,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Do"
+          "displayName": "Do",
+          "description": "Deletes the record named by Id from its Class in the backend"
         },
         {
           "name": "idSource",
@@ -1302,6 +1315,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Id Source",
+          "description": "Whether the record comes from the Id input or from the record the surrounding Repeater is on",
           "default": "explicit",
           "tooltip": "Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater."
         },
@@ -1310,7 +1324,8 @@
           "type": "component",
           "plug": "input",
           "group": "General",
-          "displayName": "Repeater Component"
+          "displayName": "Repeater Component",
+          "description": "Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one"
         },
         {
           "name": "modelId",
@@ -1321,7 +1336,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
         },
         {
           "name": "deleted",
@@ -1370,7 +1386,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Do"
+          "displayName": "Do",
+          "description": "Creates a record in the chosen Class from the property inputs and sends it to the backend"
         },
         {
           "name": "sourceObjectId",
@@ -1380,7 +1397,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Source Object Id"
+          "displayName": "Source Object Id",
+          "description": "Id of an existing record whose properties seed the new one before the property inputs are applied over them; leave blank to start empty"
         },
         {
           "name": "accessControl",
@@ -1392,6 +1410,7 @@
           "plug": "input",
           "group": "Access Control Rules",
           "displayName": "Access Control Rules",
+          "description": "Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; backends that have no per-record access control ignore them",
           "index": 1000
         },
         {
@@ -1446,7 +1465,8 @@
               },
               "plug": "input",
               "group": "General",
-              "displayName": "Id"
+              "displayName": "Id",
+              "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
             }
           ]
         },
@@ -1459,7 +1479,8 @@
               "type": "component",
               "plug": "input",
               "group": "General",
-              "displayName": "Repeater Component"
+              "displayName": "Repeater Component",
+              "description": "Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one"
             }
           ]
         }
@@ -1473,7 +1494,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Do"
+          "displayName": "Do",
+          "description": "Adds the record named by Target Record Id to the chosen Relation on the record named by Id"
         },
         {
           "name": "idSource",
@@ -1494,6 +1516,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Id Source",
+          "description": "Whether the record comes from the Id input or from the record the surrounding Repeater is on",
           "default": "explicit",
           "tooltip": "Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater."
         },
@@ -1502,7 +1525,8 @@
           "type": "component",
           "plug": "input",
           "group": "General",
-          "displayName": "Repeater Component"
+          "displayName": "Repeater Component",
+          "description": "Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one"
         },
         {
           "name": "modelId",
@@ -1513,7 +1537,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
         },
         {
           "name": "targetId",
@@ -1523,7 +1548,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Target Record Id"
+          "displayName": "Target Record Id",
+          "description": "Id of the record at the other end of the relation, which must come from a Query Records or Record output so that its class is known"
         },
         {
           "name": "relationAdded",
@@ -1577,7 +1603,8 @@
               },
               "plug": "input",
               "group": "General",
-              "displayName": "Id"
+              "displayName": "Id",
+              "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
             }
           ]
         },
@@ -1590,7 +1617,8 @@
               "type": "component",
               "plug": "input",
               "group": "General",
-              "displayName": "Repeater Component"
+              "displayName": "Repeater Component",
+              "description": "Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one"
             }
           ]
         }
@@ -1604,7 +1632,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Do"
+          "displayName": "Do",
+          "description": "Removes the record named by Target Record Id from the chosen Relation on the record named by Id"
         },
         {
           "name": "idSource",
@@ -1625,6 +1654,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Id Source",
+          "description": "Whether the record comes from the Id input or from the record the surrounding Repeater is on",
           "default": "explicit",
           "tooltip": "Choose if you want to specify the Id explicitly, \n or if you want it to be that of the current record in a repeater."
         },
@@ -1633,7 +1663,8 @@
           "type": "component",
           "plug": "input",
           "group": "General",
-          "displayName": "Repeater Component"
+          "displayName": "Repeater Component",
+          "description": "Names which Repeater supplies the current record when Id Source is From repeater; leave blank to use the nearest enclosing one"
         },
         {
           "name": "modelId",
@@ -1644,7 +1675,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
         },
         {
           "name": "targetId",
@@ -1654,7 +1686,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Target Record Id"
+          "displayName": "Target Record Id",
+          "description": "Id of the record at the other end of the relation, which must come from a Query Records or Record output so that its class is known"
         },
         {
           "name": "relationRemoved",
@@ -1699,7 +1732,8 @@
           "type": "array",
           "plug": "input",
           "group": "General",
-          "displayName": "Items"
+          "displayName": "Items",
+          "description": "The records to filter, normally the Items output of a Query Records node"
         },
         {
           "name": "enabled",
@@ -1707,6 +1741,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Enabled",
+          "description": "Passes every record through unchanged when off, rather than emptying the result",
           "default": true
         },
         {
@@ -1717,7 +1752,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Filter"
+          "displayName": "Filter",
+          "description": "Re-runs the filter, and wiring anything to this port also stops the node re-running on its own when Items, Enabled or the filter settings change"
         },
         {
           "name": "items",
@@ -1785,7 +1821,8 @@
               },
               "plug": "input",
               "group": "General",
-              "displayName": "Id"
+              "displayName": "Id",
+              "description": "Id of the object to bind to, which is created the first time it is named; an Object or a plain JS object may be wired here instead, and null or blank binds nothing"
             }
           ]
         },
@@ -1798,7 +1835,8 @@
               "type": "component",
               "plug": "input",
               "group": "General",
-              "displayName": "Repeater Component"
+              "displayName": "Repeater Component",
+              "description": "Which Repeater to take the item from when several are nested; leave blank to use the nearest one, and ignored unless Get Id from is From repeater"
             }
           ]
         }
@@ -1823,6 +1861,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Get Id from",
+          "description": "Where the object comes from: the Id input, or the item of the Repeater this node sits inside",
           "default": "explicit"
         },
         {
@@ -1830,7 +1869,8 @@
           "type": "component",
           "plug": "input",
           "group": "General",
-          "displayName": "Repeater Component"
+          "displayName": "Repeater Component",
+          "description": "Which Repeater to take the item from when several are nested; leave blank to use the nearest one, and ignored unless Get Id from is From repeater"
         },
         {
           "name": "modelId",
@@ -1841,7 +1881,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the object to bind to, which is created the first time it is named; an Object or a plain JS object may be wired here instead, and null or blank binds nothing"
         },
         {
           "name": "properties",
@@ -1851,7 +1892,8 @@
           },
           "plug": "input",
           "group": "Properties",
-          "displayName": "Properties"
+          "displayName": "Properties",
+          "description": "Names the properties to read and write; each name listed here gets an input, an output and a Changed signal"
         },
         {
           "name": "fetch",
@@ -1861,7 +1903,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Fetch"
+          "displayName": "Fetch",
+          "description": "Re-reads the object named by Id; connecting anything here switches the node to pull mode, so Id alone no longer rebinds it and changes to the object stop being announced"
         },
         {
           "name": "id",
@@ -1908,7 +1951,8 @@
               },
               "plug": "input",
               "group": "General",
-              "displayName": "Id"
+              "displayName": "Id",
+              "description": "Id of the object to act on, which is created the first time it is named; an Object may be wired here instead, and null or blank binds nothing so Do fails"
             }
           ]
         },
@@ -1921,7 +1965,8 @@
               "type": "component",
               "plug": "input",
               "group": "General",
-              "displayName": "Repeater Component"
+              "displayName": "Repeater Component",
+              "description": "Which Repeater to take the item from when several are nested; leave blank to use the nearest one, and ignored unless Id Source is From repeater"
             }
           ]
         }
@@ -1935,7 +1980,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Do"
+          "displayName": "Do",
+          "description": "Writes the property values currently on the inputs onto the object named by Id"
         },
         {
           "name": "idSource",
@@ -1956,6 +2002,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Id Source",
+          "description": "Where the object comes from: the Id input, or the item of the Repeater this node sits inside",
           "default": "explicit"
         },
         {
@@ -1963,7 +2010,8 @@
           "type": "component",
           "plug": "input",
           "group": "General",
-          "displayName": "Repeater Component"
+          "displayName": "Repeater Component",
+          "description": "Which Repeater to take the item from when several are nested; leave blank to use the nearest one, and ignored unless Id Source is From repeater"
         },
         {
           "name": "modelId",
@@ -1974,7 +2022,8 @@
           },
           "plug": "input",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the object to act on, which is created the first time it is named; an Object may be wired here instead, and null or blank binds nothing so Do fails"
         },
         {
           "name": "properties",
@@ -1984,7 +2033,8 @@
           },
           "plug": "input",
           "group": "Properties to set",
-          "displayName": "Properties"
+          "displayName": "Properties",
+          "description": "Names the properties to write; each name listed here gets a value input and a type selector"
         },
         {
           "name": "stored",
@@ -2032,7 +2082,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Do"
+          "displayName": "Do",
+          "description": "Creates a new object with a generated id and writes the property values currently on the inputs"
         },
         {
           "name": "properties",
@@ -2042,7 +2093,8 @@
           },
           "plug": "input",
           "group": "Properties to set",
-          "displayName": "Properties"
+          "displayName": "Properties",
+          "description": "Names the properties to write; each name listed here gets a value input and a type selector"
         },
         {
           "name": "created",
@@ -3056,6 +3108,7 @@
           "plug": "input",
           "group": "Store",
           "displayName": "Store Name",
+          "description": "Names the store this node reads; several nodes may share a name and every one of them sees the same state",
           "default": "app"
         },
         {
@@ -3063,7 +3116,8 @@
           "type": "object",
           "plug": "input",
           "group": "Store",
-          "displayName": "Initial State"
+          "displayName": "Initial State",
+          "description": "Keys to fill in on stores that do not already have them, as an object or as JSON text; live values are never overwritten"
         },
         {
           "name": "persist",
@@ -3071,6 +3125,7 @@
           "plug": "input",
           "group": "Store",
           "displayName": "Persist",
+          "description": "Keeps the store in browser storage so it survives a reload; under SSR and cloud functions there is no storage and Error says so",
           "default": false
         },
         {
@@ -3078,7 +3133,8 @@
           "type": "string",
           "plug": "input",
           "group": "Store",
-          "displayName": "Storage Key"
+          "displayName": "Storage Key",
+          "description": "Name to store the persisted copy under, defaulting to Store Name; ignored unless Persist is on"
         },
         {
           "name": "state",
@@ -3137,6 +3193,7 @@
           "plug": "input",
           "group": "Store",
           "displayName": "Store Name",
+          "description": "Names the store to write; must match the Store Name of the Global Store node that owns it",
           "default": "app"
         },
         {
@@ -3144,14 +3201,16 @@
           "type": "string",
           "plug": "input",
           "group": "Update",
-          "displayName": "Key"
+          "displayName": "Key",
+          "description": "Key to write; a Set with no key is refused rather than dropped"
         },
         {
           "name": "value",
           "type": "*",
           "plug": "input",
           "group": "Update",
-          "displayName": "Value"
+          "displayName": "Value",
+          "description": "Value to write, of any type; null is stored as null and is not coerced to a blank string"
         },
         {
           "name": "merge",
@@ -3159,6 +3218,7 @@
           "plug": "input",
           "group": "Update",
           "displayName": "Merge Object",
+          "description": "Shallow-merges into the existing value when both the old and the new value are plain objects, instead of replacing it",
           "default": false
         },
         {
@@ -3167,6 +3227,7 @@
           "plug": "input",
           "group": "Update",
           "displayName": "Batch With Others",
+          "description": "Holds the notification until the end of the current microtask so several writers in one turn produce a single change",
           "default": false
         },
         {
@@ -3177,7 +3238,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Set"
+          "displayName": "Set",
+          "description": "Writes Value at Key, reading both as of the end of the current frame"
         },
         {
           "name": "completed",
@@ -3185,6 +3247,13 @@
           "plug": "output",
           "group": "Events",
           "displayName": "Completed"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
         },
         {
           "name": "error",
@@ -3208,6 +3277,7 @@
           "plug": "input",
           "group": "Store",
           "displayName": "Store Name",
+          "description": "Names the store to watch; must match the Store Name of the Global Store node that owns it",
           "default": "app"
         },
         {
@@ -3216,6 +3286,7 @@
           "plug": "input",
           "group": "Subscribe",
           "displayName": "Keys",
+          "description": "Comma-separated keys to watch; leave blank to react to every change in the store",
           "tooltip": "Comma-separated keys to watch. Leave blank to react to every change in the store."
         },
         {
@@ -3261,6 +3332,7 @@
           "plug": "input",
           "group": "Store",
           "displayName": "Store Name",
+          "description": "Names the store holding the key this update writes",
           "default": "app"
         },
         {
@@ -3268,14 +3340,16 @@
           "type": "string",
           "plug": "input",
           "group": "Store",
-          "displayName": "Key"
+          "displayName": "Key",
+          "description": "Key to write optimistically; an Apply with no key is refused rather than dropped"
         },
         {
           "name": "optimisticValue",
           "type": "*",
           "plug": "input",
           "group": "Update",
-          "displayName": "Optimistic Value"
+          "displayName": "Optimistic Value",
+          "description": "Value to show immediately, before the server has confirmed anything"
         },
         {
           "name": "errorMessage",
@@ -3283,6 +3357,7 @@
           "plug": "input",
           "group": "Update",
           "displayName": "Error Message",
+          "description": "Reason reported on Error when this update is rolled back; wire the server error here",
           "tooltip": "Reason reported on Error when this update is rolled back. Wire the server error here."
         },
         {
@@ -3291,6 +3366,7 @@
           "plug": "input",
           "group": "Transaction",
           "displayName": "Transaction Id",
+          "description": "Names the update to commit or roll back when several are in flight; leave blank to generate one and resolve to the oldest",
           "tooltip": "Leave blank to let the node generate one. Set it to commit or roll back a specific update when several are in flight."
         },
         {
@@ -3299,6 +3375,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Timeout (ms)",
+          "description": "Milliseconds to wait for an answer before rolling back on its own; 0 waits forever",
           "default": 30000,
           "tooltip": "Roll back automatically after this long with no answer. Zero disables the deadline."
         },
@@ -3321,6 +3398,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "When Removed",
+          "description": "What happens to updates still in flight when this node is removed: put the old value back, or keep the value that was shown",
           "default": "rollback",
           "tooltip": "What happens to updates still in flight when this node is removed. Rolling back keeps the store honest; keeping the value suits fire-and-forget actions the user navigates away from."
         },
@@ -3332,7 +3410,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Apply"
+          "displayName": "Apply",
+          "description": "Writes Optimistic Value at Key now and opens a transaction the server response will resolve"
         },
         {
           "name": "commit",
@@ -3342,7 +3421,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Commit"
+          "displayName": "Commit",
+          "description": "Confirms the update, so the optimistic value becomes the truth"
         },
         {
           "name": "rollback",
@@ -3352,7 +3432,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Rollback"
+          "displayName": "Rollback",
+          "description": "Puts the old value back, unless something else has written the key since"
         },
         {
           "name": "value",
@@ -3432,6 +3513,13 @@
           "displayName": "Timed Out"
         },
         {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
+        },
+        {
           "name": "error",
           "type": "string",
           "plug": "output",
@@ -3453,6 +3541,7 @@
           "plug": "input",
           "group": "Store",
           "displayName": "Store Name",
+          "description": "Names the global store to record; one tracker per store is enough, and two on the same store share one history",
           "default": "app"
         },
         {
@@ -3461,6 +3550,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Track Keys",
+          "description": "Comma-separated keys to record; leave blank to record the whole store, and note that changing this clears the history",
           "tooltip": "Comma-separated keys to record. Blank records the whole store. Undo then writes only these keys and leaves the rest alone. Changing this clears the history."
         },
         {
@@ -3469,6 +3559,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Max History",
+          "description": "How many entries to keep before the oldest is dropped, never below two and never dropping the current one",
           "default": 50,
           "tooltip": "How many entries to keep. The oldest are dropped first. An unbounded history is a memory leak."
         },
@@ -3478,6 +3569,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Coalesce (ms)",
+          "description": "Window in milliseconds within which successive changes to the same keys fold into one undo step; 0 records every change separately",
           "default": 0,
           "tooltip": "Fold successive changes to the same keys within this many milliseconds into one undo step, so typing is one undo rather than one per keystroke. 0 records every change separately."
         },
@@ -3487,6 +3579,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Enabled",
+          "description": "Turning this off pauses recording and keeps the entries already collected",
           "default": true,
           "tooltip": "Turning this off pauses recording. The history already collected is kept."
         },
@@ -3498,7 +3591,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Clear History"
+          "displayName": "Clear History",
+          "description": "Throws the history away and starts again from the live state"
         },
         {
           "name": "historySize",
@@ -3571,6 +3665,7 @@
           "plug": "input",
           "group": "Store",
           "displayName": "Store Name",
+          "description": "Names the store to step through; a State History node must already be tracking it",
           "default": "app"
         },
         {
@@ -3579,6 +3674,7 @@
           "plug": "input",
           "group": "Jump",
           "displayName": "Target Index",
+          "description": "Entry to move to when Jump To is signalled, counting from zero; ignored by Undo and Redo",
           "default": 0
         },
         {
@@ -3589,7 +3685,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Undo"
+          "displayName": "Undo",
+          "description": "Steps the store back one entry, doing nothing when it is already at the beginning"
         },
         {
           "name": "redo",
@@ -3599,7 +3696,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Redo"
+          "displayName": "Redo",
+          "description": "Steps the store forward one entry, doing nothing when it is already at the end"
         },
         {
           "name": "jumpTo",
@@ -3609,7 +3707,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Jump To"
+          "displayName": "Jump To",
+          "description": "Moves the store to the entry named by Target Index"
         },
         {
           "name": "undone",
@@ -3675,6 +3774,7 @@
           "plug": "input",
           "group": "Store",
           "displayName": "Store Name",
+          "description": "Names the store to snapshot or restore into",
           "default": "app"
         },
         {
@@ -3682,7 +3782,8 @@
           "type": "string",
           "plug": "input",
           "group": "Snapshot",
-          "displayName": "Snapshot Name"
+          "displayName": "Snapshot Name",
+          "description": "Name to save this checkpoint under, and the name Restore looks up; required to save"
         },
         {
           "name": "snapshotData",
@@ -3690,6 +3791,7 @@
           "plug": "input",
           "group": "Snapshot",
           "displayName": "Snapshot Data",
+          "description": "A previously exported Snapshot to restore instead of the named one; leave blank to restore by name",
           "tooltip": "Snapshot to restore instead of the named one — a previously exported \"Snapshot\" output. Leave blank to restore by name."
         },
         {
@@ -3700,7 +3802,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Save"
+          "displayName": "Save",
+          "description": "Copies the store as it is now and keeps it under Snapshot Name"
         },
         {
           "name": "restore",
@@ -3710,7 +3813,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Restore"
+          "displayName": "Restore",
+          "description": "Puts a checkpoint back as an ordinary write, so it appears in the history and can itself be undone"
         },
         {
           "name": "snapshot",
@@ -3791,7 +3895,8 @@
           "type": "string",
           "plug": "input",
           "group": "Connection",
-          "displayName": "URL"
+          "displayName": "URL",
+          "description": "Endpoint to connect to, which must start with ws:// or wss://; changing it reconnects to the new one"
         },
         {
           "name": "autoConnect",
@@ -3799,6 +3904,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Auto Connect",
+          "description": "Connect as soon as a URL is available, without waiting for a Connect signal",
           "default": true,
           "tooltip": "Connect as soon as a URL is available, without waiting for a Connect signal."
         },
@@ -3808,6 +3914,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Protocols",
+          "description": "Comma-separated WebSocket subprotocols to offer during the handshake",
           "tooltip": "Comma-separated WebSocket subprotocols to offer during the handshake."
         },
         {
@@ -3816,6 +3923,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Auto Reconnect",
+          "description": "Retries after an unsolicited close with a growing backoff; turning it off reports the close as an error",
           "default": true
         },
         {
@@ -3824,6 +3932,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Reconnect Delay (ms)",
+          "description": "First backoff delay in milliseconds; each further attempt doubles it up to Max Reconnect Delay",
           "default": 1000,
           "tooltip": "First backoff delay. Each further attempt doubles it, up to Max Reconnect Delay."
         },
@@ -3833,6 +3942,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Max Reconnect Delay (ms)",
+          "description": "Ceiling on the backoff in milliseconds, however many attempts there have been",
           "default": 30000
         },
         {
@@ -3841,6 +3951,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Max Retries",
+          "description": "Reconnect attempts allowed per outage; 0 disables retrying and a negative value means unlimited",
           "default": 10,
           "tooltip": "Reconnect attempts allowed per outage. 0 disables retrying; a negative value means unlimited."
         },
@@ -3850,6 +3961,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Backoff Jitter",
+          "description": "Spreads reconnect attempts randomly across the second half of each backoff window, so a fleet does not return in lockstep",
           "default": true,
           "tooltip": "Spread reconnect attempts randomly across the second half of each backoff window."
         },
@@ -3859,6 +3971,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Heartbeat Interval (ms)",
+          "description": "Milliseconds between heartbeats while the socket is open; 0 disables it, and only enable it if your server expects the message",
           "default": 0,
           "tooltip": "Send Heartbeat Message this often while open. 0 disables it. Only enable this if your server expects the message — it is application data, not a protocol ping frame."
         },
@@ -3868,6 +3981,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Heartbeat Message",
+          "description": "Application text sent as the heartbeat; it is not a protocol ping frame",
           "default": "ping"
         },
         {
@@ -3876,6 +3990,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Heartbeat Reply",
+          "description": "Exact text the server answers a heartbeat with; it is measured as Latency, hidden from On Message, and its absence is treated as a dead connection",
           "default": "pong",
           "tooltip": "Exact text the server answers a heartbeat with. It is measured as Latency, hidden from On Message, and — if it stops arriving — treated as a dead connection. Leave empty to only send heartbeats."
         },
@@ -3887,7 +4002,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Connect"
+          "displayName": "Connect",
+          "description": "Opens the socket, replacing one already open without reporting a close"
         },
         {
           "name": "disconnect",
@@ -3897,7 +4013,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Disconnect"
+          "displayName": "Disconnect",
+          "description": "Closes the socket and cancels any pending reconnect"
         },
         {
           "name": "send",
@@ -3907,7 +4024,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Send"
+          "displayName": "Send",
+          "description": "Hands the current Message to the socket, or applies the When Disconnected policy"
         },
         {
           "name": "message",
@@ -3915,6 +4033,7 @@
           "plug": "input",
           "group": "Message",
           "displayName": "Message",
+          "description": "Value to send; objects are JSON-serialised, and ArrayBuffers and typed arrays go as binary frames",
           "tooltip": "Value to send. Objects are JSON-serialized; ArrayBuffers and typed arrays are sent as binary frames."
         },
         {
@@ -3939,6 +4058,7 @@
           "plug": "input",
           "group": "Message",
           "displayName": "Message Type",
+          "description": "Auto sends binary values as binary and everything else as text; Binary encodes text and objects as UTF-8 first",
           "default": "auto",
           "tooltip": "Auto sends binary values as binary and everything else as text. Binary forces text and objects to be UTF-8 encoded first."
         },
@@ -3964,6 +4084,7 @@
           "plug": "input",
           "group": "Message",
           "displayName": "When Disconnected",
+          "description": "What a Send does while the socket is not open: hold it in order, discard and count it, or also report an error",
           "default": "queue",
           "tooltip": "What a Send does while the connection is not open. Queue holds it (in order) until the socket reopens; Drop discards it and counts it; Report Error also sets Last Error and fires On Error."
         },
@@ -3973,6 +4094,7 @@
           "plug": "input",
           "group": "Message",
           "displayName": "Max Queue Size",
+          "description": "Messages the queue holds before further Sends are refused and counted as dropped; 0 or less is unlimited and can grow during a long outage",
           "default": 100,
           "tooltip": "Messages the queue holds before further Sends are refused and counted in Dropped. 0 or less means unlimited, which can grow without bound during a long outage."
         },
@@ -4130,7 +4252,8 @@
           "type": "string",
           "plug": "input",
           "group": "Connection",
-          "displayName": "URL"
+          "displayName": "URL",
+          "description": "Endpoint to stream from; changing it while connected reconnects to the new one"
         },
         {
           "name": "transport",
@@ -4154,6 +4277,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Transport",
+          "description": "How the stream is fetched: Fetch carries headers and a body, EventSource lets the browser handle reconnection, Auto prefers Fetch",
           "default": "auto"
         },
         {
@@ -4182,6 +4306,7 @@
           "plug": "input",
           "group": "Request",
           "displayName": "Method",
+          "description": "HTTP method for the request; anything other than GET needs the Fetch transport",
           "default": "GET"
         },
         {
@@ -4189,14 +4314,16 @@
           "type": "object",
           "plug": "input",
           "group": "Request",
-          "displayName": "Headers"
+          "displayName": "Headers",
+          "description": "Request headers as an object, for bearer tokens and the like; ignored by the EventSource transport, which cannot set them"
         },
         {
           "name": "body",
           "type": "*",
           "plug": "input",
           "group": "Request",
-          "displayName": "Body"
+          "displayName": "Body",
+          "description": "Request body, sent as JSON unless it is already a string; ignored for GET and HEAD"
         },
         {
           "name": "withCredentials",
@@ -4204,6 +4331,7 @@
           "plug": "input",
           "group": "Request",
           "displayName": "With Credentials",
+          "description": "Sends cookies and HTTP auth to a cross-origin endpoint, which the server must also allow",
           "default": false
         },
         {
@@ -4212,6 +4340,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Event Types",
+          "description": "Comma-separated named event types to subscribe to; only needed for the EventSource transport, as Fetch delivers every type",
           "tooltip": "Comma-separated named event types to subscribe to. Only needed for the EventSource transport, which delivers a named event only to a listener registered in advance; the Fetch transport delivers every event type."
         },
         {
@@ -4220,6 +4349,7 @@
           "plug": "input",
           "group": "Data",
           "displayName": "Text Path",
+          "description": "Where the text lives inside a JSON payload, as a dot path such as choices.0.delta.content; leave blank for a stream of bare text",
           "tooltip": "Where the text lives inside a JSON payload, as a dot path — for an OpenAI-compatible endpoint, choices.0.delta.content. Leave blank for a stream that sends bare text. Whatever it names ends up on the Text output, which is always a string."
         },
         {
@@ -4228,6 +4358,7 @@
           "plug": "input",
           "group": "Connection",
           "displayName": "Auto Connect",
+          "description": "Opens the stream as soon as a URL is available, without waiting for a Connect signal",
           "default": false
         },
         {
@@ -4236,6 +4367,7 @@
           "plug": "input",
           "group": "Reconnection",
           "displayName": "Auto Reconnect",
+          "description": "Retries after a failure with a growing backoff; turning it off reports the failure and stops",
           "default": true
         },
         {
@@ -4244,6 +4376,7 @@
           "plug": "input",
           "group": "Reconnection",
           "displayName": "Reconnect On Stream End",
+          "description": "Reconnects when the server closes the stream cleanly; off by default because reconnecting an agent stream re-issues the request",
           "default": false,
           "tooltip": "Reconnect when the server closes the stream cleanly. Off by default: an agent response stream is finite, and reconnecting would re-issue the request and start the response again."
         },
@@ -4253,6 +4386,7 @@
           "plug": "input",
           "group": "Reconnection",
           "displayName": "Reconnect Delay (ms)",
+          "description": "First retry delay in milliseconds, doubling per consecutive failure up to Max Reconnect Delay",
           "default": 1000,
           "tooltip": "First retry delay. Doubles per consecutive failure, up to the maximum."
         },
@@ -4262,6 +4396,7 @@
           "plug": "input",
           "group": "Reconnection",
           "displayName": "Max Reconnect Delay (ms)",
+          "description": "Ceiling on the backoff in milliseconds, however many failures there have been",
           "default": 30000
         },
         {
@@ -4270,6 +4405,7 @@
           "plug": "input",
           "group": "Reconnection",
           "displayName": "Max Retries",
+          "description": "Consecutive failures allowed before the connection gives up and reports an error; 0 keeps retrying",
           "default": 0,
           "tooltip": "0 means keep retrying. Otherwise the connection reports an error after this many consecutive failures."
         },
@@ -4279,6 +4415,7 @@
           "plug": "input",
           "group": "Reconnection",
           "displayName": "Dedupe By Id",
+          "description": "Drops events whose id has already been seen, so a reconnect that resumes cannot re-deliver messages",
           "default": true,
           "tooltip": "Drop events whose id has already been seen, so a reconnect that resumes from the last event id cannot re-deliver messages. Turn off if your server reuses ids for distinct events."
         },
@@ -4290,7 +4427,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Connect"
+          "displayName": "Connect",
+          "description": "Opens the stream, replacing any connection already open and resetting the retry count"
         },
         {
           "name": "disconnect",
@@ -4300,7 +4438,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Disconnect"
+          "displayName": "Disconnect",
+          "description": "Closes the stream and stops retrying"
         },
         {
           "name": "connectionState",
@@ -4447,7 +4586,8 @@
           "type": "string",
           "plug": "input",
           "group": "Data",
-          "displayName": "Chunk"
+          "displayName": "Chunk",
+          "description": "The next fragment of text to append; wire a stream Text output, not its Data output, which is JSON-parsed and is usually an object"
         },
         {
           "name": "delimiter",
@@ -4455,6 +4595,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Delimiter",
+          "description": "Message boundary to split complete messages off; leave empty to accumulate everything, which is what a token stream wants",
           "default": "\n",
           "tooltip": "Message boundary. Leave empty to accumulate everything without splitting — the mode a token stream wants."
         },
@@ -4464,6 +4605,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Max Length (characters)",
+          "description": "Cap on the pending buffer in characters; overflow drops the oldest and is counted on Dropped Characters",
           "default": 1048576,
           "tooltip": "Cap on the pending buffer. Overflow drops the oldest characters and is reported on Dropped Characters."
         },
@@ -4473,6 +4615,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Max Messages",
+          "description": "Cap on retained complete messages, oldest dropped first; 0 keeps them all, which grows forever",
           "default": 1000,
           "tooltip": "Cap on retained complete messages; the oldest are dropped first. 0 keeps them all, which grows forever."
         },
@@ -4484,7 +4627,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Add"
+          "displayName": "Add",
+          "description": "Appends the current Chunk, which is retained between pulses, so a second Add with no new chunk appends it again"
         },
         {
           "name": "clear",
@@ -4494,7 +4638,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Clear"
+          "displayName": "Clear",
+          "description": "Empties the buffer, the messages and both dropped counts"
         },
         {
           "name": "accumulated",
@@ -4586,6 +4731,13 @@
           "plug": "output",
           "group": "Events",
           "displayName": "Overflowed"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
         }
       ]
     },
@@ -4613,7 +4765,8 @@
           "type": "string",
           "plug": "input",
           "group": "Data",
-          "displayName": "Chunk"
+          "displayName": "Chunk",
+          "description": "The next fragment of the stream; boundaries may fall anywhere, including inside a string"
         },
         {
           "name": "format",
@@ -4637,6 +4790,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Format",
+          "description": "How values are framed on this stream: one per line, any concatenation of complete values, or one whole document",
           "default": "ndjson"
         },
         {
@@ -4645,6 +4799,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Max Pending (characters)",
+          "description": "Cap on unparsed text held while a value completes; exceeding it clears the buffer and reports an error rather than growing forever",
           "default": 1048576,
           "tooltip": "Cap on unparsed text held while waiting for a value to complete. Exceeding it clears the buffer and reports an error, rather than growing without limit on a malformed stream."
         },
@@ -4656,7 +4811,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Parse"
+          "displayName": "Parse",
+          "description": "Appends the current Chunk and emits every value that is now complete; the chunk is retained between pulses"
         },
         {
           "name": "clear",
@@ -4666,7 +4822,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Clear"
+          "displayName": "Clear",
+          "description": "Discards the pending text, the parsed values and the error counter"
         },
         {
           "name": "parsed",
@@ -4764,7 +4921,8 @@
           "type": "string",
           "plug": "input",
           "group": "Data",
-          "displayName": "Text"
+          "displayName": "Text",
+          "description": "The text to search"
         },
         {
           "name": "pattern",
@@ -4772,6 +4930,7 @@
           "plug": "input",
           "group": "Pattern",
           "displayName": "Pattern",
+          "description": "A JavaScript regular expression without the surrounding slashes; capture groups appear on Groups",
           "tooltip": "A JavaScript regular expression, without the surrounding slashes. Capture groups appear on Groups."
         },
         {
@@ -4780,6 +4939,7 @@
           "plug": "input",
           "group": "Pattern",
           "displayName": "Flags",
+          "description": "Regex flags i, m, s, u and y; g is controlled by Extract All and a g written here is ignored",
           "tooltip": "Regex flags: i (ignore case), m (multiline), s (dot matches newline), u (unicode). g is controlled by Extract All."
         },
         {
@@ -4788,6 +4948,7 @@
           "plug": "input",
           "group": "Pattern",
           "displayName": "Extract All",
+          "description": "Collects every match into Matches instead of stopping at the first one",
           "default": false
         },
         {
@@ -4798,7 +4959,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Extract"
+          "displayName": "Extract",
+          "description": "Runs Pattern over Text and reports what it found"
         },
         {
           "name": "match",
@@ -4896,7 +5058,8 @@
           "type": "*",
           "plug": "input",
           "group": "Data",
-          "displayName": "Data"
+          "displayName": "Data",
+          "description": "The next item to buffer, of any type; its value is retained between pulses of Add"
         },
         {
           "name": "flushSize",
@@ -4904,6 +5067,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Flush Size",
+          "description": "Flush automatically once this many items are buffered; 0 disables size-based flushing",
           "default": 0,
           "tooltip": "Flush automatically once this many items are buffered. 0 disables size-based flushing."
         },
@@ -4913,6 +5077,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Flush Interval (ms)",
+          "description": "Flush automatically this often in milliseconds while items are buffered; 0 disables interval flushing",
           "default": 0,
           "tooltip": "Flush automatically this often while items are buffered. 0 disables interval flushing."
         },
@@ -4922,6 +5087,7 @@
           "plug": "input",
           "group": "Config",
           "displayName": "Max Size",
+          "description": "Hard cap on buffered items; overflow drops the oldest and is counted on Dropped Items; 0 means no cap",
           "default": 10000,
           "tooltip": "Hard cap on buffered items. Overflow drops the oldest and is reported on Dropped Items. 0 means no cap."
         },
@@ -4933,7 +5099,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Add"
+          "displayName": "Add",
+          "description": "Buffers the current Data, flushing straight away if that reaches Flush Size"
         },
         {
           "name": "flush",
@@ -4943,7 +5110,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Flush"
+          "displayName": "Flush",
+          "description": "Hands the whole buffer to Flushed Data now; an empty buffer is a legitimate no-op"
         },
         {
           "name": "clear",
@@ -4953,7 +5121,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Clear"
+          "displayName": "Clear",
+          "description": "Discards the buffer and resets both counters without flushing"
         },
         {
           "name": "buffer",
@@ -5053,6 +5222,7 @@
           "plug": "input",
           "group": "Dispatcher",
           "displayName": "Channel",
+          "description": "Names the handler registry this dispatcher draws on; leave it as default unless two independent flows must not see each other",
           "default": "default",
           "tooltip": "Names the handler registry this dispatcher draws on. Leave as \"default\" unless two independent flows must not see each other."
         },
@@ -5062,6 +5232,7 @@
           "plug": "input",
           "group": "Action",
           "displayName": "Action",
+          "description": "An action object, an array of them to run in order, or JSON text holding either",
           "tooltip": "An action object, an array of them to run in order, or JSON text holding either."
         },
         {
@@ -5070,6 +5241,7 @@
           "plug": "input",
           "group": "Built-in Actions",
           "displayName": "Enabled Built-ins",
+          "description": "Comma-separated built-in action names this dispatcher may execute; empty, the default, means a server cannot write to the store at all",
           "tooltip": "Comma-separated built-in action names this dispatcher may execute: SET_STORE, MERGE_STORE, DELETE_STORE_KEY, CLEAR_STORE. Empty — the default — means a server cannot write to the store at all; everything must go through an Action Handler you wired."
         },
         {
@@ -5078,6 +5250,7 @@
           "plug": "input",
           "group": "Built-in Actions",
           "displayName": "Store Name",
+          "description": "The only store the built-in actions can write; a store named inside an incoming action is ignored",
           "default": "app",
           "tooltip": "The only store the built-in actions can write. A store named inside an incoming action is ignored — the graph chooses the store, not the server."
         },
@@ -5087,6 +5260,7 @@
           "plug": "input",
           "group": "Built-in Actions",
           "displayName": "Allowed Keys",
+          "description": "Comma-separated keys the built-in store actions may write; blank means any key, and setting any key also refuses CLEAR_STORE",
           "tooltip": "Comma-separated keys the built-in store actions may write. Blank means any key of the configured store. Setting any key also refuses CLEAR_STORE."
         },
         {
@@ -5095,6 +5269,7 @@
           "plug": "input",
           "group": "Delivery",
           "displayName": "Handler Timeout (ms)",
+          "description": "Milliseconds a handler has to signal Complete or Fail before the action is failed; 0 waits forever",
           "default": 30000,
           "tooltip": "How long a handler has to signal Complete or Fail before the action is failed. 0 waits forever."
         },
@@ -5104,6 +5279,7 @@
           "plug": "input",
           "group": "Delivery",
           "displayName": "Wait For Handler (ms)",
+          "description": "Milliseconds an action waits for its handler to appear before being refused as unknown; everything behind it waits too",
           "default": 2000,
           "tooltip": "How long an action waits for its handler to appear before being refused as unknown — the window in which a component can still mount. 0 refuses immediately. Everything behind it waits too, because order is preserved."
         },
@@ -5113,6 +5289,7 @@
           "plug": "input",
           "group": "Delivery",
           "displayName": "Max Queue Size",
+          "description": "Bound on queued actions; overflow refuses the newest so accepted actions keep their order; 0 is unbounded",
           "default": 100,
           "tooltip": "Bound on queued actions. Overflow refuses the newest so accepted actions keep their order. 0 is unbounded."
         },
@@ -5122,6 +5299,7 @@
           "plug": "input",
           "group": "Delivery",
           "displayName": "Rate Limit",
+          "description": "Actions executed per window before the rest are refused rather than delayed; 0 is unlimited",
           "default": 0,
           "tooltip": "Max actions executed per window. 0 is unlimited. Excess actions are refused, not delayed."
         },
@@ -5131,6 +5309,7 @@
           "plug": "input",
           "group": "Delivery",
           "displayName": "Rate Limit Window (ms)",
+          "description": "Length of the rate-limit window in milliseconds; ignored unless Rate Limit is set",
           "default": 60000
         },
         {
@@ -5141,7 +5320,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Dispatch"
+          "displayName": "Dispatch",
+          "description": "Admits whatever is on Action and runs it, or refuses it with a reason"
         },
         {
           "name": "cancel",
@@ -5151,7 +5331,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Cancel All"
+          "displayName": "Cancel All",
+          "description": "Discards everything queued and abandons anything in flight, reporting how many were dropped"
         },
         {
           "name": "actionType",
@@ -5326,6 +5507,7 @@
           "plug": "input",
           "group": "Handler",
           "displayName": "Channel",
+          "description": "Must match the Channel on the Action Dispatcher that should be able to reach this handler",
           "default": "default",
           "tooltip": "Must match the Channel on the Action Dispatcher that should be able to reach this handler."
         },
@@ -5335,6 +5517,7 @@
           "plug": "input",
           "group": "Handler",
           "displayName": "Action Type",
+          "description": "The exact action type this handler accepts; registering it is what makes it executable at all",
           "tooltip": "The exact action type this handler accepts, e.g. OPEN_SESSION. Registering it is what makes it executable at all."
         },
         {
@@ -5343,6 +5526,7 @@
           "plug": "input",
           "group": "Handler",
           "displayName": "Enabled",
+          "description": "Turning this off unregisters the handler, so the action is refused as unknown rather than quietly ignored",
           "default": true,
           "tooltip": "Turning this off unregisters the handler, so the action is refused as unknown rather than quietly ignored."
         },
@@ -5352,6 +5536,7 @@
           "plug": "input",
           "group": "Completion",
           "displayName": "Auto Complete",
+          "description": "Reports the action complete as soon as Trigger has been sent; turn it off when a later step must finish first",
           "default": true,
           "tooltip": "Report the action complete as soon as Trigger has been sent. Turn off when a later step must wait for this one to finish, and wire Complete or Fail yourself."
         },
@@ -5361,6 +5546,7 @@
           "plug": "input",
           "group": "Completion",
           "displayName": "Result",
+          "description": "Handed back to the dispatcher as the Result of this action when it completes",
           "tooltip": "Handed back to the dispatcher as the Result of this action when it completes."
         },
         {
@@ -5368,7 +5554,8 @@
           "type": "string",
           "plug": "input",
           "group": "Completion",
-          "displayName": "Error Message"
+          "displayName": "Error Message",
+          "description": "Reason handed back to the dispatcher when Fail is signalled; a generic one is used when this is blank"
         },
         {
           "name": "complete",
@@ -5378,7 +5565,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Complete"
+          "displayName": "Complete",
+          "description": "Reports the action finished, so the dispatcher runs whatever is queued behind it; ignored unless Auto Complete is off"
         },
         {
           "name": "fail",
@@ -5388,7 +5576,8 @@
           },
           "plug": "input",
           "group": "Actions",
-          "displayName": "Fail"
+          "displayName": "Fail",
+          "description": "Reports the action failed, so the dispatcher fires Failed with Error Message as the reason"
         },
         {
           "name": "trigger",
@@ -5431,6 +5620,13 @@
           "plug": "output",
           "group": "Status",
           "displayName": "Error"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
         }
       ]
     },
