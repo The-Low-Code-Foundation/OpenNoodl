@@ -16,9 +16,12 @@ import { AUTH_ADAPTER_METHODS } from '@noodl/backend-contract';
 import type { BackendHandle } from '@noodl/backend-contract';
 
 import {
+  REST_USER_READONLY_FIELDS,
   RestAuthAdapter,
   SUPABASE_AUTH_UNSUPPORTED,
   jwtExpiryMs,
+  readAuthMethods,
+  restAuthProfileFor,
   restSessionKey
 } from '../../src/api/backends/RestAuthAdapter';
 import { SessionStore } from '../../src/api/backends/SessionStore';
@@ -584,5 +587,344 @@ describe('errors reach the node as a sentence', () => {
     );
     expect(pError).toBe('Failed to authenticate.');
     p.adapter.dispose();
+  });
+});
+
+// ── OAuth — step 5 ──────────────────────────────────────────────────────────
+
+/**
+ * The provider flow, with the parts that are not the wire pinned here.
+ *
+ * The **wire** half of step 5 is measured live rather than mocked
+ * (`uba-e2e/bcn-006-oauth-driver.ts`, 39 checks against a real PocketBase and a
+ * stub OIDC provider). What that pass cannot pin is the set of things that are
+ * *refusals* — a flow that never leaves the page has no wire to observe — and
+ * those are exactly the checks BCN-006's promise rests on: nothing silently
+ * missing.
+ *
+ * ⚠️ Every one of these fails when the branch it covers is reverted. Two of them
+ * exist **because** a live check that looked equivalent stayed green under
+ * mutation: asserting "the return failed" passed with the `state` comparison
+ * deleted, because a foreign code is one the backend rejects anyway.
+ */
+
+/** The smallest `window` `signInWithProvider` and `consumeAuthReturn` need. */
+function installFakeWindow(href: string) {
+  const url = new URL(href);
+  const navigations: string[] = [];
+  const fake = {
+    location: {
+      get href() {
+        return url.toString();
+      },
+      set href(next: string) {
+        navigations.push(next);
+      },
+      get search() {
+        return url.search;
+      },
+      get pathname() {
+        return url.pathname;
+      },
+      get hash() {
+        return url.hash;
+      }
+    },
+    history: {
+      state: null,
+      replaceState(_state: unknown, _title: string, next: string) {
+        url.search = new URL(next, url.origin).search;
+      }
+    }
+  };
+  (globalThis as unknown as { window: unknown }).window = fake;
+  return { navigations, url };
+}
+
+function removeFakeWindow() {
+  delete (globalThis as unknown as { window?: unknown }).window;
+}
+
+/** `auth-methods` with one provider, shaped as PocketBase 0.30 answers it. */
+const POCKETBASE_AUTH_METHODS = {
+  password: { identityFields: ['email'], enabled: true },
+  oauth2: {
+    enabled: true,
+    providers: [
+      {
+        name: 'oidc',
+        displayName: 'Acme SSO',
+        state: 'the-state',
+        // ⚠️ Ends in a bare `redirect_uri=`. Measured, and the whole reason
+        // `signInWithProvider` appends rather than assuming a complete URL.
+        authURL: 'https://idp.example/authorize?client_id=x&code_challenge=y&state=the-state&redirect_uri=',
+        authUrl: 'https://idp.example/authorize?client_id=x&code_challenge=y&state=the-state&redirect_uri=',
+        codeVerifier: 'the-verifier'
+      }
+    ]
+  },
+  // Not an empty array when OAuth is off — `null`. Measured, and the reason the
+  // descriptor's probe moved off this field.
+  authProviders: null,
+  otp: { enabled: false, duration: 0 }
+};
+
+describe('signInWithProvider', () => {
+  afterEach(removeFakeWindow);
+
+  it('asks the backend which providers exist before navigating anywhere', async () => {
+    const { navigations } = installFakeWindow('https://app.example/page');
+    const { adapter, fetcher, storage } = makeAdapter();
+    fetcher.reply(200, POCKETBASE_AUTH_METHODS);
+
+    adapter.signInWithProvider(pocketbase, { provider: 'oidc', error: () => undefined });
+    await settle();
+
+    expect(fetcher.calls[0].url).toBe('https://pb.example/api/collections/users/auth-methods');
+    expect(navigations).toHaveLength(1);
+    // The PROVIDER, not PocketBase, and the redirect is appended encoded.
+    expect(navigations[0]).toBe(
+      'https://idp.example/authorize?client_id=x&code_challenge=y&state=the-state&redirect_uri=' +
+        encodeURIComponent('https://app.example/page')
+    );
+
+    // Parked BEFORE the navigation — after it, nothing in this context runs.
+    const parked = JSON.parse(String(storage['NodeGX/be-pb/session.oauth-pending']));
+    expect(parked).toMatchObject({ provider: 'oidc', codeVerifier: 'the-verifier', state: 'the-state' });
+    adapter.dispose();
+  });
+
+  it('refuses a provider the instance does not have, and names the ones it does', async () => {
+    const { navigations } = installFakeWindow('https://app.example/page');
+    const { adapter, fetcher } = makeAdapter();
+    fetcher.reply(200, POCKETBASE_AUTH_METHODS);
+
+    const error = await new Promise<string | undefined>((resolve) =>
+      adapter.signInWithProvider(pocketbase, { provider: 'google', error: resolve })
+    );
+
+    // ⚠️ The measured alternative is a round trip through a provider ending in
+    // `403 "The collection is not configured to allow OAuth2 authentication."`,
+    // which the user only ever sees after leaving the app.
+    expect(error).toContain('oidc');
+    expect(navigations).toHaveLength(0);
+    adapter.dispose();
+  });
+
+  it('refuses when the instance has no providers at all', async () => {
+    installFakeWindow('https://app.example/page');
+    const { adapter, fetcher } = makeAdapter();
+    fetcher.reply(200, { oauth2: { enabled: false, providers: [] }, authProviders: null });
+
+    const error = await new Promise<string | undefined>((resolve) =>
+      adapter.signInWithProvider(pocketbase, { provider: 'oidc', error: resolve })
+    );
+    expect(error).toContain('no sign-in providers configured');
+    adapter.dispose();
+  });
+
+  it('refuses Directus for the cookie session rather than for want of an implementation', async () => {
+    const { navigations } = installFakeWindow('https://app.example/page');
+    const { adapter, fetcher } = makeAdapter();
+
+    const error = await new Promise<string | undefined>((resolve) =>
+      adapter.signInWithProvider(directus, { provider: 'google', error: resolve })
+    );
+
+    // Measured: `GET /auth/login/google` on an instance without that provider is
+    // a 404 ROUTE_NOT_FOUND, so a start leg written anyway navigates the user
+    // off the app. And even configured, the session comes back as a cookie.
+    expect(error).toContain('cookie');
+    expect(navigations).toHaveLength(0);
+    expect(fetcher.calls).toHaveLength(0);
+    adapter.dispose();
+  });
+});
+
+describe('consumeAuthReturn', () => {
+  afterEach(removeFakeWindow);
+
+  function park(storage: Record<string, unknown>, overrides: Record<string, unknown> = {}) {
+    storage['NodeGX/be-pb/session.oauth-pending'] = JSON.stringify(
+      Object.assign(
+        { provider: 'oidc', codeVerifier: 'the-verifier', state: 'the-state', redirectURL: 'https://app.example/page', startedAt: 1 },
+        overrides
+      )
+    );
+  }
+
+  it('does nothing at all when no flow was parked, whatever the URL says', () => {
+    installFakeWindow('https://app.example/page?code=A-MARKETING-CAMPAIGN&state=x');
+    const { adapter, fetcher } = makeAdapter();
+
+    // `code` and `state` are the most generic query parameters in the world.
+    // Triggering on them alone would consume somebody else's callback.
+    expect(adapter.consumeAuthReturn(pocketbase)).toBe(false);
+    expect(fetcher.calls).toHaveLength(0);
+    adapter.dispose();
+  });
+
+  it('exchanges the code and establishes the session', async () => {
+    const { url } = installFakeWindow('https://app.example/page?code=the-code&state=the-state&keep=me');
+    const { adapter, fetcher, storage } = makeAdapter();
+    park(storage);
+
+    fetcher.reply(200, {
+      token: jwt(Math.floor(Date.now() / 1000) + 3600),
+      record: { id: 'pb-1', email: 'a@b.c', verified: true },
+      meta: { isNew: true }
+    });
+
+    const events: unknown[] = [];
+    adapter.events.on('oauthReturn', (state: unknown) => events.push(state));
+    adapter.events.on('loggedIn', () => events.push('loggedIn'));
+
+    expect(adapter.consumeAuthReturn(pocketbase)).toBe(true);
+    await settle();
+
+    expect(fetcher.calls[0].url).toBe('https://pb.example/api/collections/users/auth-with-oauth2');
+    expect(fetcher.calls[0].body).toEqual({
+      provider: 'oidc',
+      code: 'the-code',
+      codeVerifier: 'the-verifier',
+      redirectURL: 'https://app.example/page'
+    });
+
+    const session = adapter.getCurrentUser(pocketbase);
+    expect(session?.objectId).toBe('pb-1');
+    expect(session?.emailVerified).toBe(true);
+    expect(events).toContain('loggedIn');
+    expect(events[events.length - 2]).toMatchObject({ succeeded: true, outcome: 'created' });
+
+    // The one-time code is gone from the address bar and everything else stayed.
+    expect(url.search).toBe('?keep=me');
+    adapter.dispose();
+  });
+
+  it('refuses a state that is not the one this browser started, without exchanging it', async () => {
+    installFakeWindow('https://app.example/page?code=someone-elses&state=a-different-state');
+    const { adapter, fetcher, storage } = makeAdapter();
+    park(storage);
+
+    const outcome = await new Promise<{ succeeded?: boolean; error?: string }>((resolve) => {
+      adapter.events.on('oauthReturn', (state: unknown) => {
+        const s = state as { inProgress: boolean };
+        if (!s.inProgress) resolve(s as never);
+      });
+      expect(adapter.consumeAuthReturn(pocketbase)).toBe(true);
+    });
+
+    expect(outcome.succeeded).toBe(false);
+    expect(outcome.error).toContain('verified as the one you started');
+    // ⚠️ The load-bearing half. Asserting only "it failed" stays green with the
+    // comparison deleted, because the backend rejects a foreign code anyway.
+    expect(fetcher.calls).toHaveLength(0);
+    adapter.dispose();
+  });
+
+  it('forgets the flow, so a reload carrying the same code cannot replay it', async () => {
+    installFakeWindow('https://app.example/page?code=the-code&state=the-state');
+    const { adapter, fetcher, storage } = makeAdapter();
+    park(storage);
+    fetcher.reply(200, { token: 'tok', record: { id: 'pb-1' } });
+
+    expect(adapter.consumeAuthReturn(pocketbase)).toBe(true);
+    await settle();
+
+    installFakeWindow('https://app.example/page?code=the-code&state=the-state');
+    expect(adapter.consumeAuthReturn(pocketbase)).toBe(false);
+    expect(fetcher.calls).toHaveLength(1);
+    adapter.dispose();
+  });
+
+  it('reports a provider that refused, and exchanges nothing', async () => {
+    installFakeWindow('https://app.example/page?error=access_denied&error_description=You+said+no');
+    const { adapter, fetcher, storage } = makeAdapter();
+    park(storage);
+
+    const outcome = await new Promise<{ succeeded?: boolean; error?: string }>((resolve) => {
+      adapter.events.on('oauthReturn', (state: unknown) => {
+        const s = state as { inProgress: boolean };
+        if (!s.inProgress) resolve(s as never);
+      });
+      expect(adapter.consumeAuthReturn(pocketbase)).toBe(true);
+    });
+
+    expect(outcome.succeeded).toBe(false);
+    expect(outcome.error).toBe('You said no');
+    expect(fetcher.calls).toHaveLength(0);
+    adapter.dispose();
+  });
+});
+
+describe('readAuthMethods', () => {
+  it('reads PocketBase’s oauth2 block and keeps OTP out of magicLink', () => {
+    const methods = readAuthMethods(restAuthProfileFor('pocketbase')!, POCKETBASE_AUTH_METHODS);
+    expect(methods.providers).toEqual([
+      expect.objectContaining({ id: 'oidc', displayName: 'Acme SSO' })
+    ]);
+    expect(methods.magicLink.enabled).toBe(false);
+    expect(methods.otp).toEqual({ enabled: false });
+  });
+
+  it('does not report OTP as a magic link even when OTP is switched ON', () => {
+    // ⚠️ **This case exists because the assertion above proved nothing.**
+    // Mutation-testing `magicLink: {enabled: otp.enabled === true}` left the
+    // suite green — the rig's OTP is off, so both spellings answer `false`. The
+    // claim is only testable on a fixture where they differ.
+    //
+    // An emailed one-time PASSWORD is a second field for the user to type, not a
+    // link. A `Request Magic Link` node reporting success for it sends somebody
+    // looking for a link that is not coming.
+    const methods = readAuthMethods(restAuthProfileFor('pocketbase')!, {
+      oauth2: { enabled: false, providers: [] },
+      otp: { enabled: true, duration: 180 }
+    });
+    expect(methods.otp).toEqual({ enabled: true });
+    expect(methods.magicLink.enabled).toBe(false);
+  });
+
+  it('reports nothing when PocketBase has oauth2 switched off', () => {
+    const methods = readAuthMethods(restAuthProfileFor('pocketbase')!, {
+      oauth2: { enabled: false, providers: [] },
+      authProviders: null
+    });
+    expect(methods.providers).toEqual([]);
+  });
+
+  it('reads both spellings Directus has used, and an empty list is not a throw', () => {
+    const profile = restAuthProfileFor('directus')!;
+    // Measured on the rig: `{"data":[],"disableDefault":false}`.
+    expect(readAuthMethods(profile, { data: [], disableDefault: false }).providers).toEqual([]);
+    expect(readAuthMethods(profile, { data: ['google'] }).providers).toEqual([
+      { id: 'google', displayName: 'google' }
+    ]);
+    expect(readAuthMethods(profile, { data: [{ name: 'okta', driver: 'openid', label: 'Okta' }] }).providers).toEqual([
+      { id: 'okta', displayName: 'Okta' }
+    ]);
+  });
+});
+
+describe('the read-only field list', () => {
+  it('is the same list the write path strips', async () => {
+    const { adapter, fetcher, storage } = makeAdapter();
+    storage[restSessionKey(pocketbase)] = JSON.stringify({ objectId: 'pb-1', sessionToken: 'tok' });
+    fetcher.reply(200, { id: 'pb-1', nickname: 'set' });
+
+    adapter.setUserProperties(pocketbase, {
+      properties: { nickname: 'set', verified: true, id: 'hijack', tokenKey: 'nope', passwordConfirm: 'nope' },
+      success: () => undefined,
+      error: () => undefined
+    });
+    await settle();
+
+    // ⚠️ `verified` is the one that matters: before `REST_USER_READONLY_FIELDS`
+    // was shared with the port generator, `Set User Properties` on PocketBase
+    // offered a `verified` input that accepted a value and threw it away.
+    expect(fetcher.calls[0].body).toEqual({ nickname: 'set' });
+    for (const field of ['verified', 'id', 'tokenKey', 'passwordConfirm']) {
+      expect(REST_USER_READONLY_FIELDS).toContain(field);
+    }
+    adapter.dispose();
   });
 });

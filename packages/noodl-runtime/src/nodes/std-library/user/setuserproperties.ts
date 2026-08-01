@@ -7,8 +7,20 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  RuntimeDiscoveredPort
 } from '@noodl/types';
+
+import { isParseWireContext } from '../data/record-ports';
+import { sendSchemaPorts, staticPortNames } from '../data/schema-ports';
+import {
+  USER_INPUT_IGNORE_PARSE_BROWSER,
+  USER_INPUT_IGNORE_PARSE_CLOUD,
+  USER_INPUT_IGNORE_REST,
+  userBackendPickerPorts,
+  userPropertyPorts,
+  userSchemaContext
+} from './user-ports';
 
 /**
  * NDA-004 §2 / FINDINGS B-iv — the code this node raises when it cannot write user properties.
@@ -28,12 +40,6 @@ const SET_USER_PROPERTIES_ERROR_CODE = 'user/set-properties-failed';
 
 const NoodlRuntime = require('../../../../noodl-runtime');
 
-/** A class in the backend schema, as the editor reports it in `systemCollections`. */
-interface SystemCollection {
-  name: string;
-  schema?: { properties?: Record<string, { type?: string }> };
-}
-
 /**
  * `this` inside the Set User Properties node.
  *
@@ -48,6 +54,8 @@ interface SetUserPropertiesNodeInstance extends NodeInstance {
     email?: string;
     username?: string;
     error?: string;
+    /** The `Backend` picker's value. Absent and `_active_` both mean "the default". */
+    backendId?: string;
   };
   /** On the instance rather than in `_internal`, like String Format's `formatScheduled`. */
   storeScheduled?: boolean;
@@ -146,6 +154,7 @@ const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
 
         const UserService = NoodlRuntime.Services.UserService;
         UserService.forScope(this.nodeScope.modelScope).setUserProperties({
+          backendId: this._internal.backendId,
           email: this._internal.email,
           username: this._internal.username,
           properties: internal.userProperties,
@@ -168,6 +177,16 @@ const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
         return;
       }
 
+      // The `Backend` picker — BCN-009 step 4. A dynamic port with no branch here
+      // silently drops its value, which is what "the node has a Backend dropdown
+      // that does nothing" looks like.
+      if (name === 'backendId')
+        return this.registerInput(name, {
+          set: (value: unknown) => {
+            this._internal.backendId = value as string;
+          }
+        });
+
       if (name.startsWith('prop-'))
         return this.registerInput(name, {
           set: this.setUserProperty.bind(this, name.substring('prop-'.length))
@@ -176,59 +195,40 @@ const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
   }
 };
 
+/**
+ * The node's ports, from whichever backend the `Backend` input names —
+ * BCN-006 step 6.
+ *
+ * ⚠️ The Parse-wire ignore list still differs by runtime, and that is a real
+ * difference rather than a leftover: server-side, `password` and `emailVerified`
+ * **are** writable columns on the `_User` row; in the browser they are not. The
+ * REST list is derived from what the adapter strips, so this node cannot offer a
+ * port for a field the write path would silently discard — see `user-ports.ts`
+ * rule 3.
+ */
 function updatePorts(
   nodeId: string,
   parameters: Record<string, unknown>,
   editorConnection: EditorConnectionLike,
-  systemCollections: SystemCollection[] | undefined
+  graphModel: GraphModelLike
 ) {
-  const ports: Record<string, unknown>[] = [];
+  const ctx = userSchemaContext(graphModel, parameters);
 
-  if (systemCollections) {
-    // Fetch ports from collection keys
-    const c = systemCollections.find((c) => c.name === '_User');
-    if (c && c.schema && c.schema.properties) {
-      const props = c.schema.properties;
+  const ignore = isParseWireContext(ctx)
+    ? typeof _noodl_cloud_runtime_version === 'undefined'
+      ? USER_INPUT_IGNORE_PARSE_BROWSER
+      : USER_INPUT_IGNORE_PARSE_CLOUD
+    : USER_INPUT_IGNORE_REST;
 
-      // Server-side, `password` and `emailVerified` are writable and so become ports;
-      // in the browser viewer they are not, hence the two lists.
-      const _ignoreKeys =
-        typeof _noodl_cloud_runtime_version === 'undefined'
-          ? ['authData', 'createdAt', 'updatedAt', 'email', 'username', 'emailVerified', 'password']
-          : ['authData', 'createdAt', 'updatedAt', 'email', 'username'];
+  const ports: RuntimeDiscoveredPort[] = ([] as RuntimeDiscoveredPort[])
+    .concat(userBackendPickerPorts(ctx))
+    .concat(userPropertyPorts(ctx, { plug: 'input', ignore }));
 
-      for (const key in props) {
-        if (_ignoreKeys.indexOf(key) !== -1) continue;
-
-        const p = props[key];
-        if (ports.find((_p) => _p.name === key)) continue;
-
-        if (p.type === 'Relation') {
-          // Relations are not settable through this node.
-        } else {
-          // Other schema type ports
-          const _typeMap: Record<string, string> = {
-            String: 'string',
-            Boolean: 'boolean',
-            Number: 'number',
-            Date: 'date'
-          };
-
-          ports.push({
-            type: {
-              name: _typeMap[p.type] ? _typeMap[p.type] : '*'
-            },
-            plug: 'input',
-            group: 'Properties',
-            name: 'prop-' + key,
-            displayName: key
-          });
-        }
-      }
-    }
-  }
-
-  editorConnection.sendDynamicPorts(nodeId, ports);
+  sendSchemaPorts(editorConnection, nodeId, ports, {
+    staticPorts: staticPortNames(
+      SetUserPropertiesNodeDefinition as { inputs?: Record<string, unknown>; outputs?: Record<string, unknown> }
+    )
+  });
 }
 
 const SetUserPropertiesNodeModule: NodeModule = {
@@ -239,25 +239,17 @@ const SetUserPropertiesNodeModule: NodeModule = {
     }
 
     function _managePortsForNode(node: GraphNodeModel) {
-      updatePorts(
-        node.id,
-        node.parameters,
-        context.editorConnection,
-        graphModel.getMetaData('systemCollections') as SystemCollection[]
-      );
+      const rebuild = () => updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
 
-      node.on('parameterUpdated', function () {
-        updatePorts(
-          node.id,
-          node.parameters,
-          context.editorConnection,
-          graphModel.getMetaData('systemCollections') as SystemCollection[]
-        );
-      });
+      rebuild();
+      node.on('parameterUpdated', rebuild);
 
-      graphModel.on('metadataChanged.systemCollections', function (data: SystemCollection[]) {
-        updatePorts(node.id, node.parameters, context.editorConnection, data);
-      });
+      // Three keys, for the reason `user.ts` records: the port set now depends on
+      // the selected backend and its introspected schema as well as on the
+      // Parse-wire cache.
+      graphModel.on('metadataChanged.systemCollections', rebuild);
+      graphModel.on('metadataChanged.dbCollections', rebuild);
+      graphModel.on('metadataChanged.backendServices', rebuild);
     }
 
     graphModel.on('editorImportComplete', () => {
