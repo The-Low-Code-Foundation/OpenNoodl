@@ -41,5 +41,5 @@
     "Putting a long-lived secret in the URL. Browsers cannot set WebSocket headers, but a query-string token ends up in server logs; prefer a short-lived ticket, or authenticate with a first message from On Open."
   ],
   "examples": ["data-websocket-agent-chat"],
-  "relatedNodes": ["REST2", "net.noodl.HTTP", "noodl.byob.SubscribeToChanges"]
+  "relatedNodes": ["REST2", "net.noodl.HTTP", "DbCollection2"]
 }

@@ -3996,6 +3996,17 @@
       ],
       "outputs": [
         {
+          "name": "contentType",
+          "displayName": "Content Type",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "MIME type the backend recorded on upload; empty on a backend that does not report one, and on a file read back from a record property"
+        },
+        {
           "name": "name",
           "displayName": "Name",
           "group": "General",
@@ -4005,6 +4016,17 @@
           },
           "isSignal": false,
           "description": "Original file name as it was uploaded, without the storage prefix"
+        },
+        {
+          "name": "size",
+          "displayName": "Size",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Size in bytes the backend recorded on upload; empty on a backend that does not report one, and on a file read back from a record property"
         },
         {
           "name": "url",
@@ -6104,6 +6126,61 @@
       "inputs": [],
       "outputs": [
         {
+          "name": "changed",
+          "displayName": "Records Changed",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Any of the three, and also the backend saying the view may be stale after a reconnect — the one to react to if you do not care which happened"
+        },
+        {
+          "name": "changedEvent",
+          "displayName": "Change Type",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "create, update, delete, init or resync"
+        },
+        {
+          "name": "changedRecord",
+          "displayName": "Changed Record",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false,
+          "description": "The record the change was about. ⚠️ Null on a delete against Directus, which sends only the key — use Changed Record Id, which every backend fills"
+        },
+        {
+          "name": "changedRecordId",
+          "displayName": "Changed Record Id",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The id of the changed record, always a string — even where the backend's primary key is an integer"
+        },
+        {
+          "name": "changedRecords",
+          "displayName": "Changed Records",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every record in the change frame; some backends batch"
+        },
+        {
           "name": "count",
           "displayName": "Count",
           "group": "General",
@@ -6113,6 +6190,28 @@
           },
           "isSignal": false,
           "description": "How many records are in Items, which Limit caps — turn on Fetch total count for the uncapped figure"
+        },
+        {
+          "name": "created",
+          "displayName": "Record Created",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Another client created a record in this collection"
+        },
+        {
+          "name": "deleted",
+          "displayName": "Record Deleted",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Another client deleted a record from this collection"
         },
         {
           "name": "error",
@@ -6179,6 +6278,61 @@
           },
           "isSignal": false,
           "description": "Records the query matched, in the order Sort asks for; empty before the first query has run"
+        },
+        {
+          "name": "realtimeError",
+          "displayName": "Realtime Error",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false,
+          "description": "The last realtime failure, with a code and whether retrying can help; null until one happens"
+        },
+        {
+          "name": "realtimeFailure",
+          "displayName": "Realtime Failure",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a subscription cannot connect, is rejected, or has been given up on"
+        },
+        {
+          "name": "realtimeStatus",
+          "displayName": "Realtime Status",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "connecting, subscribed, interrupted or stopped. Four states rather than a boolean, because \"connecting for the first time\" and \"dropped and retrying\" want different things on screen"
+        },
+        {
+          "name": "subscribed",
+          "displayName": "Subscribed",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while the backend has confirmed the subscription and is delivering changes"
+        },
+        {
+          "name": "updated",
+          "displayName": "Record Updated",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Another client updated a record in this collection"
         }
       ],
       "dynamicPorts": {
@@ -6202,6 +6356,13 @@
             "group": "General",
             "valueType": "enum",
             "example": "collectionName"
+          },
+          {
+            "pattern": "realtime",
+            "plug": "input",
+            "group": "Realtime",
+            "valueType": "boolean",
+            "example": "realtime"
           },
           {
             "pattern": "search",
@@ -6262,19 +6423,38 @@
         "ports": {
           "items": "Array output with the query result; the canonical source for a Repeater's `items`.",
           "fetched": "Signal; fires each time a fetch (initial or re-run) completes.",
-          "isEmpty": "Boolean level; drive empty-state visuals from here rather than comparing `count` yourself."
+          "isEmpty": "Boolean level; drive empty-state visuals from here rather than comparing `count` yourself.",
+          "realtimeEnabled": "Boolean. Turns on Subscribe To Changes: the node holds a live subscription on the collection and reacts to changes any client makes. Off by default, and gated by the backend's descriptor — a backend that cannot do realtime does not offer it.",
+          "subscribed": "True only while the subscription is confirmed live — false during connect, during backoff, and after a fatal auth failure. Wire it to an indicator's visibility so people can see when live updates are actually running.",
+          "realtimeStatus": "Which state the subscription is in as a string: connecting, subscribed, interrupted or unavailable. `subscribed` alone cannot tell 'reconnecting' from 'never started'.",
+          "realtimeError": "Last connection or protocol error; cleared when a subscription (re)confirms. An invalid token is fatal and the node will not retry until a parameter changes.",
+          "realtimeFailure": "Fires when the subscription fails in a way it will not recover from on its own.",
+          "created": "Fires once per remote create batch, after the Changed outputs have updated.",
+          "updated": "Fires once per remote update batch, after the Changed outputs have updated.",
+          "deleted": "Fires once per remote delete batch. ⚠️ Delete events carry only primary keys, so `changedRecord` is null and `changedRecords` holds key strings.",
+          "changed": "Fires alongside every created/updated/deleted. Wire this when any change should trigger the same reaction — most often back into this node's own `Do` to re-fetch.",
+          "changedEvent": "The last event kind as a string: create, update or delete.",
+          "changedRecord": "First record of the last create/update batch; null for deletes.",
+          "changedRecords": "All records of the last batch; for deletes, an array of primary-key strings.",
+          "changedRecordId": "Primary key of the first affected record, across all three event types."
         },
         "runtimeBehavior": "All *inputs* are runtime-determined (runtime-discovered + editor-adapter): the class choice, filter values, sort keys and paging inputs are generated from the project's database schema and the visual filter you build in the editor — e.g. each 'value' placeholder in a filter becomes its own input port, and actions like fetch ('storageFetch') are registered on demand. A generator cannot enumerate them statically; an authoring tool should set `collectionName` and filter parameters, and may wire signals to fetch-related inputs which the runtime registers when used.",
         "examples": [
           "repeater-query-records",
-          "send-event-across-components"
+          "send-event-across-components",
+          "cloud-byob-live-refresh"
         ],
         "patterns": [
           "`items` → Repeater `items`, with record properties delivered to the item component via Component Inputs: the canonical list page.",
-          "Event Receiver `eventReceived` → fetch input: re-run a query on demand from anywhere in the app."
+          "Event Receiver `eventReceived` → fetch input: re-run a query on demand from anywhere in the app.",
+          "Turn on Subscribe To Changes and wire `Changed` back into this node's own `Do`: the list stays current without polling, on every backend whose descriptor allows it — SSE on the built-in backend and PocketBase, a WebSocket on Directus.",
+          "`Subscribed` → a status indicator's visibility, so people can see when live updates are actually running rather than assuming."
         ],
         "antiPatterns": [
-          "Re-querying on a timer to feel 'live' — results already update from cloud events; explicit re-fetch is only needed when the server changed outside those events."
+          "Re-querying on a timer to feel 'live' — results already update from cloud events; explicit re-fetch is only needed when the server changed outside those events.",
+          "Treating `Changed Record` as the full record on a delete — delete events carry only primary keys, so it is null and only `Changed Record Id` is populated.",
+          "Polling with a Timer while Subscribe To Changes is available on this backend. Subscribe and re-fetch on `Changed` instead.",
+          "Assuming `Subscribed` distinguishes 'reconnecting' from 'never connected' — it does not. Read `Realtime Status` for that."
         ],
         "relatedNodes": [
           "For Each",
@@ -35930,7 +36110,7 @@
         "relatedNodes": [
           "REST2",
           "net.noodl.HTTP",
-          "noodl.byob.SubscribeToChanges"
+          "DbCollection2"
         ]
       }
     },
@@ -50927,196 +51107,6 @@
       }
     },
     {
-      "typeName": "noodl.byob.SubscribeToChanges",
-      "displayName": "Subscribe To Changes",
-      "category": "Data",
-      "isVisual": false,
-      "isDeprecated": false,
-      "inNodePicker": true,
-      "availableIn": [
-        "browser"
-      ],
-      "providedBy": "noodl-viewer-react",
-      "ssr": {
-        "compat": "client-only",
-        "note": "A live subscription is meaningless in a server render and would leak a socket per request; the node activates in the browser after hydration."
-      },
-      "docs": "https://docs.noodl.net/nodes/data/byob/subscribe-to-changes",
-      "searchTags": [
-        "byob",
-        "realtime",
-        "subscribe",
-        "websocket",
-        "live",
-        "changes",
-        "events",
-        "directus",
-        "backend"
-      ],
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "changed",
-          "displayName": "Changed",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "changedRecord",
-          "displayName": "Changed Record",
-          "group": "Event",
-          "plug": "output",
-          "type": {
-            "name": "object"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "changedRecordId",
-          "displayName": "Changed Record Id",
-          "group": "Event",
-          "plug": "output",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "changedRecords",
-          "displayName": "Changed Records",
-          "group": "Event",
-          "plug": "output",
-          "type": {
-            "name": "array"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "created",
-          "displayName": "Created",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "deleted",
-          "displayName": "Deleted",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "error",
-          "displayName": "Error",
-          "group": "Status",
-          "plug": "output",
-          "type": {
-            "name": "object"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "eventType",
-          "displayName": "Event Type",
-          "group": "Event",
-          "plug": "output",
-          "type": {
-            "name": "string"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "failure",
-          "displayName": "Failure",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        },
-        {
-          "name": "subscribed",
-          "displayName": "Subscribed",
-          "group": "Status",
-          "plug": "output",
-          "type": {
-            "name": "boolean"
-          },
-          "isSignal": false
-        },
-        {
-          "name": "updated",
-          "displayName": "Updated",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true
-        }
-      ],
-      "dynamicPorts": {
-        "mechanisms": [
-          "runtime-discovered"
-        ],
-        "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
-      },
-      "parameterEncoding": {
-        "known": false,
-        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
-      },
-      "enrichment": {
-        "typeName": "noodl.byob.SubscribeToChanges",
-        "summary": "Subscribe To Changes (BYOB): emits a signal with the changed record whenever a backend collection changes.",
-        "description": "Live change feed for a self-hosted backend collection. The transport is chosen by backend type: Directus (and other BYOB REST backends) use the WebSocket interface (requires WEBSOCKETS_ENABLED); the NodeGX standalone backend uses Server-Sent Events (SSE), where the server matches the subscription filter and enforces per-record read permissions before delivery, and a `resync` event signals a gap (reconnect or slow-client overflow) with no replay. While `subscribed` is true, creates, updates and deletes made by any client fire the matching `created`/`updated`/`deleted` signal plus the generic `changed`, with the affected record(s) on the Event outputs. The connection authenticates with the backend's token (SSE passes it as a query param since EventSource cannot set headers), answers heartbeats, and reconnects after a drop — `subscribed` reflects the live state throughout. Delete events carry only primary keys, so `changedRecord` is null for deletes; `changedRecordId` is always populated.",
-        "whenToUse": "Reacting to remote changes without polling — most commonly re-triggering a Query Data `fetch` so a list stays current. Works against both Directus (WebSocket) and the NodeGX backend (SSE) with no wiring difference. Not for reading data itself (use Query Data) and not on the managed cloud backend (its Query Records keeps results live already). Client-only: it stays inert during server-side rendering.",
-        "ports": {
-          "enabled": "Boolean, default true; set false to close the subscription (and stop reconnect attempts) without removing the node.",
-          "subscribed": "True only while the subscription is confirmed live — false during connect, backoff and after fatal auth failure.",
-          "created": "Fires once per remote create batch, after the Event outputs have updated.",
-          "updated": "Fires once per remote update batch, after the Event outputs have updated.",
-          "deleted": "Fires once per remote delete batch; only keys are delivered, so `changedRecord` is null and `changedRecords` holds key strings.",
-          "changed": "Fires alongside every `created`/`updated`/`deleted` — and on a NodeGX `resync` — so wire this when any change should trigger the same reaction (e.g. a re-fetch).",
-          "eventType": "The last event kind as a string: 'create', 'update', 'delete', or (NodeGX SSE) 'resync'.",
-          "changedRecord": "First record of the last create/update batch (full record object); null for deletes.",
-          "changedRecords": "All records of the last batch; for deletes, an array of primary-key strings (string even for numeric keys).",
-          "changedRecordId": "Primary key of the first affected record as a string, across all three event types; the key field name comes from the synced schema.",
-          "error": "Last connection or protocol error object; cleared when a subscription (re)confirms. An invalid token is fatal — the node will not retry until a parameter changes."
-        },
-        "runtimeBehavior": "`backendId`, `collection` and `enabled` are dynamic inputs generated from the Backend Services metadata: the Backend dropdown lists configured backends (plus 'Active Backend'), and the Collection dropdown lists the selected backend's synced user collections. They appear once a backend with a synced schema exists; an authoring tool may not assume any collection values without that schema. The transport (WebSocket vs NodeGX SSE) is selected automatically from the backend's type — authors do not configure it.",
-        "examples": [
-          "cloud-byob-live-refresh"
-        ],
-        "patterns": [
-          "Subscribe To Changes `changed` → Query Data `fetch` keeps a BYOB-backed list live without polling (Directus or NodeGX).",
-          "On a NodeGX backend, a 'resync' event also fires `changed`, so a re-fetch recovers the list after a reconnect or slow-client overflow.",
-          "`subscribed` → a status indicator's visibility shows users when live updates are active."
-        ],
-        "antiPatterns": [
-          "Treating `changedRecord` as the full record on deletes — delete events carry only primary keys.",
-          "Polling a Query Data on a timer while this node is available — subscribe and refetch on `changed` instead."
-        ],
-        "relatedNodes": [
-          "noodl.byob.QueryData",
-          "noodl.byob.CreateRecord",
-          "noodl.byob.UpdateRecord",
-          "noodl.byob.DeleteRecord",
-          "DbCollection2"
-        ]
-      }
-    },
-    {
       "typeName": "noodl.byob.UpdateRecord",
       "displayName": "Update Record",
       "category": "Data",
@@ -51850,8 +51840,8 @@
     "version": "1.0.0",
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
-      "documented": 156,
-      "total": 156
+      "documented": 155,
+      "total": 155
     }
   },
   "compatibility": {
@@ -53329,11 +53319,10 @@
     },
     {
       "id": "cloud-byob-live-refresh",
-      "title": "Bring-your-own-backend: live list via Subscribe To Changes",
-      "description": "BYOB queries are snapshots — they only refresh when `fetch` fires. Subscribe To Changes closes that gap: it holds a WebSocket subscription on the collection and fires `changed` whenever any client creates, updates or deletes a record, so wiring `changed` → `fetch` keeps the list current without polling. `subscribed` drives a small 'live' indicator so users can see when realtime updates are active.",
+      "title": "A list that keeps itself current, with Subscribe To Changes",
+      "description": "A query is a snapshot — it only refreshes when `Do` fires. Turning on **Subscribe To Changes** closes that gap on the Query Records node itself: it holds a live subscription on the collection and fires `Changed` whenever any client creates, updates or deletes a record, so wiring `Changed` → `Do` keeps the list current without polling. `Subscribed` drives a small 'live' indicator so people can see when realtime updates are actually running, and `Realtime Status` says which of connecting/subscribed/interrupted it is in. Works on every backend whose descriptor allows it — SSE on the built-in backend and PocketBase, a WebSocket on Directus.",
       "demonstrates": [
-        "noodl.byob.SubscribeToChanges",
-        "noodl.byob.QueryData"
+        "DbCollection2"
       ],
       "components": [
         {
@@ -53371,36 +53360,29 @@
             },
             {
               "id": "notes_query",
-              "type": "noodl.byob.QueryData",
-              "label": "Fetch notes",
+              "type": "DbCollection2",
+              "label": "Notes",
               "parameters": {
-                "collection": "Note"
-              }
-            },
-            {
-              "id": "notes_subscription",
-              "type": "noodl.byob.SubscribeToChanges",
-              "label": "Watch notes",
-              "parameters": {
-                "collection": "Note"
+                "collectionName": "Note",
+                "realtimeEnabled": true
               }
             }
           ],
           "connections": [
             {
               "fromId": "notes_query",
-              "fromProperty": "records",
+              "fromProperty": "items",
               "toId": "notes_repeater",
               "toProperty": "items"
             },
             {
-              "fromId": "notes_subscription",
+              "fromId": "notes_query",
               "fromProperty": "changed",
               "toId": "notes_query",
-              "toProperty": "fetch"
+              "toProperty": "storageFetch"
             },
             {
-              "fromId": "notes_subscription",
+              "fromId": "notes_query",
               "fromProperty": "subscribed",
               "toId": "live_badge",
               "toProperty": "visible"

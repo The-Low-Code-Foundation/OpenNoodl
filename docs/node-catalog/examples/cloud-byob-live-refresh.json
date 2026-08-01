@@ -1,8 +1,8 @@
 {
   "id": "cloud-byob-live-refresh",
-  "title": "Bring-your-own-backend: live list via Subscribe To Changes",
-  "description": "BYOB queries are snapshots — they only refresh when `fetch` fires. Subscribe To Changes closes that gap: it holds a WebSocket subscription on the collection and fires `changed` whenever any client creates, updates or deletes a record, so wiring `changed` → `fetch` keeps the list current without polling. `subscribed` drives a small 'live' indicator so users can see when realtime updates are active.",
-  "demonstrates": ["noodl.byob.SubscribeToChanges", "noodl.byob.QueryData"],
+  "title": "A list that keeps itself current, with Subscribe To Changes",
+  "description": "A query is a snapshot — it only refreshes when `Do` fires. Turning on **Subscribe To Changes** closes that gap on the Query Records node itself: it holds a live subscription on the collection and fires `Changed` whenever any client creates, updates or deletes a record, so wiring `Changed` → `Do` keeps the list current without polling. `Subscribed` drives a small 'live' indicator so people can see when realtime updates are actually running, and `Realtime Status` says which of connecting/subscribed/interrupted it is in. Works on every backend whose descriptor allows it — SSE on the built-in backend and PocketBase, a WebSocket on Directus.",
+  "demonstrates": ["DbCollection2"],
   "components": [
     {
       "name": "/Live Notes",
@@ -18,21 +18,15 @@
         { "id": "notes_repeater", "type": "For Each", "label": "Notes", "parent": "root", "parameters": { "template": "/Note Row" } },
         {
           "id": "notes_query",
-          "type": "noodl.byob.QueryData",
-          "label": "Fetch notes",
-          "parameters": { "collection": "Note" }
-        },
-        {
-          "id": "notes_subscription",
-          "type": "noodl.byob.SubscribeToChanges",
-          "label": "Watch notes",
-          "parameters": { "collection": "Note" }
+          "type": "DbCollection2",
+          "label": "Notes",
+          "parameters": { "collectionName": "Note", "realtimeEnabled": true }
         }
       ],
       "connections": [
-        { "fromId": "notes_query", "fromProperty": "records", "toId": "notes_repeater", "toProperty": "items" },
-        { "fromId": "notes_subscription", "fromProperty": "changed", "toId": "notes_query", "toProperty": "fetch" },
-        { "fromId": "notes_subscription", "fromProperty": "subscribed", "toId": "live_badge", "toProperty": "visible" }
+        { "fromId": "notes_query", "fromProperty": "items", "toId": "notes_repeater", "toProperty": "items" },
+        { "fromId": "notes_query", "fromProperty": "changed", "toId": "notes_query", "toProperty": "storageFetch" },
+        { "fromId": "notes_query", "fromProperty": "subscribed", "toId": "live_badge", "toProperty": "visible" }
       ]
     },
     {
@@ -42,9 +36,7 @@
         { "id": "title_text", "type": "Text", "label": "Title", "parent": "row" },
         { "id": "row_inputs", "type": "Component Inputs", "label": "Record in" }
       ],
-      "connections": [
-        { "fromId": "row_inputs", "fromProperty": "title", "toId": "title_text", "toProperty": "text" }
-      ]
+      "connections": [{ "fromId": "row_inputs", "fromProperty": "title", "toId": "title_text", "toProperty": "text" }]
     }
   ]
 }
