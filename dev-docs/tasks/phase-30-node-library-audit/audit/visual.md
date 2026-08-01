@@ -1,6 +1,45 @@
 # Audit worksheet — Visual (29 nodes, **20 in scope**, 20 audited)
 
-> ## Remediation, 2026-08-01 (second session of the day)
+> ## Remediation stream B, 2026-08-01 (third session of the day)
+>
+> **Three fix items landed and a fourth was reverted. In-scope ⚠️ cells 34 → 27**, of which **7 are
+> `B3` and belong to `ERG-001`** — so **20 per-node cells remain**. Nodes with a ⚠️ cell: 13 → **12**.
+> ⚠️ That count is cell-based: `Slider` leaves it with all twelve cells clean while still carrying
+> `DV-vi` in its verdict prose, so "no ⚠️ cell" is not the same as "nothing open".
+>
+> | Fix | Cells resolved |
+> |---|---|
+> | `Drag` and `Slider`'s `Value` ports — `DV-x` | Drag G1 · Slider G1 · Slider E1 |
+> | `Text Input`'s `Clear` and `startValue` — `DV-xi` | A1 · G1 |
+> | `Radio Button` and `Page` stop reporting from a render body — `DV-xii` | A3 · A3 |
+> | ~~`Text Input`'s placeholder opacity~~ | **reverted — not a defect** |
+>
+> **`Slider`'s twelve cells are all clean** and its only remaining item is `DV-vi`, the drifted private
+> `addBorderInputs`. **`Text Input`'s only remaining cell is `B3`**, which is `ERG-001`'s.
+>
+> ⚠️ **Live QA disproved one of the three claims in the middle commit, and that is the session's most
+> useful result.** `Text Input`'s `placeHolderOpacity` was recorded here as a third `DV-ii` instance
+> — declared `0.5`, setter never runs, so the browser default renders. A mirror was written into
+> `initialize` on that reading and committed. Measured in a running preview with both injected
+> per-instance rules deleted, the computed opacity is **still `0.5`**, because `assets/style.css`
+> already carries the rule. **It is Button's case, not Icon's**, and the mirror moved no pixels. Now
+> reverted, the cell is 🔵, and FINDINGS `DV-ii` carries the operational rule that would have caught
+> it without a live run: **grep `assets/style.css` for a class rule carrying the same value before
+> filing "the declared default does not render".**
+>
+> **Live QA, on a purpose-built fixture** (`scripts/nda-live-qa/make-controls-fixture.js`), zero
+> renderer exceptions: Slider 60 → `null` → **60** and 60 → `'nearly there'` → **60** with the raise
+> in the warnings panel naming the node; the `Value` input port reads `type: 'number'` off
+> `window.NodeLibraryData`; Drag 240 → `null`/`'somewhere'` → **240**, likewise raising; Text Input
+> Set → *"Ada Lovelace"* → Clear → empty → Set → **empty**; two radios reading `{dom, node}` in
+> agreement, and clicking A's label flipping **both** nodes' `_internal.checked`.
+>
+> ⚠️ **`Page`'s A3 fix is test-verified and not live-verified.** `Page` is not in the picker and needs
+> a Router to mount, and the claim that matters is about the *server* renderer, which no editor
+> preview exercises. The three SSR-preserving rows carry it; a deployed SSG build would carry it
+> better and is owed.
+
+> ## Remediation stream A, 2026-08-01 (second session of the day)
 >
 > **Six fix items landed and 13 of the in-scope ⚠️ cells are resolved: 47 → 34.** Nodes carrying at
 > least one defect: **15 → 13** (`Icon` and `Radio Button Group` are now clean; Icon's defect was
@@ -292,7 +331,7 @@ Source: [`nodes/visual/drag.ts`](../../../../packages/noodl-viewer-react/src/nod
 | A1 | `n/a` | — |
 | A2 | `n/a` | — |
 | A3 | ✅ | the snap actions defer through `scheduleAfterInputsHaveUpdated`, so value and duration are read after the same frame's inputs land |
-| G1 | ⚠️ | `snapToPositionX.value` accepts `null` straight into `_internal.snapPositionX` ([`drag.ts:52`](../../../../packages/noodl-viewer-react/src/nodes/visual/drag.ts#L52)) and the animation then interpolates toward `null`. `null` should abstain or clamp, not become `NaN` |
+| G1 | ✅ | **fixed 2026-08-01** — both snap coordinates stored whatever arrived. ⚠️ **This cell's recorded consequence was wrong: `null` became 0, not `NaN`** — `easeOutCubic` computes `(end - start) * … + start`, so `null` coerced to zero and the element animated to the **origin**, which is worse than a visible `NaN` because it is a plausible position. `NaN` was the non-numeric-*string* case, and nothing coerces a declared `number` port on arrival. Now `undefined`/`null`/`''` abstain and leave the current position, and anything else non-numeric raises `drag/snap-position-not-a-number`. Live-verified: 240 → `null` → **240**, 240 → `'somewhere'` → **240** with the message in the warnings panel. Pinned in `nda-012-visual-value-ports.test.ts` |
 | B1 | ⚠️ **none** | a `Do` before the component mounts is dropped by `this.innerReactComponentRef && …` ([`:42`](../../../../packages/noodl-viewer-react/src/nodes/visual/drag.ts#L42), `:74`) with no report |
 | B2 | ⚠️ | nothing is reported anywhere, so the deployed case is no worse than the editor one — which is the point |
 | B3 | ⚠️ | two signal inputs (`Snap To Position X/Y — Do`), **no terminating signal**. `Drag Started`/`Ended`/`Moved` are gesture events; nothing says the snap animation finished, which is precisely what a snap-then-do graph needs |
@@ -302,7 +341,7 @@ Source: [`nodes/visual/drag.ts`](../../../../packages/noodl-viewer-react/src/nod
 | F1 | `n/a` | — |
 | H1 | ✅ | `addDeleteListener` stops the snap timers on delete ([`:28-30`](../../../../packages/noodl-viewer-react/src/nodes/visual/drag.ts#L28-L30)) — deleting a node does not unmount its component, so the component's own `componentWillUnmount` was not enough |
 
-**Verdict:** ⚠️ defect — B1/B2/B3 and G1. ✅ The four mirrored defaults at
+**Verdict:** ⚠️ defect — **G1 fixed 2026-08-01; B1/B2/B3 remain**, and B3 is `ERG-001`'s. ✅ The four mirrored defaults at
 [`drag.ts:20-23`](../../../../packages/noodl-viewer-react/src/nodes/visual/drag.ts#L20-L23) are
 the category's one deliberate DB-ii workaround and they are correct. **Live QA owed** on the
 salvaged `scale || 1` fallback and the snap-timer cleanup — both need a DOM and a frame clock.
@@ -417,7 +456,7 @@ Source: [`nodes/controls/radiobutton.ts`](../../../../packages/noodl-viewer-reac
 |---|---|---|
 | A1 | ⚠️ | **`Radio Button` has no `Changed` output at all**, unlike `Checkbox` and `Radio Button Group`. Selection can only be observed by polling `Checked` or by listening on the group |
 | A2 | `n/a` | — |
-| A3 | ⚠️ | `props.checkedChanged(…)` is called **from the render body** ([`RadioButton.tsx:48`](../../../../packages/noodl-viewer-react/src/components/controls/RadioButton/RadioButton.tsx#L48)) and that call reaches `flagOutputDirty` and `_updateVisualState`. A render that React discards or double-invokes therefore moves graph state |
+| A3 | ✅ | **fixed 2026-08-01** — `props.checkedChanged(…)` was called **from the render body** and reached `flagOutputDirty('checked')` and `_updateVisualState()` ([`radiobutton.ts:39-46`](../../../../packages/noodl-viewer-react/src/nodes/controls/radiobutton.ts#L39-L46)), so a render React discarded or double-invoked moved graph state and repainted visual states for a checked-ness the committed tree never had. Now a `useEffect`. The `checked` **expression** stays in render and feeds the `<input>` — the DOM is a render output, not a side effect — and the duplicated inline copy is hoisted to one `const`. Live-verified: two radios in a group read `{dom:false,node:false}` / `{dom:true,node:true}`, and clicking A's label flips **both** nodes' `_internal.checked` with the DOM. Pinned in `nda-012-render-body-effects.test.tsx` |
 | G1 | ✅ | `value` is a plain prop forward |
 | B1 | `n/a` | — |
 | B2 | `n/a` | — |
@@ -429,7 +468,8 @@ Source: [`nodes/controls/radiobutton.ts`](../../../../packages/noodl-viewer-reac
 | H1 | ✅ | declares `safe`; the context subscription is React's |
 
 **Verdict:** ⚠️ defect — F1 is the headline and is the category's only instance of defect class F.
-A1/A3 are the same asymmetry with `Checkbox` seen from the other end.
+**A3 fixed 2026-08-01; A1 and F1 remain**, and A1 is the same asymmetry with `Checkbox` seen from the
+other end.
 
 ---
 
@@ -473,17 +513,20 @@ Source: [`nodes/controls/slider.ts`](../../../../packages/noodl-viewer-react/src
 | A1 | 🔵 | the `value` input setter does not send `Changed`; the user path does. Same rule as the other controls |
 | A2 | `n/a` | — |
 | A3 | ✅ | **fixed 2026-08-01** — compared against `this._internal.valuePercentChanged`, a field nothing ever writes, so it was always `undefined`, the comparison was always true, and `valuePercent` was flagged dirty on **every** value change whether the percentage moved or not. Now compares against `_internal.valuePercent`. ⚠️ PLAT-003 slice 10 found this exact bug, wrote it up, and kept it verbatim in the *deprecated* `range.tsx` without ever looking at the live node. Pinned in `nda-012-control-one-liners.test.ts` |
-| G1 | ⚠️ | `_setInputValue` uses `newValue \|\| 0` ([`:212`](../../../../packages/noodl-viewer-react/src/nodes/controls/slider.ts#L212)), so `null` **and a legitimate `0`** both become `0` — then clamped to `min`. A slider with `Min = 10` fed `null` silently reads 10 |
+| G1 | ✅ | **fixed 2026-08-01** — `_setInputValue` used `newValue \|\| 0`, so `null` and a legitimate `0` were one arrival (both clamped to `Min`; a slider with `Min = 10` fed `null` silently read 10), and anything non-numeric survived `\|\|` to become `NaN` at `Math.min` with nothing said anywhere. Empty arrivals now abstain, non-numbers raise `slider/value-not-a-number`. Live-verified: 60 → `null` → **60**, 60 → `'nearly there'` → **60** with *"Value cannot be read as a number… At node Slider in component App"* in the warnings panel. ⚠️ `initialize` seeds `props.value = props.min`, so a row that never moves the handle cannot tell "abstained" from "clamped to `Min`" — see the rows in `nda-012-visual-value-ports.test.ts` |
 | B1 | `n/a` | — |
 | B2 | `n/a` | — |
 | B3 | `n/a` | no signal inputs |
 | C1 | ✅ **100%** (113/113) | closed this session — **68 ports**, the category's largest block; ~60 of them in the private generators at [`slider.ts:225`](../../../../packages/noodl-viewer-react/src/nodes/controls/slider.ts#L225), `:325`, `:369` |
 | D1 | ✅ | — |
-| E1 | ⚠️ | **the `Value` input is declared `type: 'string'` and the `Value` output `type: 'number'`** ([`:63`](../../../../packages/noodl-viewer-react/src/nodes/controls/slider.ts#L63) vs [`:74`](../../../../packages/noodl-viewer-react/src/nodes/controls/slider.ts#L74)). One Slider cannot feed another without a type mismatch, and the panel offers a text field for a number |
+| E1 | ✅ | **fixed 2026-08-01** — the `Value` input was declared `type: 'string'` while the `Value` output is `type: 'number'`, so one Slider could not feed another and the panel offered a text field for a number. That is also *why* G1's `NaN` path was reachable from ordinary authoring. Now `number`; `string → number` is in the typecast table (`nodelibraryexport.ts`), so existing textual connections still land. Live-verified against `window.NodeLibraryData` |
 | F1 | `n/a` | — |
 | H1 | ✅ | declares `safe` |
 
-**Verdict:** ⚠️ defect — A3, G1, E1, and the worst C1 in the category.
+**Verdict:** ⚠️ defect — **every one of Slider's twelve cells is now clean** (A3, G1 and E1 all fixed
+in this phase, C1 closed, A1 🔵), **and `DV-vi` below is still open**, which is why the node is not
+listed as a pass. The remaining defect is prose rather than a cell, and it is the private
+`addBorderInputs` copy.
 
 **The open question is answered: yes, the private copy has drifted, in four ways.** See
 `DV-vi` in FINDINGS. One is reachable today (`borderWidth` defaults to **0** here and **2** in the
@@ -505,10 +548,10 @@ Source: [`nodes/controls/text-input.ts`](../../../../packages/noodl-viewer-react
 
 | Check | Verdict | Note |
 |---|---|---|
-| A1 | ⚠️ | **`Clear` does not update `_internal.text`** ([`text-input.ts:219-224`](../../../../packages/noodl-viewer-react/src/nodes/controls/text-input.ts#L219-L224)). It blanks the props and the DOM and leaves the node's own copy holding the old string, so a later `Set` pulse restores text the user cleared. It also does not flag `onTextChanged` when the component is unmounted, which `setText` is careful to do |
+| A1 | ✅ | **fixed 2026-08-01** — `clear()` blanked the props and the DOM and left `_internal.text` holding the old string, and `Set` reads `_internal.text`, so **a later `Set` pulse restored text the author had explicitly cleared**; it also did not flag `onTextChanged` while unmounted, which `setText` beside it is careful to do. Live-verified: Set → *"Ada Lovelace"*, Clear → empty, Set → **empty**. ⚠️ `Clear` still writes through a **focused** field where `setText` deliberately does not; both directions are pinned, because "make the two paths consistent" is what a tidying pass would do and it would break Clear for the person using it. Pinned in `nda-012-text-input-clear.test.ts` |
 | A2 | ✅ | `Set` re-reads `_internal.text` rather than a render-time copy |
 | A3 | ✅ | `setText` skips while the field has focus, which is what stops a round-trip from fighting the typist |
-| G1 | ⚠️ | `startValue` passes `null` straight through to `props.startValue` and into the `<input>`, which makes a controlled input uncontrolled |
+| G1 | ✅ | **fixed 2026-08-01** — `startValue` passed `null` straight through to `props.startValue` and into the `<input>`'s `value` ([`TextInput.tsx:66`](../../../../packages/noodl-viewer-react/src/components/controls/TextInput/TextInput.tsx#L66)), which makes a controlled input uncontrolled, and `null` is an ordinary arrival from a query that matched nothing. `null` now **clears** and `undefined` abstains. ⚠️ Deliberately *not* the treatment `Drag` and `Slider` got in the same batch: a string port has a representable empty value (`EMPTY-VALUE-CONTRACT.md`'s `E1`/`E2` rule) and a position does not. Pinned in `nda-012-text-input-clear.test.ts` |
 | B1 | `n/a` | — |
 | B2 | `n/a` | — |
 | B3 | ⚠️ | four signal inputs. `Set`→`Text Changed` ✅, `Focus`→`Focused` ✅, `Blur`→`Blurred` ✅ — **`Clear` has no terminator**, and per A1 it does not even flag the value output when unmounted |
@@ -518,12 +561,29 @@ Source: [`nodes/controls/text-input.ts`](../../../../packages/noodl-viewer-react
 | F1 | ✅ | `startValue` defers to `Set` when `Set` is connected ([`:114`](../../../../packages/noodl-viewer-react/src/nodes/controls/text-input.ts#L114)) — the explicit-binding pattern, done right, and the category's only instance |
 | H1 | ✅ | declares `safe`; the injected stylesheet is keyed by control id and browser-only |
 
-**Verdict:** ⚠️ defect — A1/B3 on `Clear`, G1 on `startValue`. ⚠️ **A third `DV-ii` instance**:
-`placeHolderOpacity` declares `0.5` and its setter is the only writer of the `::placeholder` rule
-([`:84-93`](../../../../packages/noodl-viewer-react/src/nodes/controls/text-input.ts#L84-L93)), so
-an untouched Text Input gets the browser's placeholder opacity instead. ⚠️ **`Dropdown` spells the
-same port as an `inputProp` and it works** ([`options.ts:101`](../../../../packages/noodl-viewer-react/src/nodes/controls/options.ts#L101)) —
-two nodes, one setting, two spellings (`placeHolderOpacity` vs `placeholderOpacity`), one broken.
+**Verdict:** ⚠️ defect — **A1 and G1 fixed 2026-08-01; only `B3` remains and it is `ERG-001`'s**, so
+this node's own work is done.
+
+🔵 **The third `DV-ii` instance is not a defect, and finding that out cost a commit and a revert.**
+`placeHolderOpacity` declares `0.5`, its setter is the only writer of the injected `::placeholder`
+rule ([`:84-93`](../../../../packages/noodl-viewer-react/src/nodes/controls/text-input.ts#L84-L93)),
+and DB-ii blocks that setter — so this worksheet recorded "an untouched Text Input gets the browser's
+placeholder opacity". A mirror went into `initialize` on that reading and was committed. ⚠️ **Measured
+live, with both injected per-instance rules deleted from a running preview, the computed opacity is
+still `0.5`**: `assets/style.css` carries `.ndl-controls-textinput::placeholder { opacity: 0.5 }`,
+exactly as it carries Button's padding. **This is Button's case, not Icon's**, the mirror moved no
+pixels, and it is reverted.
+
+⚠️ That makes it the *third* time in this category that a `DV-ii` mechanism was read as a rendering
+defect — and the second time it was disproved by running it. The operational form of the rule is now
+in FINDINGS `DV-ii`: **before filing "the declared default does not render", grep `assets/style.css`
+for a class rule carrying the same value.** One query, available both times, run neither time.
+
+The real duplication survives and is pinned from both sides: the value lives in the stylesheet and in
+the port default, they agree, and editing either alone fails a row. ⚠️ **`Dropdown` spells the same
+setting `placeholderOpacity` as an `inputProp`** ([`options.ts:142`](../../../../packages/noodl-viewer-react/src/nodes/controls/options.ts#L142)),
+where the default→props copy applies it and `Select.tsx:129` renders it — two nodes, one setting, two
+spellings, two mechanisms, and (as it turns out) the same rendered result.
 
 ---
 
@@ -538,7 +598,7 @@ Source: [`nodes/navigation/page.ts`](../../../../packages/noodl-viewer-react/src
 |---|---|---|
 | A1 | `n/a` | — |
 | A2 | `n/a` | — |
-| A3 | ⚠️ | `Noodl.SEO.setMeta` is called for every meta tag **from the render body** ([`Page.tsx:150-153`](../../../../packages/noodl-viewer-react/src/components/navigation/Page/Page.tsx#L150-L153)), including for tags whose value is `undefined`. A discarded or double-invoked render therefore mutates document-level state |
+| A3 | ✅ | **fixed 2026-08-01** — `Noodl.SEO.setMeta` was called for all fourteen meta tags **from the render body**, and in a browser that mutates `document.head`, so a discarded or double-invoked render changed document-level state for a tree never committed. ⚠️ **The obvious fix would have been worse than the defect**: SSR renders with `ReactDOMServer.renderToString` and **effects never run**, while `injectSeo` builds the served `<head>` out of the buffer `setMeta` fills — an unconditional move into `useEffect` empties the meta tags of every SSR and SSG page, and `ssr-inject-seo.test.js` stays green because it tests the string transform and not the producer. So the render body stays the path **on the server** and the browser writes after commit. Three of the six rows in `nda-012-render-body-effects.test.tsx` are the SSR-preserving controls, green at baseline on purpose |
 | G1 | ✅ | `setMeta(key, undefined)` removes the tag, which is the correct clearing behaviour |
 | B1 | ⚠️ **none** | — |
 | B2 | ⚠️ | — |
@@ -549,7 +609,8 @@ Source: [`nodes/navigation/page.ts`](../../../../packages/noodl-viewer-react/src
 | F1 | `n/a` | — |
 | H1 | ✅ | `singleton: true`; `nodeScopeDidInitialize` was moved out of `initialize` precisely because connections are not wired during it |
 
-**Verdict:** ⚠️ defect — and the headline is not in the table. ⚠️ **`Page`'s `Title` and `Url Path`
+**Verdict:** ⚠️ defect — **A3 fixed 2026-08-01; B1/B2 and D1 remain** — and the headline is not in the
+table. ⚠️ **`Page`'s `Title` and `Url Path`
 ports are dead.** `setup` derives a default for both and sends them as dynamic ports
 ([`page.ts:190-208`](../../../../packages/noodl-viewer-react/src/nodes/navigation/page.ts#L190-L208));
 `registerInputIfNeeded` registers setters that write `_internal.title` / `_internal.urlPath`
@@ -721,9 +782,9 @@ deliberate rather than unfinished.
 |---|---|
 | Nodes in scope | **20** |
 | Audited | **20** |
-| ✅ pass overall | 4 — `Text`, `Circle`, `Image`, `Component Children` |
-| ⚠️ at least one defect | **16** |
-| ⚠️ cells, excluding C1 | **41** |
+| ✅ pass overall | 6 — `Text`, `Circle`, `Image`, `Component Children`, and `Icon` + `Radio Button Group` from stream A |
+| ⚠️ at least one defect | **16** at audit time; **12** after streams A and B |
+| ⚠️ cells, excluding C1 | **41** as first counted — ⚠️ **not reproducible; see the note at the top of this file.** One method over the same section gives **47** at audit time, **34** after stream A and **27** after stream B |
 | C1 at audit time | 80.0% (981/1227) |
 | C1 now | **100% (1227/1227)** |
 | Find rate, counting nodes | **0.80 defective nodes / node** |
@@ -736,19 +797,41 @@ this file). `Navigation`'s 1.88/node was measured under the old B3 reading.
 
 **Where they are, by check** — ⚠️ cells, so a node appears once per failing check:
 
+**At audit time**, with what streams A and B have since closed struck through:
+
 | Check | ⚠️ | Nodes |
 |---|---|---|
-| ~~C1~~ | ~~17~~ → **0** | was everything except `Icon`; closed to 100% this session |
-| B3 | **7** | Drag, Group, Video, Checkbox, Text Input, Component Stack, Page Router |
-| G1 | **7** | Drag, Dropdown, Radio Button Group, Slider, Text Input, Repeater, Page Router |
-| B1 + B2 | 6 (×2 cells) | Drag, Group, Dropdown, Page, Page Router, Repeater |
-| A3 | 6 | Group, Video, Dropdown, Radio Button, Slider, Page |
+| ~~C1~~ | ~~17~~ → **0** | was everything except `Icon`; closed to 100% at audit time |
+| B3 | **7** | Drag, Group, Video, Checkbox, Text Input, Component Stack, Page Router — **all `ERG-001`'s** |
+| G1 | 7 → **0** | ~~Drag~~, ~~Dropdown~~, ~~Radio Button Group~~, ~~Slider~~, ~~Text Input~~, ~~Repeater~~, ~~Page Router~~ — **the check is closed for the category** |
+| B1 + B2 | 6 → **4** (×2 cells) | Drag, Group, ~~Dropdown~~, Page, ~~Page Router~~, Repeater |
+| A3 | 6 → **2** | Group, Video, ~~Dropdown~~, ~~Radio Button~~, ~~Slider~~, ~~Page~~ |
 | D1 | 4 | Columns, Page, Page Router, Repeater |
-| E1 | 4 | Video, Slider, Dropdown, Repeater |
-| H1 | 3 | Dropdown, Component Stack, Page Router |
-| A1 | 2 | Radio Button, Text Input (four more are 🔵 — the controls' shared no-feedback-loop rule) |
+| E1 | 4 → 3 | Video, ~~Slider~~, Dropdown, Repeater |
+| H1 | 3 → 0 | ~~Dropdown~~, ~~Component Stack~~, ~~Page Router~~ |
+| A1 | 2 → 1 | Radio Button, ~~Text Input~~ (four more are 🔵 — the controls' shared no-feedback-loop rule) |
 | F1 | 1 | Radio Button |
 | A2 | 1 | Page Router |
+
+⚠️ **Both revised counts above were wrong when first written, in the same direction** (A3 as 3 and
+B1/B2 as 5), and the arithmetic that caught them is one shell command over this file's own tables —
+worth running rather than re-deriving:
+
+```bash
+awk '/^## In scope/{f=1} /^## Out of scope/{f=0} f' audit/visual.md \
+  | grep -E "^\| (A1|A2|A3|G1|B1|B2|B3|D1|E1|F1|H1) \| ⚠️" \
+  | sed -E 's/^\| ([A-Z0-9]+) \|.*/\1/' | sort | uniq -c | sort -rn
+```
+
+**A summary of a worksheet should be derived from the worksheet, not maintained beside it** — which is
+the same failure the "31 defects / 41 cells" figure at the top of this file records, one revision on.
+
+⚠️ **`G1` and `H1` are the two checks the category has closed outright, and they closed for opposite
+reasons.** `H1` was three separate leaks. `G1` was **one question asked seven times** — what does this
+port do when handed nothing — and the seven answers were seven different wrong ones: a crash, a throw
+from the guard itself, a truthiness test, `|| 0`, a raw store, an identity compare and a pass-through
+into the DOM. **A check that closes to zero across a category is worth reading as a class before it is
+filed as a list**, which is `DV-viii`'s lesson for `B3` arriving at the same place from the other end.
 
 **Concentration**: `Page Router` (7 failing checks), `Dropdown` (6), `Repeater` (6) and `Slider` (5)
 hold half of everything. `Page Router`'s are all in one 60-line method.

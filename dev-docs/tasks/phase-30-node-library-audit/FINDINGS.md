@@ -2164,6 +2164,28 @@ static measurement only ever establishes the first.** The corpus rows now separa
 the mechanism rows assert on the node's style object, and a second block records what the live run
 found for each node.
 
+⚠️ **A third instance was found, diagnosed as Icon's case, fixed, and then reverted — and it was
+Button's case.** `Text Input`'s `placeHolderOpacity` declares `default: 0.5`, DB-ii blocks its setter,
+and it has no `inputProp`/`inputCss` route either, so the worksheet recorded "an untouched Text Input
+gets the browser's placeholder opacity". A mirror went into `initialize` on that reading and was
+committed. Live, with both injected per-instance rules deleted from a running preview, the computed
+`::placeholder` opacity is **still 0.5** — `assets/style.css` carries
+`.ndl-controls-textinput::placeholder { opacity: 0.5 }`, exactly as it carries Button's padding. The
+mirror moved no pixels and made one number specified three times. Reverted; the cell is 🔵.
+
+**The rule above was written in this entry, on this day, and the next instance of the same finding
+was still diagnosed from the source.** Stating a rule is not applying it. The applicable form is
+operational rather than epistemic: **before filing "the declared default does not render", grep
+`assets/style.css` for a class rule carrying the same value** — that one query separates Icon's case
+from Button's without a live run, and it was available both times.
+
+⚠️ There is a real duplication left in both nodes and it is unfixable by deleting either copy: the
+value lives in the stylesheet *and* in the port default, and only the stylesheet is load-bearing until
+an author touches the port. Button's answer was to zero the default (so the panel stops claiming to
+own the value); Text Input's is to leave the default *agreeing* with the stylesheet, because 0.5 is
+what renders and showing 0 would be a new lie. **Both nodes are pinned from both sides** in
+`nda-012-visual-declared-defaults.test.ts`, so editing either copy alone fails a row.
+
 ### DV-iii — `Component Stack` says it clips and does not
 
 ✅ **Fixed 2026-08-01** by adding `overflow: 'hidden'` to `defaultCss`, the one route applied at
@@ -2322,6 +2344,94 @@ the Page Router's new code, then to the editor's compilation traverser. It was r
 throwing line in the served bundle and walking *backwards* to the enclosing node definition. **Two
 nodes in this family have a `resetAsync` and a `pages`; a stack trace naming `resetAsync` does not
 tell you which.**
+
+### DV-x — the `Value` ports that invent a number, and the value they fall back to
+
+✅ **Fixed 2026-08-01** (`d6f483c9`), live-verified. `Drag`'s two snap coordinates and `Slider`'s
+`Value` both coerced an empty arrival into a plausible position instead of abstaining.
+
+| Node | Was | `null` produced | A non-number produced |
+|---|---|---|---|
+| `Drag` | `this._internal.snapPositionX = value` | **0** — the origin | `NaN` → `translate(NaNpx)` |
+| `Slider` | `Math.min(max, newValue \|\| 0)` | **`Min`** | `props.value = NaN` |
+
+⚠️ **The worksheet recorded `Drag`'s `null` consequence as `NaN` and it is 0.** `easeOutCubic`
+computes `(end - start) * … + start`, so `null` coerces to zero and the element animates to the
+origin. That is *worse* than `NaN`: a visible `NaN` is a bug report, and an element at 0,0 is a
+plausible answer to "snap to where the query said". Same shape as the `Expression` finding that
+produced the rule — **when auditing a silent failure, ask what value it falls back to** — and the
+same correction the rule predicts: the fallback was more plausible than the audit assumed, not less.
+
+**Both now abstain on `undefined`/`null`/`''` and raise on anything else non-numeric**
+(`drag/snap-position-not-a-number`, `slider/value-not-a-number`). Abstaining rather than clearing is
+the `Radio Button Group` precedent from stream A: a port with **no representable empty state** leaves
+the current value alone, where a string port (`Text Input`'s `startValue`, same batch) clears to `''`.
+Both are `EMPTY-VALUE-CONTRACT.md` applied; the contract's table is about layers, and which of its two
+columns a port takes depends on whether its type *has* an empty value.
+
+⚠️ **`Slider`'s `Value` input was declared `type: 'string'` while its `Value` output is
+`type: 'number'`** (`E1`), which is why the `NaN` path was reachable at all from ordinary authoring —
+a text field for a number. Now `number`; `string → number` is in the typecast table, so existing
+textual connections still land.
+
+⚠️ **A row that nearly proved nothing, and the generalisation of B-x.** `Slider`'s `initialize` seeds
+`props.value = props.min`, so on a handle that has never moved, "abstained" and "clamped to `Min`" are
+**the same reading** — the row passes either way. B-x is "a control in a state where the code never
+ran"; this is **a control in a state where both outcomes coincide.** Every row now moves the handle
+off `Min` first.
+
+### DV-xi — `Text Input`'s `Clear` emptied the field and not the node
+
+✅ **Fixed 2026-08-01** (`34ec5660`), live-verified.
+
+`clear()` blanked `props.startValue` and the DOM and left `_internal.text` holding the old string.
+`Set` reads `_internal.text` — so **a later `Set` pulse restored text the author had explicitly
+cleared.** Measured live: Set → *"Ada Lovelace"*, Clear → empty, Set → **empty**. Before the fix the
+second Set brought the text back. It also did not flag `onTextChanged` while unmounted, which
+`setText` immediately below it is careful to do, so a `Clear` before first mount left the `Text`
+output reading the old value.
+
+⚠️ **`Clear` writes through a focused field and `setText` must not, and that asymmetry is load-bearing
+in both directions.** `setText`'s `hasFocus()` guard is what stops a round-trip fighting the typist; a
+`Clear` that skipped a focused field would be a dead button for the person using it. Both directions
+now have a row, because "make the two paths consistent" is what a later tidying pass would do.
+
+⚠️ **The node has two modes and a fixture can only be in one.** With `Set` connected, `Text` waits for
+a pulse (`isInputConnected('set') === false`); with it unconnected, `Text` applies immediately. `Clear`'s
+defect is reachable **only in the first**, and `startValue`'s `G1` belongs to the second — which is the
+mode a node is in until an author wires the port. A single fixture measured one mode and reported both:
+the first draft read three genuine controls as failing. **Where a port's behaviour is switched by
+whether another port is connected, connectedness is a fixture parameter, not a detail.**
+
+### DV-xii — two components moved state from a render body
+
+✅ **Fixed 2026-08-01** (`19da638a`). `A3` on `Radio Button` and `Page`, and the fixes are not the
+same — which is the finding.
+
+- **`Radio Button`** called `props.checkedChanged(…)` from the render body, reaching
+  `flagOutputDirty('checked')` and `_updateVisualState()`. A render React discarded or double-invoked
+  moved graph state for a checked-ness the committed tree never had. Moved wholesale into an effect.
+  The `checked` *expression* stays in render and feeds the `<input>`: **the DOM is a render output,
+  not a side effect.**
+- **`Page`** called `Noodl.SEO.setMeta` for all fourteen meta tags from the render body, which in a
+  browser mutates `document.head`.
+
+⚠️ **The obvious fix for `Page` would have been worse than the defect, and nothing in the test suite
+would have said so.** SSR renders with `ReactDOMServer.renderToString` and **effects never run**,
+while `injectSeo` builds the served `<head>` out of the buffer `setMeta` fills. An unconditional move
+into `useEffect` silently empties the meta tags of every server-rendered and statically-generated page
+— and `ssr-inject-seo.test.js` stays **green**, because it tests the string transform and not the
+producer. So the render body stays the path *on the server*, and the browser writes after commit.
+
+**Generalisable, and it is the H-class lesson from a new direction: "move the side effect out of
+render" is a browser rule, and SSR is the environment where the render body is the only place a side
+effect can happen.** Before moving one, ask which renderers run effects. The check that settles it is
+cheap — `server-core.js` shims `globalThis.location` and nothing else, and the repo has no jsdom, so
+`typeof document === 'undefined'` is a reliable server test.
+
+Three of the six rows are the SSR-preserving controls. They were **green at baseline** and had to stay
+green, which is the whole reason they exist: the rows that redden prove the fix, and the rows that do
+not are what stop the fix being the wrong one.
 
 ## What these passes did *not* cover
 
