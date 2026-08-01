@@ -21,7 +21,6 @@
 import type { NodeDefinitionOptions } from '@noodl/types';
 
 import type { AccumulatorInternal, TextAccumulatorNodeInstance } from './node-instances';
-
 import { splitDelimited, truncateHead, utf8ByteLength } from './stream-parsers';
 
 function internalOf(node: TextAccumulatorNodeInstance): AccumulatorInternal {
@@ -30,6 +29,9 @@ function internalOf(node: TextAccumulatorNodeInstance): AccumulatorInternal {
 
 /** Warning key, so the canvas shows one warning per node rather than one per chunk. */
 const CHUNK_WARNING = 'text-accumulator-chunk-not-text';
+
+/** NDA-004 §2 — the matchable half of the failure pair. The bus keys by `code`. */
+const CHUNK_ERROR_CODE = 'text-accumulator/chunk-not-text';
 
 /**
  * Names what arrived, in the words of the port that should have been wired instead.
@@ -42,10 +44,10 @@ function describeBadChunk(value: unknown): string {
   const shape = Array.isArray(value)
     ? 'an array'
     : value instanceof Date
-      ? 'a Date'
-      : typeof value === 'object'
-        ? 'an object'
-        : `a ${typeof value}`;
+    ? 'a Date'
+    : typeof value === 'object'
+    ? 'an object'
+    : `a ${typeof value}`;
   return (
     `Chunk must be text, but ${shape} arrived, so nothing was appended. ` +
     "A stream's Data output is JSON-parsed and is an object for a payload like " +
@@ -96,6 +98,8 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     chunk: {
       type: 'string',
       displayName: 'Chunk',
+      description:
+        'The next fragment of text to append; wire a stream Text output, not its Data output, which is JSON-parsed and is usually an object',
       group: 'Data',
       set(this: TextAccumulatorNodeInstance, value: unknown) {
         // Text and the primitives that read as text are accepted; anything else is
@@ -132,8 +136,11 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'string',
       default: '\n',
       displayName: 'Delimiter',
+      description:
+        'Message boundary to split complete messages off; leave empty to accumulate everything, which is what a token stream wants',
       group: 'Config',
-      tooltip: 'Message boundary. Leave empty to accumulate everything without splitting — the mode a token stream wants.',
+      tooltip:
+        'Message boundary. Leave empty to accumulate everything without splitting — the mode a token stream wants.',
       set(this: TextAccumulatorNodeInstance, value: string) {
         internalOf(this).delimiter = value === undefined || value === null ? '' : String(value);
       }
@@ -143,6 +150,8 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'number',
       default: 1024 * 1024,
       displayName: 'Max Length (characters)',
+      description:
+        'Cap on the pending buffer in characters; overflow drops the oldest and is counted on Dropped Characters',
       group: 'Config',
       tooltip: 'Cap on the pending buffer. Overflow drops the oldest characters and is reported on Dropped Characters.',
       set(this: TextAccumulatorNodeInstance, value: number) {
@@ -154,8 +163,10 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       type: 'number',
       default: 1000,
       displayName: 'Max Messages',
+      description: 'Cap on retained complete messages, oldest dropped first; 0 keeps them all, which grows forever',
       group: 'Config',
-      tooltip: 'Cap on retained complete messages; the oldest are dropped first. 0 keeps them all, which grows forever.',
+      tooltip:
+        'Cap on retained complete messages; the oldest are dropped first. 0 keeps them all, which grows forever.',
       set(this: TextAccumulatorNodeInstance, value: number) {
         internalOf(this).maxMessages = Number(value) >= 0 ? Number(value) : 0;
       }
@@ -163,6 +174,8 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
 
     add: {
       displayName: 'Add',
+      description:
+        'Appends the current Chunk, which is retained between pulses, so a second Add with no new chunk appends it again',
       group: 'Actions',
       valueChangedToTrue(this: TextAccumulatorNodeInstance) {
         this.addChunk();
@@ -171,6 +184,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
 
     clear: {
       displayName: 'Clear',
+      description: 'Empties the buffer, the messages and both dropped counts',
       group: 'Actions',
       valueChangedToTrue(this: TextAccumulatorNodeInstance) {
         this.clearBuffer();
@@ -182,6 +196,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     accumulated: {
       type: 'string',
       displayName: 'Accumulated',
+      description: 'Everything appended since the last Clear that has not yet been split off as a complete message',
       group: 'Data',
       get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).buffer;
@@ -190,6 +205,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     messages: {
       type: 'array',
       displayName: 'Messages',
+      description: 'Complete messages split off the delimiter, oldest first, capped at Max Messages',
       group: 'Data',
       get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).messages;
@@ -198,6 +214,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     lastMessage: {
       type: 'string',
       displayName: 'Last Message',
+      description: 'The most recent complete message, which is what a chat surface usually wants',
       group: 'Data',
       get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).lastMessage;
@@ -206,6 +223,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     messageCount: {
       type: 'number',
       displayName: 'Message Count',
+      description: 'How many complete messages are being retained, which is not how many have arrived',
       group: 'Status',
       get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).messages.length;
@@ -214,6 +232,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     characterCount: {
       type: 'number',
       displayName: 'Character Count',
+      description: 'Length of Accumulated in characters',
       group: 'Status',
       get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).buffer.length;
@@ -222,6 +241,8 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     byteCount: {
       type: 'number',
       displayName: 'Byte Count (UTF-8)',
+      description:
+        'Length of Accumulated in UTF-8 bytes, which differs from Character Count for anything outside ASCII',
       group: 'Status',
       get(this: TextAccumulatorNodeInstance) {
         return utf8ByteLength(internalOf(this).buffer);
@@ -230,6 +251,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     droppedCharacters: {
       type: 'number',
       displayName: 'Dropped Characters',
+      description: 'How many characters Max Length has discarded from the front since the last Clear',
       group: 'Status',
       get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).droppedCharacters;
@@ -238,6 +260,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     droppedMessages: {
       type: 'number',
       displayName: 'Dropped Messages',
+      description: 'How many complete messages Max Messages has discarded since the last Clear',
       group: 'Status',
       get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).droppedMessages;
@@ -246,16 +269,50 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
+      description: 'Why the last chunk was refused; blank once a chunk of text arrives',
       group: 'Status',
       get(this: TextAccumulatorNodeInstance) {
         return internalOf(this).error;
       }
     },
 
-    messageReceived: { type: 'signal', displayName: 'Message Received', group: 'Events' },
-    changed: { type: 'signal', displayName: 'Changed', group: 'Events' },
-    cleared: { type: 'signal', displayName: 'Cleared', group: 'Events' },
-    overflowed: { type: 'signal', displayName: 'Overflowed', group: 'Events' }
+    messageReceived: {
+      type: 'signal',
+      displayName: 'Message Received',
+      description: 'Fires once per Add that completed at least one message, not once per message',
+      group: 'Events'
+    },
+    changed: {
+      type: 'signal',
+      displayName: 'Changed',
+      description: 'Fires whenever an Add appended something, which is the cue to redraw',
+      group: 'Events'
+    },
+    cleared: {
+      type: 'signal',
+      displayName: 'Cleared',
+      description: 'Fires once the buffer and the messages have been emptied',
+      group: 'Events'
+    },
+    overflowed: {
+      type: 'signal',
+      displayName: 'Overflowed',
+      description: 'Fires when Max Length or Max Messages has just discarded something',
+      group: 'Events'
+    },
+    /**
+     * NDA-012 / NDA-004 §2. A mis-wired `Chunk` used to reach an editor warning and the
+     * `error` string, and nothing else — so `Add` after one returned silently (the refused
+     * chunk is blanked, and a blank chunk is a deliberate no-op) and the graph had no branch
+     * to take. Five siblings in this directory already carry `Failure`; this one did not.
+     */
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      description:
+        'Fires when a chunk was not text and nothing was appended, which usually means the wrong stream output is wired',
+      group: 'Events'
+    }
   },
 
   methods: {
@@ -271,6 +328,12 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       if (internal.error === message) return;
       internal.error = message;
       this.flagOutputDirty('error');
+
+      // The graph-visible half, which is what a deployed build has. `raiseRuntimeError` is
+      // what reaches `On App Error`; the editor warning below is the *second* channel now
+      // rather than the only one.
+      this.sendSignalOnOutput('failure');
+      this.raiseRuntimeError(CHUNK_ERROR_CODE, message);
 
       const editorConnection = this.context && this.context.editorConnection;
       if (editorConnection && this.nodeScope && this.nodeScope.componentOwner) {

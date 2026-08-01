@@ -1279,7 +1279,9 @@ describe('net.noodl.ActionHandler (node)', () => {
       ['actionType', 'autoComplete', 'channel', 'complete', 'enabled', 'errorMessage', 'fail', 'result'].sort()
     );
     expect(Object.keys(metadata.outputs).sort()).toEqual(
-      ['actionId', 'error', 'payload', 'registered', 'trigger', 'triggeredCount'].sort()
+      // NDA-012 added `failure`: Complete/Fail with nothing in flight used to end on the
+      // `error` string alone.
+      ['actionId', 'error', 'failure', 'payload', 'registered', 'trigger', 'triggeredCount'].sort()
     );
   });
 

@@ -56,6 +56,18 @@ const SubscribeToStoreNodeDefinition: NodeDefinitionOptions = {
     this._internal.setupScheduled = false;
   },
 
+  /**
+   * Subscribes once the node is in a scope, whether or not anything was authored.
+   *
+   * NDA-012, same shape as the Global Store node: `storeName` has a default and `keys` is
+   * legitimately blank ("watch everything"), so a node configured entirely by defaults never
+   * ran a setter, never called `scheduleSetup`, and never subscribed. `Changed` could not
+   * fire — the node whose only job is to react reacted to nothing.
+   */
+  nodeScopeDidInitialize: function (this: SubscribeInstance) {
+    this.scheduleSetup();
+  },
+
   getInspectInfo: function (this: SubscribeInstance): InspectInfo {
     return [
       {
@@ -70,6 +82,7 @@ const SubscribeToStoreNodeDefinition: NodeDefinitionOptions = {
     storeName: {
       type: 'string',
       displayName: 'Store Name',
+      description: 'Names the store to watch; must match the Store Name of the Global Store node that owns it',
       group: 'Store',
       default: 'app',
       set: function (this: SubscribeInstance, value: string) {
@@ -80,6 +93,7 @@ const SubscribeToStoreNodeDefinition: NodeDefinitionOptions = {
     keys: {
       type: 'string',
       displayName: 'Keys',
+      description: 'Comma-separated keys to watch; leave blank to react to every change in the store',
       group: 'Subscribe',
       tooltip: 'Comma-separated keys to watch. Leave blank to react to every change in the store.',
       set: function (this: SubscribeInstance, value: string) {
@@ -94,6 +108,8 @@ const SubscribeToStoreNodeDefinition: NodeDefinitionOptions = {
     value: {
       type: '*',
       displayName: 'Value',
+      description:
+        'The watched value: one key gives that key, several give an object of just those keys, none gives the whole store',
       group: 'Data',
       getter: function (this: SubscribeInstance) {
         return this.projectValue(globalStoreManager.getState(this._internal.storeName));
@@ -102,6 +118,7 @@ const SubscribeToStoreNodeDefinition: NodeDefinitionOptions = {
     previousValue: {
       type: '*',
       displayName: 'Previous Value',
+      description: 'The same projection as Value, as it was immediately before the change that fired Changed',
       group: 'Data',
       getter: function (this: SubscribeInstance) {
         return this._internal.previousValue;
@@ -110,6 +127,7 @@ const SubscribeToStoreNodeDefinition: NodeDefinitionOptions = {
     changedKeys: {
       type: 'string',
       displayName: 'Changed Keys',
+      description: 'Comma-separated keys that changed in the notification that fired Changed',
       group: 'Data',
       getter: function (this: SubscribeInstance) {
         return this._internal.changedKeys;
@@ -118,6 +136,7 @@ const SubscribeToStoreNodeDefinition: NodeDefinitionOptions = {
     changed: {
       type: 'signal',
       displayName: 'Changed',
+      description: 'Fires when one of the watched keys changed, and not for a commit that touched only other keys',
       group: 'Events'
     }
   },

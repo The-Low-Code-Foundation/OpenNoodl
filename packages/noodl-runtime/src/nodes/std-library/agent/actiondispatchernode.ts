@@ -205,6 +205,8 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
       type: 'string',
       default: 'default',
       displayName: 'Channel',
+      description:
+        'Names the handler registry this dispatcher draws on; leave it as default unless two independent flows must not see each other',
       group: 'Dispatcher',
       tooltip:
         'Names the handler registry this dispatcher draws on. Leave as "default" unless two independent flows must not see each other.',
@@ -217,6 +219,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     action: {
       type: '*',
       displayName: 'Action',
+      description: 'An action object, an array of them to run in order, or JSON text holding either',
       group: 'Action',
       tooltip: 'An action object, an array of them to run in order, or JSON text holding either.',
       set(this: NodeInstance, value: unknown) {
@@ -228,6 +231,8 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     builtIns: {
       type: 'string',
       displayName: 'Enabled Built-ins',
+      description:
+        'Comma-separated built-in action names this dispatcher may execute; empty, the default, means a server cannot write to the store at all',
       group: 'Built-in Actions',
       tooltip:
         'Comma-separated built-in action names this dispatcher may execute: ' +
@@ -253,6 +258,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
       type: 'string',
       default: 'app',
       displayName: 'Store Name',
+      description: 'The only store the built-in actions can write; a store named inside an incoming action is ignored',
       group: 'Built-in Actions',
       tooltip:
         'The only store the built-in actions can write. A store named inside an incoming action is ignored — the graph chooses the store, not the server.',
@@ -265,6 +271,8 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     allowedKeys: {
       type: 'string',
       displayName: 'Allowed Keys',
+      description:
+        'Comma-separated keys the built-in store actions may write; blank means any key, and setting any key also refuses CLEAR_STORE',
       group: 'Built-in Actions',
       tooltip:
         'Comma-separated keys the built-in store actions may write. Blank means any key of the configured store. Setting any key also refuses CLEAR_STORE.',
@@ -278,6 +286,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
       type: 'number',
       default: 30000,
       displayName: 'Handler Timeout (ms)',
+      description: 'Milliseconds a handler has to signal Complete or Fail before the action is failed; 0 waits forever',
       group: 'Delivery',
       tooltip: 'How long a handler has to signal Complete or Fail before the action is failed. 0 waits forever.',
       set(this: NodeInstance, value: number) {
@@ -289,6 +298,8 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
       type: 'number',
       default: 2000,
       displayName: 'Wait For Handler (ms)',
+      description:
+        'Milliseconds an action waits for its handler to appear before being refused as unknown; everything behind it waits too',
       group: 'Delivery',
       tooltip:
         'How long an action waits for its handler to appear before being refused as unknown — the window in which a component can still mount. 0 refuses immediately. Everything behind it waits too, because order is preserved.',
@@ -301,6 +312,8 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
       type: 'number',
       default: 100,
       displayName: 'Max Queue Size',
+      description:
+        'Bound on queued actions; overflow refuses the newest so accepted actions keep their order; 0 is unbounded',
       group: 'Delivery',
       tooltip:
         'Bound on queued actions. Overflow refuses the newest so accepted actions keep their order. 0 is unbounded.',
@@ -313,6 +326,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
       type: 'number',
       default: 0,
       displayName: 'Rate Limit',
+      description: 'Actions executed per window before the rest are refused rather than delayed; 0 is unlimited',
       group: 'Delivery',
       tooltip: 'Max actions executed per window. 0 is unlimited. Excess actions are refused, not delayed.',
       set(this: NodeInstance, value: number) {
@@ -324,6 +338,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
       type: 'number',
       default: 60000,
       displayName: 'Rate Limit Window (ms)',
+      description: 'Length of the rate-limit window in milliseconds; ignored unless Rate Limit is set',
       group: 'Delivery',
       set(this: NodeInstance, value: number) {
         internalOf(this).options.rateLimitWindow = Number(value) > 0 ? Number(value) : 60000;
@@ -333,6 +348,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     // -- signals ------------------------------------------------------------
     dispatch: {
       displayName: 'Dispatch',
+      description: 'Admits whatever is on Action and runs it, or refuses it with a reason',
       group: 'Actions',
       valueChangedToTrue(this: NodeInstance) {
         (this as never as { doDispatch(): void }).doDispatch();
@@ -341,6 +357,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
 
     cancel: {
       displayName: 'Cancel All',
+      description: 'Discards everything queued and abandons anything in flight, reporting how many were dropped',
       group: 'Actions',
       valueChangedToTrue(this: NodeInstance) {
         (this as never as { doCancel(): void }).doCancel();
@@ -353,6 +370,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     actionType: {
       type: 'string',
       displayName: 'Action Type',
+      description: 'Type of the action currently being executed',
       group: 'Data',
       get(this: NodeInstance) {
         return internalOf(this).actionType;
@@ -361,6 +379,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     actionId: {
       type: 'string',
       displayName: 'Action Id',
+      description: 'Id of the action currently being executed, taken from the message when it carried one',
       group: 'Data',
       get(this: NodeInstance) {
         return internalOf(this).actionId;
@@ -369,6 +388,8 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     payload: {
       type: '*',
       displayName: 'Payload',
+      description:
+        'The data the current action carried, taken from its payload or data field, or the whole action when it has neither',
       group: 'Data',
       get(this: NodeInstance) {
         return internalOf(this).payload;
@@ -377,22 +398,51 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     result: {
       type: '*',
       displayName: 'Result',
+      description: 'What the handler or built-in returned for the action that just completed',
       group: 'Data',
       get(this: NodeInstance) {
         return internalOf(this).result;
       }
     },
 
-    dispatched: { type: 'signal', displayName: 'Dispatched', group: 'Events' },
-    completed: { type: 'signal', displayName: 'Completed', group: 'Events' },
-    failed: { type: 'signal', displayName: 'Failed', group: 'Events' },
-    idle: { type: 'signal', displayName: 'Idle', group: 'Events' },
+    dispatched: {
+      type: 'signal',
+      displayName: 'Dispatched',
+      description: 'Fires when an action has been accepted and is about to run',
+      group: 'Events'
+    },
+    completed: {
+      type: 'signal',
+      displayName: 'Completed',
+      description: 'Fires once an action has finished and Result holds its answer',
+      group: 'Events'
+    },
+    failed: {
+      type: 'signal',
+      displayName: 'Failed',
+      description:
+        'Fires when an accepted action ran and did not succeed, whether the handler said so or the deadline passed',
+      group: 'Events'
+    },
+    idle: {
+      type: 'signal',
+      displayName: 'Idle',
+      description: 'Fires when the queue has drained after doing at least one thing',
+      group: 'Events'
+    },
 
     // -- refusals: the security-visible path --------------------------------
-    refused: { type: 'signal', displayName: 'Refused', group: 'Refusals' },
+    refused: {
+      type: 'signal',
+      displayName: 'Refused',
+      description:
+        'Fires when an action was not run at all, which is the output to watch for anything a server can talk to',
+      group: 'Refusals'
+    },
     refusedType: {
       type: 'string',
       displayName: 'Refused Type',
+      description: 'Type of the refused action, or blank when the message was too malformed to have one',
       group: 'Refusals',
       get(this: NodeInstance) {
         return internalOf(this).refusedType;
@@ -401,6 +451,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     refusalReason: {
       type: 'string',
       displayName: 'Refusal Reason',
+      description: 'Why it was refused, as one of invalid, unknown, not-allowed, rate-limited or queue-full',
       group: 'Refusals',
       get(this: NodeInstance) {
         return internalOf(this).refusalReason;
@@ -409,6 +460,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     refusalMessage: {
       type: 'string',
       displayName: 'Refusal Message',
+      description: 'The refusal in a sentence an app author can show or log',
       group: 'Refusals',
       get(this: NodeInstance) {
         return internalOf(this).refusalMessage;
@@ -419,6 +471,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     lastError: {
       type: 'string',
       displayName: 'Last Error',
+      description: 'The most recent failure or refusal, whichever happened last',
       group: 'Status',
       get(this: NodeInstance) {
         return internalOf(this).lastError;
@@ -427,6 +480,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     queueSize: {
       type: 'number',
       displayName: 'Queue Size',
+      description: 'How many actions are waiting behind the one being executed',
       group: 'Status',
       get(this: NodeInstance) {
         const dispatcher = internalOf(this).dispatcher;
@@ -436,6 +490,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     isExecuting: {
       type: 'boolean',
       displayName: 'Is Executing',
+      description: 'True while an action is running, which is the cue for a busy indicator',
       group: 'Status',
       get(this: NodeInstance) {
         const dispatcher = internalOf(this).dispatcher;
@@ -446,6 +501,8 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     waitingFor: {
       type: 'string',
       displayName: 'Waiting For',
+      description:
+        'Action type holding the head of the queue because its handler has not registered yet; blank when nothing is waiting',
       group: 'Status',
       get(this: NodeInstance) {
         const dispatcher = internalOf(this).dispatcher;
@@ -455,6 +512,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     completedCount: {
       type: 'number',
       displayName: 'Completed Count',
+      description: 'How many actions have completed since the page loaded',
       group: 'Status',
       get(this: NodeInstance) {
         return internalOf(this).completedCount;
@@ -463,6 +521,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     failedCount: {
       type: 'number',
       displayName: 'Failed Count',
+      description: 'How many accepted actions have failed since the page loaded',
       group: 'Status',
       get(this: NodeInstance) {
         return internalOf(this).failedCount;
@@ -471,6 +530,7 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     refusedCount: {
       type: 'number',
       displayName: 'Refused Count',
+      description: 'How many actions have been refused since the page loaded',
       group: 'Status',
       get(this: NodeInstance) {
         return internalOf(this).refusedCount;
@@ -479,12 +539,18 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
     cancelledCount: {
       type: 'number',
       displayName: 'Cancelled Count',
+      description: 'How many actions Cancel All has discarded since the page loaded',
       group: 'Status',
       get(this: NodeInstance) {
         return internalOf(this).cancelledCount;
       }
     },
-    cancelled: { type: 'signal', displayName: 'Cancelled', group: 'Events' }
+    cancelled: {
+      type: 'signal',
+      displayName: 'Cancelled',
+      description: 'Fires once Cancel All has emptied the queue',
+      group: 'Events'
+    }
   },
 
   methods: {

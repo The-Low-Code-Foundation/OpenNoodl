@@ -77,6 +77,7 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
     storeName: {
       type: 'string',
       displayName: 'Store Name',
+      description: 'Names the store to snapshot or restore into',
       group: 'Store',
       default: 'app',
       set: function (this: SnapshotInstance, value: string) {
@@ -86,6 +87,7 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
     snapshotName: {
       type: 'string',
       displayName: 'Snapshot Name',
+      description: 'Name to save this checkpoint under, and the name Restore looks up; required to save',
       group: 'Snapshot',
       set: function (this: SnapshotInstance, value: string) {
         this._internal.snapshotName = value;
@@ -94,6 +96,7 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
     snapshotData: {
       type: 'object',
       displayName: 'Snapshot Data',
+      description: 'A previously exported Snapshot to restore instead of the named one; leave blank to restore by name',
       group: 'Snapshot',
       tooltip:
         'Snapshot to restore instead of the named one — a previously exported "Snapshot" output. ' +
@@ -104,6 +107,7 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
     },
     save: {
       displayName: 'Save',
+      description: 'Copies the store as it is now and keeps it under Snapshot Name',
       group: 'Actions',
       valueChangedToTrue: function (this: SnapshotInstance) {
         this.queue('save');
@@ -111,6 +115,7 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
     },
     restore: {
       displayName: 'Restore',
+      description: 'Puts a checkpoint back as an ordinary write, so it appears in the history and can itself be undone',
       group: 'Actions',
       valueChangedToTrue: function (this: SnapshotInstance) {
         this.queue('restore');
@@ -122,6 +127,8 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
     snapshot: {
       type: 'object',
       displayName: 'Snapshot',
+      description:
+        'The checkpoint just saved or restored, as plain data that can be written to a file and fed back into Snapshot Data',
       group: 'Data',
       getter: function (this: SnapshotInstance) {
         return this._internal.snapshot;
@@ -130,6 +137,8 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
     fullyRestorable: {
       type: 'boolean',
       displayName: 'Fully Restorable',
+      description:
+        'False when the checkpoint holds a Collection, a Model or a function, which it can only keep by reference',
       group: 'Status',
       // False when the snapshot holds live objects it could only keep by reference. Output
       // ports carry no tooltip, so this lives here and in the notes.
@@ -141,6 +150,8 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
     byReferenceKeys: {
       type: 'string',
       displayName: 'By-Reference Keys',
+      description:
+        'Comma-separated keys the checkpoint holds as live objects, so restoring will not undo changes made to them since',
       group: 'Status',
       getter: function (this: SnapshotInstance) {
         const snapshot = this._internal.snapshot;
@@ -150,21 +161,26 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
     saved: {
       type: 'signal',
       displayName: 'Saved',
+      description: 'Fires once the checkpoint has been taken and Snapshot holds it',
       group: 'Events'
     },
     restored: {
       type: 'signal',
       displayName: 'Restored',
+      description: 'Fires once the store holds the checkpoint again',
       group: 'Events'
     },
     failure: {
       type: 'signal',
       displayName: 'Failure',
+      description:
+        'Fires when the checkpoint could not be saved or put back, most often an unnamed or unknown checkpoint',
       group: 'Events'
     },
     error: {
       type: 'string',
       displayName: 'Error',
+      description: 'Why the last save or restore failed; blank once one succeeds',
       group: 'Events',
       getter: function (this: SnapshotInstance) {
         return this._internal.error;

@@ -23,8 +23,8 @@
 import type { NodeDefinitionOptions } from '@noodl/types';
 
 import type { SseInternal, SseNodeInstance } from './node-instances';
-import { parseJsonOrText, textForPath } from './stream-parsers';
 import { SseConnection, SseConnectionOptions, SseConnectionState } from './sse-connection';
+import { parseJsonOrText, textForPath } from './stream-parsers';
 
 import Node = require('../../../node');
 
@@ -124,6 +124,7 @@ const SSENode: NodeDefinitionOptions = {
     url: {
       type: 'string',
       displayName: 'URL',
+      description: 'Endpoint to stream from; changing it while connected reconnects to the new one',
       group: 'Connection',
       set(this: SseNodeInstance, value: string) {
         internalOf(this).url = value === undefined || value === null ? '' : String(value);
@@ -142,6 +143,8 @@ const SSENode: NodeDefinitionOptions = {
       },
       default: 'auto',
       displayName: 'Transport',
+      description:
+        'How the stream is fetched: Fetch carries headers and a body, EventSource lets the browser handle reconnection, Auto prefers Fetch',
       group: 'Connection',
       set(this: SseNodeInstance, value: string) {
         internalOf(this).transport = (value as SseInternal['transport']) || 'auto';
@@ -160,6 +163,7 @@ const SSENode: NodeDefinitionOptions = {
       },
       default: 'GET',
       displayName: 'Method',
+      description: 'HTTP method for the request; anything other than GET needs the Fetch transport',
       group: 'Request',
       set(this: SseNodeInstance, value: string) {
         internalOf(this).method = value || 'GET';
@@ -169,6 +173,8 @@ const SSENode: NodeDefinitionOptions = {
     headers: {
       type: 'object',
       displayName: 'Headers',
+      description:
+        'Request headers as an object, for bearer tokens and the like; ignored by the EventSource transport, which cannot set them',
       group: 'Request',
       set(this: SseNodeInstance, value: Record<string, string>) {
         internalOf(this).headers = value && typeof value === 'object' ? value : null;
@@ -178,6 +184,7 @@ const SSENode: NodeDefinitionOptions = {
     body: {
       type: '*',
       displayName: 'Body',
+      description: 'Request body, sent as JSON unless it is already a string; ignored for GET and HEAD',
       group: 'Request',
       set(this: SseNodeInstance, value: unknown) {
         internalOf(this).body = value;
@@ -188,6 +195,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'boolean',
       default: false,
       displayName: 'With Credentials',
+      description: 'Sends cookies and HTTP auth to a cross-origin endpoint, which the server must also allow',
       group: 'Request',
       set(this: SseNodeInstance, value: boolean) {
         internalOf(this).withCredentials = !!value;
@@ -197,6 +205,8 @@ const SSENode: NodeDefinitionOptions = {
     eventTypes: {
       type: 'string',
       displayName: 'Event Types',
+      description:
+        'Comma-separated named event types to subscribe to; only needed for the EventSource transport, as Fetch delivers every type',
       group: 'Connection',
       tooltip:
         'Comma-separated named event types to subscribe to. Only needed for the EventSource transport, which delivers a named event only to a listener registered in advance; the Fetch transport delivers every event type.',
@@ -208,6 +218,8 @@ const SSENode: NodeDefinitionOptions = {
     textPath: {
       type: 'string',
       displayName: 'Text Path',
+      description:
+        'Where the text lives inside a JSON payload, as a dot path such as choices.0.delta.content; leave blank for a stream of bare text',
       group: 'Data',
       tooltip:
         'Where the text lives inside a JSON payload, as a dot path — for an OpenAI-compatible endpoint, ' +
@@ -223,6 +235,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'boolean',
       default: false,
       displayName: 'Auto Connect',
+      description: 'Opens the stream as soon as a URL is available, without waiting for a Connect signal',
       group: 'Connection',
       set(this: SseNodeInstance, value: boolean) {
         internalOf(this).autoConnect = !!value;
@@ -234,6 +247,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'boolean',
       default: true,
       displayName: 'Auto Reconnect',
+      description: 'Retries after a failure with a growing backoff; turning it off reports the failure and stops',
       group: 'Reconnection',
       set(this: SseNodeInstance, value: boolean) {
         internalOf(this).autoReconnect = !!value;
@@ -244,6 +258,8 @@ const SSENode: NodeDefinitionOptions = {
       type: 'boolean',
       default: false,
       displayName: 'Reconnect On Stream End',
+      description:
+        'Reconnects when the server closes the stream cleanly; off by default because reconnecting an agent stream re-issues the request',
       group: 'Reconnection',
       tooltip:
         'Reconnect when the server closes the stream cleanly. Off by default: an agent response stream is finite, and reconnecting would re-issue the request and start the response again.',
@@ -256,6 +272,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'number',
       default: 1000,
       displayName: 'Reconnect Delay (ms)',
+      description: 'First retry delay in milliseconds, doubling per consecutive failure up to Max Reconnect Delay',
       group: 'Reconnection',
       tooltip: 'First retry delay. Doubles per consecutive failure, up to the maximum.',
       set(this: SseNodeInstance, value: number) {
@@ -267,6 +284,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'number',
       default: 30000,
       displayName: 'Max Reconnect Delay (ms)',
+      description: 'Ceiling on the backoff in milliseconds, however many failures there have been',
       group: 'Reconnection',
       set(this: SseNodeInstance, value: number) {
         internalOf(this).maxReconnectDelay = Number(value) > 0 ? Number(value) : 30000;
@@ -277,6 +295,7 @@ const SSENode: NodeDefinitionOptions = {
       type: 'number',
       default: 0,
       displayName: 'Max Retries',
+      description: 'Consecutive failures allowed before the connection gives up and reports an error; 0 keeps retrying',
       group: 'Reconnection',
       tooltip: '0 means keep retrying. Otherwise the connection reports an error after this many consecutive failures.',
       set(this: SseNodeInstance, value: number) {
@@ -288,6 +307,8 @@ const SSENode: NodeDefinitionOptions = {
       type: 'boolean',
       default: true,
       displayName: 'Dedupe By Id',
+      description:
+        'Drops events whose id has already been seen, so a reconnect that resumes cannot re-deliver messages',
       group: 'Reconnection',
       tooltip:
         'Drop events whose id has already been seen, so a reconnect that resumes from the last event id cannot re-deliver messages. Turn off if your server reuses ids for distinct events.',
@@ -298,6 +319,7 @@ const SSENode: NodeDefinitionOptions = {
 
     connect: {
       displayName: 'Connect',
+      description: 'Opens the stream, replacing any connection already open and resetting the retry count',
       group: 'Actions',
       valueChangedToTrue(this: SseNodeInstance) {
         this.doConnect();
@@ -306,6 +328,7 @@ const SSENode: NodeDefinitionOptions = {
 
     disconnect: {
       displayName: 'Disconnect',
+      description: 'Closes the stream and stops retrying',
       group: 'Actions',
       valueChangedToTrue(this: SseNodeInstance) {
         this.doDisconnect();
@@ -318,6 +341,7 @@ const SSENode: NodeDefinitionOptions = {
     connectionState: {
       type: 'string',
       displayName: 'Connection State',
+      description: 'Where the connection is: idle, connecting, open, reconnecting, closed or error',
       group: 'Status',
       get(this: SseNodeInstance) {
         return internalOf(this).connectionState;
@@ -326,6 +350,7 @@ const SSENode: NodeDefinitionOptions = {
     connected: {
       type: 'boolean',
       displayName: 'Connected',
+      description: 'True only while the stream is open and frames may arrive',
       group: 'Status',
       get(this: SseNodeInstance) {
         return internalOf(this).connectionState === 'open';
@@ -334,6 +359,7 @@ const SSENode: NodeDefinitionOptions = {
     lastError: {
       type: 'string',
       displayName: 'Last Error',
+      description: 'What went wrong most recently, including the reason a retry was scheduled',
       group: 'Status',
       get(this: SseNodeInstance) {
         const conn = internalOf(this).connection;
@@ -343,21 +369,43 @@ const SSENode: NodeDefinitionOptions = {
     retryCount: {
       type: 'number',
       displayName: 'Retry Count',
+      description: 'Consecutive failed attempts in the current outage; back to zero once the stream opens',
       group: 'Status',
       get(this: SseNodeInstance) {
         return counter(this, 'retryCount');
       }
     },
 
-    onOpen: { type: 'signal', displayName: 'On Open', group: 'Events' },
-    onMessage: { type: 'signal', displayName: 'On Message', group: 'Events' },
-    onError: { type: 'signal', displayName: 'On Error', group: 'Events' },
-    onClose: { type: 'signal', displayName: 'On Close', group: 'Events' },
+    onOpen: {
+      type: 'signal',
+      displayName: 'On Open',
+      description: 'Fires when the stream has been established',
+      group: 'Events'
+    },
+    onMessage: {
+      type: 'signal',
+      displayName: 'On Message',
+      description: 'Fires once per event, after Data, Raw and Text already hold it',
+      group: 'Events'
+    },
+    onError: {
+      type: 'signal',
+      displayName: 'On Error',
+      description: 'Fires when the stream failed or dropped, whether or not a retry is going to follow',
+      group: 'Events'
+    },
+    onClose: {
+      type: 'signal',
+      displayName: 'On Close',
+      description: 'Fires when the stream has stopped for good, whether it ended cleanly or gave up',
+      group: 'Events'
+    },
 
     // --- stream data ------------------------------------------------------
     data: {
       type: '*',
       displayName: 'Data',
+      description: 'The event payload, parsed as JSON when it is JSON and handed over as text when it is not',
       group: 'Data',
       get(this: SseNodeInstance) {
         return internalOf(this).data;
@@ -366,6 +414,7 @@ const SSENode: NodeDefinitionOptions = {
     raw: {
       type: 'string',
       displayName: 'Raw',
+      description: 'The event payload exactly as it arrived, before any parsing',
       group: 'Data',
       get(this: SseNodeInstance) {
         return internalOf(this).raw;
@@ -385,6 +434,8 @@ const SSENode: NodeDefinitionOptions = {
     text: {
       type: 'string',
       displayName: 'Text',
+      description:
+        'The one data output guaranteed to be a string: Raw when no Text Path is set, the field at that path when one is, blank when it does not resolve',
       group: 'Data',
       get(this: SseNodeInstance) {
         const internal = internalOf(this);
@@ -394,6 +445,7 @@ const SSENode: NodeDefinitionOptions = {
     eventType: {
       type: 'string',
       displayName: 'Event Type',
+      description: 'The event name the server sent, or message when it sent none',
       group: 'Data',
       get(this: SseNodeInstance) {
         return internalOf(this).eventType;
@@ -402,6 +454,7 @@ const SSENode: NodeDefinitionOptions = {
     lastEventId: {
       type: 'string',
       displayName: 'Last Event Id',
+      description: 'The furthest id the server has reported, which is the point a reconnect resumes from',
       group: 'Data',
       get(this: SseNodeInstance) {
         const conn = internalOf(this).connection;
@@ -411,6 +464,7 @@ const SSENode: NodeDefinitionOptions = {
     messageCount: {
       type: 'number',
       displayName: 'Message Count',
+      description: 'How many events have been delivered on this connection, not counting suppressed duplicates',
       group: 'Status',
       get(this: SseNodeInstance) {
         return counter(this, 'messageCount');
@@ -419,6 +473,7 @@ const SSENode: NodeDefinitionOptions = {
     lastMessageTime: {
       type: 'number',
       displayName: 'Last Message Time',
+      description: 'When the last event arrived, as milliseconds since the epoch; useful for spotting a stalled stream',
       group: 'Status',
       get(this: SseNodeInstance) {
         return counter(this, 'lastMessageTime');
@@ -427,6 +482,7 @@ const SSENode: NodeDefinitionOptions = {
     duplicatesSuppressed: {
       type: 'number',
       displayName: 'Duplicates Suppressed',
+      description: 'How many replayed events Dedupe By Id has dropped on this connection',
       group: 'Status',
       get(this: SseNodeInstance) {
         return counter(this, 'duplicatesSuppressed');
@@ -435,6 +491,8 @@ const SSENode: NodeDefinitionOptions = {
     deliverySemantics: {
       type: 'string',
       displayName: 'Delivery Semantics',
+      description:
+        'What this stream actually guarantees, derived from whether the server sends ids: at-most-once, at-least-once or at-least-once-deduped',
       group: 'Status',
       get(this: SseNodeInstance) {
         const conn = internalOf(this).connection;
@@ -451,6 +509,18 @@ const SSENode: NodeDefinitionOptions = {
      * input writes: connecting from the `url` setter would fire a request against a
      * half-configured node, and connecting from the `autoConnect` setter would miss a
      * `url` that arrives afterwards.
+     *
+     * ⚠️ **A live connection is not a reason to stop.** NDA-012: this used to return early
+     * whenever a connection existed and was not disposed, so a `URL` that changed — from a
+     * page parameter, a variable, a Function node — left the stream pointed at the *old*
+     * endpoint for the life of the node, silently. `websocket.ts`'s `rebuild()` has always
+     * handled this and says why twenty lines from here: *"Silently landing on `idle` after a
+     * url change is exactly the invisible failure this node is supposed to prevent."* The two
+     * nodes share a port shape deliberately; they now share this behaviour too.
+     *
+     * The identity check is what keeps it from being the opposite bug. Every input on this
+     * node schedules this pass, and reopening an agent stream re-issues the prompt, so a
+     * rebuild triggered by a change to `Max Retries` would be worse than the defect it fixes.
      */
     scheduleAutoConnect(this: SseNodeInstance) {
       const internal = internalOf(this);
@@ -459,8 +529,24 @@ const SSENode: NodeDefinitionOptions = {
       this.scheduleAfterInputsHaveUpdated(function (this: SseNodeInstance) {
         const inner = internalOf(this);
         inner.autoConnectScheduled = false;
+
+        const live = inner.connection && !inner.connection.disposed ? inner.connection : null;
+
+        if (live) {
+          // Only `url` decides *what* this node is connected to; everything else is tuning
+          // and is picked up by the next connection without disturbing this one.
+          if (inner.connectedUrl === inner.url) return;
+
+          // The app had asked to be streaming, so it still wants to be — from the new
+          // endpoint. `teardownConnection` is silent by design, and `doConnect` immediately
+          // moves the state to `connecting`, so the graph sees the transition rather than a
+          // gap.
+          this.teardownConnection();
+          if (inner.autoConnect && inner.url) this.doConnect();
+          return;
+        }
+
         if (!inner.autoConnect || !inner.url) return;
-        if (inner.connection && !inner.connection.disposed) return;
         this.doConnect();
       });
     },
@@ -468,6 +554,11 @@ const SSENode: NodeDefinitionOptions = {
     doConnect(this: SseNodeInstance) {
       const internal = internalOf(this);
       this.teardownConnection();
+
+      // The endpoint this connection was opened against, so a later `URL` change can be told
+      // from a change to one of the tuning inputs. Recorded here rather than read off the
+      // connection because `SseConnectionOptions.url` is a copy taken at construction.
+      internal.connectedUrl = internal.url;
 
       const options: SseConnectionOptions = {
         url: internal.url,

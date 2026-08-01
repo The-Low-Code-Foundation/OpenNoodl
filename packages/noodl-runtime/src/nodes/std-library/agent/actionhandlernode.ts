@@ -27,6 +27,9 @@ import { ActionContext, ActionRegistry, actionRegistry, isBuiltInAction, Unsubsc
 
 import Node = require('../../../node');
 
+/** NDA-004 §2 — the matchable half of the failure pair. The bus keys by `code`. */
+const HANDLER_ERROR_CODE = 'action-handler/operation-failed';
+
 interface HandlerInternal {
   channel: string;
   actionType: string;
@@ -103,6 +106,7 @@ const ActionHandlerNode: NodeDefinitionOptions = {
       type: 'string',
       default: 'default',
       displayName: 'Channel',
+      description: 'Must match the Channel on the Action Dispatcher that should be able to reach this handler',
       group: 'Handler',
       tooltip: 'Must match the Channel on the Action Dispatcher that should be able to reach this handler.',
       set(this: NodeInstance, value: string) {
@@ -114,6 +118,7 @@ const ActionHandlerNode: NodeDefinitionOptions = {
     actionType: {
       type: 'string',
       displayName: 'Action Type',
+      description: 'The exact action type this handler accepts; registering it is what makes it executable at all',
       group: 'Handler',
       tooltip:
         'The exact action type this handler accepts, e.g. OPEN_SESSION. Registering it is what makes it executable at all.',
@@ -127,6 +132,8 @@ const ActionHandlerNode: NodeDefinitionOptions = {
       type: 'boolean',
       default: true,
       displayName: 'Enabled',
+      description:
+        'Turning this off unregisters the handler, so the action is refused as unknown rather than quietly ignored',
       group: 'Handler',
       tooltip:
         'Turning this off unregisters the handler, so the action is refused as unknown rather than quietly ignored.',
@@ -140,6 +147,8 @@ const ActionHandlerNode: NodeDefinitionOptions = {
       type: 'boolean',
       default: true,
       displayName: 'Auto Complete',
+      description:
+        'Reports the action complete as soon as Trigger has been sent; turn it off when a later step must finish first',
       group: 'Completion',
       tooltip:
         'Report the action complete as soon as Trigger has been sent. Turn off when a later step must wait for this one to finish, and wire Complete or Fail yourself.',
@@ -151,6 +160,7 @@ const ActionHandlerNode: NodeDefinitionOptions = {
     result: {
       type: '*',
       displayName: 'Result',
+      description: 'Handed back to the dispatcher as the Result of this action when it completes',
       group: 'Completion',
       tooltip: 'Handed back to the dispatcher as the Result of this action when it completes.',
       set(this: NodeInstance, value: unknown) {
@@ -161,6 +171,8 @@ const ActionHandlerNode: NodeDefinitionOptions = {
     errorMessage: {
       type: 'string',
       displayName: 'Error Message',
+      description:
+        'Reason handed back to the dispatcher when Fail is signalled; a generic one is used when this is blank',
       group: 'Completion',
       set(this: NodeInstance, value: string) {
         internalOf(this).errorMessage = value === undefined || value === null ? '' : String(value);
@@ -169,6 +181,8 @@ const ActionHandlerNode: NodeDefinitionOptions = {
 
     complete: {
       displayName: 'Complete',
+      description:
+        'Reports the action finished, so the dispatcher runs whatever is queued behind it; ignored unless Auto Complete is off',
       group: 'Actions',
       valueChangedToTrue(this: NodeInstance) {
         (this as never as { doComplete(): void }).doComplete();
@@ -177,6 +191,7 @@ const ActionHandlerNode: NodeDefinitionOptions = {
 
     fail: {
       displayName: 'Fail',
+      description: 'Reports the action failed, so the dispatcher fires Failed with Error Message as the reason',
       group: 'Actions',
       valueChangedToTrue(this: NodeInstance) {
         (this as never as { doFail(): void }).doFail();
@@ -185,11 +200,19 @@ const ActionHandlerNode: NodeDefinitionOptions = {
   },
 
   outputs: {
-    trigger: { type: 'signal', displayName: 'Trigger', group: 'Events' },
+    trigger: {
+      type: 'signal',
+      displayName: 'Trigger',
+      description:
+        'Fires when a dispatcher has an action of this type to run; whatever is wired downstream is the capability this grants',
+      group: 'Events'
+    },
 
     payload: {
       type: '*',
       displayName: 'Payload',
+      description:
+        'The data the action carried, taken from its payload or data field, or the whole action when it has neither',
       group: 'Data',
       get(this: NodeInstance) {
         return internalOf(this).payload;
@@ -198,6 +221,7 @@ const ActionHandlerNode: NodeDefinitionOptions = {
     actionId: {
       type: 'string',
       displayName: 'Action Id',
+      description: 'Id of the action currently being handled, so a later Complete can be matched to it',
       group: 'Data',
       get(this: NodeInstance) {
         return internalOf(this).actionId;
@@ -206,6 +230,7 @@ const ActionHandlerNode: NodeDefinitionOptions = {
     registered: {
       type: 'boolean',
       displayName: 'Registered',
+      description: 'True while this handler is in the allow-list, which needs both an Action Type and Enabled',
       group: 'Status',
       get(this: NodeInstance) {
         return internalOf(this).unregister !== null;
@@ -214,6 +239,7 @@ const ActionHandlerNode: NodeDefinitionOptions = {
     triggeredCount: {
       type: 'number',
       displayName: 'Triggered Count',
+      description: 'How many actions this handler has been asked to run since the page loaded',
       group: 'Status',
       get(this: NodeInstance) {
         return internalOf(this).triggeredCount;
@@ -222,10 +248,27 @@ const ActionHandlerNode: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
+      description: 'Why the handler could not register, or why the last Complete or Fail had nothing to act on',
       group: 'Status',
       get(this: NodeInstance) {
         return internalOf(this).error;
       }
+    },
+    /**
+     * NDA-012 / NDA-004 §2. `Complete` and `Fail` used to end on the `error` string alone when
+     * there was no action in flight, so both of this node's author-facing signal inputs could
+     * be pulsed and produce nothing a graph could sequence off.
+     *
+     * Only the two author `Do`s fire it. The registration errors — a blank action type, a
+     * reserved built-in name — raise on the runtime error bus instead: they are reached while
+     * the graph is still coming up, and a signal on the boot path is the defect NDA-004 §2
+     * warns about in `Stream Buffer`'s own comment.
+     */
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      description: 'Fires when Complete or Fail was signalled with no action in flight',
+      group: 'Events'
     }
   },
 
@@ -262,6 +305,7 @@ const ActionHandlerNode: NodeDefinitionOptions = {
         internal.error = 'An action type is required';
         this.flagOutputDirty('error');
         this.flagOutputDirty('registered');
+        this.raiseRuntimeError(HANDLER_ERROR_CODE, internal.error);
         return;
       }
 
@@ -297,6 +341,7 @@ const ActionHandlerNode: NodeDefinitionOptions = {
         internal.error = String((error as Error)?.message || error);
         this.flagOutputDirty('error');
         this.flagOutputDirty('registered');
+        this.raiseRuntimeError(HANDLER_ERROR_CODE, internal.error);
         return;
       }
 
@@ -319,8 +364,9 @@ const ActionHandlerNode: NodeDefinitionOptions = {
       const internal = internalOf(this);
       const pending = internal.pending;
       if (!pending) {
-        internal.error = 'Complete was signalled with no action in flight';
-        this.flagOutputDirty('error');
+        (this as never as { reportFailure(m: string): void }).reportFailure(
+          'Complete was signalled with no action in flight'
+        );
         return;
       }
       internal.pending = null;
@@ -331,12 +377,25 @@ const ActionHandlerNode: NodeDefinitionOptions = {
       const internal = internalOf(this);
       const pending = internal.pending;
       if (!pending) {
-        internal.error = 'Fail was signalled with no action in flight';
-        this.flagOutputDirty('error');
+        (this as never as { reportFailure(m: string): void }).reportFailure(
+          'Fail was signalled with no action in flight'
+        );
         return;
       }
       internal.pending = null;
       pending.fail(internal.errorMessage || `the handler for "${internal.actionType}" reported a failure`);
+    },
+
+    /**
+     * The node was asked to act and could not. Reports on all three channels the Failure
+     * Contract asks for: the `error` string, the `Failure` signal, and the runtime error bus,
+     * which is what reaches `On App Error` in a deployed build with no editor watching.
+     */
+    reportFailure(this: NodeInstance, message: string) {
+      internalOf(this).error = message;
+      this.flagOutputDirty('error');
+      this.sendSignalOnOutput('failure');
+      this.raiseRuntimeError(HANDLER_ERROR_CODE, message);
     },
 
     /**

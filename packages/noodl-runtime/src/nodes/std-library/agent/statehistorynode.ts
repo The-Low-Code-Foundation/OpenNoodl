@@ -66,6 +66,18 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     this._internal.setupScheduled = false;
   },
 
+  /**
+   * Attaches once the node is in a scope, whether or not anything was authored.
+   *
+   * NDA-012, same shape as the Global Store node: every input here has a default, so a
+   * tracker the author dropped and left alone never ran a setter and never attached. The
+   * symptom was one node over — an `Undo / Redo` node reporting *"No State History node is
+   * tracking store 'app'"* with the tracker sitting on the canvas beside it.
+   */
+  nodeScopeDidInitialize: function (this: StateHistoryInstance) {
+    this.scheduleSetup();
+  },
+
   getInspectInfo: function (this: StateHistoryInstance): InspectInfo {
     const info = this.info();
     if (!info) return '[Not tracking]';
@@ -95,6 +107,8 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     storeName: {
       type: 'string',
       displayName: 'Store Name',
+      description:
+        'Names the global store to record; one tracker per store is enough, and two on the same store share one history',
       group: 'Store',
       default: 'app',
       set: function (this: StateHistoryInstance, value: string) {
@@ -105,6 +119,8 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     trackKeys: {
       type: 'string',
       displayName: 'Track Keys',
+      description:
+        'Comma-separated keys to record; leave blank to record the whole store, and note that changing this clears the history',
       group: 'Config',
       tooltip:
         'Comma-separated keys to record. Blank records the whole store. ' +
@@ -118,6 +134,8 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     maxHistory: {
       type: 'number',
       displayName: 'Max History',
+      description:
+        'How many entries to keep before the oldest is dropped, never below two and never dropping the current one',
       group: 'Config',
       default: 50,
       tooltip: 'How many entries to keep. The oldest are dropped first. An unbounded history is a memory leak.',
@@ -129,6 +147,8 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     coalesceMs: {
       type: 'number',
       displayName: 'Coalesce (ms)',
+      description:
+        'Window in milliseconds within which successive changes to the same keys fold into one undo step; 0 records every change separately',
       group: 'Config',
       default: 0,
       tooltip:
@@ -142,6 +162,7 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     enabled: {
       type: 'boolean',
       displayName: 'Enabled',
+      description: 'Turning this off pauses recording and keeps the entries already collected',
       group: 'Config',
       default: true,
       tooltip: 'Turning this off pauses recording. The history already collected is kept.',
@@ -152,6 +173,7 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     },
     clearHistory: {
       displayName: 'Clear History',
+      description: 'Throws the history away and starts again from the live state',
       group: 'Actions',
       valueChangedToTrue: function (this: StateHistoryInstance) {
         this.scheduleAfterInputsHaveUpdated(function (this: StateHistoryInstance) {
@@ -165,6 +187,7 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     historySize: {
       type: 'number',
       displayName: 'History Size',
+      description: 'How many entries the history holds, including the baseline it started from',
       group: 'Status',
       getter: function (this: StateHistoryInstance) {
         const info = this.info();
@@ -174,6 +197,7 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     currentIndex: {
       type: 'number',
       displayName: 'Current Index',
+      description: 'Where in the history the store is sitting; -1 when nothing is being tracked',
       group: 'Status',
       getter: function (this: StateHistoryInstance) {
         const info = this.info();
@@ -183,6 +207,7 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     canUndo: {
       type: 'boolean',
       displayName: 'Can Undo',
+      description: 'True when there is an earlier entry to step back to',
       group: 'Status',
       getter: function (this: StateHistoryInstance) {
         const info = this.info();
@@ -192,6 +217,7 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     canRedo: {
       type: 'boolean',
       displayName: 'Can Redo',
+      description: 'True when an undo has been made and there is a later entry to step forward to',
       group: 'Status',
       getter: function (this: StateHistoryInstance) {
         const info = this.info();
@@ -201,6 +227,8 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     fullyRestorable: {
       type: 'boolean',
       displayName: 'Fully Restorable',
+      description:
+        'False when some entry holds a Collection, a Model or a function, which a snapshot can only keep by reference',
       group: 'Status',
       getter: function (this: StateHistoryInstance) {
         const info = this.info();
@@ -210,6 +238,7 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     byReferenceKeys: {
       type: 'string',
       displayName: 'By-Reference Keys',
+      description: 'Comma-separated keys an undo cannot fully restore because they hold live objects rather than data',
       group: 'Status',
       getter: function (this: StateHistoryInstance) {
         const info = this.info();
@@ -219,6 +248,8 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     history: {
       type: 'array',
       displayName: 'History',
+      description:
+        'One entry per recorded change, each with its index, timestamp, description and changed keys, but not its state',
       group: 'Data',
       getter: function (this: StateHistoryInstance) {
         const info = this.info();
@@ -228,6 +259,7 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
     historyChanged: {
       type: 'signal',
       displayName: 'History Changed',
+      description: 'Fires whenever an entry is added, the position moves, or the history is cleared',
       group: 'Events'
     }
   },

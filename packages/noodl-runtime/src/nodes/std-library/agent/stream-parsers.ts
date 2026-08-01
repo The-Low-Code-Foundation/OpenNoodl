@@ -381,7 +381,24 @@ export interface PatternOptions {
  */
 export function extractPattern(text: string, pattern: string, options?: PatternOptions): PatternResult {
   const empty: PatternResult = { ok: true, match: null, matches: [], groups: [], namedGroups: {} };
-  if (!pattern) return empty;
+
+  // NDA-012: a blank pattern used to return `empty` — i.e. `ok: true, match: null` — which is
+  // indistinguishable from a pattern that ran and found nothing. That is precisely the
+  // collapse the Pattern Extractor node's own docstring forbids: *"An unusable pattern is
+  // distinct from 'no match': one is a bug to fix, the other is a normal outcome, and
+  // collapsing them hides broken patterns."* A blank pattern is the state every one of these
+  // nodes is in the moment it is dropped on the canvas, so `Extract` on an unconfigured node
+  // fired `Not Found` and looked like a result.
+  if (!pattern) {
+    return {
+      ok: false,
+      error: 'A pattern is required; set the Pattern input to a regular expression',
+      match: null,
+      matches: [],
+      groups: [],
+      namedGroups: {}
+    };
+  }
 
   // Strip a user-supplied `g`; `all` is the switch that controls it, and a stray `g`
   // on a non-global call would make `match` behave differently than documented.
