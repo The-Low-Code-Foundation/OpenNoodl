@@ -766,6 +766,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -4601,6 +4602,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Array contents re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -4613,6 +4615,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
@@ -5181,6 +5184,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -5703,6 +5707,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Condition re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
@@ -7025,6 +7030,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -7037,6 +7043,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Record properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
@@ -9257,6 +9264,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Array contents re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -9269,6 +9277,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Enabled re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -9281,6 +9290,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Filter settings re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -9293,6 +9303,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Items re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
@@ -9467,6 +9478,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Enabled re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -9479,6 +9491,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Filter settings re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -9491,6 +9504,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Items re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -9503,6 +9517,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Record changes re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
@@ -16994,6 +17009,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -17006,6 +17022,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Object properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
@@ -17793,6 +17810,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -26643,6 +26661,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -30596,6 +30615,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Name re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -30608,6 +30628,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Variable changes re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -33134,6 +33155,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Object properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],
@@ -34497,6 +34519,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on Parent object re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         },
         {
@@ -50882,6 +50905,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
+          "default": true,
           "description": "Whether a new value on User properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
         }
       ],

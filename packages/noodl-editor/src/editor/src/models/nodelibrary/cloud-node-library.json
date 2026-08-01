@@ -1014,7 +1014,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "Id",
-          "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "runOnChange-record",
@@ -1025,7 +1026,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "Record properties",
-          "description": "Whether a new value on Record properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on Record properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "id",
@@ -1795,7 +1797,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "Items",
-          "description": "Whether a new value on Items re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on Items re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "runOnChange-enabled",
@@ -1806,7 +1809,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "Enabled",
-          "description": "Whether a new value on Enabled re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on Enabled re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "runOnChange-records",
@@ -1817,7 +1821,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "Record changes",
-          "description": "Whether a new value on Record changes re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on Record changes re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "runOnChange-filterSettings",
@@ -1828,7 +1833,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "Filter settings",
-          "description": "Whether a new value on Filter settings re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on Filter settings re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "items",
@@ -1990,7 +1996,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "Id",
-          "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "runOnChange-object",
@@ -2001,7 +2008,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "Object properties",
-          "description": "Whether a new value on Object properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on Object properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "id",
@@ -2415,7 +2423,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "Value",
-          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "savedValue",
@@ -2499,7 +2508,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "Value",
-          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "savedValue",
@@ -2584,7 +2594,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "Value",
-          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on Value re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "savedValue",
@@ -2640,7 +2651,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "Condition",
-          "description": "Whether a new value on Condition re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on Condition re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "ontrue",
@@ -3190,7 +3202,8 @@
           "plug": "input",
           "group": "Run On Value Change",
           "displayName": "User properties",
-          "description": "Whether a new value on User properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it"
+          "description": "Whether a new value on User properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
         },
         {
           "name": "id",

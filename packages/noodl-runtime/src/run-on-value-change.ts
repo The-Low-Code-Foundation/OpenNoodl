@@ -105,15 +105,29 @@ export function inputNameForRunOnChangePort(portName: string): string | undefine
  * what the column of checkboxes means; repeating "Run on change of…" in every row reads as
  * noise in a panel that may show a dozen of them.
  *
- * ⚠️ No `default: true` is declared, deliberately. A declared default never runs its setter
- * (A-D1), so a default here would be inert on the value path and would only serve to make
- * the panel's tick look like it came from somewhere it did not. Ticked-when-absent is
- * decided in {@link runOnValueChange} instead, which is the one place that can enforce it.
+ * ⚠️ **`default: true` is declared, and the reason is the interesting half of A-D1.**
+ *
+ * The first cut of this left the default off, reasoning that a declared default never runs
+ * its setter so it could only be decoration. Live QA in the editor showed what that
+ * decoration is for: with no default, the property panel rendered **both boxes unchecked** on
+ * a node whose runtime behaviour was ticked. The affordance said "off" while the node ran on.
+ * That is worse than the trap it replaced, because at least the old trap was invisible rather
+ * than actively wrong.
+ *
+ * So the two halves are declared separately *because* A-D1 is true, not despite it:
+ *
+ * - `default: true` is what the **panel** reads. It never runs a setter and never reaches the
+ *   value path, which is exactly what makes it safe here.
+ * - {@link runOnValueChange} reading absent-as-ticked is what the **runtime** obeys, and it
+ *   has to, precisely because the default's setter never runs.
+ *
+ * Neither can be dropped, and either alone is a node whose panel and behaviour disagree.
  */
 export function runOnChangeInput(inputName: string, displayName?: string): InputPortDefinition {
   return {
     group: RUN_ON_CHANGE_GROUP,
     displayName: displayName || inputName,
+    default: true,
     type: { name: 'boolean', allowEditOnly: true } as never,
     description:
       'Whether a new value on ' +
@@ -154,6 +168,10 @@ export function runOnChangeDynamicPorts(
       displayName: displayName,
       group: RUN_ON_CHANGE_GROUP,
       plug: 'input',
+      // See `runOnChangeInput` for why this is declared even though its setter never runs.
+      // The dynamic-port path is where the missing default was actually caught, on an
+      // Expression whose two boxes rendered unchecked while the node ran on both inputs.
+      default: true,
       type: { name: 'boolean', allowEditOnly: true }
     };
   });

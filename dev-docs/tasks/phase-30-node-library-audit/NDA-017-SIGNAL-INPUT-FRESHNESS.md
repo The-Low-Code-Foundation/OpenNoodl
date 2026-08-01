@@ -16,8 +16,21 @@
 
 > **✅ §0 is done** (`d6db6f39`, 2026-07-30). All four claims reproduce; the spec's mechanism
 > survives contact, which is not what happened in NDA-008 §0 or NDA-016 §0. One correction and one
-> addition are folded in below — see [§0 — result](#0--result). **§1 is now the blocker**, and it is
-> Richard's decision, not a coding task.
+> addition are folded in below — see [§0 — result](#0--result).
+>
+> **✅ §1 was decided by Richard on 2026-08-01, and with none of the four options below.** See
+> [§1 — the decision as taken](#1--the-decision-as-taken). ⚠️ **The options and the
+> recommendation further down are kept as the record of what was proposed and rejected. Do not
+> build from them.**
+>
+> **✅ §2 is built and live-verified** (`213cf337`, `b6dc078a`, `21eda2b0`, + the live-QA fixes,
+> 2026-08-01) — fifteen node families, the twelve in the table plus three the table missed.
+> Criteria 1–5 are met. ⚠️ **Only criterion 6's semantic-validator half remains open.**
+>
+> ⚠️ **Live QA found three defects that every jest row missed, and two of them predate this
+> task.** See [§3 — live QA](#3--live-qa). If you take one thing from this file: the corpus set
+> checkboxes with `setInputValue` on a graph that was already built, and a *saved project*
+> applies the parameter first. That single ordering difference was the whole gap.
 
 ## The report
 
@@ -180,7 +193,83 @@ cached value and misses this entirely. Left as a characterisation row, not a `te
 whether the two ports *should* agree is §1's call, and the row exists so that call is made against a
 measurement.
 
-## §1 — The decision (put to Richard before building)
+## §1 — the decision as taken
+
+**Richard, 2026-08-01. A fifth option: a per-input "Run on value change" checkbox in the node's
+config panel.**
+
+⚠️ **The four options below were all rejected, and the reason is worth more than the choice.**
+A, B and C treat *staleness* as the defect. Richard identified the one underneath it:
+**connecting `Run` silently changes what every other port does.** The node flips from
+"recalculate on any input change" to "never recalculate" and nothing says so — which is why
+authors hand-build a `Value Changed` node behind `Run`, restoring a behaviour that wiring an
+unrelated port took away. A only *reports* that trap. The checkbox removes it.
+
+Five constraints, each of which is a way the build can reintroduce what it was meant to fix:
+
+1. **`Run` is purely additive.** The checkboxes are the only thing governing auto-run. Wiring
+   `Run` never un-ticks anything — auto-clearing would make the trap visible rather than remove
+   it.
+2. **Default is every input ticked**, which is today's behaviour for a node with no `Run`. And a
+   declared `default` never runs its setter (A-D1), so absent must *read* as ticked; the default
+   cannot live on the port.
+3. **Several ticked inputs changing in one frame produce one run, not three.**
+4. **A node that has never evaluated reports `null`**, not the confident value its getter pushes
+   at connect time. This answers §0's companion question.
+5. **Keep the `Run` port.** An async re-fetch returning an identical value fires no change, so a
+   node that must re-run per fetch still wires `Run` to a completion signal. That is option C's
+   correct dataflow, now coexisting with the checkboxes instead of fighting them.
+
+### What §2 actually built
+
+`packages/noodl-runtime/src/run-on-value-change.ts` owns the mechanism and the reasoning. One
+`boolean` `runOnChange-<input>` port per governed input, grouped and `allowEditOnly`;
+`shouldRunOnValueChange()` on `Node.prototype`; a `runOnValueChange` field on the node definition
+so a family with declared inputs joins the class in three lines.
+
+**Fifteen families, not twelve.** The table below was built by grepping the guard; grepping it
+again found three more creatable non-deprecated nodes — Array, Variable (viewer) and Array
+Filter — one of which the code already calls a twin of a node that *is* in the table.
+
+**⚠️ The table's "same idiom" claim does not survive reading it.** Only five families suppress a
+value *setter*. The rest suppress a *subscription*: `onModelChangedCallback` opens with
+`if (isInputConnected('fetch')) return;`, so the control signal stops the node reacting to the
+record it is displaying. Same trap, no port to hang a checkbox on. Hence `sources` alongside
+`inputs` in the definition field.
+
+**⚠️ One place the build does not follow the decision word for word, and it is deliberate.** The
+*definition* port — `expression`, `functionScript` — keeps the old
+`!isInputConnected('<control signal>')` guard. It is not a value input, it is set at load on
+every node in the project, and dropping it would run every `Run`-driven script once at load,
+including the ones that POST. Recorded at both call sites and here rather than buried.
+
+**⚠️ And one thing no remedy could have done.** A `Run` fired while the producers are in flight
+still reads the previous cycle's values, because nothing in a dataflow graph can read a value
+that has not arrived. What it no longer does is *stay* there. Only option B could even have
+reported it, and B was not taken. Pinned as a characterisation row.
+
+### The regression the fix caused, and what caught it
+
+Seeding discovered inputs to `undefined` instead of `0` made `a.missing.deeper` **throw at
+load** — before anything had arrived — and `_reportFailure` duly raised `expression/threw` and
+pulsed `Failure`. That is the exact state the Failure Contract forbids: *an unset input is not a
+failure.* The old `0` seed hid it by making the boot evaluation succeed on a value nobody
+supplied — the same trade this whole task is about, one level down.
+
+Caught by the **NDA-004 §2 corpus**, not by NDA-017's own rows. Fixed with a gate on *automatic*
+evaluation, keyed to the ports the expression **references** rather than the ports that happen to
+be registered: `2 + 2` with a stray connection has one registered input, references none, and
+must not abstain forever waiting for it.
+
+That corpus row's premise — *"inputs are seeded to 0, so there is no values-have-not-arrived
+state to fail in"* — is withdrawn in place, in the corpus and in the comment at `expression.ts`
+that stated it. Both readings were right about their own question.
+
+---
+
+## §1 — the options as proposed, and rejected
+
+⚠️ **Kept as a record only.** Richard chose none of these; see above.
 
 The remedy is not obvious and the options differ by an order of magnitude in cost.
 
@@ -216,24 +305,108 @@ seed meaning "there is no window in which the ports exist but hold nothing". Whi
 the comment at [`expression.ts:154-158`](../../../packages/noodl-runtime/src/nodes/std-library/expression.ts#L154-L158)
 needs updating so the next reader does not re-derive the opposite conclusion.
 
-## §2 — Build the chosen remedy
+## §2 — the remedy, built
 
-Scope depends on §1. Whatever is chosen applies to **the whole table above**, not to Expression alone;
-a fix that lands only on the reported node leaves eleven families with the same hole and the next
-report will read the same.
+`213cf337` (mechanism + Expression + Function), `b6dc078a` (the remaining ten of the table),
+`21eda2b0` (the three the table missed). Fifteen families.
+
+### Discrimination
+
+Three cuts against Expression, each predicted before running:
+
+| Reverted | Predicted red | Actual |
+|---|---|---|
+| the value-setter guard | 4 | **4** — row 2 settled, ticked-default, per-input, coalescing |
+| the `undefined` seed | 2 | **2** — row 1 and its `NaN` characterisation |
+| the abstaining getters | 3 | **4** — I missed that the untick control also asserts the abstention |
+
+Function's rows move under none of Expression's cuts: two instances, not one measurement leaking
+into the other.
+
+⚠️ **The untick control stays green when the guard is reverted, and that is not a bug in the
+row.** A reverted guard and an unticked box produce the *same reading* — this is stream B's
+"both outcomes coincide in the fixture's state", met again. The row that discriminates is the
+**ticked-default** one beside it, and the pair is what proves the mechanism rather than either
+alone.
+
+## §3 — live QA
+
+Fixture generator: `scripts/nda-live-qa/make-run-on-change-fixture.js`. Four sections, one per
+claim; nothing sets a `runOnChange-…` parameter except the one node that exists to prove
+unticking works, because every claim here is about a port the author has **not** touched.
+
+### Measured, in the running editor and its preview
+
+| Claim | Reading |
+|---|---|
+| Constraints 1+2 — `Run` wired, never pressed, nothing unticked | Typing into `a` re-ran the node: `cached: "182"`, `scope: {a:"18", b:"2"}`. Before §2 it would have sat on its boot value |
+| Constraint 2, per-input | With `a` unticked, typing into `a` moved `scope.a` to `"19"` and left `cached` at `"12"`. Typing into `b` then re-ran and picked up **both**: `"1927"` |
+| Constraint 4 | The never-fed Expression: `hasEvaluated: false`, `cached: null`, and its Text renders **blank** rather than `0` |
+| The reporter's node | Function published `6` from `Inputs.p = '3'` with no `Run` press |
+| The panel | A "Run On Value Change" group renders with one checkbox per input, ticked, and unticked where authored |
+
+No editor warnings, no runtime errors in `.logs/dev.log`.
+
+### Three defects live QA found, and why jest could not
+
+⚠️ **1 — the checkboxes rendered *unticked* on a node that was running ticked.** The runtime
+reads absent-as-ticked; the panel reads the port's declared `default`, and there wasn't one. So
+the affordance said "off" while the node ran on — worse than the trap it replaced, because the
+old trap was at least silent rather than actively wrong. Fixed by declaring `default: true`
+*as well as* keeping the absent-as-ticked rule. The two are needed together **because** A-D1 is
+true: the default never runs its setter, which is exactly what makes it safe as a panel-only
+declaration and exactly why the runtime cannot rely on it.
+
+⚠️ **2 — unticking a box broke the Expression node outright.** A saved `runOnChange-a`
+parameter is applied *before* the port it governs exists, so it reached
+`registerInputIfNeeded`, and Expression's override mints any unrecognised name as a discovered
+expression input. The `false` landed in `_internal.scope`; the real checkbox was then never
+registered; and `_compileFunction` builds its argument list from `Object.keys(scope)`, so
+`Function` was constructed with a parameter called `runOnChange-a`, threw, and **the node
+evaluated to `0` for the rest of the session.** Measured as `cached: 0` on a node whose inputs
+were `'1'` and `'2'`.
+
+**The corpus could not have caught it, and the reason is worth carrying: a test sets a
+parameter with `setInputValue` on a graph that has already been built, so the port always
+exists first. Only a saved project applies the parameter first.** There is now a row that loads
+the parameter from `data.components[].nodes[].parameters`, which is the only shape that
+reproduces it.
+
+⚠️ **3 — two older bugs in `defineNode`, surfaced by fixing 2.** Wrapping
+`registerInputIfNeeded` centrally (the same "wrap, don't replace" pattern `registerNumberedInput`
+already uses) was impossible, because:
+
+- `Object.create` defaults a descriptor to non-writable and non-configurable, so **every method
+  declared in `methods:` landed on the prototype frozen.** `registerNumberedInput` and
+  `makeNodeInert` both assign over `registerInputIfNeeded`, so they worked only on nodes that
+  did not declare one. `eventsender.ts` hits the same thing in a second spelling — it writes its
+  method as a hand-rolled `{ value: fn }` descriptor.
+- and the normalisation loop **mutated `opts.prototypeExtensions` in place**, so `defineNode`
+  was not idempotent: a second call on the same module object — which the corpus does whenever
+  two graphs register the same node — reused the frozen descriptors.
+
+Both fixed. Neither is NDA-017's, and neither had a symptom until something tried to wrap a
+method.
 
 ## Success criteria
 
 1. ✅ The §0 corpus rows exist and each reddens only its own claim (`d6db6f39`; discrimination run
    twice, against Expression's guard and against Function's).
-2. Richard's §1 decision is recorded in this file, with the veto window closed.
-3. The chosen remedy is applied across every node family in the table, or the exceptions are named
-   with a reason.
-4. The reported graph — Expression driven by `Run`, inputs from an async producer — behaves as
-   decided, verified in the running editor and not only in jest.
-5. `expression.ts:154-158` and the NDA-004 register entry agree with whatever §1 decided.
-6. If C is in scope: the port docs for every control signal in the table say what happens when the
-   inputs are not ready, and the semantic validator flags the mis-sequenced graph.
+2. ✅ Richard's §1 decision is recorded in this file (see [§1 — the decision as
+   taken](#1--the-decision-as-taken)), with the veto window closed.
+3. ✅ The chosen remedy is applied across every node family in the table — and three more the
+   table did not have. No exceptions at family level. One *site* is excepted with a reason: the
+   definition port, above.
+4. ✅ The reported graph — Expression driven by `Run`, inputs from a producer — verified in the
+   running editor, and the Function node beside it. See [§3](#3--live-qa). It found three
+   defects, one of which made unticking a box break the node.
+5. ✅ `expression.ts`'s NDA-004 comment is rewritten in place, and so is the corpus row that
+   asserted the same premise.
+6. ⚠️ **Half.** Every control signal in the class now says in its `description` that it is
+   *additional* and points at the checkbox group — seven descriptions that stated the trap as if
+   it were the design are gone. The semantic-validator half (flagging a `Run` driven by something
+   other than its inputs' producers) is **not** built; the checkbox makes the mis-sequenced graph
+   much less costly, but it does not make it visible.
 
 ## Out of scope
 

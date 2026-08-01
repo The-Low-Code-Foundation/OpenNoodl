@@ -527,6 +527,74 @@ describe('NDA-017: what must keep working', () => {
     expect(result(graph)).toBe(9);
   });
 
+  /**
+   * ⚠️ **The row the rest of this file could not have written, and live QA had to find.**
+   *
+   * Every other check here sets a checkbox with `setInputValue` on a graph that is already
+   * built. A *saved project* does the opposite: the parameter is applied while the graph is
+   * being constructed, before the port it governs exists, so it reaches
+   * `registerInputIfNeeded` — and Expression's override mints any unrecognised name as a
+   * discovered expression input.
+   *
+   * Three things went wrong at once, and the third is the serious one:
+   *
+   * 1. the `false` landed in `_internal.scope`, so the untick did nothing;
+   * 2. `registerRunOnValueChangeInput` then found the name taken and returned, so the real
+   *    checkbox never existed either;
+   * 3. `_compileFunction` builds its argument list from `Object.keys(scope)`, so `Function`
+   *    was constructed with a parameter called `runOnChange-a`, threw, and the node
+   *    **evaluated to `0` for the rest of the session**.
+   *
+   * Unticking one box broke the node outright. Measured in the editor as `cached: 0` with
+   * `scope: {'runOnChange-a': false, a: '1', b: '2'}` on a node whose two inputs were `'1'`
+   * and `'2'`.
+   */
+  test('a checkbox saved in the project reaches the checkbox, not the expression scope', async () => {
+    const graph = await createCorpusGraph({
+      modules: [AsyncProducerModule, PulseModule, RecorderModule, ExpressionNode as unknown as NodeModule],
+      rootComponent: '/root',
+      data: {
+        components: [
+          {
+            name: '/root',
+            nodes: [
+              { id: 'prodA', type: 'corpus.AsyncProducer' },
+              { id: 'prodB', type: 'corpus.AsyncProducer' },
+              { id: 'pulse', type: 'corpus.Pulse' },
+              { id: 'rec', type: 'corpus.Recorder' },
+              // Authored, exactly as the editor saves it.
+              { id: 'expr', type: 'Expression', parameters: { expression: 'a + b', 'runOnChange-a': false } }
+            ],
+            connections: [
+              { sourceId: 'prodA', sourcePort: 'value', targetId: 'expr', targetPort: 'a' },
+              { sourceId: 'prodB', sourcePort: 'value', targetId: 'expr', targetPort: 'b' },
+              { sourceId: 'pulse', sourcePort: 'signal', targetId: 'expr', targetPort: 'run' },
+              { sourceId: 'expr', sourcePort: 'result', targetId: 'rec', targetPort: 'value' },
+              { sourceId: 'expr', sourcePort: 'isTrueEv', targetId: 'rec', targetPort: 'bump' }
+            ]
+          }
+        ]
+      } as never
+    });
+    await graph.settle(4);
+
+    // The scope holds the two expression identifiers and nothing else. This assertion is the
+    // one that fails on the unfixed code, and it fails *before* any behaviour is exercised —
+    // a corrupted scope is a corrupted compile.
+    expect(Object.keys(graph.node('expr')._internal.scope as object).sort()).toEqual(['a', 'b']);
+
+    // And the untick actually took effect, which the same bug also prevented. `a` alone, on
+    // its own frame: producing both would let the still-ticked `b` trigger the run and the
+    // row would pass without `a`'s untick doing anything.
+    graph.node<ProducerInstance>('prodA').produce(4);
+    await graph.settle(4);
+    expect(result(graph)).toBeNull();
+
+    graph.node<ProducerInstance>('prodB').produce(5);
+    await graph.settle(4);
+    expect(result(graph)).toBe(9);
+  });
+
   test('the connect-time push is now an abstention rather than a confident zero', async () => {
     const graph = await expressionGraph();
 

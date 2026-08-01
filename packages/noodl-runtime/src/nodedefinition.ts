@@ -15,7 +15,7 @@ import type { RuntimeNode, RuntimeNodeContext } from './internal';
 
 import Node = require('./node');
 import EdgeTriggeredInput = require('./edgetriggeredinput');
-import { runOnChangeInputs } from './run-on-value-change';
+import { inputNameForRunOnChangePort, runOnChangeInputs } from './run-on-value-change';
 
 /**
  * The setter table shared between every instance of one node type.
@@ -323,21 +323,98 @@ function defineNode(opts: NodeDefinitionOptions): NodeDefinition {
 
   const prototypeExtensions: PrototypeExtensions = opts.prototypeExtensions;
 
+  /**
+   * The descriptor map, built fresh rather than by mutating `opts`.
+   *
+   * ⚠️ **Two bugs here, both surfaced by NDA-017 §2 and both older than it.**
+   *
+   * `Object.create` defaults a descriptor to non-writable and non-configurable, so a method
+   * declared in `methods:` landed on the prototype frozen. Nothing wanted that — it is what
+   * you get from hand-writing a descriptor and filling in only `value` — and it meant
+   * `registerNumberedInput` and `makeNodeInert`, which both assign over
+   * `registerInputIfNeeded`, worked only on nodes that did *not* declare one. These are
+   * ordinary methods and now get ordinary method semantics.
+   *
+   * And this loop used to **mutate `opts.prototypeExtensions` in place**, replacing each
+   * function with its descriptor. That made `defineNode` non-idempotent: a second call on the
+   * same module object — which the corpus does whenever two graphs register the same node —
+   * saw descriptors already in place, skipped the wrap, and reused the frozen ones. The
+   * symptom was `Cannot redefine property` from a line six hundred lines away.
+   *
+   * ⚠️ And the same accident has a second spelling: `eventsender.ts` writes its
+   * `registerInputIfNeeded` as a hand-rolled `{ value: fn }` descriptor rather than a bare
+   * function. A data descriptor with only `value` is frozen for exactly the same reason, so
+   * the flags are defaulted on those too — but only where the author did not state them, so a
+   * deliberate freeze stays deliberate. Accessor descriptors are untouched.
+   */
+  const prototypeDescriptors: PropertyDescriptorMap = {};
   Object.keys(prototypeExtensions).forEach(function (propName) {
-    if (!(prototypeExtensions[propName] as PropertyDescriptor).value) {
-      prototypeExtensions[propName] = {
-        value: prototypeExtensions[propName]
-      };
+    const declared = prototypeExtensions[propName] as PropertyDescriptor;
+    if (!declared.value) {
+      prototypeDescriptors[propName] = { value: prototypeExtensions[propName], writable: true, configurable: true };
+      return;
     }
+    prototypeDescriptors[propName] = {
+      ...declared,
+      writable: declared.hasOwnProperty('writable') ? declared.writable : true,
+      configurable: declared.hasOwnProperty('configurable') ? declared.configurable : true
+    };
   });
 
-  NodeConstructor.prototype = Object.create(Node.prototype, prototypeExtensions as PropertyDescriptorMap);
+  NodeConstructor.prototype = Object.create(Node.prototype, prototypeDescriptors);
   Object.defineProperty(NodeConstructor.prototype, 'name', {
     value: opts.name
   });
 
   if (opts.getInspectInfo) NodeConstructor.prototype.getInspectInfo = opts.getInspectInfo;
   if (opts.nodeScopeDidInitialize) NodeConstructor.prototype.nodeScopeDidInitialize = opts.nodeScopeDidInitialize;
+
+  /**
+   * NDA-017 §2 — claim `runOnChange-…` before the node's own dynamic-port handler sees it.
+   *
+   * ⚠️ **Found in the running editor, and it could not have been found anywhere else.** A
+   * saved `runOnChange-a` parameter is applied to the node *before* the port it governs
+   * exists, so it reaches `registerInputIfNeeded` — and Expression's override registers any
+   * unrecognised name as a discovered expression input. The result on an Expression with one
+   * box unticked:
+   *
+   * - the `false` landed in `_internal.scope` instead of `_runOnValueChange`, so the untick
+   *   did nothing;
+   * - `registerRunOnValueChangeInput` then found the name taken and returned, so the real
+   *   checkbox was never registered either;
+   * - and `_compileFunction` builds its argument list from `Object.keys(scope)`, so the
+   *   Function constructor got `runOnChange-a` as a parameter name, threw, and **the node
+   *   evaluated to 0 from then on**. Unticking a box broke the node outright.
+   *
+   * The corpus missed it because a test sets the checkbox with `setInputValue` on a graph
+   * that has already been built, by which time the real port exists. Only a *saved project*
+   * applies the parameter first.
+   *
+   * Wrapped rather than left to each node to remember, for the same reason
+   * {@link registerNumberedInput} wraps: there are four dynamic-port families in the class
+   * today and the next one would have to know about a rule nothing enforces.
+   */
+  // `defineProperty`, not assignment: `Object.create` above installs the node's own
+  // `registerInputIfNeeded` from a descriptor with no `writable`, so plain assignment throws
+  // `Cannot assign to read only property` on exactly the nodes that need wrapping.
+  const declaredRegisterInputIfNeeded = NodeConstructor.prototype.registerInputIfNeeded;
+  Object.defineProperty(NodeConstructor.prototype, 'registerInputIfNeeded', {
+    value: function (this: RuntimeNode, name: string) {
+      const governed = inputNameForRunOnChangePort(name);
+      if (governed !== undefined) {
+        this.registerRunOnValueChangeInput(governed);
+        return;
+      }
+      declaredRegisterInputIfNeeded.call(this, name);
+    },
+    // Both flags are load-bearing, and leaving them off broke four suites at once.
+    // `registerNumberedInput` and `makeNodeInert` both *assign* over
+    // `registerInputIfNeeded` — on the instance and on the prototype respectively — and a
+    // non-writable prototype property makes an instance assignment throw in strict mode.
+    // The wrapper has to be as replaceable as the method it wraps.
+    writable: true,
+    configurable: true
+  });
 
   const nodeDefinition = function (context: RuntimeNodeContext, id: string, nodeScope?: unknown) {
     const node: RuntimeNode = new (NodeConstructor as unknown as new (
