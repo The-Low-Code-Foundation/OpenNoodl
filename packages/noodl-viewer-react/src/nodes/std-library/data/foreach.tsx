@@ -208,6 +208,7 @@ const ForEachDefinition: NodeDefinitionOptions = {
       group: 'Data',
       displayName: 'Items',
       type: 'array',
+      description: 'The array or query result to repeat over; \u26a0\ufe0f an empty value is currently ignored rather than clearing the list',
       set: function (this: ForEachInstance, value: CollectionLike) {
         if (!value) return;
         if (value === this._internal.items) return;
@@ -218,6 +219,7 @@ const ForEachDefinition: NodeDefinitionOptions = {
     templateType: {
       group: 'Appearance',
       displayName: 'Template Type',
+      description: 'Explicit uses one component for every item; Dynamic picks one per item by running Script',
       type: {
         name: 'enum',
         enums: [
@@ -234,6 +236,7 @@ const ForEachDefinition: NodeDefinitionOptions = {
     template: {
       type: 'component',
       displayName: 'Template',
+      description: 'Component to create once per item, with the item available to it as its Component Object',
       group: 'Appearance',
       set: function (this: ForEachInstance, value: string) {
         this._internal.template = value;
@@ -243,6 +246,7 @@ const ForEachDefinition: NodeDefinitionOptions = {
     templateScript: {
       type: { name: 'string', codeeditor: 'javascript', allowEditOnly: true },
       displayName: 'Script',
+      description: 'JavaScript run per item that sets `component` to a component path; the item is available as `item`',
       group: 'Appearance',
       default: defaultDynamicScript,
       set: function (this: ForEachInstance, value: string) {
@@ -268,6 +272,7 @@ const ForEachDefinition: NodeDefinitionOptions = {
     refresh: {
       group: 'Appearance',
       displayName: 'Refresh',
+      description: 'Rebuilds every item from the current Items, discarding any state the item components held',
       type: 'signal',
       valueChangedToTrue: function (this: ForEachInstance) {
         this.scheduleRefresh();
@@ -279,6 +284,7 @@ const ForEachDefinition: NodeDefinitionOptions = {
       type: 'string',
       group: 'Actions',
       displayName: 'Item Id',
+      description: 'Id of the item whose Repeater Item node last raised an action',
       getter: function (this: ForEachInstance) {
         return this._internal.itemActionItemId;
       }
@@ -291,7 +297,9 @@ const ForEachDefinition: NodeDefinitionOptions = {
     itemsRendered: {
       type: 'signal',
       group: 'Events',
-      displayName: 'Items Rendered'
+      displayName: 'Items Rendered',
+      description:
+        'Fires once every item component exists and has been added; item creation is spread across frames, so this is the only honest moment to measure or scroll the list'
     }
   },
   prototypeExtensions: {

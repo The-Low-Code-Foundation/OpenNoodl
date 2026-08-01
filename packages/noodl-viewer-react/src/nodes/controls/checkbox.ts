@@ -53,6 +53,7 @@ const CheckBoxNode = {
       type: 'boolean',
       displayName: 'Checked',
       group: 'General',
+      description: 'Sets whether the box is ticked; setting it from the graph does not fire Changed',
       default: false,
       index: 100,
       set: function (value) {
@@ -70,6 +71,7 @@ const CheckBoxNode = {
     check: {
       type: 'signal',
       displayName: 'Check',
+      description: 'Ticks the box if it is not already ticked; does not fire Changed',
       group: 'Actions',
       valueChangedToTrue() {
         if (this._internal.checked === true) return;
@@ -84,6 +86,7 @@ const CheckBoxNode = {
     uncheck: {
       type: 'signal',
       displayName: 'Uncheck',
+      description: 'Unticks the box if it is ticked; does not fire Changed',
       group: 'Actions',
       valueChangedToTrue() {
         if (this._internal.checked === false) return;
@@ -100,6 +103,7 @@ const CheckBoxNode = {
     backgroundColor: {
       index: 201,
       displayName: 'Background Color',
+      description: 'Fill colour of the box itself, behind the tick',
       group: 'Style',
       type: 'color',
       default: 'transparent',
@@ -111,6 +115,7 @@ const CheckBoxNode = {
       index: 11,
       group: 'Dimensions',
       displayName: 'Width',
+      description: 'Width of the box; the label sits beside it and is sized separately',
       type: {
         name: 'number',
         units: ['px', 'vw', 'vh'],
@@ -124,6 +129,7 @@ const CheckBoxNode = {
       index: 12,
       group: 'Dimensions',
       displayName: 'Height',
+      description: 'Height of the box',
       type: {
         name: 'number',
         units: ['px', 'vw', 'vh'],
@@ -139,6 +145,7 @@ const CheckBoxNode = {
       type: 'boolean',
       displayName: 'Checked',
       group: 'States',
+      description: 'Whether the box is currently ticked',
       getter: function () {
         return this._internal.checked;
       }
@@ -146,6 +153,7 @@ const CheckBoxNode = {
     onChange: {
       displayName: 'Changed',
       group: 'Events',
+      description: 'Fires when the user ticks or unticks the box; the Checked input and the Check/Uncheck actions do not fire it',
       type: 'signal'
     }
   }

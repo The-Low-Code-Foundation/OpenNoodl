@@ -3250,6 +3250,7 @@
           },
           "isSignal": false,
           "default": 360,
+          "description": "Where the arc ends, in degrees clockwise from the top; 360 is a full circle",
           "index": 199,
           "allowVisualStates": true
         },
@@ -3263,6 +3264,7 @@
           },
           "isSignal": false,
           "default": "red",
+          "description": "Colour of the inside of the circle, which has no effect while Fill is off",
           "index": 21,
           "allowVisualStates": true
         },
@@ -3276,6 +3278,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Draws the inside of the circle; turn it off for an outline only",
           "index": 20,
           "allowVisualStates": true
         },
@@ -3539,6 +3542,7 @@
           },
           "isSignal": false,
           "default": "100",
+          "description": "Diameter of the circle in pixels; it sets both width and height",
           "index": 10,
           "allowVisualStates": true
         },
@@ -3552,6 +3556,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Where the arc begins, in degrees clockwise from the top",
           "index": 198,
           "allowVisualStates": true
         },
@@ -3565,6 +3570,7 @@
           },
           "isSignal": false,
           "default": "black",
+          "description": "Colour of the outline",
           "index": 25,
           "allowVisualStates": true
         },
@@ -3578,6 +3584,7 @@
           },
           "isSignal": false,
           "default": false,
+          "description": "Draws an outline around the circle; the two ports below do nothing while it is off",
           "index": 23,
           "allowVisualStates": true
         },
@@ -3601,6 +3608,7 @@
           },
           "isSignal": false,
           "default": "butt",
+          "description": "Shape of the outline ends when Start and End Angle make an arc rather than a full circle",
           "index": 26,
           "allowVisualStates": true
         },
@@ -3614,6 +3622,7 @@
           },
           "isSignal": false,
           "default": 10,
+          "description": "Thickness of the outline in pixels, drawn centred on the circle edge",
           "index": 24,
           "allowVisualStates": true
         },
@@ -7298,7 +7307,8 @@
             ]
           },
           "isSignal": false,
-          "default": "x"
+          "default": "x",
+          "description": "Which axes dragging is allowed on"
         },
         {
           "name": "cssClassName",
@@ -7322,7 +7332,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Lets the user drag this element; when off it still renders and still responds to the Snap actions"
         },
         {
           "name": "inputPositionX",
@@ -7331,7 +7342,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Sets the X position the element starts at, before any dragging"
         },
         {
           "name": "inputPositionY",
@@ -7340,7 +7352,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Sets the Y position the element starts at, before any dragging"
         },
         {
           "name": "mounted",
@@ -7363,7 +7376,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 1
+          "default": 1,
+          "description": "Divides pointer movement before it becomes element movement, so 2 makes the element move half as far as the pointer"
         },
         {
           "name": "snapToPositionX.do",
@@ -7388,7 +7402,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 300
+          "default": 300,
+          "description": "How long the X snap animation takes, in milliseconds"
         },
         {
           "name": "snapToPositionX.value",
@@ -7400,7 +7415,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "X position the element animates to when Snap To Position X — Do fires"
         },
         {
           "name": "snapToPositionY.do",
@@ -7412,7 +7428,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Animates the element to Value on the Y axis; does nothing if it is already there"
         },
         {
           "name": "snapToPositionY.duration",
@@ -7424,7 +7441,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 300
+          "default": 300,
+          "description": "How long the Y snap animation takes, in milliseconds"
         },
         {
           "name": "snapToPositionY.value",
@@ -7436,7 +7454,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Y position the element animates to when Snap To Position Y — Do fires"
         },
         {
           "name": "styleCss",
@@ -7462,7 +7481,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Stops the element being dragged outside its parent's bounds"
         },
         {
           "name": "variant",
@@ -7528,7 +7548,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How far the element moved on X since the last Drag Moved"
         },
         {
           "name": "deltaY",
@@ -7538,7 +7559,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How far the element moved on Y since the last Drag Moved"
         },
         {
           "name": "didMount",
@@ -7559,7 +7581,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires on every frame the element moves while being dragged"
         },
         {
           "name": "onStart",
@@ -7569,7 +7592,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the user starts dragging"
         },
         {
           "name": "onStop",
@@ -7579,7 +7603,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the user releases the element, including when the pointer leaves the window"
         },
         {
           "name": "positionX",
@@ -7589,7 +7614,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Current X position of the element relative to where it started"
         },
         {
           "name": "positionY",
@@ -7599,7 +7625,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Current Y position of the element relative to where it started"
         },
         {
           "name": "screenPositionX",
@@ -9424,7 +9451,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The array or query result to repeat over; ⚠️ an empty value is currently ignored rather than clearing the list"
         },
         {
           "name": "refresh",
@@ -9435,7 +9463,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Rebuilds every item from the current Items, discarding any state the item components held"
         },
         {
           "name": "template",
@@ -9445,7 +9474,8 @@
           "type": {
             "name": "component"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Component to create once per item, with the item available to it as its Component Object"
         },
         {
           "name": "templateScript",
@@ -9458,7 +9488,8 @@
             "codeeditor": "javascript"
           },
           "isSignal": false,
-          "default": "// Set the 'component' variable to the name of the desired component for this item.\n// Component name must start with a '/'.\n// A component in a sheet is referred to by '/#Sheet Name/Comopnent Name'.\n// The data for each item is available in a variable called 'item'\ncomponent = '/MyComponent';"
+          "default": "// Set the 'component' variable to the name of the desired component for this item.\n// Component name must start with a '/'.\n// A component in a sheet is referred to by '/#Sheet Name/Comopnent Name'.\n// The data for each item is available in a variable called 'item'\ncomponent = '/MyComponent';",
+          "description": "JavaScript run per item that sets `component` to a component path; the item is available as `item`"
         },
         {
           "name": "templateType",
@@ -9479,7 +9510,8 @@
             ]
           },
           "isSignal": false,
-          "default": "explicit"
+          "default": "explicit",
+          "description": "Explicit uses one component for every item; Dynamic picks one per item by running Script"
         }
       ],
       "outputs": [
@@ -9491,7 +9523,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Id of the item whose Repeater Item node last raised an action"
         },
         {
           "name": "itemsRendered",
@@ -9501,7 +9534,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once every item component exists and has been added; item creation is spread across frames, so this is the only honest moment to measure or scroll the list"
         }
       ],
       "dynamicPorts": {
@@ -10631,6 +10665,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Where the wrapped lines sit as a group; only applies once Multi Line Wrap is on",
           "index": 16
         },
         {
@@ -10658,6 +10693,7 @@
           },
           "isSignal": false,
           "default": "flex-start",
+          "description": "Where children sit across the layout direction",
           "index": 13
         },
         {
@@ -10762,6 +10798,7 @@
           },
           "isSignal": false,
           "default": "div",
+          "description": "HTML element to render as, which changes nothing visually but matters for screen readers and SEO",
           "index": 100000
         },
         {
@@ -10774,6 +10811,7 @@
           },
           "isSignal": false,
           "default": "transparent",
+          "description": "Fill colour behind the children",
           "index": 201,
           "allowVisualStates": true
         },
@@ -11332,7 +11370,7 @@
           },
           "isSignal": false,
           "default": false,
-          "description": "Clip content Controls if elements that are too big to fit will be clipped Enabled Disabled",
+          "description": "Hides any child that overflows the group instead of letting it spill out",
           "index": 19
         },
         {
@@ -11351,6 +11389,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Space between children on the horizontal axis",
           "index": 18
         },
         {
@@ -11390,6 +11429,7 @@
           },
           "isSignal": false,
           "default": "column",
+          "description": "How children are stacked: None positions them absolutely, Vertical stacks them down, Horizontal across",
           "index": 12
         },
         {
@@ -11416,7 +11456,7 @@
           },
           "isSignal": false,
           "default": "nowrap",
-          "description": "Multiline wrap Elements will wrap to the next line when there's not enough space Using a horizontal layout Using a vertical layout",
+          "description": "Lets children wrap onto another line when they do not fit on one",
           "index": 15
         },
         {
@@ -11428,7 +11468,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Gives this group keyboard focus, so key events reach it"
         },
         {
           "name": "height",
@@ -11488,6 +11529,7 @@
           },
           "isSignal": false,
           "default": "flex-start",
+          "description": "Where children sit along the layout direction when they do not fill it",
           "index": 14
         },
         {
@@ -11749,6 +11791,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Uses the browser's own scrolling, which is smoother; turn it off to get snapping and the Scroll To actions",
           "index": 60
         },
         {
@@ -11924,6 +11967,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Space between children on the vertical axis",
           "index": 17
         },
         {
@@ -11936,6 +11980,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Lets the content overscroll and spring back at the ends",
           "index": 58
         },
         {
@@ -11948,6 +11993,7 @@
           },
           "isSignal": false,
           "default": false,
+          "description": "Lets the user scroll the children when they do not all fit",
           "index": 54
         },
         {
@@ -11960,6 +12006,7 @@
           },
           "isSignal": false,
           "default": false,
+          "description": "Makes scrolling settle on item boundaries rather than anywhere",
           "index": 55
         },
         {
@@ -11972,6 +12019,7 @@
           },
           "isSignal": false,
           "default": false,
+          "description": "Snaps to each item in turn instead of allowing a fast flick past several",
           "index": 56
         },
         {
@@ -11984,6 +12032,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
+          "description": "Scrolls to the element on Element. ⚠️ Dropped silently if it fires in the same frame the Group mounts",
           "index": 500
         },
         {
@@ -11996,6 +12045,7 @@
           },
           "isSignal": false,
           "default": 500,
+          "description": "How long the scroll animation takes, in milliseconds; 0 jumps",
           "index": 502
         },
         {
@@ -12007,6 +12057,7 @@
             "name": "reference"
           },
           "isSignal": false,
+          "description": "Which element to scroll to, taken from another node's DOM Element output",
           "index": 501
         },
         {
@@ -12019,6 +12070,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
+          "description": "Scrolls to the child at Index. ⚠️ There is no signal for when the scroll finishes",
           "index": 505
         },
         {
@@ -12031,6 +12083,7 @@
           },
           "isSignal": false,
           "default": 500,
+          "description": "How long the scroll animation takes, in milliseconds; 0 jumps",
           "index": 507
         },
         {
@@ -12043,6 +12096,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Zero-based index of the child to scroll to",
           "index": 506
         },
         {
@@ -12055,6 +12109,7 @@
           },
           "isSignal": false,
           "default": false,
+          "description": "Shows a scrollbar rather than scrolling invisibly",
           "index": 57
         },
         {
@@ -12336,7 +12391,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when keyboard focus leaves this group"
         },
         {
           "name": "focused",
@@ -12346,7 +12402,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when this group takes keyboard focus"
         },
         {
           "name": "hoverEnd",
@@ -12389,7 +12446,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when scrolling settles, including after a flick has coasted to a stop"
         },
         {
           "name": "onScrollPositionChanged",
@@ -12399,7 +12457,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How far the content is scrolled, in pixels from the start"
         },
         {
           "name": "onScrollStart",
@@ -12409,7 +12468,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the user starts scrolling"
         },
         {
           "name": "pointerDown",
@@ -13672,6 +13732,7 @@
           },
           "isSignal": false,
           "default": "contain",
+          "description": "How the image fills its box when the two have different proportions; only available with an explicit size",
           "allowVisualStates": true
         },
         {
@@ -13811,6 +13872,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "A srcset list letting the browser pick a resolution, e.g. \"small.png 480w, large.png 1080w\"",
           "index": 31,
           "allowVisualStates": true
         },
@@ -19471,6 +19533,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Summary search engines show under the page title in results, usually kept under about 160 characters",
           "index": 80000
         },
         {
@@ -19483,6 +19546,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Summary shown beneath the title when this page is shared",
           "index": 80003
         },
         {
@@ -19495,6 +19559,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Image shown in the share preview; it must be an absolute URL, not a project path",
           "index": 80006
         },
         {
@@ -19507,6 +19572,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Height of the share image in pixels",
           "index": 80008
         },
         {
@@ -19519,6 +19585,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Width of the share image in pixels, which lets a preview reserve space before the image loads",
           "index": 80007
         },
         {
@@ -19531,6 +19598,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Title shown when this page is shared on Facebook, LinkedIn and most chat apps; falls back to the page title",
           "index": 80002
         },
         {
@@ -19543,6 +19611,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "What kind of thing this page is, e.g. website or article, which changes how the preview is laid out",
           "index": 80005
         },
         {
@@ -19555,6 +19624,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Canonical address of this page, so shares of different URLs are counted as the same page",
           "index": 80004
         },
         {
@@ -19566,7 +19636,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Pulse this once the page has the data it needs; the SSR server holds the rendered HTML until it fires. Unconnected pages render as soon as the runtime settles"
         },
         {
           "name": "paddingBottom",
@@ -19654,6 +19725,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Instructions for search-engine crawlers, e.g. \"noindex, nofollow\" to keep this page out of results",
           "index": 80001
         },
         {
@@ -19697,6 +19769,7 @@
           },
           "isSignal": false,
           "default": "weekly",
+          "description": "How often this page changes, as a hint to search-engine crawlers in the sitemap",
           "index": 80002
         },
         {
@@ -19710,6 +19783,7 @@
           },
           "isSignal": false,
           "default": true,
+          "description": "Lists this page in the generated sitemap",
           "index": 80001
         },
         {
@@ -19723,6 +19797,7 @@
           },
           "isSignal": false,
           "default": 0.5,
+          "description": "This page's importance relative to the rest of the site, from 0 to 1, in the sitemap",
           "index": 80003
         },
         {
@@ -19750,6 +19825,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Shape of the preview on X/Twitter, e.g. summary or summary_large_image",
           "index": 80009
         },
         {
@@ -19762,6 +19838,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Summary shown when this page is shared on X/Twitter",
           "index": 80011
         },
         {
@@ -19774,6 +19851,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Image shown in the X/Twitter preview; it must be an absolute URL",
           "index": 80012
         },
         {
@@ -19786,6 +19864,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Title shown when this page is shared on X/Twitter; falls back to the Open Graph title",
           "index": 80010
         }
       ],
@@ -19945,7 +20024,8 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "transparent"
+          "default": "transparent",
+          "description": "Fill colour behind whichever component is showing"
         },
         {
           "name": "clip",
@@ -19956,7 +20036,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": true
+          "default": true,
+          "description": "Clips a pushed component that is bigger than the stack. ⚠️ Currently has no effect unless you set it explicitly"
         },
         {
           "name": "cssClassName",
@@ -19994,7 +20075,8 @@
             "identifierOf": "PackStack"
           },
           "isSignal": false,
-          "default": "Main"
+          "default": "Main",
+          "description": "Name the Push and Pop nodes address this stack by; leave it as Main if there is only one"
         },
         {
           "name": "pages",
@@ -20004,7 +20086,8 @@
           "type": {
             "name": "proplist"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The components this stack can show, and which of them it starts on"
         },
         {
           "name": "reset",
@@ -20015,7 +20098,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Empties the stack and rebuilds the start component"
         },
         {
           "name": "styleCss",
@@ -20041,7 +20125,8 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "default": false
+          "default": false,
+          "description": "Puts the top component in the browser URL, so back and forward move through the stack"
         }
       ],
       "outputs": [
@@ -20128,7 +20213,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How many components are on the stack, so 1 means only the start component"
         },
         {
           "name": "this",
@@ -20148,7 +20234,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name of the component currently on top of the stack"
         },
         {
           "name": "willUnmount",
@@ -22123,6 +22210,7 @@
           },
           "isSignal": false,
           "default": "column",
+          "description": "Stacks the radio buttons inside this group vertically or lays them out in a row",
           "index": 11
         },
         {
@@ -22682,6 +22770,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Selects the radio button whose own Value matches this; setting it from the graph does not fire Changed",
           "index": 20
         },
         {
@@ -22794,7 +22883,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the user picks a different radio button; a value arriving on the Value input does not fire it"
         },
         {
           "name": "screenPositionX",
@@ -22836,7 +22926,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Value of the radio button currently selected, or nothing if none is"
         },
         {
           "name": "willUnmount",
@@ -24110,7 +24201,8 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "transparent"
+          "default": "transparent",
+          "description": "Fill colour behind whichever page is showing"
         },
         {
           "name": "clip",
@@ -24135,7 +24227,8 @@
             ]
           },
           "isSignal": false,
-          "default": "contentHeight"
+          "default": "contentHeight",
+          "description": "What happens when a page is taller than the router: grow to fit it, scroll it, or clip it"
         },
         {
           "name": "cssClassName",
@@ -24171,7 +24264,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Name the Navigate nodes address this router by; leave it blank if there is only one"
         },
         {
           "name": "pages",
@@ -24182,7 +24276,8 @@
             "name": "pages",
             "allowEditOnly": true
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The components this router can show, and which of them is the start page"
         },
         {
           "name": "reset",
@@ -24193,7 +24288,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Re-reads the URL and rebuilds the current page from scratch"
         },
         {
           "name": "styleCss",
@@ -24218,7 +24314,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Path segment prefixed to every page of this router, for nesting one router inside another"
         }
       ],
       "outputs": [
@@ -24272,7 +24369,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Component name of the page currently showing"
         },
         {
           "name": "currentPageTitle",
@@ -24282,7 +24380,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Title of the page currently showing, taken from the Pages list"
         },
         {
           "name": "didMount",
@@ -27041,6 +27140,7 @@
           },
           "isSignal": false,
           "default": "div",
+          "description": "HTML element to render the text as, which changes nothing visually but matters for screen readers and SEO",
           "index": 100000
         },
         {
@@ -27570,6 +27670,7 @@
           },
           "isSignal": false,
           "default": "Text",
+          "description": "The text to show; an empty value renders nothing rather than the words null or undefined",
           "index": 19
         },
         {
@@ -27597,6 +27698,7 @@
           },
           "isSignal": false,
           "default": "left",
+          "description": "Aligns the text within its own box on the horizontal axis",
           "index": 13
         },
         {
@@ -27624,6 +27726,7 @@
           },
           "isSignal": false,
           "default": "top",
+          "description": "Aligns the text within its own box on the vertical axis, which is only visible when the box is taller than the text",
           "index": 14
         },
         {
@@ -30399,7 +30502,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Starts playing as soon as the video can; most browsers only allow this while Muted is on"
         },
         {
           "name": "blockTouch",
@@ -30840,7 +30944,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Shows the browser's own play, seek and volume controls"
         },
         {
           "name": "cssClassName",
@@ -30884,7 +30989,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Restarts the video automatically when it reaches the end"
         },
         {
           "name": "marginBottom",
@@ -31143,7 +31249,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Silences the video without changing Volume, and is what lets Autoplay work"
         },
         {
           "name": "objectFit",
@@ -31172,7 +31279,8 @@
             ]
           },
           "isSignal": false,
-          "default": "contain"
+          "default": "contain",
+          "description": "How the video fills its box when the two have different proportions"
         },
         {
           "name": "objectPositionX",
@@ -31188,7 +31296,8 @@
             ]
           },
           "isSignal": false,
-          "default": 50
+          "default": 50,
+          "description": "Which part of the video stays visible horizontally when Object Fit crops it"
         },
         {
           "name": "objectPositionY",
@@ -31204,7 +31313,8 @@
             ]
           },
           "isSignal": false,
-          "default": 50
+          "default": 50,
+          "description": "Which part of the video stays visible vertically when Object Fit crops it"
         },
         {
           "name": "opacity",
@@ -31229,7 +31339,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Pauses on a false-to-true change. ⚠️ Declared boolean but behaves as a pulse: setting it back to false does not resume, use Play"
         },
         {
           "name": "play",
@@ -31240,7 +31351,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Starts or resumes playback. ⚠️ Dropped silently if it fires before the element exists"
         },
         {
           "name": "pointerEventsEnabled",
@@ -31329,7 +31441,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Stops playback and seeks to the beginning on a false-to-true change. ⚠️ Declared boolean but behaves as a pulse"
         },
         {
           "name": "restart",
@@ -31340,7 +31453,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Seeks to the beginning and plays. ⚠️ There is no signal for when it has restarted"
         },
         {
           "name": "sizeMode",
@@ -31396,7 +31510,8 @@
             "name": "mediastream"
           },
           "isSignal": false,
-          "default": null
+          "default": null,
+          "description": "A live MediaStream to play, from a camera or screen capture, instead of a URL"
         },
         {
           "name": "styleCss",
@@ -31555,7 +31670,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 1
+          "default": 1,
+          "description": "Playback volume from 0 to 1"
         },
         {
           "name": "width",
@@ -31666,7 +31782,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires once enough of the video has loaded to start playing"
         },
         {
           "name": "onClick",
@@ -31687,7 +31804,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when playback pauses"
         },
         {
           "name": "onPlay",
@@ -31697,7 +31815,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when playback starts or resumes"
         },
         {
           "name": "onPlaybackFailure",
@@ -31707,7 +31826,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the video could not be loaded or played, after the reason has been reported on Error"
         },
         {
           "name": "onTimeUpdate",
@@ -31717,7 +31837,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "How far into the video playback has reached, in seconds"
         },
         {
           "name": "onVideoElementCreated",
@@ -31726,7 +31847,8 @@
           "type": {
             "name": "domelement"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The underlying video element, for a Group to scroll to or a script to reach"
         },
         {
           "name": "playbackError",
@@ -31736,7 +31858,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Why playback failed — either the browser refused to autoplay, or the source could not be decoded"
         },
         {
           "name": "pointerDown",
@@ -31811,7 +31934,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Natural height of the video in pixels, known once it has loaded"
         },
         {
           "name": "videoWidth",
@@ -31821,7 +31945,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Natural width of the video in pixels, known once it has loaded"
         },
         {
           "name": "willUnmount",
@@ -37110,6 +37235,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Fill colour behind the label and icon",
           "index": 100,
           "allowVisualStates": true
         },
@@ -37814,6 +37940,7 @@
           },
           "isSignal": false,
           "default": "left",
+          "description": "Which side of the label the icon sits on, with Icon Spacing as the gap between them",
           "index": 25,
           "allowVisualStates": true
         },
@@ -38731,7 +38858,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the button is clicked or tapped, and on Enter or Space while it has keyboard focus"
         },
         {
           "name": "onFocus",
@@ -39068,6 +39196,7 @@
           },
           "isSignal": false,
           "default": "transparent",
+          "description": "Fill colour of the box itself, behind the tick",
           "index": 201,
           "allowVisualStates": true
         },
@@ -39625,7 +39754,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Ticks the box if it is not already ticked; does not fire Changed"
         },
         {
           "name": "checked",
@@ -39637,6 +39767,7 @@
           },
           "isSignal": false,
           "default": false,
+          "description": "Sets whether the box is ticked; setting it from the graph does not fire Changed",
           "index": 100
         },
         {
@@ -39680,6 +39811,7 @@
           },
           "isSignal": false,
           "default": 32,
+          "description": "Height of the box",
           "index": 12,
           "allowVisualStates": true
         },
@@ -40365,7 +40497,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Unticks the box if it is ticked; does not fire Changed"
         },
         {
           "name": "useIcon",
@@ -40435,6 +40568,7 @@
           },
           "isSignal": false,
           "default": 32,
+          "description": "Width of the box; the label sits beside it and is sized separately",
           "index": 11,
           "allowVisualStates": true
         },
@@ -40483,7 +40617,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Whether the box is currently ticked"
         },
         {
           "name": "childIndex",
@@ -40580,7 +40715,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the user ticks or unticks the box; the Checked input and the Check/Uncheck actions do not fire it"
         },
         {
           "name": "onFocus",
@@ -40894,6 +41030,7 @@
           },
           "isSignal": false,
           "default": "transparent",
+          "description": "Fill colour of the closed dropdown; the open list is drawn by the browser and cannot be styled here",
           "index": 100,
           "allowVisualStates": true
         },
@@ -41598,6 +41735,7 @@
           },
           "isSignal": false,
           "default": "left",
+          "description": "Which side of the label the icon sits on, with Icon Spacing as the gap between them",
           "index": 25,
           "allowVisualStates": true
         },
@@ -41669,7 +41807,8 @@
           "type": {
             "name": "array"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Options to offer, as an array of objects with Label and Value properties; ⚠️ an empty value currently throws"
         },
         {
           "name": "label",
@@ -42237,7 +42376,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Text shown while nothing is selected"
         },
         {
           "name": "placeholderOpacity",
@@ -42248,7 +42388,8 @@
             "name": "number"
           },
           "isSignal": false,
-          "default": 0.5
+          "default": 0.5,
+          "description": "How faded the placeholder text is, from 0 to 1"
         },
         {
           "name": "position",
@@ -42531,7 +42672,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Selects the option with this Value; a value matching no option deselects everything. Setting it from the graph does not fire Changed"
         },
         {
           "name": "variant",
@@ -42711,7 +42853,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the user picks a different option; a value arriving on the Value input does not fire it"
         },
         {
           "name": "onFocus",
@@ -42797,7 +42940,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Value of the option currently selected"
         },
         {
           "name": "willUnmount",
@@ -43051,6 +43195,7 @@
           },
           "isSignal": false,
           "default": "transparent",
+          "description": "Fill colour of the button itself, behind the dot",
           "index": 201,
           "allowVisualStates": true
         },
@@ -43633,6 +43778,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the dot shown inside this button while it is selected",
           "index": 19,
           "allowVisualStates": true
         },
@@ -43652,6 +43798,7 @@
           },
           "isSignal": false,
           "default": 2,
+          "description": "Gap between the dot and the button edge, so a larger value makes a smaller dot",
           "allowVisualStates": true
         },
         {
@@ -43669,6 +43816,7 @@
           },
           "isSignal": false,
           "default": 32,
+          "description": "Height of the button",
           "index": 12,
           "allowVisualStates": true
         },
@@ -44381,6 +44529,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "What this button contributes to its Radio Button Group when selected; the group reports it as its own Value",
           "index": 100
         },
         {
@@ -44425,6 +44574,7 @@
           },
           "isSignal": false,
           "default": 32,
+          "description": "Width of the button; the label sits beside it and is sized separately",
           "index": 11,
           "allowVisualStates": true
         },
@@ -44473,7 +44623,8 @@
           "type": {
             "name": "boolean"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Whether this button is the one selected in its Radio Button Group"
         },
         {
           "name": "childIndex",
@@ -44984,6 +45135,7 @@
           },
           "isSignal": false,
           "default": 100,
+          "description": "Value at the far right of the track; the current value is clamped down to it if it is above",
           "index": 100
         },
         {
@@ -44996,6 +45148,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Value at the far left of the track; the current value is clamped up to it if it is below",
           "index": 100
         },
         {
@@ -45222,6 +45375,7 @@
           },
           "isSignal": false,
           "default": 1,
+          "description": "Smallest amount the handle can move by, so the value lands on multiples of it",
           "index": 100
         },
         {
@@ -45249,6 +45403,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the bottom edge of the handle you drag only, overriding Thumb Border Color",
           "index": 221,
           "allowVisualStates": true
         },
@@ -45267,6 +45422,7 @@
             ]
           },
           "isSignal": false,
+          "description": "How rounded the bottom left corner of the handle you drag is, overriding Thumb Corner Radius",
           "index": 244
         },
         {
@@ -45284,6 +45440,7 @@
             ]
           },
           "isSignal": false,
+          "description": "How rounded the bottom right corner of the handle you drag is, overriding Thumb Corner Radius",
           "index": 243
         },
         {
@@ -45314,6 +45471,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the bottom edge of the handle you drag only, overriding Thumb Border Style; None hides that edge",
           "index": 219,
           "allowVisualStates": true
         },
@@ -45331,6 +45489,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness in pixels of the bottom edge of the handle you drag, which has no effect while that edge's Border Style is None",
           "index": 220,
           "allowVisualStates": true
         },
@@ -45345,6 +45504,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Colour of the border around the handle you drag, which has no effect while Thumb Border Style is None",
           "index": 205,
           "allowVisualStates": true
         },
@@ -45358,6 +45518,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the left edge of the handle you drag only, overriding Thumb Border Color",
           "index": 209,
           "allowVisualStates": true
         },
@@ -45389,6 +45550,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the left edge of the handle you drag only, overriding Thumb Border Style; None hides that edge",
           "index": 207,
           "allowVisualStates": true
         },
@@ -45406,6 +45568,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness in pixels of the left edge of the handle you drag, which has no effect while that edge's Border Style is None",
           "index": 208,
           "allowVisualStates": true
         },
@@ -45425,6 +45588,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "How rounded all four corners of the handle you drag are; half its width and height makes it a circle",
           "index": 240
         },
         {
@@ -45437,6 +45601,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the right edge of the handle you drag only, overriding Thumb Border Color",
           "index": 217,
           "allowVisualStates": true
         },
@@ -45468,6 +45633,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the right edge of the handle you drag only, overriding Thumb Border Style; None hides that edge",
           "index": 215,
           "allowVisualStates": true
         },
@@ -45485,6 +45651,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness in pixels of the right edge of the handle you drag, which has no effect while that edge's Border Style is None",
           "index": 216,
           "allowVisualStates": true
         },
@@ -45517,6 +45684,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Line style for all four edges of the handle you drag; None hides the border and leaves its Width and Color inactive",
           "index": 203,
           "allowVisualStates": true
         },
@@ -45530,6 +45698,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the top edge of the handle you drag only, overriding Thumb Border Color",
           "index": 213,
           "allowVisualStates": true
         },
@@ -45548,6 +45717,7 @@
             ]
           },
           "isSignal": false,
+          "description": "How rounded the top left corner of the handle you drag is, overriding Thumb Corner Radius",
           "index": 241
         },
         {
@@ -45565,6 +45735,7 @@
             ]
           },
           "isSignal": false,
+          "description": "How rounded the top right corner of the handle you drag is, overriding Thumb Corner Radius",
           "index": 242
         },
         {
@@ -45595,6 +45766,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the top edge of the handle you drag only, overriding Thumb Border Style; None hides that edge",
           "index": 211,
           "allowVisualStates": true
         },
@@ -45612,6 +45784,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness in pixels of the top edge of the handle you drag, which has no effect while that edge's Border Style is None",
           "index": 212,
           "allowVisualStates": true
         },
@@ -45630,6 +45803,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Thickness in pixels of the border around the handle you drag, which has no effect while Thumb Border Style is None",
           "index": 204,
           "allowVisualStates": true
         },
@@ -45648,6 +45822,7 @@
           },
           "isSignal": false,
           "default": 5,
+          "description": "How soft the shadow edge is; 0 gives a hard edge",
           "index": 253,
           "allowVisualStates": true
         },
@@ -45662,6 +45837,7 @@
           },
           "isSignal": false,
           "default": "#00000033",
+          "description": "Colour of the shadow, usually a mostly-transparent black",
           "index": 256,
           "allowVisualStates": true
         },
@@ -45675,6 +45851,7 @@
             "name": "boolean"
           },
           "isSignal": false,
+          "description": "Draws a shadow behind the handle you drag; the rest of this group does nothing while it is off",
           "index": 250,
           "allowVisualStates": true
         },
@@ -45689,6 +45866,7 @@
           },
           "isSignal": false,
           "default": false,
+          "description": "Draws the shadow inside the element instead of behind it, for a recessed look",
           "index": 255,
           "allowVisualStates": true
         },
@@ -45707,6 +45885,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "How far right the shadow sits from the element; negative values move it left",
           "index": 251,
           "allowVisualStates": true
         },
@@ -45725,6 +45904,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "How far down the shadow sits from the element; negative values move it up",
           "index": 252,
           "allowVisualStates": true
         },
@@ -45743,6 +45923,7 @@
           },
           "isSignal": false,
           "default": 2,
+          "description": "Grows the shadow outwards before it is blurred; negative values shrink it",
           "index": 254,
           "allowVisualStates": true
         },
@@ -45757,6 +45938,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Fill colour of the handle",
           "allowVisualStates": true
         },
         {
@@ -45776,6 +45958,7 @@
           },
           "isSignal": false,
           "default": 16,
+          "description": "Height of the handle the user drags",
           "allowVisualStates": true
         },
         {
@@ -45795,6 +45978,7 @@
           },
           "isSignal": false,
           "default": 16,
+          "description": "Width of the handle the user drags",
           "allowVisualStates": true
         },
         {
@@ -45808,6 +45992,7 @@
           },
           "isSignal": false,
           "default": "#f0f0f0",
+          "description": "Colour of the part of the track between Min and the handle",
           "allowVisualStates": true
         },
         {
@@ -45820,6 +46005,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the bottom edge of the bar the handle slides along only, overriding Track Border Color",
           "index": 221,
           "allowVisualStates": true
         },
@@ -45838,6 +46024,7 @@
             ]
           },
           "isSignal": false,
+          "description": "How rounded the bottom left corner of the bar the handle slides along is, overriding Track Corner Radius",
           "index": 244
         },
         {
@@ -45855,6 +46042,7 @@
             ]
           },
           "isSignal": false,
+          "description": "How rounded the bottom right corner of the bar the handle slides along is, overriding Track Corner Radius",
           "index": 243
         },
         {
@@ -45885,6 +46073,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the bottom edge of the bar the handle slides along only, overriding Track Border Style; None hides that edge",
           "index": 219,
           "allowVisualStates": true
         },
@@ -45902,6 +46091,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness in pixels of the bottom edge of the bar the handle slides along, which has no effect while that edge's Border Style is None",
           "index": 220,
           "allowVisualStates": true
         },
@@ -45916,6 +46106,7 @@
           },
           "isSignal": false,
           "default": "#000000",
+          "description": "Colour of the border around the bar the handle slides along, which has no effect while Track Border Style is None",
           "index": 205,
           "allowVisualStates": true
         },
@@ -45929,6 +46120,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the left edge of the bar the handle slides along only, overriding Track Border Color",
           "index": 209,
           "allowVisualStates": true
         },
@@ -45960,6 +46152,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the left edge of the bar the handle slides along only, overriding Track Border Style; None hides that edge",
           "index": 207,
           "allowVisualStates": true
         },
@@ -45977,6 +46170,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness in pixels of the left edge of the bar the handle slides along, which has no effect while that edge's Border Style is None",
           "index": 208,
           "allowVisualStates": true
         },
@@ -45996,6 +46190,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "How rounded all four corners of the bar the handle slides along are; half its width and height makes it a circle",
           "index": 240
         },
         {
@@ -46008,6 +46203,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the right edge of the bar the handle slides along only, overriding Track Border Color",
           "index": 217,
           "allowVisualStates": true
         },
@@ -46039,6 +46235,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the right edge of the bar the handle slides along only, overriding Track Border Style; None hides that edge",
           "index": 215,
           "allowVisualStates": true
         },
@@ -46056,6 +46253,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness in pixels of the right edge of the bar the handle slides along, which has no effect while that edge's Border Style is None",
           "index": 216,
           "allowVisualStates": true
         },
@@ -46088,6 +46286,7 @@
           },
           "isSignal": false,
           "default": "none",
+          "description": "Line style for all four edges of the bar the handle slides along; None hides the border and leaves its Width and Color inactive",
           "index": 203,
           "allowVisualStates": true
         },
@@ -46101,6 +46300,7 @@
             "name": "color"
           },
           "isSignal": false,
+          "description": "Colour of the top edge of the bar the handle slides along only, overriding Track Border Color",
           "index": 213,
           "allowVisualStates": true
         },
@@ -46119,6 +46319,7 @@
             ]
           },
           "isSignal": false,
+          "description": "How rounded the top left corner of the bar the handle slides along is, overriding Track Corner Radius",
           "index": 241
         },
         {
@@ -46136,6 +46337,7 @@
             ]
           },
           "isSignal": false,
+          "description": "How rounded the top right corner of the bar the handle slides along is, overriding Track Corner Radius",
           "index": 242
         },
         {
@@ -46166,6 +46368,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Line style for the top edge of the bar the handle slides along only, overriding Track Border Style; None hides that edge",
           "index": 211,
           "allowVisualStates": true
         },
@@ -46183,6 +46386,7 @@
             ]
           },
           "isSignal": false,
+          "description": "Thickness in pixels of the top edge of the bar the handle slides along, which has no effect while that edge's Border Style is None",
           "index": 212,
           "allowVisualStates": true
         },
@@ -46201,6 +46405,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "Thickness in pixels of the border around the bar the handle slides along, which has no effect while Track Border Style is None",
           "index": 204,
           "allowVisualStates": true
         },
@@ -46219,6 +46424,7 @@
           },
           "isSignal": false,
           "default": 5,
+          "description": "How soft the shadow edge is; 0 gives a hard edge",
           "index": 253,
           "allowVisualStates": true
         },
@@ -46233,6 +46439,7 @@
           },
           "isSignal": false,
           "default": "#00000033",
+          "description": "Colour of the shadow, usually a mostly-transparent black",
           "index": 256,
           "allowVisualStates": true
         },
@@ -46246,6 +46453,7 @@
             "name": "boolean"
           },
           "isSignal": false,
+          "description": "Draws a shadow behind the bar the handle slides along; the rest of this group does nothing while it is off",
           "index": 250,
           "allowVisualStates": true
         },
@@ -46260,6 +46468,7 @@
           },
           "isSignal": false,
           "default": false,
+          "description": "Draws the shadow inside the element instead of behind it, for a recessed look",
           "index": 255,
           "allowVisualStates": true
         },
@@ -46278,6 +46487,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "How far right the shadow sits from the element; negative values move it left",
           "index": 251,
           "allowVisualStates": true
         },
@@ -46296,6 +46506,7 @@
           },
           "isSignal": false,
           "default": 0,
+          "description": "How far down the shadow sits from the element; negative values move it up",
           "index": 252,
           "allowVisualStates": true
         },
@@ -46314,6 +46525,7 @@
           },
           "isSignal": false,
           "default": 2,
+          "description": "Grows the shadow outwards before it is blurred; negative values shrink it",
           "index": 254,
           "allowVisualStates": true
         },
@@ -46328,6 +46540,7 @@
           },
           "isSignal": false,
           "default": "#f0f0f0",
+          "description": "Colour of the part of the track the handle has not reached yet",
           "allowVisualStates": true
         },
         {
@@ -46347,6 +46560,7 @@
           },
           "isSignal": false,
           "default": 6,
+          "description": "Thickness of the bar the handle slides along",
           "allowVisualStates": true
         },
         {
@@ -46466,6 +46680,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "Moves the handle to this value, clamped to Min and Max; changing it from the graph does not fire Changed",
           "index": 100
         },
         {
@@ -46509,6 +46724,7 @@
           },
           "isSignal": false,
           "default": 100,
+          "description": "Overall width of the slider, which is the length of the track plus the handle",
           "index": 11,
           "allowVisualStates": true
         },
@@ -46644,7 +46860,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the user moves the handle; a value arriving on the Value input does not fire it"
         },
         {
           "name": "onFocus",
@@ -46730,7 +46947,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "The value the handle is currently at, between Min and Max, as a number"
         },
         {
           "name": "valuePercent",
@@ -46740,7 +46958,8 @@
           "type": {
             "name": "number"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Where the handle sits as a whole number from 0 to 100, regardless of Min and Max"
         },
         {
           "name": "willUnmount",
@@ -46989,6 +47208,7 @@
           },
           "isSignal": false,
           "default": "transparent",
+          "description": "Fill colour of the field",
           "index": 100,
           "allowVisualStates": true
         },
@@ -47013,7 +47233,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Takes keyboard focus away from this field, which is what fires Blurred"
         },
         {
           "name": "borderBottomColor",
@@ -47557,7 +47778,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Empties the field"
         },
         {
           "name": "color",
@@ -47608,7 +47830,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Puts the keyboard cursor in this field"
         },
         {
           "name": "fontFamily",
@@ -47726,6 +47949,7 @@
           },
           "isSignal": false,
           "default": "left",
+          "description": "Which side of the label the icon sits on, with Icon Spacing as the gap between them",
           "index": 25,
           "allowVisualStates": true
         },
@@ -48113,6 +48337,7 @@
             "name": "number"
           },
           "isSignal": false,
+          "description": "Largest number of characters the user can type; it does not truncate a value arriving on Text",
           "index": 24
         },
         {
@@ -48368,6 +48593,7 @@
           },
           "isSignal": false,
           "default": 0.5,
+          "description": "How faded the placeholder text is, from 0 to 1",
           "index": 23
         },
         {
@@ -48380,6 +48606,7 @@
           },
           "isSignal": false,
           "default": "Type here...",
+          "description": "Greyed-out hint shown while the field is empty",
           "index": 22
         },
         {
@@ -48422,7 +48649,8 @@
             "name": "signal",
             "allowConnectionsOnly": true
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Writes the current Text into the field; connect it when you want Text to apply on demand rather than immediately"
         },
         {
           "name": "sizeMode",
@@ -48467,6 +48695,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "The text to put in the field. Applied immediately unless Set is connected, in which case it waits for a Set pulse",
           "index": 18
         },
         {
@@ -48509,6 +48738,7 @@
           },
           "isSignal": false,
           "default": "left",
+          "description": "Aligns the typed text within the field",
           "index": 13
         },
         {
@@ -48713,6 +48943,7 @@
           },
           "isSignal": false,
           "default": "text",
+          "description": "What kind of value the field accepts, which also changes the on-screen keyboard on touch devices",
           "index": 19
         },
         {
@@ -48920,7 +49151,8 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when the user presses Enter in the field, which is the usual place to submit"
         },
         {
           "name": "onFocus",
@@ -48942,6 +49174,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "description": "What the field currently contains, updated as the user types",
           "index": 1
         },
         {
@@ -49008,6 +49241,7 @@
             "name": "signal"
           },
           "isSignal": true,
+          "description": "Fires whenever the Text output changes, so a graph can sequence off the new value rather than poll it",
           "index": 2
         },
         {
@@ -50591,7 +50825,8 @@
             ]
           },
           "isSignal": false,
-          "default": "row"
+          "default": "row",
+          "description": "Whether items fill across rows or down columns"
         },
         {
           "name": "justifyContent",
@@ -50617,7 +50852,8 @@
             ]
           },
           "isSignal": false,
-          "default": "flex-start"
+          "default": "flex-start",
+          "description": "Where the columns sit as a group when they do not fill the container"
         },
         {
           "name": "layoutString",
@@ -50628,7 +50864,8 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "1 2 1"
+          "default": "1 2 1",
+          "description": "Column widths as space-separated proportions, so \"1 2 1\" makes the middle column twice as wide"
         },
         {
           "name": "marginX",
@@ -50643,7 +50880,8 @@
             ]
           },
           "isSignal": false,
-          "default": 16
+          "default": 16,
+          "description": "Space between columns, drawn as a gutter rather than as padding on the items"
         },
         {
           "name": "marginY",
@@ -50658,7 +50896,8 @@
             ]
           },
           "isSignal": false,
-          "default": 16
+          "default": 16,
+          "description": "Space between rows"
         },
         {
           "name": "mediumBreakpoint",
@@ -50672,7 +50911,8 @@
               "px"
             ]
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Container width below which Medium Layout replaces Layout String; this is the container, not the viewport"
         },
         {
           "name": "mediumLayout",
@@ -50682,7 +50922,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Layout String to use below Medium Below; leaving it blank makes the breakpoint inert"
         },
         {
           "name": "minWidth",
@@ -50697,7 +50938,8 @@
             ]
           },
           "isSignal": false,
-          "default": 0
+          "default": 0,
+          "description": "Columns are dropped from the end rather than shrink below this; with Auto Fit it decides how many there are"
         },
         {
           "name": "mounted",
@@ -50731,7 +50973,8 @@
             ]
           },
           "isSignal": false,
-          "default": "rows"
+          "default": "rows",
+          "description": "Rows makes every item in a row as tall as the tallest; Masonry lets each column pack independently"
         },
         {
           "name": "sizing",
@@ -50752,7 +50995,8 @@
             ]
           },
           "isSignal": false,
-          "default": "layoutString"
+          "default": "layoutString",
+          "description": "Layout String sets the columns explicitly; Auto Fit derives them from Min Column Width and the space available"
         },
         {
           "name": "smallBreakpoint",
@@ -50766,7 +51010,8 @@
               "px"
             ]
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Container width below which Small Layout replaces the others; it wins over Medium Below"
         },
         {
           "name": "smallLayout",
@@ -50776,7 +51021,8 @@
           "type": {
             "name": "string"
           },
-          "isSignal": false
+          "isSignal": false,
+          "description": "Layout String to use below Small Below; leaving it blank makes the breakpoint inert"
         },
         {
           "name": "styleCss",

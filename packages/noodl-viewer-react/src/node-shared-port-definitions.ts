@@ -1315,6 +1315,7 @@ export default {
           },
           group: 'Icon',
           displayName: 'Placement',
+          description: 'Which side of the label the icon sits on, with Icon Spacing as the gap between them',
           default: 'left',
           allowVisualStates: true,
           index: index + 5

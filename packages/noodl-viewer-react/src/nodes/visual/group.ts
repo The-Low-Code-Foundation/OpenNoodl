@@ -37,6 +37,7 @@ const GroupNode: ReactNodeDefinition = {
       index: 12,
       displayName: 'Layout',
       group: 'Layout',
+      description: 'How children are stacked: None positions them absolutely, Vertical stacks them down, Horizontal across',
       type: {
         name: 'enum',
         enums: [
@@ -71,6 +72,7 @@ const GroupNode: ReactNodeDefinition = {
     },
     'scrollToIndex.do': {
       displayName: 'Scroll To Index - Do',
+      description: 'Scrolls to the child at Index. \u26a0\ufe0f There is no signal for when the scroll finishes',
       group: 'Scroll To Index',
       type: 'signal',
       index: 505,
@@ -85,6 +87,7 @@ const GroupNode: ReactNodeDefinition = {
     },
     'scrollToElement.do': {
       displayName: 'Scroll To Element - Do',
+      description: 'Scrolls to the element on Element. \u26a0\ufe0f Dropped silently if it fires in the same frame the Group mounts',
       group: 'Scroll To Element',
       type: 'signal',
       index: 500,
@@ -99,6 +102,7 @@ const GroupNode: ReactNodeDefinition = {
     },
     'scrollToElement.element': {
       displayName: 'Scroll To Element - Element',
+      description: 'Which element to scroll to, taken from another node\'s DOM Element output',
       group: 'Scroll To Element',
       type: 'reference',
       index: 501,
@@ -108,6 +112,7 @@ const GroupNode: ReactNodeDefinition = {
     },
     'scrollToElement.duration': {
       displayName: 'Scroll To Element - Duration',
+      description: 'How long the scroll animation takes, in milliseconds; 0 jumps',
       group: 'Scroll To Element',
       type: 'number',
       default: 500,
@@ -118,6 +123,7 @@ const GroupNode: ReactNodeDefinition = {
     },
     'scrollToIndex.index': {
       displayName: 'Scroll To Index - Index',
+      description: 'Zero-based index of the child to scroll to',
       group: 'Scroll To Index',
       type: 'number',
       default: 0,
@@ -128,6 +134,7 @@ const GroupNode: ReactNodeDefinition = {
     },
     'scrollToIndex.duration': {
       displayName: 'Scroll To Index - Duration',
+      description: 'How long the scroll animation takes, in milliseconds; 0 jumps',
       group: 'Scroll To Index',
       type: 'number',
       default: 500,
@@ -139,6 +146,7 @@ const GroupNode: ReactNodeDefinition = {
     focus: {
       displayName: 'Focus',
       type: 'signal',
+      description: 'Gives this group keyboard focus, so key events reach it',
       group: 'Focus',
       valueChangedToTrue() {
         this.context.setNodeFocused(this, true);
@@ -149,6 +157,7 @@ const GroupNode: ReactNodeDefinition = {
     clip: {
       index: 19,
       displayName: 'Clip Content',
+      description: 'Hides any child that overflows the group instead of letting it spill out',
       type: 'boolean',
       group: 'Layout',
       default: false
@@ -157,12 +166,14 @@ const GroupNode: ReactNodeDefinition = {
       index: 54,
       group: 'Scroll',
       displayName: 'Enable Scroll',
+      description: 'Lets the user scroll the children when they do not all fit',
       type: 'boolean',
       default: false
     },
     scrollSnapEnabled: {
       index: 55,
       displayName: 'Snap',
+      description: 'Makes scrolling settle on item boundaries rather than anywhere',
       group: 'Scroll',
       type: 'boolean',
       default: false
@@ -170,6 +181,7 @@ const GroupNode: ReactNodeDefinition = {
     scrollSnapToEveryItem: {
       index: 56,
       displayName: 'Snap To Every Item',
+      description: 'Snaps to each item in turn instead of allowing a fast flick past several',
       group: 'Scroll',
       type: 'boolean',
       default: false
@@ -177,6 +189,7 @@ const GroupNode: ReactNodeDefinition = {
     showScrollbar: {
       index: 57,
       displayName: 'Show Scrollbar',
+      description: 'Shows a scrollbar rather than scrolling invisibly',
       group: 'Scroll',
       type: 'boolean',
       default: false
@@ -184,6 +197,7 @@ const GroupNode: ReactNodeDefinition = {
     scrollBounceEnabled: {
       index: 58,
       displayName: 'Bounce at boundaries',
+      description: 'Lets the content overscroll and spring back at the ends',
       group: 'Scroll',
       type: 'boolean',
       default: true
@@ -192,6 +206,7 @@ const GroupNode: ReactNodeDefinition = {
       index: 60,
       group: 'Scroll',
       displayName: 'Native platform scroll',
+      description: 'Uses the browser\'s own scrolling, which is smoother; turn it off to get snapping and the Scroll To actions',
       type: 'boolean',
       default: true
     },
@@ -199,6 +214,7 @@ const GroupNode: ReactNodeDefinition = {
       index: 100000,
       group: 'Advanced HTML',
       displayName: 'Tag',
+      description: 'HTML element to render as, which changes nothing visually but matters for screen readers and SEO',
       type: {
         name: 'enum',
         enums: [
@@ -221,6 +237,7 @@ const GroupNode: ReactNodeDefinition = {
       index: 13,
       group: 'Align and justify content',
       displayName: 'Align Items',
+      description: 'Where children sit across the layout direction',
       type: {
         name: 'enum',
         enums: [
@@ -236,6 +253,7 @@ const GroupNode: ReactNodeDefinition = {
       index: 14,
       group: 'Align and justify content',
       displayName: 'Justify Content',
+      description: 'Where children sit along the layout direction when they do not fill it',
       type: {
         name: 'enum',
         enums: [
@@ -254,6 +272,7 @@ const GroupNode: ReactNodeDefinition = {
     flexWrap: {
       index: 15,
       displayName: 'Multi Line Wrap',
+      description: 'Lets children wrap onto another line when they do not fit on one',
       group: 'Layout',
       type: {
         name: 'enum',
@@ -274,6 +293,7 @@ const GroupNode: ReactNodeDefinition = {
       index: 16,
       group: 'Layout',
       displayName: 'Align Content',
+      description: 'Where the wrapped lines sit as a group; only applies once Multi Line Wrap is on',
       type: {
         name: 'enum',
         enums: [
@@ -291,6 +311,7 @@ const GroupNode: ReactNodeDefinition = {
     rowGap: {
       index: 17,
       displayName: 'Vertical Gap',
+      description: 'Space between children on the vertical axis',
       group: 'Layout',
       type: {
         name: 'number',
@@ -303,6 +324,7 @@ const GroupNode: ReactNodeDefinition = {
     columnGap: {
       index: 18,
       displayName: 'Horizontal Gap',
+      description: 'Space between children on the horizontal axis',
       group: 'Layout',
       type: {
         name: 'number',
@@ -315,6 +337,7 @@ const GroupNode: ReactNodeDefinition = {
     backgroundColor: {
       index: 201,
       displayName: 'Background Color',
+      description: 'Fill colour behind the children',
       group: 'Style',
       type: 'color',
       default: 'transparent',
@@ -325,30 +348,35 @@ const GroupNode: ReactNodeDefinition = {
   outputProps: {
     onScrollPositionChanged: {
       displayName: 'Scroll Position',
+      description: 'How far the content is scrolled, in pixels from the start',
       type: 'number',
       group: 'Scroll'
     },
     onScrollStart: {
       displayName: 'Scroll Start',
       type: 'signal',
-      group: 'Scroll'
+      group: 'Scroll',
+      description: 'Fires when the user starts scrolling'
     },
     onScrollEnd: {
       displayName: 'Scroll End',
       type: 'signal',
-      group: 'Scroll'
+      group: 'Scroll',
+      description: 'Fires when scrolling settles, including after a flick has coasted to a stop'
     }
   },
   outputs: {
     focused: {
       displayName: 'Focused',
       type: 'signal',
-      group: 'Focus'
+      group: 'Focus',
+      description: 'Fires when this group takes keyboard focus'
     },
     focusLost: {
       displayName: 'Focus Lost',
       type: 'signal',
-      group: 'Focus'
+      group: 'Focus',
+      description: 'Fires when keyboard focus leaves this group'
     }
   },
   dynamicports: [

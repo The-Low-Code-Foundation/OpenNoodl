@@ -50,6 +50,7 @@ const ImageNode: ReactNodeDefinition = {
   inputCss: {
     objectFit: {
       displayName: 'Image Fit',
+      description: 'How the image fills its box when the two have different proportions; only available with an explicit size',
       group: 'Dimensions',
       type: {
         name: 'enum',
@@ -94,6 +95,7 @@ const ImageNode: ReactNodeDefinition = {
   inputProps: {
     srcSet: {
       displayName: 'Source Set',
+      description: 'A srcset list letting the browser pick a resolution, e.g. "small.png 480w, large.png 1080w"',
       group: 'Image',
       propPath: 'dom',
       type: {

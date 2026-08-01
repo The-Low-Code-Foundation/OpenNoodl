@@ -33,6 +33,7 @@ const CircleNode: ReactNodeDefinition = {
   inputProps: {
     size: {
       displayName: 'Size',
+      description: 'Diameter of the circle in pixels; it sets both width and height',
       default: '100',
       group: 'Dimension',
       type: {
@@ -44,6 +45,7 @@ const CircleNode: ReactNodeDefinition = {
     fillEnabled: {
       group: 'Fill',
       displayName: 'Fill',
+      description: 'Draws the inside of the circle; turn it off for an outline only',
       default: true,
       type: 'boolean',
       index: 20,
@@ -52,6 +54,7 @@ const CircleNode: ReactNodeDefinition = {
     fillColor: {
       group: 'Fill',
       displayName: 'Fill Color',
+      description: 'Colour of the inside of the circle, which has no effect while Fill is off',
       default: 'red',
       type: 'color',
       index: 21,
@@ -62,6 +65,7 @@ const CircleNode: ReactNodeDefinition = {
       group: 'Stroke',
       default: false,
       displayName: 'Stroke',
+      description: 'Draws an outline around the circle; the two ports below do nothing while it is off',
       type: 'boolean',
       allowVisualStates: true
     },
@@ -69,6 +73,7 @@ const CircleNode: ReactNodeDefinition = {
       index: 24,
       group: 'Stroke',
       displayName: 'Stroke Width',
+      description: 'Thickness of the outline in pixels, drawn centred on the circle edge',
       default: 10,
       type: {
         name: 'number'
@@ -79,6 +84,7 @@ const CircleNode: ReactNodeDefinition = {
       index: 25,
       group: 'Stroke',
       displayName: 'Stroke Color',
+      description: 'Colour of the outline',
       type: 'color',
       default: 'black',
       allowVisualStates: true
@@ -87,6 +93,7 @@ const CircleNode: ReactNodeDefinition = {
       index: 26,
       group: 'Stroke',
       displayName: 'Line Cap',
+      description: 'Shape of the outline ends when Start and End Angle make an arc rather than a full circle',
       type: {
         name: 'enum',
         enums: [
@@ -99,6 +106,7 @@ const CircleNode: ReactNodeDefinition = {
     },
     startAngle: {
       displayName: 'Start Angle',
+      description: 'Where the arc begins, in degrees clockwise from the top',
       type: 'number',
       default: 0,
       group: 'Style',
@@ -107,6 +115,7 @@ const CircleNode: ReactNodeDefinition = {
     },
     endAngle: {
       displayName: 'End Angle',
+      description: 'Where the arc ends, in degrees clockwise from the top; 360 is a full circle',
       type: 'number',
       default: 360,
       group: 'Style',

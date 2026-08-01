@@ -54,6 +54,7 @@ const RadioButtonNode = {
     fillColor: {
       index: 19,
       displayName: 'Fill Color',
+      description: 'Colour of the dot shown inside this button while it is selected',
       group: 'Fill Style',
       type: 'color',
       allowVisualStates: true,
@@ -67,11 +68,13 @@ const RadioButtonNode = {
     value: {
       type: 'string',
       displayName: 'Value',
+      description: 'What this button contributes to its Radio Button Group when selected; the group reports it as its own Value',
       group: 'General',
       index: 100
     },
     fillSpacing: {
       displayName: 'Fill Spacing',
+      description: 'Gap between the dot and the button edge, so a larger value makes a smaller dot',
       group: 'Fill Style',
       type: {
         name: 'number',
@@ -87,6 +90,7 @@ const RadioButtonNode = {
       index: 11,
       group: 'Dimensions',
       displayName: 'Width',
+      description: 'Width of the button; the label sits beside it and is sized separately',
       type: {
         name: 'number',
         units: ['px', '%', 'vw', 'vh'],
@@ -103,6 +107,7 @@ const RadioButtonNode = {
       index: 12,
       group: 'Dimensions',
       displayName: 'Height',
+      description: 'Height of the button',
       type: {
         name: 'number',
         units: ['px', '%'],
@@ -118,6 +123,7 @@ const RadioButtonNode = {
     backgroundColor: {
       index: 201,
       displayName: 'Background Color',
+      description: 'Fill colour of the button itself, behind the dot',
       group: 'Style',
       type: 'color',
       allowVisualStates: true,
@@ -131,6 +137,7 @@ const RadioButtonNode = {
       type: 'boolean',
       displayName: 'Checked',
       group: 'States',
+      description: 'Whether this button is the one selected in its Radio Button Group',
       get() {
         return this._internal.checked;
       }

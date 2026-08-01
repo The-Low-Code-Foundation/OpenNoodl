@@ -57,6 +57,7 @@ const PageNode = {
     // Client-side the events are emitted too but nothing listens; harmless.
     onPageReady: {
       displayName: 'Page Ready',
+      description: 'Pulse this once the page has the data it needs; the SSR server holds the rendered HTML until it fires. Unconnected pages render as soon as the runtime settles',
       group: 'Server Side Rendering',
       type: 'signal',
       valueChangedToTrue(this: PageNodeInstance) {
@@ -66,6 +67,7 @@ const PageNode = {
     sitemapIncluded: {
       index: 80001,
       displayName: 'Included',
+      description: 'Lists this page in the generated sitemap',
       group: 'Experimental Sitemap',
       default: true,
       type: {
@@ -76,6 +78,7 @@ const PageNode = {
     sitemapChangefreq: {
       index: 80002,
       displayName: 'Change Freq',
+      description: 'How often this page changes, as a hint to search-engine crawlers in the sitemap',
       group: 'Experimental Sitemap',
       default: 'weekly',
       type: {
@@ -95,6 +98,7 @@ const PageNode = {
     sitemapPriority: {
       index: 80003,
       displayName: 'Priority',
+      description: "This page's importance relative to the rest of the site, from 0 to 1, in the sitemap",
       group: 'Experimental Sitemap',
       default: 0.5,
       type: {
@@ -119,6 +123,7 @@ const PageNode = {
       index: 80000 + index,
       displayName: x.displayName,
       editorName: x.editorName || x.displayName,
+      description: x.description,
       propPath: 'metatags',
       group: x.group,
       popout: x.popout,

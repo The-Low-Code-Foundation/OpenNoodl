@@ -39,6 +39,7 @@ const ButtonNode = {
     backgroundColor: {
       index: 100,
       displayName: 'Background Color',
+      description: 'Fill colour behind the label and icon',
       group: 'Style',
       type: 'color',
       default: '#000000',
@@ -49,6 +50,7 @@ const ButtonNode = {
     onClick: {
       displayName: 'Click',
       group: 'Events',
+      description: 'Fires when the button is clicked or tapped, and on Enter or Space while it has keyboard focus',
       type: 'signal'
     }
   }

@@ -41,6 +41,7 @@ const RadioButtonGroupNode = {
       //don't rename for backwards compat
       index: 11,
       displayName: 'Layout',
+      description: 'Stacks the radio buttons inside this group vertically or lays them out in a row',
       group: 'Layout',
       type: {
         name: 'enum',
@@ -78,6 +79,8 @@ const RadioButtonGroupNode = {
       type: 'string',
       displayName: 'Value',
       group: 'General',
+      description:
+        'Selects the radio button whose own Value matches this; setting it from the graph does not fire Changed',
       set: function (value) {
         if (typeof value !== 'string' && value.toString !== undefined) value = value.toString();
         if (typeof value !== 'string') return;
@@ -97,6 +100,7 @@ const RadioButtonGroupNode = {
       type: 'string',
       displayName: 'Value',
       group: 'States',
+      description: 'Value of the radio button currently selected, or nothing if none is',
       getter: function () {
         return this._internal.value;
       }
@@ -104,7 +108,8 @@ const RadioButtonGroupNode = {
     onChange: {
       type: 'signal',
       displayName: 'Changed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when the user picks a different radio button; a value arriving on the Value input does not fire it'
     }
   },
   inputProps: {},

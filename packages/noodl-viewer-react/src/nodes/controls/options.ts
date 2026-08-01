@@ -53,6 +53,7 @@ const OptionsNode = {
     items: {
       type: 'array',
       displayName: 'Items',
+      description: 'Options to offer, as an array of objects with Label and Value properties; \u26a0\ufe0f an empty value currently throws',
       group: 'General',
       set: function (newValue) {
         if (this._internal.items !== newValue && this._internal.items !== undefined) {
@@ -70,6 +71,7 @@ const OptionsNode = {
       type: 'string',
       displayName: 'Value',
       group: 'General',
+      description: 'Selects the option with this Value; a value matching no option deselects everything. Setting it from the graph does not fire Changed',
       set: function (value) {
         if (value !== undefined && typeof value !== 'string') {
           if (value?.toString !== undefined) value = value.toString();
@@ -95,12 +97,14 @@ const OptionsNode = {
   inputProps: {
     placeholder: {
       displayName: 'Placeholder',
+      description: 'Text shown while nothing is selected',
       type: 'string',
       group: 'Placeholder'
     },
     placeholderOpacity: {
       group: 'Placeholder',
       displayName: 'Placeholder opacity',
+      description: 'How faded the placeholder text is, from 0 to 1',
       type: 'number',
       default: 0.5
     }
@@ -110,6 +114,7 @@ const OptionsNode = {
       type: 'string',
       displayName: 'Value',
       group: 'States',
+      description: 'Value of the option currently selected',
       getter: function () {
         return this._internal.value;
       }
@@ -117,13 +122,15 @@ const OptionsNode = {
     onChange: {
       type: 'signal',
       displayName: 'Changed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when the user picks a different option; a value arriving on the Value input does not fire it'
     }
   },
   inputCss: {
     backgroundColor: {
       index: 100,
       displayName: 'Background Color',
+      description: 'Fill colour of the closed dropdown; the open list is drawn by the browser and cannot be styled here',
       group: 'Style',
       type: 'color',
       default: 'transparent',

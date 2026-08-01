@@ -49,6 +49,7 @@ const TextInputNode = {
   inputProps: {
     type: {
       displayName: 'Type',
+      description: 'What kind of value the field accepts, which also changes the on-screen keyboard on touch devices',
       group: 'Text',
       index: 19,
       type: {
@@ -68,6 +69,7 @@ const TextInputNode = {
       index: 22,
       group: 'Text',
       displayName: 'Placeholder',
+      description: 'Greyed-out hint shown while the field is empty',
       default: 'Type here...',
       type: {
         name: 'string'
@@ -76,6 +78,7 @@ const TextInputNode = {
     maxLength: {
       group: 'Text',
       displayName: 'Max length',
+      description: 'Largest number of characters the user can type; it does not truncate a value arriving on Text',
       type: 'number',
       index: 24
     }
@@ -85,6 +88,7 @@ const TextInputNode = {
       index: 23,
       group: 'Text',
       displayName: 'Placeholder opacity',
+      description: 'How faded the placeholder text is, from 0 to 1',
       type: 'number',
       default: 0.5,
       set(value) {
@@ -95,6 +99,7 @@ const TextInputNode = {
     set: {
       group: 'Actions',
       displayName: 'Set',
+      description: 'Writes the current Text into the field; connect it when you want Text to apply on demand rather than immediately',
       type: 'signal',
       valueChangedToTrue() {
         this.scheduleAfterInputsHaveUpdated(() => {
@@ -106,6 +111,7 @@ const TextInputNode = {
       index: 18,
       displayName: 'Text',
       type: 'string',
+      description: 'The text to put in the field. Applied immediately unless Set is connected, in which case it waits for a Set pulse',
       group: 'Text',
       set(value) {
         if (this._internal.text === value) return;
@@ -120,6 +126,7 @@ const TextInputNode = {
       type: 'signal',
       group: 'Actions',
       displayName: 'Clear',
+      description: 'Empties the field',
       valueChangedToTrue() {
         this.clear();
       }
@@ -128,6 +135,7 @@ const TextInputNode = {
       type: 'signal',
       group: 'Actions',
       displayName: 'Focus',
+      description: 'Puts the keyboard cursor in this field',
       valueChangedToTrue() {
         this.context.setNodeFocused(this, true);
       }
@@ -136,6 +144,7 @@ const TextInputNode = {
       type: 'signal',
       group: 'Actions',
       displayName: 'Blur',
+      description: 'Takes keyboard focus away from this field, which is what fires Blurred',
       valueChangedToTrue() {
         this.context.setNodeFocused(this, false);
       }
@@ -144,6 +153,7 @@ const TextInputNode = {
       group: 'Text Alignment',
       index: 13,
       displayName: 'Text Horizontal Align',
+      description: 'Aligns the typed text within the field',
       type: {
         name: 'enum',
         enums: [
@@ -173,6 +183,7 @@ const TextInputNode = {
     backgroundColor: {
       index: 100,
       displayName: 'Background Color',
+      description: 'Fill colour of the field',
       group: 'Style',
       type: 'color',
       default: 'transparent',
@@ -186,6 +197,7 @@ const TextInputNode = {
       group: 'General',
       displayName: 'Text',
       type: 'string',
+      description: 'What the field currently contains, updated as the user types',
       index: 1,
       onChange() {
         this.sendSignalOnOutput('textChanged');
@@ -196,6 +208,7 @@ const TextInputNode = {
     onEnter: {
       group: 'Events',
       displayName: 'On Enter',
+      description: 'Fires when the user presses Enter in the field, which is the usual place to submit',
       type: 'signal'
     }
   },
@@ -204,6 +217,7 @@ const TextInputNode = {
       displayName: 'Text Changed',
       type: 'signal',
       group: 'General',
+      description: 'Fires whenever the Text output changes, so a graph can sequence off the new value rather than poll it',
       index: 2
     }
   },

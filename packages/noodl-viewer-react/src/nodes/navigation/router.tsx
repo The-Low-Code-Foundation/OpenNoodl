@@ -128,6 +128,7 @@ const RouterNode = {
       type: 'string',
       displayName: 'Name',
       group: 'General',
+      description: 'Name the Navigate nodes address this router by; leave it blank if there is only one',
       set: function (value) {
         this._deregisterRouter();
         this._internal.name = value;
@@ -140,6 +141,7 @@ const RouterNode = {
     pages: {
       type: { name: 'pages', allowEditOnly: true },
       displayName: 'Pages',
+      description: 'The components this router can show, and which of them is the start page',
       group: 'Pages',
       set: function (value) {
         this._internal.pages = value;
@@ -151,6 +153,7 @@ const RouterNode = {
     urlPath: {
       type: 'string',
       displayName: 'Url path',
+      description: 'Path segment prefixed to every page of this router, for nesting one router inside another',
       group: 'General',
       set: function (value) {
         this._internal.urlPath = value;
@@ -158,6 +161,7 @@ const RouterNode = {
     },
     clip: {
       displayName: 'Clip Behavior',
+      description: 'What happens when a page is taller than the router: grow to fit it, scroll it, or clip it',
       type: {
         name: 'enum',
         enums: [
@@ -185,6 +189,7 @@ const RouterNode = {
     reset: {
       type: 'signal',
       displayName: 'Reset',
+      description: 'Re-reads the URL and rebuilds the current page from scratch',
       group: 'Actions',
       valueChangedToTrue: function () {
         this.scheduleReset();
@@ -195,6 +200,7 @@ const RouterNode = {
     backgroundColor: {
       type: 'color',
       displayName: 'Background Color',
+      description: 'Fill colour behind whichever page is showing',
       group: 'Style',
       default: 'transparent',
       applyDefault: false
@@ -205,6 +211,7 @@ const RouterNode = {
       type: 'string',
       group: 'General',
       displayName: 'Current Page Title',
+      description: 'Title of the page currently showing, taken from the Pages list',
       getter: function () {
         return this._internal.currentPage !== undefined ? this._internal.currentPage.title : undefined;
       }
@@ -213,6 +220,7 @@ const RouterNode = {
       type: 'string',
       group: 'General',
       displayName: 'Current Page Component',
+      description: 'Component name of the page currently showing',
       getter: function () {
         return this._internal.currentPage !== undefined ? this._internal.currentPage.component : undefined;
       }

@@ -41,6 +41,7 @@ const ColumnsNode: ReactNodeDefinition = {
     layoutString: {
       group: 'Layout Settings',
       displayName: 'Layout String',
+      description: 'Column widths as space-separated proportions, so "1 2 1" makes the middle column twice as wide',
       type: 'string',
       default: '1 2 1',
       set(value) {
@@ -75,6 +76,7 @@ const ColumnsNode: ReactNodeDefinition = {
     sizing: {
       group: 'Layout Settings',
       displayName: 'Column Sizing',
+      description: 'Layout String sets the columns explicitly; Auto Fit derives them from Min Column Width and the space available',
       type: {
         name: 'enum',
         enums: [
@@ -93,6 +95,7 @@ const ColumnsNode: ReactNodeDefinition = {
     packing: {
       group: 'Layout Settings',
       displayName: 'Item Packing',
+      description: 'Rows makes every item in a row as tall as the tallest; Masonry lets each column pack independently',
       type: {
         name: 'enum',
         enums: [
@@ -128,26 +131,31 @@ const ColumnsNode: ReactNodeDefinition = {
     mediumBreakpoint: {
       group: 'Breakpoints',
       displayName: 'Medium Below',
+      description: 'Container width below which Medium Layout replaces Layout String; this is the container, not the viewport',
       type: { name: 'number', units: ['px'], defaultUnit: 'px' }
     },
     mediumLayout: {
       group: 'Breakpoints',
       displayName: 'Medium Layout',
+      description: 'Layout String to use below Medium Below; leaving it blank makes the breakpoint inert',
       type: 'string'
     },
     smallBreakpoint: {
       group: 'Breakpoints',
       displayName: 'Small Below',
+      description: 'Container width below which Small Layout replaces the others; it wins over Medium Below',
       type: { name: 'number', units: ['px'], defaultUnit: 'px' }
     },
     smallLayout: {
       group: 'Breakpoints',
       displayName: 'Small Layout',
+      description: 'Layout String to use below Small Below; leaving it blank makes the breakpoint inert',
       type: 'string'
     },
     marginX: {
       group: 'Layout Settings',
       displayName: 'Horizontal Gap',
+      description: 'Space between columns, drawn as a gutter rather than as padding on the items',
       type: {
         name: 'number',
         units: ['px'],
@@ -158,6 +166,7 @@ const ColumnsNode: ReactNodeDefinition = {
     marginY: {
       group: 'Layout Settings',
       displayName: 'Vertical Gap',
+      description: 'Space between rows',
       type: {
         name: 'number',
         units: ['px'],
@@ -168,6 +177,7 @@ const ColumnsNode: ReactNodeDefinition = {
     minWidth: {
       group: 'Constraints',
       displayName: 'Min Column Width',
+      description: 'Columns are dropped from the end rather than shrink below this; with Auto Fit it decides how many there are',
       type: {
         name: 'number',
         units: ['px'],
@@ -178,6 +188,7 @@ const ColumnsNode: ReactNodeDefinition = {
     direction: {
       group: 'Layout Settings',
       displayName: 'Layout Direction',
+      description: 'Whether items fill across rows or down columns',
       type: {
         name: 'enum',
         enums: [
@@ -196,6 +207,7 @@ const ColumnsNode: ReactNodeDefinition = {
     justifyContent: {
       group: 'Justify Content',
       displayName: 'Justify Content',
+      description: 'Where the columns sit as a group when they do not fill the container',
       type: {
         name: 'enum',
         enums: [

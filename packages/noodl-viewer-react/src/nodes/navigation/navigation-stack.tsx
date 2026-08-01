@@ -223,6 +223,7 @@ const PageStack = {
       type: { name: 'string', identifierOf: 'PackStack' },
       displayName: 'Name',
       group: 'General',
+      description: 'Name the Push and Pop nodes address this stack by; leave it as Main if there is only one',
       default: 'Main',
       set: function (this: PageStackInstance, value: string) {
         this._deregisterPageStack();
@@ -245,6 +246,7 @@ const PageStack = {
     useRoutes: {
       type: 'boolean',
       displayName: 'Use Routes',
+      description: 'Puts the top component in the browser URL, so back and forward move through the stack',
       group: 'General',
       default: false,
       set: function (this: PageStackInstance, value) {
@@ -253,6 +255,7 @@ const PageStack = {
     },
     clip: {
       displayName: 'Clip Content',
+      description: 'Clips a pushed component that is bigger than the stack. \u26a0\ufe0f Currently has no effect unless you set it explicitly',
       type: 'boolean',
       group: 'Layout',
       default: true,
@@ -267,6 +270,7 @@ const PageStack = {
     pages: {
       type: 'proplist',
       displayName: 'Components',
+      description: 'The components this stack can show, and which of them it starts on',
       group: 'Components',
       set: function (this: PageStackInstance, value: PageListItem[]) {
         this._internal.pages = value;
@@ -278,6 +282,7 @@ const PageStack = {
     reset: {
       type: 'signal',
       displayName: 'Reset',
+      description: 'Empties the stack and rebuilds the start component',
       group: 'Actions',
       valueChangedToTrue: function (this: PageStackInstance) {
         this.scheduleReset();
@@ -288,6 +293,7 @@ const PageStack = {
     backgroundColor: {
       type: 'color',
       displayName: 'Background Color',
+      description: 'Fill colour behind whichever component is showing',
       group: 'Style',
       default: 'transparent',
       applyDefault: false
@@ -297,6 +303,7 @@ const PageStack = {
     topPageName: {
       type: 'string',
       displayName: 'Top Component Name',
+      description: 'Name of the component currently on top of the stack',
       group: 'General',
       get(this: PageStackInstance) {
         return this._internal.topPageName;
@@ -305,6 +312,7 @@ const PageStack = {
     stackDepth: {
       type: 'number',
       displayName: 'Stack Depth',
+      description: 'How many components are on the stack, so 1 means only the start component',
       group: 'General',
       get(this: PageStackInstance) {
         return this._internal.stackDepth;

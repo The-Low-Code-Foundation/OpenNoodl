@@ -37,6 +37,7 @@ const TextNode: ReactNodeDefinition = {
       index: 19,
       group: 'Text',
       displayName: 'Text',
+      description: 'The text to show; an empty value renders nothing rather than the words null or undefined',
       default: 'Text',
       type: {
         name: 'string',
@@ -47,6 +48,8 @@ const TextNode: ReactNodeDefinition = {
       index: 100000,
       group: 'Advanced HTML',
       displayName: 'Tag',
+      description:
+        'HTML element to render the text as, which changes nothing visually but matters for screen readers and SEO',
       type: {
         name: 'enum',
         enums: [
@@ -86,6 +89,7 @@ const TextNode: ReactNodeDefinition = {
       group: 'Text Alignment',
       index: 13,
       displayName: 'Text Horizontal Align',
+      description: 'Aligns the text within its own box on the horizontal axis',
       type: {
         name: 'enum',
         enums: [
@@ -114,6 +118,7 @@ const TextNode: ReactNodeDefinition = {
       group: 'Text Alignment',
       index: 14,
       displayName: 'Text Vertical Align',
+      description: 'Aligns the text within its own box on the vertical axis, which is only visible when the box is taller than the text',
       type: {
         name: 'enum',
         enums: [

@@ -48,6 +48,7 @@ const DragNode: ReactNodeDefinition = {
       group: 'Snap To Position X',
       displayName: 'Value',
       editorName: 'Value|Snap To Position X',
+      description: 'X position the element animates to when Snap To Position X — Do fires',
       type: 'number',
       set(value) {
         this._internal.snapPositionX = value;
@@ -58,6 +59,7 @@ const DragNode: ReactNodeDefinition = {
       group: 'Snap To Position X',
       displayName: 'Duration',
       editorName: 'Duration|Snap To Position X',
+      description: 'How long the X snap animation takes, in milliseconds',
       type: 'number',
       set(value) {
         this._internal.snapDurationX = value;
@@ -68,6 +70,7 @@ const DragNode: ReactNodeDefinition = {
       displayName: 'Do',
       editorName: 'Do|Snap To Position Y',
       type: 'signal',
+      description: 'Animates the element to Value on the Y axis; does nothing if it is already there',
       valueChangedToTrue() {
         this.scheduleAfterInputsHaveUpdated(() => {
           const { snapPositionY, snapDurationY } = this._internal;
@@ -80,6 +83,7 @@ const DragNode: ReactNodeDefinition = {
       group: 'Snap To Position Y',
       displayName: 'Value',
       editorName: 'Value|Snap To Position Y',
+      description: 'Y position the element animates to when Snap To Position Y — Do fires',
       type: 'number',
       set(value) {
         this._internal.snapPositionY = value;
@@ -90,6 +94,7 @@ const DragNode: ReactNodeDefinition = {
       group: 'Snap To Position Y',
       displayName: 'Duration',
       editorName: 'Duration|Snap To Position Y',
+      description: 'How long the Y snap animation takes, in milliseconds',
       type: 'number',
       set(value) {
         this._internal.snapDurationY = value;
@@ -100,12 +105,14 @@ const DragNode: ReactNodeDefinition = {
     enabled: {
       group: 'Drag',
       displayName: 'Enabled',
+      description: 'Lets the user drag this element; when off it still renders and still responds to the Snap actions',
       type: 'boolean',
       default: true
     },
     axis: {
       group: 'Drag',
       displayName: 'Axis',
+      description: 'Which axes dragging is allowed on',
       type: {
         name: 'enum',
         enums: [
@@ -119,23 +126,27 @@ const DragNode: ReactNodeDefinition = {
     useParentBounds: {
       group: 'Drag',
       displayName: 'Constrain to parent',
+      description: 'Stops the element being dragged outside its parent\'s bounds',
       type: 'boolean',
       default: true
     },
     inputPositionX: {
       displayName: 'Start Drag X',
+      description: 'Sets the X position the element starts at, before any dragging',
       type: {
         name: 'number'
       }
     },
     inputPositionY: {
       displayName: 'Start Drag Y',
+      description: 'Sets the Y position the element starts at, before any dragging',
       type: {
         name: 'number'
       }
     },
     scale: {
       displayName: 'Scale',
+      description: 'Divides pointer movement before it becomes element movement, so 2 makes the element move half as far as the pointer',
       default: 1.0,
       type: {
         name: 'number'
@@ -146,37 +157,44 @@ const DragNode: ReactNodeDefinition = {
     onStart: {
       group: 'Signals',
       type: 'signal',
-      displayName: 'Drag Started'
+      displayName: 'Drag Started',
+      description: 'Fires when the user starts dragging'
     },
     onStop: {
       group: 'Signals',
       type: 'signal',
-      displayName: 'Drag Ended'
+      displayName: 'Drag Ended',
+      description: 'Fires when the user releases the element, including when the pointer leaves the window'
     },
     onDrag: {
       group: 'Signals',
       type: 'signal',
-      displayName: 'Drag Moved'
+      displayName: 'Drag Moved',
+      description: 'Fires on every frame the element moves while being dragged'
     },
     positionX: {
       group: 'Values',
       displayName: 'Drag X',
-      type: 'number'
+      type: 'number',
+      description: 'Current X position of the element relative to where it started'
     },
     positionY: {
       group: 'Values',
       displayName: 'Drag Y',
-      type: 'number'
+      type: 'number',
+      description: 'Current Y position of the element relative to where it started'
     },
     deltaX: {
       group: 'Values',
       displayName: 'Delta X',
-      type: 'number'
+      type: 'number',
+      description: 'How far the element moved on X since the last Drag Moved'
     },
     deltaY: {
       group: 'Values',
       displayName: 'Delta Y',
-      type: 'number'
+      type: 'number',
+      description: 'How far the element moved on Y since the last Drag Moved'
     }
   }
 };
