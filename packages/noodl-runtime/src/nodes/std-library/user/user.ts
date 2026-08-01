@@ -10,7 +10,8 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  RuntimeDiscoveredPort
 } from '@noodl/types';
 
 /**
@@ -32,11 +33,15 @@ const USER_FETCH_ERROR_CODE = 'user/fetch-failed';
 const NoodlRuntime = require('../../../../noodl-runtime');
 const { Node } = require('../../../../noodl-runtime');
 
-/** A class in the backend schema, as the editor reports it in `systemCollections`. */
-interface SystemCollection {
-  name: string;
-  schema?: { properties?: Record<string, { type?: string }> };
-}
+import { sendSchemaPorts, staticPortNames } from '../data/schema-ports';
+import {
+  USER_OUTPUT_IGNORE_PARSE,
+  USER_OUTPUT_IGNORE_REST,
+  userBackendPickerPorts,
+  userPropertyPorts,
+  userSchemaContext
+} from './user-ports';
+import { isParseWireContext } from '../data/record-ports';
 
 /**
  * `this` inside the User node.
@@ -51,11 +56,14 @@ interface UserNodeInstance extends NodeInstance {
   _internal: {
     model?: ModelLike;
     error?: string;
+    /** The `Backend` picker's value. Absent and `_active_` both mean "the default". */
+    backendId?: string;
     onModelChangedCallback(args: ModelChangeEvent): void;
     /** `hasScheduled<Type>` flags, written by {@link scheduleOnce}. */
     [flag: string]: unknown;
   };
   scheduleOnce(type: string, cb: () => void): void;
+  currentUserModel(): ModelLike | undefined;
   setError(err: string): void;
   clearWarnings(): void;
   setUserModel(model: ModelLike | undefined): void;
@@ -87,24 +95,37 @@ const UserNodeDefinition: NodeDefinitionOptions = {
 
     const userService = NoodlRuntime.Services.UserService.forScope(this.nodeScope.modelScope);
 
-    this.setUserModel(userService.current);
+    this.setUserModel(this.currentUserModel());
     userService.on('loggedIn', () => {
-      this.setUserModel(userService.current);
+      this.setUserModel(this.currentUserModel());
 
       if (this.hasOutput('loggedIn')) this.sendSignalOnOutput('loggedIn');
     });
 
     userService.on('sessionGained', () => {
-      this.setUserModel(userService.current);
+      this.setUserModel(this.currentUserModel());
     });
 
+    // ⚠️ `currentUserModel()` rather than `undefined`, and this is the one place
+    // the picker changes an existing behaviour rather than adding to it. A
+    // logout on the project's default backend used to mean "nobody is signed in"
+    // full stop; with a picker it means "nobody is signed in **there**", and a
+    // `User` node pointed at a second backend must keep reporting its own
+    // account. Re-reading is identical for every node with no picker set, which
+    // is every node in every project that exists today: the session has already
+    // been cleared by the time this fires, so the re-read answers `undefined`.
+    //
+    // ⚠️ **The signals are still global**, deliberately. `Logged Out` fires on
+    // every `User` node whichever backend signed out, and narrowing that would
+    // change when an existing project's graph runs. Recorded as a residual in
+    // BCN-006-NOTES-STEP5-6 rather than fixed quietly here.
     userService.on('loggedOut', () => {
-      this.setUserModel(undefined);
+      this.setUserModel(this.currentUserModel());
       if (this.hasOutput('loggedOut')) this.sendSignalOnOutput('loggedOut');
     });
 
     userService.on('sessionLost', () => {
-      this.setUserModel(undefined);
+      this.setUserModel(this.currentUserModel());
       if (this.hasOutput('sessionLost')) this.sendSignalOnOutput('sessionLost');
     });
   },
@@ -259,14 +280,31 @@ const UserNodeDefinition: NodeDefinitionOptions = {
           if (this.hasOutput('prop-' + key)) this.flagOutputDirty('prop-' + key);
         }
     },
+    /**
+     * The signed-in user of **this node's** backend — BCN-009 step 4.
+     *
+     * With no `Backend` input set this is `userService.current` by another route:
+     * `currentFor(undefined)` resolves the default backend, which is what
+     * `current` holds. The indirection is what lets a second `User` node on the
+     * same page report a different account.
+     */
+    currentUserModel: function (this: UserNodeInstance): ModelLike | undefined {
+      const userService = NoodlRuntime.Services.UserService.forScope(this.nodeScope.modelScope);
+      // `currentFor` is the viewer's. The cloud runtime has its own `UserService`
+      // with one request-scoped user and no picker, so fall back to `current`
+      // rather than requiring both to grow the same method.
+      if (typeof userService.currentFor === 'function') return userService.currentFor(this._internal.backendId);
+      return userService.current;
+    },
     scheduleFetch: function (this: UserNodeInstance) {
       this.scheduleOnce('Fetch', () => {
         const userService = NoodlRuntime.Services.UserService.forScope(this.nodeScope.modelScope);
         userService.fetchCurrentUser({
-          // The response is deliberately unused — `userService.current` is the source of
-          // truth and the callback only signals that it has settled.
+          backendId: this._internal.backendId,
+          // The response is deliberately unused — the stored session is the source
+          // of truth and the callback only signals that it has settled.
           success: () => {
-            this.setUserModel(userService.current);
+            this.setUserModel(this.currentUserModel());
 
             this.sendSignalOnOutput('fetched');
           },
@@ -275,6 +313,26 @@ const UserNodeDefinition: NodeDefinitionOptions = {
           }
         });
       });
+    },
+    /**
+     * The `Backend` picker's setter — BCN-009 step 4.
+     *
+     * A dynamic port with no `registerInput` branch silently drops its value, so
+     * this is what makes the dropdown do anything at all. Re-reading the model on
+     * change matters as much: the picker is an *edit-only* enum, but a saved
+     * project applies it at load, and without this the node would show the
+     * default backend's user until the first session event.
+     */
+    registerInputIfNeeded: function (this: UserNodeInstance, name: string) {
+      if (this.hasInput(name)) return;
+
+      if (name === 'backendId')
+        this.registerInput(name, {
+          set: (value: unknown) => {
+            this._internal.backendId = value as string;
+            this.setUserModel(this.currentUserModel());
+          }
+        });
     },
     registerOutputIfNeeded: function (this: UserNodeInstance, name: string) {
       if (this.hasOutput(name)) {
@@ -299,58 +357,34 @@ const UserNodeDefinition: NodeDefinitionOptions = {
   }
 };
 
+/**
+ * The node's ports, from whichever backend the `Backend` input names —
+ * BCN-006 step 6.
+ *
+ * What this replaced looked up `_User` in `systemCollections` by name and read
+ * Parse's own type words out of it. That is correct on the two backends that
+ * speak the Parse wire and produces **no properties at all** on the other three,
+ * with nothing anywhere saying why. `user-ports.ts` holds the three rules that
+ * make the same ports come out for a Parse-wire backend and real ones come out
+ * for the rest.
+ */
 function updatePorts(
   nodeId: string,
   parameters: Record<string, unknown>,
   editorConnection: EditorConnectionLike,
-  systemCollections: SystemCollection[] | undefined
+  graphModel: GraphModelLike
 ) {
-  const ports: Record<string, unknown>[] = [];
+  const ctx = userSchemaContext(graphModel, parameters);
 
-  if (systemCollections) {
-    // Fetch ports from collection keys
-    const c = systemCollections.find((c) => c.name === '_User');
-    if (c && c.schema && c.schema.properties) {
-      const props = c.schema.properties;
-      const _ignoreKeys = ['authData', 'password', 'username', 'email'];
-      for (const key in props) {
-        if (_ignoreKeys.indexOf(key) !== -1) continue;
-
-        const p = props[key];
-        if (ports.find((_p) => _p.name === key)) continue;
-
-        if (p.type === 'Relation') {
-          // Relations are not readable through this node.
-        } else {
-          // Other schema type ports
-          const _typeMap: Record<string, string> = {
-            String: 'string',
-            Boolean: 'boolean',
-            Number: 'number',
-            Date: 'date'
-          };
-
-          ports.push({
-            type: {
-              name: _typeMap[p.type] ? _typeMap[p.type] : '*'
-            },
-            plug: 'output',
-            group: 'Properties',
-            name: 'prop-' + key,
-            displayName: key
-          });
-
-          ports.push({
-            type: 'signal',
-            plug: 'output',
-            group: 'Changed Events',
-            displayName: key + ' Changed',
-            name: 'changed-' + key
-          });
-        }
-      }
-    }
-  }
+  const ports: RuntimeDiscoveredPort[] = ([] as RuntimeDiscoveredPort[])
+    .concat(userBackendPickerPorts(ctx))
+    .concat(
+      userPropertyPorts(ctx, {
+        plug: 'output',
+        includeChangedSignals: true,
+        ignore: isParseWireContext(ctx) ? USER_OUTPUT_IGNORE_PARSE : USER_OUTPUT_IGNORE_REST
+      })
+    );
 
   if (typeof _noodl_cloud_runtime_version === 'undefined') {
     // On the client we have some extra outputs
@@ -379,7 +413,11 @@ function updatePorts(
     });
   }
 
-  editorConnection.sendDynamicPorts(nodeId, ports);
+  // `sendSchemaPorts` rather than `sendDynamicPorts`, so the static/dynamic
+  // collision guard cannot be skipped — see `schema-ports.ts`.
+  sendSchemaPorts(editorConnection, nodeId, ports, {
+    staticPorts: staticPortNames(UserNodeDefinition as { inputs?: Record<string, unknown>; outputs?: Record<string, unknown> })
+  });
 }
 
 const UserNodeModule: NodeModule = {
@@ -390,25 +428,20 @@ const UserNodeModule: NodeModule = {
     }
 
     function _managePortsForNode(node: GraphNodeModel) {
-      updatePorts(
-        node.id,
-        node.parameters,
-        context.editorConnection,
-        graphModel.getMetaData('systemCollections') as SystemCollection[]
-      );
+      const rebuild = () => updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
 
-      node.on('parameterUpdated', function () {
-        updatePorts(
-          node.id,
-          node.parameters,
-          context.editorConnection,
-          graphModel.getMetaData('systemCollections') as SystemCollection[]
-        );
-      });
+      rebuild();
+      node.on('parameterUpdated', rebuild);
 
-      graphModel.on('metadataChanged.systemCollections', function (data: SystemCollection[]) {
-        updatePorts(node.id, node.parameters, context.editorConnection, data);
-      });
+      // ⚠️ **Three metadata keys, not one.** The port set used to depend only on
+      // `systemCollections`; it now depends on which backend is selected
+      // (`backendServices`), on that backend's introspected schema (also
+      // `backendServices`), and on the Parse-wire cache the fallback reads. A
+      // subscription to one of the three leaves the ports stale after a Backend
+      // Services refresh, which looks exactly like the introspection failing.
+      graphModel.on('metadataChanged.systemCollections', rebuild);
+      graphModel.on('metadataChanged.dbCollections', rebuild);
+      graphModel.on('metadataChanged.backendServices', rebuild);
     }
 
     graphModel.on('editorImportComplete', () => {

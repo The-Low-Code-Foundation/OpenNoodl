@@ -77,8 +77,11 @@ import type {
 import { descriptorFor } from '@noodl/backend-contract';
 
 import { AuthEvents } from './AuthEvents';
+import type { OAuthReturnState } from './ParseAuthAdapter';
 import { SessionStore } from './SessionStore';
 import { TokenLifecycleController } from './TokenLifecycle';
+
+export type { OAuthReturnState };
 
 /** The subset of `fetch` this adapter uses. Injected so the suite needs no server. */
 export type AuthFetchLike = (
@@ -114,8 +117,31 @@ export interface RestAuthProfile {
   readonly sendEmailVerification?: string;
   readonly verifyEmail?: string;
   readonly magicLink?: string;
-  /** OAuth start, `{provider}` substituted. */
+  /**
+   * **Discovery** — which sign-in methods this instance offers, right now.
+   *
+   * Step 5's central design decision lives on this one field. See
+   * {@link RestAuthAdapter.signInWithProvider}: the provider list is fetched
+   * *before* the browser is sent anywhere, because on both of these backends a
+   * provider that is not configured is not a redirect that fails politely —
+   * Directus answers `GET /auth/login/google` with a **404 `ROUTE_NOT_FOUND`**
+   * (measured), and PocketBase answers the exchange with a **403 "The collection
+   * is not configured to allow OAuth2 authentication."** (measured). Discovery
+   * turns both into a sentence on the node's `error` port instead of a dead end.
+   */
+  readonly authMethods?: string;
+  /**
+   * OAuth start, `{provider}` substituted.
+   *
+   * Absent for PocketBase, and the absence is a wire fact rather than an
+   * omission: PocketBase does not *have* a start URL of its own. Its
+   * `auth-methods` response hands the client a per-attempt `authURL` pointing at
+   * the **provider**, already carrying the PKCE challenge and the state, and
+   * ending in a bare `redirect_uri=` for the client to complete. Measured.
+   */
   readonly oauthStart?: string;
+  /** Where a provider's `code` is exchanged for a session. PocketBase only. */
+  readonly oauthExchange?: string;
   /** The primary key, before it is normalised to `objectId`. */
   readonly idField: string;
   /**
@@ -154,6 +180,7 @@ const DIRECTUS_PROFILE: RestAuthProfile = {
   // one it has fires during public registration, server-side. Left absent so the
   // method below refuses with a sentence rather than posting to a 404.
   verifyEmail: '/users/register/verify-email',
+  authMethods: '/auth',
   oauthStart: '/auth/login/{provider}',
   idField: 'id',
   refreshNeedsRefreshToken: true
@@ -173,7 +200,11 @@ const POCKETBASE_PROFILE: RestAuthProfile = {
   resetPassword: '/api/collections/{collection}/confirm-password-reset',
   sendEmailVerification: '/api/collections/{collection}/request-verification',
   verifyEmail: '/api/collections/{collection}/confirm-verification',
-  oauthStart: '/api/oauth2-redirect',
+  authMethods: '/api/collections/{collection}/auth-methods',
+  // No `oauthStart`. See {@link RestAuthProfile.oauthStart} — PocketBase's start
+  // URL is minted per attempt by `auth-methods` and points at the provider, not
+  // at PocketBase.
+  oauthExchange: '/api/collections/{collection}/auth-with-oauth2',
   idField: 'id',
   refreshNeedsRefreshToken: false
 };
@@ -195,6 +226,41 @@ export function restAuthProfileFor(type: string): RestAuthProfile | undefined {
 }
 
 /**
+ * The fields on a REST user record that the **server** owns.
+ *
+ * Exported because two places have to agree about it and disagreeing is a silent
+ * failure in the direction builders hate most: {@link RestAuthAdapter.setUserProperties}
+ * strips them from the body it sends, and `user-ports.ts` refuses to *offer* an
+ * input port for any of them. Before this list was shared, the second half did
+ * not exist — so a `Set User Properties` node on PocketBase offered a `verified`
+ * port that looked like every other port, accepted a value, and threw it away.
+ *
+ * "Server-owned" here means one of three things, all of which end the same way:
+ * the backend rejects the write (`id`), the backend ignores it (`created`), or
+ * the *client* must not be the thing that decides it (`verified`,
+ * `emailVerified`).
+ */
+export const REST_USER_READONLY_FIELDS: readonly string[] = Object.freeze([
+  'objectId',
+  'id',
+  'emailVerified',
+  'verified',
+  'createdAt',
+  'updatedAt',
+  'created',
+  'updated',
+  'collectionId',
+  'collectionName',
+  'expand',
+  'password',
+  'passwordConfirm',
+  'tokenKey',
+  'sessionToken',
+  'refreshToken',
+  'expiresAt'
+]);
+
+/**
  * Why Supabase is refused. One sentence, and it names what is missing rather
  * than apologising.
  */
@@ -202,6 +268,144 @@ export const SUPABASE_AUTH_UNSUPPORTED =
   'NodeGX cannot sign users in to Supabase yet. Supabase authentication is served by a separate ' +
   'service (GoTrue) that has never been tested against, so it is switched off rather than shipped ' +
   'untested. Supabase data nodes work normally.';
+
+// ── OAuth types and readers — step 5 ────────────────────────────────────────
+
+/**
+ * A provider sign-in that has left the page and not come back yet.
+ *
+ * Written to storage before the navigation and read on the next page load. Small
+ * on purpose: everything in it is needed to *finish* the exchange, and nothing in
+ * it is a credential — `codeVerifier` is a one-attempt PKCE secret that is
+ * worthless without the code, and the code arrives in the URL.
+ */
+export interface PendingOAuthFlow {
+  provider: string;
+  codeVerifier?: string;
+  state?: string;
+  redirectURL: string;
+  startedAt: number;
+}
+
+/**
+ * One provider, as PocketBase's `auth-methods` describes it.
+ *
+ * ⚠️ Note what is **per attempt** rather than per provider: `state`,
+ * `codeVerifier`, `codeChallenge` and the `authURL` that carries the challenge
+ * are all minted freshly by every call to `auth-methods`. Caching this object and
+ * reusing it for a second sign-in produces a code the exchange rejects.
+ */
+export interface PocketbaseProviderEntry {
+  name?: string;
+  displayName?: string;
+  state?: string;
+  authURL?: string;
+  /** The 0.22-era spelling, still present in 0.30 alongside `authURL`. Measured. */
+  authUrl?: string;
+  codeVerifier?: string;
+  codeChallenge?: string;
+}
+
+export interface AuthProviderEntry {
+  id: string;
+  displayName: string;
+  /** PocketBase only — the per-attempt start URL, PKCE verifier and state. */
+  raw?: PocketbaseProviderEntry;
+}
+
+/** What a backend says it offers, in the shape `Sign In With` renders buttons from. */
+export interface AuthMethods {
+  providers: AuthProviderEntry[];
+  /**
+   * A **link** that signs you in by being clicked.
+   *
+   * False for both REST backends, and PocketBase's `otp` is deliberately not
+   * folded into it: an emailed one-time *password* is a second field for the user
+   * to type, not a link, and a `Request Magic Link` node that reported success
+   * for it would send a user looking for a link that is not coming.
+   */
+  magicLink: { enabled: boolean };
+  /** PocketBase's emailed one-time password, reported separately for that reason. */
+  otp?: { enabled: boolean };
+}
+
+/**
+ * `auth-methods` / `GET /auth`, normalised.
+ *
+ * PocketBase's half is measured. ⚠️ **Directus's half is not** — `GET /auth`
+ * answers `{"data":[]}` on the rig and no SSO provider could be configured
+ * without restarting a shared container, so both spellings Directus has shipped
+ * are accepted and neither has been seen populated.
+ */
+export function readAuthMethods(profile: RestAuthProfile, body: unknown): AuthMethods {
+  const envelope = (body || {}) as Record<string, unknown>;
+
+  if (profile.type === 'pocketbase') {
+    const oauth2 = (envelope.oauth2 || {}) as { enabled?: boolean; providers?: PocketbaseProviderEntry[] };
+    const otp = (envelope.otp || {}) as { enabled?: boolean };
+    const providers = oauth2.enabled === true && Array.isArray(oauth2.providers) ? oauth2.providers : [];
+
+    return {
+      providers: providers
+        .filter((entry) => entry && typeof entry.name === 'string')
+        .map((entry) => ({
+          id: entry.name as string,
+          displayName: entry.displayName || (entry.name as string),
+          // `authUrl` is the older spelling and the rig sends both. Preferring
+          // `authURL` and falling back costs one `||`.
+          raw: Object.assign({}, entry, { authURL: entry.authURL || entry.authUrl })
+        })),
+      magicLink: { enabled: false },
+      otp: { enabled: otp.enabled === true }
+    };
+  }
+
+  // Directus. `{data: [...]}`, whose entries have been bare strings in some
+  // versions and `{name, driver, label}` in others.
+  const data = Array.isArray(envelope.data) ? envelope.data : [];
+  return {
+    providers: data
+      .map((entry) => {
+        if (typeof entry === 'string') return { id: entry, displayName: entry };
+        const record = (entry || {}) as { name?: string; label?: string; driver?: string };
+        if (!record.name) return undefined;
+        return { id: record.name, displayName: record.label || record.name };
+      })
+      .filter((entry): entry is AuthProviderEntry => entry !== undefined),
+    magicLink: { enabled: false }
+  };
+}
+
+/** PocketBase's own word for "this sign-in created the account". Measured. */
+export function readIsNew(body: unknown): boolean {
+  const meta = ((body || {}) as { meta?: { isNew?: unknown } }).meta;
+  return !!meta && meta.isNew === true;
+}
+
+/** The current page, minus the parameters a provider return leaves behind. */
+function currentUrlWithoutOAuthParams(): string {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('code');
+  url.searchParams.delete('state');
+  url.searchParams.delete('error');
+  url.searchParams.delete('error_description');
+  return url.toString();
+}
+
+/** Rewrite the address bar without the sign-in parameters, keeping everything else. */
+function stripQueryParams(remaining: URLSearchParams): void {
+  if (!window.history || typeof window.history.replaceState !== 'function') return;
+  const query = remaining.toString();
+  const cleaned = window.location.pathname + (query ? `?${query}` : '') + window.location.hash;
+  try {
+    window.history.replaceState(window.history.state, '', cleaned);
+  } catch (e) {
+    // A sandboxed iframe can refuse `replaceState`. Not fatal — the exchange
+    // still runs and the code is still single-use; the only cost is an ugly URL.
+    // The same tolerance `ParseAuthAdapter._stripAuthParamsFromUrl` has, for the
+    // same reason: this must never abort a sign-in.
+  }
+}
 
 /** A backend this adapter does not serve at all. */
 function notServed(type: string): string {
@@ -470,11 +674,20 @@ export class RestAuthAdapter extends AuthEvents implements IAuthAdapter {
    * the same message the editor greys a port out with. BCN-010 gates on the same
    * cells.
    */
-  private begin(
-    handle: BackendHandle,
-    key: CapabilityKey,
-    error: (message?: string) => void
-  ): RestAuthProfile | undefined {
+  /**
+   * The half of {@link begin} that is not the capability table: which backend,
+   * is it served here, and is there a URL.
+   *
+   * Split out for the OAuth pair, and the reason is a decision rather than a
+   * refactor. `auth.oauth` is `conditional` on both backends, so routing it
+   * through `begin` would refuse every provider sign-in unless something had
+   * already probed and passed `probedCapabilities` — and nothing does. But the
+   * discovery call {@link signInWithProvider} makes **is** that probe: it asks
+   * the instance which providers it has, and refuses with the answer. Gating on
+   * a descriptor cell first would refuse before asking, using a weaker source of
+   * truth than the one a request away.
+   */
+  private resolveProfile(handle: BackendHandle, error: (message?: string) => void): RestAuthProfile | undefined {
     if (handle.type === 'supabase') {
       error(SUPABASE_AUTH_UNSUPPORTED);
       return undefined;
@@ -490,6 +703,17 @@ export class RestAuthAdapter extends AuthEvents implements IAuthAdapter {
       error('No backend URL is configured.');
       return undefined;
     }
+
+    return profile;
+  }
+
+  private begin(
+    handle: BackendHandle,
+    key: CapabilityKey,
+    error: (message?: string) => void
+  ): RestAuthProfile | undefined {
+    const profile = this.resolveProfile(handle, error);
+    if (!profile) return undefined;
 
     const capability = this.capability(handle, key);
     if (this.allows(handle, key)) return profile;
@@ -1029,23 +1253,310 @@ export class RestAuthAdapter extends AuthEvents implements IAuthAdapter {
     );
   }
 
+  // ── OAuth — step 5 ───────────────────────────────────────────────────────
+
+  /**
+   * Where a half-finished provider sign-in is parked while the browser is away.
+   *
+   * Beside the session, in the same storage, for the reason the return leg needs
+   * it at all: the code comes back on a **fresh page load**, in a new JavaScript
+   * context, and PocketBase's exchange requires the `codeVerifier` that was
+   * minted before the redirect. Nothing in memory survives that.
+   */
+  private pendingKey(handle: BackendHandle): string {
+    return restSessionKey(handle) + '.oauth-pending';
+  }
+
+  private readPending(handle: BackendHandle): PendingOAuthFlow | undefined {
+    const raw = this.sessionStore(handle).readKey(this.pendingKey(handle));
+    if (raw === undefined) return undefined;
+    try {
+      const parsed = JSON.parse(raw) as PendingOAuthFlow;
+      return parsed && typeof parsed.provider === 'string' ? parsed : undefined;
+    } catch (e) {
+      return undefined;
+    }
+  }
+
+  private clearPending(handle: BackendHandle): void {
+    const store = this.sessionStore(handle);
+    // `writeKey`/`readKey` have no delete twin and this is the only caller that
+    // wants one; an empty string reads back as "no pending flow" through
+    // `readPending`'s JSON guard, which is enough and keeps `SessionStore`'s
+    // surface where BCN-006 step 1 put it.
+    store.writeKey(this.pendingKey(handle), '');
+  }
+
+  /**
+   * The sign-in methods this backend offers **right now**, asked of the backend.
+   *
+   * Not read from the descriptor, and that is the point. `auth.oauth` is
+   * `conditional` for both of these backends because whether a provider exists
+   * is an instance's configuration, not a product's capability — and the
+   * contract's rule is that `conditional` counts as unsupported *until probed*.
+   * This is the probe. It is also what a builder needs in order to render a row
+   * of buttons that matches what the backend will actually accept.
+   *
+   * Both shapes measured on 2026-08-01:
+   *
+   * - PocketBase `GET …/auth-methods` → `{password:{…}, oauth2:{enabled, providers:[{name, displayName, state, authURL, codeVerifier, …}]}, otp:{enabled}}`
+   * - Directus `GET /auth` → `{data:[], disableDefault:false}` on an instance with
+   *   no SSO configured. ⚠️ **The shape of a populated entry is NOT measured** —
+   *   the rig has no Directus SSO provider and configuring one needs a container
+   *   restart. Both spellings Directus has used (a bare string, and
+   *   `{name, driver, label}`) are read; see BCN-006-NOTES-STEP5-6.
+   */
+  listAuthProviders(
+    handle: BackendHandle,
+    options: {
+      success(response?: { providers: { id: string; displayName: string }[]; magicLink: { enabled: boolean } }): void;
+      error(error?: string): void;
+    }
+  ): void {
+    const profile = this.resolveProfile(handle, options.error);
+    if (!profile || !profile.authMethods) {
+      if (profile) options.error(`${handle.name || handle.type} does not publish a list of sign-in providers.`);
+      return;
+    }
+
+    this.request(
+      handle,
+      { method: 'GET', path: this.path(profile, profile.authMethods) },
+      {
+        ok: (body) => options.success(readAuthMethods(profile, body)),
+        fail: (error) => options.error(error.error)
+      }
+    );
+  }
+
   /**
    * Send the browser to a provider. **This navigates away** — nothing after it
-   * runs.
+   * runs, and the result arrives on a later page load through
+   * {@link consumeAuthReturn}.
    *
-   * The return leg is *not* implemented for either backend, and this refuses
-   * rather than half-starting a flow it cannot finish. BCN-006 step 5 owns four
-   * redirect shapes; `ParseAuthAdapter.consumeAuthReturn` is the first of them
-   * and the only one that exists. Starting a redirect whose answer nobody
-   * collects strands the user on a page with a code in the address bar and no
-   * session — worse than a sentence saying it is not available.
+   * ## Discovery first, always
+   *
+   * The one design decision in step 5, and it came from measurement rather than
+   * taste. A provider that is not configured fails *late and badly* on both
+   * backends:
+   *
+   * - **Directus**: `GET /auth/login/google` on an instance with no Google
+   *   provider is a **404 `ROUTE_NOT_FOUND`** — the route does not exist. A
+   *   top-level navigation to it lands the user on Directus's error JSON, off
+   *   your app, with no way back.
+   * - **PocketBase**: the exchange answers **403 "The collection is not
+   *   configured to allow OAuth2 authentication."** — which the user only ever
+   *   sees *after* a round trip through a provider.
+   *
+   * So this asks the backend what it offers, and only navigates once the answer
+   * names the provider. The cost is one request before the redirect; what it buys
+   * is that `Sign In With` fails on its own `error` port, on the builder's own
+   * page, which is BCN-006's "nothing is silently missing" promise in the one
+   * place it is most visible.
+   *
+   * ## Directus is refused, and the reason is not "not done yet"
+   *
+   * Directus SSO returns its refresh token as an **httpOnly cookie** and nothing
+   * in the URL. There is no mode that answers with tokens in the response the way
+   * `/auth/login` does. Consuming it therefore needs a cookie-carried session —
+   * `credentials: 'include'` on every request and a `mode: 'cookie'` refresh —
+   * which is a second session model beside {@link SessionStore}, not a fifth
+   * redirect shape. That is a design decision with a blast radius past this task,
+   * and it could not have been probed anyway: the rig has no Directus SSO
+   * provider and configuring one needs environment variables and a restart of a
+   * container three other workers were using.
    */
   signInWithProvider(handle: BackendHandle, options: SignInWithProviderOptions): void {
-    const message =
-      handle.type === 'supabase'
-        ? SUPABASE_AUTH_UNSUPPORTED
-        : `Signing in with a provider is not available on ${handle.name || handle.type} yet.`;
-    if (options.error) options.error(message);
+    const fail = (message: string) => {
+      if (options.error) options.error(message);
+    };
+
+    const profile = this.resolveProfile(handle, fail);
+    if (!profile) return;
+
+    if (!options.provider) {
+      fail('Sign In With: no provider was set.');
+      return;
+    }
+
+    if (!profile.oauthExchange) {
+      fail(
+        `NodeGX cannot complete a ${handle.name || handle.type} single sign-on yet. ` +
+          'Directus returns the session as a browser cookie rather than in the response, which needs a ' +
+          'different kind of session than NodeGX stores. Use email and password on this backend.'
+      );
+      return;
+    }
+
+    if (typeof window === 'undefined' || !window.location) {
+      // A server render, or the cloud runtime. There is no browser to navigate.
+      fail('Signing in with a provider needs a browser.');
+      return;
+    }
+
+    const redirect = options.redirect || currentUrlWithoutOAuthParams();
+
+    this.listAuthProviders(handle, {
+      success: (methods) => {
+        const providers = methods?.providers || [];
+        const match = providers.find((entry) => entry.id === options.provider);
+        if (!match) {
+          fail(
+            providers.length === 0
+              ? `${handle.name || handle.type} has no sign-in providers configured. ` +
+                  'Add one in its admin panel first.'
+              : `"${options.provider}" is not one of the sign-in providers ${handle.name || handle.type} offers ` +
+                  `(${providers.map((entry) => entry.id).join(', ')}).`
+          );
+          return;
+        }
+
+        const raw = (match as { raw?: PocketbaseProviderEntry }).raw;
+        if (!raw || !raw.authURL) {
+          fail(`${handle.name || handle.type} did not return a sign-in URL for "${options.provider}".`);
+          return;
+        }
+
+        // ⚠️ `authURL` arrives **ending in a bare `redirect_uri=`** — measured.
+        // The client appends its own, encoded. Appending an unencoded URL, or
+        // assuming the parameter was already complete, both produce a provider
+        // error page rather than anything this code could report.
+        const target = raw.authURL + encodeURIComponent(redirect);
+
+        // Parked BEFORE the navigation, because after it nothing here runs.
+        const pending: PendingOAuthFlow = {
+          provider: options.provider,
+          codeVerifier: raw.codeVerifier,
+          state: raw.state,
+          redirectURL: redirect,
+          startedAt: this.now()
+        };
+        this.sessionStore(handle).writeKey(this.pendingKey(handle), JSON.stringify(pending));
+
+        window.location.href = target;
+      },
+      error: (message) => fail(message || 'Could not ask the backend which sign-in providers it offers.')
+    });
+  }
+
+  /** BCN-006 step 5: the state of a provider sign-in coming back. */
+  oauthReturn: OAuthReturnState = { inProgress: false };
+
+  /**
+   * Look for a provider result in the current URL and act on it.
+   *
+   * Returns true when this page load **is** a sign-in return, so `UserService`
+   * can skip its ordinary stale-session validation — a page load carrying a
+   * brand-new sign-in is not a page load with a dead session, and checking first
+   * would fire `sessionLost` at the moment the user succeeded.
+   *
+   * ## Why a stored flow, and not just `?code=`
+   *
+   * `code` and `state` are the most generic query parameters in the world. A
+   * marketing link, a coupon field, another library's callback — any of them
+   * would otherwise be mistaken for a sign-in return and consumed. So the
+   * trigger is **a parked flow for this backend**, and the URL is only read once
+   * one exists.
+   *
+   * `state` is then compared, which is what it is for. A mismatch is refused
+   * rather than exchanged: it means the code in this URL was not minted by the
+   * attempt this browser started.
+   */
+  consumeAuthReturn(handle: BackendHandle): boolean {
+    if (typeof window === 'undefined' || !window.location) return false;
+
+    const profile = restAuthProfileFor(handle.type);
+    if (!profile || !profile.oauthExchange) return false;
+
+    const pending = this.readPending(handle);
+    if (!pending) return false;
+
+    let params: URLSearchParams;
+    try {
+      params = new URLSearchParams(window.location.search);
+    } catch (e) {
+      return false;
+    }
+
+    const code = params.get('code');
+    const state = params.get('state');
+    const providerError = params.get('error_description') || params.get('error');
+    if (!code && !providerError) return false;
+
+    // Strip and forget BEFORE anything else, for the reason BAK-004's own return
+    // leg gives: a one-time code left in the address bar survives into history
+    // and into anything the user copies, and a refresh re-attempts a code that is
+    // already spent — producing a failure on a sign-in that actually worked.
+    params.delete('code');
+    params.delete('state');
+    params.delete('error');
+    params.delete('error_description');
+    stripQueryParams(params);
+    this.clearPending(handle);
+
+    if (providerError) {
+      this.oauthReturn = { inProgress: false, succeeded: false, error: providerError };
+      // Deferred so a `Sign In With` node that subscribes during this same tick
+      // still hears it.
+      setTimeout(() => this.emitAuthEvent('oauthReturn', this.oauthReturn), 0);
+      return true;
+    }
+
+    if (pending.state && state !== pending.state) {
+      this.oauthReturn = {
+        inProgress: false,
+        succeeded: false,
+        error: 'This sign-in could not be verified as the one you started. Please try again.'
+      };
+      setTimeout(() => this.emitAuthEvent('oauthReturn', this.oauthReturn), 0);
+      return true;
+    }
+
+    this.oauthReturn = { inProgress: true };
+    this.request(
+      handle,
+      {
+        method: 'POST',
+        path: this.path(profile, profile.oauthExchange),
+        body: {
+          provider: pending.provider,
+          code,
+          codeVerifier: pending.codeVerifier,
+          redirectURL: pending.redirectURL
+        }
+      },
+      {
+        ok: (body) => {
+          const session = this.readSession(profile, body, undefined);
+          if (!session) {
+            this.oauthReturn = { inProgress: false, succeeded: false, error: 'Sign-in did not return a session.' };
+            this.emitAuthEvent('oauthReturn', this.oauthReturn);
+            return;
+          }
+          this.setSession(handle, session);
+          this.oauthReturn = {
+            inProgress: false,
+            succeeded: true,
+            // ⚠️ `meta.isNew` is PocketBase's own word for "this sign-in created
+            // the account", measured. Mapped onto the `outcome` vocabulary
+            // BAK-004 already gave the `Sign In With` node so one graph reads the
+            // same values whichever backend produced them.
+            outcome: readIsNew(body) ? 'created' : 'signed-in'
+          };
+          this.emitAuthEvent('oauthReturn', this.oauthReturn);
+          this.emitAuthEvent('loggedIn', session);
+        },
+        fail: (error) => {
+          this.oauthReturn = {
+            inProgress: false,
+            succeeded: false,
+            error: error.error || 'Sign-in could not be completed.'
+          };
+          this.emitAuthEvent('oauthReturn', this.oauthReturn);
+        }
+      }
+    );
+    return true;
   }
 
   requestMagicLink(handle: BackendHandle, options: RequestMagicLinkOptions): void {
@@ -1098,7 +1609,10 @@ export class RestAuthAdapter extends AuthEvents implements IAuthAdapter {
 
     // Server-owned and read-only, on both. Sending them back is at best
     // redundant and at worst a 400 that looks like the write failed.
-    for (const field of ['objectId', 'id', 'emailVerified', 'verified', 'createdAt', 'updatedAt', 'created', 'updated', 'collectionId', 'collectionName', 'expand', 'password', 'sessionToken', 'refreshToken', 'expiresAt']) {
+    //
+    // Shared with the port generator so a port is never *offered* for something
+    // this loop then throws away — see {@link REST_USER_READONLY_FIELDS}.
+    for (const field of REST_USER_READONLY_FIELDS) {
       delete content[field];
     }
 

@@ -148,6 +148,13 @@ export interface DeletedResponse {
 export interface UserResponse extends ParseRecord {
   username?: string;
   sessionToken?: string;
+  /**
+   * ⚠️ **Absent for every account created before BCN-006's remainder**, and that
+   * was the defect: a password signup never wrote the column, so `/users`,
+   * `/login` and `/users/me` all omitted it and the `User` node's
+   * `Email Verified` output read `undefined` for every user on this backend.
+   */
+  emailVerified?: boolean;
   /** Present on the error responses these routes share with everything else. */
   error?: string;
   code?: number;
