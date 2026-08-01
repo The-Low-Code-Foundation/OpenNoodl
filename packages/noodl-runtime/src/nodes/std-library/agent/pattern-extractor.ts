@@ -16,7 +16,6 @@
 import type { NodeDefinitionOptions } from '@noodl/types';
 
 import type { ExtractorInternal, PatternExtractorNodeInstance } from './node-instances';
-
 import { extractPattern } from './stream-parsers';
 
 function internalOf(node: PatternExtractorNodeInstance): ExtractorInternal {
@@ -65,6 +64,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
     text: {
       type: 'string',
       displayName: 'Text',
+      description: 'The text to search',
       group: 'Data',
       set(this: PatternExtractorNodeInstance, value: unknown) {
         internalOf(this).text = value === undefined || value === null ? '' : String(value);
@@ -74,6 +74,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
     pattern: {
       type: 'string',
       displayName: 'Pattern',
+      description: 'A JavaScript regular expression without the surrounding slashes; capture groups appear on Groups',
       group: 'Pattern',
       tooltip: 'A JavaScript regular expression, without the surrounding slashes. Capture groups appear on Groups.',
       set(this: PatternExtractorNodeInstance, value: string) {
@@ -84,8 +85,10 @@ const PatternExtractorNode: NodeDefinitionOptions = {
     flags: {
       type: 'string',
       displayName: 'Flags',
+      description: 'Regex flags i, m, s, u and y; g is controlled by Extract All and a g written here is ignored',
       group: 'Pattern',
-      tooltip: 'Regex flags: i (ignore case), m (multiline), s (dot matches newline), u (unicode). g is controlled by Extract All.',
+      tooltip:
+        'Regex flags: i (ignore case), m (multiline), s (dot matches newline), u (unicode). g is controlled by Extract All.',
       set(this: PatternExtractorNodeInstance, value: string) {
         internalOf(this).flags = value === undefined || value === null ? '' : String(value);
       }
@@ -95,6 +98,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       type: 'boolean',
       default: false,
       displayName: 'Extract All',
+      description: 'Collects every match into Matches instead of stopping at the first one',
       group: 'Pattern',
       set(this: PatternExtractorNodeInstance, value: boolean) {
         internalOf(this).extractAll = !!value;
@@ -103,6 +107,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
 
     extract: {
       displayName: 'Extract',
+      description: 'Runs Pattern over Text and reports what it found',
       group: 'Actions',
       valueChangedToTrue(this: PatternExtractorNodeInstance) {
         this.doExtract();
@@ -114,6 +119,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
     match: {
       type: 'string',
       displayName: 'Match',
+      description: 'The first match, or blank when nothing matched',
       group: 'Data',
       get(this: PatternExtractorNodeInstance) {
         return internalOf(this).match === null ? '' : internalOf(this).match;
@@ -122,6 +128,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
     matches: {
       type: 'array',
       displayName: 'Matches',
+      description: 'Every match when Extract All is on, otherwise just the first',
       group: 'Data',
       get(this: PatternExtractorNodeInstance) {
         return internalOf(this).matches;
@@ -130,6 +137,8 @@ const PatternExtractorNode: NodeDefinitionOptions = {
     groups: {
       type: 'array',
       displayName: 'Groups',
+      description:
+        'Capture groups of the first match; an optional group that did not participate is a blank string, not a hole',
       group: 'Data',
       // Capture groups of the first match. An optional group that did not
       // participate becomes an empty string rather than a hole in the array.
@@ -140,6 +149,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
     firstGroup: {
       type: 'string',
       displayName: 'First Group',
+      description: 'The first capture group of the first match, which is the whole answer for a pattern like (\\d+)%',
       group: 'Data',
       // Convenience for the common one-group case, e.g. the number in "(\d+)%".
       get(this: PatternExtractorNodeInstance) {
@@ -150,6 +160,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
     namedGroups: {
       type: 'object',
       displayName: 'Named Groups',
+      description: 'Named capture groups of the first match, keyed by name',
       group: 'Data',
       get(this: PatternExtractorNodeInstance) {
         return internalOf(this).namedGroups;
@@ -158,6 +169,7 @@ const PatternExtractorNode: NodeDefinitionOptions = {
     matchCount: {
       type: 'number',
       displayName: 'Match Count',
+      description: 'How many matches were found, which is at most one unless Extract All is on',
       group: 'Status',
       get(this: PatternExtractorNodeInstance) {
         return internalOf(this).matches.length;
@@ -166,15 +178,31 @@ const PatternExtractorNode: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
+      description: 'Why the pattern could not be used: it is blank, or it is not a valid regular expression',
       group: 'Status',
       get(this: PatternExtractorNodeInstance) {
         return internalOf(this).error;
       }
     },
 
-    found: { type: 'signal', displayName: 'Found', group: 'Events' },
-    notFound: { type: 'signal', displayName: 'Not Found', group: 'Events' },
-    failure: { type: 'signal', displayName: 'Failure', group: 'Events' }
+    found: {
+      type: 'signal',
+      displayName: 'Found',
+      description: 'Fires when the pattern ran and matched at least once',
+      group: 'Events'
+    },
+    notFound: {
+      type: 'signal',
+      displayName: 'Not Found',
+      description: 'Fires when the pattern ran and matched nothing, which is an ordinary outcome rather than a mistake',
+      group: 'Events'
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      description: 'Fires when the pattern itself is unusable, which is a bug to fix rather than a result',
+      group: 'Events'
+    }
   },
 
   methods: {

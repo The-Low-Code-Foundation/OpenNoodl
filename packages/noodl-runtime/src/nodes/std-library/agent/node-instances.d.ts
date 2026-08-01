@@ -54,6 +54,14 @@ export type SseInternal = {
   dedupeById: boolean;
 
   connection: SseConnection | null;
+  /**
+   * The URL the live connection was opened against.
+   *
+   * `SseConnectionOptions.url` is a copy taken at construction, so this is the only thing
+   * that can say whether a later `URL` write means "reconnect somewhere else" or "one of the
+   * tuning inputs moved". See `scheduleAutoConnect`.
+   */
+  connectedUrl?: string;
   connectionState: SseConnectionState;
   data: unknown;
   raw: string;

@@ -37,7 +37,6 @@
 
 import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
-import Node = require('../../../node');
 import {
   DEFAULT_MAX_QUEUE_SIZE,
   DEFAULT_MAX_RECONNECT_DELAY,
@@ -48,6 +47,8 @@ import {
   WebSocketConnection,
   WebSocketConnectionConfig
 } from './websocket-connection';
+
+import Node = require('../../../node');
 
 /** The node's slice of `_internal`. */
 interface WebSocketNodeInternal {
@@ -186,6 +187,8 @@ const WebSocketNode: NodeDefinitionOptions = {
     url: {
       type: 'string',
       displayName: 'URL',
+      description:
+        'Endpoint to connect to, which must start with ws:// or wss://; changing it reconnects to the new one',
       group: 'Connection',
       set(this: NodeInstance, value: string) {
         internalOf(this).config.url = typeof value === 'string' ? value : '';
@@ -195,6 +198,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     autoConnect: {
       type: 'boolean',
       displayName: 'Auto Connect',
+      description: 'Connect as soon as a URL is available, without waiting for a Connect signal',
       group: 'Connection',
       default: true,
       tooltip: 'Connect as soon as a URL is available, without waiting for a Connect signal.',
@@ -206,6 +210,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     protocols: {
       type: 'string',
       displayName: 'Protocols',
+      description: 'Comma-separated WebSocket subprotocols to offer during the handshake',
       group: 'Connection',
       tooltip: 'Comma-separated WebSocket subprotocols to offer during the handshake.',
       set(this: NodeInstance, value: string) {
@@ -216,6 +221,8 @@ const WebSocketNode: NodeDefinitionOptions = {
     autoReconnect: {
       type: 'boolean',
       displayName: 'Auto Reconnect',
+      description:
+        'Retries after an unsolicited close with a growing backoff; turning it off reports the close as an error',
       group: 'Connection',
       default: true,
       set(this: NodeInstance, value: boolean) {
@@ -227,6 +234,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     reconnectDelay: {
       type: 'number',
       displayName: 'Reconnect Delay (ms)',
+      description: 'First backoff delay in milliseconds; each further attempt doubles it up to Max Reconnect Delay',
       group: 'Connection',
       default: DEFAULT_RECONNECT_DELAY,
       tooltip: 'First backoff delay. Each further attempt doubles it, up to Max Reconnect Delay.',
@@ -239,6 +247,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     maxReconnectDelay: {
       type: 'number',
       displayName: 'Max Reconnect Delay (ms)',
+      description: 'Ceiling on the backoff in milliseconds, however many attempts there have been',
       group: 'Connection',
       default: DEFAULT_MAX_RECONNECT_DELAY,
       set(this: NodeInstance, value: number) {
@@ -250,6 +259,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     maxRetries: {
       type: 'number',
       displayName: 'Max Retries',
+      description: 'Reconnect attempts allowed per outage; 0 disables retrying and a negative value means unlimited',
       group: 'Connection',
       default: DEFAULT_MAX_RETRIES,
       tooltip: 'Reconnect attempts allowed per outage. 0 disables retrying; a negative value means unlimited.',
@@ -262,6 +272,8 @@ const WebSocketNode: NodeDefinitionOptions = {
     jitter: {
       type: 'boolean',
       displayName: 'Backoff Jitter',
+      description:
+        'Spreads reconnect attempts randomly across the second half of each backoff window, so a fleet does not return in lockstep',
       group: 'Connection',
       default: true,
       tooltip: 'Spread reconnect attempts randomly across the second half of each backoff window.',
@@ -272,6 +284,8 @@ const WebSocketNode: NodeDefinitionOptions = {
     heartbeatInterval: {
       type: 'number',
       displayName: 'Heartbeat Interval (ms)',
+      description:
+        'Milliseconds between heartbeats while the socket is open; 0 disables it, and only enable it if your server expects the message',
       group: 'Connection',
       default: 0,
       tooltip:
@@ -285,6 +299,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     heartbeatMessage: {
       type: 'string',
       displayName: 'Heartbeat Message',
+      description: 'Application text sent as the heartbeat; it is not a protocol ping frame',
       group: 'Connection',
       default: 'ping',
       set(this: NodeInstance, value: string) {
@@ -296,6 +311,8 @@ const WebSocketNode: NodeDefinitionOptions = {
     heartbeatReply: {
       type: 'string',
       displayName: 'Heartbeat Reply',
+      description:
+        'Exact text the server answers a heartbeat with; it is measured as Latency, hidden from On Message, and its absence is treated as a dead connection',
       group: 'Connection',
       default: 'pong',
       tooltip:
@@ -310,6 +327,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     // ── Actions ─────────────────────────────────────────────────────────────
     connect: {
       displayName: 'Connect',
+      description: 'Opens the socket, replacing one already open without reporting a close',
       group: 'Actions',
       valueChangedToTrue(this: NodeInstance) {
         (this as NodeInstance & { getConnection(): WebSocketConnection }).getConnection().connect();
@@ -317,6 +335,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     },
     disconnect: {
       displayName: 'Disconnect',
+      description: 'Closes the socket and cancels any pending reconnect',
       group: 'Actions',
       valueChangedToTrue(this: NodeInstance) {
         const connection = internalOf(this).connection;
@@ -325,6 +344,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     },
     send: {
       displayName: 'Send',
+      description: 'Hands the current Message to the socket, or applies the When Disconnected policy',
       group: 'Actions',
       valueChangedToTrue(this: NodeInstance) {
         const self = this as NodeInstance & { getConnection(): WebSocketConnection };
@@ -336,6 +356,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     message: {
       type: '*',
       displayName: 'Message',
+      description: 'Value to send; objects are JSON-serialised, and ArrayBuffers and typed arrays go as binary frames',
       group: 'Message',
       tooltip: 'Value to send. Objects are JSON-serialized; ArrayBuffers and typed arrays are sent as binary frames.',
       set(this: NodeInstance, value: unknown) {
@@ -352,6 +373,8 @@ const WebSocketNode: NodeDefinitionOptions = {
         ]
       },
       displayName: 'Message Type',
+      description:
+        'Auto sends binary values as binary and everything else as text; Binary encodes text and objects as UTF-8 first',
       group: 'Message',
       default: 'auto',
       tooltip:
@@ -372,6 +395,8 @@ const WebSocketNode: NodeDefinitionOptions = {
         ]
       },
       displayName: 'When Disconnected',
+      description:
+        'What a Send does while the socket is not open: hold it in order, discard and count it, or also report an error',
       group: 'Message',
       default: 'queue',
       tooltip:
@@ -385,6 +410,8 @@ const WebSocketNode: NodeDefinitionOptions = {
     maxQueueSize: {
       type: 'number',
       displayName: 'Max Queue Size',
+      description:
+        'Messages the queue holds before further Sends are refused and counted as dropped; 0 or less is unlimited and can grow during a long outage',
       group: 'Message',
       default: DEFAULT_MAX_QUEUE_SIZE,
       tooltip:
@@ -402,6 +429,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     connectionState: {
       type: 'string',
       displayName: 'Connection State',
+      description: 'Where the connection is: idle, connecting, open, reconnecting, closed or error',
       group: 'Status',
       get(this: NodeInstance) {
         const connection = internalOf(this).connection;
@@ -411,6 +439,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     connected: {
       type: 'boolean',
       displayName: 'Connected',
+      description: 'True only while the socket is open and messages can be sent without queueing',
       group: 'Status',
       get(this: NodeInstance) {
         const connection = internalOf(this).connection;
@@ -420,6 +449,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     retryCount: {
       type: 'number',
       displayName: 'Retry Count',
+      description: 'Attempts made during the current outage; back to zero once the socket opens',
       group: 'Status',
       get(this: NodeInstance) {
         const connection = internalOf(this).connection;
@@ -429,6 +459,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     lastError: {
       type: 'string',
       displayName: 'Last Error',
+      description: 'What went wrong most recently, including why a reconnect was scheduled or abandoned',
       group: 'Status',
       get(this: NodeInstance) {
         const connection = internalOf(this).connection;
@@ -438,6 +469,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     queueSize: {
       type: 'number',
       displayName: 'Queue Size',
+      description: 'Messages held because the socket was not open when Send ran',
       group: 'Status',
       get(this: NodeInstance) {
         const connection = internalOf(this).connection;
@@ -447,6 +479,8 @@ const WebSocketNode: NodeDefinitionOptions = {
     droppedCount: {
       type: 'number',
       displayName: 'Dropped',
+      description:
+        'Messages that will never be sent, whether discarded by policy, by a full queue, or by the node being removed',
       group: 'Status',
       get(this: NodeInstance) {
         const connection = internalOf(this).connection;
@@ -456,6 +490,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     latency: {
       type: 'number',
       displayName: 'Latency (ms)',
+      description: 'Round trip of the last heartbeat in milliseconds; 0 until one has been measured',
       group: 'Status',
       get(this: NodeInstance) {
         const connection = internalOf(this).connection;
@@ -465,6 +500,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     closeCode: {
       type: 'number',
       displayName: 'Close Code',
+      description: 'WebSocket close code from the last close, or 1006 when the socket died without one',
       group: 'Status',
       get(this: NodeInstance) {
         const connection = internalOf(this).connection;
@@ -474,6 +510,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     closeReason: {
       type: 'string',
       displayName: 'Close Reason',
+      description: 'Reason the server gave for closing, which is often blank',
       group: 'Status',
       get(this: NodeInstance) {
         const connection = internalOf(this).connection;
@@ -485,6 +522,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     received: {
       type: '*',
       displayName: 'Received',
+      description: 'The last message, parsed as JSON when it is JSON and handed over as text when it is not',
       group: 'Data',
       get(this: NodeInstance) {
         return internalOf(this).received;
@@ -493,6 +531,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     receivedRaw: {
       type: 'string',
       displayName: 'Received Raw',
+      description: 'The last text message exactly as it arrived; blank for a binary frame',
       group: 'Data',
       get(this: NodeInstance) {
         return internalOf(this).receivedRaw;
@@ -501,6 +540,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     receivedIsBinary: {
       type: 'boolean',
       displayName: 'Received Is Binary',
+      description: 'True when the last message was a binary frame, in which case Received holds the buffer',
       group: 'Data',
       get(this: NodeInstance) {
         return internalOf(this).receivedIsBinary;
@@ -508,14 +548,42 @@ const WebSocketNode: NodeDefinitionOptions = {
     },
 
     // ── Events ──────────────────────────────────────────────────────────────
-    onOpen: { type: 'signal', displayName: 'On Open', group: 'Events' },
-    onMessage: { type: 'signal', displayName: 'On Message', group: 'Events' },
-    onMessageSent: { type: 'signal', displayName: 'On Message Sent', group: 'Events' },
-    onError: { type: 'signal', displayName: 'On Error', group: 'Events' },
-    onClose: { type: 'signal', displayName: 'On Close', group: 'Events' },
+    onOpen: {
+      type: 'signal',
+      displayName: 'On Open',
+      description: 'Fires every time the socket opens, including after a reconnect',
+      group: 'Events'
+    },
+    onMessage: {
+      type: 'signal',
+      displayName: 'On Message',
+      description: 'Fires once per message, after Received already holds it; heartbeat replies are not messages',
+      group: 'Events'
+    },
+    onMessageSent: {
+      type: 'signal',
+      displayName: 'On Message Sent',
+      description:
+        'Fires when a message has been handed to the socket, including a queued one flushed on reopen; not for heartbeats',
+      group: 'Events'
+    },
+    onError: {
+      type: 'signal',
+      displayName: 'On Error',
+      description: 'Fires when something went wrong: a failed connect, a refused send, a dead heartbeat, or a give-up',
+      group: 'Events'
+    },
+    onClose: {
+      type: 'signal',
+      displayName: 'On Close',
+      description: 'Fires whenever the socket goes down, whether or not a reconnect is going to follow',
+      group: 'Events'
+    },
     onReconnect: {
       type: 'signal',
       displayName: 'On Reconnect',
+      description:
+        'Fires on every open after the first; a WebSocket cannot resume, so this is the cue to re-fetch rather than assume continuity',
       group: 'Events'
     }
   },

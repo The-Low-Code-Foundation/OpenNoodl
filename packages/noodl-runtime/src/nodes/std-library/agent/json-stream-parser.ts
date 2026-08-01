@@ -21,7 +21,6 @@
 import type { NodeDefinitionOptions } from '@noodl/types';
 
 import type { JsonStreamFormat, JsonStreamParserNodeInstance, ParserInternal } from './node-instances';
-
 import { scanJsonValues, splitDelimited, tryParseJson } from './stream-parsers';
 
 function internalOf(node: JsonStreamParserNodeInstance): ParserInternal {
@@ -71,6 +70,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
     chunk: {
       type: 'string',
       displayName: 'Chunk',
+      description: 'The next fragment of the stream; boundaries may fall anywhere, including inside a string',
       group: 'Data',
       set(this: JsonStreamParserNodeInstance, value: unknown) {
         internalOf(this).pendingChunk = value === undefined || value === null ? '' : String(value);
@@ -88,6 +88,8 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       },
       default: 'ndjson',
       displayName: 'Format',
+      description:
+        'How values are framed on this stream: one per line, any concatenation of complete values, or one whole document',
       group: 'Config',
       set(this: JsonStreamParserNodeInstance, value: string) {
         internalOf(this).format = (value as JsonStreamFormat) || 'ndjson';
@@ -98,6 +100,8 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       type: 'number',
       default: 1024 * 1024,
       displayName: 'Max Pending (characters)',
+      description:
+        'Cap on unparsed text held while a value completes; exceeding it clears the buffer and reports an error rather than growing forever',
       group: 'Config',
       tooltip:
         'Cap on unparsed text held while waiting for a value to complete. Exceeding it clears the buffer and reports an error, rather than growing without limit on a malformed stream.',
@@ -108,6 +112,8 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
 
     parse: {
       displayName: 'Parse',
+      description:
+        'Appends the current Chunk and emits every value that is now complete; the chunk is retained between pulses',
       group: 'Actions',
       valueChangedToTrue(this: JsonStreamParserNodeInstance) {
         this.doParse();
@@ -116,6 +122,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
 
     clear: {
       displayName: 'Clear',
+      description: 'Discards the pending text, the parsed values and the error counter',
       group: 'Actions',
       valueChangedToTrue(this: JsonStreamParserNodeInstance) {
         this.clearBuffer();
@@ -127,6 +134,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
     parsed: {
       type: '*',
       displayName: 'Parsed',
+      description: 'The last complete value the most recent Parse produced',
       group: 'Data',
       // The last complete value parsed. Several values in one chunk all appear on Values.
       get(this: JsonStreamParserNodeInstance) {
@@ -136,6 +144,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
     values: {
       type: 'array',
       displayName: 'Values',
+      description: 'Every value completed by the most recent Parse, in order',
       group: 'Data',
       // Every value completed by the most recent Parse, in order.
       get(this: JsonStreamParserNodeInstance) {
@@ -145,6 +154,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
     valueCount: {
       type: 'number',
       displayName: 'Value Count',
+      description: 'How many values have been parsed since the last Clear, across every Parse',
       group: 'Status',
       get(this: JsonStreamParserNodeInstance) {
         return internalOf(this).totalValues;
@@ -153,6 +163,8 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
     pendingCharacters: {
       type: 'number',
       displayName: 'Pending Characters',
+      description:
+        'Text held back because a value is not complete yet; persistently non-zero means Format does not match the stream',
       group: 'Status',
       // Text held back because a value is not complete yet. Persistently non-zero
       // means the selected format does not match the stream.
@@ -163,6 +175,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
     isComplete: {
       type: 'boolean',
       displayName: 'Is Complete',
+      description: 'True when the last Parse left nothing pending, so every value so far was whole',
       group: 'Status',
       // True when the last Parse left nothing buffered: every value so far was whole.
       get(this: JsonStreamParserNodeInstance) {
@@ -172,6 +185,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
+      description: 'Why the last value or line would not parse; kept until the next failure or a Clear',
       group: 'Status',
       get(this: JsonStreamParserNodeInstance) {
         return internalOf(this).error;
@@ -180,15 +194,33 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
     errorCount: {
       type: 'number',
       displayName: 'Error Count',
+      description: 'How many values have failed to parse since the last Clear',
       group: 'Status',
       get(this: JsonStreamParserNodeInstance) {
         return internalOf(this).errorCount;
       }
     },
 
-    success: { type: 'signal', displayName: 'Success', group: 'Events' },
-    failure: { type: 'signal', displayName: 'Failure', group: 'Events' },
-    cleared: { type: 'signal', displayName: 'Cleared', group: 'Events' }
+    success: {
+      type: 'signal',
+      displayName: 'Success',
+      description:
+        'Fires when a Parse yielded at least one value, so a chunk that merely advanced an incomplete value stays quiet',
+      group: 'Events'
+    },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      description:
+        'Fires for each value or line that could not be parsed, and when the pending text exceeded Max Pending',
+      group: 'Events'
+    },
+    cleared: {
+      type: 'signal',
+      displayName: 'Cleared',
+      description: 'Fires once the pending text and the values have been discarded',
+      group: 'Events'
+    }
   },
 
   methods: {

@@ -24,7 +24,11 @@ interface SetGlobalStoreInstance extends NodeInstance {
   };
   scheduleWrite(): void;
   doSet(): void;
+  reportFailure(message: string): void;
 }
+
+/** NDA-004 §2 — the matchable half of the failure pair. The bus keys by `code`. */
+const SET_ERROR_CODE = 'global-store/set-failed';
 
 const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
   name: 'net.noodl.GlobalStore.Set',
@@ -53,6 +57,7 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
     storeName: {
       type: 'string',
       displayName: 'Store Name',
+      description: 'Names the store to write; must match the Store Name of the Global Store node that owns it',
       group: 'Store',
       default: 'app',
       set: function (this: SetGlobalStoreInstance, value: string) {
@@ -62,6 +67,7 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
     key: {
       type: 'string',
       displayName: 'Key',
+      description: 'Key to write; a Set with no key is refused rather than dropped',
       group: 'Update',
       set: function (this: SetGlobalStoreInstance, value: string) {
         this._internal.key = value;
@@ -70,6 +76,7 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
     value: {
       type: '*',
       displayName: 'Value',
+      description: 'Value to write, of any type; null is stored as null and is not coerced to a blank string',
       group: 'Update',
       set: function (this: SetGlobalStoreInstance, value: unknown) {
         this._internal.value = value;
@@ -78,6 +85,8 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
     merge: {
       type: 'boolean',
       displayName: 'Merge Object',
+      description:
+        'Shallow-merges into the existing value when both the old and the new value are plain objects, instead of replacing it',
       group: 'Update',
       default: false,
       set: function (this: SetGlobalStoreInstance, value: boolean) {
@@ -87,6 +96,8 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
     transaction: {
       type: 'boolean',
       displayName: 'Batch With Others',
+      description:
+        'Holds the notification until the end of the current microtask so several writers in one turn produce a single change',
       group: 'Update',
       default: false,
       set: function (this: SetGlobalStoreInstance, value: boolean) {
@@ -95,6 +106,7 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
     },
     set: {
       displayName: 'Set',
+      description: 'Writes Value at Key, reading both as of the end of the current frame',
       group: 'Actions',
       valueChangedToTrue: function (this: SetGlobalStoreInstance) {
         this.scheduleWrite();
@@ -106,11 +118,22 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
     completed: {
       type: 'signal',
       displayName: 'Completed',
+      description: 'Fires once the write has been applied and every subscriber has been told',
+      group: 'Events'
+    },
+    // NDA-012 / NDA-004 §2. `Set` used to end on the `error` string and nothing else, so an
+    // author could wire `Completed` and had nothing at all to sequence off a failure. `Set` is
+    // an author `Do` (group `Actions`), so this cannot fire on the boot path.
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      description: 'Fires when the write could not be made, most often because Key is empty',
       group: 'Events'
     },
     error: {
       type: 'string',
       displayName: 'Error',
+      description: 'Why the last write failed; blank once a write succeeds',
       group: 'Events',
       getter: function (this: SetGlobalStoreInstance) {
         return this._internal.error;
@@ -135,8 +158,7 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
       if (!key) {
         // Reported rather than dropped: a Set node with no key is a graph the author has
         // half-finished, and silence is the worst way to tell them.
-        this._internal.error = 'Key is required';
-        this.flagOutputDirty('error');
+        this.reportFailure('Key is required');
         return;
       }
 
@@ -156,9 +178,21 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
 
         this.sendSignalOnOutput('completed');
       } catch (error) {
-        this._internal.error = String((error as Error).message || error);
-        this.flagOutputDirty('error');
+        this.reportFailure(String((error as Error).message || error));
       }
+    },
+
+    /**
+     * The one place a failed write is reported, on all three of the channels the Failure
+     * Contract asks for: the `error` string an author can display, the `Failure` signal an
+     * author can sequence off, and the runtime error bus, which is what reaches `On App Error`
+     * in a deployed build where no editor is watching.
+     */
+    reportFailure: function (this: SetGlobalStoreInstance, message: string) {
+      this._internal.error = message;
+      this.flagOutputDirty('error');
+      this.sendSignalOnOutput('failure');
+      this.raiseRuntimeError(SET_ERROR_CODE, message);
     }
   }
 };

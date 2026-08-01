@@ -74,6 +74,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
     data: {
       type: '*',
       displayName: 'Data',
+      description: 'The next item to buffer, of any type; its value is retained between pulses of Add',
       group: 'Data',
       set(this: StreamBufferNodeInstance, value: unknown) {
         const internal = internalOf(this);
@@ -86,6 +87,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
       type: 'number',
       default: 0,
       displayName: 'Flush Size',
+      description: 'Flush automatically once this many items are buffered; 0 disables size-based flushing',
       group: 'Config',
       tooltip: 'Flush automatically once this many items are buffered. 0 disables size-based flushing.',
       set(this: StreamBufferNodeInstance, value: number) {
@@ -97,6 +99,8 @@ const StreamBufferNode: NodeDefinitionOptions = {
       type: 'number',
       default: 0,
       displayName: 'Flush Interval (ms)',
+      description:
+        'Flush automatically this often in milliseconds while items are buffered; 0 disables interval flushing',
       group: 'Config',
       tooltip: 'Flush automatically this often while items are buffered. 0 disables interval flushing.',
       set(this: StreamBufferNodeInstance, value: number) {
@@ -114,8 +118,11 @@ const StreamBufferNode: NodeDefinitionOptions = {
       type: 'number',
       default: 10000,
       displayName: 'Max Size',
+      description:
+        'Hard cap on buffered items; overflow drops the oldest and is counted on Dropped Items; 0 means no cap',
       group: 'Config',
-      tooltip: 'Hard cap on buffered items. Overflow drops the oldest and is reported on Dropped Items. 0 means no cap.',
+      tooltip:
+        'Hard cap on buffered items. Overflow drops the oldest and is reported on Dropped Items. 0 means no cap.',
       set(this: StreamBufferNodeInstance, value: number) {
         internalOf(this).maxSize = Number(value) >= 0 ? Number(value) : 0;
       }
@@ -123,6 +130,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
 
     add: {
       displayName: 'Add',
+      description: 'Buffers the current Data, flushing straight away if that reaches Flush Size',
       group: 'Actions',
       valueChangedToTrue(this: StreamBufferNodeInstance) {
         this.addItem();
@@ -131,6 +139,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
 
     flush: {
       displayName: 'Flush',
+      description: 'Hands the whole buffer to Flushed Data now; an empty buffer is a legitimate no-op',
       group: 'Actions',
       valueChangedToTrue(this: StreamBufferNodeInstance) {
         this.doFlush();
@@ -139,6 +148,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
 
     clear: {
       displayName: 'Clear',
+      description: 'Discards the buffer and resets both counters without flushing',
       group: 'Actions',
       valueChangedToTrue(this: StreamBufferNodeInstance) {
         this.clearBuffer();
@@ -150,6 +160,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
     buffer: {
       type: 'array',
       displayName: 'Buffer',
+      description: 'Items waiting to be flushed, oldest first',
       group: 'Data',
       get(this: StreamBufferNodeInstance) {
         return internalOf(this).buffer;
@@ -158,6 +169,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
     bufferSize: {
       type: 'number',
       displayName: 'Buffer Size',
+      description: 'How many items are waiting, which is what Flush Size is compared against',
       group: 'Status',
       get(this: StreamBufferNodeInstance) {
         return internalOf(this).buffer.length;
@@ -166,6 +178,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
     flushedData: {
       type: 'array',
       displayName: 'Flushed Data',
+      description: 'The batch handed over by the most recent flush; a stable array that later Adds do not mutate',
       group: 'Data',
       get(this: StreamBufferNodeInstance) {
         return internalOf(this).flushedData;
@@ -174,6 +187,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
     flushCount: {
       type: 'number',
       displayName: 'Flush Count',
+      description: 'How many flushes have happened since the last Clear',
       group: 'Status',
       get(this: StreamBufferNodeInstance) {
         return internalOf(this).flushCount;
@@ -182,21 +196,43 @@ const StreamBufferNode: NodeDefinitionOptions = {
     droppedItems: {
       type: 'number',
       displayName: 'Dropped Items',
+      description: 'How many items Max Size has discarded from the front since the last Clear',
       group: 'Status',
       get(this: StreamBufferNodeInstance) {
         return internalOf(this).droppedItems;
       }
     },
 
-    flushed: { type: 'signal', displayName: 'Flushed', group: 'Events' },
-    overflowed: { type: 'signal', displayName: 'Overflowed', group: 'Events' },
-    cleared: { type: 'signal', displayName: 'Cleared', group: 'Events' },
+    flushed: {
+      type: 'signal',
+      displayName: 'Flushed',
+      description: 'Fires once Flushed Data holds a new batch, and not for a flush that found nothing',
+      group: 'Events'
+    },
+    overflowed: {
+      type: 'signal',
+      displayName: 'Overflowed',
+      description: 'Fires when Max Size has just discarded something',
+      group: 'Events'
+    },
+    cleared: {
+      type: 'signal',
+      displayName: 'Cleared',
+      description: 'Fires once the buffer has been discarded',
+      group: 'Events'
+    },
     // NDA-004 §2 — see `addItem`. `Add` is an author `Do` (group `Actions`), so this cannot
     // fire on the boot path.
-    failure: { type: 'signal', displayName: 'Failure', group: 'Events' },
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      description: 'Fires when Add ran before any value had arrived on Data, so nothing was buffered',
+      group: 'Events'
+    },
     error: {
       type: 'string',
       displayName: 'Error',
+      description: 'Why the last Add was refused; blank until one is',
       group: 'Events',
       getter(this: StreamBufferNodeInstance) {
         return internalOf(this).lastError;
@@ -223,10 +259,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
     addItem(this: StreamBufferNodeInstance) {
       const internal = internalOf(this);
       if (!internal.hasPendingData) {
-        return this.reportFailure(
-          'stream-buffer/no-data',
-          'Nothing to add — no value has arrived on the Data input'
-        );
+        return this.reportFailure('stream-buffer/no-data', 'Nothing to add — no value has arrived on the Data input');
       }
 
       internal.buffer.push(internal.pendingData);

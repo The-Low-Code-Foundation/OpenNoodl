@@ -64,6 +64,9 @@ describe('net.noodl.TextAccumulator', () => {
         'droppedCharacters',
         'droppedMessages',
         'error',
+        // NDA-012 added `failure`: a mis-wired Chunk used to reach an editor warning and the
+        // `error` string only, and the `Add` after one returned silently.
+        'failure',
         'lastMessage',
         'messageCount',
         'messageReceived',

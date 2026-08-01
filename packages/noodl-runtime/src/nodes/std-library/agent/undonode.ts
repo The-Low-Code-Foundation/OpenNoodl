@@ -70,6 +70,7 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
     storeName: {
       type: 'string',
       displayName: 'Store Name',
+      description: 'Names the store to step through; a State History node must already be tracking it',
       group: 'Store',
       default: 'app',
       set: function (this: UndoInstance, value: string) {
@@ -79,6 +80,7 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
     targetIndex: {
       type: 'number',
       displayName: 'Target Index',
+      description: 'Entry to move to when Jump To is signalled, counting from zero; ignored by Undo and Redo',
       group: 'Jump',
       default: 0,
       set: function (this: UndoInstance, value: number) {
@@ -87,6 +89,7 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
     },
     undo: {
       displayName: 'Undo',
+      description: 'Steps the store back one entry, doing nothing when it is already at the beginning',
       group: 'Actions',
       valueChangedToTrue: function (this: UndoInstance) {
         this.queue('undo');
@@ -94,6 +97,7 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
     },
     redo: {
       displayName: 'Redo',
+      description: 'Steps the store forward one entry, doing nothing when it is already at the end',
       group: 'Actions',
       valueChangedToTrue: function (this: UndoInstance) {
         this.queue('redo');
@@ -101,6 +105,7 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
     },
     jumpTo: {
       displayName: 'Jump To',
+      description: 'Moves the store to the entry named by Target Index',
       group: 'Actions',
       valueChangedToTrue: function (this: UndoInstance) {
         this.queue('jumpTo');
@@ -112,21 +117,25 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
     undone: {
       type: 'signal',
       displayName: 'Undone',
+      description: 'Fires when a step back actually happened, and not when the history was already at its beginning',
       group: 'Events'
     },
     redone: {
       type: 'signal',
       displayName: 'Redone',
+      description: 'Fires when a step forward actually happened, and not when the history was already at its end',
       group: 'Events'
     },
     jumped: {
       type: 'signal',
       displayName: 'Jumped',
+      description: 'Fires once the store holds the entry Target Index named',
       group: 'Events'
     },
     fullyRestorable: {
       type: 'boolean',
       displayName: 'Fully Restorable',
+      description: 'False when the entry just restored held live objects a snapshot could only keep by reference',
       group: 'Status',
       // False when the entry just restored held live objects a snapshot could only keep by
       // reference. Output ports carry no tooltip, so this lives here and in the notes.
@@ -137,6 +146,7 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
     byReferenceKeys: {
       type: 'string',
       displayName: 'By-Reference Keys',
+      description: 'Comma-separated keys the restored entry put back as the same live object rather than as a copy',
       group: 'Status',
       getter: function (this: UndoInstance) {
         return this._internal.byReferenceKeys;
@@ -145,11 +155,14 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
     failure: {
       type: 'signal',
       displayName: 'Failure',
+      description:
+        'Fires when the step could not be made, because nothing is tracking the store or Target Index is outside the history',
       group: 'Events'
     },
     error: {
       type: 'string',
       displayName: 'Error',
+      description: 'Why the last step failed; blank once one succeeds',
       group: 'Events',
       getter: function (this: UndoInstance) {
         return this._internal.error;

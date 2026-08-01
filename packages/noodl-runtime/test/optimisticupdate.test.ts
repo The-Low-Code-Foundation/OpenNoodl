@@ -156,7 +156,10 @@ describe('apply', () => {
     tick(node);
 
     expect(output(node, 'error')).toBe('Key is required');
-    expect(signals).toEqual([]);
+    // NDA-012: `Failure` is new. This node used to end a refusal on the `error` string
+    // alone, so an author had a success signal to wire and nothing to sequence a failure
+    // off. A rollback is deliberately not a `Failure` — it has `Rolled Back` already.
+    expect(signals).toEqual(['failure']);
     expect(store.getState('app')).toEqual({});
   });
 
@@ -176,7 +179,10 @@ describe('apply', () => {
     node.setInputValue('optimisticValue', 'b');
     pulse(node, 'apply');
 
-    expect(signals).toEqual([]);
+    // NDA-012: `Failure` is new. This node used to end a refusal on the `error` string
+    // alone, so an author had a success signal to wire and nothing to sequence a failure
+    // off. A rollback is deliberately not a `Failure` — it has `Rolled Back` already.
+    expect(signals).toEqual(['failure']);
     expect(String(output(node, 'error'))).toContain('already open');
     expect(store.getKey('app', 'status')).toBe('a');
     expect(output(node, 'pendingCount')).toBe(1);
@@ -226,7 +232,10 @@ describe('commit', () => {
     node.setInputValue('commit', true);
     tick(node);
 
-    expect(signals).toEqual([]);
+    // NDA-012: `Failure` is new. This node used to end a refusal on the `error` string
+    // alone, so an author had a success signal to wire and nothing to sequence a failure
+    // off. A rollback is deliberately not a `Failure` — it has `Rolled Back` already.
+    expect(signals).toEqual(['failure']);
     expect(output(node, 'error')).toBe('There is no open update to commit');
   });
 
@@ -238,7 +247,10 @@ describe('commit', () => {
     node.setInputValue('transactionId', 'not-a-transaction');
     pulse(node, 'commit');
 
-    expect(signals).toEqual([]);
+    // NDA-012: `Failure` is new. This node used to end a refusal on the `error` string
+    // alone, so an author had a success signal to wire and nothing to sequence a failure
+    // off. A rollback is deliberately not a `Failure` — it has `Rolled Back` already.
+    expect(signals).toEqual(['failure']);
     expect(String(output(node, 'error'))).toContain('not-a-transaction');
     expect(output(node, 'pendingCount')).toBe(1);
   });
@@ -311,7 +323,10 @@ describe('rollback', () => {
     node.setInputValue('rollback', true);
     tick(node);
 
-    expect(signals).toEqual([]);
+    // NDA-012: `Failure` is new. This node used to end a refusal on the `error` string
+    // alone, so an author had a success signal to wire and nothing to sequence a failure
+    // off. A rollback is deliberately not a `Failure` — it has `Rolled Back` already.
+    expect(signals).toEqual(['failure']);
     expect(output(node, 'error')).toBe('There is no open update to roll back');
   });
 });
@@ -390,7 +405,10 @@ describe('timeout', () => {
 
     pulse(node, 'commit');
 
-    expect(signals).toEqual([]);
+    // NDA-012: `Failure` is new. This node used to end a refusal on the `error` string
+    // alone, so an author had a success signal to wire and nothing to sequence a failure
+    // off. A rollback is deliberately not a `Failure` — it has `Rolled Back` already.
+    expect(signals).toEqual(['failure']);
     expect(output(node, 'error')).toBe('There is no open update to commit');
     expect(store.getKey('app', 'status')).toBe('pending');
   });

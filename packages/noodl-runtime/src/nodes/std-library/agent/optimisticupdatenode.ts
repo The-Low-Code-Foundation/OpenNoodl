@@ -115,9 +115,13 @@ interface OptimisticUpdateInstance extends NodeInstance {
   finishRollback(transaction: Transaction, reason: string, timedOut: boolean): void;
   isSuperseded(transaction: Transaction): boolean;
   reportError(message: string): void;
+  reportFailure(message: string): void;
   clearError(): void;
   flagStatus(): void;
 }
+
+/** NDA-004 §2 — the matchable half of the failure pair. The bus keys by `code`. */
+const UPDATE_ERROR_CODE = 'optimistic-update/operation-failed';
 
 function generateTransactionId(): string {
   return 'tx_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 11);
@@ -167,6 +171,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     storeName: {
       type: 'string',
       displayName: 'Store Name',
+      description: 'Names the store holding the key this update writes',
       group: 'Store',
       default: 'app',
       set: function (this: OptimisticUpdateInstance, value: string) {
@@ -177,6 +182,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     key: {
       type: 'string',
       displayName: 'Key',
+      description: 'Key to write optimistically; an Apply with no key is refused rather than dropped',
       group: 'Store',
       set: function (this: OptimisticUpdateInstance, value: string) {
         this._internal.key = value;
@@ -186,6 +192,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     optimisticValue: {
       type: '*',
       displayName: 'Optimistic Value',
+      description: 'Value to show immediately, before the server has confirmed anything',
       group: 'Update',
       set: function (this: OptimisticUpdateInstance, value: unknown) {
         this._internal.optimisticValue = value;
@@ -194,6 +201,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     errorMessage: {
       type: 'string',
       displayName: 'Error Message',
+      description: 'Reason reported on Error when this update is rolled back; wire the server error here',
       group: 'Update',
       tooltip: 'Reason reported on Error when this update is rolled back. Wire the server error here.',
       set: function (this: OptimisticUpdateInstance, value: string) {
@@ -203,6 +211,8 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     transactionId: {
       type: 'string',
       displayName: 'Transaction Id',
+      description:
+        'Names the update to commit or roll back when several are in flight; leave blank to generate one and resolve to the oldest',
       group: 'Transaction',
       tooltip:
         'Leave blank to let the node generate one. Set it to commit or roll back a specific update when several are in flight.',
@@ -213,6 +223,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     timeout: {
       type: 'number',
       displayName: 'Timeout (ms)',
+      description: 'Milliseconds to wait for an answer before rolling back on its own; 0 waits forever',
       group: 'Config',
       default: DEFAULT_TIMEOUT,
       tooltip: 'Roll back automatically after this long with no answer. Zero disables the deadline.',
@@ -232,6 +243,8 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       },
       default: 'rollback',
       displayName: 'When Removed',
+      description:
+        'What happens to updates still in flight when this node is removed: put the old value back, or keep the value that was shown',
       group: 'Config',
       tooltip:
         'What happens to updates still in flight when this node is removed. Rolling back keeps the store honest; keeping the value suits fire-and-forget actions the user navigates away from.',
@@ -241,6 +254,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     },
     apply: {
       displayName: 'Apply',
+      description: 'Writes Optimistic Value at Key now and opens a transaction the server response will resolve',
       group: 'Actions',
       valueChangedToTrue: function (this: OptimisticUpdateInstance) {
         this.scheduleApply();
@@ -248,6 +262,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     },
     commit: {
       displayName: 'Commit',
+      description: 'Confirms the update, so the optimistic value becomes the truth',
       group: 'Actions',
       valueChangedToTrue: function (this: OptimisticUpdateInstance) {
         this.scheduleCommit();
@@ -255,6 +270,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     },
     rollback: {
       displayName: 'Rollback',
+      description: 'Puts the old value back, unless something else has written the key since',
       group: 'Actions',
       valueChangedToTrue: function (this: OptimisticUpdateInstance) {
         this.scheduleRollback();
@@ -266,6 +282,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     value: {
       type: '*',
       displayName: 'Value',
+      description: 'What the key holds right now, following writes made by anything, not only by this node',
       group: 'Data',
       getter: function (this: OptimisticUpdateInstance) {
         if (!this._internal.key) return undefined;
@@ -275,6 +292,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     previousValue: {
       type: '*',
       displayName: 'Previous Value',
+      description: 'What the key held immediately before the most recent Apply; blank when the key did not exist',
       group: 'Data',
       getter: function (this: OptimisticUpdateInstance) {
         return this._internal.previousValue;
@@ -283,6 +301,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     isPending: {
       type: 'boolean',
       displayName: 'Is Pending',
+      description: 'True while at least one update is waiting for an answer',
       group: 'Status',
       getter: function (this: OptimisticUpdateInstance) {
         return this._internal.open.length > 0;
@@ -291,6 +310,8 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     pendingCount: {
       type: 'number',
       displayName: 'Pending Count',
+      description:
+        'How many updates are open at once, which can be more than one when responses come back out of order',
       group: 'Status',
       getter: function (this: OptimisticUpdateInstance) {
         return this._internal.open.length;
@@ -299,6 +320,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     isCommitted: {
       type: 'boolean',
       displayName: 'Is Committed',
+      description: 'True when the last update to resolve was confirmed',
       group: 'Status',
       getter: function (this: OptimisticUpdateInstance) {
         return this._internal.isCommitted;
@@ -307,6 +329,8 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     isRolledBack: {
       type: 'boolean',
       displayName: 'Is Rolled Back',
+      description:
+        'True when the last update to resolve was undone, whether by Rollback, by the deadline, or by disposal',
       group: 'Status',
       getter: function (this: OptimisticUpdateInstance) {
         return this._internal.isRolledBack;
@@ -315,6 +339,8 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     transactionId: {
       type: 'string',
       displayName: 'Transaction Id',
+      description:
+        'Id of the most recent Apply; carry it through the request and hand it back to resolve that update specifically',
       group: 'Info',
       getter: function (this: OptimisticUpdateInstance) {
         return this._internal.lastTransactionId;
@@ -323,26 +349,49 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     applied: {
       type: 'signal',
       displayName: 'Applied',
+      description: 'Fires once the optimistic value is in the store and the transaction is open',
       group: 'Events'
     },
     committed: {
       type: 'signal',
       displayName: 'Committed',
+      description: 'Fires once an update has been confirmed and its value is the truth',
       group: 'Events'
     },
     rolledBack: {
       type: 'signal',
       displayName: 'Rolled Back',
+      description:
+        'Fires once an update has been undone, including when the value was left alone because something newer had written the key',
       group: 'Events'
     },
     timedOut: {
       type: 'signal',
       displayName: 'Timed Out',
+      description: 'Fires alongside Rolled Back when it was the deadline rather than the graph that ended the update',
+      group: 'Events'
+    },
+    /**
+     * NDA-012 / NDA-004 §2.
+     *
+     * Deliberately **not** fired by a rollback. A rollback is a reported outcome with its own
+     * terminating signals (`Rolled Back`, and `Timed Out` when the deadline caused it) and the
+     * author's failure branch already hangs off those. What had no signal at all was the node
+     * refusing to act: `Apply` with no `Key`, `Apply` with a transaction id already open, and
+     * `Commit`/`Rollback` naming an update that is not in flight. All three ended on the
+     * `error` string, which an author can only poll.
+     */
+    failure: {
+      type: 'signal',
+      displayName: 'Failure',
+      description:
+        'Fires when the node refused to act: no Key, a transaction id already open, or no such update to resolve',
       group: 'Events'
     },
     error: {
       type: 'string',
       displayName: 'Error',
+      description: 'Why the last update failed or was undone; blank once an Apply succeeds',
       group: 'Events',
       getter: function (this: OptimisticUpdateInstance) {
         return this._internal.error;
@@ -441,7 +490,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       if (!key) {
         // Reported rather than dropped: an Optimistic Update with no key is a half-finished
         // graph, and the author will otherwise see a button that does nothing at all.
-        this.reportError('Key is required');
+        this.reportFailure('Key is required');
         return;
       }
 
@@ -458,7 +507,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       } catch (error) {
         // The store throws when an id is already open. That is the spec's "apply twice with
         // the same transaction id" case, and it is the author's bug, not a silent one.
-        this.reportError(String((error as Error).message || error));
+        this.reportFailure(String((error as Error).message || error));
         return;
       }
 
@@ -534,14 +583,14 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
         const id = String(authoredId);
         const found = open.find((transaction) => transaction.id === id);
         if (!found) {
-          this.reportError(`No open update with transaction id "${id}" to ${action}`);
+          this.reportFailure(`No open update with transaction id "${id}" to ${action}`);
           return undefined;
         }
         return found;
       }
 
       if (open.length === 0) {
-        this.reportError(`There is no open update to ${action}`);
+        this.reportFailure(`There is no open update to ${action}`);
         return undefined;
       }
 
@@ -617,9 +666,21 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
 
     // -- output plumbing ---------------------------------------------------
 
+    /** Puts a reason on the graph. Used where a terminating signal is already being sent. */
     reportError: function (this: OptimisticUpdateInstance, message: string) {
       this._internal.error = message;
       this.flagOutputDirty('error');
+    },
+
+    /**
+     * The node refused to act, so nothing else will fire. Reports on all three channels the
+     * Failure Contract asks for — the string, the signal, and the runtime error bus, which is
+     * what reaches `On App Error` in a deployed build where no editor is watching.
+     */
+    reportFailure: function (this: OptimisticUpdateInstance, message: string) {
+      this.reportError(message);
+      this.sendSignalOnOutput('failure');
+      this.raiseRuntimeError(UPDATE_ERROR_CODE, message);
     },
 
     clearError: function (this: OptimisticUpdateInstance) {

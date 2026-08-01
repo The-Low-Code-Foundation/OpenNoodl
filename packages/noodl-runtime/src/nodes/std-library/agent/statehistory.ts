@@ -227,6 +227,12 @@ export class StateHistoryManager {
       record.coalesceMs = Math.max(0, Number(options.coalesceMs) || 0);
     }
 
+    // NDA-012: applied *before* the `trackKeys` branch, which returns early. The node hands
+    // every option in one object, so a pass that changed `Track Keys` and `Enabled` together
+    // used to drop the `Enabled` half on the floor — leaving the recorder running on a
+    // tracker the author had just paused, or paused on one they had just resumed.
+    if (options.enabled !== undefined) this.setEnabled(record.storeName, options.enabled);
+
     if (options.trackKeys !== undefined && !sameKeys(record.trackKeys, options.trackKeys)) {
       // A history of a different set of keys is a different history: its entries were
       // projected to the old keys and restoring one would write the wrong shape. Resubscribe
@@ -236,10 +242,7 @@ export class StateHistoryManager {
       this.resubscribe(record);
       this.resetEntries(record, 'initial', 'Initial state');
       this.notifyChanged(record);
-      return;
     }
-
-    if (options.enabled !== undefined) this.setEnabled(record.storeName, options.enabled);
   }
 
   /**
