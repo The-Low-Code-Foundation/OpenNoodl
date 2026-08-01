@@ -74,6 +74,37 @@ function createPocketBaseDialect(): FilterDialect<PocketBaseFilter> {
   };
 }
 
+/**
+ * PocketBase's "any of" operator prefix, or `''`.
+ *
+ * ⚠️ **The one-character difference that returns no rows instead of the right
+ * ones.** A dotted path across a relation that can hold several records is
+ * quantified: without the `?`, PocketBase requires *every* related record to
+ * satisfy the condition. On a record with two tags, a filter for one of them
+ * therefore matches nothing — measured on a live 0.30.0:
+ *
+ * ```
+ * tags.label='algebra'   -> []
+ * tags.label?='algebra'  -> the row
+ * ```
+ *
+ * Two rules, both deliberate:
+ *
+ * - Only the **first** segment is consulted. One hop is the traversal limit
+ *   (BCN-005's Out of Scope), so a path has at most one relation in it.
+ * - `cardinality: 'many'` is required, not inferred from `type`. PocketBase
+ *   calls a single- and a multi-valued relation the same thing (`relation`), so
+ *   guessing from the type name would put a `?` on a to-one path. That is
+ *   harmless there — `?=` on a single value means the same as `=`, measured —
+ *   but "harmless" is not a reason to emit something that says the wrong thing.
+ */
+export function pocketBaseQuantifier(field: string, ctx: DialectContext): string {
+  const dot = field.indexOf('.');
+  if (dot < 0) return '';
+  const relation = field.slice(0, dot);
+  return ctx.schema?.properties?.[relation]?.cardinality === 'many' ? '?' : '';
+}
+
 const COMPARISONS: Readonly<Record<string, string>> = Object.freeze({
   equalTo: '=',
   notEqualTo: '!=',
@@ -86,8 +117,12 @@ const COMPARISONS: Readonly<Record<string, string>> = Object.freeze({
 function conditionExpression(node: ConditionNode, ctx: DialectContext, bind: (value: unknown) => string): string {
   const { field, operator, value } = node;
 
+  // `?` where the path crosses a relation that can hold several records. See
+  // {@link pocketBaseQuantifier} for the measurement that makes this necessary.
+  const q = pocketBaseQuantifier(field, ctx);
+
   const comparison = COMPARISONS[operator];
-  if (comparison) return `${field} ${comparison} ${bind(value)}`;
+  if (comparison) return `${field} ${q}${comparison} ${bind(value)}`;
 
   switch (operator) {
     case 'containedIn':
@@ -102,11 +137,11 @@ function conditionExpression(node: ConditionNode, ctx: DialectContext, bind: (va
       }
       const symbol = operator === 'containedIn' ? '=' : '!=';
       const joiner = operator === 'containedIn' ? ' || ' : ' && ';
-      return `(${values.map((item) => `${field} ${symbol} ${bind(item)}`).join(joiner)})`;
+      return `(${values.map((item) => `${field} ${q}${symbol} ${bind(item)}`).join(joiner)})`;
     }
 
     case 'exists':
-      return value === false ? `${field} = null` : `${field} != null`;
+      return value === false ? `${field} ${q}= null` : `${field} ${q}!= null`;
 
     // `~` is PocketBase's LIKE. It wraps the value in `%` on both sides unless
     // the value already contains one, which is how the anchored members are
@@ -129,7 +164,7 @@ function conditionExpression(node: ConditionNode, ctx: DialectContext, bind: (va
       const lowered = lowerToLike(operator, value);
       if (!lowered) return ctx.fail(`Cannot express "${operator}"`, { operator, field });
       const pattern = applyLikeAnchor(lowered.anchor, escapeLikeValue(lowered.value), '%');
-      return `${field} ${lowered.negated ? '!~' : '~'} ${bind(pattern)}`;
+      return `${field} ${q}${lowered.negated ? '!~' : '~'} ${bind(pattern)}`;
     }
 
     case 'between':
@@ -139,27 +174,27 @@ function conditionExpression(node: ConditionNode, ctx: DialectContext, bind: (va
         return ctx.fail(`A "${operator}" filter needs a two-element array [from, to]`, { operator, field });
       }
       return operator === 'between'
-        ? `(${field} >= ${bind(bounds[0])} && ${field} <= ${bind(bounds[1])})`
-        : `(${field} < ${bind(bounds[0])} || ${field} > ${bind(bounds[1])})`;
+        ? `(${field} ${q}>= ${bind(bounds[0])} && ${field} ${q}<= ${bind(bounds[1])})`
+        : `(${field} ${q}< ${bind(bounds[0])} || ${field} ${q}> ${bind(bounds[1])})`;
     }
 
     case 'isEmpty':
-      return `${field} = ${bind('')}`;
+      return `${field} ${q}= ${bind('')}`;
     case 'isNotEmpty':
-      return `${field} != ${bind('')}`;
+      return `${field} ${q}!= ${bind('')}`;
 
     // PocketBase has no ranked search; the descriptor says so and marks the
     // cell `degraded`. Lowered to contains.
     case 'textSearch':
-      return `${field} ~ ${bind(
+      return `${field} ${q}~ ${bind(
         `%${escapeLikeValue(typeof value === 'string' ? value : (value as { term?: unknown })?.term)}%`
       )}`;
 
     case 'pointsTo': {
       const values = Array.isArray(value) ? value : [value];
       return values.length === 1
-        ? `${field} = ${bind(values[0])}`
-        : `(${values.map((item) => `${field} = ${bind(item)}`).join(' || ')})`;
+        ? `${field} ${q}= ${bind(values[0])}`
+        : `(${values.map((item) => `${field} ${q}= ${bind(item)}`).join(' || ')})`;
     }
 
     default:

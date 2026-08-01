@@ -38,6 +38,51 @@ export interface FilterFieldSchema {
   type?: string;
   /** For `Pointer`/`Relation`: the collection pointed at. */
   targetClass?: string;
+  /**
+   * Whether this relation holds one record or a set of them.
+   *
+   * ⚠️ **Added by BCN-005 because a live PocketBase returned the wrong row set
+   * without it.** PocketBase spells a filter across a relation two ways and the
+   * difference is not cosmetic: `tags.label = 'x'` means *every* related record
+   * matches, and `tags.label ?= 'x'` means *at least one* does. Measured on
+   * 0.30.0, on a record with two tags one of which was `algebra`:
+   *
+   * ```
+   * filter tags.label='algebra'   -> []                            <- 0 rows
+   * filter tags.label?='algebra'  -> [{"title":"Notes on the …"}]   <- the row
+   * ```
+   *
+   * So the plain form is a **silent empty result** — no error, no warning, and
+   * the one failure shape this phase keeps finding. `type` alone cannot decide
+   * it, because PocketBase calls both cardinalities `relation`.
+   *
+   * Absent means "not a relation, or cardinality unknown", and the translators
+   * treat unknown as `'one'` — which is what they did before this field existed,
+   * so a schema that does not carry it behaves exactly as it used to.
+   */
+  cardinality?: 'one' | 'many';
+  /**
+   * The path this relation is addressed by **on the wire**, when it is not the
+   * field name.
+   *
+   * ⚠️ **Directus only, and it is the same two-hop fact that broke the read.**
+   * A many-to-many is reachable through its junction and nothing else, so a
+   * filter across one has to name the junction column:
+   *
+   * ```
+   * filter={"tags":{"label":{"_eq":"algebra"}}}          -> 403
+   *   You don't have permission to access field "label"
+   *   in collection "bcn005_articles_tags"
+   * filter={"tags":{"tag_id":{"label":{"_eq":"algebra"}}}} -> the row
+   * ```
+   *
+   * Both measured live. The 403 is the *same status a real permission failure
+   * gives*, which is what makes this worth a field rather than a comment — the
+   * RUN-003 defect was a 403 of exactly this shape and it took a live request to
+   * find. Set from the relation descriptor's `readPath`; the other dialects
+   * ignore it, because a one-hop path is right for both of them (measured).
+   */
+  path?: string;
 }
 
 /**

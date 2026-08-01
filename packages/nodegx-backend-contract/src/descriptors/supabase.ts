@@ -69,14 +69,16 @@ export const supabaseDescriptor: BackendDescriptor = {
       "PostgREST exposes Postgres full-text search via fts/plfts/phfts operators, which need a tsvector column or index to be useful."
     ),
 
-    'relations.pointerRead': supported('PostgREST resolves foreign keys via embedded selects: ?select=*,author(*)'),
-    'relations.relatedTo': unsupported(
-      'Filtering by "records related to this one" is not available on Supabase yet.',
-      'Junction-table embedding exists but is not wired. BCN-005 owns this.'
+    'relations.pointerRead': supported(
+      'BCN-005 live: ?select=*,author:authors(*) nests the author under the name you asked for. A filter on the related record needs the embed marked !inner or the parent rows are not narrowed — measured both ways, and the adapter emits it'
     ),
-    'relations.addRemove': unsupported(
-      'Adding and removing related records is not available on Supabase yet.',
-      'Would mean writing junction rows directly. BCN-005 owns this.'
+    'relations.relatedTo': unsupported(
+      'Filtering by "records related to this one" is not available on Supabase. Filter on a field of the related record instead, such as author → name.',
+      "BCN-005 live: a dotted filter with an !inner embed narrows the parent correctly, but Parse's $relatedTo has no PostgREST spelling"
+    ),
+    'relations.addRemove': degraded(
+      'Adding a many-to-many relation needs the join table to use both of its links as its key. Where it uses a separate id column instead, Supabase cannot see the relation at all and NodeGX will say so rather than write to the wrong place.',
+      'BCN-005 live: with PRIMARY KEY (article_id, tag_id) the M2M embed answers 200 and POST with Prefer: resolution=merge-duplicates makes the add idempotent; with a surrogate id primary key the identical two tables answer PGRST200 "no matches were found" and no request recovers the relation'
     ),
 
     'files.upload': supported('Supabase Storage: POST /storage/v1/object/{bucket}/{path}'),

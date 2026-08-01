@@ -98,6 +98,7 @@ import type {
   SignFileUrlOptions,
   UploadFileOptions
 } from '@noodl/backend-contract';
+import { relationTarget } from '@noodl/backend-contract';
 
 import { AdapterEvents } from './AdapterEvents';
 import { parseSessionStore } from './SessionStore';
@@ -585,7 +586,9 @@ export class ParseWireAdapter extends AdapterEvents implements IDataAdapter {
         {
           __type: 'Pointer',
           objectId: options.targetObjectId,
-          className: options.targetClass
+          // Either spelling — `targetCollection` is the contract's name and
+          // `targetClass` the deprecated alias `Noodl.Records` still passes.
+          className: relationTarget(options)
         }
       ]
     };
@@ -609,7 +612,9 @@ export class ParseWireAdapter extends AdapterEvents implements IDataAdapter {
         {
           __type: 'Pointer',
           objectId: options.targetObjectId,
-          className: options.targetClass
+          // Either spelling — `targetCollection` is the contract's name and
+          // `targetClass` the deprecated alias `Noodl.Records` still passes.
+          className: relationTarget(options)
         }
       ]
     };

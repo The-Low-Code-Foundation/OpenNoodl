@@ -93,6 +93,32 @@ function nest(field: string, operatorValue: Record<string, unknown>): DirectusFi
   return result;
 }
 
+/**
+ * Expand a relation prefix to the path Directus actually addresses it by.
+ *
+ * ⚠️ **A many-to-many is reachable through its junction and nothing else.**
+ * `{"tags":{"label":{"_eq":"algebra"}}}` answers **403 "You don't have
+ * permission to access field \"label\" in collection
+ * \"bcn005_articles_tags\""** — the junction is in the path whether the query
+ * names it or not, and the field the query names is looked for *there*.
+ * `{"tags":{"tag_id":{"label":…}}}` is the one that works. Both measured live.
+ *
+ * The 403 matters as much as the fix: it is the same status a genuine
+ * permission failure gives, so this cannot be told from "the token is wrong" by
+ * anything downstream. RUN-003's defect was a 403 of exactly this shape.
+ *
+ * `path` comes from the relation descriptor's `readPath`, which the adapter
+ * merges into the schema — so the filter path and the include path are one
+ * fact, recorded once.
+ */
+function expandRelationPath(field: string, ctx: { schema?: { properties?: Record<string, { path?: string }> } }): string {
+  const dot = field.indexOf('.');
+  if (dot < 0) return field;
+  const prefix = field.slice(0, dot);
+  const path = ctx.schema?.properties?.[prefix]?.path;
+  return path ? path + field.slice(dot) : field;
+}
+
 function createDirectusDialect(): FilterDialect<DirectusFilter> {
   return {
     name: 'directus',
@@ -114,7 +140,10 @@ function createDirectusDialect(): FilterDialect<DirectusFilter> {
     },
 
     condition(node, ctx) {
-      const { field, operator, value } = node;
+      const { operator, value } = node;
+      // Not `node.field`: a many-to-many prefix has to become its junction path
+      // first, or Directus answers 403. See {@link expandRelationPath}.
+      const field = expandRelationPath(node.field, ctx);
 
       // Directus splits presence into two nullary operators where the neutral
       // model has one boolean-valued one.

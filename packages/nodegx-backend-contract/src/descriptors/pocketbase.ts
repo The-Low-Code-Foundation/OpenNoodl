@@ -99,14 +99,15 @@ export const pocketbaseDescriptor: BackendDescriptor = {
       'Lowered to a filter of ORed ~ (contains) conditions. No FTS index exists.'
     ),
 
-    'relations.pointerRead': supported('?expand=relField resolves relations inline'),
-    'relations.relatedTo': unsupported(
-      'Filtering by "records related to this one" is not available on PocketBase yet.',
-      'PocketBase relations are id arrays on the record; a back-reference query is expressible but not wired. BCN-005.'
+    'relations.pointerRead': supported(
+      'BCN-005 live: ?expand=author,tags nests both under `expand`. Filtering across a relation that can hold several records needs the "any of" form of the operator, which the adapter emits from the schema'
     ),
-    'relations.addRemove': unsupported(
-      'Adding and removing related records is not available on PocketBase yet.',
-      "Would use the += / -= field modifiers on the relation array. BCN-005."
+    'relations.relatedTo': unsupported(
+      'Filtering by "records related to this one" is not available on PocketBase. Filter on a field of the related record instead, such as author → name.',
+      "BCN-005 live: dotted-path filters work (author.city='London', tags.label?='algebra'), but Parse's $relatedTo has no PocketBase spelling"
+    ),
+    'relations.addRemove': supported(
+      'BCN-005 live: PATCH {"tags+": id} and {"tags-": id} are applied server-side in one request and are set-shaped — appending a value already present leaves the list unchanged. ⚠️ On a relation that holds only one record, "+" replaces what is there and "-" clears it whichever id you name'
     ),
 
     'files.upload': supported('multipart POST to the record endpoint; files are record fields'),

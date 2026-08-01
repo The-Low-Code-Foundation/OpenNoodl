@@ -27,7 +27,7 @@ jest.mock('../../noodl-runtime', () => ({
 }));
 
 import { DATA_ADAPTER_METHODS } from '@noodl/backend-contract';
-import type { BackendHandle } from '@noodl/backend-contract';
+import type { BackendHandle, RelationDescriptor } from '@noodl/backend-contract';
 
 import {
   RestDataAdapter,
@@ -585,25 +585,6 @@ describe('pocketbase', () => {
 // ── Refusals that are somebody else's task ─────────────────────────────────
 
 describe('what this adapter does not do', () => {
-  it('refuses relation editing with the descriptor sentence, on all three', async () => {
-    for (const handle of [directus, supabase, pocketbase]) {
-      const fake = new FakeFetch();
-      const error = jest.fn();
-      make(fake).addRelation(handle, {
-        collection: 'a',
-        objectId: '1',
-        key: 'tags',
-        targetObjectId: '2',
-        targetClass: 'tags',
-        success: jest.fn(),
-        error
-      });
-      await settle();
-      expect(fake.calls).toHaveLength(0);
-      expect(error.mock.calls[0][0]).toMatch(/not available on/i);
-    }
-  });
-
   it('refuses the file methods with a FileError envelope, not a bare string', async () => {
     const error = jest.fn();
     make(new FakeFetch()).uploadFile(directus, { file: { name: 'a.png' }, success: jest.fn(), error });
@@ -665,5 +646,405 @@ describe('helpers', () => {
   it('always strips both spellings of the identity', () => {
     const profile = { type: 'directus', idField: 'id' } as never;
     expect(stripServerOwned(profile, { id: 1, objectId: 1, name: 'Ada', date_created: 'x' })).toEqual({ name: 'Ada' });
+  });
+});
+
+// ── Relations — BCN-005 ────────────────────────────────────────────────────
+
+/**
+ * Every descriptor below is what {@link relationsFromDirectus} and friends
+ * produce from the **real** metadata (see `relations.test.ts` for the verbatim
+ * fixtures). The adapter is not tested against invented shapes: the point of
+ * these cases is the request it builds, and a made-up descriptor would test the
+ * author's memory of the wire rather than the wire.
+ */
+const RELATIONS: Record<string, RelationDescriptor[]> = {
+  directus: [
+    {
+      collection: 'articles',
+      field: 'tags',
+      target: 'tags',
+      cardinality: 'many',
+      readPath: 'tags.tag_id',
+      readUnwrapKey: 'tag_id',
+      write: { kind: 'junction', collection: 'articles_tags', sourceField: 'article_id', targetField: 'tag_id', idempotent: false }
+    },
+    {
+      collection: 'articles',
+      field: 'author',
+      target: 'authors',
+      cardinality: 'one',
+      write: { kind: 'foreignKey', field: 'author', on: 'source' }
+    },
+    {
+      collection: 'authors',
+      field: 'articles',
+      target: 'articles',
+      cardinality: 'many',
+      write: { kind: 'foreignKey', field: 'author', on: 'target' }
+    }
+  ],
+  supabase: [
+    {
+      collection: 'articles',
+      field: 'tags',
+      target: 'tags',
+      cardinality: 'many',
+      write: { kind: 'junction', collection: 'articles_tags', sourceField: 'article_id', targetField: 'tag_id', idempotent: true }
+    },
+    {
+      collection: 'articles',
+      field: 'author_id',
+      target: 'authors',
+      cardinality: 'one',
+      write: { kind: 'foreignKey', field: 'author_id', on: 'source' }
+    }
+  ],
+  pocketbase: [
+    {
+      collection: 'articles',
+      field: 'tags',
+      target: 'tags',
+      cardinality: 'many',
+      write: { kind: 'arrayField', field: 'tags', setSemantics: true }
+    }
+  ]
+};
+
+function withRelations(fake: FakeFetch) {
+  return make(fake, { relationsFor: (handle: BackendHandle) => RELATIONS[handle.type] });
+}
+
+const relationCall = (overrides: Record<string, unknown> = {}) =>
+  Object.assign(
+    { collection: 'articles', objectId: '1', key: 'tags', targetObjectId: '7', targetCollection: 'tags' },
+    overrides
+  );
+
+describe('relations', () => {
+  it('⚠️ refuses a relation the synced schema does not describe, rather than guessing a junction name', async () => {
+    // Relation metadata is admin-only: Directus answers GET /relations 403 and
+    // PocketBase answers GET /api/collections 401 without one. So a runtime
+    // cannot look one up, and the only alternative to refusing is inventing a
+    // table name and writing to it.
+    for (const handle of [directus, supabase, pocketbase]) {
+      const fake = new FakeFetch();
+      const error = jest.fn();
+      make(fake).addRelation(handle, { ...relationCall(), success: jest.fn(), error });
+      await settle();
+      expect(fake.calls).toHaveLength(0);
+      expect(error.mock.calls[0][0]).toMatch(/does not know how "tags" relates/);
+      expect(error.mock.calls[0][0]).toMatch(/Refresh the backend schema/);
+    }
+  });
+
+  it('refuses a Parse-style relation handed to the wrong adapter, and says it is a wiring mistake', async () => {
+    const fake = new FakeFetch();
+    const error = jest.fn();
+    make(fake, {
+      relationsFor: () => [
+        { collection: 'articles', field: 'tags', target: 'tags', cardinality: 'many' as const, write: { kind: 'op' as const } }
+      ]
+    }).addRelation(directus, { ...relationCall(), success: jest.fn(), error });
+    await settle();
+    expect(fake.calls).toHaveLength(0);
+    expect(error.mock.calls[0][0]).toMatch(/wiring mistake/);
+  });
+
+  describe('pocketbase — the field operators', () => {
+    it('adds with `tags+` in ONE request', async () => {
+      const fake = new FakeFetch().reply({ body: { id: '1', tags: ['7'] } });
+      const success = jest.fn();
+      withRelations(fake).addRelation(pocketbase, { ...relationCall(), success, error: jest.fn() });
+      await settle();
+
+      expect(fake.calls).toHaveLength(1);
+      expect(fake.last.method).toBe('PATCH');
+      expect(fake.last.url).toContain('/api/collections/articles/records/1');
+      expect(fake.last.body).toEqual({ 'tags+': '7' });
+      expect(success).toHaveBeenCalledWith({ objectId: '1', tags: ['7'] });
+    });
+
+    it('removes with `tags-`', async () => {
+      const fake = new FakeFetch().reply({ body: { id: '1', tags: [] } });
+      withRelations(fake).removeRelation(pocketbase, { ...relationCall(), success: jest.fn(), error: jest.fn() });
+      await settle();
+      expect(fake.last.body).toEqual({ 'tags-': '7' });
+    });
+
+    it('⚠️ does not read first — the spec’s lost-update premise is stale', async () => {
+      // `+`/`-` are applied server-side and are set-shaped, measured live. A
+      // read-modify-write here would be two requests and a race for nothing.
+      const fake = new FakeFetch().reply({ body: { id: '1', tags: ['7'] } });
+      withRelations(fake).addRelation(pocketbase, { ...relationCall(), success: jest.fn(), error: jest.fn() });
+      await settle();
+      expect(fake.calls.map((call) => call.method)).toEqual(['PATCH']);
+    });
+
+    it('errors rather than succeeding empty when the PATCH comes back with no record', async () => {
+      const fake = new FakeFetch().reply({ status: 204, text: '' });
+      const error = jest.fn();
+      withRelations(fake).addRelation(pocketbase, { ...relationCall(), success: jest.fn(), error });
+      await settle();
+      expect(error.mock.calls[0][0]).toMatch(/returned nothing back/);
+    });
+  });
+
+  describe('supabase — the junction, upserted', () => {
+    it('adds with ONE POST carrying resolution=merge-duplicates', async () => {
+      // The pair is the primary key there, so a duplicate is a 409 and the
+      // upsert is what makes the add idempotent. Both measured.
+      const fake = new FakeFetch().reply({ status: 201, body: [{ article_id: 1, tag_id: 7 }] });
+      const success = jest.fn();
+      withRelations(fake).addRelation(supabase, { ...relationCall(), success, error: jest.fn() });
+      await settle();
+
+      expect(fake.calls).toHaveLength(1);
+      expect(fake.last.method).toBe('POST');
+      expect(fake.last.url).toContain('/rest/v1/articles_tags');
+      expect(fake.last.body).toEqual({ article_id: '1', tag_id: '7' });
+      expect(fake.last.headers.Prefer).toContain('resolution=merge-duplicates');
+      // The junction row is NOT the record the caller asked about: both relation
+      // nodes copy every key of this onto their Model, so handing back
+      // `article_id`/`tag_id` would write them onto the user's record.
+      expect(success).toHaveBeenCalledWith({ objectId: '1' });
+    });
+
+    it('removes by predicate, in one request', async () => {
+      const fake = new FakeFetch().reply({ status: 200, body: [{ article_id: 1, tag_id: 7 }] });
+      withRelations(fake).removeRelation(supabase, { ...relationCall(), success: jest.fn(), error: jest.fn() });
+      await settle();
+
+      expect(fake.calls).toHaveLength(1);
+      expect(fake.last.method).toBe('DELETE');
+      expect(fake.params()).toEqual([
+        ['article_id', 'eq.1'],
+        ['tag_id', 'eq.7']
+      ]);
+    });
+
+    it('writes the foreign key for a to-one, and nulls it to remove', async () => {
+      const fake = new FakeFetch().reply({ body: [{ id: 1, author_id: 7 }] }, { body: [{ id: 1, author_id: null }] });
+      const adapter = withRelations(fake);
+      adapter.addRelation(supabase, { ...relationCall({ key: 'author_id' }), success: jest.fn(), error: jest.fn() });
+      await settle();
+      expect(fake.last.method).toBe('PATCH');
+      expect(fake.last.body).toEqual({ author_id: '7' });
+
+      adapter.removeRelation(supabase, { ...relationCall({ key: 'author_id' }), success: jest.fn(), error: jest.fn() });
+      await settle();
+      expect(fake.last.body).toEqual({ author_id: null });
+    });
+  });
+
+  describe('directus — the junction that permits duplicates', () => {
+    it('⚠️ reads before it writes, so adding twice does not store the pair twice', async () => {
+      const fake = new FakeFetch()
+        .reply({ body: { data: [] } })
+        .reply({ body: { data: { id: 9, article_id: 1, tag_id: 7 } } });
+      const success = jest.fn();
+      withRelations(fake).addRelation(directus, { ...relationCall(), success, error: jest.fn() });
+      await settle();
+      await settle();
+
+      expect(fake.calls.map((call) => call.method)).toEqual(['GET', 'POST']);
+      expect(JSON.parse(fake.param('filter', 0)!)).toEqual({ article_id: { _eq: '1' }, tag_id: { _eq: '7' } });
+      expect(fake.calls[1].body).toEqual({ article_id: '1', tag_id: '7' });
+      expect(success).toHaveBeenCalledWith({ objectId: '1' });
+    });
+
+    it('succeeds WITHOUT writing when the pair is already there', async () => {
+      const fake = new FakeFetch().reply({ body: { data: [{ id: 9, article_id: 1, tag_id: 7 }] } });
+      const success = jest.fn();
+      withRelations(fake).addRelation(directus, { ...relationCall(), success, error: jest.fn() });
+      await settle();
+      await settle();
+
+      expect(fake.calls.map((call) => call.method)).toEqual(['GET']);
+      expect(success).toHaveBeenCalledWith({ objectId: '1' });
+    });
+
+    it('does not send merge-duplicates to a backend where it means nothing', async () => {
+      const fake = new FakeFetch().reply({ body: { data: [] } }).reply({ body: { data: { id: 9 } } });
+      withRelations(fake).addRelation(directus, { ...relationCall(), success: jest.fn(), error: jest.fn() });
+      await settle();
+      await settle();
+      expect(fake.calls[1].headers.Prefer).toBeUndefined();
+    });
+
+    it('⚠️ deletes EVERY row for the pair, not the first one', async () => {
+      // A junction that permits duplicates may hold two. Deleting one and
+      // reporting success would leave the relation in place.
+      const fake = new FakeFetch()
+        .reply({ body: { data: [{ id: 9 }, { id: 10 }] } })
+        .reply({ status: 204, text: '' })
+        .reply({ status: 204, text: '' });
+      const success = jest.fn();
+      withRelations(fake).removeRelation(directus, { ...relationCall(), success, error: jest.fn() });
+      await settle();
+      await settle();
+
+      expect(fake.calls.map((call) => call.method)).toEqual(['GET', 'DELETE', 'DELETE']);
+      expect(fake.calls[1].url).toContain('/items/articles_tags/9');
+      expect(fake.calls[2].url).toContain('/items/articles_tags/10');
+      expect(success).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports success when there was nothing to remove, because the wire cannot say otherwise', async () => {
+      // Directus answers 204 for a junction row that never existed (measured),
+      // so "was not there" is not a distinction this adapter can make.
+      const fake = new FakeFetch().reply({ body: { data: [] } });
+      const success = jest.fn();
+      const error = jest.fn();
+      withRelations(fake).removeRelation(directus, { ...relationCall(), success, error });
+      await settle();
+      expect(fake.calls.map((call) => call.method)).toEqual(['GET']);
+      expect(success).toHaveBeenCalled();
+      expect(error).not.toHaveBeenCalled();
+    });
+
+    it('puts the foreign key on the TARGET for a one-to-many', async () => {
+      // Relating an article to an author writes the ARTICLE's `author` column.
+      // `on: 'source'` would write into the authors table and answer 200.
+      const fake = new FakeFetch().reply({ body: { data: { id: 7, author: 1 } } });
+      withRelations(fake).addRelation(directus, {
+        ...relationCall({ collection: 'authors', key: 'articles', objectId: '1', targetObjectId: '7' }),
+        success: jest.fn(),
+        error: jest.fn()
+      });
+      await settle();
+      expect(fake.last.url).toContain('/items/articles/7');
+      expect(fake.last.body).toEqual({ author: '1' });
+    });
+  });
+
+  describe('reading a relation back', () => {
+    it('⚠️ asks Directus for TWO hops on an M2M, because one returns junction rows', async () => {
+      const fake = new FakeFetch().reply({ body: { data: [{ id: 1, tags: [{ tag_id: { id: 7, label: 'algebra' } }] }] } });
+      const success = jest.fn();
+      withRelations(fake).query(directus, { collection: 'articles', include: ['tags'], success, error: jest.fn() });
+      await settle();
+
+      expect(fake.param('fields')).toBe('*,tags.tag_id.*');
+      // …and the nesting is undone, so a node sees the same shape it would on
+      // any other backend.
+      expect(success.mock.calls[0][0]).toEqual([{ objectId: 1, tags: [{ id: 7, label: 'algebra' }] }]);
+    });
+
+    it('still asks for one hop on a to-one', async () => {
+      const fake = new FakeFetch().reply({ body: { data: [] } });
+      withRelations(fake).query(directus, { collection: 'articles', include: ['author'], success: jest.fn(), error: jest.fn() });
+      await settle();
+      expect(fake.param('fields')).toBe('*,author.*');
+    });
+
+    it('⚠️ aliases a PostgREST embed, or the record nests under the TABLE name', async () => {
+      const fake = new FakeFetch().reply({ body: [{ id: 1, author_id: { id: 7 } }] });
+      withRelations(fake).query(supabase, {
+        collection: 'articles',
+        include: ['author_id'],
+        success: jest.fn(),
+        error: jest.fn()
+      });
+      await settle();
+      expect(fake.param('select')).toBe('*,author_id:authors(*)');
+    });
+
+    it('⚠️ hoists PocketBase’s `expand`, which leaves the field holding the id', async () => {
+      // Found by the first live run. PocketBase does not nest the related record
+      // onto the field — `author` stays a 15-character id and the record arrives
+      // under a sibling `expand`. The contract promises one shape.
+      const fake = new FakeFetch().reply({
+        body: {
+          items: [{ id: '1', author: 'aaa', expand: { author: { id: 'aaa', city: 'London' } } }]
+        }
+      });
+      const success = jest.fn();
+      withRelations(fake).query(pocketbase, {
+        collection: 'articles',
+        include: ['author'],
+        success,
+        error: jest.fn()
+      });
+      await settle();
+      expect(fake.param('expand')).toBe('author');
+      expect(success.mock.calls[0][0][0].author).toEqual({ id: 'aaa', city: 'London' });
+    });
+
+    it('⚠️ sends a Directus M2M FILTER through the junction, or it is a 403', async () => {
+      // The second thing the live run found, and the same two-hop fact as the
+      // read: `{"tags":{"label":…}}` answers 403 "no permission to access field
+      // label in collection articles_tags" — indistinguishable from a real
+      // permission failure. The adapter merges the descriptor's `readPath` into
+      // the schema the translator sees, so no caller has to know.
+      const fake = new FakeFetch().reply({ body: { data: [] } });
+      withRelations(fake).query(directus, {
+        collection: 'articles',
+        where: { 'tags.label': { equalTo: 'algebra' } },
+        success: jest.fn(),
+        error: jest.fn()
+      });
+      await settle();
+      expect(JSON.parse(fake.param('filter')!)).toEqual({ tags: { tag_id: { label: { _eq: 'algebra' } } } });
+    });
+
+    it('⚠️ quantifies a PocketBase to-many filter from the descriptor, with no schemaFor at all', async () => {
+      // `tags.label = "x"` means *every* related record matches, and returns
+      // nothing on a record with two tags. The cardinality comes from the
+      // relation descriptor, so an adapter built without `schemaFor` is still
+      // right — which is what the live pass runs.
+      const fake = new FakeFetch().reply({ body: { items: [] } });
+      withRelations(fake).query(pocketbase, {
+        collection: 'articles',
+        where: { 'tags.label': { equalTo: 'algebra' } },
+        success: jest.fn(),
+        error: jest.fn()
+      });
+      await settle();
+      expect(fake.param('filter')).toBe('tags.label ?= "algebra"');
+    });
+
+    it('passes an include through unchanged when the descriptor knows nothing about it', async () => {
+      // The pre-BCN-005 behaviour, which is right whenever the caller named the
+      // table or the FK column — both measured working.
+      const fake = new FakeFetch().reply({ body: [{ id: 1 }] });
+      make(fake).query(supabase, { collection: 'articles', include: ['authors'], success: jest.fn(), error: jest.fn() });
+      await settle();
+      expect(fake.param('select')).toBe('*,authors(*)');
+    });
+
+    it('unwraps the junction nesting on a single fetch too', async () => {
+      const fake = new FakeFetch().reply({ body: { data: { id: 1, tags: [{ tag_id: { id: 7 } }] } } });
+      const success = jest.fn();
+      withRelations(fake).fetch(directus, { collection: 'articles', objectId: '1', include: ['tags'], success, error: jest.fn() });
+      await settle();
+      expect(fake.param('fields')).toBe('*,tags.tag_id.*');
+      expect(success.mock.calls[0][0]).toEqual({ objectId: 1, tags: [{ id: 7 }] });
+    });
+  });
+
+  it('accepts the deprecated targetClass spelling as well as targetCollection', async () => {
+    const fake = new FakeFetch().reply({ body: { id: '1', tags: ['7'] } });
+    withRelations(fake).addRelation(pocketbase, {
+      collection: 'articles',
+      objectId: '1',
+      key: 'tags',
+      targetObjectId: '7',
+      targetClass: 'tags',
+      success: jest.fn(),
+      error: jest.fn()
+    });
+    await settle();
+    expect(fake.last.body).toEqual({ 'tags+': '7' });
+  });
+
+  it('tells the Query Records nodes the record changed', async () => {
+    const fake = new FakeFetch().reply({ body: { id: '1', tags: ['7'] } });
+    const adapter = withRelations(fake);
+    const seen: unknown[] = [];
+    adapter.on('save', (event: unknown) => seen.push(event));
+    adapter.addRelation(pocketbase, { ...relationCall(), success: jest.fn(), error: jest.fn() });
+    await settle();
+    expect(seen).toHaveLength(1);
   });
 });

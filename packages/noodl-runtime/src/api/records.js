@@ -242,7 +242,12 @@ function createRecordsAPI(modelScope) {
           objectId: recordId,
           key: options.key,
           targetObjectId: targetRecordId,
-          targetClass: targetClassName,
+          // The public scripting API's parameter is `targetClassName`; the contract's
+          // field is `targetCollection` since BCN-005. This is the one place the two
+          // meet, and it is why `targetClass` survives as an alias rather than being
+          // renamed away — a Function node calling `Noodl.Records.addRelation` is not
+          // a call site anyone can grep.
+          targetCollection: targetClassName,
           success: (response) => {
             resolve();
           },
@@ -269,7 +274,12 @@ function createRecordsAPI(modelScope) {
           objectId: recordId,
           key: options.key,
           targetObjectId: targetRecordId,
-          targetClass: targetClassName,
+          // The public scripting API's parameter is `targetClassName`; the contract's
+          // field is `targetCollection` since BCN-005. This is the one place the two
+          // meet, and it is why `targetClass` survives as an alias rather than being
+          // renamed away — a Function node calling `Noodl.Records.addRelation` is not
+          // a call site anyone can grep.
+          targetCollection: targetClassName,
           success: (response) => {
             resolve();
           },

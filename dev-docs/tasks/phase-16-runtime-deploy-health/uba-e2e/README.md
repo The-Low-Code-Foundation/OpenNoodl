@@ -249,3 +249,44 @@ descriptor cells:
 - **Directus and PocketBase honour no `LIKE` escape.** A `%` or `_` in the
   user's text is a wildcard and a backslash is matched literally. Postgres does
   honour it, so PostgREST escapes and the other two declare `degraded`.
+
+## The relation live pass (BCN-005)
+
+[BCN-005](../../phase-34-one-backend-contract/BCN-005-RELATIONS.md) closed the hole
+[BCN-004's notes](../../phase-34-one-backend-contract/BCN-004-NOTES-TRANSPORT.md) named in
+§3.4: *"no live check reads a related record back on any backend."*
+
+```bash
+docker compose --profile supabase --profile aggregate --profile parse up -d
+
+# the wire, measured BEFORE any adapter code
+node bcn-005-relation-probe.mjs  > /tmp/p1.txt     # ⚠️ never pipe into `head`
+node bcn-005-relation-probe2.mjs > /tmp/p2.txt
+
+# the adapters, driven
+node bcn-005-relation-driver.build.mjs && node bcn-005-relation-driver.cjs
+```
+
+| File | What it is |
+|---|---|
+| `bcn-005-relation-probe.mjs` | Round one: what each backend says about its own relations, and what a read/add/remove actually does |
+| `bcn-005-relation-probe2.mjs` | Round two — the questions round one could not answer because it wrote before it read |
+| `bcn-005-relation-driver.ts` | **55 checks** through the shipped `RestDataAdapter`, `ParseWireAdapter` and relation parsers |
+| `BCN-005-RELATION-PROBE-OUTPUT.txt` / `BCN-005-RELATION-DRIVER-OUTPUT.txt` | Recorded runs |
+
+It owns the `bcn005_*` collections and tables and rebuilds them on every run. It touches
+nothing else — in particular not `articles`, `authors`, `bcn004a` or `bcn004n`.
+
+Three findings worth knowing before touching this area again, all in
+[BCN-005-NOTES.md](../../phase-34-one-backend-contract/BCN-005-NOTES.md):
+
+- **Directus's many-to-many include is two hops.** `fields=*,tags.*` answers 200 with the
+  *junction rows*; only `fields=*,tags.tag_id.*` gives the tags.
+- **PostgREST cannot see a junction whose primary key is a surrogate `id`** — the same two
+  tables answer `PGRST200 … no matches were found`.
+- **PocketBase needs `?=` to filter across a to-many relation.** `=` means *every* related
+  record matches and returns an empty result set, with a 200.
+
+⚠️ And the methodological one: **two of the driver's checks passed 50/50 under a broken
+implementation** and were only caught by mutation-testing it. A corpus small enough to be
+convenient is often small enough that two different implementations agree on it.

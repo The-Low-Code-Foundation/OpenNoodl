@@ -40,10 +40,22 @@
  * as the `convertFilterOp` defect BCN-003 found. The header is sent (from the
  * profile) and a missing record is an **error**, never an empty success.
  *
+ * ## Relations — BCN-005
+ *
+ * `addRelation`/`removeRelation` were blanket refusals here. They are
+ * implementations now, on the three write shapes `RelationWrite` names, and
+ * every one was measured before it was written. **Two refusals stayed**: a
+ * relation the synced schema does not describe (relation metadata is admin-only
+ * on all three backends — 403/403/401 measured — so the runtime cannot look one
+ * up), and `custom`. See {@link RestDataAdapter.addRelation}.
+ *
+ * The read half gained two corrections a unit test could not have found:
+ * Directus's M2M `include` is **two hops** (one hop returns junction rows with a
+ * 200), and a PostgREST embed nests under the *table* name unless it is aliased.
+ *
  * ## What is not here
  *
- * Files (`uploadFile`/`signFileUrl`/`deleteFile`) and relation mutation
- * (`addRelation`/`removeRelation`) are BCN-007's and BCN-005's. They are
+ * Files (`uploadFile`/`signFileUrl`/`deleteFile`) are BCN-007's. They are
  * implemented as explicit refusals carrying the reason, not as silent no-ops:
  * the contract requires all fourteen methods and a method that quietly does
  * nothing is the failure this phase exists to remove.
@@ -53,10 +65,12 @@
 
 import {
   descriptorFor,
+  findRelation,
   paginationParams,
   readRecord,
   readRows,
   readTotalCount,
+  relationTarget,
   restWireProfileFor,
   type AdapterRecord,
   type AggregateOptions,
@@ -73,6 +87,7 @@ import {
   type IncrementOptions,
   type ListOption,
   type QueryOptions,
+  type RelationDescriptor,
   type RelationOptions,
   type RestWireProfile,
   type SaveOptions,
@@ -147,6 +162,24 @@ export interface RestDataAdapterOptions {
    * whole runtime in behind every backend. Defaults to the identity.
    */
   serializeObject?: (data: Record<string, unknown>, collection: string, handle: BackendHandle) => Record<string, unknown>;
+
+  /**
+   * The backend's relations, as parsed at schema-sync time.
+   *
+   * ⚠️ **This cannot be fetched here, and that is a measured constraint rather
+   * than a design preference.** Relation metadata is admin-only on all three
+   * backends: Directus answers `GET /relations` and `GET /fields` with **403**
+   * unauthenticated, and PocketBase answers `GET /api/collections` with
+   * **401**. A runtime holds an end user's session token or a project's public
+   * token — never an admin key — so a relation the editor did not record at
+   * sync time is a relation the runtime cannot discover.
+   *
+   * Which makes the absence of a descriptor a **refusal**, not a fallback: see
+   * {@link RestDataAdapter.addRelation}. Guessing "the junction is probably
+   * called `articles_tags`" is exactly the plausible-wrong-request this phase
+   * exists to stop.
+   */
+  relationsFor?: (handle: BackendHandle) => readonly RelationDescriptor[] | undefined;
 }
 
 /**
@@ -229,6 +262,7 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
   private readonly probedFilterOperators: readonly FilterOperator[];
   private readonly schemaFor: RestDataAdapterOptions['schemaFor'];
   private readonly serializeObject: NonNullable<RestDataAdapterOptions['serializeObject']>;
+  private readonly relationsFor: RestDataAdapterOptions['relationsFor'];
 
   constructor(options: RestDataAdapterOptions = {}) {
     super();
@@ -237,6 +271,12 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
     this.probedFilterOperators = options.probedFilterOperators ?? [];
     this.schemaFor = options.schemaFor;
     this.serializeObject = options.serializeObject ?? ((data) => data);
+    this.relationsFor = options.relationsFor;
+  }
+
+  /** The relation this collection/field names, or `undefined` when it is not in the synced schema. */
+  private relation(handle: BackendHandle, collection: string, field: string): RelationDescriptor | undefined {
+    return findRelation(this.relationsFor?.(handle), collection, field);
   }
 
   // ── Resolution and gating ────────────────────────────────────────────────
@@ -417,9 +457,42 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
   private translateOptions(handle: BackendHandle, collection: string) {
     return {
       backend: handle.type,
-      schema: this.schemaFor ? this.schemaFor(collection, handle) : undefined,
+      schema: this.filterSchema(handle, collection),
       probed: this.probedFilterOperators
     };
+  }
+
+  /**
+   * The schema a translator sees, with the relation facts folded in.
+   *
+   * ⚠️ **Both of the facts merged here were found by a live request failing**,
+   * and neither is reachable from the cached field schema alone:
+   *
+   * - **`cardinality`** decides whether PocketBase gets `tags.label = 'x'` or
+   *   `tags.label ?= 'x'`. The first returns **no rows** against a record with
+   *   two tags — 200, empty, no warning.
+   * - **`path`** turns a Directus M2M prefix into its junction path. Without it
+   *   the filter answers **403**, indistinguishable from a permission failure.
+   *
+   * Merged here rather than asked of `schemaFor` because the relation
+   * descriptors are the authority on both, and a caller that supplied a schema
+   * without them would otherwise be silently wrong in the two worst ways. The
+   * relation entry wins on those two keys and leaves everything else alone.
+   */
+  private filterSchema(handle: BackendHandle, collection: string): FilterSchema | undefined {
+    const base = this.schemaFor ? this.schemaFor(collection, handle) : undefined;
+    const relations = (this.relationsFor?.(handle) ?? []).filter((relation) => relation.collection === collection);
+    if (relations.length === 0) return base;
+
+    const properties: NonNullable<FilterSchema['properties']> = Object.assign({}, base?.properties);
+    for (const relation of relations) {
+      properties[relation.field] = Object.assign({}, properties[relation.field], {
+        targetClass: relation.target,
+        cardinality: relation.cardinality,
+        ...(relation.readPath ? { path: relation.readPath } : {})
+      });
+    }
+    return { collection: base?.collection ?? collection, properties };
   }
 
   // ── Query & read ─────────────────────────────────────────────────────────
@@ -445,7 +518,9 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
       {
         ok: (body, headers) => {
           const rows = readRows(profile, body) as AdapterRecord[];
-          const records = this.normalizeAll(profile, rows);
+          const records = this.normalizeAll(profile, rows).map((record) =>
+            this.unwrapIncludes(handle, options.collection, toList(options.include), record)
+          );
           // Only reported when asked for. PocketBase volunteers `totalItems` on
           // every list response and Directus volunteers nothing without
           // `meta=`, so passing it unconditionally would give a node a count on
@@ -488,9 +563,13 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
         const filter = toDirectusFilter(options.where, translate);
         if (Object.keys(filter).length > 0) params.push(['filter', JSON.stringify(filter)]);
 
-        // `fields=*,author.*` — the relation expansion RUN-003 built, kept.
+        // `fields=*,author.*` — the relation expansion RUN-003 built, kept, plus
+        // the M2M correction {@link includePath} exists for.
         const fields = select.length > 0 ? select.slice() : include.length > 0 ? ['*'] : [];
-        for (const relation of include) if (!fields.includes(`${relation}.*`)) fields.push(`${relation}.*`);
+        for (const relation of include) {
+          const path = `${this.includePath(handle, options.collection, relation)}.*`;
+          if (!fields.includes(path)) fields.push(path);
+        }
         if (fields.length > 0) params.push(['fields', fields.join(',')]);
 
         if (sort.length > 0) params.push(['sort', sort.join(',')]);
@@ -511,7 +590,7 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
         const selectParts = select.length > 0 ? select.slice() : ['*'];
         for (const embed of filter.embeds) selectParts.push(`${embed}!inner(*)`);
         for (const relation of include) {
-          if (!filter.embeds.includes(relation)) selectParts.push(`${relation}(*)`);
+          if (!filter.embeds.includes(relation)) selectParts.push(this.postgrestEmbed(handle, options.collection, relation));
         }
         params.push(['select', selectParts.join(',')]);
 
@@ -799,10 +878,13 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
 
     if (profile.type === 'supabase') {
       const select = ['*'];
-      for (const relation of include) select.push(`${relation}(*)`);
+      for (const relation of include) select.push(this.postgrestEmbed(handle, options.collection, relation));
       params.push(['select', select.join(',')]);
     } else if (profile.type === 'directus' && include.length > 0) {
-      params.push(['fields', ['*'].concat(include.map((relation) => `${relation}.*`)).join(',')]);
+      params.push([
+        'fields',
+        ['*'].concat(include.map((relation) => `${this.includePath(handle, options.collection, relation)}.*`)).join(',')
+      ]);
     } else if (profile.type === 'pocketbase' && include.length > 0) {
       params.push(['expand', include.join(',')]);
     }
@@ -817,7 +899,7 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
             options.error(`No record with id ${options.objectId} in ${options.collection}.`);
             return;
           }
-          const record = this.normalize(profile, raw);
+          const record = this.unwrapIncludes(handle, options.collection, include, this.normalize(profile, raw));
           options.success(record);
           this.emitAdapterEvent({
             type: 'fetch',
@@ -1021,26 +1103,471 @@ export class RestDataAdapter extends AdapterEvents implements IDataAdapter {
   // ── Relations — BCN-005 ──────────────────────────────────────────────────
 
   /**
-   * `relations.addRemove` is `unsupported` on all three descriptors, and this
-   * is the refusal rather than a no-op. The reason string is the descriptor's,
-   * so what a developer reads in the console is what the editor writes on the
-   * port.
+   * Relate two records.
+   *
+   * ## Where the refusals went, and where they stayed
+   *
+   * BCN-004 shipped this method as an unconditional refusal carrying the
+   * descriptor's reason. BCN-005's third constraint is that a refusal may only
+   * be replaced *where the wire has been measured*, and it has been, for the
+   * three shapes {@link RelationWrite} names:
+   *
+   * | Backend | Add | Measured |
+   * |---|---|---|
+   * | PocketBase | `PATCH {"tags+": id}` — one request, server-side, set-shaped | yes |
+   * | PostgREST | `POST` the junction pair with `resolution=merge-duplicates` | yes |
+   * | Directus | `POST` the junction row, or `PATCH` the FK for a to-one | yes |
+   *
+   * Two refusals **stay**, and neither is a gap in this file:
+   *
+   * - **No relation descriptor.** Relation metadata is admin-only on all three
+   *   backends (403/403/401 measured), so the runtime cannot look one up. A
+   *   relation the editor never synced is one this adapter refuses by name — the
+   *   alternative is guessing a junction table's name and writing to it.
+   * - **`custom`.** No profile, no relation model. `begin` refuses first.
+   *
+   * ## The one place this is not atomic, said out loud
+   *
+   * A Directus junction has a surrogate `id` and no unique constraint on the
+   * pair, so `POST`ing the same pair twice stores it twice — and then the
+   * relation contains one member and the collection contains two rows, which is
+   * a difference a user cannot see until a count is wrong. Parse's `Relation` is
+   * a *set*, and the contract's shape is Parse's, so this method makes Directus
+   * behave like a set: it looks for the pair first and succeeds without writing
+   * when it is already there. Two devices adding the same pair at the same
+   * moment can still both miss, and the `directus` descriptor's
+   * `relations.addRemove` cell says exactly that in the user's own words. It is
+   * the same trade `data.increment` already makes there, for the same reason.
    */
   addRelation(handle: BackendHandle, options: RelationOptions): void {
-    this.refuseRelation(handle, options);
+    this.mutateRelation(handle, options, 'add');
   }
 
   removeRelation(handle: BackendHandle, options: RelationOptions): void {
-    this.refuseRelation(handle, options);
+    this.mutateRelation(handle, options, 'remove');
   }
 
-  private refuseRelation(handle: BackendHandle, options: RelationOptions): void {
-    const capability = this.capability(handle, 'relations.addRemove');
-    options.error(
-      capability.state === 'supported'
-        ? `Relation editing is not implemented for ${handle.type} yet.`
-        : capability.reason
+  private mutateRelation(handle: BackendHandle, options: RelationOptions, direction: 'add' | 'remove'): void {
+    const profile = this.begin(handle, 'relations.addRemove', options.error);
+    if (!profile) return;
+
+    const relation = this.relation(handle, options.collection, options.key);
+    if (!relation) {
+      options.error(relationNotFound(handle, options));
+      return;
+    }
+
+    const write = relation.write;
+
+    // `op` is the Parse shape and reaching it here means a Parse-family
+    // descriptor was handed to the REST adapter — a resolution bug, not a
+    // capability gap, so it says so rather than pretending to try.
+    if (write.kind === 'op') {
+      options.error(
+        `"${options.key}" on ${options.collection} is a Parse-style relation, which the ${handle.type} ` +
+          'adapter cannot write. This is a wiring mistake rather than a missing feature.'
+      );
+      return;
+    }
+
+    if (write.kind === 'arrayField') {
+      this.relationViaArrayField(handle, profile, options, write.field, direction);
+      return;
+    }
+
+    if (write.kind === 'foreignKey') {
+      this.relationViaForeignKey(handle, options, relation, write, direction);
+      return;
+    }
+
+    this.relationViaJunction(handle, profile, options, write, direction);
+  }
+
+  /**
+   * PocketBase: the `+` / `-` field operators.
+   *
+   * ⚠️ **The spec's trap for this backend is a stale premise.** It says a
+   * multi-valued relation is "a read-modify-write with a lost-update window" and
+   * asks for that to be declared as a caveat. It is not one: `PATCH {"tags+":
+   * id}` is applied server-side in a single request, appending a value already
+   * present leaves the array unchanged, and both directions were measured on a
+   * live 0.30.0. There is no window to declare.
+   *
+   * ⚠️ What *is* worth knowing: on a `maxSelect: 1` relation, `+` **replaces**
+   * the current value rather than refusing, and `-` clears the field to `""`
+   * whether or not the id given is the one that was set. So `removeRelation`
+   * with the wrong target id still clears the relation. That is PocketBase's
+   * behaviour, it answers 200, and the descriptor cell names it — an adapter
+   * cannot detect it without a read it would then have to race.
+   */
+  private relationViaArrayField(
+    handle: BackendHandle,
+    profile: RestWireProfile,
+    options: RelationOptions,
+    field: string,
+    direction: 'add' | 'remove'
+  ): void {
+    const target = this.recordTarget(profile, options.collection, options.objectId);
+    const body: Record<string, unknown> = { [`${field}${direction === 'add' ? '+' : '-'}`]: options.targetObjectId };
+
+    this.request(
+      handle,
+      { method: 'PATCH', path: target.path, params: target.params, headers: this.headers(profile, handle), body },
+      {
+        ok: (responseBody) => {
+          const raw = readRecord(profile, responseBody);
+          if (!raw) {
+            options.error(`${handle.type} changed the relation but returned nothing back.`);
+            return;
+          }
+          this.relationChanged(handle, options, this.normalize(profile, raw), direction);
+        },
+        fail: (message) => options.error(message)
+      }
     );
+  }
+
+  /**
+   * A foreign-key relation: an ordinary `save` on whichever record holds the
+   * column.
+   *
+   * `write.on` is the whole of it. A many-to-one writes the column on the record
+   * the node named as the source; its one-to-many reverse writes the column on
+   * the record the node named as the *target*, because that is where the column
+   * lives. Getting this backwards writes a valid id into the wrong row and
+   * answers 200, so it is data on the descriptor rather than an `if` here.
+   *
+   * `remove` writes `null`. ⚠️ It does not check that the column currently holds
+   * `targetObjectId` first: doing so is a second round trip whose result is
+   * stale by the time the write lands, and the honest single request matches
+   * what {@link relationViaArrayField} measured PocketBase doing anyway.
+   */
+  private relationViaForeignKey(
+    handle: BackendHandle,
+    options: RelationOptions,
+    relation: RelationDescriptor,
+    write: { kind: 'foreignKey'; field: string; on: 'source' | 'target' },
+    direction: 'add' | 'remove'
+  ): void {
+    const onSource = write.on === 'source';
+    const collection = onSource ? options.collection : relation.target;
+    const objectId = onSource ? options.objectId : options.targetObjectId;
+    const value = direction === 'add' ? (onSource ? options.targetObjectId : options.objectId) : null;
+
+    this.save(handle, {
+      collection,
+      objectId,
+      data: { [write.field]: value },
+      success: (record) => this.relationChanged(handle, options, record, direction),
+      error: options.error
+    });
+  }
+
+  /**
+   * A junction collection: one row per pair.
+   *
+   * Three measured facts decide the shape of this method:
+   *
+   * 1. **PostgREST rejects a duplicate pair** with `409 23505` when the pair is
+   *    the primary key, and `Prefer: resolution=merge-duplicates` turns the
+   *    insert into an upsert that answers `200`. So the add is one request and
+   *    genuinely idempotent — `write.idempotent` is that fact.
+   * 2. **Directus stores the pair twice**, because its junction has a surrogate
+   *    `id`. So when `write.idempotent` is false the add reads first, which is
+   *    the racy set-semantics the descriptor declares.
+   * 3. **A delete of a pair that never existed reports success** — Directus
+   *    answers `204` and PostgREST `200 []`. PostgREST's representation is
+   *    actually enough to tell the two apart; Directus's is not, and the
+   *    contract cannot express a per-backend difference in what `removeRelation`
+   *    means, so both report success. Recorded in `BCN-005-NOTES.md` under
+   *    "could not verify" rather than papered over.
+   */
+  private relationViaJunction(
+    handle: BackendHandle,
+    profile: RestWireProfile,
+    options: RelationOptions,
+    write: { kind: 'junction'; collection: string; sourceField: string; targetField: string; idempotent: boolean },
+    direction: 'add' | 'remove'
+  ): void {
+    const pair = { [write.sourceField]: options.objectId, [write.targetField]: options.targetObjectId };
+
+    if (direction === 'remove') {
+      this.deleteJunctionRows(handle, profile, write, pair, options);
+      return;
+    }
+
+    const insert = () => {
+      const headers = this.headers(
+        profile,
+        handle,
+        // `resolution=merge-duplicates` is only meaningful where a duplicate is
+        // an error, which is where the pair is the key.
+        write.idempotent && profile.createRequestHeaders
+          ? Object.assign({}, profile.createRequestHeaders, {
+              Prefer: [profile.createRequestHeaders.Prefer, 'resolution=merge-duplicates'].filter(Boolean).join(',')
+            })
+          : representationHeaders(profile)
+      );
+
+      this.request(
+        handle,
+        { method: 'POST', path: this.path(profile.createPath, write.collection), headers, body: pair },
+        {
+          // The junction row is not the record the caller asked about, so the
+          // success callback gets the *pair*, keyed by the contract's names, not
+          // a junction row a node has no idea what to do with.
+          ok: () => this.relationChanged(handle, options, this.relationResult(options), direction),
+          fail: (message) => options.error(message)
+        }
+      );
+    };
+
+    if (write.idempotent) {
+      insert();
+      return;
+    }
+
+    // The read-first path. Set semantics on a junction that permits duplicates.
+    this.findJunctionRows(handle, profile, write, pair, {
+      ok: (rows) => {
+        if (rows.length > 0) {
+          this.relationChanged(handle, options, this.relationResult(options), direction);
+          return;
+        }
+        insert();
+      },
+      fail: (message) => options.error(message)
+    });
+  }
+
+  private junctionParams(profile: RestWireProfile, pair: Record<string, string>): Params {
+    if (profile.type === 'supabase') {
+      return Object.keys(pair).map((field) => [field, `eq.${pair[field]}`] as [string, string]);
+    }
+    if (profile.type === 'pocketbase') {
+      const expression = Object.keys(pair)
+        .map((field) => `${field} = ${JSON.stringify(pair[field])}`)
+        .join(' && ');
+      return [['filter', expression]];
+    }
+    const filter: Record<string, unknown> = {};
+    for (const field of Object.keys(pair)) filter[field] = { _eq: pair[field] };
+    return [['filter', JSON.stringify(filter)]];
+  }
+
+  private findJunctionRows(
+    handle: BackendHandle,
+    profile: RestWireProfile,
+    write: { collection: string },
+    pair: Record<string, string>,
+    callbacks: { ok: (rows: AdapterRecord[]) => void; fail: (message: string) => void }
+  ): void {
+    this.request(
+      handle,
+      {
+        path: this.path(profile.listPath, write.collection),
+        params: this.junctionParams(profile, pair),
+        headers: this.headers(profile, handle)
+      },
+      {
+        ok: (body) => callbacks.ok(this.normalizeAll(profile, readRows(profile, body) as AdapterRecord[])),
+        fail: callbacks.fail
+      }
+    );
+  }
+
+  /**
+   * Remove every junction row for the pair.
+   *
+   * "Every", not "the one", because a junction that permits duplicates may hold
+   * more than one — and a remove that left a second copy behind would report
+   * success while the relation was still there, which is the failure this whole
+   * file is written against.
+   *
+   * PostgREST can delete by predicate in one request. Directus and PocketBase
+   * address a delete by id, so the rows are found first; there is no request
+   * that avoids it.
+   */
+  private deleteJunctionRows(
+    handle: BackendHandle,
+    profile: RestWireProfile,
+    write: { collection: string; sourceField: string; targetField: string },
+    pair: Record<string, string>,
+    options: RelationOptions
+  ): void {
+    const done = () => this.relationChanged(handle, options, this.relationResult(options), 'remove');
+
+    if (profile.type === 'supabase') {
+      this.request(
+        handle,
+        {
+          method: 'DELETE',
+          path: this.path(profile.recordPath, write.collection),
+          params: this.junctionParams(profile, pair),
+          headers: this.headers(profile, handle)
+        },
+        { ok: done, fail: (message) => options.error(message) }
+      );
+      return;
+    }
+
+    this.findJunctionRows(handle, profile, write, pair, {
+      ok: (rows) => {
+        if (rows.length === 0) {
+          // Nothing to delete is success: the relation is not there, which is
+          // what the caller asked for. Both backends answer the same way for a
+          // row that never existed anyway (204 / 200 []), so distinguishing
+          // would be a claim the wire cannot support.
+          done();
+          return;
+        }
+        let remaining = rows.length;
+        let failed = false;
+        for (const row of rows) {
+          const target = this.recordTarget(profile, write.collection, String(row.objectId));
+          this.request(
+            handle,
+            { method: 'DELETE', path: target.path, params: target.params, headers: this.headers(profile, handle) },
+            {
+              ok: () => {
+                if (failed) return;
+                if (--remaining === 0) done();
+              },
+              fail: (message) => {
+                if (failed) return;
+                failed = true;
+                options.error(message);
+              }
+            }
+          );
+        }
+      },
+      fail: (message) => options.error(message)
+    });
+  }
+
+  /**
+   * What `success` receives when the write did not return the source record.
+   *
+   * `RelationOptions.success` takes an `AdapterRecord`, and both relation nodes
+   * copy every key of it onto their `Model` — so handing back a junction row
+   * would write `article_id` and `tag_id` onto the user's record as if they were
+   * its own fields. The identity alone is the honest answer, and it is what the
+   * nodes need to re-read.
+   */
+  private relationResult(options: RelationOptions): AdapterRecord {
+    return { objectId: options.objectId };
+  }
+
+  private relationChanged(
+    handle: BackendHandle,
+    options: RelationOptions,
+    record: AdapterRecord,
+    direction: 'add' | 'remove'
+  ): void {
+    options.success(record);
+    // `save` is the event `AdapterEvents` has for "this record changed"; a
+    // relation change is one, and the Query Records nodes listening for it need
+    // to re-run for the same reason an ordinary field write makes them.
+    this.emitAdapterEvent({
+      type: 'save',
+      objectId: options.objectId,
+      object: record,
+      collection: options.collection
+    });
+    void direction;
+  }
+
+  // ── Relation reads ───────────────────────────────────────────────────────
+
+  /**
+   * The path a Directus `include` must actually ask for.
+   *
+   * ⚠️ **The finding that made this function exist.** `fields=*,tags.*` on a
+   * many-to-many returns the **junction rows** —
+   * `[{"id":1,"article_id":1,"tag_id":1}]` — with a 200 and no hint that they
+   * are not the tags. Only `fields=*,tags.tag_id.*` returns
+   * `[{"tag_id":{"id":1,"label":"algebra"}}]`. Both measured on Directus 11.
+   *
+   * RUN-003's one-hop rule is therefore *wrong for M2M specifically*, in the
+   * plausible-wrong-value direction: a repeater bound to `tags` would render
+   * one item per tag, each carrying two integers and no label. The descriptor's
+   * `readPath` is the correction, and {@link unwrapIncludes} puts the shape back.
+   */
+  private includePath(handle: BackendHandle, collection: string, field: string): string {
+    return this.relation(handle, collection, field)?.readPath ?? field;
+  }
+
+  /**
+   * A PostgREST embed, aliased to the name the caller asked for.
+   *
+   * `select=*,bcn005_authors(*)` nests the author under `bcn005_authors` — the
+   * *table* name, because PostgREST has no field to name it after. So a node
+   * asking to include `author` would find nothing under `author`. Measured:
+   * `select=*,author:bcn005_authors(*)` answers 200 with the record under
+   * `author`, which is what every other backend does, so the alias is always
+   * emitted when the descriptor knows the target.
+   *
+   * Without a descriptor the name is passed through unchanged, which is the
+   * pre-BCN-005 behaviour and is correct whenever the caller named the table or
+   * the foreign-key column (both measured working).
+   */
+  private postgrestEmbed(handle: BackendHandle, collection: string, field: string): string {
+    const relation = this.relation(handle, collection, field);
+    if (!relation || relation.target === field) return `${field}(*)`;
+    return `${field}:${relation.target}(*)`;
+  }
+
+  /**
+   * Undo the junction nesting, so an included relation looks the same on every
+   * backend.
+   *
+   * Only Directus M2M needs it, and only because its include is two hops. The
+   * contract option is one — `include: ['tags']` — so the record a node receives
+   * has to carry tags under `tags`, not junction wrappers.
+   */
+  private unwrapIncludes(
+    handle: BackendHandle,
+    collection: string,
+    include: string[],
+    record: AdapterRecord
+  ): AdapterRecord {
+    if (include.length === 0) return record;
+    let result = record;
+    const copy = () => {
+      if (result === record) result = Object.assign({}, record);
+      return result;
+    };
+
+    // ⚠️ **PocketBase does not nest the related record onto the field.** It
+    // leaves the field holding the id and puts the record under a sibling
+    // `expand` object — so `article.author` is a 15-character string where
+    // Directus and PostgREST both give the author. Measured; it is what the
+    // first live run of this adapter found. The contract's `include` promises
+    // "the related record nested", one option, one shape, so it is hoisted.
+    // `expand` is left in place: it is stripped on the way back out by
+    // `SERVER_OWNED_FIELDS`, and anything already reading it keeps working.
+    const expand = record.expand as Record<string, unknown> | undefined;
+    if (expand && typeof expand === 'object') {
+      for (const field of include) {
+        if (!(field in expand)) continue;
+        copy()[field] = expand[field];
+      }
+    }
+
+    for (const field of include) {
+      const relation = this.relation(handle, collection, field);
+      const key = relation?.readUnwrapKey;
+      if (!key) continue;
+      const value = result[field];
+      if (!Array.isArray(value)) continue;
+      copy()[field] = value.map((entry) =>
+        entry && typeof entry === 'object' && key in (entry as Record<string, unknown>)
+          ? (entry as Record<string, unknown>)[key]
+          : entry
+      );
+    }
+    return result;
   }
 
   // ── Files — BCN-007 ──────────────────────────────────────────────────────
@@ -1129,6 +1656,24 @@ function representationHeaders(profile: RestWireProfile): Record<string, string>
  * `save` addresses the record in the URL. See {@link SERVER_OWNED_FIELDS} for
  * the rest and for the residual risk this carries.
  */
+/**
+ * The sentence for a relation the synced schema does not describe.
+ *
+ * Named rather than inlined because it is the refusal that replaces BCN-004's
+ * blanket one, and the whole argument of the phase is that a refusal carries a
+ * sentence the user can act on. It names the field, the collection, and the one
+ * thing that fixes it.
+ */
+export function relationNotFound(handle: BackendHandle, options: RelationOptions): string {
+  const target = relationTarget(options);
+  return (
+    `NodeGX does not know how "${options.key}" relates ${options.collection} to ` +
+    `${target ? `"${target}"` : 'another collection'} on this ${handle.type} backend. ` +
+    'Refresh the backend schema in the Backend Services panel — relation details are only readable with ' +
+    'admin credentials, so they are read when you connect and not while the app runs.'
+  );
+}
+
 export function stripServerOwned(profile: RestWireProfile, data: Record<string, unknown>): Record<string, unknown> {
   const copy = Object.assign({}, data);
   delete copy.objectId;

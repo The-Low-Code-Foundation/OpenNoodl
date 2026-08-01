@@ -193,11 +193,29 @@ export interface DeleteOptions extends Callbacks<() => void> {
 // ── Relations ──────────────────────────────────────────────────────────────
 
 /**
- * `targetClass` is the one place a Parse concept leaks into a signature. Every
- * backend has the notion of "the collection on the other end", so it ought to
- * generalise to a neutral name — BCN-005 owns that rename, and owns it rather
- * than this task because renaming it here would change a field twenty-five
- * nodes pass through before anything can be tested against it.
+ * Add or remove one member of a relation.
+ *
+ * ## The `targetClass` rename, decided
+ *
+ * BCN-001 deferred this to BCN-005 and BCN-005 owns it: **`targetCollection` is
+ * the field, and `targetClass` stays as a deprecated alias.** Neither half of
+ * that is a compromise for its own sake.
+ *
+ * - The neutral name **wins**, because it already won next door and half a name
+ *   is worse than either whole one. The source side of this very interface is
+ *   `collection`, not `className` — so today the same concept is spelled two
+ *   ways in one options object, one line apart. `collection` and `targetClass`
+ *   cannot both be right.
+ * - The alias **stays**, because the field is not only ours. `records.js`
+ *   exposes `Noodl.Records.addRelation({targetClassName})` on the public
+ *   scripting API and maps it to this field, and a user's Function node calling
+ *   it is not a call site anyone can grep. Accepting both costs one line in the
+ *   two adapters and breaks nothing; removing it is a separate, announceable
+ *   change.
+ *
+ * ⚠️ `targetCollection` is optional **only** so the alias can satisfy it. Use
+ * {@link relationTarget} rather than reading either field directly — it is the
+ * one place that knows the precedence.
  */
 export interface RelationOptions extends Callbacks<(record: AdapterRecord) => void> {
   collection: string;
@@ -205,7 +223,21 @@ export interface RelationOptions extends Callbacks<(record: AdapterRecord) => vo
   /** The relation field on the source record. */
   key: string;
   targetObjectId: string;
-  targetClass: string;
+  /** The collection on the other end. */
+  targetCollection?: string;
+  /** @deprecated Parse-family spelling of {@link targetCollection}. Still read. */
+  targetClass?: string;
+}
+
+/**
+ * The collection on the other end of a relation, from either spelling.
+ *
+ * A function rather than a convention, so that "which one wins" is written down
+ * once instead of in each adapter — and so that adding a third spelling later
+ * is one edit rather than a hunt.
+ */
+export function relationTarget(options: Pick<RelationOptions, 'targetCollection' | 'targetClass'>): string | undefined {
+  return options.targetCollection || options.targetClass || undefined;
 }
 
 // ── Files ──────────────────────────────────────────────────────────────────
