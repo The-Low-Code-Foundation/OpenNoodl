@@ -441,7 +441,9 @@ describe('BCN-004 step 5: the backend picker and its hide-when-one rule', () => 
     // Directus.
     expect(picker.type.enums).toEqual([
       { label: 'Active Backend', value: '_active_' },
-      { label: 'app-id', value: '_endpoint_' },
+      // BCN-009 step 2 follow-up 3: a name, not the raw app id. The *value* is unchanged,
+      // which is what a saved parameter holds.
+      { label: 'Built-in', value: '_endpoint_' },
       { label: 'Local Directus', value: 'd1' }
     ]);
   });

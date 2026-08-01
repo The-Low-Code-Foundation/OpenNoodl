@@ -73,6 +73,22 @@ export interface BackendServiceEntry {
 export interface BackendServicesMetaData {
   backends?: BackendServiceEntry[];
   activeBackendId?: string;
+  /**
+   * The convergence marker — BCN-009 step 2.
+   *
+   * Absent (or `1`) means **legacy**: `cloudservices` binds the record/auth/file nodes and
+   * `activeBackendId` binds the BYOB ones, two independent selections. `2` means the editor
+   * has converged them and `activeBackendId` is the project's single answer, which may be
+   * the literal `'_endpoint_'`.
+   *
+   * ⚠️ The marker is required rather than decorative, and this is the case that makes it so:
+   * legacy and converged metadata are **byte-identical** when a project has an endpoint and
+   * `activeBackendId: 'backend_x'`, and the two readings are opposite. Legacy means "record
+   * nodes use the endpoint, BYOB nodes use backend_x"; converged means "everything uses
+   * backend_x". Reading the converged meaning off legacy bytes moves every Record node in
+   * the project.
+   */
+  version?: number;
 }
 
 /** A port type as `getEnhancedFieldType` describes it — a name, or an enum spec. */

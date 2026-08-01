@@ -107,7 +107,17 @@ export function endpointBackendEntry(cloudservices: CloudServicesMetaData | unde
   const type = endpointBackendType(cloudservices.type);
   return {
     id: ENDPOINT_BACKEND_ID,
-    name: cloudservices.appId || (type === 'nodegx' ? 'Built-in' : 'Parse Server'),
+    // ⚠️ The app id used to win whenever there was one, so the Backend dropdown read
+    // `backend_ms94j6xso72rl` beside "Rig Directus". An app id is *identity*, not a name.
+    // BCN-009 step 2 made the same judgement in the editor's `endpointDisplayName`; this is
+    // the runtime's copy of the label and the two now agree.
+    //
+    // A **label**, not an id — `ENDPOINT_BACKEND_ID` is what a saved node parameter holds —
+    // so no stored value changes and no picker selection breaks.
+    //
+    // The strings are unchanged: "Built-in" is Richard's answer to open question 1 ("says
+    // least, ages best"). Only which value *wins* changes — the name, not the app id.
+    name: type === 'nodegx' ? 'Built-in' : 'Parse Server',
     type,
     url: cloudservices.endpoint,
     auth: { publicToken: cloudservices.appId }
@@ -138,6 +148,20 @@ export function defaultBackendId(sources: BackendMetaDataSources): string | unde
   const entries = backendEntries(sources);
   if (entries.length === 0) return undefined;
 
+  // BCN-009 step 2 landed the editor half: a converged project records **one** selection in
+  // `activeBackendId`, and it may name the endpoint. Honour it — without this the panel's
+  // badge moves and the record nodes do not, which is the split this phase exists to end.
+  //
+  // ⚠️ Gated on the version, and the gate is the whole safety of this branch. Legacy and
+  // converged metadata are byte-identical in the one case that matters — an endpoint plus
+  // `activeBackendId: 'backend_x'` — and the two readings are opposite. Ungated, this line
+  // moves every Record node in every project saved before the convergence onto whichever
+  // REST backend happened to be added last. That is BCN-004 §2.1's exact disaster.
+  if (isConvergedSelection(sources)) {
+    const converged = sources.backendServices?.activeBackendId;
+    if (converged && entries.some((entry) => entry.id === converged)) return converged;
+  }
+
   const endpoint = endpointBackendEntry(sources.cloudservices);
   if (endpoint) return endpoint.id;
 
@@ -146,6 +170,18 @@ export function defaultBackendId(sources: BackendMetaDataSources): string | unde
 
   if (entries.length === 1) return entries[0].id;
   return active;
+}
+
+/**
+ * Has the editor converged this project's two selections into one?
+ *
+ * Read through a named predicate rather than inline, because **three** call sites have to
+ * agree about it — this module's `defaultBackendId`, `byob-utils.ts`'s resolution, and the
+ * BYOB port context's backend count. A project where two of the three agree resolves one
+ * family of nodes differently from another, which is the defect, not a smaller version of it.
+ */
+export function isConvergedSelection(sources: BackendMetaDataSources): boolean {
+  return (sources.backendServices?.version ?? 1) >= 2;
 }
 
 /**

@@ -25,7 +25,8 @@ import {
   shouldShowField
 } from './schema-ports';
 
-import { resolveBackendTarget } from '../../../api/backends/resolveBackend';
+import { isConvergedSelection, resolveBackendTarget } from '../../../api/backends/resolveBackend';
+import type { CloudServicesMetaData } from '../../../api/backends/resolveBackend';
 // Moved out in BCN-004 step 5 so `RestDataAdapter`'s `serializeObject` hook can reach it
 // without `api/` importing `nodes/`. Same function, re-exported below under the same name.
 import { normalizeValue } from '../../../api/backends/restSerialize';
@@ -65,12 +66,21 @@ const SYSTEM_ENDPOINTS: Record<string, string> = {
  * `api/backends/resolveBackend.ts`, which serves every adapter; what is left here is the
  * BYOB-shaped view of the answer, so the four `byob-*` nodes keep the fields they read.
  *
- * ⚠️ **Deliberately narrower than the general resolver: `cloudservices` is not passed
- * in.** A BYOB node's `_active_` has always meant `backendServices.activeBackendId`, and
- * a project that also has a `cloudservices` endpoint would otherwise see its BYOB nodes
+ * ⚠️ **Narrower than the general resolver on a legacy project: `cloudservices` is not
+ * passed in.** A BYOB node's `_active_` has always meant `backendServices.activeBackendId`,
+ * and a project that also has a `cloudservices` endpoint would otherwise see its BYOB nodes
  * jump onto the Parse wire. The Record family's `_active_` means something different for
  * the same reason, in the other direction — see the resolver's module docblock on the two
  * actives.
+ *
+ * **On a converged project (BCN-009 step 2) it is passed in, and must be.** Once the editor
+ * has written `version: 2` there is one selection, it may be the literal `'_endpoint_'`, and
+ * a BYOB node that cannot see `cloudservices` cannot resolve that id at all — so a project
+ * whose backend *is* the built-in one would leave every BYOB node resolving nothing.
+ *
+ * The gate is `isConvergedSelection`, shared with the resolver rather than re-tested here:
+ * three call sites have to agree about what "converged" means, and a project where two of
+ * them agree resolves one family of nodes differently from another.
  *
  * One behaviour *is* new, and it is the spec's own step 3: with exactly one configured
  * backend and no `activeBackendId` recorded, that backend is the default. This used to
@@ -87,7 +97,11 @@ function resolveBackend(backendId: string): ResolvedBackend | null {
     return null;
   }
 
-  const target = resolveBackendTarget(backendId, { backendServices });
+  const cloudservices = isConvergedSelection({ backendServices })
+    ? (NoodlRuntime.instance.getMetaData('cloudservices') as CloudServicesMetaData | undefined)
+    : undefined;
+
+  const target = resolveBackendTarget(backendId, { backendServices, cloudservices });
 
   if (!target) {
     console.log('[BYOB Utils] Backend not found:', backendId);

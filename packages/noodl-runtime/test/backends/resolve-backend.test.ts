@@ -75,7 +75,10 @@ describe('the project’s backend list', () => {
     const entries = backendEntries({ cloudservices: ENDPOINT, backendServices: { backends: [DIRECTUS] } });
     expect(entries.map((entry) => entry.id)).toEqual([ENDPOINT_BACKEND_ID, 'd1']);
     expect(entries[0].type).toBe('nodegx');
-    expect(entries[0].name).toBe('app-id');
+    // BCN-009 step 2 follow-up 3: the app id no longer wins the label. It is *identity*, not
+    // a name, and the dropdown used to read `backend_ms94j6xso72rl` beside "Rig Directus".
+    // The id is untouched (asserted above), so no saved picker value changes.
+    expect(entries[0].name).toBe('Built-in');
   });
 
   it('names an untitled endpoint for what it is', () => {
