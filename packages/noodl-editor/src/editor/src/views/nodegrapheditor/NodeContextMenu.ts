@@ -8,6 +8,7 @@ import { MenuDialogItem, MenuDialogWidth } from '@noodl-core-ui/components/popup
 import { PopupToolbar, PopupToolbarProps } from '@noodl-core-ui/components/popups/PopupToolbar';
 
 import { SidebarModel } from '@noodl-models/sidebar';
+import { WarningsModel } from '@noodl-models/warningsmodel';
 
 import { requestProvenanceWalk } from '../../utils/provenance/provenanceRequest';
 import { CreateNewNodePanel } from '../createnewnodepanel';
@@ -198,9 +199,9 @@ export class NodeContextMenu {
     //
     // ⚠️ The old entry asked for a *node* and let the panel work out what to
     // trace, which is how it ended up enumerating every port. This asks for a
-    // **port**, one menu item per connected input, so the thing being walked is
-    // named by the user rather than guessed. A node with no incoming wires
-    // contributes no items at all — there is nothing upstream to walk.
+    // **port**, one menu item per connected input (plus the authored inputs of a
+    // node that is complaining), so the thing being walked is named by the user
+    // rather than guessed.
     if (selectedNodes.length === 1) {
       const walkItems = this.getProvenanceMenuActions(selectedNodes[0]);
       if (walkItems.length) items.push(...walkItems, 'divider');
@@ -276,24 +277,48 @@ export class NodeContextMenu {
    * of six buttons was the relevant cause. So the entry point is the port they are complaining
    * about, not an interaction they have to remember.
    *
+   * ⚠️ **A wire is not the only way to get a value into a port, and this used to assume it
+   * was.** A node broken by a *parameter* — the demo's `States`, set to `"Clicked"` when its
+   * states are `clicked, hover` — has no incoming connection at all, so it offered no menu
+   * whatsoever: the walk was unreachable from exactly the node wearing the danger ring. Its
+   * authored inputs are offered too, but only when the node is actually complaining, because
+   * every node has parameters and a Text node has twenty. The walk over an unwired port is a
+   * one-row answer, and that row carries layer 3 — which is the whole of what is wanted here.
+   *
    * Capped at eight because this is a context menu, not the walk. A node with more inbound
    * wires than that is reachable through any one of them — the walk crosses the node anyway.
    */
   getProvenanceMenuActions(node: NodeGraphEditorNode): MenuDialogItem[] {
-    const ports: string[] = [];
+    const connected: string[] = [];
     for (const connection of node.model.getConnectionsOnThisNode()) {
       if (connection.toId !== node.model.id) continue;
-      if (ports.indexOf(connection.toProperty) === -1) ports.push(connection.toProperty);
+      if (connected.indexOf(connection.toProperty) === -1) connected.push(connection.toProperty);
     }
-    if (!ports.length) return [];
 
-    return ports.slice(0, 8).map((port) => ({
-      label: `Why is "${port}" empty?`,
+    const authored = this.nodeHasWarnings(node)
+      ? Object.keys(node.model.parameters || {}).filter((port) => connected.indexOf(port) === -1)
+      : [];
+
+    if (!connected.length && !authored.length) return [];
+
+    const item = (port: string, wired: boolean): MenuDialogItem => ({
+      // The phrasing follows the wire: "empty" is the complaint about a port nothing arrived
+      // at, and it is the wrong word for one the author typed a value into themselves.
+      label: wired ? `Why is "${port}" empty?` : `Why is "${port}" not working?`,
       icon: IconName.Search,
       onClick: () => {
         requestProvenanceWalk({ node: node.model.id, port });
       }
-    }));
+    });
+
+    return [...connected.map((port) => item(port, true)), ...authored.map((port) => item(port, false))].slice(0, 8);
+  }
+
+  /** Whether the node is currently reporting anything — a diagnosis, a failure, a lint. */
+  private nodeHasWarnings(node: NodeGraphEditorNode): boolean {
+    const component = this.editor.activeComponent;
+    if (!component) return false;
+    return WarningsModel.instance.getWarnings({ component, node: node.model }) !== undefined;
   }
 
   /**

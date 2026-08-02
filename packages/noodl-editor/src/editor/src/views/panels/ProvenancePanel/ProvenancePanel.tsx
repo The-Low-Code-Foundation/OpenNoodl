@@ -29,7 +29,8 @@ import {
   forwardWalk,
   labelFor,
   portsToResolve,
-  rootEvents
+  rootEvents,
+  valueKey
 } from '../../../utils/provenance/walkEngine';
 import css from './ProvenancePanel.module.scss';
 
@@ -56,12 +57,31 @@ import css from './ProvenancePanel.module.scss';
  *    `WarningsModel` already holds every diagnosis the running preview has reported, so a walk
  *    on a cold editor still carries them. Filled by `annotateWarnings`, outside the pure engine.
  */
+/**
+ * How often a running recording is pulled while a walk is on screen.
+ *
+ * Slow enough that a long trace is not re-indexed continuously, fast enough that pressing a
+ * button in the preview and looking back at the panel shows what happened rather than what had
+ * happened before you pressed it.
+ */
+const LIVE_POLL_MS = 1500;
+
 export function ProvenancePanel() {
   const session = TraceSession.instance;
 
   const [target, setTarget] = useState<EdgeRef | undefined>(undefined);
   const [focusedRoot, setFocusedRoot] = useState<RootEvent | undefined>(undefined);
-  const [selected, setSelected] = useState<WalkRow | undefined>(undefined);
+  /**
+   * The expanded row, held as a **port key** rather than as the `WalkRow` object.
+   *
+   * ⚠️ Rows are rebuilt from scratch on every Refresh and every trace event, and a causal hop's
+   * `id` carries the event `seq`, so it changes with them. Holding the object kept a row whose
+   * values had already gone stale — the detail said `0` while the row above it said `1` — and
+   * holding the id silently collapsed the expansion on every refresh. `node|port|direction` is
+   * the one identity that survives a rewalk, and it is unique within a walk: the structural
+   * expansion is keyed by exactly this and refuses to visit a port twice.
+   */
+  const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined);
   const [recording, setRecording] = useState(session.recording);
   const [revision, setRevision] = useState(0);
   /** Bumped on `warningsChanged`, so layer 3 re-annotates without rebuilding the index. */
@@ -107,8 +127,12 @@ export function ProvenancePanel() {
    * topology before anything is rendered, so a ten-row walk costs one request.
    */
   const load = useCallback(
-    async (next: EdgeRef) => {
-      setStatus('Reading the graph…');
+    async (next: EdgeRef, options?: { quiet?: boolean }) => {
+      const say = (message?: string) => {
+        if (!options?.quiet) setStatus(message);
+      };
+
+      say('Reading the graph…');
       await session.refreshTopology();
       if (session.recording) await session.refreshEvents();
 
@@ -116,14 +140,48 @@ export function ProvenancePanel() {
         recording: session.recording
       });
       const ports = portsToResolve(scratch, next);
-      setStatus(`Reading ${ports.length} port${ports.length === 1 ? '' : 's'}…`);
+      say(`Reading ${ports.length} port${ports.length === 1 ? '' : 's'}…`);
       await session.resolvePortValues(ports);
 
-      setStatus(undefined);
+      say(undefined);
       bump();
     },
     [session, bump]
   );
+
+  /**
+   * Keep the walk current while a recording is running.
+   *
+   * ⚠️ **A walk on screen when Record is pressed turns every row into `✕ never fired`, and it
+   * stays that way through the interaction it was recording.** Nothing has fired *yet*, so the
+   * glyphs are momentarily true — and then the user reproduces the bug, watches the app do the
+   * thing, and the panel still says the chain never fired. Reported from a live run: *"the
+   * repeater shows everything with an X. If you click refresh, it shows the two items with green
+   * ticks correctly."* A debugger that has to be told to look is one whose ✕ cannot be believed,
+   * and `the ✓/✕ boundary is the bug` is the entire claim of this panel.
+   *
+   * Still a **pull**, deliberately — the runtime is not made to push, which is the constraint
+   * that keeps this out of the failure mode the shelved Data Lineage panel died of. It is a
+   * timer, it only runs while a recording is in effect *and* a walk is on screen, and each tick
+   * asks for events after the last `seq` it holds.
+   */
+  useEffect(() => {
+    if (!recording || !target) return;
+
+    let inFlight = false;
+    const timer = setInterval(() => {
+      // A tick can outlive its interval: every pull has a 2s deadline, and a preview that has
+      // gone away takes all of it. Overlapping loads would queue requests faster than they
+      // resolve and each one rebuilds the index.
+      if (inFlight) return;
+      inFlight = true;
+      void load(target, { quiet: true }).finally(() => {
+        inFlight = false;
+      });
+    }, LIVE_POLL_MS);
+
+    return () => clearInterval(timer);
+  }, [recording, target, load]);
 
   // The entry point. Both right-click surfaces go through `requestProvenanceWalk`; nothing else
   // drives the panel, so there is no selection listener to race with.
@@ -137,7 +195,7 @@ export function ProvenancePanel() {
     const group = {};
     const start = (ref: EdgeRef) => {
       setFocusedRoot(undefined);
-      setSelected(undefined);
+      setSelectedKey(undefined);
       setTarget(ref);
       void load(ref);
     };
@@ -173,7 +231,7 @@ export function ProvenancePanel() {
       session.stop();
     } else {
       session.start();
-      setSelected(undefined);
+      setSelectedKey(undefined);
     }
   }, [session]);
 
@@ -186,11 +244,20 @@ export function ProvenancePanel() {
   }, [session, target, load, bump]);
 
   /**
-   * Click-to-reveal.
+   * Reveal — "just go here, look at this".
    *
-   * "Just go here, look at this" is a click at the end, not a hunt — following glowing
-   * connectors across hundreds of nodes in separate components is hopeless, so the walk
-   * *names* the failing node and this jumps to it.
+   * Following glowing connectors across hundreds of nodes in separate components is hopeless,
+   * so the walk *names* the failing node and this jumps to it.
+   *
+   * ⚠️ **This is not what a click on a row does, and used to be.** Revealing selects the node,
+   * and selecting a node switches the sidebar to the property editor — so every click on a row
+   * replaced the panel with the property panel before the row's detail could be read. Layer 3,
+   * the whole of OBS-003, lives in that detail: the difference between a walk that says *"it
+   * stopped here"* and one that says *"it stopped here, **and this is why**"*. It was
+   * unreachable by the only gesture anyone tries.
+   *
+   * Both actions are wanted — Richard asked for the jump explicitly — so they are two gestures:
+   * click expands, the arrow jumps.
    */
   const reveal = useCallback((row: WalkRow) => {
     const node = ProjectModel.instance?.findNodeWithId(row.ref.node);
@@ -200,13 +267,12 @@ export function ProvenancePanel() {
     NodeGraphContextTmp.switchToComponent(component, { node, pushHistory: true });
   }, []);
 
-  const handleRowClick = useCallback(
-    (row: WalkRow) => {
-      setSelected(row);
-      reveal(row);
-    },
-    [reveal]
-  );
+  // Toggling rather than setting: the row is a disclosure, and a disclosure that cannot be
+  // closed leaves the detail of whatever was last clicked wedged into the middle of the list.
+  const handleRowClick = useCallback((row: WalkRow) => {
+    const key = valueKey(row.ref, row.direction);
+    setSelectedKey((current) => (current === key ? undefined : key));
+  }, []);
 
   return (
     <BasePanel title="Provenance" isFill hasContentScroll={false}>
@@ -251,11 +317,11 @@ export function ProvenancePanel() {
                 row={walk.root}
                 index={index}
                 boundary={new Set(walk.boundary.map((b) => b.id))}
-                selectedId={selected?.id}
+                selectedKey={selectedKey}
                 onClick={handleRowClick}
+                onReveal={reveal}
               />
             </div>
-            {selected && <RowDetail row={selected} index={index} />}
           </>
         )}
       </div>
@@ -303,21 +369,44 @@ function WalkSummary({ walk, index }: { walk: WalkResult; index: ReturnType<type
   );
 }
 
+/**
+ * How far a row of a given depth is inset, in pixels.
+ *
+ * ⚠️ **Capped, because the walk's depth is unbounded and the panel's width is not.** The indent
+ * used to be `depth × 14` with no ceiling, and the walk's own depth limit is 24 — so a long
+ * chain marched 336px to the right inside a ~280px panel and pushed the timestamps of the
+ * deepest rows, the ones nearest the cause, off the edge where they could not be scrolled to.
+ * Observed on a six-hop demo, which is not a long chain.
+ *
+ * The information lost is small and the causal mode loses none at all: a cause chain is linear
+ * by construction, so every row past the cap sits under exactly one parent and the nesting says
+ * nothing the row order does not.
+ */
+const INDENT_STEP = 10;
+const INDENT_MAX_DEPTH = 6;
+
+function indentFor(depth: number): number {
+  return Math.min(depth, INDENT_MAX_DEPTH) * INDENT_STEP;
+}
+
 function RowTree({
   row,
   index,
   boundary,
-  selectedId,
-  onClick
+  selectedKey,
+  onClick,
+  onReveal
 }: {
   row: WalkRow;
   index: ReturnType<typeof buildIndex>;
   boundary: Set<string>;
-  selectedId?: string;
+  selectedKey?: string;
   onClick(row: WalkRow): void;
+  onReveal(row: WalkRow): void;
 }) {
   const info = describeNode(index, row.ref.node);
   const isBoundary = boundary.has(row.id);
+  const isSelected = selectedKey === valueKey(row.ref, row.direction);
 
   const glyph = row.status === 'fired' ? '✓' : row.status === 'never-fired' ? '✕' : '·';
   const glyphClass =
@@ -326,21 +415,58 @@ function RowTree({
   return (
     <>
       <div
-        className={classNames(css.Row, isBoundary && css.RowBoundary, selectedId === row.id && css.RowSelected)}
-        style={{ paddingLeft: 10 + row.depth * 14 }}
+        className={classNames(css.Row, isBoundary && css.RowBoundary, isSelected && css.RowSelected)}
+        style={{ paddingLeft: 10 + indentFor(row.depth) }}
         onClick={() => onClick(row)}
         role="button"
         tabIndex={0}
+        title={isSelected ? 'Hide details' : 'Show details'}
       >
         <span className={classNames(css.Status, glyphClass)}>{glyph}</span>
-        <span className={css.Label}>{labelFor(index, row.ref)}</span>
+        {/* Both of these ellipsise — the row holds a whole hop in one line and the panel is
+            narrow — so each carries its own text as a tooltip. The full value is in the detail
+            below; the label's is not anywhere else. */}
+        <span className={css.Label} title={labelFor(index, row.ref)}>
+          {labelFor(index, row.ref)}
+        </span>
         {info.component && <span className={css.Component}>{info.component}</span>}
-        <span className={css.Value}>{row.event?.value ?? row.currentValue ?? ''}</span>
+        <span className={css.Value} title={row.event?.value ?? row.currentValue ?? ''}>
+          {row.event?.value ?? row.currentValue ?? ''}
+        </span>
+        {/* ⚠️ The list used to give no hint that a row carried a diagnosis — layer 3 only
+            appeared once a row was clicked, so the one row with an answer on it looked exactly
+            like the five without. Named as an open question when the demo was written; this is
+            the answer. */}
+        {row.warnings.length > 0 && (
+          <span className={css.Warned} title={row.warnings.join('\n')}>
+            ⚠
+          </span>
+        )}
         <span className={css.Meta}>{metaFor(row)}</span>
+        <span
+          className={css.Reveal}
+          role="button"
+          tabIndex={0}
+          title="Show this node on the canvas"
+          onClick={(e) => {
+            // Without this the row's own handler also runs and the detail toggles on the way
+            // out — the panel is about to be replaced by the property editor, so the user would
+            // come back to a row expanded (or collapsed) by a click they aimed elsewhere.
+            e.stopPropagation();
+            onReveal(row);
+          }}
+        >
+          ↗
+        </span>
       </div>
-      {row.truncated === 'cycle' && <div className={css.Note} style={{ paddingLeft: 24 + row.depth * 14 }}>↺ loops back</div>}
+      {isSelected && <RowDetail row={row} index={index} depth={row.depth} />}
+      {row.truncated === 'cycle' && (
+        <div className={css.Note} style={{ paddingLeft: 24 + indentFor(row.depth) }}>
+          ↺ loops back
+        </div>
+      )}
       {row.truncated === 'depth' && (
-        <div className={css.Note} style={{ paddingLeft: 24 + row.depth * 14 }}>
+        <div className={css.Note} style={{ paddingLeft: 24 + indentFor(row.depth) }}>
           … more upstream not shown
         </div>
       )}
@@ -350,8 +476,9 @@ function RowTree({
           row={child}
           index={index}
           boundary={boundary}
-          selectedId={selectedId}
+          selectedKey={selectedKey}
           onClick={onClick}
+          onReveal={onReveal}
         />
       ))}
     </>
@@ -382,10 +509,18 @@ function pad(n: number): string {
   return n < 10 ? '0' + n : String(n);
 }
 
-function RowDetail({ row, index }: { row: WalkRow; index: ReturnType<typeof buildIndex> }) {
+/**
+ * The expanded row.
+ *
+ * Rendered **under the row it belongs to**, not in a fixed pane at the foot of the panel. The
+ * fixed pane was the shape that survived while a click also jumped to the node: with the detail
+ * far from the row, and the row selection invisible by the time you looked, it read as a
+ * separate readout rather than as this row's answer.
+ */
+function RowDetail({ row, index, depth }: { row: WalkRow; index: ReturnType<typeof buildIndex>; depth: number }) {
   const info = describeNode(index, row.ref.node);
   return (
-    <div className={css.Detail}>
+    <div className={css.Detail} style={{ marginLeft: 10 + indentFor(depth) }}>
       <Detail label="Node" value={info.name || info.type} />
       <Detail label="Type" value={info.type} />
       <Detail label="Component" value={info.component} />
@@ -397,7 +532,9 @@ function RowDetail({ row, index }: { row: WalkRow; index: ReturnType<typeof buil
       {row.event && <Detail label="Last value" value={row.event.value} />}
       {row.fireCount > 0 && <Detail label="Fired" value={`${row.fireCount}×`} />}
       {row.warnings.map((warning, i) => (
-        <Detail key={i} label="⚠" value={warning} />
+        <div key={i} className={css.DetailWarning}>
+          ⚠ {warning}
+        </div>
       ))}
     </div>
   );

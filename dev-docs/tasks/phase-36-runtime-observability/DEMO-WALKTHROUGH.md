@@ -38,10 +38,15 @@ cannot see — which is the whole reason a runtime diagnostic earns its place.
 
 ## 1. Open it
 
-Launcher → **NodeGX Debug Demo**. It opens on `/App`.
+Launcher → **NodeGX Debug Demo**. It opens on `/App`, and the preview starts with it.
 
-Two nodes have a **danger ring** immediately — no preview, no recording, nothing running. Open the
-**Problems** panel and you should see:
+Two nodes take a **danger ring** as soon as the preview has run once — no recording, nothing
+clicked. Open the **Problems** panel and you should see:
+
+⚠️ *An earlier draft of this file said "no preview, nothing running", and that was wrong.* A
+diagnostic is a predicate a **node** evaluates, so a node has to exist to evaluate it, and nodes
+exist in the running preview. What is true — and is the point — is that nothing has to have
+*fired*: no recording, no interaction, no reproduction.
 
 > **Repeater** — Items expects an array, received a number (0). Nothing will render — a Repeater
 > indexes its input by position, and this value has no length.
@@ -72,13 +77,21 @@ current values on a cold editor — and it is why the panel is not gated behind 
 *(`cart.value` appears twice because a Variable's input and its output are both called `value`.
 Two ports, two rows.)*
 
-**Click the top row.** The detail below it carries the diagnosis:
+The top row carries a small **⚠**. That is the only row here that has a diagnosis, and the marker
+is how you can tell without clicking six rows to find out.
+
+**Click it.** It expands in place, under the row:
 
 > Node **Repeater** · Type For Each · Port **items (input)** · Current **0**
 > ⚠ Items expects an array, received a number (0). Nothing will render…
 
 That is layer 3 — and it is the difference between a walk that says *"it stopped here"* and one
 that says *"it stopped here, **and this is why**"*.
+
+**A click expands; the ↗ at the end of the row jumps to the node.** Two gestures, because they
+are two different things and the second one replaces the panel with the property editor. (In the
+first build a click did both, so the detail was never readable — the panel was gone before you
+could look at it. Found by Richard on the first drive of this demo, 2026-08-02.)
 
 ## 3. Now do it with the app running
 
@@ -103,17 +116,33 @@ incremented, the value reached `Repeater.items` — and the list is still empty.
 eliminated the entire chain as a suspect and told you the bug is *at* the Repeater. Layer 3, one
 click away on that row, is the only thing that says why.
 
-⚠️ **I did not manage to produce a `✕` row in this project**, and would rather say so than send you
-looking for one. Walking the untouched States chain while recording gives a *structural* walk with
-current values rather than a `✕ never fired` — the target port has no trace events at all, so the
-walk falls back to declared wires. OBS-004's live run did produce `✕ … never fired`, on a port with
-**no incoming wire**. Whether "wired but silent while recording" should read `✕` is worth deciding
-when you look at this; it is the case an author hits most.
+✅ **The `✕` row does reproduce here** — an earlier draft of this file said it did not, and that
+was a mistake about *ordering*, not about the feature. Press **Record** and walk **before**
+clicking anything: all six rows come up `✕ never fired`, because with a recording in effect a
+silent edge is known to be silent rather than merely unobserved. Then click the button and the
+same walk collapses to the two-row causal chain above. The `✓`/`✕` boundary is visible in one
+session, both ways round.
+
+⚠️ **The panel now keeps itself current while recording** (a 1.5s pull, only while Record is on
+and a walk is on screen). Before that it did not, which meant pressing Record put six `✕ never
+fired` rows on screen and *left them there* through the interaction you were recording — the
+panel said "never fired" about a chain you had just watched run, until you pressed Refresh. A `✕`
+you have to remember to re-check is a `✕` you cannot believe.
 
 ## 4. Fix one and watch it clear
 
-Set the States node's **State** input to `clicked` (lower case). The ring and the Problems entry
-disappear.
+Right-click the **States** node first. It offers *"Why is "currentState" not working?"* — and it
+only does so because the node is currently complaining.
+
+⚠️ **A wire is not the only way a port gets a value, and the first build assumed it was.** The
+menu was built from a node's *connections*, so `States` — broken by a parameter, with nothing
+wired into it at all — offered nothing whatsoever. The walk was unreachable from the node wearing
+the ring. It now also offers the inputs the author has typed into, on a node that is reporting
+something. The walk is one row long, and that row carries the diagnosis, which is the whole of
+what is wanted here.
+
+Then set the States node's **State** input to `clicked` (lower case). The ring and the Problems
+entry disappear.
 
 ⚠️ Worth knowing what that is proving. A failure raised on the runtime error bus has **no path back
 to the editor** — `createEditorWarningSubscriber` only ever sends. Before this phase the node would
@@ -151,13 +180,20 @@ Honest list, because the point of you seeing it is to find what I could not.
 - **The Repeater's message names a consequence** ("Nothing will render — a Repeater indexes its
   input by position"). Every diagnostic in the batch tries to. Is that useful or is it noise?
 - **Two rows for a Variable** (`cart.value` twice) is correct and looks like a duplicate.
-- **Layer 3 only shows on the selected row.** The list itself gives no hint that a row carries a
-  diagnosis, so you have to click to find out.
-- **The `✕ never fired` case did not reproduce here** (see step 3). That is the annotation the
-  spec leans on hardest — *"the ✓/✕ boundary **is** the bug"* — and this demo does not show it.
 - **The panel's status line describes the walk, not the session.** It can read "No recording" while
   the Record button reads "Stop", because the sentence is about how the *rendered walk* was built.
   Momentarily confusing.
+- **A broken node's menu can be long.** Right-clicking `States` offers one question per input the
+  author has typed a value into — five of them — because nothing tells the editor *which* input
+  the diagnosis is about. Every one of them reaches the same diagnosis; only the `Current` value
+  on the row differs. Whether the diagnostic channel should carry a port name is the open
+  question underneath that.
+- **A deep row's value is ellipsised to almost nothing** when the label is long (hover it, or
+  expand the row). The label is kept whole in preference to the value, on the grounds that the
+  value is one click away and the port name is not.
+
+Two items that were on this list have been closed by the first live pass: the list now marks rows
+that carry a diagnosis with a **⚠**, and the `✕ never fired` case reproduces (see step 3).
 
 ## Regenerating the project
 
