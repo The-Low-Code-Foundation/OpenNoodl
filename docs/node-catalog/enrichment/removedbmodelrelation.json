@@ -1,12 +1,13 @@
 {
   "typeName": "RemoveDbModelRelation",
   "summary": "Remove Record Relation: severs a link between a target record and a named relation field of an owner record.",
-  "description": "The inverse of Add Record Relation: when `store` fires, the record in `targetId` is removed from the configured relation field of the record in `modelId`. `relationRemoved` confirms the server accepted it; `failure`/`error` report problems. Removing a relation never deletes either record — it only unlinks them.",
+  "description": "The inverse of Add Record Relation: when `store` fires, the record in `targetId` is removed from the configured relation field of the record in `modelId`. `done` confirms the server accepted it — including when the relation was not there to begin with, which this node cannot tell apart from a real unlink — and `completed` follows it; `failure`/`error` report problems. Removing a relation never deletes either record — it only unlinks them.",
   "whenToUse": "Undoing relation links: leaving a project, unfavouriting, untagging. To delete the record itself use Delete Record.",
   "ports": {
     "modelId": "Id of the owner record whose relation field loses a link.",
     "targetId": "Id of the record being unlinked.",
-    "relationRemoved": "Signal; the unlink was confirmed by the server."
+    "done": "Signal; the unlink was confirmed by the server.",
+    "completed": "Signal; fires after every Do whatever the outcome — wire it to carry on regardless."
   },
   "runtimeBehavior": "Class and relation-name configuration is schema-driven exactly as on Add Record Relation (declared-port-groups + runtime-discovered); ports depend on the project's database schema.",
   "examples": ["cloud-record-relations"],

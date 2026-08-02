@@ -21,6 +21,7 @@ jest.mock('../../noodl-runtime', () => ({
 }));
 
 import ModelImport = require('../../src/model');
+import NodeCtor = require('../../src/node');
 import NewRecordModule = require('../../src/nodes/std-library/data/newdbmodelpropertiesnode');
 import AddRelationModule = require('../../src/nodes/std-library/data/dbmodelnode-addrelation');
 import RemoveRelationModule = require('../../src/nodes/std-library/data/dbmodelnode-removerelation');
@@ -80,7 +81,16 @@ function makeInstance(module: any, internal: Record<string, unknown>): Probe {
     checkWarningsBeforeCloudOp: () => true,
     clearWarnings() {},
     hasInput: () => false,
-    hasOutput: () => false,
+    /**
+     * ERG-001: the definition's own declared outputs, where this used to answer `false` flatly.
+     *
+     * `reportOutcome` raises `outcome/missing-port` for anything the node cannot emit, so a
+     * blanket `false` would turn every outcome in this file into a spurious error, and a blanket
+     * `true` would hide a genuinely missing port. The mixins have finished assembling
+     * `module.node.outputs` by import time, so this is the real port set; the dynamic `prop-…`
+     * ports are still absent from it, which is what the original `false` stood in for.
+     */
+    hasOutput: (name: string) => Object.prototype.hasOwnProperty.call(module.node?.outputs || {}, name),
     registerInput: () => {},
     isInputConnected: () => false,
     // NDA-017 §2. This stub stands in for `Node.prototype`, so it has to carry anything the
@@ -90,6 +100,12 @@ function makeInstance(module: any, internal: Record<string, unknown>): Probe {
     // *reachable* empty-Id path, which only runs when the setter is live.
     shouldRunOnValueChange: () => true
   };
+
+  // ERG-001. The *real* outcome members rather than doubles: they depend only on `hasOutput`,
+  // `sendSignalOnOutput` and `raiseRuntimeError`, all of which this harness provides, and
+  // standing them in would mean the Record family's verbs ran their outcome path against a fake.
+  instance.beginOutcome = NodeCtor.prototype.beginOutcome.bind(instance as never);
+  instance.reportOutcome = NodeCtor.prototype.reportOutcome.bind(instance as never);
 
   const methods = (module.node?.methods || {}) as Record<string, (...a: unknown[]) => unknown>;
   for (const key of Object.keys(methods)) instance[key] = methods[key].bind(instance);
@@ -217,7 +233,9 @@ describe('D3 — Add Record Relation, target record never loaded', () => {
     p.scheduleAddRelation();
 
     expect(p.requests).toHaveLength(0);
-    expect(p.signals).toEqual(['failure']);
+    // ERG-001 §4: `Failure` then the universal `Completed`, which is the whole point of the
+    // second port — a chain wired to carry on regardless still gets its pulse from a refusal.
+    expect(p.signals).toEqual(['failure', 'completed']);
     expect(p.errors[0]).toMatch(/has not been loaded, so its class is unknown/);
   });
 
@@ -253,7 +271,9 @@ describe('D4 — Remove Record Relation, the same gap', () => {
     p.scheduleRemoveRelation();
 
     expect(p.requests).toHaveLength(0);
-    expect(p.signals).toEqual(['failure']);
+    // ERG-001 §4: `Failure` then the universal `Completed`, which is the whole point of the
+    // second port — a chain wired to carry on regardless still gets its pulse from a refusal.
+    expect(p.signals).toEqual(['failure', 'completed']);
     expect(p.errors[0]).toMatch(/has not been loaded, so its class is unknown/);
   });
 
@@ -375,7 +395,7 @@ describe('D6 — a Record CRUD verb with an empty Id', () => {
     // The failure path was already here — every verb answers a missing model with
     // `setError('Missing Record Id')`, which fires `Failure`, fills `Error` and raises on the
     // bus. The fix routes the empty spellings into it instead of past it.
-    expect(p.signals).toEqual(['failure']);
+    expect(p.signals).toEqual(['failure', 'completed']);
     expect(p.errors).toEqual(['Missing Record Id']);
 
     // And nothing was written into the process-wide record named by that spelling.
@@ -401,7 +421,9 @@ describe('D6 — a Record CRUD verb with an empty Id', () => {
     p.scheduleStore();
 
     expect(p.errors).toEqual([]);
-    expect(p.signals).toEqual(['stored']);
+    // ERG-001 §4: `stored` was renamed `done`. Asserted as an exact array rather than as
+    // `not.toContain('stored')`, which would pass vacuously the moment the port stopped existing.
+    expect(p.signals).toEqual(['done', 'completed']);
     expect(Model.get('owner-d6').get('name')).toBe('Ada');
   });
 });

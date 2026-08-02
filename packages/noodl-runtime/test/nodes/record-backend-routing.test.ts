@@ -211,7 +211,9 @@ describe('Create New Record against a Directus backend', () => {
       payload: { a: 1 },
       published_at: '2026-07-31T00:00:00.000Z'
     });
-    expect(instance.signals).toEqual(['created']);
+    // ERG-001 §4: `created` was renamed `done`, and `Completed` is universal. Asserted as the
+    // exact array — `not.toContain('created')` would pass vacuously once the port is gone.
+    expect(instance.signals).toEqual(['done', 'completed']);
   });
 
   it('⚠️ goes to the Parse endpoint instead when nothing is selected', async () => {
@@ -244,7 +246,7 @@ describe('Create New Record against a Directus backend', () => {
 
     expect(captured).toEqual([]);
     expect(instance.errors[0]).toContain('deleted-backend');
-    expect(instance.signals).toEqual(['failure']);
+    expect(instance.signals).toEqual(['failure', 'completed']);
   });
 });
 
@@ -273,7 +275,7 @@ describe('Set Record Properties against a Directus backend', () => {
     expect(captured[0].method).toBe('PATCH');
     expect(captured[0].url).toBe('http://localhost:8055/items/articles/7');
     expect(captured[0].body).toEqual({ title: 'Grace' });
-    expect(instance.signals).toEqual(['stored']);
+    expect(instance.signals).toEqual(['done', 'completed']);
   });
 });
 
@@ -295,7 +297,7 @@ describe('Delete Record against a Directus backend', () => {
     expect(captured[0].method).toBe('DELETE');
     expect(captured[0].url).toBe('http://localhost:8055/items/articles/7');
     expect(notified).toEqual(['delete']);
-    expect(instance.signals).toEqual(['deleted']);
+    expect(instance.signals).toEqual(['done', 'completed']);
   });
 });
 

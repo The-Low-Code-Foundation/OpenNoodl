@@ -26,6 +26,7 @@ import type {
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule,
+  OutcomeToken,
   RuntimeDiscoveredPort
 } from '@noodl/types';
 
@@ -89,19 +90,39 @@ export interface DbCrudBaseInstance extends NodeInstance {
   };
   /** Coalesces repeated triggers of one operation kind into a single deferred run. */
   scheduleOnce(type: string, cb: () => void): void;
-  /** `false` — and an error already reported — when the node has no class name yet. */
-  checkWarningsBeforeCloudOp(): boolean;
-  /** Sets the `error` output, signals `failure`, and raises an editor warning. */
-  setError(err: string): void;
+  /**
+   * ERG-001 §4 — the invocations of one operation kind that have not reported yet.
+   *
+   * The array is per operation kind (`'Insert'`, `'Save'`, …) because a node may have more
+   * than one, and lazily created because several suites never call `initialize`.
+   */
+  pendingOutcomes(kind: string): OutcomeToken[];
+  /** The batch, taken and cleared — call it before the request goes out. */
+  takeOutcomes(kind: string): OutcomeToken[];
+  /**
+   * `false` — and an error already reported — when the node has no class name yet.
+   *
+   * ERG-001 §4: `tokens` is the caller's invocation. This runs before the deferral, so
+   * without it the refusal would settle a token of its own and leave the real one open.
+   */
+  checkWarningsBeforeCloudOp(tokens?: OutcomeToken[]): boolean;
+  /**
+   * Reports the family's failure: sets the `error` output, then settles `tokens` as `failure`
+   * through `reportOutcome`, which raises on the NDA-004 bus and emits `Completed`.
+   *
+   * Omitting `tokens` mints one, so a caller with no invocation open (NDA-004's rows call this
+   * funnel directly) still produces a complete failure rather than a bare reason.
+   */
+  setError(err: string, tokens?: OutcomeToken[]): void;
   clearWarnings(): void;
   /**
    * The store bound to the backend this node's `Backend` input names (BCN-004 step 5).
    *
    * `undefined` when the graph names a backend the project does not have — the error has
-   * already been reported when that happens, so a caller only has to stop.
-   *
+   * already been reported when that happens, so a caller only has to stop. Hand over the
+   * caller's `tokens` so that refusal settles the invocation rather than opening a new one.
    */
-  cloudStore(): DbCloudStoreLike | undefined;
+  cloudStore(tokens?: OutcomeToken[]): DbCloudStoreLike | undefined;
   /**
    * The same, against an explicitly given scope — including `undefined`.
    *
@@ -109,7 +130,7 @@ export interface DbCrudBaseInstance extends NodeInstance {
    * means it hands over `undefined` deliberately. A default parameter could not tell that
    * apart from "not passed" and would have fixed the defect as a side effect.
    */
-  cloudStoreForScope(modelScope: ModelScopeLike | undefined): DbCloudStoreLike | undefined;
+  cloudStoreForScope(modelScope: ModelScopeLike | undefined, tokens?: OutcomeToken[]): DbCloudStoreLike | undefined;
 }
 
 /**

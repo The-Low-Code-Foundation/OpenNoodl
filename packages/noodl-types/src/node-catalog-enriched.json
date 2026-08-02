@@ -228,6 +228,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the relation has been written and the record has been refreshed from the response"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -259,17 +281,6 @@
           },
           "isSignal": false,
           "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
-        },
-        {
-          "name": "relationAdded",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the relation has been written and the record has been refreshed from the response"
         }
       ],
       "dynamicPorts": {
@@ -321,13 +332,14 @@
       "enrichment": {
         "typeName": "AddDbModelRelation",
         "summary": "Add Record Relation: links a target record onto a named relation field of an owner record in the cloud database.",
-        "description": "Add Record Relation writes a relation — a typed link between database records — rather than a property value: when `store` fires, the record identified by `targetId` is added to the configured relation field of the record identified by `modelId`. `relationAdded` confirms; `failure`/`error` report rejection (missing ids, access control). The reverse operation is Remove Record Relation with identical wiring.",
+        "description": "Add Record Relation writes a relation — a typed link between database records — rather than a property value: when `store` fires, the record identified by `targetId` is added to the configured relation field of the record identified by `modelId`. `done` confirms and `completed` follows it; `failure`/`error` report rejection (missing ids, access control, or a target record whose class is unknown because nothing has loaded it). The reverse operation is Remove Record Relation with identical wiring.",
         "whenToUse": "Many-to-many and one-to-many links the schema models as relations: project members, favourites, tags. For plain foreign-key style references stored as a string property, Update Record on an id property is simpler.",
         "ports": {
           "modelId": "Id of the owner record (the one whose relation field gains a link).",
           "targetId": "Id of the record being linked.",
           "store": "Signal; performs the write against the cloud database.",
-          "relationAdded": "Signal; the server confirmed the link."
+          "done": "Signal; the server confirmed the link.",
+          "completed": "Signal; fires after every Do whatever the outcome — wire it to carry on regardless."
         },
         "runtimeBehavior": "The class and relation-name choices come from the project's database schema (declared-port-groups + runtime-discovered): the editor generates the pickers and any per-class ports from the schema, so the port set depends on the configured backend, not the node type.",
         "examples": [
@@ -7482,8 +7494,19 @@
       ],
       "outputs": [
         {
-          "name": "deleted",
-          "displayName": "Success",
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
           "group": "Events",
           "plug": "output",
           "type": {
@@ -7568,12 +7591,13 @@
       "enrichment": {
         "typeName": "DeleteDbModelProperties",
         "summary": "Delete Record: permanently removes one record from the cloud database by id when its store signal fires.",
-        "description": "Delete Record removes the record identified by `modelId` (or, per `idSource`, the enclosing repeater item) from its class when `store` fires. `deleted` confirms; `failure`/`error` carry access-control or missing-record problems. Query Records nodes observing the class see the record leave their results automatically.",
+        "description": "Delete Record removes the record identified by `modelId` (or, per `idSource`, the enclosing repeater item) from its class when `store` fires. `done` confirms and `completed` follows it; `failure`/`error` carry access-control or missing-record problems, with `completed` after those too. Query Records nodes observing the class see the record leave their results automatically.",
         "whenToUse": "Destructive removal of cloud records. If the product needs undo or soft delete, model an 'archived' flag with Update Record instead — deletion is final.",
         "ports": {
           "modelId": "Id of the record to delete.",
           "store": "Signal; performs the deletion.",
-          "deleted": "Signal; the server confirmed removal."
+          "done": "Signal; the server confirmed removal.",
+          "completed": "Signal; fires after every Do whatever the outcome — wire it to carry on regardless."
         },
         "runtimeBehavior": "Class choice and id sourcing are schema/editor-driven (declared-port-groups + runtime-discovered); the port set follows the configured class, and `idSource` can bind the id to the enclosing repeater item instead of the input.",
         "examples": [
@@ -17847,8 +17871,19 @@
       ],
       "outputs": [
         {
-          "name": "created",
-          "displayName": "Success",
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
           "group": "Events",
           "plug": "output",
           "type": {
@@ -17952,27 +17987,18 @@
             "group": "General",
             "valueType": "enum",
             "example": "collectionName"
-          },
-          {
-            "pattern": "prop-<property>",
-            "plug": "input",
-            "variables": {
-              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
-            },
-            "group": "Properties",
-            "valueType": "string",
-            "example": "prop-Sa1"
           }
         ]
       },
       "enrichment": {
         "typeName": "NewDbModelProperties",
         "summary": "Create Record: inserts a record into a cloud database class from its property inputs when Do is triggered.",
-        "description": "NewDbModelProperties (Create Record) creates one record in the cloud database class chosen with the `collectionName` (Class) parameter. Each property of the class becomes a value input; when the `store` (Do) signal is triggered, the current input values are sent to the server as a new record. On success the node binds to the new record, outputs its `id`, and fires `created` (Success); on failure it fires `failure` with a message on `error`. Optionally, `sourceObjectId` seeds the new record with the data of an existing local object (explicit property inputs win), and Access Control Rules restrict who can read/write the record (defaulting to the creating user when a rule is left unconfigured).",
+        "description": "NewDbModelProperties (Create Record) creates one record in the cloud database class chosen with the `collectionName` (Class) parameter. Each property of the class becomes a value input; when the `store` (Do) signal is triggered, the current input values are sent to the server as a new record. On success the node binds to the new record, outputs its `id`, and fires `done` (Done) followed by `completed`; on failure it fires `failure` with a message on `error`, and `completed` after that too. Optionally, `sourceObjectId` seeds the new record with the data of an existing local object (explicit property inputs win), and Access Control Rules restrict who can read/write the record (defaulting to the creating user when a rule is left unconfigured).",
         "whenToUse": "The write half of every 'add item' flow — forms, quick-add buttons, duplicating a record via `sourceObjectId`. Live Query Records nodes pick the new record up automatically, so no manual re-fetch is needed. To modify an existing record use SetDbModelProperties instead; for a non-cloud (BYOB) backend use noodl.byob.CreateRecord.",
         "ports": {
           "store": "Signal (displayed as Do); performs the insert using the property input values current at that moment.",
-          "created": "Signal (displayed as Success); fires after the server confirms the insert. The `id` output is valid from here on.",
+          "done": "Signal (displayed as Done); fires after the server confirms the insert. The `id` output is valid from here on.",
+          "completed": "Signal; fires after every Do whatever the outcome — wire it to carry on regardless. It never replaces `failure`, which still fires and still carries its reason.",
           "id": "String value; the id of the created record — feed it to a Record node or navigation parameter.",
           "sourceObjectId": "Value input (connections only): id of a local object/record whose data seeds the new record before the property inputs are applied.",
           "accessControl": "Edit-only list of access rules; each rule expands into its own Target/Read/Write inputs (see runtimeBehavior). With no rules the record gets the class default (public) permissions."
@@ -17984,10 +18010,10 @@
         ],
         "patterns": [
           "Text Input `text` → `prop-<name>`, Button `onClick` → `store`: the minimal create form.",
-          "`created` → a navigation or Event Sender, with `id` as payload: jump straight to the new record's detail page."
+          "`done` → a navigation or Event Sender, with `id` as payload: jump straight to the new record's detail page."
         ],
         "antiPatterns": [
-          "Re-fetching a Query Records node after `created` — live queries already receive the new record; only re-fetch when the query is not live."
+          "Re-fetching a Query Records node after `done` — live queries already receive the new record; only re-fetch when the query is not live."
         ],
         "relatedNodes": [
           "SetDbModelProperties",
@@ -24839,6 +24865,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the backend has accepted the removal, which is also what happens when the relation was not there to begin with"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -24870,17 +24918,6 @@
           },
           "isSignal": false,
           "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
-        },
-        {
-          "name": "relationRemoved",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the backend has accepted the removal, which is also what happens when the relation was not there to begin with"
         }
       ],
       "dynamicPorts": {
@@ -24932,12 +24969,13 @@
       "enrichment": {
         "typeName": "RemoveDbModelRelation",
         "summary": "Remove Record Relation: severs a link between a target record and a named relation field of an owner record.",
-        "description": "The inverse of Add Record Relation: when `store` fires, the record in `targetId` is removed from the configured relation field of the record in `modelId`. `relationRemoved` confirms the server accepted it; `failure`/`error` report problems. Removing a relation never deletes either record — it only unlinks them.",
+        "description": "The inverse of Add Record Relation: when `store` fires, the record in `targetId` is removed from the configured relation field of the record in `modelId`. `done` confirms the server accepted it — including when the relation was not there to begin with, which this node cannot tell apart from a real unlink — and `completed` follows it; `failure`/`error` report problems. Removing a relation never deletes either record — it only unlinks them.",
         "whenToUse": "Undoing relation links: leaving a project, unfavouriting, untagging. To delete the record itself use Delete Record.",
         "ports": {
           "modelId": "Id of the owner record whose relation field loses a link.",
           "targetId": "Id of the record being unlinked.",
-          "relationRemoved": "Signal; the unlink was confirmed by the server."
+          "done": "Signal; the unlink was confirmed by the server.",
+          "completed": "Signal; fires after every Do whatever the outcome — wire it to carry on regardless."
         },
         "runtimeBehavior": "Class and relation-name configuration is schema-driven exactly as on Add Record Relation (declared-port-groups + runtime-discovered); ports depend on the project's database schema.",
         "examples": [
@@ -26134,6 +26172,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the record has been updated, waiting for the backend to answer unless Store to is Local only"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -26165,17 +26225,6 @@
           },
           "isSignal": false,
           "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
-        },
-        {
-          "name": "stored",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the record has been updated, waiting for the backend to answer unless Store to is Local only"
         }
       ],
       "dynamicPorts": {
@@ -26263,27 +26312,18 @@
             "group": "General",
             "valueType": "enum",
             "example": "collectionName"
-          },
-          {
-            "pattern": "prop-<property>",
-            "plug": "input",
-            "variables": {
-              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
-            },
-            "group": "Properties",
-            "valueType": "string",
-            "example": "prop-Sa1"
           }
         ]
       },
       "enrichment": {
         "typeName": "SetDbModelProperties",
         "summary": "Update Record: writes property values to an existing cloud database record when Do is triggered.",
-        "description": "SetDbModelProperties (Update Record) updates the record identified by `modelId` in the class chosen with the `collectionName` (Class) parameter. Each class property becomes a value input; triggering `store` (Do) applies the connected inputs to the local record and saves them to the server, firing `stored` (Success) on confirmation or `failure` with `error` on problems. `storeType` (Store to) can switch the node to 'Local only', which updates the in-memory record without any server call — useful for optimistic UI or scratch state. By default only the properties you actually supply are sent (`storeProperties` = 'Only specified'); 'All' sends the record's entire current data. Because the shared local record is updated, every bound Record node and live query in the app sees the change immediately.",
+        "description": "SetDbModelProperties (Update Record) updates the record identified by `modelId` in the class chosen with the `collectionName` (Class) parameter. Each class property becomes a value input; triggering `store` (Do) applies the connected inputs to the local record and saves them to the server, firing `done` (Done) on confirmation or `failure` with `error` on problems, and `completed` after either. `storeType` (Store to) can switch the node to 'Local only', which updates the in-memory record without any server call — useful for optimistic UI or scratch state. By default only the properties you actually supply are sent (`storeProperties` = 'Only specified'); 'All' sends the record's entire current data. Because the shared local record is updated, every bound Record node and live query in the app sees the change immediately.",
         "whenToUse": "The save half of every edit form, and the way to flip a single field ('mark done') from a list row. To create a record use NewDbModelProperties; to remove one use DeleteDbModelProperties; for BYOB backends use noodl.byob.UpdateRecord.",
         "ports": {
           "store": "Signal (displayed as Do); saves to cloud (default) or applies locally, depending on `storeType`.",
-          "stored": "Signal (displayed as Success); fires after the server confirms the save (or immediately after a local-only store).",
+          "done": "Signal (displayed as Done); fires after the server confirms the save, or immediately after a local-only store.",
+          "completed": "Signal; fires after every Do whatever the outcome — wire it to carry on regardless.",
           "modelId": "Value input: id of the record to update (a record object is also accepted). Shown while `idSource` is 'Specify explicitly'.",
           "idSource": "Edit-only choice: 'Specify explicitly' uses `modelId`; 'From repeater' targets the record driving the nearest enclosing For Each item.",
           "storeProperties": "Edit-only choice ('Only specified' / 'All'): whether to send just the supplied property inputs or the record's whole data. Shown while `storeType` is cloud.",
@@ -55490,7 +55530,7 @@
             },
             {
               "fromId": "create_attachment",
-              "fromProperty": "created",
+              "fromProperty": "done",
               "toId": "saved_gate",
               "toProperty": "eval"
             },
@@ -55507,7 +55547,7 @@
     {
       "id": "cloud-edit-record",
       "title": "Load, edit and save a single record",
-      "description": "The record-detail flow: a Record node (DbModel2) binds to one database object by `modelId` and exposes its properties as schema-generated outputs. The edit field is initialised from the record, and Save (SetDbModelProperties) writes the changed property back on click, targeting the same id. `stored` confirms the round trip. Property ports on both nodes come from the database schema — they are runtime-determined, wired here exactly as the editor would write them.",
+      "description": "The record-detail flow: a Record node (DbModel2) binds to one database object by `modelId` and exposes its properties as schema-generated outputs. The edit field is initialised from the record, and Save (SetDbModelProperties) writes the changed property back on click, targeting the same id. `done` confirms the round trip, and `completed` fires after it whatever the outcome. Property ports on both nodes come from the database schema — they are runtime-determined, wired here exactly as the editor would write them.",
       "demonstrates": [
         "DbModel2",
         "SetDbModelProperties"
@@ -55613,7 +55653,7 @@
             },
             {
               "fromId": "save_task",
-              "fromProperty": "stored",
+              "fromProperty": "done",
               "toId": "saved_gate",
               "toProperty": "eval"
             },
@@ -55755,7 +55795,7 @@
     {
       "id": "cloud-record-crud",
       "title": "Records on a REST backend: query, create, update, delete",
-      "description": "One Record family serves every backend. Query Records fetches on demand into `items` (re-trigger `storageFetch` to refresh — a query with realtime off does not re-query itself), Create/Update/Delete Record each act on a `store` signal and answer `created`/`stored`/`deleted`, and Update and Delete take the record's `modelId`. After any write the query's `storageFetch` is re-triggered to refresh the list. No node here names a backend, so all five resolve the project's selected one; set the `Backend` input to point a single node somewhere else.",
+      "description": "One Record family serves every backend. Query Records fetches on demand into `items` (re-trigger `storageFetch` to refresh — a query with realtime off does not re-query itself), Create/Update/Delete Record each act on a `store` signal and answer `done` (or `failure`) followed by `completed`, and Update and Delete take the record's `modelId`. After any write the query's `storageFetch` is re-triggered to refresh the list. No node here names a backend, so all five resolve the project's selected one; set the `Backend` input to point a single node somewhere else.",
       "demonstrates": [
         "DbCollection2",
         "NewDbModelProperties",
@@ -55878,19 +55918,19 @@
             },
             {
               "fromId": "create_note",
-              "fromProperty": "created",
+              "fromProperty": "done",
               "toId": "notes_query",
               "toProperty": "storageFetch"
             },
             {
               "fromId": "update_note",
-              "fromProperty": "stored",
+              "fromProperty": "done",
               "toId": "notes_query",
               "toProperty": "storageFetch"
             },
             {
               "fromId": "delete_note",
-              "fromProperty": "deleted",
+              "fromProperty": "done",
               "toId": "notes_query",
               "toProperty": "storageFetch"
             }
@@ -56045,7 +56085,7 @@
     {
       "id": "cloud-record-relations",
       "title": "Add and remove a relation between records; delete a record",
-      "description": "Relations link records without embedding them: Add Record Relation points `modelId` (the owner) at `targetId` (the related record) on a named relation field, Remove Record Relation severs the same pair, and Delete Record removes a record entirely. All three act on ids delivered by wires — here from the enclosing component's inputs — and fire a confirmation signal (`relationAdded`, `relationRemoved`, `deleted`) or `failure` with `error`.",
+      "description": "Relations link records without embedding them: Add Record Relation points `modelId` (the owner) at `targetId` (the related record) on a named relation field, Remove Record Relation severs the same pair, and Delete Record removes a record entirely. All three act on ids delivered by wires — here from the enclosing component's inputs — and fire `done` on success or `failure` with `error`, with `completed` after either.",
       "demonstrates": [
         "AddDbModelRelation",
         "RemoveDbModelRelation",

@@ -1,7 +1,7 @@
 {
   "id": "acceptance-b",
   "title": "Task list page backed by Query Records",
-  "description": "A cloud-data task list. Query Records (DbCollection2) fetches the 'Task' class and feeds its `items` array into a Repeater (For Each) whose template component renders one row per record, receiving the record's `title` through an identically named Component Inputs port. A Text Input and Button form the minimal create flow: the input's text drives Create Record's schema-generated `prop-title` input, and the button's `onClick` (plus the input's `onEnter`, for keyboard-friendly submits) triggers `store`. The live query picks the new record up automatically, so no re-fetch is wired; `created` clears the input field. The empty state is a Group gated by the query's `isEmpty` boolean into `mounted`, following the corpus pattern of removing conditional UI from layout rather than merely hiding it.",
+  "description": "A cloud-data task list. Query Records (DbCollection2) fetches the 'Task' class and feeds its `items` array into a Repeater (For Each) whose template component renders one row per record, receiving the record's `title` through an identically named Component Inputs port. A Text Input and Button form the minimal create flow: the input's text drives Create Record's schema-generated `prop-title` input, and the button's `onClick` (plus the input's `onEnter`, for keyboard-friendly submits) triggers `store`. The live query picks the new record up automatically, so no re-fetch is wired; `done` clears the input field. The empty state is a Group gated by the query's `isEmpty` boolean into `mounted`, following the corpus pattern of removing conditional UI from layout rather than merely hiding it.",
   "components": [
     {
       "name": "/Task List Page",
@@ -139,7 +139,7 @@
         },
         {
           "fromId": "create_task",
-          "fromProperty": "created",
+          "fromProperty": "done",
           "toId": "task_input",
           "toProperty": "clear"
         }

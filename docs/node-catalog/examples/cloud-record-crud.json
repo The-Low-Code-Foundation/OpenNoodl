@@ -1,7 +1,7 @@
 {
   "id": "cloud-record-crud",
   "title": "Records on a REST backend: query, create, update, delete",
-  "description": "One Record family serves every backend. Query Records fetches on demand into `items` (re-trigger `storageFetch` to refresh — a query with realtime off does not re-query itself), Create/Update/Delete Record each act on a `store` signal and answer `created`/`stored`/`deleted`, and Update and Delete take the record's `modelId`. After any write the query's `storageFetch` is re-triggered to refresh the list. No node here names a backend, so all five resolve the project's selected one; set the `Backend` input to point a single node somewhere else.",
+  "description": "One Record family serves every backend. Query Records fetches on demand into `items` (re-trigger `storageFetch` to refresh — a query with realtime off does not re-query itself), Create/Update/Delete Record each act on a `store` signal and answer `done` (or `failure`) followed by `completed`, and Update and Delete take the record's `modelId`. After any write the query's `storageFetch` is re-triggered to refresh the list. No node here names a backend, so all five resolve the project's selected one; set the `Backend` input to point a single node somewhere else.",
   "demonstrates": [
     "DbCollection2",
     "NewDbModelProperties",
@@ -124,19 +124,19 @@
         },
         {
           "fromId": "create_note",
-          "fromProperty": "created",
+          "fromProperty": "done",
           "toId": "notes_query",
           "toProperty": "storageFetch"
         },
         {
           "fromId": "update_note",
-          "fromProperty": "stored",
+          "fromProperty": "done",
           "toId": "notes_query",
           "toProperty": "storageFetch"
         },
         {
           "fromId": "delete_note",
-          "fromProperty": "deleted",
+          "fromProperty": "done",
           "toId": "notes_query",
           "toProperty": "storageFetch"
         }

@@ -5,6 +5,7 @@ import type { ModelModule } from '@noodl/types';
 import type { DbCrudBaseInstance, DbCrudNodeModule, DbModelIdInstance, RelationPropertyInstance } from './crud-mixins';
 
 import ModelImport = require('../../../model');
+import { reportOutcomes } from '../../../outcome';
 import DbModelCRUDBase = require('./dbmodelcrudbase');
 
 const Model = ModelImport as unknown as ModelModule;
@@ -35,14 +36,8 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
         }
       }
     },
-    outputs: {
-      relationAdded: {
-        type: 'signal',
-        displayName: 'Success',
-        group: 'Events',
-        description: 'Fires once the relation has been written and the record has been refreshed from the response'
-      }
-    },
+    // ERG-001 §4: declared once in `dbmodelcrudbase.addBaseInfo` for the whole family.
+    outputs: {},
     methods: {
       /**
        * The first thing missing, or `undefined` when the node is ready to act.
@@ -118,12 +113,19 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
         const _this = this;
         const internal = this._internal;
 
+        // ERG-001 §4. Unlike the three CRUD verbs there is no pre-flight check here — the
+        // whole verdict is `validateInputs`, inside the deferral — so the token goes straight
+        // into the batch.
+        this.pendingOutcomes('AddRelation').push(this.beginOutcome());
+
         this.scheduleOnce('StorageAddRelation', function () {
+          const tokens = _this.takeOutcomes('AddRelation');
+
           // One exit for every "cannot act" case, replacing two silent `return`s that between
           // them covered the same conditions `validateInputs` already knew about.
           const problem = _this.validateInputs();
           if (problem !== undefined) {
-            _this.setError(problem);
+            _this.setError(problem, tokens);
             return;
           }
 
@@ -138,7 +140,7 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
           // a relation the synced schema does not describe, because relation metadata
           // is admin-only on all three — the adapter refuses with a sentence naming
           // the field and the fix, and it lands on `setError` below.
-          const cloudstore = _this.cloudStore();
+          const cloudstore = _this.cloudStore(tokens);
           if (!cloudstore) return;
 
           cloudstore.addRelation({
@@ -159,10 +161,10 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
               }
 
               // Successfully added relation
-              _this.sendSignalOnOutput('relationAdded');
+              reportOutcomes(_this, tokens, 'done');
             },
             error: function (err: string) {
-              _this.setError(err || 'Failed to add relation.');
+              _this.setError(err || 'Failed to add relation.', tokens);
             }
           });
         });
@@ -172,7 +174,8 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
 };
 
 DbModelCRUDBase.addBaseInfo(AddDbModelRelationNodeDefinition, {
-  includeRelations: true
+  includeRelations: true,
+  done: 'Fires once the relation has been written and the record has been refreshed from the response'
 });
 DbModelCRUDBase.addModelId(AddDbModelRelationNodeDefinition);
 DbModelCRUDBase.addRelationProperty(AddDbModelRelationNodeDefinition);

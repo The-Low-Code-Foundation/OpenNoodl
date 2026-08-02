@@ -1,12 +1,13 @@
 {
   "typeName": "DeleteDbModelProperties",
   "summary": "Delete Record: permanently removes one record from the cloud database by id when its store signal fires.",
-  "description": "Delete Record removes the record identified by `modelId` (or, per `idSource`, the enclosing repeater item) from its class when `store` fires. `deleted` confirms; `failure`/`error` carry access-control or missing-record problems. Query Records nodes observing the class see the record leave their results automatically.",
+  "description": "Delete Record removes the record identified by `modelId` (or, per `idSource`, the enclosing repeater item) from its class when `store` fires. `done` confirms and `completed` follows it; `failure`/`error` carry access-control or missing-record problems, with `completed` after those too. Query Records nodes observing the class see the record leave their results automatically.",
   "whenToUse": "Destructive removal of cloud records. If the product needs undo or soft delete, model an 'archived' flag with Update Record instead — deletion is final.",
   "ports": {
     "modelId": "Id of the record to delete.",
     "store": "Signal; performs the deletion.",
-    "deleted": "Signal; the server confirmed removal."
+    "done": "Signal; the server confirmed removal.",
+    "completed": "Signal; fires after every Do whatever the outcome — wire it to carry on regardless."
   },
   "runtimeBehavior": "Class choice and id sourcing are schema/editor-driven (declared-port-groups + runtime-discovered); the port set follows the configured class, and `idSource` can bind the id to the enclosing repeater item instead of the input.",
   "examples": [

@@ -10,6 +10,7 @@ import type {
   DbModelIdInstance
 } from './crud-mixins';
 
+import { reportOutcomes } from '../../../outcome';
 import DbModelCRUDBase = require('./dbmodelcrudbase');
 
 /**
@@ -98,25 +99,27 @@ const SetDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
         }
       }
     },
-    outputs: {
-      stored: {
-        type: 'signal',
-        displayName: 'Success',
-        group: 'Events',
-        description:
-          'Fires once the record has been updated, waiting for the backend to answer unless Store to is Local only'
-      }
-    },
+    // ERG-001 §4: declared once in `dbmodelcrudbase.addBaseInfo` for the whole family; `stored`
+    // was one of §0.2 Result 2's four spellings of a single displayed "Done".
+    outputs: {},
     methods: {
       scheduleSave: function (this: SetDbModelPropertiesInstance) {
         const _this = this;
         const internal = this._internal;
 
-        if (!this.checkWarningsBeforeCloudOp()) return;
+        // ERG-001 §4. `Do` reaches one of two methods depending on `Store to`, and both are
+        // invocations of the same port — so both mint, and NDA-004 §2's finding (the two
+        // branches disagreeing about whether a missing Id is reportable) cannot recur as the
+        // two branches disagreeing about whether an outcome is.
+        const token = this.beginOutcome();
+        if (!this.checkWarningsBeforeCloudOp([token])) return;
+        this.pendingOutcomes('Save').push(token);
 
         this.scheduleOnce('StorageSave', function () {
+          const tokens = _this.takeOutcomes('Save');
+
           if (!internal.model) {
-            _this.setError('Missing Record Id');
+            _this.setError('Missing Record Id', tokens);
             return;
           }
 
@@ -126,7 +129,7 @@ const SetDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
           }
 
           // BCN-004 step 5: the store the `Backend` input names, not the singleton.
-          const cloudstore = _this.cloudStore();
+          const cloudstore = _this.cloudStore(tokens);
           if (!cloudstore) return;
 
           cloudstore.save({
@@ -139,42 +142,50 @@ const SetDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
                 model.set(key, response[key]);
               }
 
-              _this.sendSignalOnOutput('stored');
+              reportOutcomes(_this, tokens, 'done');
             },
             error: function (err: string) {
-              _this.setError(err || 'Failed to save.');
+              _this.setError(err || 'Failed to save.', tokens);
             }
           });
         });
       },
       scheduleStore: function (this: SetDbModelPropertiesInstance) {
+        // ⚠️ ERG-001 §4: minted **before** the guard, the shape `login.ts` established. The
+        // guard exists to coalesce the *work* — two presses in one pass do one write — and
+        // dropping the second press's outcome with it would be Rule 1 broken by an optimisation.
+        this.pendingOutcomes('Store').push(this.beginOutcome());
+
         if (this.hasScheduledStore) return;
         this.hasScheduledStore = true;
 
         const internal = this._internal;
         this.scheduleAfterInputsHaveUpdated(() => {
           this.hasScheduledStore = false;
+          const tokens = this.takeOutcomes('Store');
 
           // NDA-004 §2: the two branches of `Store Type` disagreed about this. `scheduleSave`
           // (cloud) has always answered a missing Id with `setError('Missing Record Id')`;
           // this one, the local branch of the *same node*, returned silently. Same node, same
           // mistake by the author, and whether they heard about it depended on an enum.
           if (!internal.model) {
-            this.setError('Missing Record Id');
+            this.setError('Missing Record Id', tokens);
             return;
           }
 
           for (const i in internal.inputValues) {
             (internal.model as ModelLike).set(i, internal.inputValues[i], { resolve: true });
           }
-          this.sendSignalOnOutput('stored');
+          reportOutcomes(this, tokens, 'done');
         });
       }
     }
   }
 };
 
-DbModelCRUDBase.addBaseInfo(SetDbModelPropertiedNodeDefinition);
+DbModelCRUDBase.addBaseInfo(SetDbModelPropertiedNodeDefinition, {
+  done: 'Fires once the record has been updated, waiting for the backend to answer unless Store to is Local only'
+});
 DbModelCRUDBase.addModelId(SetDbModelPropertiedNodeDefinition);
 DbModelCRUDBase.addInputProperties(SetDbModelPropertiedNodeDefinition);
 DbModelCRUDBase.addAccessControl(SetDbModelPropertiedNodeDefinition);

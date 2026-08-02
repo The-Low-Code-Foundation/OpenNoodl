@@ -4,6 +4,7 @@ import type { ModelScopeLike } from '@noodl/types';
 
 import type { DbCrudBaseInstance, DbCrudNodeModule, DbModelIdInstance } from './crud-mixins';
 
+import { reportOutcomes } from '../../../outcome';
 import DbModelCRUDBase = require('./dbmodelcrudbase');
 
 /** `this` inside Delete Record. Note it applies neither `addInputProperties` nor `addAccessControl`. */
@@ -27,25 +28,24 @@ const DeleteDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
         }
       }
     },
-    outputs: {
-      deleted: {
-        type: 'signal',
-        displayName: 'Success',
-        group: 'Events',
-        description:
-          'Fires once the backend has deleted the record and everything bound to it has been told that it is gone'
-      }
-    },
+    // ERG-001 §4: declared once in `dbmodelcrudbase.addBaseInfo` for the whole family.
+    outputs: {},
     methods: {
       storageDelete: function (this: DeleteDbModelPropertiesInstance) {
         const _this = this;
         const internal = this._internal;
 
-        if (!this.checkWarningsBeforeCloudOp()) return;
+        // ERG-001 §4 — see `newdbmodelpropertiesnode` for why the token is minted here and
+        // joins the batch only after the pre-flight check.
+        const token = this.beginOutcome();
+        if (!this.checkWarningsBeforeCloudOp([token])) return;
+        this.pendingOutcomes('Delete').push(token);
 
         this.scheduleOnce('StorageDelete', function () {
+          const tokens = _this.takeOutcomes('Delete');
+
           if (!internal.model) {
-            _this.setError('Missing Record Id');
+            _this.setError('Missing Record Id', tokens);
             return;
           }
 
@@ -60,7 +60,7 @@ const DeleteDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
           // cast keeps the behaviour verbatim rather than quietly fixing it here.
           // BCN-004 step 5: the store the `Backend` input names, not the singleton. The
           // scope override above the comment is what keeps the defect verbatim.
-          const cloudstore = _this.cloudStoreForScope(_this.nodeScope.ModelScope as ModelScopeLike);
+          const cloudstore = _this.cloudStoreForScope(_this.nodeScope.ModelScope as ModelScopeLike, tokens);
           if (!cloudstore) return;
 
           cloudstore.delete({
@@ -68,10 +68,10 @@ const DeleteDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
             objectId: internal.model.getId(), // Get the objectId part of the model id,
             success: function () {
               internal.model.notify('delete'); // Notify that this model has been deleted
-              _this.sendSignalOnOutput('deleted');
+              reportOutcomes(_this, tokens, 'done');
             },
             error: function (err: string) {
-              _this.setError(err || 'Failed to delete.');
+              _this.setError(err || 'Failed to delete.', tokens);
             }
           });
         });
@@ -81,7 +81,8 @@ const DeleteDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
 };
 
 DbModelCRUDBase.addBaseInfo(DeleteDbModelPropertiedNodeDefinition, {
-  includeInputProperties: false
+  includeInputProperties: false,
+  done: 'Fires once the backend has deleted the record and everything bound to it has been told that it is gone'
 });
 DbModelCRUDBase.addModelId(DeleteDbModelPropertiedNodeDefinition);
 

@@ -1,7 +1,7 @@
 {
   "id": "cloud-record-relations",
   "title": "Add and remove a relation between records; delete a record",
-  "description": "Relations link records without embedding them: Add Record Relation points `modelId` (the owner) at `targetId` (the related record) on a named relation field, Remove Record Relation severs the same pair, and Delete Record removes a record entirely. All three act on ids delivered by wires — here from the enclosing component's inputs — and fire a confirmation signal (`relationAdded`, `relationRemoved`, `deleted`) or `failure` with `error`.",
+  "description": "Relations link records without embedding them: Add Record Relation points `modelId` (the owner) at `targetId` (the related record) on a named relation field, Remove Record Relation severs the same pair, and Delete Record removes a record entirely. All three act on ids delivered by wires — here from the enclosing component's inputs — and fire `done` on success or `failure` with `error`, with `completed` after either.",
   "demonstrates": ["AddDbModelRelation", "RemoveDbModelRelation", "DeleteDbModelProperties"],
   "components": [
     {

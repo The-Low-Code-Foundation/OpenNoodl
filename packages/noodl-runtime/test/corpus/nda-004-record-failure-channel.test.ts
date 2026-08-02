@@ -115,9 +115,13 @@ describe('NDA-004 §2: a Record failure reaches the runtime channel', () => {
 
     // This half was never broken, and the change must not have touched it. `failure`/`error` are
     // the reason this node was not on the register's failure-mute list in the first place.
-    expect(graph.signalsFor('record')).toContain('failure');
     expect(graph.node('record').getOutput('error').value).toBe('No class name specified');
-    expect(graph.signalsFor('record')).not.toContain('stored');
+    // ⚠️ ERG-001 §4. This read `.not.toContain('stored')`, which passes **vacuously** the moment
+    // the port stops existing — and `stored` was renamed `done` by this task, so the negative
+    // form would have gone on being green while saying nothing. The exact array is the assertion
+    // that stays honest: `Failure` and only `Failure`, then the universal `Completed`.
+    expect(graph.signalsFor('record')).toEqual(['failure', 'completed']);
+    expect(graph.node('record').hasOutput('stored')).toBe(false);
   });
 
   test('the editor still sees the warning it always saw', async () => {

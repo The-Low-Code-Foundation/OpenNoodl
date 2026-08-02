@@ -7,6 +7,7 @@ import type {
   ModelModule,
   ModelScopeLike,
   NodeContextLike,
+  OutcomeToken,
   PrototypeExtensions,
   RuntimeDiscoveredPort
 } from '@noodl/types';
@@ -26,6 +27,7 @@ import Node = require('../../../node');
 import CloudStoreImport = require('../../../api/cloudstore');
 
 import { forgetForEachItem, resolveForEachItem } from '../../../foreachitem';
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 
 import {
   recordBackendPickerPorts,
@@ -70,7 +72,22 @@ const CloudStore = CloudStoreImport as {
  */
 const STORAGE_OP_ERROR_CODE = 'record/storage-op-failed';
 
-function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: boolean; includeRelations?: boolean }) {
+function _addBaseInfo(
+  def: DbCrudNodeModule,
+  opts?: {
+    includeInputProperties?: boolean;
+    includeRelations?: boolean;
+    /**
+     * ERG-001 §4 — what this node's `Done` means, in this node's own words.
+     *
+     * The *ports* are declared once here for all five nodes; only the sentence differs, and it
+     * arrives as an option rather than being written into each node's `outputs` because
+     * `addBaseInfo` runs **last** (it is called at the bottom of each file) and would clobber
+     * anything a node had declared for itself.
+     */
+    done?: string;
+  }
+) {
   const _includeInputProperties = opts === undefined || opts.includeInputProperties;
   const _includeRelations = opts !== undefined && opts.includeRelations;
 
@@ -84,13 +101,27 @@ function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: b
 
   // Outputs
   Object.assign(def.node.outputs, {
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description:
+    /**
+     * ── the outcome contract ────────────────────────────────────────────────────────────────
+     *
+     * ERG-001 §4, declared **once** for all five nodes this base assembles — Create / Update /
+     * Delete Record and the two relation nodes. That is the opposite of the Cloud Services
+     * shape, where each of the eleven owned its own funnel; here one funnel already served five,
+     * and §0.2 Result 2's finding is precisely what happens when five nodes each name the same
+     * outcome for themselves (`created`, `stored`, `deleted`, `relationAdded`,
+     * `relationRemoved`, all displaying as one word).
+     *
+     * ⚠️ **No `Unchanged` on any of the five.** Each absence is measured rather than argued —
+     * see `erg-001-record-crud-outcomes.test.ts`. The closest call is Remove Record Relation,
+     * whose own description says it succeeds when the relation was never there: the backend
+     * answers identically either way, so the node has nothing to tell the two apart with, and a
+     * port that can never fire is what §5's dead-end check exists to complain about.
+     */
+    ...outcomeOutputs({
+      done: opts && opts.done,
+      failure:
         'Fires when the backend refused the operation or the node had nothing valid to send, with the reason on Error'
-    },
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -132,12 +163,50 @@ function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: b
         cb();
       });
     },
-    checkWarningsBeforeCloudOp(this: DbCrudBaseInstance) {
+    /**
+     * ERG-001 §4 — the invocations of one operation kind that have not reported yet.
+     *
+     * `scheduleOnce` coalesces: two `Do` pulses in one update pass do one request, and must
+     * still produce two outcomes, because two invocations are two invocations.
+     * `foreach.tsx`'s `pendingRefreshOutcomes` is the same shape and `outcome.ts`'s
+     * `reportOutcomes` is the drain, so this is the array rather than a fifth copy of the idea.
+     *
+     * ⚠️ **Created lazily, here, rather than in `initialize`.** Several suites build these nodes
+     * as a bag of bound methods and never call `initialize`, so an eager field is `undefined`
+     * exactly where the first invocation reads it — `record-backend-routing.test.ts` is one.
+     */
+    pendingOutcomes: function (this: DbCrudBaseInstance, kind: string): OutcomeToken[] {
+      const field = 'pendingOutcomes' + kind;
+      return (
+        (this._internal[field] as OutcomeToken[]) || ((this._internal[field] = [] as OutcomeToken[]) as OutcomeToken[])
+      );
+    },
+    /**
+     * The batch, taken into the caller's hands and cleared.
+     *
+     * Drained **before** the request goes out, so a second `Do` arriving mid-flight owns its own
+     * batch rather than being settled by the first request's answer.
+     */
+    takeOutcomes: function (this: DbCrudBaseInstance, kind: string): OutcomeToken[] {
+      const field = 'pendingOutcomes' + kind;
+      const tokens = (this._internal[field] as OutcomeToken[]) || [];
+      this._internal[field] = [] as OutcomeToken[];
+      return tokens;
+    },
+    /**
+     * ERG-001 §4: `tokens` is the caller's invocation, not a new one.
+     *
+     * This runs *before* the deferral, so it used to reach a `setError` that minted and spent a
+     * token nobody else knew about while the real invocation stayed open forever. The damage is
+     * invisible in the invocation that caused it and shows up in the *next* one, which drains a
+     * token this one never spent and reports twice.
+     */
+    checkWarningsBeforeCloudOp(this: DbCrudBaseInstance, tokens?: OutcomeToken[]) {
       //clear all errors first
       this.clearWarnings();
 
       if (!this._internal.collectionId) {
-        this.setError('No class name specified');
+        this.setError('No class name specified', tokens);
         return false;
       }
 
@@ -155,9 +224,12 @@ function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: b
      * rather than falling back is the point: a silent fallback writes the record to a
      * different backend than the one the graph says.
      */
-    cloudStore: function (this: DbCrudBaseInstance): CloudStoreLike | undefined {
-      return (this as unknown as { cloudStoreForScope(s: ModelScopeLike | undefined): CloudStoreLike | undefined })
-        .cloudStoreForScope(this.nodeScope.modelScope);
+    cloudStore: function (this: DbCrudBaseInstance, tokens?: OutcomeToken[]): CloudStoreLike | undefined {
+      return (
+        this as unknown as {
+          cloudStoreForScope(s: ModelScopeLike | undefined, t?: OutcomeToken[]): CloudStoreLike | undefined;
+        }
+      ).cloudStoreForScope(this.nodeScope.modelScope, tokens);
     },
     /**
      * The same resolution against an explicitly given scope — including `undefined`.
@@ -170,13 +242,18 @@ function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: b
      */
     cloudStoreForScope: function (
       this: DbCrudBaseInstance,
-      modelScope: ModelScopeLike | undefined
+      modelScope: ModelScopeLike | undefined,
+      tokens?: OutcomeToken[]
     ): CloudStoreLike | undefined {
       const store = CloudStore.forBackend(modelScope, this._internal.backendId as string | undefined);
 
       if (!store) {
+        // ERG-001 §4: the caller's invocation, settled here — the caller only has to stop. A
+        // token of its own here would have reported one failure and left the real invocation
+        // open, which `outcome/duplicate` then catches on the next pulse rather than this one.
         this.setError(
-          `The backend this node is set to ("${this._internal.backendId}") is not configured in this project.`
+          `The backend this node is set to ("${this._internal.backendId}") is not configured in this project.`,
+          tokens
         );
       }
 
@@ -194,13 +271,27 @@ function _addBaseInfo(def: DbCrudNodeModule, opts?: { includeInputProperties?: b
      * Raising on the bus instead reaches all four contexts, and the editor keeps what it had:
      * `createEditorWarningSubscriber` forwards to `sendWarning` with `{ showGlobally: true,
      * message }` — the identical payload this used to build by hand.
+     *
+     * ERG-001 §4: the `failure` pulse and the raise now both go through `reportOutcome`, so the
+     * outcome and its reason cannot drift apart and `Completed` follows automatically. The error
+     * value is flagged dirty *first* — "the outcome is the last thing an action does", because a
+     * graph wiring `Failure -> show` must already be able to read `Error` when the pulse lands.
+     *
+     * `tokens` is optional because NDA-004's rows call this funnel directly; minting one here
+     * keeps that a real, complete failure rather than a branch where a reason reaches the
+     * channel with no outcome behind it. Every *product* caller passes its own.
      */
-    setError: function (this: DbCrudBaseInstance, err: string) {
+    setError: function (this: DbCrudBaseInstance, err: string, tokens?: OutcomeToken[]) {
       this._internal.error = err;
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
 
-      this.raiseRuntimeError(STORAGE_OP_ERROR_CODE, err);
+      // Spelled exactly as `dbmodelnode2`'s copy of this funnel spells it. Two funnels for one
+      // family is the finding this file's header is about; two funnels that also *disagree*
+      // about the no-token case would be that finding with a second edge.
+      reportOutcomes(this, tokens || [this.beginOutcome()], 'failure', {
+        code: STORAGE_OP_ERROR_CODE,
+        message: err
+      });
     },
     /**
      * The clear has to move with the raise, and that is the whole reason these two are one commit.

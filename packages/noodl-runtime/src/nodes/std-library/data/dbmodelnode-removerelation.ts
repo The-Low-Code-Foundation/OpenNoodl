@@ -5,6 +5,7 @@ import type { ModelModule } from '@noodl/types';
 import type { DbCrudBaseInstance, DbCrudNodeModule, DbModelIdInstance, RelationPropertyInstance } from './crud-mixins';
 
 import ModelImport = require('../../../model');
+import { reportOutcomes } from '../../../outcome';
 import DbModelCRUDBase = require('./dbmodelcrudbase');
 
 const Model = ModelImport as unknown as ModelModule;
@@ -38,15 +39,16 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
         }
       }
     },
-    outputs: {
-      relationRemoved: {
-        type: 'signal',
-        displayName: 'Success',
-        group: 'Events',
-        description:
-          'Fires once the backend has accepted the removal, which is also what happens when the relation was not there to begin with'
-      }
-    },
+    // ERG-001 §4: declared once in `dbmodelcrudbase.addBaseInfo` for the whole family.
+    //
+    // ⚠️ **This is the node in the family with a real `Unchanged` shape and no `Unchanged`
+    // port**, and the reasoning is recorded rather than left to be re-derived: the `done`
+    // sentence below says a removal succeeds when the relation was never there, which is
+    // exactly the duplicate-insert case the contract's problem statement opens with. The
+    // backend answers identically either way, so this node has nothing to tell them apart
+    // with — and a port that can never fire is what §5's dead-end check exists to complain
+    // about. A corpus row pins the absence with that reasoning attached.
+    outputs: {},
     methods: {
       /** The first thing missing, or `undefined` when ready. See the twin in `-addrelation`. */
       validateInputs: function (this: RemoveRelationInstance): string | undefined {
@@ -95,10 +97,16 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
         const _this = this;
         const internal = this._internal;
 
+        // ERG-001 §4 — the Add sibling's shape: no pre-flight check, so the token goes straight
+        // into the batch and `validateInputs` settles it.
+        this.pendingOutcomes('RemoveRelation').push(this.beginOutcome());
+
         this.scheduleOnce('StorageRemoveRelation', function () {
+          const tokens = _this.takeOutcomes('RemoveRelation');
+
           const problem = _this.validateInputs();
           if (problem !== undefined) {
-            _this.setError(problem);
+            _this.setError(problem, tokens);
             return;
           }
 
@@ -113,7 +121,7 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
           // a relation the synced schema does not describe, because relation metadata
           // is admin-only on all three — the adapter refuses with a sentence naming
           // the field and the fix, and it lands on `setError` below.
-          const cloudstore = _this.cloudStore();
+          const cloudstore = _this.cloudStore(tokens);
           if (!cloudstore) return;
 
           cloudstore.removeRelation({
@@ -133,10 +141,10 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
               }
 
               // Successfully removed relation
-              _this.sendSignalOnOutput('relationRemoved');
+              reportOutcomes(_this, tokens, 'done');
             },
             error: function (err: string) {
-              _this.setError(err || 'Failed to remove relation.');
+              _this.setError(err || 'Failed to remove relation.', tokens);
             }
           });
         });
@@ -146,7 +154,8 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
 };
 
 DbModelCRUDBase.addBaseInfo(AddDbModelRelationNodeDefinition, {
-  includeRelations: true
+  includeRelations: true,
+  done: 'Fires once the backend has accepted the removal, which is also what happens when the relation was not there to begin with'
 });
 DbModelCRUDBase.addModelId(AddDbModelRelationNodeDefinition);
 DbModelCRUDBase.addRelationProperty(AddDbModelRelationNodeDefinition);

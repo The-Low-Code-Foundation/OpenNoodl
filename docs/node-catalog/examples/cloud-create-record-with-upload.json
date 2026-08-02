@@ -129,7 +129,7 @@
         },
         {
           "fromId": "create_attachment",
-          "fromProperty": "created",
+          "fromProperty": "done",
           "toId": "saved_gate",
           "toProperty": "eval"
         },

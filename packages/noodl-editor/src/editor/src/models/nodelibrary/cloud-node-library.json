@@ -1260,11 +1260,18 @@
           "index": 1000
         },
         {
-          "name": "stored",
+          "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Success"
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         },
         {
           "name": "failure",
@@ -1387,11 +1394,18 @@
           "description": "Id of the record this node acts on; a record itself is accepted here as well as its Id"
         },
         {
-          "name": "deleted",
+          "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Success"
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         },
         {
           "name": "failure",
@@ -1461,11 +1475,18 @@
           "index": 1000
         },
         {
-          "name": "created",
+          "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Success"
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         },
         {
           "name": "failure",
@@ -1599,11 +1620,18 @@
           "description": "Id of the record at the other end of the relation, which must come from a Query Records or Record output so that its class is known"
         },
         {
-          "name": "relationAdded",
+          "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Success"
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         },
         {
           "name": "failure",
@@ -1737,11 +1765,18 @@
           "description": "Id of the record at the other end of the relation, which must come from a Query Records or Record output so that its class is known"
         },
         {
-          "name": "relationRemoved",
+          "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Success"
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         },
         {
           "name": "failure",

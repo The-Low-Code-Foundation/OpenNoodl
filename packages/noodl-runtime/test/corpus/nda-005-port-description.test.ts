@@ -147,27 +147,31 @@ describe('NDA-005: a port description survives compilation', () => {
  */
 describe('NDA-005 C1: every static port of the Record family is described', () => {
   /** The family, by the type name the catalog keys on. */
+  // ERG-001 §4: each of the five CRUD nodes gained exactly one port — `Completed`. `Done` is
+  // the old `created`/`stored`/`deleted`/`relationAdded`/`relationRemoved` renamed, not an
+  // addition, and `Failure` was already there. So every count below is its old value + 1, which
+  // is the shape a reader should be able to check without re-deriving the whole set.
   const RECORD_FAMILY: { typeName: string; module: string; staticPorts: number }[] = [
-    { typeName: 'AddDbModelRelation', module: '../../src/nodes/std-library/data/dbmodelnode-addrelation', staticPorts: 9 },
+    { typeName: 'AddDbModelRelation', module: '../../src/nodes/std-library/data/dbmodelnode-addrelation', staticPorts: 10 },
     {
       typeName: 'RemoveDbModelRelation',
       module: '../../src/nodes/std-library/data/dbmodelnode-removerelation',
-      staticPorts: 9
+      staticPorts: 10
     },
     {
       typeName: 'NewDbModelProperties',
       module: '../../src/nodes/std-library/data/newdbmodelpropertiesnode',
-      staticPorts: 7
+      staticPorts: 8
     },
     {
       typeName: 'SetDbModelProperties',
       module: '../../src/nodes/std-library/data/setdbmodelpropertiesnode',
-      staticPorts: 11
+      staticPorts: 12
     },
     {
       typeName: 'DeleteDbModelProperties',
       module: '../../src/nodes/std-library/data/deletedbmodelpropertiesnode',
-      staticPorts: 8
+      staticPorts: 9
     },
     // 9 + the four `runOnChange-…` checkboxes NDA-017 §2 added (`items`, `enabled`, plus the
     // two non-port sources `records` and `filterSettings`). Their descriptions come from

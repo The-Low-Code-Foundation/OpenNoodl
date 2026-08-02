@@ -132,13 +132,13 @@
         },
         {
           "fromId": "create-task",
-          "fromProperty": "created",
+          "fromProperty": "done",
           "toId": "new-task-input",
           "toProperty": "clear"
         },
         {
           "fromId": "create-task",
-          "fromProperty": "created",
+          "fromProperty": "done",
           "toId": "task-query",
           "toProperty": "fetch"
         }
