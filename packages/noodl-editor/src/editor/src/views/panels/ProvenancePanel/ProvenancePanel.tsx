@@ -6,10 +6,13 @@ import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
+import { WarningsModel } from '@noodl-models/warningsmodel';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import { NodeGraphContextTmp } from '../../../contexts/NodeGraphContext/NodeGraphContext';
 import { TraceSession } from '../../../utils/provenance/TraceSession';
+import { annotateWarnings } from '../../../utils/provenance/annotateWarnings';
+import { editorDiagnoses } from '../../../utils/provenance/editorDiagnoses';
 import {
   EdgeRef,
   RootEvent,
@@ -45,8 +48,9 @@ import css from './ProvenancePanel.module.scss';
  *    else. Works on a cold editor where nothing has fired, which is the whole reason this is
  *    not gated behind Record.
  *  - **layer 2, temporality** — fired / never fired / fired N times. Needs a recording.
- *  - **layer 3, diagnosis** — node-local invariant warnings. Arrives with OBS-003; the row
- *    shape already carries the field so the panel does not change shape underneath it.
+ *  - **layer 3, diagnosis** — node-local invariant warnings (OBS-003). Needs nothing at all:
+ *    `WarningsModel` already holds every diagnosis the running preview has reported, so a walk
+ *    on a cold editor still carries them. Filled by `annotateWarnings`, outside the pure engine.
  */
 export function ProvenancePanel() {
   const session = TraceSession.instance;
@@ -56,6 +60,8 @@ export function ProvenancePanel() {
   const [selected, setSelected] = useState<WalkRow | undefined>(undefined);
   const [recording, setRecording] = useState(session.recording);
   const [revision, setRevision] = useState(0);
+  /** Bumped on `warningsChanged`, so layer 3 re-annotates without rebuilding the index. */
+  const [warningsRevision, setWarningsRevision] = useState(0);
   const [status, setStatus] = useState<string | undefined>(undefined);
 
   // A counter rather than the arrays themselves: the session mutates in place and React would
@@ -71,6 +77,18 @@ export function ProvenancePanel() {
       session.off(group);
     };
   }, [session, bump]);
+
+  // Diagnoses arrive on their own schedule — a node reports one the moment its input changes,
+  // which is not a topology change, an event or a port value. Without this the panel would show
+  // whatever was live when the walk was built and would silently go stale, including after the
+  // author has *fixed* the thing the row is accusing them of.
+  useEffect(() => {
+    const group = {};
+    WarningsModel.instance.on('warningsChanged', () => setWarningsRevision((r) => r + 1), group);
+    return () => {
+      WarningsModel.instance.off(group);
+    };
+  }, []);
 
   const index = useMemo(
     () => buildIndex(session.topology, session.traceEvents, session.portValues, { recording: session.recording }),
@@ -121,10 +139,13 @@ export function ProvenancePanel() {
   }, [load]);
 
   const walk: WalkResult | undefined = useMemo(() => {
-    if (focusedRoot) return forwardWalk(index, focusedRoot.event);
-    if (!target) return undefined;
-    return backwardWalk(index, target);
-  }, [index, target, focusedRoot]);
+    const result = focusedRoot ? forwardWalk(index, focusedRoot.event) : target ? backwardWalk(index, target) : undefined;
+    // Layer 3, after the engine and never inside it — `walkEngine` stays import-free so it can
+    // be bundled into `nodegx-observe` unchanged, and it cannot reach the editor's models.
+    if (result) annotateWarnings(index.topology, result, editorDiagnoses);
+    return result;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, target, focusedRoot, warningsRevision]);
 
   const roots = useMemo(() => (session.traceEvents.length ? rootEvents(index) : []), [index, session.traceEvents.length]);
 
