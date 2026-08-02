@@ -16,6 +16,25 @@ export const node = {
   connectionPanel: {
     groupPriority: ['General', 'Mounted']
   },
+  // WFA-009 — the Request node has the same fault F27 records against Response,
+  // and F27's own criterion (a wired value comes back from the deployed
+  // function) is unreachable without it: in the shipped template the value a
+  // function returns comes from its request, so an author needs a port to wire
+  // FROM as well as one to wire INTO. Same rule, `plug: 'output'`, no condition.
+  // Must stay identical to `setup()` below — see the note on `response.ts`.
+  dynamicports: [
+    {
+      name: 'namedports/list',
+      parameter: 'params',
+      port: {
+        name: 'pm-{{*}}',
+        displayName: '{{*}}',
+        type: '*',
+        plug: 'output',
+        group: 'Parameters'
+      }
+    }
+  ],
   outputs: {
     receive: {
       displayName: 'Received',
@@ -153,7 +172,10 @@ export function setup(context, graphModel) {
       // Add params outputs
       var params = node.parameters.params;
       if (params !== undefined) {
-        params = params.split(',');
+        // WFA-009: see the note on `response.ts` — empty entries dropped and
+        // repeats collapsed, so this agrees port for port with the editor-side
+        // `namedports/list` rule.
+        params = params.split(',').filter((p, i, all) => p && all.indexOf(p) === i);
         for (var i in params) {
           var p = params[i];
 

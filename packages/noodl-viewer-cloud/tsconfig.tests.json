@@ -21,5 +21,12 @@
     "lib": ["ES2019", "ES2020.String", "ES2021.WeakRef", "DOM"],
     "noEmit": true
   },
-  "include": ["src", "tests"]
+  // WFA-009: a spec that imports `nodes/cloud/request.ts` makes jest load the
+  // `@noodl/runtime` *sources* it depends on (`configservice.ts` and friends) and
+  // ts-jest diagnoses every file it transforms — so the runtime's ambient
+  // globals (`_noodl_cloudservices`, `_noodl_cloud_runtime_version`) have to be
+  // in this program or the suite fails on TS2304 in a file it does not own. The
+  // production compile above is unaffected; this is the `.js`→`.ts`
+  // ambient-dragging class BCN-002 recorded, met from the other side.
+  "include": ["src", "tests", "../noodl-runtime/src/globals.d.ts"]
 }

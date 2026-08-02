@@ -319,6 +319,33 @@ failure. This is the workhorse — any real work is a cloud-function graph.
 { "id": "validate", "kind": "call-function", "ref": "validateOrder", "next": ["charge"] }
 ```
 
+#### How a function returns a value
+
+Everything the rest of this document says about `previous.result.…` depends on
+the called function actually putting something in `result`, and that is done
+entirely on the function's own canvas:
+
+1. On the **Response** node, add each name you want to return to **Parameters**
+   (`total`, `orderId`, …).
+2. Each name immediately becomes an **input port** on that node, labelled with
+   the name. Wire the value into it, or type a literal.
+3. `Send` answers the request with `{"result": { … }}` — one key per parameter,
+   holding whatever reached its port. A step's output is that body, so
+   `{"$path": "previous.result.total"}` reads it.
+
+The **Request** node is the mirror image: names added to its **Parameters**
+become **output ports** carrying the matching keys of the caller's JSON body, so
+`params` sent by a step arrive as ports to wire from.
+
+The ports appear as you type, with no backend running — they are derived from
+the parameter by the editor (WFA-009), not pushed by a runtime. Removing a name
+removes its port, and any connection left behind is flagged *"Target port
+doesn't exist."* rather than being dropped silently.
+
+If the Response node's **Status** is `Failure`, the parameters are not on offer
+at all: it answers `400` with `{"error": <Error Message>}`, and the calling step
+fails.
+
 ---
 
 ### `branch`
