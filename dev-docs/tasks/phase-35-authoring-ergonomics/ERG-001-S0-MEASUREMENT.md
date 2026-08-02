@@ -654,3 +654,237 @@ dressed as a rename.
 | editor `test:ci` | 2007 specs, 0 failures | **2007 specs, 0 failures** |
 
 0 failures and no new warnings throughout. 45 corpus rows added across four files.
+
+---
+
+## §4, the navigation slice — built 2026-08-02
+
+Commits `46be4922` (the build) and `4c276139` (the catalogs). **27 of §0's 82 actions now satisfy
+the contract**, up from 20.
+
+The slice was scoped at five nodes and shipped seven. `PageStackNavigate` and
+`PageStackNavigateBack` were pulled in because the `Done` rename could not honestly stop at one
+node of a family — see "the rename, and why it had to be all three" below.
+
+### The seven, and the shape each got
+
+| Node | Signal input | Ports |
+|---|---|---|
+| `Router` — Page Router | `Reset` | `done` · `unchanged` · `failure` ×4 · `completed` |
+| `Page Stack` — Component Stack | `Reset` | `done` · `failure` ×2 · `completed` — **no `Unchanged`** |
+| `RouterNavigate` — Navigate | `Navigate` | `done` (was `navigated`) · `unchanged` · `failure` · `completed` |
+| `PageStackNavigate` — Push Component To Stack | `Navigate` | same four (`done` was `navigated`) |
+| `PageStackNavigateBack` — Pop Component Stack | `Navigate` | same four (`done` was `success`) |
+| `Page` | `Page Ready` | `done` · `completed` |
+| `net.noodl.StateHistory` | `Clear History` | `done` · `unchanged` · `completed` — **no `Failure`** |
+
+### The three hard things about `Reset`, and how each was answered
+
+1. **`reset()` is called on mount.** `router-handler.ts:83` and `navigation-handler.ts:90,106`
+   call it so the start page is created, and that is not the author's `Reset` port. The token is
+   **optional** and is minted only in the input handler, so the mount path reports nothing —
+   while still raising the NDA-012 diagnosis, which is the only time an unconfigured Router is
+   ever seen. `_reportReset` is the one place that branch lives, on both nodes.
+2. **It is async through an `ASyncQueue`.** The token rides `scheduleReset` → `reset` →
+   `resetAsync` and survives `await createNode`. This is the case `beginOutcome`'s token shape
+   was designed for and the first one to actually need it.
+3. **Four raise-and-return paths already existed.** Each now passes its code *through*
+   `reportOutcome`; the separate `raiseRuntimeError` is gone. A corpus row asserts
+   `raises.map(r => r[0])` **equals** one code, not contains it, because the failure mode here is
+   two events for one drop.
+
+⚠️ **`Done` versus `Unchanged` on a Router `Reset` is decided by the parameters.** The
+already-showing branch updates the Page Inputs when the params differ, and that is a real change,
+so it reports `Done`; identical params report `Unchanged`. Folding both into `Unchanged` would
+have been the `Insert Object Into Array` lie with the sign flipped.
+
+### ⚠️ Three measured corrections to what the specs said
+
+**1. §0.3's `RouterNavigate` row cites the wrong method.** It records "`Navigate` to the current
+page" against `router.tsx:401-410` — which is **`resetAsync`**, not `navigateAsync`. Measured:
+`_navigateInCurrentWindow` had *no* already-showing check at all. Re-selecting the page already
+on screen did not return silently; it **destroyed the page component and built a fresh one**,
+losing its state on a click that should have done nothing. That is NDA-008 §2's Component Stack
+finding, unfixed on the Router side. The check is added here, with params part of the question so
+`/product/{id}` navigated to twice with different ids still rebuilds.
+
+**2. NDA-008 §2's no-op branch was already reporting the wrong thing.** It called `hasNavigated`
+and said so out loud — "swallowing the completion callback here would turn a re-selected tab into
+a dead button". Right instinct, and with two callbacks available it was the best answer; it is
+also `Insert Object Into Array`'s lie in a second node. Both copies (`navigateAsync` and
+`replaceAsync`) now call `hasUnchanged`.
+
+**3. The prompt's expectation that `catalog:merge:check` catches a rename is wrong.** It passed
+with `routernavigate.json` and `pagestacknavigate.json` still describing a `navigated` port the
+nodes no longer had. An enrichment `ports` entry naming a port that does not exist is accepted
+silently. The enrichment sweep has to be done by hand — recorded in `4c276139`.
+
+### The rename, and why it had to be all three
+
+§0.2 Result 2 found eight ports displaying "Done" under four wire names. The navigation family
+carried a fifth and a sixth: `navigated` on both Navigate nodes and `success` (displaying
+"Popped") on the Pop node. Richard's 2026-08-02 decision — unify on `done` — applies to a family
+or to none of it, so renaming `RouterNavigate` alone would have manufactured exactly the
+per-node divergence `outcome.ts`'s docstring exists to prevent. That is why the slice grew from
+five nodes to seven.
+
+⚠️ **`Done` is present on the navigating path rather than absent.** The next-session prompt said
+to leave it off and emit only on the paths that do not navigate. That was a fair reading of the
+contract's exception, and it was not taken, for one reason: Rule 2 says `Completed` is "the one
+port with no exemption", and a `Completed` that is silent on the *most common* path — a
+successful navigation from a nav bar **outside** the Router, where the node demonstrably
+survives — defeats the rule's entire value. The terminality is documented in `done`'s
+description instead of being expressed as a missing port.
+
+**The two-sided sweep found one wire**, in `packages/noodl-editor/tests/testfs/git-repo-utf8/`.
+⚠️ The sweep script was sanity-checked against Build 1's 19 already-migrated wires before its
+answer was believed, because §0's own sweep returned zero from a broken query and a clean sweep
+looks identical to a broken one.
+
+### Two deliberate omissions, both the contract being followed rather than skipped
+
+- **`Page Stack` gets no `Unchanged`.** `resetAsync` tears every child down and rebuilds
+  unconditionally; a reset landing on the component already showing still destroys and recreates
+  it. "A node that cannot be a no-op gets no `Unchanged` port" — and §5's dead-end check would
+  be right to complain about a port that can never fire.
+- **`State History` gets no `Failure`, and a pinned control is what established that.** The first
+  version of this adoption minted one for the untracked-store path; NDA-004's *"(pinned control)
+  State History deliberately has no Failure port"* reddened, and its comment had predicted
+  exactly this — *"this row is what stops a later mechanical sweep finishing the family off"*.
+  It is right: this node **is** the tracker for its own store name, so `not-tracking` is only
+  reachable as a one-frame attach race, and raising at an author whose graph is correct is what
+  the contract says trains people to ignore the port. It reports `Unchanged`.
+
+### ⚠️ One deliberate behaviour change
+
+A **Pop at the root of the stack is `Unchanged`**, where NDA-008 §3 made it a `Failure` with a
+code and a message. Build 2b made `Undo` at the beginning of history `Unchanged` on the
+contract's reasoning that "a `Failure` that fires on a graph working exactly as written is how
+authors are trained to ignore the port", and a Back button on the root component is that graph.
+`StackBackResult` gained an `{ok: false, unchanged: true}` arm to carry it. The
+transition-in-progress case stays a `Failure` — a dropped tap is not something the author asked
+for.
+
+### Also changed: `stateHistoryManager.clearHistory` returns a result
+
+It was `void`, and `if (!record) return` collapsed three outcomes into one silence. This is the
+same shape as the note §4 left open against `GlobalStore.Set`, and it was safe to take here for
+the reason that note gives for *not* taking it there: the manager is internal to this pair of
+nodes and every caller is in the repo.
+
+### The discrimination check, predicted then run — four times, all exact
+
+| Revert | Predicted | Actual |
+|---|---|---|
+| `Router`'s `Reset` input mints no token | 1 red — the input→token row only; every other Router row calls `resetAsync` directly | **1 red, that row** |
+| `Router`'s already-showing branch back to a bare `return` | 2 red — the `Unchanged` row and the params-`Done` row | **2 red, those two** |
+| `_navigateInCurrentWindow`'s already-showing check removed | 1 red — the re-selection row; the different-params control stays green | **1 red, that row** |
+| `back()`'s root case back to a coded failure | 1 red — the stack-shape row only; the node-side rows feed the shape directly | **1 red, that row** |
+
+43 corpus rows added across two new files (`erg-001-navigation-outcomes.test.ts`,
+`erg-001-state-history-clear.test.ts`); `nda-004-navigation-failure.test.ts` and
+`mute-node-completion.test.ts` updated for the rename and the extra pulse.
+
+### Live QA — the mount-path claim, which no corpus row can make
+
+Navigation is the one family where a corpus row cannot see the consequence, because the point is
+that the page goes away. Driven headlessly against `bcn010-live` after
+`npm run build --prefix packages/noodl-viewer-react`; all three shipped bundles (`external/viewer`,
+`external/deploy`, `external/ssr`) carry `reportOutcome` and no longer contain
+`sendSignalOnOutput('navigated')`.
+
+**The editor surface**, straight off `NodeLibraryData`:
+
+```
+Router                 -> [done, completed, unchanged, failure]
+Page Stack             -> [done, completed, failure]           <- no unchanged, as designed
+RouterNavigate         -> [done, completed, unchanged, failure]
+PageStackNavigate      -> [done, completed, unchanged, failure]
+PageStackNavigateBack  -> [done, completed, unchanged, failure]
+Page                   -> [done, completed]
+net.noodl.StateHistory -> [done, completed, unchanged]         <- no failure, as designed
+```
+
+Every wire was accepted through the real `addConnection`, which is independent evidence the ports
+reached the editor's node library as **connectable** ports and not merely as catalog rows.
+
+**The running preview** — a real `Page Router` over `/PageA` and `/PageB`, a real `Navigate`, a
+real `Button`, and counters behind `Done` / `Unchanged` / `Completed` living *outside* the Router
+so they survive the navigation. Real clicks:
+
+| | page | Done | Unchanged | Completed | raw clicks |
+|---|---|---|---|---|---|
+| **boot** | PAGE A | **0** | **0** | **0** | 0 |
+| click 1 | PAGE B | 1 | 0 | 1 | 1 |
+| click 2 | PAGE B | **1** | 1 | 2 | 2 |
+| click 3 | PAGE B | **1** | 2 | 3 | 3 |
+
+The boot row is the one that matters: the mount reset built PAGE A and reported **nothing**. And
+the `Reset` port, on the same app:
+
+| | page | Reset `Done` | Reset `Unchanged` |
+|---|---|---|---|
+| boot | PAGE A | 0 | 0 |
+| press RESET | PAGE A | 0 | 1 |
+| press RESET | PAGE A | 0 | 2 |
+| press GO B | PAGE B | 0 | 2 |
+| press RESET | **PAGE A** | **1** | 2 |
+
+The same button reports `Unchanged` twice and then `Done` when the reset genuinely rebuilds —
+the discrimination the contract exists for, over a URL round-trip no corpus row could stage. No
+`[renderer:exception]` and no `outcome/*`, `router/*` or `navigate/*` error in `.logs/dev.log`.
+
+⚠️ **Two traps for whoever drives this next.**
+
+- **A root component renders one visual root tree.** Five sibling visual roots put only the first
+  on screen, silently. Everything visual has to hang off one `Group`.
+- **`removeConnectionsForNode` is per node, so rebuilding half a rig leaves the other half's
+  wires behind.** Three duplicate wires made one click look like two invocations, and the first
+  reading of the table above was doubled across the board. A raw click-counter wired straight off
+  the Button is what separated "the node reports twice" from "the rig has two wires" — worth
+  building before believing any count.
+
+### Gates — measured before and after
+
+| Gate | Before | After |
+|---|---|---|
+| `noodl-runtime` jest | 96 suites, 1789 passing, 13 skipped | **97 suites, 1795 passing, 13 skipped** |
+| `noodl-viewer-react` jest | 52 suites, 627 passing | **53 suites, 664 passing** |
+| `typecheck:runtime` | pass | pass |
+| viewer-react `tsc` | pass | pass |
+| `typecheck:cloud` | pass | pass |
+| `catalog:check` | pass | pass |
+| `catalog:merge:check` | pass | pass |
+| `cloud-library:check` | pass | pass |
+| editor `test:ci` | 2007 specs, 0 failures | **2007 specs, 0 failures** |
+
+0 failures and no new warnings throughout.
+
+### What remains of §0's 82 — the register, updated
+
+**27 done.** The 20 of the previous builds, plus `Router`, `Page Stack`, `RouterNavigate`,
+`PageStackNavigate`, `PageStackNavigateBack`, `Page` and `net.noodl.StateHistory`.
+
+**Both of the two named debts the contract was written to answer are now closed**: DV-viii's
+Visual table and §0.3's `Unchanged` register have no navigation entries left. What is left of §4
+is a sweep with no design in it.
+
+| Remaining | Note |
+|---|---|
+| `net.noodl.WebSocket`, `net.noodl.SSE` | §0.3 names only the disconnect-when-not-connected path, but Rule 1 covers every action, so `Connect` and `Send` need deciding at the same time. ⚠️ Both async. |
+| `For Each` / `For Each Actions` | §0's "emits nothing at all" table, still not read. |
+| the other ~53 actions | The bulk of §4, by category. Disjoint file sets per worker; catalog and enrichment merged centrally. |
+| **§3** `Treat Unchanged as` | Not started. ⚠️ A declared `default` does not run its setter — FINDINGS **A-D1**. |
+| **§5** the validator's dead-end check | Not started. `description` is present on every port added here. ⚠️ It must not flag `Page Stack`'s missing `Unchanged` or `State History`'s missing `Failure` — both are the contract's exemptions, not gaps. |
+
+Still open and still unmeasured, carried forward verbatim from the previous build:
+
+⚠️ **`GlobalStore.Set` has an unmeasured `Unchanged` candidate.** `setKey` ends in `Model.set`
+without `forceChange`, so re-writing a key with the value it already holds is a real no-op.
+Adding it means changing `setKey`'s `void` return and reasoning about `merge`. §0.3 never
+measured this node; deriving the verdict from the shape of the code is what that section exists
+to prevent.
+
+⚠️ **`Counter`'s `Reset` guard reads `this.currentValue` and has never fired** (PLAT-003 NOTES
+§25). Left verbatim: repairing it changes when `Count Changed` fires, which is a behaviour change
+dressed as a rename.
