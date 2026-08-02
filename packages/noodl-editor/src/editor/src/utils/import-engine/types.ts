@@ -21,6 +21,7 @@
  */
 
 import type { ComponentDiff } from '../../versioning';
+import type { ImportReport } from './legacy/types';
 
 // ─── Dependency graph ────────────────────────────────────────────────────────
 
@@ -223,6 +224,18 @@ export interface ImportResult {
   modulesCopied: string[];
   /** Non-fatal notes (e.g. a file that failed to copy). */
   warnings: string[];
+  /**
+   * LIB-006's legacy assessment: what converted, what was rewritten, what could
+   * not be converted, and whether rebuilding would be cheaper.
+   *
+   * Present on every import, not only legacy ones — a clean import produces a
+   * report whose verdict is `proceed` and whose findings are empty, and that is
+   * a useful thing to be able to say. Absent only when the assessment itself
+   * failed, which is reported in `warnings` rather than by silently omitting it.
+   */
+  legacyReport?: ImportReport;
+  /** Report renderings written into the target project directory. */
+  reportFilesWritten?: string[];
 }
 
 // ─── Minimal target/source data shapes (keep the pure core Electron-free) ─────

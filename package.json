@@ -66,6 +66,7 @@
     "validate:project": "ts-node -P ./scripts/tsconfig.json ./scripts/validate-project.ts",
     "library:build": "node scripts/library/build.js",
     "library:check": "ts-node -P ./scripts/tsconfig.json ./scripts/library/check.ts",
+    "library:verify-dist": "ts-node -P ./scripts/tsconfig.json ./scripts/library/verify-dist.ts",
     "preview": "node packages/noodl-preview/build.mjs && node packages/noodl-preview/bin/noodl-preview.js",
     "typecheck": "tsc --noEmit",
     "typecheck:preview": "tsc -p packages/noodl-preview --noEmit",

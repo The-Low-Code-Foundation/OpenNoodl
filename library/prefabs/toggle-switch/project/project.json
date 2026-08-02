@@ -134,7 +134,7 @@
                             "value-true-bg color": "Primary",
                             "value-true-border color": "Primary",
                             "value-false-bg color": "Grey - 200",
-                            "value-false-border color": "#4C4C4C",
+                            "value-false-border color": "Grey - 700",
                             "type-pos": "number",
                             "value-false-pos": 0,
                             "transitiondef-true": {
@@ -649,6 +649,7 @@
             "colors": {
                 "Grey - 200": "#F4F4F4",
                 "Grey - 400": "#CECECE",
+                "Grey - 700": "#4C4C4C",
                 "Primary": "#5836F5",
                 "White": "#FFFFFF"
             }

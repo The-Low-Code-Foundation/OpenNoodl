@@ -419,8 +419,29 @@ Today the **only** way to feed either node is a `Script` node returning
 `Noodl.Object.get(id)` / `Noodl.Array.get(id)` — which is what the QA project does, and which
 puts a JavaScript node in the middle of a feature whose entire point was ergonomics.
 
-⚠️ **This needs a decision and is deliberately not taken here** — it changes the port
-contract of two shipped nodes. The options, with the recommendation first:
+### ✅ DECIDED by Richard, 2026-08-02 — **add an object-valued output to the `Object` node**
+
+Richard chose the second option below, **over** this session's recommendation of resolving an id
+string on the input. The work is unowned and not started.
+
+What that means concretely:
+
+- The `Object` node (`Model2`) gains an output that emits the **live `Model`**, not its id, so
+  `Object → Object Changed` is a genuine `object → object` wire with no cast and no `eval`.
+- `Array Changed` needs the matching treatment on `Collection2` (a live `Collection` output),
+  or it stays reachable only through a `Script` node — the two nodes have the same defect and
+  should not be fixed apart.
+- ⚠️ **The blast radius Richard accepted is real and should be handled, not discovered.** The Data
+  category currently has exactly one way to name an object — by id — and this adds a second. Both
+  will be in the picker, both will be wireable into the same places, and the typecast table will
+  still accept the *wrong* one (`string → object`) silently. So the change is not finished when the
+  port exists: the id-string path into `Object Changed.Object` needs to either resolve or say
+  something better than *"ReferenceError: qa is not defined"*, or authors will keep reaching for
+  the id and keep getting `{}`.
+- The catalog, the enrichment prose and both nodes' `description` fields need to say which of the
+  two to use and when.
+
+The options as they were put, for the record:
 
 - **Resolve an id string on the input** — `(this.nodeScope.modelScope || Model).get(id)` for
   `Object Changed` and the `Collection` equivalent for `Array Changed`, exactly the line
@@ -477,6 +498,53 @@ Four things cost time, all of them reusable:
    Richard.
 2. **Port descriptions are not rendered anywhere in the editor**, for inputs or outputs.
    Unowned.
-3. **The 14-port gap** between the catalog's 1045 documented outputs and the editor's 1031.
+3. ~~**The 14-port gap** between the catalog's 1045 documented outputs and the editor's 1031.~~
+   ✅ **Closed 2026-08-02. It was never a defect — but chasing it found a red gate.** See §7.8.
 4. **§4.6 is still open** — the generalised audit of nodes pairing a signal with a
    possibly-`undefined` value port. Untouched by this session.
+
+### §7.8 — the 14-port gap explained, and the red gate it was hiding (2026-08-02)
+
+§7.7 item 3 named an unexplained gap: the committed catalog documents **1045 of 1144** output ports,
+the editor export carries **1031**. Both read the same node definitions, so the difference had to be
+in how each side *collects* them.
+
+**Measured** by running `generateNodeLibrary` over the real registries in the same process the
+catalog extractor uses (`scripts/node-catalog/lib/bundle` + a throwaway entry modelled on
+`extractor-entry.js`), then diffing port-by-port against `node-catalog.json`:
+
+| | documented / total output ports | node types |
+|---|---|---|
+| editor export (`generateNodeLibrary`) | **1031 / 1130** | 149 |
+| committed catalog | **1045 / 1144** | 153 |
+
+**The gap is exactly four node types and it is correct.** `noodl.cloud.aggregate`,
+`noodl.cloud.request`, `noodl.cloud.response` and `noodl.cloud.sendemail` are `availableIn: ['cloud']`
+— they carry 14 output ports between them, all 14 documented. The catalog extracts from the browser
+**and** cloud registries; `generateNodeLibrary(browserRuntime…)` is the browser register only, and
+the editor gets cloud nodes through a **separate** channel. Among the 149 types both cover there are
+**zero** per-port discrepancies in either direction. Two correct numbers over two different
+populations.
+
+#### 🔴 What the separate channel turned out to be carrying
+
+That channel is `packages/noodl-editor/src/editor/src/models/nodelibrary/cloud-node-library.json`, a
+**committed** artefact built by `npm run cloud-library:generate` — which calls the same
+`generateNodeLibrary`. The committed copy carried **0 of 387** output-port descriptions: it was last
+regenerated at `dc140543`, before §7.3's fix, so it had the old bug's output baked into it.
+
+⚠️ **`npm run cloud-library:check` was already failing on the tree**, and had been since `62fdc4ec`.
+§7.3's fix changed the generator's output without regenerating the artefact, and the closeout gate
+run recorded in `NEXT-SESSION-PROMPT-CLOSEOUT-3.md` listed `catalog:check`, `catalog:merge:check` and
+`catalog:examples` — **not** `cloud-library:check`, which is the one that would have caught it.
+
+Regenerated. Outputs went **0/387 → 384/387**; the diff is 384 added `description` lines and nothing
+else (the other 768 changed lines are the trailing commas on the `displayName` lines above them).
+`cloud-library:check` and `catalog:check` are both green again.
+
+**The lesson is the same one §7.3 drew, one layer further out.** §7.3 said a green catalog is not
+evidence an author can read anything, because the catalog generator never crosses the runtime →
+editor hop. This is the sequel: the fix *did* cross that hop for the live library, and left a
+**committed snapshot** of the pre-fix output sitting in the editor's source tree. A fix to a
+generator is not finished until every artefact that generator owns has been regenerated — and the
+way to find them is to run the gate that checks each one, not the ones you remember.

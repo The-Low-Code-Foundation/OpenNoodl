@@ -16,12 +16,21 @@
   // import-free by the same design, so `tests-unit/` can grade the port rules
   // (and the committed `cloud-node-library.json` they are declared in) without
   // starting Electron. Its one consumer, `nodelibrary.ts`, is not reached.
+  //
+  // `utils/import-engine/legacy` is the same shape (LIB-006): the assessment core,
+  // the report builder and the verdict are pure, and the two files that are NOT —
+  // `catalogQuery.ts` (loads the bundled catalog) and `codePatterns.ts` (pulls
+  // ProjectScanner, and through it @noodl/platform) — are reached only by the
+  // import shell, never by a test here. Keeping that split is what lets these run
+  // without Electron.
   "include": [
     "src/main",
     "tests-main",
     "tests-unit",
     "src/editor/src/utils/provenance",
     "src/editor/src/models/nodelibrary/dynamicPortRules.ts",
-    "src/editor/src/models/nodelibrary/cloud-node-library.json"
+    "src/editor/src/models/nodelibrary/cloud-node-library.json",
+    "src/editor/src/utils/import-engine/legacy",
+    "src/editor/src/validation"
   ]
 }

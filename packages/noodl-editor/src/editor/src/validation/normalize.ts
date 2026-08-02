@@ -26,6 +26,8 @@ interface LegacyNodeLike {
   children?: LegacyNodeLike[];
   ports?: LegacyPortLike[];
   dynamicports?: LegacyPortLike[];
+  /** Carried through for LIB-006's `legacyImport` marker; see NormNode.metadata. */
+  metadata?: Record<string, unknown>;
 }
 interface LegacyConnectionLike {
   fromId: string;
@@ -68,7 +70,8 @@ function flatten(roots: LegacyNodeLike[]): NormNode[] {
       label: node.label,
       parent: parentId,
       children: childIds,
-      instancePorts: instancePortNames(node)
+      instancePorts: instancePortNames(node),
+      metadata: node.metadata
     });
     for (const child of node.children ?? []) visit(child, node.id);
   }
@@ -94,7 +97,8 @@ export function normalizeV2Component(
     label: n.label,
     parent: n.parent,
     children: Array.isArray(n.children) ? n.children : [],
-    instancePorts: instancePortNames(n)
+    instancePorts: instancePortNames(n),
+    metadata: (n as { metadata?: Record<string, unknown> }).metadata
   }));
   const connections: NormConnection[] = (connectionsFile?.connections ?? []).map((c) => ({
     fromId: c.fromId,

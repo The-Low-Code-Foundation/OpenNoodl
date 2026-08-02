@@ -123,7 +123,7 @@
                         "x": 19.41428973149368,
                         "y": 58.48997469158948,
                         "parameters": {
-                            "backgroundColor": "#FFFFFF",
+                            "backgroundColor": "White",
                             "sizeMode": "contentSize"
                         },
                         "ports": [],
@@ -1000,7 +1000,8 @@
                 }
             },
             "colors": {
-                "Grey - 700": "#4C4C4C"
+                "Grey - 700": "#4C4C4C",
+                "White": "#FFFFFF"
             }
         }
     },

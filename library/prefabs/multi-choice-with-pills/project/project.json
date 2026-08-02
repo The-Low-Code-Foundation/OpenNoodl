@@ -195,7 +195,7 @@
                         "x": 66,
                         "y": -235,
                         "parameters": {
-                            "backgroundColor": "#FFFFFF",
+                            "backgroundColor": "White",
                             "sizeMode": "contentHeight"
                         },
                         "stateParameters": {
@@ -432,7 +432,7 @@
                                                                 "class": "material-icons",
                                                                 "code": "keyboard_arrow_down"
                                                             },
-                                                            "iconColor": "#3E3E3E",
+                                                            "iconColor": "Grey - 700",
                                                             "alignY": "center",
                                                             "iconSize": {
                                                                 "value": 20,
@@ -477,7 +477,7 @@
                                         "unit": "%"
                                     },
                                     "zIndex": 1000,
-                                    "backgroundColor": "#FFFFFF",
+                                    "backgroundColor": "White",
                                     "maxHeight": {
                                         "value": 200,
                                         "unit": "px"
@@ -1556,7 +1556,7 @@
                                 "label": "Label",
                                 "parameters": {
                                     "alignY": "center",
-                                    "color": "#FFFFFF",
+                                    "color": "White",
                                     "textStyle": "Label Medium"
                                 },
                                 "ports": [],
@@ -1781,7 +1781,8 @@
             "colors": {
                 "Grey - 700": "#4C4C4C",
                 "Grey - 900": "#1F1F1F",
-                "Primary": "#5836F5"
+                "Primary": "#5836F5",
+                "White": "#FFFFFF"
             }
         }
     },

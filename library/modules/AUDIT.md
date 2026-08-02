@@ -167,3 +167,165 @@ worktree live-verify caveat).
 4. **`library:build` + publish** of the three new zips (LIB-001 pipeline).
 5. Optional: expose a QR data-URL **output** port (skipped — `outputProps` on React
    nodes unverified live; kept the node visual-only to stay safe).
+
+---
+
+## Static per-module audit — 2026-08-02 (LIB-003 headless half)
+
+The 2026-07-25 table above is **triage guesses**, and says so. This section is the
+**measured** static pass over all 29 entries: manifest correctness, licence
+presence/accuracy, declared dependencies present on disk, dead/absent files,
+http-dependency handling after the `startsWith` fix, version sanity, and — the
+dimension nothing else in the repo checks — **which node types each module's
+source actually registers**.
+
+Everything here was obtained without an editor: the module bundles were run in a
+browser-shaped `vm` sandbox with a `Noodl` stub recording
+`defineModule`/`defineNode`/`defineReactNode`, and the deploy injector was driven
+directly against the real deploy template. What that could *not* reach is listed
+under "still needs the live pass".
+
+### What each module actually registers
+
+25 of 29 entries were exercised headlessly. **Four could not be**: their bundles
+need a real React/DOM to reach their registration call, and the stub is not one.
+
+| Module | v | Kind | Node types its source registers (measured) |
+|---|---|---|---|
+| Avatar | 1.0.1 | code+iconset | **not captured** — bundle needs real React (`ReactCurrentDispatcher`) |
+| Chart.js | 1.4.3 | code | **not captured** — bundle needs real React (`ReactCurrentOwner`) |
+| Confetti | 1.0.0 | code | `nodegx.confetti` |
+| Custom HTML | 1.0.2 | code | `module.inlineHtml` |
+| Data Context | 1.0.2 | code | `data_context.context`, `.getState`, `.setState`, `.subscriber` |
+| Font Awesome Brands | 1.0.0 | iconset | — (467 glyphs) |
+| Font Awesome Solid | 1.0.0 | iconset | — (1951 glyphs) |
+| Form Validation | 1.3.0 | code | `noodl.net.validate` |
+| Geospatial Analysis | 1.0.0 | code | `geospatial-analysis` (Turf.js API), `.turf.area`, `.turf.center`, `.turf.center-of-mass` |
+| Google Analytics | 1.0.7 | code | `noodl.googleAnalyticsModule.sendAnalyticsData`, `.analyticsLoader` |
+| Google Sheets | 1.7.0 | code | `noodl.gsheets.QuerySheetNode`, `.QuerySheetAggregateNode`, `.SheetRowNode` |
+| GraphQL | 1.0.1 | code | `GraphQL Query` |
+| i18next Translation | 1.0.3 | code | `i18next`, `Language Bundle`, `Translation` |
+| Image Cropper | 1.4.0 | **iconset only** | — see "modules that register nothing" |
+| Lottie | 1.0.1 | code | `Lottie` |
+| Lucide Icons | 1.0.0 | iconset | — (1998 glyphs) |
+| Mapbox | 2.0.0 | code | **not captured** — bundle throws in the stub |
+| Markdown | 1.0.1 | code | `Markdown` |
+| Marquee | 1.0.0 | code | `noodl.marquee` |
+| Material Icons | 1.1.0 | iconset | — (2122 glyphs) |
+| MQTT Module | 1.0.3 | code | `Send Message`, `Receive Message` |
+| Panning and Zooming Control | 1.0.0 | **iconset only** | — see below |
+| Parse Cloud Function | 1.0.0 | code | `net.noodl.parse-cloud-function` |
+| PDF Viewer | 1.0.0 | code | `module.inlineHtml` (a **second copy** of Custom HTML) |
+| QR Code | 1.0.0 | code | `nodegx.qrcode` |
+| QR Scanner | 1.4.0 | code | `Camera QR Scanner`, `Image QR Scanner` |
+| Shake Detector | 1.0.2 | **no module at all** | — see below |
+| Simple Tooltips | 1.0.0 | code | **not captured** — bundle wants a real style target |
+| Web Camera | 1.0.4 | code | `Web Camera` |
+
+### Findings
+
+**F1 — three "modules" register no nodes whatsoever.** The 2026-07-25 table calls
+Image Cropper and Panning-and-Zooming-Control "code (bundles material-icons)".
+That is **wrong**: neither ships any `main`/`index.js`. Their entire
+`noodl_modules/` content is a `material-icons` iconset manifest; the functionality
+lives in ordinary Noodl components in `project.json` built from core nodes.
+**Shake Detector has no `noodl_modules/` folder at all** — it is `library.json` +
+`icon.png` + `project.json`, three files. All three are prefabs wearing a module
+label. They exercise none of the module code path. Not retired here — whether they
+should be re-typed `prefab` is a product call, and `type` also drives install
+routing.
+
+**F2 — `material-icons` is bundled 4× in 2 mutually-incompatible versions.** The
+standalone Material Icons module declares **2122** glyphs; the copies inside
+Avatar, Image Cropper and Panning-and-Zooming-Control declare **1865**, and the
+three copies' icon lists are byte-identical to each other. Neither list is a
+subset of the other: the bundled list has **77** glyphs the standalone lacks, and
+the standalone has **334** the bundled lacks. Since module identity is the folder
+name and registration is presence-on-disk, installing one of these entries into a
+project that already has Material Icons rewrites `noodl_modules/material-icons/`
+— changing which glyphs the icon picker offers, in both directions. This is the
+collision the old table guessed at for Avatar; it is real and it is four-way.
+
+**F3 — `custom-html-module` is bundled twice, currently byte-identical.** Custom
+HTML and PDF Viewer ship the same folder, same hash, both registering
+`module.inlineHtml`. Benign today; it is a drift trap the moment either is updated
+alone.
+
+**F4 — two library versions were provably wrong, from one seeder bug (FIXED).**
+`inferVersion` in `scripts/library/seed-from-live.js` matched only *dash*-separated
+version tails and did not require a separator before the tail, so it silently
+mis-read dot-separated upstream names:
+
+| Entry | upstream zip | was | now |
+|---|---|---|---|
+| PDF Viewer | `pdf-viewer-1.0.0.zip` | `0.0.0` (matched the bare trailing `0`) | **1.0.0** |
+| Shake Detector | `shake-detector-1.0.2.zip` | `2.0.0` (matched the bare trailing `2`) | **1.0.2** |
+| *(prefab)* OAuth2 | `oauth2-0-2.zip` | `2.0.2` (ate the `2` out of the **slug**) | **not touched — prefabs are fenced; flagged to the prefab owner** |
+
+The live index carries **no** version field, so the zip filename is the only
+version signal — and `version` is what drives LIB-001's cache-busting zip name, so
+a wrong one is exactly the forever-cache trap the schema warns about. The regex is
+fixed (7/7 cases incl. both shapes and the slug-digit case); the two module
+`library.json`s are corrected. **The OAuth2 prefab is still wrong.**
+
+**F5 — licence coverage is adequate but uneven.** Corrected from a first pass that
+only grepped `.js` and under-reported: the iconsets carry their notices as `/*! */`
+banners in `styles.css` (Font Awesome Free 6.4.0 — CC BY 4.0 / SIL OFL 1.1 / MIT;
+Lucide — ISC), Chart.js ships `index.js.LICENSE.txt`, and both hand-authored
+modules carry accurate attribution headers. **Lucide's notice was inaccurate and is
+fixed**: it read "Copyright (c) 2026 Lucide Icons and Contributors", a fabricated
+year that also dropped the Feather/Cole Bemis portion; it now carries Lucide's
+actual ISC notice. Still open: several seeded modules vendor substantial
+third-party libraries with **no licence text anywhere** — Geospatial Analysis
+(614 KB, Turf.js), Mapbox (1.2 MB), Markdown (313 KB), Lottie (270 KB), MQTT
+(165 KB), QR Scanner (69 KB), i18next (58 KB), Simple Tooltips (87 KB), Form
+Validation (72 KB). These are seeded third-party artefacts; asserting a licence on
+their behalf is a human call, not one to invent here. **Mapbox additionally
+references `api.mapbox.com` and bundles mapbox-gl assets — mapbox-gl v2+ is under
+Mapbox's proprietary terms, so redistributing it in this library needs a legal
+answer independent of the API-key policy.**
+
+**F6 — the three new modules' `docsPath` 404s.** All 26 seeded entries' docs URLs
+return 200; `lucide-icons`, `qr-code` and `confetti` return **404**. This is *not*
+fixable in `library.json` — `scripts/library/build.js:101` falls back to
+`/library/<type>/<slug>/`, the same path, when `docsPath` is omitted. These three
+need real pages on the docs site (ALPHA-006 / LIB-001 publish territory).
+
+### Checked and clean (no action)
+
+- **Manifests**: all 27 manifests across the 29 entries parse and pass the ajv
+  schema — 0 warnings from `scanModuleManifests`. No malformed manifest exists.
+- **Declared dependencies**: every module declares `dependencies: []`; nothing is
+  absent. No module relies on an http dependency URL, so the `startsWith` fix
+  changed no shipped behaviour — it remains a latent-correctness fix, not one any
+  current library entry depends on.
+- **Stylesheets**: the iconsets' `browser.stylesheets` are **project-relative**
+  (`noodl_modules/<name>/styles.css`), which is what `injectIntoHtml` expects —
+  it applies `pathPrefix` only, never the module dir. Every local stylesheet and
+  every `url()` font reference inside it resolves. Remote sheets (Google Fonts)
+  stay verbatim.
+- **Sourcemaps**: every bundle's trailing `//# sourceMappingURL=` resolves to a
+  file that exists. (An earlier flag on Avatar was a false positive — inner
+  concatenated bundle artefacts, not the file's own directive.)
+- **Metadata fidelity**: label, description, tags and docsPath match the live
+  index exactly for all 26 seeded entries — no drift.
+- **Icons**: all 29 present; the three placeholders are replaced (see notes).
+
+### Still needs the live pass — per module
+
+Not mine: the editor is held by another session. Nothing below was attempted.
+
+- **All 29**: install → inject → register → nodes usable, in preview **and** a
+  deploy build, on **both** React 18 and React 19 pairings (RUN-001 matrix).
+- **Avatar, Chart.js, Mapbox, Simple Tooltips** — *priority*: these four are the
+  ones this pass could **not** exercise even headlessly. Their registration is
+  unverified by any means. Chart.js especially: it is the charting module the
+  expansion shortlist leans on.
+- **Avatar, Image Cropper, Panning-and-Zooming-Control, Material Icons** — F2:
+  install two of them into one project and confirm what happens to the icon set.
+- **Custom HTML + PDF Viewer** — F3: install both, confirm `module.inlineHtml`
+  double-registration is benign.
+- **Mapbox, Google Sheets, Google Analytics, Parse Cloud Function** — still need
+  the keep/park/retire decision the old table deferred; unchanged by this pass.
+- **Lucide Icons, QR Code, Confetti** — the new three: picker glyphs, QR render/
+  update, all four confetti presets, then the same in a deploy build.

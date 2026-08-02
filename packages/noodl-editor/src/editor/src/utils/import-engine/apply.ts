@@ -21,6 +21,9 @@ import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
 
 import FileSystem from '../filesystem';
 import { applyModelChanges, ImportSource, ImportTarget, PreparedComponent } from './applyModel';
+import { assessImport, writeImportReport } from './legacy/importAssessment';
+import { applyLegacyTransforms } from './legacy/transforms';
+import type { ImportReport } from './legacy/types';
 import type { ImportPlan, ImportResult, ItemPolicy } from './types';
 
 /** The subset of a project component the apply adapters touch. */
@@ -157,6 +160,32 @@ export function apply(plan: ImportPlan, targetProject: ProjectModel): Promise<Im
 
       try {
         const source = importProject as unknown as ProjectModelLike;
+        const assessmentWarnings: string[] = [];
+
+        // ── LIB-006: assess and transform, BEFORE anything is detached ──────
+        //
+        // Ordering is load-bearing. `applyModelChanges` re-keys every node id it
+        // grafts, so a placeholder marker written after this point would have
+        // nothing to address. Assess, mark, and take the REST rewrite while the
+        // source project is still whole.
+        //
+        // An assessment failure must never sink an import that would otherwise
+        // have succeeded — the report is a promise about honesty, not a
+        // precondition — so it degrades to a warning.
+        let legacyReport: ImportReport | undefined;
+        try {
+          legacyReport = assessImport(plan, importProject, targetProject.name);
+          const transforms = applyLegacyTransforms(legacyReport, importProject);
+          for (const id of transforms.unlocated) {
+            assessmentWarnings.push(
+              `Could not mark "${id}" in the imported project; it is still described in the import report.`
+            );
+          }
+        } catch (err) {
+          assessmentWarnings.push(
+            `The legacy import assessment failed, so no import report was produced: ${err instanceof Error ? err.message : String(err)}`
+          );
+        }
 
         // ── Model changes in one undo group ────────────────────────────────
         const undoGroup = new UndoActionGroup({ label: 'Import' });
@@ -164,7 +193,7 @@ export function apply(plan: ImportPlan, targetProject: ProjectModel): Promise<Im
         if (!undoGroup.isEmpty()) UndoQueue.instance.push(undoGroup);
 
         // ── Disk work (NOT undoable — reported separately) ─────────────────
-        const warnings = [...modelResult.warnings];
+        const warnings = [...modelResult.warnings, ...assessmentWarnings];
         const filesCopied: string[] = [];
         const modulesCopied: string[] = [];
 
@@ -188,6 +217,16 @@ export function apply(plan: ImportPlan, targetProject: ProjectModel): Promise<Im
           }
         }
 
+        // ── LIB-006: the report goes into the TARGET project, last ─────────
+        // After the disk copies, so a report written into a project whose
+        // resources failed to arrive still describes what actually landed.
+        let reportFilesWritten: string[] | undefined;
+        if (legacyReport) {
+          const write = await writeImportReport(legacyReport, targetProject);
+          reportFilesWritten = write.written;
+          warnings.push(...write.warnings);
+        }
+
         const filesFailed = warnings.some((w) => w.startsWith('Failed to copy file'));
         resolve(
           emptyResult({
@@ -198,7 +237,9 @@ export function apply(plan: ImportPlan, targetProject: ProjectModel): Promise<Im
             stylesImported: modelResult.stylesImported,
             filesCopied,
             modulesCopied,
-            warnings
+            warnings,
+            legacyReport,
+            reportFilesWritten
           })
         );
       } catch (err) {

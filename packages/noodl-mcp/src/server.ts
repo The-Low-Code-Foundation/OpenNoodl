@@ -12,6 +12,7 @@ import { registerPlanTools } from './tools/planTools';
 import { registerBackendReadTools, registerBackendWriteTools } from './tools/backendTools';
 import { registerCatalogTools } from './tools/catalogTools';
 import { registerDocsReadTools, registerDocsWriteTools } from './tools/docsTools';
+import { registerImportReportTool } from './tools/importReportTool';
 import { registerReadTools } from './tools/read';
 import { registerStyleReadTools, registerStyleWriteTools } from './tools/styleTools';
 import { registerValidateTools } from './tools/validateTools';
@@ -49,6 +50,9 @@ export function createServer(options: ServerOptions): CreatedServer {
   );
 
   registerReadTools(server, store, { allowWrites: options.allowWrites });
+  // LIB-006. Read-only and always registered: knowing what an import could not
+  // convert is useful long before anyone is allowed to change anything.
+  registerImportReportTool(server, store);
   registerCatalogTools(server);
   registerValidateTools(server, store);
   registerStyleReadTools(server, store);
