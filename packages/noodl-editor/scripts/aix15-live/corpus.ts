@@ -201,3 +201,74 @@ export const EXPLAIN_PROMPTS: ExplainPrompt[] = [
     wants: ['store', 'undo', 'redo', 'history']
   }
 ];
+
+/**
+ * AIX-008 — the sandbox preview, against a real provider.
+ *
+ * AIX-008 was built and live-verified by driving a *scripted*, no-provider
+ * session, which means everything downstream of the model — the spliced export,
+ * the network shim, the dataset — had only ever seen candidates written by a
+ * script. The one thing a real model changes is `sample_data`: the optional
+ * `submit_component` field whose records take precedence over the editor's
+ * heuristic synthesis. Nobody had ever seen a model fill it in.
+ *
+ * So every prompt here reads a backend, because a component that reads nothing
+ * is a component the field is explicitly told to omit. The spread is the one
+ * the success criteria name: a list, a card bound to one record, an aggregate,
+ * and an auth-gated page that must render its signed-in state.
+ *
+ * `namedClasses` is what the request itself names. A collection the *user*
+ * named is the strict case — `sample_data` keyed anything else is data the
+ * graph will never read — while `account` deliberately names none, so the model
+ * has to agree with itself between the graph it wrote and the data it supplied.
+ */
+export interface SandboxPrompt {
+  slug: string;
+  componentPath: string;
+  description: string;
+  /** Collection names the request states outright (may be empty). */
+  namedClasses: string[];
+  /** The component must render a signed-in state, not a login wall. */
+  authGated?: boolean;
+}
+
+export const SANDBOX_PROMPTS: SandboxPrompt[] = [
+  {
+    slug: 'book-list',
+    componentPath: 'Pages/AIX Book List',
+    description:
+      'A page that lists the books in my Books collection, newest first, as a vertical scrolling list. ' +
+      "Each row shows the book's cover image on the left, and on the right its title in bold, the " +
+      'author underneath, and the rating out of five.',
+    namedClasses: ['Books']
+  },
+  {
+    slug: 'event-card',
+    componentPath: 'Visual Components/AIX Event Card',
+    description:
+      'A reusable card for a single event from my Events collection. It shows the event photo, the ' +
+      'event name, the date it starts, the city and venue, and the ticket price. Take the event id as ' +
+      'a component input and look the event up from it.',
+    namedClasses: ['Events']
+  },
+  {
+    slug: 'orders-summary',
+    componentPath: 'Pages/AIX Orders',
+    description:
+      'An orders page. At the top a line saying how many orders there are and what they add up to in ' +
+      'total, and under it the rows of my Orders collection — order number, customer name, total, ' +
+      'status and the date it was placed — most recent first.',
+    namedClasses: ['Orders']
+  },
+  {
+    slug: 'account',
+    componentPath: 'Pages/AIX Account',
+    description:
+      'An account page for whoever is signed in: their avatar, their display name and their email ' +
+      'address at the top, and underneath, a list of the articles they have saved to read later with ' +
+      'the title and the date they saved it. If nobody is signed in, show a short "Sign in to see ' +
+      'your account" message instead of the page.',
+    namedClasses: [],
+    authGated: true
+  }
+];

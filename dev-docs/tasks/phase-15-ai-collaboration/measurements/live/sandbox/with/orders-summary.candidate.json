@@ -1,0 +1,116 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "d7507124-b47e-401c-b136-8f6fa55b70b8",
+    "name": "AIX Orders",
+    "path": "/Pages/AIX Orders",
+    "type": "page",
+    "created": "2026-08-02T17:12:56.127Z",
+    "modified": "2026-08-02T17:12:56.127Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Orders page: shows a summary line with order count and total, followed by order rows (order number, customer name, total, status, date placed) sorted most-recent-first, sourced from the Orders collection."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "d7507124-b47e-401c-b136-8f6fa55b70b8",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Page container",
+        "x": 0,
+        "y": 0,
+        "children": [
+          "summaryText",
+          "rowsText"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "paddingTop": "var(--space-8)",
+          "paddingBottom": "var(--space-8)",
+          "paddingLeft": "var(--space-8)",
+          "paddingRight": "var(--space-8)",
+          "rowGap": "var(--space-4)",
+          "backgroundColor": "var(--background)",
+          "sizeMode": "contentHeight",
+          "widthUnit": "%",
+          "width": 100
+        }
+      },
+      {
+        "id": "query",
+        "type": "DbCollection2",
+        "label": "Query Orders collection",
+        "x": -400,
+        "y": 0,
+        "parameters": {
+          "collectionName": "Orders"
+        }
+      },
+      {
+        "id": "calc",
+        "type": "JavaScriptFunction",
+        "label": "Sort orders, compute summary and row text",
+        "x": -150,
+        "y": 0,
+        "parameters": {
+          "functionScript": "var items = Inputs.items || [];\nvar sorted = items.slice().sort(function(a,b){ return new Date(b.datePlaced) - new Date(a.datePlaced); });\nvar total = sorted.reduce(function(s,o){ return s + (Number(o.total)||0); }, 0);\nOutputs.summary = sorted.length + ' orders · $' + total.toFixed(2) + ' total';\nvar rows = sorted.map(function(o){\n  var d = o.datePlaced ? new Date(o.datePlaced).toLocaleDateString() : '';\n  return (o.orderNumber||'') + '   ' + (o.customerName||'') + '   $' + (Number(o.total)||0).toFixed(2) + '   ' + (o.status||'') + '   ' + d;\n});\nOutputs.rowsText = rows.join('\\n');"
+        }
+      },
+      {
+        "id": "summaryText",
+        "type": "Text",
+        "label": "Order count and total",
+        "x": 150,
+        "y": 0,
+        "parent": "root",
+        "parameters": {
+          "variant": "heading-3",
+          "text": "Loading orders..."
+        }
+      },
+      {
+        "id": "rowsText",
+        "type": "Text",
+        "label": "Order rows",
+        "x": 150,
+        "y": 200,
+        "parent": "root",
+        "parameters": {
+          "variant": "code",
+          "text": "",
+          "whiteSpace": "pre-wrap"
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "d7507124-b47e-401c-b136-8f6fa55b70b8",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "query",
+        "fromProperty": "items",
+        "toId": "calc",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "calc",
+        "fromProperty": "summary",
+        "toId": "summaryText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "calc",
+        "fromProperty": "rowsText",
+        "toId": "rowsText",
+        "toProperty": "text"
+      }
+    ]
+  }
+}

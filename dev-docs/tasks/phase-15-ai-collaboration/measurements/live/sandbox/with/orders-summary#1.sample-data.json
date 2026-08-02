@@ -1,0 +1,39 @@
+{
+  "Orders": [
+    {
+      "orderNumber": "ORD-1042",
+      "customerName": "Maria Gonzalez",
+      "total": 89.99,
+      "status": "Shipped",
+      "placedAt": "2024-05-12T10:15:00Z"
+    },
+    {
+      "orderNumber": "ORD-1041",
+      "customerName": "James Carter",
+      "total": 154.5,
+      "status": "Processing",
+      "placedAt": "2024-05-11T14:32:00Z"
+    },
+    {
+      "orderNumber": "ORD-1040",
+      "customerName": "Aiko Tanaka",
+      "total": 42,
+      "status": "Delivered",
+      "placedAt": "2024-05-10T09:05:00Z"
+    },
+    {
+      "orderNumber": "ORD-1039",
+      "customerName": "Liam O'Brien",
+      "total": 210.75,
+      "status": "Cancelled",
+      "placedAt": "2024-05-09T18:47:00Z"
+    },
+    {
+      "orderNumber": "ORD-1038",
+      "customerName": "Fatima Al-Sayed",
+      "total": 76.2,
+      "status": "Delivered",
+      "placedAt": "2024-05-08T11:22:00Z"
+    }
+  ]
+}

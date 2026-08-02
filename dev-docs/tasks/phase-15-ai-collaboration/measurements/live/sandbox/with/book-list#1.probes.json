@@ -1,0 +1,330 @@
+[
+  {
+    "name": "parse-query-mounted",
+    "about": "A configured endpoint carries a mount path; the query must still be answered.",
+    "transport": "fetch",
+    "method": "POST",
+    "url": "https://backend.example.com/parse/classes/Items",
+    "body": {
+      "_method": "GET",
+      "limit": 10
+    },
+    "status": 200,
+    "escaped": false,
+    "ok": true,
+    "why": "5 record(s)",
+    "sample": {
+      "results": [
+        {
+          "objectId": "sandbox-1",
+          "id": "sandbox-1",
+          "createdAt": "2025-12-16T09:30:00.000Z",
+          "updatedAt": "2026-01-15T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Northern Compass",
+          "description": "A short summary that stands in for the real copy.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(210%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(250%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Active",
+          "count": 3
+        },
+        {
+          "objectId": "sandbox-2",
+          "id": "sandbox-2",
+          "createdAt": "2025-12-15T09:30:00.000Z",
+          "updatedAt": "2026-01-14T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Quiet Ledger",
+          "description": "Written to show how the layout behaves at this length.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(32%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(72%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Pending",
+          "count": 10
+        },
+        {
+          "objectId": "sandbox-3",
+          "id": "sandbox-3",
+          "createdAt": "2025-12-14T09:30:00.000Z",
+          "updatedAt": "2026-01-13T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Amber Beacon",
+          "description": "Long enough to wrap onto a second line in a narrow column.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(160%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(200%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Archived",
+          "count": 17
+        },
+        {
+          "objectId": "sandbox-4",
+          "id": "sandbox-4",
+          "createdAt": "2025-12-13T09:30:00.000Z",
+          "updatedAt": "2026-01-12T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Copper Orchard",
+          "description": "Kept deliberately plain so the design does the talking.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(280%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(320%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Draft",
+          "count": 24
+        },
+        {
+          "objectId": "sandbox-5",
+          "id": "sandbox-5",
+          "createdAt": "2025-12-12T09:30:00.000Z",
+          "updatedAt": "2026-01-11T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Meridian Lantern",
+          "description": "Sample text — replaced by whatever your data actually says.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(12%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(52%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Complete",
+          "count": 31
+        }
+      ]
+    }
+  },
+  {
+    "name": "parse-query-no-endpoint",
+    "about": "No backend configured — the Parse client emits the literal string \"undefined\" as its host.",
+    "transport": "xhr",
+    "method": "POST",
+    "url": "undefined/classes/Items",
+    "body": {
+      "_method": "GET",
+      "limit": 10
+    },
+    "status": 200,
+    "escaped": false,
+    "ok": true,
+    "why": "5 record(s)",
+    "sample": {
+      "results": [
+        {
+          "objectId": "sandbox-1",
+          "id": "sandbox-1",
+          "createdAt": "2025-12-16T09:30:00.000Z",
+          "updatedAt": "2026-01-15T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Northern Compass",
+          "description": "A short summary that stands in for the real copy.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(210%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(250%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Active",
+          "count": 3
+        },
+        {
+          "objectId": "sandbox-2",
+          "id": "sandbox-2",
+          "createdAt": "2025-12-15T09:30:00.000Z",
+          "updatedAt": "2026-01-14T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Quiet Ledger",
+          "description": "Written to show how the layout behaves at this length.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(32%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(72%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Pending",
+          "count": 10
+        },
+        {
+          "objectId": "sandbox-3",
+          "id": "sandbox-3",
+          "createdAt": "2025-12-14T09:30:00.000Z",
+          "updatedAt": "2026-01-13T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Amber Beacon",
+          "description": "Long enough to wrap onto a second line in a narrow column.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(160%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(200%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Archived",
+          "count": 17
+        },
+        {
+          "objectId": "sandbox-4",
+          "id": "sandbox-4",
+          "createdAt": "2025-12-13T09:30:00.000Z",
+          "updatedAt": "2026-01-12T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Copper Orchard",
+          "description": "Kept deliberately plain so the design does the talking.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(280%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(320%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Draft",
+          "count": 24
+        },
+        {
+          "objectId": "sandbox-5",
+          "id": "sandbox-5",
+          "createdAt": "2025-12-12T09:30:00.000Z",
+          "updatedAt": "2026-01-11T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Meridian Lantern",
+          "description": "Sample text — replaced by whatever your data actually says.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(12%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(52%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Complete",
+          "count": 31
+        }
+      ]
+    }
+  },
+  {
+    "name": "parse-aggregate-count",
+    "about": "The \"how many are there\" line at the top of a list.",
+    "transport": "fetch",
+    "method": "GET",
+    "url": "https://backend.example.com/parse/aggregate/Items?%24group=%7B%22objectId%22%3Anull%2C%22total%22%3A%7B%22%24sum%22%3A%22%24total%22%7D%7D",
+    "status": 200,
+    "escaped": false,
+    "ok": true,
+    "why": "status 200, 1 row(s)",
+    "sample": {
+      "results": [
+        {
+          "total": 0
+        }
+      ]
+    }
+  },
+  {
+    "name": "byob-query",
+    "about": "The BYOB/Directus shape, which is fetch rather than XHR.",
+    "transport": "fetch",
+    "method": "GET",
+    "url": "https://backend.example.com/items/Items?limit=3",
+    "status": 200,
+    "escaped": false,
+    "ok": true,
+    "why": "3 record(s)",
+    "sample": {
+      "data": [
+        {
+          "objectId": "sandbox-1",
+          "id": "sandbox-1",
+          "createdAt": "2025-12-16T09:30:00.000Z",
+          "updatedAt": "2026-01-15T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Northern Compass",
+          "description": "A short summary that stands in for the real copy.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(210%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(250%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Active",
+          "count": 3
+        },
+        {
+          "objectId": "sandbox-2",
+          "id": "sandbox-2",
+          "createdAt": "2025-12-15T09:30:00.000Z",
+          "updatedAt": "2026-01-14T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Quiet Ledger",
+          "description": "Written to show how the layout behaves at this length.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(32%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(72%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Pending",
+          "count": 10
+        },
+        {
+          "objectId": "sandbox-3",
+          "id": "sandbox-3",
+          "createdAt": "2025-12-14T09:30:00.000Z",
+          "updatedAt": "2026-01-13T09:30:00.000Z",
+          "__sandbox": true,
+          "name": "Amber Beacon",
+          "description": "Long enough to wrap onto a second line in a narrow column.",
+          "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(160%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(200%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3EImage%20url%3C%2Ftext%3E%3C%2Fsvg%3E",
+          "status": "Archived",
+          "count": 17
+        }
+      ],
+      "meta": {
+        "total_count": 5,
+        "filter_count": 5
+      }
+    }
+  },
+  {
+    "name": "session-me",
+    "about": "An auth-gated component asks who is signed in before rendering anything.",
+    "transport": "xhr",
+    "method": "GET",
+    "url": "https://backend.example.com/parse/users/me",
+    "status": 200,
+    "escaped": false,
+    "ok": true,
+    "why": "status 200, signed in as sample.user@example.com",
+    "sample": {
+      "objectId": "sandbox-user",
+      "id": "sandbox-user",
+      "createdAt": "2025-12-16T09:30:00.000Z",
+      "updatedAt": "2026-01-15T09:30:00.000Z",
+      "__sandbox": true,
+      "username": "sample.user@example.com",
+      "email": "sample.user@example.com",
+      "emailVerified": true,
+      "name": "Sample User",
+      "firstName": "Sample",
+      "lastName": "User",
+      "sessionToken": "r:sandbox-session",
+      "profileImage": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(160%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(200%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3ESample%20User%3C%2Ftext%3E%3C%2Fsvg%3E"
+    }
+  },
+  {
+    "name": "login",
+    "about": "A sign-in form must succeed, whatever it is given.",
+    "transport": "fetch",
+    "method": "POST",
+    "url": "https://backend.example.com/parse/login",
+    "body": {
+      "username": "someone@example.com",
+      "password": "hunter2"
+    },
+    "status": 200,
+    "escaped": false,
+    "ok": true,
+    "why": "status 200, signed in as sample.user@example.com",
+    "sample": {
+      "objectId": "sandbox-user",
+      "id": "sandbox-user",
+      "createdAt": "2025-12-16T09:30:00.000Z",
+      "updatedAt": "2026-01-15T09:30:00.000Z",
+      "__sandbox": true,
+      "username": "someone@example.com",
+      "email": "sample.user@example.com",
+      "emailVerified": true,
+      "name": "Sample User",
+      "firstName": "Sample",
+      "lastName": "User",
+      "sessionToken": "r:sandbox-session",
+      "profileImage": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(160%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(200%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3ESample%20User%3C%2Ftext%3E%3C%2Fsvg%3E"
+    }
+  },
+  {
+    "name": "cloud-function",
+    "about": "Project code the sandbox cannot run: an empty success, not an error branch.",
+    "transport": "fetch",
+    "method": "POST",
+    "url": "https://backend.example.com/parse/functions/recalculate",
+    "body": {},
+    "status": 200,
+    "escaped": false,
+    "ok": true,
+    "why": "status 200",
+    "sample": {
+      "result": {}
+    }
+  },
+  {
+    "name": "third-party-rest",
+    "about": "A REST node pointed anywhere at all. Nothing may leave the machine.",
+    "transport": "fetch",
+    "method": "GET",
+    "url": "https://api.stripe.com/v1/charges",
+    "status": 200,
+    "escaped": false,
+    "ok": true,
+    "why": "status 200, answered locally",
+    "sample": {}
+  },
+  {
+    "name": "static-asset",
+    "about": "The viewer’s own assets must pass through untouched, or the preview cannot boot.",
+    "transport": "fetch",
+    "method": "GET",
+    "url": "/noodl_modules/some-module/index.js",
+    "status": 599,
+    "escaped": true,
+    "ok": true,
+    "why": "passed through",
+    "sample": {
+      "escaped": true
+    }
+  }
+]

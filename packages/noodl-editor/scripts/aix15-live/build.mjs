@@ -25,7 +25,15 @@ const EDITOR_SRC = path.join(REPO_ROOT, 'packages/noodl-editor/src/editor/src');
  * Modules that only exist for a running editor. A noop proxy answers any shape
  * of access, so a stub never has to track the surface it is standing in for.
  */
-const STUBBED = [/AiAssistantStore$/, /EditorSettings$/, /ProjectModel$/, /@noodl\/platform$/];
+const STUBBED = [/AiAssistantStore$/, /EditorSettings$/, /ProjectModel$/];
+
+/**
+ * `@noodl/platform` was on that list until the `sandbox` mode needed a real
+ * `ProjectModel`, whose import graph reads `platform.getUserDataPath()` at
+ * module scope. It gets a small real module instead — see platform-shim.cjs
+ * for why a Proxy cannot stand in for a module anyone imports *by name*.
+ */
+const PLATFORM_SHIM = path.join(HERE, 'platform-shim.cjs');
 
 const stubPlugin = {
   name: 'aix15-stubs',
@@ -54,7 +62,8 @@ await esbuild.build({
     '@noodl-models': path.join(EDITOR_SRC, 'models'),
     '@noodl-utils': path.join(EDITOR_SRC, 'utils'),
     '@noodl-constants': path.join(EDITOR_SRC, 'constants'),
-    '@noodl-types': path.join(EDITOR_SRC, 'typings')
+    '@noodl-types': path.join(EDITOR_SRC, 'typings'),
+    '@noodl/platform': PLATFORM_SHIM
   },
   plugins: [stubPlugin],
   logLevel: 'warning'
