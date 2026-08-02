@@ -718,7 +718,7 @@
                                         "value": 32,
                                         "unit": "px"
                                     },
-                                    "iconColor": "Notice",
+                                    "iconColor": "Rating/Star",
                                     "iconIconSource": {
                                         "class": "material-icons",
                                         "code": "star_border"
@@ -737,7 +737,7 @@
                                         "value": 32,
                                         "unit": "px"
                                     },
-                                    "iconColor": "Notice",
+                                    "iconColor": "Rating/Star",
                                     "iconIconSource": {
                                         "class": "material-icons",
                                         "code": "star"
@@ -1182,7 +1182,7 @@
         "styles": {
             "text": {},
             "colors": {
-                "Notice": "#F2C441"
+                "Rating/Star": "#F2C441"
             }
         }
     },

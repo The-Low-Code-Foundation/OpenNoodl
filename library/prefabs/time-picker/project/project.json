@@ -199,7 +199,7 @@
                                 "value": 40,
                                 "unit": "px"
                             },
-                            "borderColor": "#999",
+                            "borderColor": "Grey - 400",
                             "flexDirection": "column",
                             "sizeMode": "contentHeight",
                             "borderWidth": {
@@ -331,7 +331,7 @@
                                                 "unit": "%"
                                             },
                                             "zIndex": 100,
-                                            "borderColor": "#999",
+                                            "borderColor": "Grey - 400",
                                             "sizeMode": "explicit",
                                             "mounted": false,
                                             "alignX": "left"
@@ -356,7 +356,7 @@
                                                     },
                                                     "sizeMode": "explicit",
                                                     "scrollEnabled": true,
-                                                    "backgroundColor": "#FFFFFF",
+                                                    "backgroundColor": "White",
                                                     "borderWidth": {
                                                         "value": 1,
                                                         "unit": "px"
@@ -1129,9 +1129,11 @@
             },
             "colors": {
                 "Grey - 300": "#E9E9E9",
+                "Grey - 400": "#CECECE",
                 "Grey - 700": "#4C4C4C",
                 "Grey - 900": "#1F1F1F",
-                "Primary": "#5836F5"
+                "Primary": "#5836F5",
+                "White": "#FFFFFF"
             }
         }
     },

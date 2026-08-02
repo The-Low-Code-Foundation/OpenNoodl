@@ -930,7 +930,7 @@
                         "x": 979.9409282828593,
                         "y": 43.09743923247271,
                         "parameters": {
-                            "borderColor": "#999",
+                            "borderColor": "Grey - 400",
                             "borderRadius": {
                                 "value": 3,
                                 "unit": "px"
@@ -986,7 +986,7 @@
                                         "id": "6513b308-5b05-8d99-2784-a872a33f685f",
                                         "type": "net.noodl.visual.icon",
                                         "parameters": {
-                                            "iconColor": "#666",
+                                            "iconColor": "Grey - 700",
                                             "iconIconSource": {
                                                 "class": "material-icons",
                                                 "code": "calendar_today"

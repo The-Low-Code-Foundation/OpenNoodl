@@ -891,7 +891,7 @@
                                 "value": 1,
                                 "unit": "px"
                             },
-                            "borderBottomColor": "#B4B4B4",
+                            "borderBottomColor": "Grey - 400",
                             "sizeMode": "contentSize",
                             "width": {
                                 "value": 100,
@@ -1726,7 +1726,7 @@
                                                 "id": "f62b38fc-baa4-b010-81ff-e819be994649",
                                                 "type": "net.noodl.visual.icon",
                                                 "parameters": {
-                                                    "iconColor": "#666",
+                                                    "iconColor": "Grey - 700",
                                                     "iconIconSource": {
                                                         "class": "material-icons",
                                                         "code": "calendar_today"
@@ -2681,7 +2681,7 @@
                         "x": 1,
                         "y": 0,
                         "parameters": {
-                            "borderRightColor": "#000000",
+                            "borderRightColor": "Grey - 900",
                             "borderBottomWidth": {
                                 "value": 1,
                                 "unit": "px"
