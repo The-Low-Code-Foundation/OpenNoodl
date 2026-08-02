@@ -21,8 +21,8 @@ const { startWebSocketServer } = require('../../noodl-editor/src/main/src/relay-
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const WebSocketNode = require('ws');
 
-import { RelayClient } from '../src/observe/relayClient';
-import { findRelayToken, describeMissingToken } from '../src/observe/token';
+import { RelayClient } from '../src/relayClient';
+import { findRelayToken, describeMissingToken } from '../src/token';
 
 const TOKEN = 'test-launch-token';
 

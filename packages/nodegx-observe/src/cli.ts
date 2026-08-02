@@ -8,14 +8,18 @@
  * ⚠️ **This is not `noodl-mcp`.** That server reads a project *directory* on disk and refuses
  * legacy formats. This one attaches to a *running app* over the editor's local relay, needs no
  * project access at all, and works on any format — because the running runtime supplies both
- * the names and the topology. They ship in one package for packaging reasons only.
+ * the names and the topology.
+ *
+ * They used to ship as two binaries from one package, for packaging convenience. They are now
+ * two packages: the spec's standing warning is that the two must not be *confused*, and one
+ * `npm install` producing both worked against exactly that.
  */
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-import { createObserveServer } from './observe/server';
-import { RelayClient } from './observe/relayClient';
-import { describeMissingToken, findRelayToken } from './observe/token';
+import { createObserveServer } from './server';
+import { RelayClient } from './relayClient';
+import { describeMissingToken, findRelayToken } from './token';
 
 const USAGE = `Usage: nodegx-observe [options]
 

@@ -1,10 +1,10 @@
 {
-  "name": "@noodl/mcp",
+  "name": "@noodl/observe",
   "version": "0.1.0",
-  "description": "Model Context Protocol server exposing NodeGX (OpenNoodl) v2 projects to external AI agents.",
-  "main": "src/index.ts",
+  "description": "MCP server that observes and drives a running NodeGX app over the editor's local relay. Needs no access to the project on disk.",
+  "main": "src/server.ts",
   "bin": {
-    "noodl-mcp": "./bin/noodl-mcp.js"
+    "nodegx-observe": "./bin/nodegx-observe.js"
   },
   "files": [
     "bin",
@@ -23,6 +23,7 @@
   "devDependencies": {
     "@types/jest": "^29.0.1",
     "jest": "^29.7.0",
-    "ts-jest": "^29.4.1"
+    "ts-jest": "^29.4.1",
+    "ws": "^8.18.0"
   }
 }

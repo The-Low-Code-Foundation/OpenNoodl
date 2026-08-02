@@ -36,12 +36,12 @@ import {
   portsToResolve,
   rootEvents,
   valueKey
-} from '../../../noodl-editor/src/editor/src/utils/provenance/walkEngine';
-import type { PortValues, WalkResult, WalkRow } from '../../../noodl-editor/src/editor/src/utils/provenance/walkEngine';
+} from '../../noodl-editor/src/editor/src/utils/provenance/walkEngine';
+import type { PortValues, WalkResult, WalkRow } from '../../noodl-editor/src/editor/src/utils/provenance/walkEngine';
 import { RelayClient } from './relayClient';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const PKG_VERSION: string = require('../../package.json').version;
+const PKG_VERSION: string = require('../package.json').version;
 
 /** Every tool answers as text; the caller is a language model, not a parser. */
 function text(body: string) {

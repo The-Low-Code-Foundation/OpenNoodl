@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "Node16",
+    "moduleResolution": "node16",
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    // ⚠️ Pinned, and it is load-bearing rather than decorative. Without it the relay suite
+    // resolves an `expect` whose `Matchers` has no `resolves`/`rejects` and the package does not
+    // typecheck; with it, `@types/jest` resolves from the repo root and it is clean. The root
+    // tsconfig declares this exact list, so inheritance alone *should* be enough — measurably it
+    // is not, and the cause was not established. Both states were run before writing this down.
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*", "tests/**/*.ts"]
+}
