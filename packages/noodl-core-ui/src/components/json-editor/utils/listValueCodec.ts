@@ -69,6 +69,24 @@ export function expectedTypeFor(portType: ListPortType): 'array' | 'object' {
   return portType === 'object' ? 'object' : 'array';
 }
 
+/** Every port type the shared list editor claims. Derived from the catalog, not hand-listed. */
+export const LIST_PORT_TYPES: readonly ListPortType[] = ['array', 'object', 'stringlist', 'proplist'];
+
+/**
+ * Is this port one of the list-shaped ones, and which?
+ *
+ * `DataTypes/Ports.ts` routes on the answer and ERG-003's catalog test derives
+ * its expectation from it, so "which ports are covered" has exactly one
+ * definition. `type` is a port type as the node library stores it: a bare name,
+ * or an object with `name` (already resolved through `editAsType` by the
+ * caller's `getEditType`).
+ */
+export function listPortTypeFor(type: unknown): ListPortType | undefined {
+  if (!type) return undefined;
+  const name = typeof type === 'string' ? type : (type as { name?: unknown }).name;
+  return LIST_PORT_TYPES.find((t) => t === name);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Literal reading                                                            */
 /* -------------------------------------------------------------------------- */
