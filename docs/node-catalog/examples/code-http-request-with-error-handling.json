@@ -1,7 +1,7 @@
 {
   "id": "code-http-request-with-error-handling",
   "title": "HTTP Request with scripted post-processing and error display",
-  "description": "HTTP Request (net.noodl.HTTP) fetches the `url` when `fetch` fires and delivers `response` (parsed body), `statusCode`, and either `success` or `failure` with `error`. The response is post-processed by a Script node (Javascript2), whose input/output ports are declared by its own code — here it reads `Inputs.response` and produces a `headline` output. Errors surface as a level: `failure` evaluates a Condition whose `result` shows the error text.",
+  "description": "HTTP Request (net.noodl.HTTP) fetches the `url` when `fetch` fires and delivers `response` (parsed body), `statusCode`, and either `done` or `failure` with `error` — plus `completed` after either, to carry on regardless. The response is post-processed by a Script node (Javascript2), whose input/output ports are declared by its own code — here it reads `Inputs.response` and produces a `headline` output. Errors surface as a level: `failure` evaluates a Condition whose `result` shows the error text.",
   "demonstrates": ["net.noodl.HTTP", "Javascript2"],
   "components": [
     {

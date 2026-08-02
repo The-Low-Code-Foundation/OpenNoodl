@@ -114,7 +114,11 @@ describe('apply', () => {
     const { node, signals } = applied(context, 'status', 'accepted');
 
     expect(store.getKey('app', 'status')).toBe('accepted');
-    expect(signals).toEqual(['applied']);
+    // ⚠️ ERG-001 is **purely additive** on this node. `Applied`, `Committed`, `Rolled Back` and
+    // `Timed Out` all stay, because they say *which phase* of a three-phase lifecycle resolved
+    // and the contract's shared `Done` cannot. The outcome lands last, after every value the
+    // action wrote is already readable.
+    expect(signals).toEqual(['applied', 'done', 'completed']);
     expect(output(node, 'value')).toBe('accepted');
     expect(output(node, 'isPending')).toBe(true);
     expect(output(node, 'pendingCount')).toBe(1);
@@ -159,7 +163,12 @@ describe('apply', () => {
     // NDA-012: `Failure` is new. This node used to end a refusal on the `error` string
     // alone, so an author had a success signal to wire and nothing to sequence a failure
     // off. A rollback is deliberately not a `Failure` — it has `Rolled Back` already.
-    expect(signals).toEqual(['failure']);
+    //
+    // ERG-001: `Completed` joins it. `failure` itself is unchanged — it already carried the
+    // contract's name and exactly its meaning — but it is now fired through `reportOutcome`
+    // rather than by hand, which is what also produces the `Completed` an author wires to
+    // carry on regardless.
+    expect(signals).toEqual(['failure', 'completed']);
     expect(store.getState('app')).toEqual({});
   });
 
@@ -182,7 +191,12 @@ describe('apply', () => {
     // NDA-012: `Failure` is new. This node used to end a refusal on the `error` string
     // alone, so an author had a success signal to wire and nothing to sequence a failure
     // off. A rollback is deliberately not a `Failure` — it has `Rolled Back` already.
-    expect(signals).toEqual(['failure']);
+    //
+    // ERG-001: `Completed` joins it. `failure` itself is unchanged — it already carried the
+    // contract's name and exactly its meaning — but it is now fired through `reportOutcome`
+    // rather than by hand, which is what also produces the `Completed` an author wires to
+    // carry on regardless.
+    expect(signals).toEqual(['failure', 'completed']);
     expect(String(output(node, 'error'))).toContain('already open');
     expect(store.getKey('app', 'status')).toBe('a');
     expect(output(node, 'pendingCount')).toBe(1);
@@ -216,7 +230,7 @@ describe('commit', () => {
 
     pulse(node, 'commit');
 
-    expect(signals).toEqual(['committed']);
+    expect(signals).toEqual(['committed', 'done', 'completed']);
     expect(store.getKey('app', 'status')).toBe('accepted');
     expect(store.getOpenPatches('app')).toEqual([]);
     expect(output(node, 'isPending')).toBe(false);
@@ -235,7 +249,12 @@ describe('commit', () => {
     // NDA-012: `Failure` is new. This node used to end a refusal on the `error` string
     // alone, so an author had a success signal to wire and nothing to sequence a failure
     // off. A rollback is deliberately not a `Failure` — it has `Rolled Back` already.
-    expect(signals).toEqual(['failure']);
+    //
+    // ERG-001: `Completed` joins it. `failure` itself is unchanged — it already carried the
+    // contract's name and exactly its meaning — but it is now fired through `reportOutcome`
+    // rather than by hand, which is what also produces the `Completed` an author wires to
+    // carry on regardless.
+    expect(signals).toEqual(['failure', 'completed']);
     expect(output(node, 'error')).toBe('There is no open update to commit');
   });
 
@@ -250,7 +269,12 @@ describe('commit', () => {
     // NDA-012: `Failure` is new. This node used to end a refusal on the `error` string
     // alone, so an author had a success signal to wire and nothing to sequence a failure
     // off. A rollback is deliberately not a `Failure` — it has `Rolled Back` already.
-    expect(signals).toEqual(['failure']);
+    //
+    // ERG-001: `Completed` joins it. `failure` itself is unchanged — it already carried the
+    // contract's name and exactly its meaning — but it is now fired through `reportOutcome`
+    // rather than by hand, which is what also produces the `Completed` an author wires to
+    // carry on regardless.
+    expect(signals).toEqual(['failure', 'completed']);
     expect(String(output(node, 'error'))).toContain('not-a-transaction');
     expect(output(node, 'pendingCount')).toBe(1);
   });
@@ -287,7 +311,11 @@ describe('rollback', () => {
     node.setInputValue('errorMessage', 'Server said no');
     pulse(node, 'rollback');
 
-    expect(signals).toEqual(['rolledBack']);
+    // ⚠️ `Done`, not `Failure`. A rollback is the author's *success* path for a failed request:
+    // the graph asked for the old value back and got it. Folding the server's failure — which
+    // the graph already knows about, it is why it pulsed `Rollback` — into this node's own
+    // outcome is the collapse Rule 1 exists to stop.
+    expect(signals).toEqual(['rolledBack', 'done', 'completed']);
     expect(store.getKey('app', 'status')).toBe('pending');
     expect(output(node, 'value')).toBe('pending');
     expect(output(node, 'error')).toBe('Server said no');
@@ -326,7 +354,12 @@ describe('rollback', () => {
     // NDA-012: `Failure` is new. This node used to end a refusal on the `error` string
     // alone, so an author had a success signal to wire and nothing to sequence a failure
     // off. A rollback is deliberately not a `Failure` — it has `Rolled Back` already.
-    expect(signals).toEqual(['failure']);
+    //
+    // ERG-001: `Completed` joins it. `failure` itself is unchanged — it already carried the
+    // contract's name and exactly its meaning — but it is now fired through `reportOutcome`
+    // rather than by hand, which is what also produces the `Completed` an author wires to
+    // carry on regardless.
+    expect(signals).toEqual(['failure', 'completed']);
     expect(output(node, 'error')).toBe('There is no open update to roll back');
   });
 });
@@ -349,6 +382,11 @@ describe('timeout', () => {
 
     jest.advanceTimersByTime(1);
 
+    // ⚠️ ERG-001 — **no `Completed`, and the exact `toEqual` is what proves it.** `Rolled Back`
+    // is dual-route: the `Rollback` port and this timer both reach `finishRollback`. Only the
+    // port owes an outcome, because a deadline firing is a genuinely later event that nobody
+    // invoked — there is no invocation to complete. A `Completed` here would tell an author
+    // "your action finished" about an action they never took.
     expect(signals).toEqual(['rolledBack', 'timedOut']);
     expect(store.getKey('app', 'status')).toBe('pending');
     expect(output(node, 'error')).toBe('Request timed out');
@@ -408,7 +446,12 @@ describe('timeout', () => {
     // NDA-012: `Failure` is new. This node used to end a refusal on the `error` string
     // alone, so an author had a success signal to wire and nothing to sequence a failure
     // off. A rollback is deliberately not a `Failure` — it has `Rolled Back` already.
-    expect(signals).toEqual(['failure']);
+    //
+    // ERG-001: `Completed` joins it. `failure` itself is unchanged — it already carried the
+    // contract's name and exactly its meaning — but it is now fired through `reportOutcome`
+    // rather than by hand, which is what also produces the `Completed` an author wires to
+    // carry on regardless.
+    expect(signals).toEqual(['failure', 'completed']);
     expect(output(node, 'error')).toBe('There is no open update to commit');
     expect(store.getKey('app', 'status')).toBe('pending');
   });
@@ -520,7 +563,16 @@ describe('a rollback racing a newer write', () => {
     pulse(node, 'rollback');
 
     expect(store.getKey('app', 'messages')).toEqual(['a', 'b']);
-    expect(signals).toEqual(['rolledBack']);
+    // ⚠️ **This is where ERG-001's `Unchanged` lives on this node, and it is the contract's
+    // headline discrimination.** `Rolled Back` fires whether or not the old value was actually
+    // restored — compare the row above, which is the same signal for the opposite outcome — so
+    // before this the only way to tell them apart was to poll the `error` string. That is
+    // `Insert Object Into Array`'s defect verbatim, the one the contract opens with.
+    //
+    // The post-condition a rollback exists to establish is "the value this update wrote is no
+    // longer in the store". Something newer had already replaced it, so it held before the
+    // action ran and nothing needed doing.
+    expect(signals).toEqual(['rolledBack', 'unchanged', 'completed']);
     expect(output(node, 'isRolledBack')).toBe(true);
     expect(String(output(node, 'error'))).toContain('changed after the update was applied');
     expect(store.getOpenPatches('app')).toEqual([]);

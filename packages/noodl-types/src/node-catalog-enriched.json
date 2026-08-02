@@ -35015,7 +35015,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Abandons a request that is still in flight, which answers on Canceled rather than Failure"
+          "description": "Abandons a request that is still in flight, which answers on Canceled rather than Failure; reports Unchanged when there is nothing to cancel"
         },
         {
           "name": "fetch",
@@ -35053,6 +35053,28 @@
           },
           "isSignal": true,
           "description": "Fires only when Cancel abandoned a request in flight; a timeout answers on Failure instead"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the server has answered with a 2xx status and Response is up to date"
         },
         {
           "name": "error",
@@ -35110,15 +35132,15 @@
           "description": "HTTP status the server answered with; it keeps the previous status when a request timed out or never reached the server"
         },
         {
-          "name": "success",
-          "displayName": "Success",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the server has answered with a 2xx status and Response is up to date"
+          "description": "Fires when nothing was fetched and nothing changed: a Cancel that abandoned a request in flight, or a Cancel with no request to abandon. Canceled tells those two apart"
         }
       ],
       "dynamicPorts": {
@@ -35133,8 +35155,8 @@
       },
       "enrichment": {
         "typeName": "net.noodl.HTTP",
-        "summary": "HTTP Request: fetches a URL on demand, delivering the parsed response, status code and success/failure signals.",
-        "description": "The straightforward HTTP client: set `url` (plus method/headers/body via its configuration), fire `fetch`, and read `response` (parsed body, untyped), `responseHeaders`, and `statusCode`. `success`/`failure` split the outcome, with `error` describing failures; `cancel` aborts an in-flight request.",
+        "summary": "HTTP Request: fetches a URL on demand, delivering the parsed response, status code and an outcome signal.",
+        "description": "The straightforward HTTP client: set `url` (plus method/headers/body via its configuration), fire `fetch`, and read `response` (parsed body, untyped), `responseHeaders`, and `statusCode`. `done`/`failure` split the outcome, with `error` describing failures, and `completed` fires after either so a chain can carry on regardless. `cancel` aborts an in-flight request: the abandoned request reports `unchanged` beside `canceled`, because nothing arrived and nothing changed, and the `cancel` itself reports `done` when it had something to abandon and `unchanged` when it did not.",
         "whenToUse": "One-off or simple API calls where the response can be consumed directly or handed to a Function/Script for shaping. Prefer the REST node when an endpoint is reused enough to deserve declared ports; prefer a cloud function when credentials must stay off the client.",
         "ports": {
           "fetch": "Signal; performs the request.",
@@ -35142,7 +35164,7 @@
           "statusCode": "Number level with the HTTP status of the last response.",
           "failure": "Signal; wire error display/retry here, with `error` carrying the message."
         },
-        "runtimeBehavior": "Header and body inputs are runtime-registered from the node's method/headers configuration; only the core trigger/result surface is static. NDA-012: exceeding `timeout` fires `failure` with a message naming the timeout — `canceled` fires only for an explicit `cancel`. `statusCode` and `response` keep the *previous* request's answer when a request never reached the server, because a value output cannot be cleared. Deleting the node does not abandon a request already in flight.",
+        "runtimeBehavior": "Header and body inputs are runtime-registered from the node's method/headers configuration; only the core trigger/result surface is static. Dynamic outputs minted from Response Mapping are all prefixed `out-`, so an author's mapping name can never collide with the node's own ports. NDA-012: exceeding `timeout` fires `failure` with a message naming the timeout — `canceled` fires only for an explicit `cancel`. ERG-001: failures now also reach the runtime error channel, so `On App Error` sees them in a deployed build — codes are `http/no-url`, `http/error-status`, `http/timeout` and `http/network-error`. Requests genuinely overlap: a second `fetch` while one is in flight starts a second request, and each invocation carries its own outcome. `statusCode` and `response` keep the *previous* request's answer when a request never reached the server, because a value output cannot be cleared. Deleting the node does not abandon a request already in flight.",
         "examples": [
           "code-http-request-with-error-handling"
         ],
@@ -35614,6 +35636,28 @@
           "description": "Fires once an update has been confirmed and its value is the truth"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the action did its work: an Apply that opened a transaction, a Commit that confirmed one, or a Rollback that put the old value back"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -35724,6 +35768,17 @@
           "description": "Id of the most recent Apply; carry it through the request and hand it back to resolve that update specifically"
         },
         {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Rollback resolved its transaction without restoring anything, because something else had already written the key — the value this update wrote was gone already, so there was nothing to undo. Rolled Back fires too, and Error says why"
+        },
+        {
           "name": "value",
           "displayName": "Value",
           "group": "Data",
@@ -35740,7 +35795,7 @@
       "enrichment": {
         "typeName": "net.noodl.OptimisticUpdate",
         "summary": "Writes a store key immediately, then commits or rolls it back when the server answers — so the UI responds now, not after the round trip.",
-        "description": "Applies `optimisticValue` to `key` the moment Apply fires, and holds the change open until Commit or Rollback resolves it. A rollback restores what was there before, and restores *absence as absence* — a key the update introduced is deleted rather than left holding `undefined`. Several updates can be open at once, each with its own transaction id and its own deadline. Two behaviours are worth knowing before relying on it. First, if a plain write changes the same key while an update is open, rollback **keeps the newer value**: `rolledBack` still fires so the failure branch runs, and `error` explains that the value was left alone, because silently reverting a write the user made after the fact is worse than a stale optimistic value. A newer *optimistic* update is not treated as supersession — the store's own newest-writer rule already resolves that correctly. Second, disposal resolves rather than leaks: a node deleted with updates still open rolls them back by default (or commits them, under On Dispose), clears its timers, and fires nothing into the dead node.",
+        "description": "Applies `optimisticValue` to `key` the moment Apply fires, and holds the change open until Commit or Rollback resolves it. A rollback restores what was there before, and restores *absence as absence* — a key the update introduced is deleted rather than left holding `undefined`. Several updates can be open at once, each with its own transaction id and its own deadline. Two behaviours are worth knowing before relying on it. First, if a plain write changes the same key while an update is open, rollback **keeps the newer value**: `rolledBack` still fires so the failure branch runs, and `error` explains that the value was left alone, because silently reverting a write the user made after the fact is worse than a stale optimistic value. A newer *optimistic* update is not treated as supersession — the store's own newest-writer rule already resolves that correctly. Second, disposal resolves rather than leaks: a node deleted with updates still open rolls them back by default (or commits them, under On Dispose), clears its timers, and fires nothing into the dead node. All three actions also report an outcome: `done` for an Apply, Commit or Rollback that did its work, `unchanged` for the superseded rollback above — the value this update wrote was already gone, so there was nothing to undo — and `failure` when the node refused to act, with `completed` after any of them. The deadline is the one route that reports no outcome, because nobody invoked it: it announces itself on `rolledBack` and `timedOut` alone.",
         "whenToUse": "Any action where waiting on the network makes the UI feel slow and the write is very likely to succeed: toggling a like, accepting an invite, checking off a task, reordering a list. Do not use it where a wrong-then-corrected value would mislead — a bank balance, a booking confirmation, a payment state. There, a pending indicator is the honest option.",
         "ports": {
           "storeName": "The store to write to. Defaults to `app`.",
@@ -55045,7 +55100,7 @@
             },
             {
               "fromId": "save_request",
-              "fromProperty": "success",
+              "fromProperty": "done",
               "toId": "optimistic",
               "toProperty": "commit"
             },
@@ -57031,7 +57086,7 @@
     {
       "id": "code-http-request-with-error-handling",
       "title": "HTTP Request with scripted post-processing and error display",
-      "description": "HTTP Request (net.noodl.HTTP) fetches the `url` when `fetch` fires and delivers `response` (parsed body), `statusCode`, and either `success` or `failure` with `error`. The response is post-processed by a Script node (Javascript2), whose input/output ports are declared by its own code — here it reads `Inputs.response` and produces a `headline` output. Errors surface as a level: `failure` evaluates a Condition whose `result` shows the error text.",
+      "description": "HTTP Request (net.noodl.HTTP) fetches the `url` when `fetch` fires and delivers `response` (parsed body), `statusCode`, and either `done` or `failure` with `error` — plus `completed` after either, to carry on regardless. The response is post-processed by a Script node (Javascript2), whose input/output ports are declared by its own code — here it reads `Inputs.response` and produces a `headline` output. Errors surface as a level: `failure` evaluates a Condition whose `result` shows the error text.",
       "demonstrates": [
         "net.noodl.HTTP",
         "Javascript2"

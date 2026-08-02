@@ -50,9 +50,11 @@
  * unknown transaction, a duplicate id, a timeout, a supersession and a plain server rejection
  * all land on `error`, and every state change fires a signal.
  */
-import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule, OutcomeToken } from '@noodl/types';
 
 import { globalStoreManager, Unsubscribe } from './globalstore';
+
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 
 import Node = require('../../../node');
 
@@ -100,6 +102,17 @@ interface OptimisticUpdateInstance extends NodeInstance {
     applyScheduled: boolean;
     commitScheduled: boolean;
     rollbackScheduled: boolean;
+
+    /**
+     * ERG-001 — one array per action port, because each has its own `scheduleXxx` guard.
+     *
+     * The guards drop a second pulse arriving in the same update pass, which is deliberate and
+     * is how "set the value, then press Apply" batches. It must not drop that pulse's
+     * **outcome**: two pulses are two invocations and each is owed a `Completed`.
+     */
+    applyOutcomes: OutcomeToken[];
+    commitOutcomes: OutcomeToken[];
+    rollbackOutcomes: OutcomeToken[];
   };
   scheduleSetup(): void;
   setupSubscription(): void;
@@ -110,12 +123,13 @@ interface OptimisticUpdateInstance extends NodeInstance {
   doApply(): void;
   doCommit(): void;
   doRollback(): void;
-  pickTransaction(action: string): Transaction | undefined;
+  pickTransaction(action: string, tokens: OutcomeToken[]): Transaction | undefined;
   forget(transaction: Transaction): void;
-  finishRollback(transaction: Transaction, reason: string, timedOut: boolean): void;
+  /** `tokens` is empty on the timeout route, which nobody invoked and which owes no outcome. */
+  finishRollback(transaction: Transaction, reason: string, timedOut: boolean, tokens: OutcomeToken[]): void;
   isSuperseded(transaction: Transaction): boolean;
   reportError(message: string): void;
-  reportFailure(message: string): void;
+  reportFailure(tokens: OutcomeToken[], message: string): void;
   clearError(): void;
   flagStatus(): void;
 }
@@ -146,6 +160,9 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     this._internal.applyScheduled = false;
     this._internal.commitScheduled = false;
     this._internal.rollbackScheduled = false;
+    this._internal.applyOutcomes = [];
+    this._internal.commitOutcomes = [];
+    this._internal.rollbackOutcomes = [];
   },
 
   getInspectInfo: function (this: OptimisticUpdateInstance): InspectInfo {
@@ -256,6 +273,9 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       description: 'Writes Optimistic Value at Key now and opens a transaction the server response will resolve',
       group: 'Actions',
       valueChangedToTrue: function (this: OptimisticUpdateInstance) {
+        // ERG-001 — minted at the pulse, not in `doApply`, so `scheduleApply`'s guard cannot
+        // swallow an invocation's outcome along with its work.
+        this._internal.applyOutcomes.push(this.beginOutcome());
         this.scheduleApply();
       }
     },
@@ -264,6 +284,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       description: 'Confirms the update, so the optimistic value becomes the truth',
       group: 'Actions',
       valueChangedToTrue: function (this: OptimisticUpdateInstance) {
+        this._internal.commitOutcomes.push(this.beginOutcome());
         this.scheduleCommit();
       }
     },
@@ -272,6 +293,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       description: 'Puts the old value back, unless something else has written the key since',
       group: 'Actions',
       valueChangedToTrue: function (this: OptimisticUpdateInstance) {
+        this._internal.rollbackOutcomes.push(this.beginOutcome());
         this.scheduleRollback();
       }
     }
@@ -370,23 +392,6 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       description: 'Fires alongside Rolled Back when it was the deadline rather than the graph that ended the update',
       group: 'Events'
     },
-    /**
-     * NDA-012 / NDA-004 §2.
-     *
-     * Deliberately **not** fired by a rollback. A rollback is a reported outcome with its own
-     * terminating signals (`Rolled Back`, and `Timed Out` when the deadline caused it) and the
-     * author's failure branch already hangs off those. What had no signal at all was the node
-     * refusing to act: `Apply` with no `Key`, `Apply` with a transaction id already open, and
-     * `Commit`/`Rollback` naming an update that is not in flight. All three ended on the
-     * `error` string, which an author can only poll.
-     */
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      description:
-        'Fires when the node refused to act: no Key, a transaction id already open, or no such update to resolve',
-      group: 'Events'
-    },
     error: {
       type: 'string',
       displayName: 'Error',
@@ -395,7 +400,39 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       getter: function (this: OptimisticUpdateInstance) {
         return this._internal.error;
       }
-    }
+    },
+
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001. Three actions — `Apply`, `Commit`, `Rollback` — share one port set.
+    //
+    // ⚠️ **Purely additive, and the previous session's measurement predicted a rename.** The
+    // reason it is not one is the same reason the WebSocket node kept its lifecycle signals
+    // (`websocket.ts:652`): `Applied`, `Committed` and `Rolled Back` say *which phase* of a
+    // three-phase lifecycle resolved, and a shared `Done` cannot — an author wiring "when
+    // committed, show a tick" and "when rolled back, show the error" needs two wires, not one
+    // wire plus a poll of `Is Committed`. `Rolled Back` additionally has a route no invocation
+    // owns: the timeout timer. So all four announcements stay and the contract's ports join
+    // them. No project file breaks.
+    //
+    // ⚠️ `failure` is **not** new. It already carried the contract's name and exactly its
+    // meaning — "the node refused to act" — from NDA-012 / NDA-004 §2, and every one of its
+    // four senders is an invocation path (`Apply` with no `Key`, `Apply` with an id already
+    // open, and `Commit`/`Rollback` naming an update that is not in flight). It is now declared
+    // here and fired through `reportOutcome` rather than by hand, which is what stops the port
+    // and the helper that fires it drifting apart.
+    ...outcomeOutputs({
+      done:
+        'Fires when the action did its work: an Apply that opened a transaction, a Commit that ' +
+        'confirmed one, or a Rollback that put the old value back',
+      unchanged:
+        'Fires when a Rollback resolved its transaction without restoring anything, because ' +
+        'something else had already written the key — the value this update wrote was gone ' +
+        'already, so there was nothing to undo. Rolled Back fires too, and Error says why',
+      failure:
+        'Fires when the node refused to act: no Key, a transaction id already open, or no such ' +
+        'update to resolve'
+    })
   },
 
   methods: {
@@ -486,10 +523,14 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
     doApply: function (this: OptimisticUpdateInstance) {
       const key = this._internal.key;
 
+      // Drained before anything else, so a second `Apply` arriving later owns its own batch.
+      const tokens = this._internal.applyOutcomes;
+      this._internal.applyOutcomes = [];
+
       if (!key) {
         // Reported rather than dropped: an Optimistic Update with no key is a half-finished
         // graph, and the author will otherwise see a button that does nothing at all.
-        this.reportFailure('Key is required');
+        this.reportFailure(tokens, 'Key is required');
         return;
       }
 
@@ -506,7 +547,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       } catch (error) {
         // The store throws when an id is already open. That is the spec's "apply twice with
         // the same transaction id" case, and it is the author's bug, not a silent one.
-        this.reportFailure(String((error as Error).message || error));
+        this.reportFailure(tokens, String((error as Error).message || error));
         return;
       }
 
@@ -522,7 +563,10 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       if (this._internal.timeout > 0) {
         transaction.timer = setTimeout(() => {
           transaction.timer = null;
-          this.finishRollback(transaction, 'Request timed out', true);
+          // No tokens: the deadline is not an invocation. `Timed Out` beside `Rolled Back` is
+          // the announcement, and there is no `Completed` because nothing was completed —
+          // nobody pulsed anything.
+          this.finishRollback(transaction, 'Request timed out', true, []);
         }, this._internal.timeout);
       }
 
@@ -538,10 +582,19 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       this.flagOutputDirty('transactionId');
       this.flagStatus();
       this.sendSignalOnOutput('applied');
+      // The outcome is the last thing an action does, so `previousValue`, `transactionId` and
+      // the status outputs are all already readable when it lands.
+      reportOutcomes(this, tokens, 'done');
     },
 
     doCommit: function (this: OptimisticUpdateInstance) {
-      const transaction = this.pickTransaction('commit');
+      const tokens = this._internal.commitOutcomes;
+      this._internal.commitOutcomes = [];
+
+      // ⚠️ Not a dead chain, contrary to the note this build started from: both of
+      // `pickTransaction`'s empty-handed exits call `reportFailure`, so the invocation is
+      // already settled by the time this returns. Measured from source, not inferred.
+      const transaction = this.pickTransaction('commit', tokens);
       if (!transaction) return;
 
       this.forget(transaction);
@@ -553,14 +606,18 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       this.clearError();
       this.flagStatus();
       this.sendSignalOnOutput('committed');
+      reportOutcomes(this, tokens, 'done');
     },
 
     doRollback: function (this: OptimisticUpdateInstance) {
-      const transaction = this.pickTransaction('roll back');
+      const tokens = this._internal.rollbackOutcomes;
+      this._internal.rollbackOutcomes = [];
+
+      const transaction = this.pickTransaction('roll back', tokens);
       if (!transaction) return;
 
       const authored = this._internal.errorMessage;
-      this.finishRollback(transaction, authored ? String(authored) : 'The update was rolled back', false);
+      this.finishRollback(transaction, authored ? String(authored) : 'The update was rolled back', false, tokens);
     },
 
     // -- resolution --------------------------------------------------------
@@ -574,7 +631,11 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
      * what a queue of updates against one endpoint actually does. With a single update in
      * flight, the common case, oldest and newest are the same thing.
      */
-    pickTransaction: function (this: OptimisticUpdateInstance, action: string): Transaction | undefined {
+    pickTransaction: function (
+      this: OptimisticUpdateInstance,
+      action: string,
+      tokens: OutcomeToken[]
+    ): Transaction | undefined {
       const open = this._internal.open;
       const authoredId = this._internal.transactionIdInput;
 
@@ -582,14 +643,14 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
         const id = String(authoredId);
         const found = open.find((transaction) => transaction.id === id);
         if (!found) {
-          this.reportFailure(`No open update with transaction id "${id}" to ${action}`);
+          this.reportFailure(tokens, `No open update with transaction id "${id}" to ${action}`);
           return undefined;
         }
         return found;
       }
 
       if (open.length === 0) {
-        this.reportFailure(`There is no open update to ${action}`);
+        this.reportFailure(tokens, `There is no open update to ${action}`);
         return undefined;
       }
 
@@ -633,12 +694,27 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
      * The value is only put back when this update's own value is still there. If it is not,
      * the patch is closed *keeping* the newer value and `error` says why — undoing on top of
      * somebody else's write would destroy data, and doing it quietly would be worse.
+     *
+     * ⚠️ **Dual-route, and only one route owes an outcome.** The `Rollback` port passes its
+     * tokens; the timeout timer passes none, because nobody invoked it — a deadline firing is
+     * a genuinely later event and `Timed Out` beside `Rolled Back` is how it announces itself.
+     * `_onNodeDeleted` does not come through here at all: it resolves its patches directly and
+     * signals nothing, because there is nobody left to hear it.
+     *
+     * ⚠️ **Supersession is where this node's `Unchanged` lives, and it is the contract's
+     * headline discrimination.** `Rolled Back` fires whether or not the old value was actually
+     * restored, so today the only way to tell the two apart is to poll the `error` string —
+     * which is `Insert Object Into Array`'s defect verbatim, the one the contract opens with.
+     * The post-condition a rollback exists to establish is "the value this update wrote is no
+     * longer in the store"; when something newer has already replaced it, that held before the
+     * action ran and nothing needed doing. So: restored is `Done`, superseded is `Unchanged`.
      */
     finishRollback: function (
       this: OptimisticUpdateInstance,
       transaction: Transaction,
       reason: string,
-      timedOut: boolean
+      timedOut: boolean,
+      tokens: OutcomeToken[]
     ) {
       this.forget(transaction);
 
@@ -661,6 +737,13 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       this.flagStatus();
       this.sendSignalOnOutput('rolledBack');
       if (timedOut) this.sendSignalOnOutput('timedOut');
+
+      // ⚠️ **`Unchanged`, not `Failure`.** A rollback is the author's *success* path for a
+      // failed request: the graph asked for the value to be put back and it was, or it did not
+      // need to be. Reporting `Failure` here would fold the server's failure — which the graph
+      // already knows about, it is why it pulsed `Rollback` — into this node's own, and train
+      // an author to ignore the port. `Error` still carries the reason either way.
+      reportOutcomes(this, tokens, superseded ? 'unchanged' : 'done');
     },
 
     // -- output plumbing ---------------------------------------------------
@@ -675,11 +758,14 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
      * The node refused to act, so nothing else will fire. Reports on all three channels the
      * Failure Contract asks for — the string, the signal, and the runtime error bus, which is
      * what reaches `On App Error` in a deployed build where no editor is watching.
+     *
+     * ERG-001 — the signal and the raise are now `reportOutcome`'s, which is what keeps the
+     * `failure` port and the code that fires it from drifting apart. Every caller is an
+     * invocation path, so there is no token-free route here and none is provided for.
      */
-    reportFailure: function (this: OptimisticUpdateInstance, message: string) {
+    reportFailure: function (this: OptimisticUpdateInstance, tokens: OutcomeToken[], message: string) {
       this.reportError(message);
-      this.sendSignalOnOutput('failure');
-      this.raiseRuntimeError(UPDATE_ERROR_CODE, message);
+      reportOutcomes(this, tokens, 'failure', { code: UPDATE_ERROR_CODE, message });
     },
 
     clearError: function (this: OptimisticUpdateInstance) {

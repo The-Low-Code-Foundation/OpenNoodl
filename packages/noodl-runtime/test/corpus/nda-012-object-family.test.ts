@@ -409,6 +409,42 @@ describe('C4 — HTTP Request, a timeout is a failure', () => {
     expect(graph.signalsFor('target')).toContain('canceled');
     expect(graph.signalsFor('target')).not.toContain('failure');
     expect(graph.node('target').getOutput('error').value).toBeUndefined();
+
+    // ⚠️ ERG-001 — **two invocations resolve here, and the exact order is the design.**
+    //
+    // `Cancel` is its own action port: it issued the abort, so its invocation is `Done`, and it
+    // is reported synchronously because `cancelFetch` is not scheduled and the abort has
+    // happened by the time it returns. The *request's* invocation settles later, in the
+    // `catch`, as `Unchanged` beside `Canceled` — an abort the author asked for is the graph
+    // doing what it was told, so `Failure` would be the collapse Rule 1 exists to stop, and
+    // nothing changed: `Response` and `Status Code` still hold exactly what they held, which
+    // the pinned row below records as a known limitation.
+    //
+    // Two `Completed`s, therefore, for one cancelled request. Two action ports were invoked, so
+    // that is two invocations and "exactly one outcome" is per invocation.
+    expect(graph.signalsFor('target')).toEqual(['done', 'completed', 'canceled', 'unchanged', 'completed']);
+  });
+
+  /**
+   * ⚠️ **ERG-001 — a `Cancel` with nothing in flight used to do nothing at all.**
+   *
+   * `cancelFetch`'s `if` had no `else`: no signal, no error, no state change. An author who
+   * wired "when the cancel has been handled, re-enable the button" got nothing precisely when
+   * there was nothing to cancel — the contract's headline dead-chain class, and the same shape
+   * as `Run Tasks`' `Abort` in the build before this one.
+   *
+   * ⚠️ Note it reports `Unchanged` and **no `Canceled`**: `Canceled` describes a request that
+   * was abandoned, and there was no request.
+   */
+  it('a Cancel with no request in flight reports Unchanged rather than nothing', async () => {
+    const graph = await httpGraph({ url: base + '/ok', method: 'GET' });
+
+    graph.node<TriggerInstance>('trigger').stop();
+    await graph.settle(2);
+    await wait(50);
+
+    expect(graph.signalsFor('target')).toEqual(['unchanged', 'completed']);
+    expect(graph.node('target').getOutput('error').value).toBeUndefined();
   });
 
   /** ✅ Pinned control: an ordinary request is unaffected by any of the above. */
@@ -418,8 +454,30 @@ describe('C4 — HTTP Request, a timeout is a failure', () => {
     await graph.settle(2);
     await wait(400);
 
-    expect(graph.signalsFor('target')).toContain('success');
+    // ⚠️ ERG-001 renamed `success` to `done`. It was a pure invocation outcome — the 2xx branch
+    // is its only sender — so keeping both would have been two names for one thing.
+    expect(graph.signalsFor('target')).toContain('done');
+    expect(graph.signalsFor('target')).toContain('completed');
     expect(graph.node('target').getOutput('statusCode').value).toBe(200);
+  });
+
+  /**
+   * ⚠️ **ERG-001 — this node raised nothing on the error bus before, ever.**
+   *
+   * Every failure ended on the `error` string, which an author can only poll and which no
+   * deployed app's `On App Error` ever saw. The contract requires a `Failure` to be
+   * "always accompanied by a reason on the NDA-004 error channel"; routing the signal through
+   * `reportOutcome` is what puts it there. This row is the proof, and it is a *new capability*
+   * rather than a rename.
+   */
+  it('a timeout now reaches the error bus, not only the Error string', async () => {
+    const graph = await httpGraph({ url: base + '/slow', method: 'GET', timeout: 150 });
+    graph.node<TriggerInstance>('trigger').go();
+    await graph.settle(2);
+    await wait(600);
+
+    expect(graph.errors.map((e) => e.code)).toEqual(['http/timeout']);
+    expect(graph.errors[0].message).toEqual(expect.stringContaining('timed out after 150'));
   });
 
   /**

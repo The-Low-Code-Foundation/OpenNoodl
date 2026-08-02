@@ -53,7 +53,7 @@
         },
         { "fromId": "save_button", "fromProperty": "onClick", "toId": "optimistic", "toProperty": "apply" },
         { "fromId": "optimistic", "fromProperty": "applied", "toId": "save_request", "toProperty": "fetch" },
-        { "fromId": "save_request", "fromProperty": "success", "toId": "optimistic", "toProperty": "commit" },
+        { "fromId": "save_request", "fromProperty": "done", "toId": "optimistic", "toProperty": "commit" },
         { "fromId": "save_request", "fromProperty": "failure", "toId": "optimistic", "toProperty": "rollback" },
         { "fromId": "save_request", "fromProperty": "error", "toId": "optimistic", "toProperty": "errorMessage" },
         { "fromId": "name_sub", "fromProperty": "value", "toId": "name_text", "toProperty": "text" },

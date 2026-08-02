@@ -32209,7 +32209,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Abandons a request that is still in flight, which answers on Canceled rather than Failure"
+          "description": "Abandons a request that is still in flight, which answers on Canceled rather than Failure; reports Unchanged when there is nothing to cancel"
         },
         {
           "name": "fetch",
@@ -32247,6 +32247,28 @@
           },
           "isSignal": true,
           "description": "Fires only when Cancel abandoned a request in flight; a timeout answers on Failure instead"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the server has answered with a 2xx status and Response is up to date"
         },
         {
           "name": "error",
@@ -32304,15 +32326,15 @@
           "description": "HTTP status the server answered with; it keeps the previous status when a request timed out or never reached the server"
         },
         {
-          "name": "success",
-          "displayName": "Success",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the server has answered with a 2xx status and Response is up to date"
+          "description": "Fires when nothing was fetched and nothing changed: a Cancel that abandoned a request in flight, or a Cancel with no request to abandon. Canceled tells those two apart"
         }
       ],
       "dynamicPorts": {
@@ -32744,6 +32766,28 @@
           "description": "Fires once an update has been confirmed and its value is the truth"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the action did its work: an Apply that opened a transaction, a Commit that confirmed one, or a Rollback that put the old value back"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -32852,6 +32896,17 @@
           },
           "isSignal": false,
           "description": "Id of the most recent Apply; carry it through the request and hand it back to resolve that update specifically"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Rollback resolved its transaction without restoring anything, because something else had already written the key — the value this update wrote was gone already, so there was nothing to undo. Rolled Back fires too, and Error says why"
         },
         {
           "name": "value",

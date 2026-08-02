@@ -339,7 +339,7 @@
           "plug": "input",
           "group": "General",
           "displayName": "Do",
-          "description": "Starts a run over Items; ignored while a run is already in progress"
+          "description": "Starts a run over Items; a Do while a run is already in progress reports Unchanged rather than queueing"
         },
         {
           "name": "abort",
@@ -350,21 +350,14 @@
           "plug": "input",
           "group": "General",
           "displayName": "Abort",
-          "description": "Stops starting new tasks and ends the run once those already running finish; does nothing when no run is in progress"
+          "description": "Stops starting new tasks and ends the run once those already running finish; reports Unchanged when no run is in progress"
         },
         {
-          "name": "success",
+          "name": "aborted",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Success"
-        },
-        {
-          "name": "failure",
-          "type": "signal",
-          "plug": "output",
-          "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Aborted"
         },
         {
           "name": "done",
@@ -374,11 +367,25 @@
           "displayName": "Done"
         },
         {
-          "name": "aborted",
+          "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Aborted"
+          "displayName": "Completed"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
         }
       ]
     },
@@ -3957,18 +3964,39 @@
           "displayName": "Timed Out"
         },
         {
-          "name": "failure",
-          "type": "signal",
-          "plug": "output",
-          "group": "Events",
-          "displayName": "Failure"
-        },
-        {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Events",
           "displayName": "Error"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
         }
       ]
     },

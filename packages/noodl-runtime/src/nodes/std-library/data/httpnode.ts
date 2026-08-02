@@ -28,8 +28,26 @@ import type {
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule,
+  OutcomeToken,
   RuntimeDiscoveredPort
 } from '@noodl/types';
+
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
+
+/**
+ * ERG-001 — the failure codes, namespaced by node type and treated as an interface.
+ *
+ * ⚠️ **This node raised nothing at all before.** Every failure ended on the `error` string,
+ * which an author can only poll and which no deployed app's `On App Error` ever saw. The
+ * contract requires a `Failure` to be "always accompanied by a reason on the NDA-004 error
+ * channel", and routing the signal through `reportOutcome` is what puts it there.
+ */
+const HTTP_ERROR_CODES = {
+  noUrl: 'http/no-url',
+  status: 'http/error-status',
+  timeout: 'http/timeout',
+  network: 'http/network-error'
+};
 
 /**
  * Extract value from object using JSONPath-like syntax
@@ -166,11 +184,22 @@ interface HttpNodeInstance extends NodeInstance {
     lastRequestUrl?: string;
     hasScheduledFetch?: boolean;
     abortController?: AbortController | null;
+    /**
+     * ERG-001 — `Fetch` pulses no `doFetch` call has taken ownership of yet.
+     *
+     * ⚠️ **Drained into a local the promise closure captures, never read from here after the
+     * request starts.** Requests genuinely overlap on this node — `hasScheduledFetch` is
+     * cleared at the top of `doFetch`, so a second `Fetch` while one is in flight starts a
+     * second request — and a token left on `_internal` would be settled by whichever response
+     * happened to land first. The array is for `scheduleFetch`'s same-pass guard, which must
+     * coalesce the *work* without coalescing the *outcomes*.
+     */
+    pendingFetchOutcomes: OutcomeToken[];
   };
   _storeInputValue(name: string, value: unknown): void;
   getOutputValue(name: string): unknown;
   scheduleFetch(): void;
-  cancelFetch(): void;
+  cancelFetch(token: OutcomeToken): void;
   buildUrl(): string;
   buildHeaders(): Record<string, string>;
   buildBody(): BodyInit | undefined;
@@ -202,6 +231,7 @@ const HttpNode: NodeDefinitionOptions = {
     this._internal.bodyFields = '';
     this._internal.responseMapping = '';
     this._internal.inspectData = null;
+    this._internal.pendingFetchOutcomes = [];
   },
 
   getInspectInfo(this: HttpNodeInstance): InspectInfo {
@@ -230,6 +260,7 @@ const HttpNode: NodeDefinitionOptions = {
       group: 'Actions',
       description: 'Sends the request using the values currently on the inputs',
       valueChangedToTrue: function (this: HttpNodeInstance) {
+        this._internal.pendingFetchOutcomes.push(this.beginOutcome());
         this.scheduleFetch();
       }
     },
@@ -237,9 +268,12 @@ const HttpNode: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Cancel',
       group: 'Actions',
-      description: 'Abandons a request that is still in flight, which answers on Canceled rather than Failure',
+      description:
+        'Abandons a request that is still in flight, which answers on Canceled rather than Failure; reports Unchanged when there is nothing to cancel',
       valueChangedToTrue: function (this: HttpNodeInstance) {
-        this.cancelFetch();
+        // Minted here and settled synchronously inside `cancelFetch`, which is not scheduled —
+        // one pulse is one call, so there is nothing to batch.
+        this.cancelFetch(this.beginOutcome());
       }
     }
     // Note: method, timeout, and config ports are now dynamic (in updatePorts)
@@ -275,19 +309,15 @@ const HttpNode: NodeDefinitionOptions = {
         return this._internal.responseHeaders;
       }
     },
-    success: {
-      type: 'signal',
-      displayName: 'Success',
-      group: 'Events',
-      description: 'Fires once the server has answered with a 2xx status and Response is up to date'
-    },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description:
-        'Fires when the request could not be completed — no URL, a network error, a timeout, an unparseable body, or a non-2xx status — after the reason has been put on Error'
-    },
+    /**
+     * Kept, and deliberately not folded into the outcome ports.
+     *
+     * `Canceled` says *why* a request ended without an answer, which the outcome cannot: an
+     * abandoned request reports `Unchanged` — nothing arrived, and `Response` and `Status Code`
+     * still hold what they held — and so would a `Cancel` with nothing in flight. This is the
+     * port that tells those apart, and it fires before the outcome so a graph reading it
+     * already has it when the pulse lands.
+     */
     canceled: {
       type: 'signal',
       displayName: 'Canceled',
@@ -302,7 +332,31 @@ const HttpNode: NodeDefinitionOptions = {
       getter: function (this: HttpNodeInstance) {
         return this._internal.error;
       }
-    }
+    },
+
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001. Two actions, `Fetch` and `Cancel`, share one port set.
+    //
+    // ⚠️ **`success` was renamed to `done`.** It was a pure invocation outcome — the 2xx branch
+    // of `doFetch` is its only sender — so keeping it beside `Done` would have been two names
+    // for one thing. `failure` keeps its name, because it already carried the contract's
+    // meaning exactly.
+    //
+    // ⚠️ **The reserved-name sweep (FINDINGS SR-ix) is clean here by construction, not by
+    // luck.** This node mints dynamic outputs from an author's Response Mapping, and
+    // `registerOutputIfNeeded` prefixes every one of them with `out-`. A mapping an author
+    // names "completed" becomes `out-completed`, so it cannot collide with these ports however
+    // the author spells it.
+    ...outcomeOutputs({
+      done: 'Fires once the server has answered with a 2xx status and Response is up to date',
+      unchanged:
+        'Fires when nothing was fetched and nothing changed: a Cancel that abandoned a request ' +
+        'in flight, or a Cancel with no request to abandon. Canceled tells those two apart',
+      failure:
+        'Fires when the request could not be completed — no URL, a network error, a timeout, ' +
+        'an unparseable body, or a non-2xx status — after the reason has been put on Error'
+    })
   },
 
   prototypeExtensions: {
@@ -368,11 +422,28 @@ const HttpNode: NodeDefinitionOptions = {
       this.scheduleAfterInputsHaveUpdated(this.doFetch.bind(this));
     },
 
-    cancelFetch: function (this: HttpNodeInstance) {
+    /**
+     * ERG-001 — `Cancel` is this node's second action port and owed its own outcome.
+     *
+     * ⚠️ **The `if` used to have no `else`, and that was a dead chain**: a `Cancel` pulsed when
+     * nothing was in flight did nothing, said nothing, and left an author's "when the cancel
+     * has been handled, re-enable the button" chain hanging exactly when there was nothing to
+     * cancel. `Unchanged` is what that branch means.
+     *
+     * The abort itself is `Done` and is reported straight away — this method is synchronous
+     * and the abort has happened by the time it returns. The *request's* own invocation is a
+     * different one and settles later, in `doFetch`'s `catch`, as `Unchanged` beside `Canceled`.
+     * Two `Completed`s for one cancelled request is two action ports invoked, not a duplicate.
+     */
+    cancelFetch: function (this: HttpNodeInstance, token: OutcomeToken) {
       if (this._internal.abortController) {
         this._internal.abortController.abort();
         this._internal.abortController = null;
+        this.reportOutcome(token, 'done');
+        return;
       }
+
+      this.reportOutcome(token, 'unchanged');
     },
 
     buildUrl: function (this: HttpNodeInstance) {
@@ -563,6 +634,13 @@ const HttpNode: NodeDefinitionOptions = {
     doFetch: function (this: HttpNodeInstance) {
       this._internal.hasScheduledFetch = false;
 
+      // ⚠️ Drained into a local the closures below capture. Requests on this node overlap —
+      // `hasScheduledFetch` is cleared on the line above, so a second `Fetch` while one is in
+      // flight starts a second request — and reading `_internal` from a `.then` would settle
+      // whichever invocation's tokens happened to be sitting there when the response landed.
+      const tokens = this._internal.pendingFetchOutcomes;
+      this._internal.pendingFetchOutcomes = [];
+
       const url = this.buildUrl();
       const method = this._internal.method || 'GET';
       const headers = this.buildHeaders();
@@ -576,7 +654,10 @@ const HttpNode: NodeDefinitionOptions = {
       if (!url) {
         this._internal.error = 'URL is required';
         this.flagOutputDirty('error');
-        this.sendSignalOnOutput('failure');
+        reportOutcomes(this, tokens, 'failure', {
+          code: HTTP_ERROR_CODES.noUrl,
+          message: 'URL is required, so no request could be sent'
+        });
         return;
       }
 
@@ -634,13 +715,18 @@ const HttpNode: NodeDefinitionOptions = {
         .then(({ response, body }) => {
           this.processResponse(response, body);
 
-          // Send success/failure signal based on status
+          // Send the outcome based on status. `processResponse` above has already flagged
+          // every value output, so the pulse lands on a node an author can read.
           if (response.ok) {
-            this.sendSignalOnOutput('success');
+            reportOutcomes(this, tokens, 'done');
           } else {
             this._internal.error = `HTTP ${response.status}: ${response.statusText}`;
             this.flagOutputDirty('error');
-            this.sendSignalOnOutput('failure');
+            reportOutcomes(this, tokens, 'failure', {
+              code: HTTP_ERROR_CODES.status,
+              message: `The server answered ${response.status} ${response.statusText}`,
+              detail: { url: this._internal.lastRequestUrl, status: response.status }
+            });
           }
         })
         .catch((error) => {
@@ -649,7 +735,14 @@ const HttpNode: NodeDefinitionOptions = {
 
           if (error.name === 'AbortError' && !timedOut) {
             // The author pressed Cancel. Nothing went wrong, so nothing is reported.
+            //
+            // ⚠️ ERG-001 — the *invocation* is `Unchanged`, not `Failure` and not `Done`. An
+            // abort the author asked for is the graph doing what it was told, so folding it
+            // into `Failure` is the collapse Rule 1 exists to stop; and nothing changed —
+            // `Response` and `Status Code` still hold exactly what they held, as the pinned
+            // row below records. `Canceled` above is what names the cause.
             this.sendSignalOnOutput('canceled');
+            reportOutcomes(this, tokens, 'unchanged');
           } else {
             // A timeout is a failure with a cause worth naming — the number that produced it
             // is the one the author can change, so the message states it (FAILURE-CONTRACT).
@@ -657,7 +750,11 @@ const HttpNode: NodeDefinitionOptions = {
               ? `Request timed out after ${timeout} ms`
               : error.message || 'Network error';
             this.flagOutputDirty('error');
-            this.sendSignalOnOutput('failure');
+            reportOutcomes(this, tokens, 'failure', {
+              code: timedOut ? HTTP_ERROR_CODES.timeout : HTTP_ERROR_CODES.network,
+              message: this._internal.error,
+              detail: { url: this._internal.lastRequestUrl, timeout: timedOut ? timeout : undefined }
+            });
           }
 
           this._internal.inspectData = {
