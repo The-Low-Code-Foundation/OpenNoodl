@@ -1,9 +1,11 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
-import PopupLayer from '../../../popuplayer';
+import { decodePropList, encodePropList } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
+
 import { ToastLayer } from '../../../ToastLayer/ToastLayer';
 import { PropListInput, PropListItem } from '../components/PropListInput';
+import { openListValueEditor } from '../components/ListValueEditor';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
@@ -38,7 +40,7 @@ export class PropListType extends TypeView {
     view.value = parent.model.getParameter(p.name);
     view.parent = parent;
 
-    view.list = view.value || [];
+    view.list = decodePropList(view.value);
     view.listIsDefault = parent.model.parameters[p.name] === undefined;
 
     return view;
@@ -58,29 +60,28 @@ export class PropListType extends TypeView {
     return this.el;
   }
 
-  private listUpdated() {
-    let newValue: TSFixme = this.list;
-    if (newValue.length === 0) newValue = undefined;
+  /**
+   * Write `next` through the codec. Returns an error message when the list was
+   * rejected, in which case nothing is stored. The codec is also what keeps each
+   * entry's `id` stable, which is what the runtime hangs the entry's child ports
+   * off (`parentItemId`) — see ERG-003-NOTES.md.
+   */
+  private commit(next: TSFixme[]): string | undefined {
+    const previous = this.parent.model.getParameter(this.name);
+    const encoded = encodePropList(next, previous);
+    if (!encoded.ok) return encoded.error;
 
-    this.parent.setParameter(this.name, newValue);
+    this.parent.setParameter(this.name, encoded.value);
     this.parent.notifyListeners('panelResized');
 
-    this.list = this.parent.model.getParameter(this.name) || [];
+    this.list = decodePropList(this.parent.model.getParameter(this.name));
     this.listIsDefault = this.parent.model.parameters[this.name] === undefined;
 
     this.renderReact();
+    return undefined;
   }
 
-  private _guid() {
-    while (true) {
-      const uid = ('0000' + ((Math.random() * Math.pow(36, 4)) | 0).toString(36)).slice(-4);
-      if (this.list.find((item) => item.id === uid) === undefined) {
-        return uid;
-      }
-    }
-  }
-
-  private performAdd(name: string, _makeUnique?: boolean) {
+  private performAdd(name: string, _makeUnique?: boolean): string | undefined {
     if (_makeUnique) {
       // Find a unique name by adding index at the end
       let idx = 2,
@@ -92,43 +93,20 @@ export class PropListType extends TypeView {
       name = uniqueName;
     }
 
-    if (name === '') {
-      return { success: false, message: 'Entry name cannot be empty' };
-    } else if (this.list.find((item) => item.label === name) !== undefined) {
-      return { success: false, message: 'Cannot create an entry with the same name as an existing one.' };
-    } else {
-      this.list.push({
-        id: this._guid(),
-        label: name
-      });
-      this.listUpdated();
-
-      return { success: true };
-    }
+    return this.commit([...this.list, { id: '', label: name }]);
   }
 
-  private performRename(args: { oldName: string; newName: string }) {
-    if (args.newName === '') {
-      return { success: false, message: 'Entry name cannot be empty' };
-    } else if (this.list.find((item) => item.label === args.newName) !== undefined) {
-      return { success: false, message: 'Entry with that name already exists.' };
-    } else {
-      const item = this.list.find((item) => item.label === args.oldName);
-      item.label = args.newName;
-      this.listUpdated();
+  private performRename(args: { oldName: string; newName: string }): string | undefined {
+    const idx = this.list.findIndex((item) => item.label === args.oldName);
+    if (idx === -1) return undefined;
 
-      return { success: true };
-    }
+    const next = this.list.map((item, i) => (i === idx ? { id: item.id, label: args.newName } : item));
+    return this.commit(next);
   }
 
-  private performDelete(itemId: string): { success: boolean; message?: string } | undefined {
-    const item = this.list.find((i) => i.id === itemId);
-    if (item === undefined) return;
-    const idx = this.list.indexOf(item);
-    if (idx !== -1) this.list.splice(idx, 1);
-    this.listUpdated();
-
-    return { success: true };
+  private performDelete(itemId: string): string | undefined {
+    if (this.list.find((i) => i.id === itemId) === undefined) return undefined;
+    return this.commit(this.list.filter((i) => i.id !== itemId));
   }
 
   private renderReact() {
@@ -140,57 +118,66 @@ export class PropListType extends TypeView {
         isDefault: this.listIsDefault,
         childElsForItem: (id: string) =>
           this.childViews.filter((view) => view.port.parentItemId === id).map((view) => view.el),
-        onAddClick: (anchor: HTMLElement) => {
-          if (this.type.autoName !== undefined) {
-            const result = this.performAdd(this.type.autoName, true);
-            if (!result.success) {
-              ToastLayer.showError(result.message);
-            }
-            return;
-          }
-
-          const popup = new PopupLayer.StringInputPopup({
-            label: 'New entry',
-            okLabel: 'Add',
-            cancelLabel: 'Cancel',
-            onOk: (name: string) => {
-              const result = this.performAdd(name);
-              if (!result.success) {
-                ToastLayer.showError(result.message);
+        onAdd: (name: string) => this.performAdd(name),
+        // `autoName` ports (Create Record / Update Record `accessControl`) never
+        // ask for a name, so they get no inline field at all.
+        onAutoAdd:
+          this.type.autoName !== undefined
+            ? () => {
+                const error = this.performAdd(this.type.autoName, true);
+                if (error) ToastLayer.showError(error);
               }
-            }
-          });
-          popup.render();
-
-          PopupLayer.instance.showPopup({
-            content: popup,
-            attachTo: anchor,
-            position: 'top'
-          });
-        },
+            : undefined,
+        onOpenCode: (anchor: HTMLElement) => this.openEditor(anchor),
         onRename: (oldName: string, newName: string) => {
-          const result = this.performRename({ oldName, newName });
-          if (!result.success) {
-            ToastLayer.showError(result.message);
-          }
+          const error = this.performRename({ oldName, newName });
+          if (error) ToastLayer.showError(error);
         },
         onDelete: (id: string) => {
-          const result = this.performDelete(id);
-          if (result && !result.success) {
-            ToastLayer.showError(result.message);
-          }
+          const error = this.performDelete(id);
+          if (error) ToastLayer.showError(error);
         },
         onReorder: (source: PropListItem, target: PropListItem, below: boolean) => {
-          const sourceIdx = this.list.indexOf(source);
+          const next = [...this.list];
+          const sourceIdx = next.findIndex((i) => i.id === source.id);
           if (sourceIdx === -1) return;
-          this.list.splice(sourceIdx, 1);
+          const [moved] = next.splice(sourceIdx, 1);
 
-          const targetIdx = this.list.indexOf(target);
-          this.list.splice(below ? targetIdx + 1 : targetIdx, 0, source);
-          this.listUpdated();
+          const targetIdx = next.findIndex((i) => i.id === target.id);
+          if (targetIdx === -1) return;
+          next.splice(below ? targetIdx + 1 : targetIdx, 0, moved);
+
+          const error = this.commit(next);
+          if (error) ToastLayer.showError(error);
         }
       })
     );
+  }
+
+  private openEditor(anchor: HTMLElement) {
+    this.parent.hidePopout();
+
+    openListValueEditor({
+      parent: this.parent,
+      anchor,
+      portType: 'proplist',
+      displayName: this.displayName,
+      stored: this.parent.model.getParameter(this.name),
+      onCommit: (value) => {
+        this.parent.setParameter(this.name, value);
+        this.parent.notifyListeners('panelResized');
+        this.list = decodePropList(this.parent.model.getParameter(this.name));
+        this.listIsDefault = this.parent.model.parameters[this.name] === undefined;
+        this.renderReact();
+      }
+    });
+  }
+
+  /** Re-read the model — the parameter can change under us (undo, variants). */
+  resetToDefault() {
+    this.list = decodePropList(this.parent.model.getParameter(this.name));
+    this.listIsDefault = this.parent.model.parameters[this.name] === undefined;
+    this.renderReact();
   }
 
   addChildTypeView(child) {

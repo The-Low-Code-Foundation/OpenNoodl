@@ -1,0 +1,101 @@
+/**
+ * ERG-003 — chrome around the shared JSONEditor when it is opened as a
+ * property-panel popout. The editor itself brings its own styling; this is the
+ * frame, the two hints and the commit bar.
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  width: 520px;
+  max-width: 90vw;
+  gap: 8px;
+  padding: 10px;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+}
+
+.Header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.Title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight);
+}
+
+.PortType {
+  font-family: var(--font-family-code, monospace);
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+/* Both hints are informational, not failures — amber, never red (phase 23 law:
+   red is danger only). */
+.Hint {
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-warning-bg);
+  border-left: 2px solid var(--theme-color-warning);
+}
+
+/* A refused save is a real error: the value was NOT written. */
+.Error {
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-danger-bg);
+  border-left: 2px solid var(--theme-color-danger);
+}
+
+.Buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.Saved {
+  margin-right: auto;
+  font-size: 11.5px;
+  color: var(--theme-color-success);
+}
+
+.Button {
+  padding: 5px 14px;
+  font-size: 12px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-bg-4);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.ButtonPrimary {
+  background-color: var(--theme-color-primary);
+  border-color: var(--theme-color-primary);
+  color: var(--theme-color-fg-on-primary);
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-primary-hover);
+  }
+}

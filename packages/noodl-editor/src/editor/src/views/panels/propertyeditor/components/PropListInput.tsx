@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import PopupLayer from '../../../popuplayer';
 
+import css from './ListInputRow.module.scss';
+
 export interface PropListItem {
   id: string;
   label: string;
@@ -14,7 +16,19 @@ export interface PropListInputProps {
   /** Row views (raw elements or jQuery-wrapped) belonging to an item */
   childElsForItem: (id: string) => TSFixme[];
 
-  onAddClick: (anchor: HTMLElement) => void;
+  /**
+   * Add an entry by name. Returns an error message when rejected, which is
+   * shown beside the field so the name can be corrected rather than lost.
+   */
+  onAdd: (name: string) => string | undefined;
+  /**
+   * Ports declaring `autoName` (Create Record / Update Record `accessControl`)
+   * never ask for a name — the + button mints "Rule 1", "Rule 2", … When this is
+   * set the inline name field is not shown at all.
+   */
+  onAutoAdd?: () => void;
+  /** Open the shared JSON editor on this list. */
+  onOpenCode: (anchor: HTMLElement) => void;
   onRename: (oldName: string, newName: string) => void;
   onDelete: (id: string) => void;
   onReorder: (source: PropListItem, target: PropListItem, below: boolean) => void;
@@ -202,31 +216,96 @@ function PropListRow({
 }
 
 /**
+ * A single-line name field for adding an entry.
+ *
+ * ERG-003 §3: adding used to open `PopupLayer.StringInputPopup`, the eight-row
+ * textarea placeholdered `// Add your comment here...` that is shared with the
+ * canvas comment editor. It asked for one short identifier with a code editor.
+ * This is the same inline control renaming already used.
+ */
+function AddNameField({ onCommit, onCancel }: { onCommit: (value: string) => void; onCancel: () => void }) {
+  const [text, setText] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      className="sidebar-panel-dark-input name-edit"
+      placeholder="Entry name"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => onCommit(text)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          onCommit(text);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          onCancel();
+        }
+      }}
+    />
+  );
+}
+
+/**
  * The prop-list property row: reorderable named entries whose child property
  * rows are hosted inside each item. Reuses the legacy proplist CSS.
+ *
+ * ERG-003 keeps this as the visual builder rather than replacing it with the
+ * JSON editor, because each entry hosts its own child property rows — a Function
+ * node's per-input "Type" dropdown is a child port keyed by the entry's `id`
+ * (`parentItemId`). A plain JSON list cannot show those, so `{ }` opens the
+ * shared editor *alongside* this rather than instead of it.
  */
 export function PropListInput({
   items,
   isDefault,
   childElsForItem,
-  onAddClick,
+  onAdd,
+  onAutoAdd,
+  onOpenCode,
   onRename,
   onDelete,
   onReorder
 }: PropListInputProps) {
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | undefined>(undefined);
+
   return (
     <div style={{ position: 'relative' }}>
-      <button
-        type="button"
-        style={{ position: 'absolute', right: 5, top: -30 }}
-        className="components-panel-edit-button"
-        onClick={(e) => {
-          onAddClick(e.currentTarget);
-          e.stopPropagation();
-        }}
-      >
-        <i className="fa fa-plus" />
-      </button>
+      <div style={{ position: 'absolute', right: 5, top: -30, display: 'flex', gap: 2 }}>
+        <button
+          type="button"
+          className="components-panel-edit-button"
+          title="Edit as JSON"
+          onClick={(e) => {
+            onOpenCode(e.currentTarget);
+            e.stopPropagation();
+          }}
+        >
+          <i className="fa fa-code" />
+        </button>
+
+        <button
+          type="button"
+          className="components-panel-edit-button"
+          title="Add entry"
+          onClick={(e) => {
+            setError(undefined);
+            if (onAutoAdd) onAutoAdd();
+            else setAdding(true);
+            e.stopPropagation();
+          }}
+        >
+          <i className="fa fa-plus" />
+        </button>
+      </div>
 
       <div className="items">
         {items.map((item) => (
@@ -240,7 +319,34 @@ export function PropListInput({
             onReorder={onReorder}
           />
         ))}
+
+        {adding && (
+          <div className="proplist-item">
+            <div className="header proplist-header">
+              <div style={{ height: 35, position: 'relative' }}>
+                <AddNameField
+                  onCommit={(value) => {
+                    if (value.trim() === '') {
+                      setAdding(false);
+                      setError(undefined);
+                      return;
+                    }
+                    const message = onAdd(value);
+                    setError(message);
+                    if (!message) setAdding(false);
+                  }}
+                  onCancel={() => {
+                    setAdding(false);
+                    setError(undefined);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {error && <div className={css['InlineError']}>{error}</div>}
     </div>
   );
 }

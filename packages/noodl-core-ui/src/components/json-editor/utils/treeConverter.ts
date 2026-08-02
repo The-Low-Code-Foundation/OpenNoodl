@@ -73,7 +73,13 @@ export function treeNodeToValue(node: JSONTreeNode): unknown {
   if (node.type === 'object') {
     const result: Record<string, unknown> = {};
     (node.children || []).forEach((child) => {
-      if (child.key) {
+      // `!== undefined`, not truthiness. ERG-003 criterion 3 asks that the
+      // visual mode produce every value the code mode can, and `if (child.key)`
+      // silently dropped the empty-string key: `{"": 1}` opened in Easy mode and
+      // came back `{}`, losing the entry as soon as anything else was edited.
+      // An empty key is legal JSON and the property panel now round-trips real
+      // stored values through this, so dropping one is data loss.
+      if (child.key !== undefined) {
         result[child.key] = treeNodeToValue(child);
       }
     });

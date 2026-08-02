@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
 import { NodeLibrary } from '@noodl-models/nodelibrary';
+import { listPortTypeFor } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
 import { capabilityProbes, gateForPort, resolveGateTarget, type GateTarget } from '@noodl-utils/capability-gating';
 import { decoratePortElement } from '@noodl-utils/capability-gating/portDecoration';
 
@@ -27,6 +28,7 @@ import { FontType } from './FontType';
 import { IconType } from './IconType';
 import { IdentifierType } from './IdentifierType';
 import { ImageType } from './ImageType';
+import { ListValueType } from './ListValueType';
 import { LogicBuilderHiddenType } from './LogicBuilderHiddenType';
 import { LogicBuilderWorkspaceType } from './LogicBuilderWorkspaceType';
 import { MarginPaddingType } from './MarginPaddingType';
@@ -354,20 +356,22 @@ export class Ports extends View {
       return NodeLibrary.nameForPortType(type) === 'string' && typeof type === 'object' && type.codeeditor;
     }
 
-    function isOfArrayType() {
-      return NodeLibrary.nameForPortType(type) === 'array';
-    }
-
-    // Object-typed ports edit as a literal in the same code editor as arrays.
+    // Array- and object-typed ports both edit as a literal.
     //
-    // Without this branch `viewClassForPort` returned undefined and `_getPorts` filtered
-    // the row out altogether, so an object-typed input was connection-only with nothing on
-    // screen to say why — you could not give a Global Store its starting shape or an SSE
-    // call its headers without wiring a Function node whose whole body was a literal.
-    // `array` already had exactly this affordance, and `Node.setInputValue` parses a string
-    // arriving on either type, so this is the existing pattern rather than a new one.
-    function isOfObjectType() {
-      return NodeLibrary.nameForPortType(type) === 'object';
+    // Without the object branch `viewClassForPort` returned undefined and `_getPorts`
+    // filtered the row out altogether, so an object-typed input was connection-only with
+    // nothing on screen to say why — you could not give a Global Store its starting shape
+    // or an SSE call its headers without wiring a Function node whose whole body was a
+    // literal. `Node.setInputValue` parses a string arriving on either type.
+    //
+    // ERG-003: both now route to `ListValueType` (the shared `JSONEditor`) rather than to
+    // `CodeEditorType`, so they gain a visual builder. The stored form is unchanged, and
+    // `listPortTypeFor` is the one definition of "is this a list-shaped port" — the catalog
+    // test derives its expectation from the same function, so the set of ports the shared
+    // editor covers cannot drift from the set it is claimed to cover.
+    function isOfListValueType() {
+      const t = listPortTypeFor(type);
+      return t === 'array' || t === 'object';
     }
 
     // Image ref type
@@ -498,8 +502,7 @@ export class Ports extends View {
     else if (isOfBooleanType()) return BooleanType;
     else if (isOfTextAreaType()) return TextAreaType;
     else if (isOfCodeEditorType()) return CodeEditorType;
-    else if (isOfArrayType()) return CodeEditorType;
-    else if (isOfObjectType()) return CodeEditorType;
+    else if (isOfListValueType()) return ListValueType;
     else if (isOfMarginPaddingType()) return MarginPaddingType;
     else if (isOfNumberWithUnitsType()) return NumberWithUnits;
     else if (isOfDimensionType()) return Dimension;
