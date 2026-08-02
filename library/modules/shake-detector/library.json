@@ -7,7 +7,7 @@
   ],
   "icon": "icon.png",
   "docsPath": "/library/modules/shake-detector/",
-  "version": "2.0.0",
+  "version": "1.0.2",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {
