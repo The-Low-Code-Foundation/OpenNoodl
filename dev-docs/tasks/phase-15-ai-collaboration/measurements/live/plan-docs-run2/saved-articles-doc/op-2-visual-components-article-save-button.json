@@ -1,0 +1,110 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "fce792bc-d70a-40ec-bd7a-8efb34714488",
+    "name": "Save Button",
+    "path": "/Visual Components/Article/Save Button",
+    "type": "visual",
+    "created": "2026-08-02T17:24:27.578Z",
+    "modified": "2026-08-02T17:24:27.578Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Small toggle control showing a bookmark icon in saved/not-saved state. Takes articleId and isSaved as inputs, and emits a Click signal when tapped (to be wired to Save Article Toggle logic by the parent)."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "fce792bc-d70a-40ec-bd7a-8efb34714488",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "in",
+        "type": "Component Inputs",
+        "label": "Inputs",
+        "x": 0,
+        "y": 0,
+        "ports": [
+          {
+            "name": "articleId",
+            "plug": "output",
+            "type": "string"
+          },
+          {
+            "name": "isSaved",
+            "plug": "output",
+            "type": "boolean"
+          }
+        ]
+      },
+      {
+        "id": "out",
+        "type": "Component Outputs",
+        "label": "Outputs",
+        "x": 0,
+        "y": 300,
+        "ports": [
+          {
+            "name": "Click",
+            "plug": "input",
+            "type": "signal"
+          }
+        ]
+      },
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Save Button Root",
+        "x": 300,
+        "y": 100,
+        "children": [
+          "icon"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "alignX": "center",
+          "alignY": "center",
+          "paddingLeft": "var(--space-2)",
+          "paddingRight": "var(--space-2)",
+          "paddingTop": "var(--space-2)",
+          "paddingBottom": "var(--space-2)",
+          "backgroundColor": "transparent",
+          "borderRadius": "var(--radius-full)"
+        }
+      },
+      {
+        "id": "icon",
+        "type": "net.noodl.visual.icon",
+        "label": "Bookmark Icon",
+        "x": 330,
+        "y": 150,
+        "parent": "root",
+        "parameters": {
+          "iconSourceType": "icon",
+          "iconSize": 24,
+          "iconColor": "var(--muted-foreground)"
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "fce792bc-d70a-40ec-bd7a-8efb34714488",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "in",
+        "fromProperty": "isSaved",
+        "toId": "icon",
+        "toProperty": "iconColor"
+      },
+      {
+        "fromId": "root",
+        "fromProperty": "onClick",
+        "toId": "out",
+        "toProperty": "Click"
+      }
+    ]
+  }
+}

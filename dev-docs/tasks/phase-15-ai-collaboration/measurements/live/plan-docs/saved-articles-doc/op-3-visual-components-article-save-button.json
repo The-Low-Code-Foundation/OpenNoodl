@@ -1,0 +1,184 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "69e30122-b8f5-4925-a893-cd7e8a6b77be",
+    "name": "Save Button",
+    "path": "/Visual Components/Article/Save Button",
+    "type": "visual",
+    "created": "2026-08-02T17:14:13.841Z",
+    "modified": "2026-08-02T17:14:13.841Z",
+    "modifiedBy": "ai-authoring",
+    "description": "A save/unsave toggle button for an article: shows saved state via label/icon color, invokes Save Article logic on click, and emits Toggled when the save operation succeeds."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "69e30122-b8f5-4925-a893-cd7e8a6b77be",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "inputs",
+        "type": "Component Inputs",
+        "label": "Inputs",
+        "x": 0,
+        "y": 0,
+        "ports": [
+          {
+            "name": "articleId",
+            "plug": "output",
+            "type": "string"
+          },
+          {
+            "name": "userId",
+            "plug": "output",
+            "type": "string"
+          },
+          {
+            "name": "isSaved",
+            "plug": "output",
+            "type": "boolean"
+          }
+        ]
+      },
+      {
+        "id": "outputs",
+        "type": "Component Outputs",
+        "label": "Outputs",
+        "x": 800,
+        "y": 0,
+        "ports": [
+          {
+            "name": "Toggled",
+            "plug": "input",
+            "type": "signal"
+          }
+        ]
+      },
+      {
+        "id": "labelExpr",
+        "type": "Expression",
+        "label": "Label text based on saved state",
+        "x": 200,
+        "y": 250,
+        "parameters": {
+          "expression": "isSaved ? 'Saved' : 'Save'"
+        }
+      },
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Save Button Root",
+        "x": 200,
+        "y": 0,
+        "children": [
+          "btn"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "columnGap": "var(--space-2)"
+        }
+      },
+      {
+        "id": "btn",
+        "type": "net.noodl.controls.button",
+        "label": "Save toggle button",
+        "x": 220,
+        "y": 50,
+        "parent": "root",
+        "parameters": {
+          "label": "Save",
+          "variant": "outline",
+          "size": "md",
+          "iconIconSource": "bookmark",
+          "iconColor": "var(--foreground)",
+          "borderRadius": "var(--radius-md)",
+          "paddingLeft": "var(--space-3)",
+          "paddingRight": "var(--space-3)",
+          "paddingTop": "var(--space-2)",
+          "paddingBottom": "var(--space-2)"
+        }
+      },
+      {
+        "id": "colorExpr",
+        "type": "Expression",
+        "label": "Icon/border color based on saved state",
+        "x": 200,
+        "y": 400,
+        "parameters": {
+          "expression": "isSaved ? 'var(--primary)' : 'var(--foreground)'"
+        }
+      },
+      {
+        "id": "saveArticle",
+        "type": "/Logic Components/Save Article",
+        "label": "Save Article logic",
+        "x": 500,
+        "y": 150
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "69e30122-b8f5-4925-a893-cd7e8a6b77be",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "inputs",
+        "fromProperty": "isSaved",
+        "toId": "labelExpr",
+        "toProperty": "isSaved"
+      },
+      {
+        "fromId": "inputs",
+        "fromProperty": "isSaved",
+        "toId": "colorExpr",
+        "toProperty": "isSaved"
+      },
+      {
+        "fromId": "labelExpr",
+        "fromProperty": "asString",
+        "toId": "btn",
+        "toProperty": "label"
+      },
+      {
+        "fromId": "colorExpr",
+        "fromProperty": "result",
+        "toId": "btn",
+        "toProperty": "iconColor"
+      },
+      {
+        "fromId": "colorExpr",
+        "fromProperty": "result",
+        "toId": "btn",
+        "toProperty": "color"
+      },
+      {
+        "fromId": "inputs",
+        "fromProperty": "articleId",
+        "toId": "saveArticle",
+        "toProperty": "articleId"
+      },
+      {
+        "fromId": "inputs",
+        "fromProperty": "userId",
+        "toId": "saveArticle",
+        "toProperty": "userId"
+      },
+      {
+        "fromId": "btn",
+        "fromProperty": "onClick",
+        "toId": "saveArticle",
+        "toProperty": "Do"
+      },
+      {
+        "fromId": "saveArticle",
+        "fromProperty": "Success",
+        "toId": "outputs",
+        "toProperty": "Toggled"
+      }
+    ]
+  }
+}

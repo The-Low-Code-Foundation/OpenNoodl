@@ -33,6 +33,19 @@ export const UPDATE_PROMPTS: UpdatePrompt[] = [
     description:
       "Give this section a component input called 'Disabled'. When it is true the buttons inside " +
       'should be dimmed and stop responding to clicks.'
+  },
+  {
+    // The live-provider pass left `update /App` as an unexplained repeated
+    // failure. `/App` is the router host, so the task is deliberately a routing
+    // change and nothing else: the candidate has to rewrite the Router's nested
+    // `pages` object, and the run answers both "does the session complete" and
+    // "did the other route survive".
+    slug: 'app-start-page',
+    legacyName: '/App',
+    componentPath: 'App',
+    description:
+      'The app should open on the Profile page instead of the Article page. Leave everything else ' +
+      'exactly as it is — both pages must stay reachable.'
   }
 ];
 
@@ -199,5 +212,86 @@ export const EXPLAIN_PROMPTS: ExplainPrompt[] = [
     slug: 'state-page',
     componentName: '/#__page__/State',
     wants: ['store', 'undo', 'redo', 'history']
+  }
+];
+
+/**
+ * AIX-011 criterion 7 — a plan that actually contains a `doc` operation.
+ *
+ * The first live pass produced none, and the reason turned out to be
+ * mechanical rather than editorial: the planning prompt only allows a doc
+ * operation "when the project's docs are listed in the overview material", and
+ * nothing ever listed them. So a doc run needs two things a `PLAN_PROMPTS`
+ * entry cannot carry — a project that HAS docs, and a request whose answer is
+ * partly a written decision rather than a graph.
+ */
+export interface PlanDocPrompt {
+  slug: string;
+  request: string;
+  minOperations: number;
+  /**
+   * The `docs/` bodies the project is treated as having: handed to the planner
+   * (so a doc operation is plannable), to the authoring sessions (so
+   * `get_project_doc` answers), and to the doc turn as its baseline (so it is
+   * revising a real file with a human's prose in it, which is the case that
+   * actually tests whether it restates the graph).
+   */
+  docs: { architecture?: string; conventions?: string; brief?: string };
+}
+
+/**
+ * A deliberately human ARCHITECTURE.md: it records decisions and one rejected
+ * alternative, and it is written in the register the whole AIX-009…012 group
+ * says these files are for. If the doc turn's revision reads like a different
+ * document, that is the finding.
+ */
+const ARTICLE_ARCHITECTURE = `# Architecture
+
+## What this app is
+
+A reader for the articles we publish through Contentful. Everything a reader
+sees comes from Contentful; everything a reader *does* — ratings, comments —
+lives in the Noodl database, keyed by the Contentful article id.
+
+## Pages
+
+- **Article** — the reader's whole world. Deep-linked by \`pm-slug\`.
+- **Profile** — account settings and the reader's own comments.
+
+The App shell owns the only Router. Pages are registered there and nowhere
+else; if a page is not in that list it is unreachable, and we have shipped that
+bug twice.
+
+## Data
+
+We do not mirror Contentful into the database. An article's *content* is always
+fetched live; only reader-generated records are stored, and each one carries the
+Contentful \`article_id\` rather than a copy of the article.
+
+We considered caching articles in the Noodl database so the app could open
+offline. Rejected: the editorial team corrects live articles several times a
+week, and a cache that serves a corrected article's old text is worse than a
+spinner.
+
+## Auth
+
+Email/password through the backend's user records. Anything that writes a
+reader-generated record must go through \`Is user logged in?\` first.
+`;
+
+export const PLAN_DOC_PROMPTS: PlanDocPrompt[] = [
+  {
+    slug: 'saved-articles-doc',
+    // Phrased the way the residual asks for: work that establishes a convention
+    // and an external contract, so a doc operation is the honest answer rather
+    // than filler. The request never says "write a doc" in those words.
+    request:
+      'Let readers save articles to read later — a "Saved" page listing what they saved, and a save/unsave ' +
+      'control that can go on an article. Store each save as a SavedArticle record with userId and ' +
+      'articleId (the Contentful id, same as we do for ratings) — I do not want a second way of ' +
+      'identifying an article appearing later, so make sure that decision is written down where the ' +
+      'next person will find it.',
+    minOperations: 3,
+    docs: { architecture: ARTICLE_ARCHITECTURE }
   }
 ];
