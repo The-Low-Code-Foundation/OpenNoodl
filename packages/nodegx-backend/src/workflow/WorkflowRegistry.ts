@@ -88,18 +88,20 @@ export class WorkflowRegistry {
   }
 
   /**
-   * Create or update a workflow definition. Validates strictly and REJECTS
-   * (throws WorkflowConfigError) rather than persisting a definition that would
-   * not run — including a cyclic graph or a dangling edge.
+   * The definition an input WOULD become — the shape `upsert` persists, built
+   * without persisting it.
+   *
+   * Shared by `upsert` and `validate` deliberately: a dry run that normalised
+   * differently from the real write would answer a question nobody asked.
    */
-  upsert(input: WorkflowInput): WorkflowDefinition {
+  private normalize(input: WorkflowInput): WorkflowDefinition {
     const existing = input.id ? this.defs.get(input.id) : undefined;
     const id = input.id || 'wf_' + crypto.randomBytes(9).toString('base64url');
     if (!ID_RE.test(id)) {
       throw new WorkflowConfigError(`workflow id "${id}" must match [A-Za-z0-9][A-Za-z0-9_-]{0,63}`);
     }
     const now = nowIso();
-    const def: WorkflowDefinition = {
+    return {
       version: 1,
       id,
       name: input.name,
@@ -111,6 +113,38 @@ export class WorkflowRegistry {
       createdAt: existing ? existing.createdAt : now,
       updatedAt: now
     };
+  }
+
+  /**
+   * WFA-007 — "would you accept this?", answered without accepting it.
+   *
+   * Until this existed, the only way to learn whether a definition passed
+   * validation was to POST or PUT it, which persists on success. So "check" and
+   * "write" were the same call, and a proposal could not be validated against
+   * its target backend without becoming that backend's state — the one thing a
+   * review surface exists to prevent.
+   *
+   * Same normalisation, same validator, nothing written. An id that cannot be
+   * one is returned as an error rather than thrown, because a dry run's job is
+   * to report every reason rather than to stop at the first.
+   */
+  validate(input: WorkflowInput): string[] {
+    let def: WorkflowDefinition;
+    try {
+      def = this.normalize(input);
+    } catch (e) {
+      return [e instanceof Error ? e.message : String(e)];
+    }
+    return validateWorkflowDefinition(def);
+  }
+
+  /**
+   * Create or update a workflow definition. Validates strictly and REJECTS
+   * (throws WorkflowConfigError) rather than persisting a definition that would
+   * not run — including a cyclic graph or a dangling edge.
+   */
+  upsert(input: WorkflowInput): WorkflowDefinition {
+    const def = this.normalize(input);
 
     const errors = validateWorkflowDefinition(def);
     if (errors.length) {
@@ -118,7 +152,7 @@ export class WorkflowRegistry {
     }
 
     this.persist(def);
-    this.defs.set(id, def);
+    this.defs.set(def.id, def);
     return { ...def };
   }
 
