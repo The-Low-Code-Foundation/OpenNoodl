@@ -1219,56 +1219,8 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 /* -------------------------------------------------------------------
-   Import popup
+   Misc
    ------------------------------------------------------------------- */
-.import-popup-button {
-  background-color: var(--theme-color-bg-2);
-  border: none;
-  color: var(--theme-color-fg-default);
-  height: 100%;
-  margin: 0px;
-}
-
-.import-popup-button:hover {
-  background-color: var(--theme-color-bg-4);
-}
-
-.import-popup-text {
-  display: block;
-  color: var(--theme-color-fg-default);
-  margin-left: 10px;
-  margin-right: 10px;
-  margin-bottom: 10px;
-  margin-top: 5px;
-}
-
-.import-popup-item {
-  color: var(--theme-color-fg-default);
-  background-color: var(--theme-color-bg-4);
-  font: 300 12px var(--font-family);
-}
-
-.import-popup-folder {
-  color: var(--theme-color-fg-default-contrast);
-  font: bold 12px var(--font-family);
-  background-color: var(--theme-color-bg-4);
-}
-
-.import-popup-folder .sidebar-panel-dark-input,
-.import-popup-item .sidebar-panel-dark-input {
-  background-color: var(--theme-color-bg-1);
-}
-
-.import-popup-implicit-check {
-  display: block;
-  color: var(--theme-color-fg-muted);
-}
-
-.import-popup-import-check {
-  display: block;
-  color: var(--theme-color-fg-default-contrast);
-}
-
 .show-on-edit {
   display: none;
 }
