@@ -1139,13 +1139,18 @@ describe('net.noodl.ActionDispatcher (node)', () => {
       [
         'actionId',
         'actionType',
+        // ERG-001 §4. `completed` -> `actionCompleted` (per action), and the contract's four
+        // per-invocation ports joined it: `done`, `unchanged`, `failure`, `completed`.
+        'actionCompleted',
         'cancelled',
         'cancelledCount',
         'completed',
         'completedCount',
         'dispatched',
+        'done',
         'failed',
         'failedCount',
+        'failure',
         'idle',
         'isExecuting',
         'lastError',
@@ -1157,6 +1162,7 @@ describe('net.noodl.ActionDispatcher (node)', () => {
         'refusedCount',
         'refusedType',
         'result',
+        'unchanged',
         'waitingFor'
       ].sort()
     );
@@ -1173,7 +1179,9 @@ describe('net.noodl.ActionDispatcher (node)', () => {
     node.update();
 
     expect(globalStoreManager.getKey('app', 'view')).toBe('agenda');
-    expect(signals).toEqual(['dispatched', 'completed', 'idle']);
+    // ERG-001 §4: the per-action signal is `actionCompleted`; `completed` is now the node's
+    // own per-invocation one and lands last, after `dispatch()` has returned.
+    expect(signals).toEqual(['dispatched', 'actionCompleted', 'idle', 'done', 'completed']);
     expect(out('actionType')).toBe('SET_STORE');
     expect(out('completedCount')).toBe(1);
     expect(out('isExecuting')).toBe(false);
@@ -1303,7 +1311,7 @@ describe('net.noodl.ActionHandler (node)', () => {
     expect(handlerProbe.signals).toContain('trigger');
     expect(handlerProbe.out('payload')).toEqual({ type: 'OPEN_SESSION', sessionId: '123' });
     expect(handlerProbe.out('triggeredCount')).toBe(1);
-    expect(dispatcherProbe.signals).toContain('completed');
+    expect(dispatcherProbe.signals).toContain('actionCompleted');
   });
 
   it('refuses to claim a reserved built-in name, loudly', () => {

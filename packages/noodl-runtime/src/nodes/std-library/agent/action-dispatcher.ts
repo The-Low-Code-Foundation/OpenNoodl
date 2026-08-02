@@ -445,14 +445,18 @@ export class ActionDispatcher {
    * halfway through executing: a malformed member of an array is refused on its own and
    * the rest of the array still runs, because dropping five good actions over one bad one
    * would be a worse failure than the bad one.
+   *
+   * @returns whether **anything at all** was admitted, which is what the node reports as the
+   * outcome of one `Dispatch` (ERG-001 §4). A partial admission is `true`: some work was
+   * accepted, and the members that were not are separately visible on `Refused`.
    */
-  dispatch(raw: unknown): void {
-    if (this.disposed) return;
+  dispatch(raw: unknown): boolean {
+    if (this.disposed) return false;
 
     const coerced = this.coerce(raw);
     if ('error' in coerced) {
       this.refuse(raw, '', 'invalid', coerced.error);
-      return;
+      return false;
     }
 
     let admitted = false;
@@ -494,6 +498,7 @@ export class ActionDispatcher {
 
     if (admitted) this.notifyQueue();
     this.pump();
+    return admitted;
   }
 
   /**

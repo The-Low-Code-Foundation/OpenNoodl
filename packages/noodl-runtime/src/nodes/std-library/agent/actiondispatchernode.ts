@@ -19,6 +19,7 @@
  */
 import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
+import { outcomeOutputs } from '../../../outcome';
 import {
   ActionDispatcher,
   ActionDispatcherOptions,
@@ -77,22 +78,37 @@ function dispatcherOf(node: NodeInstance): ActionDispatcher {
         node.sendSignalOnOutput('dispatched');
       },
 
+      /**
+       * ⚠️ `actionCompleted`, **not** `completed` — ERG-001 §4, and the reason this node is not
+       * a rename like the other five.
+       *
+       * This fires per *action*. One `Dispatch` can admit an array of five and produce five of
+       * these, minutes apart, long after the invocation that started them ended. The contract's
+       * `Completed` is per-invocation of the node's own signal input. They are different
+       * granularities, so calling this one `Done` — the other half of Richard's decision — would
+       * have replaced one lie with another. It keeps the meaning it has always had under a name
+       * that says which granularity it is.
+       */
       onCompleted(info) {
         internal.result = info.result;
+        internal.completedCount++;
+        // ⚠️ Values before the signal, all of them. `completedCount` used to be incremented and
+        // flagged *after* `sendSignalOnOutput`, so a graph wired `Action Completed -> show
+        // count` read the previous count — the phase's most-repeated defect shape, and the one
+        // `onRefused` three handlers down already gets right and says so in a comment.
         node.flagOutputDirty('result');
         node.flagOutputDirty('isExecuting');
-        node.sendSignalOnOutput('completed');
-        internal.completedCount++;
         node.flagOutputDirty('completedCount');
+        node.sendSignalOnOutput('actionCompleted');
       },
 
       onFailed(info) {
         internal.lastError = info.error;
+        internal.failedCount++;
         node.flagOutputDirty('lastError');
         node.flagOutputDirty('isExecuting');
-        node.sendSignalOnOutput('failed');
-        internal.failedCount++;
         node.flagOutputDirty('failedCount');
+        node.sendSignalOnOutput('failed');
       },
 
       onRefused(info: RefusalInfo) {
@@ -410,10 +426,12 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
       description: 'Fires when an action has been accepted and is about to run',
       group: 'Events'
     },
-    completed: {
+    actionCompleted: {
       type: 'signal',
-      displayName: 'Completed',
-      description: 'Fires once an action has finished and Result holds its answer',
+      displayName: 'Action Completed',
+      description:
+        'Fires once *one action* has finished and Result holds its answer — one Dispatch of an ' +
+        'array fires this once per member, which is why it is not the node’s Completed',
       group: 'Events'
     },
     failed: {
@@ -549,7 +567,29 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
       displayName: 'Cancelled',
       description: 'Fires once Cancel All has emptied the queue',
       group: 'Events'
-    }
+    },
+
+    /**
+     * ERG-001 §4 — the contract's ports, covering **both** signal inputs.
+     *
+     * Read them against the per-action ports above, because the pairing is the whole point:
+     *
+     * | Port | Granularity | Fires |
+     * |---|---|---|
+     * | `Dispatched` / `Action Completed` / `Failed` / `Refused` | per action | once per member of whatever was dispatched |
+     * | `Done` / `Unchanged` / `Failure` / `Completed` | per invocation | exactly once per `Dispatch` or `Cancel All` |
+     *
+     * `Dispatch` is `Done` when anything at all was admitted and `Failure` when nothing was;
+     * `Cancel All` is `Done` when it dropped something and `Unchanged` when there was nothing
+     * to drop — which used to be a bare `return`, so a Cancel All before anything had ever been
+     * dispatched was a dead chain with no diagnostic.
+     */
+    ...outcomeOutputs({
+      done: 'Fires when the invocation did something: Dispatch admitted at least one action, or Cancel All dropped at least one',
+      unchanged:
+        'Fires when there was nothing to do — a Cancel All with an empty queue. Not a failure: the queue is empty, which is what was asked for',
+      failure: 'Fires when a Dispatch admitted nothing at all, because every action in it was refused'
+    })
   },
 
   methods: {
@@ -567,19 +607,48 @@ const ActionDispatcherNode: NodeDefinitionOptions = {
      */
     doDispatch(this: NodeInstance) {
       const internal = internalOf(this);
-      dispatcherOf(this).dispatch(internal.pendingAction);
+      const outcome = this.beginOutcome();
+      const admitted = dispatcherOf(this).dispatch(internal.pendingAction);
+
+      // ⚠️ Reported *after* `dispatch` returns, which means after `onDispatched` / `onRefused`
+      // have already fired their per-action signals. That ordering is deliberate: the
+      // invocation's outcome is a statement about the whole call, and it must not land before
+      // the details it summarises.
+      //
+      // A partial admission is `Done`. Some work was accepted, and the members that were not
+      // are on `Refused` with their reason — folding that into `Failure` would break the chain
+      // for a dispatch that mostly worked.
+      if (admitted) {
+        this.reportOutcome(outcome, 'done');
+      } else {
+        this.reportOutcome(outcome, 'failure', {
+          code: 'action-dispatcher/nothing-admitted',
+          message: 'Nothing on Action was admitted; every action in it was refused',
+          detail: { reason: internal.refusalReason, message: internal.refusalMessage }
+        });
+      }
     },
 
     doCancel(this: NodeInstance) {
       const internal = internalOf(this);
-      if (!internal.dispatcher) return;
-      const dropped = internal.dispatcher.cancelAll();
+      const outcome = this.beginOutcome();
+
+      // Measured before ERG-001 §4: this opened `if (!internal.dispatcher) return;` — a bare
+      // return, so a Cancel All on a node nothing had ever dispatched to emitted nothing at
+      // all. Nothing to cancel is not a failure; the post-condition already held.
+      const dropped = internal.dispatcher ? internal.dispatcher.cancelAll() : 0;
+      if (dropped === 0) {
+        this.reportOutcome(outcome, 'unchanged');
+        return;
+      }
+
       internal.cancelledCount += dropped;
       this.flagOutputDirty('cancelledCount');
       this.flagOutputDirty('queueSize');
       this.flagOutputDirty('waitingFor');
       this.flagOutputDirty('isExecuting');
       this.sendSignalOnOutput('cancelled');
+      this.reportOutcome(outcome, 'done');
     },
 
     /**
