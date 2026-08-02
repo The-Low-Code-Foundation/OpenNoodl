@@ -1892,3 +1892,341 @@ of everything but the concurrent session's files.
 Carried forward unchanged: `GlobalStore.Set`'s and `Update Record`'s unmeasured `Unchanged`
 candidates; `Counter`'s `Reset` guard that has never fired; `Items Rendered` firing with zero item
 nodes after a `Refresh` (the one-character fix is `() => this.refresh()`).
+
+---
+
+## §4, the non-Data remainder and the streaming pair — four builds, 2026-08-02
+
+Commits `a139a3ce` (the small non-Data remainder), `c4d70555` (the Navigation remainder),
+`0b9671fb` (the script hosts, `Condition` and `States`) and `f58fb5ab` (`Stream Buffer` and
+`Text Accumulator`). **79 of §0's 82 actions now satisfy the contract, up from 61** — measured
+against `packages/noodl-types/src/node-catalog.json` with the handover's script, not counted
+from prose.
+
+**What is left is three nodes, all Data: `net.noodl.HTTP`, `net.noodl.OptimisticUpdate` and
+`RunTasks`.**
+
+### The eighteen, and the shape each got
+
+| Node | Action ports | Shape |
+|---|---|---|
+| `Event Sender` — Send Event | `Send` | `done` (was `sent`) · `failure` · `completed` |
+| `Unique Id` | `New` | `done` (was `generated`) · `completed` |
+| `Open File Picker` | `Open` | `done` (was `success`) · `unchanged` (was `cancelled`) · `failure` · `completed` |
+| `noodl.cloud.response` — Response | `Send` | `done` (was `sent`) · `failure` · `completed` |
+| `noodl.cloud.sendemail` — Send Email | `Do` | `done` (was `sent`) · `failure` (was `failed`) · `completed` |
+| `net.noodl.ComponentObject` | `Fetch` | `done` **added** · `completed` |
+| `net.noodl.ParentComponentObject` | `Fetch` | `done` **added** · `failure` · `completed` |
+| `NavigationClosePopup` — Close Popup | `Close`, each `closeAction-…` | `done` (was `success`) · `failure` · `completed` |
+| `net.noodl.externallink` — External Link | `Do` | `done` (was `success`) · `unchanged` · `failure` · `completed` |
+| `PageStackNavigateToPath` — Navigate To Path | `Navigate` | `done` (was `success`) · `unchanged` · `failure` · `completed` |
+| `NavigationShowPopup` — Show Popup | `Show` | `done` **added** · `failure` · `completed` |
+| `Condition` | `Evaluate` | `done` **added** · `completed` |
+| `Expression` | `Run` | `done` **added** · `failure` · `completed` |
+| `JavaScriptFunction` — Function | `Run` | `done` **added** · `unchanged` · `failure` · `completed` |
+| `Logic Builder` | `Run`, each block signal input | `done` **added** · `unchanged` · `failure` · `completed` |
+| `States` | `Toggle`, each `To <state>` | `done` **added** · `unchanged` · `failure` · `completed` |
+| `net.noodl.StreamBuffer` | `Add`, `Flush`, `Clear` | `done` **added** · `unchanged` · `failure` · `completed` |
+| `net.noodl.TextAccumulator` | `Add`, `Clear` | `done` **added** · `unchanged` · `failure` · `completed` |
+
+### The rename question, asked eighteen times and answered mechanically
+
+The rule the phase settled — *grep every caller of the method that sends the "did something"
+signal; if any caller is an input setter or a subscription callback, it is a value-level
+announcement, the outcome goes beside it, and you do not rename* — decided every one of these
+without a judgement call. Eight renames, ten additions. Two results are worth keeping:
+
+⚠️ **`Component Object` measurably passes the grep and still keeps `Fetched`.** `fetch()` has
+exactly one caller and that caller is the port, so `Fetched` *could* honestly have been the
+rename. It is not, because `parentcomponentobject.ts` is its documented twin and there
+`setModelId` is reached from the `targetComponent` setter, from `initialize`, from the deferred
+`nodeScopeDidInitialize` resolution and from the `componentStateNodesChanged` subscription —
+three of five are not invocations. Splitting a documented pair so one says `Fetched` and the
+other `Done` for the same author gesture is the divergence `outcome.ts`'s docstring exists to
+prevent. Same call the Cloud Services slice made for `Record`/`User`.
+
+⚠️ **`Logic Builder` passes the grep too — every route into `_executeLogic` is a signal input
+port — and also keeps `Success`.** Same reasoning, one family over: `Function` and `Expression`
+*must* keep theirs, so a Logic Builder that said only `Done` would be the odd one of four script
+hosts. The cost is recorded rather than hidden: on that node the two co-fire on every successful
+run.
+
+### `Cancelled` became `Unchanged`, which is the one rename that changes a concept
+
+Open File Picker's own source already argued the case at length — "a user declining a dialog is a
+legitimate empty result … a `Failure` here would fire on a graph working exactly as written" —
+which is `Unchanged`'s definition word for word. Keeping both would have shipped two ports that
+always fire together, the shape the Variables slice removed `Stored` to avoid. The "the user
+declined" meaning moved into the port description.
+
+### Nine dead chains closed, every one a bare `return` with prose already arguing for it
+
+| Node | Branch | Outcome |
+|---|---|---|
+| `Parent Component Object` | `Fetch` with nothing resolved | `Failure` (`parent-component-object/fetch-no-parent`) |
+| `External Link` | no `window` — a server-side render | `Unchanged` |
+| `Navigate To Path` | no `window` | `Unchanged` |
+| `Function` | `Run` with no script written yet | `Unchanged` |
+| `Logic Builder` | `Run` with no blocks yet | `Unchanged` |
+| `States` | already in the state asked for | `Unchanged` |
+| `States` | already heading there in this pass | `Unchanged` |
+| `States` | `Toggle` with no States list at all | `Failure` (`states/no-states`) |
+| `Stream Buffer` / `Text Accumulator` | empty `Flush`, empty chunk, `Clear` with nothing to clear | `Unchanged` |
+
+In seven of the nine the source comment had already *reasoned* the answer and then returned
+silently anyway — "an SSR pass firing `Failure` would train authors to ignore the port", "a timed
+flush with nothing to send is exactly what an idle buffer should do", "an empty chunk is a no-op,
+not an error". The contract's contribution is not the reasoning; it is that there is now a wire.
+
+### ⚠️ `Response` is the contract's navigation exception in a second family
+
+`Done` fires **before** `_sendResponseCallback`, which is the opposite of "the outcome is the
+last thing an action does" — and it is forced. Delivering the response tears the request scope
+down synchronously (`NoodlCloudRuntime.run` calls `functionComponent._onNodeDeleted()` and
+`requestScope.reset()` *inside* the callback), so by the time it returns this node and everything
+wired to its outputs have been deleted. A row asserts the exact order, including `Completed`.
+
+⚠️ The belt-and-braces branch after the callback — a host that installs the callback without
+`_requestIsOpen` and answers first — now raises and writes `Error` but reports **no second
+outcome**. "Exactly one" is Rule 1's load-bearing half and the token is already spent; a second
+report would raise `outcome/duplicate` rather than diagnose the host bug. The pre-existing
+`response-node.test.ts` row that used to assert `['sent', 'failure']` says why in its own words.
+
+### ⚠️ FINDINGS SR-ix paid — and it had a second door nobody had looked at
+
+`Logic Builder`'s `RESERVED_OUTPUTS` guards writes to `context.Outputs`. A **`send signal`
+block** reaches `registerOutputIfNeeded` through the execution context instead, and that path had
+no check at all: a program sending `done` would have pulsed the contract's completion signal —
+a graph told an action finished when the only thing that happened is that a block fired — and
+`registerOutputIfNeeded`'s early return would have made it look like the port was created for the
+program. Both doors are guarded now.
+
+⚠️ **The node's own suite would have hidden it.** `logic-builder-node.test.ts` built its fixture
+with a block signal named `done` and asserted `node.hasOutput('done')`. Left alone that row
+passes **vacuously** the moment the contract declares the port, whatever the program did. The
+fixture is now `finished`, and a row pins the refusal.
+
+On `States` the equivalent guard was already in place: the concurrent phase-36 session had added
+`done`/`unchanged`/`completed` to its `RESERVED_OUTPUTS` with a reported collision *before* the
+ports landed here, which is exactly what SR-ix asks for. The handover's ⚠️ about States being
+unguarded was **stale**, and reading the file fresh — as it instructed — is what showed that.
+
+### ⚠️ `failure` is one port doing two jobs on five nodes, and it is never doubled
+
+On `Expression`, `Function`, `Logic Builder`, `States` and `Text Accumulator`, `failure` is both
+the invocation's outcome and a value-level announcement fired from a setter or a load path. A
+port-driven run must not pulse it twice, so: where there are tokens `reportOutcome` owns the
+pulse (`raise: false`, because the reason is already on the channel); where there are none the
+existing announcement stands. The message dedup keeps guarding the **raise** — an author
+mid-keystroke would otherwise raise once per character — and the tokens settle **outside** it,
+because Rule 1 is per invocation.
+
+### ⚠️ Two more measured things about `Run Tasks`, before anyone starts it
+
+**Its existing `done` output already means `Completed`.** The port description is "Fires when the
+run has ended, whether it succeeded, failed or was aborted", and every terminal path sends
+`success`/`failure`/`aborted` *and* `done`. That is Rule 2's own wording, and it is the Variables
+slice's `Stored` situation again. Adopting the contract there is therefore a **two-step rename**
+— `done` → `completed`, then `success` → `done` — whose order the sweep has to respect or the
+second step will rewrite what the first one just wrote.
+
+Its empty-list case is already `Success`, which is right: `For Each`'s exemption and `Pattern
+Extractor`'s are both recorded for exactly this reason, and putting the common empty case on a
+different wire from the common non-empty one is the defect the contract's problem statement
+opens with.
+
+### ⚠️ Four stale enrichment statements found by reading, none catchable by any gate
+
+All four were **true when written and false by the time they were read**, which is the class the
+hand sweep exists for. `catalog:merge:check` passed before and after each one.
+
+1. `open-file-picker`: *"If the user cancels the dialog, nothing fires — there is no cancel
+   event."* Untrue since NDA-004 added the `oncancel` listener.
+2. `net.noodl.componentobject`: *"Connecting the `fetch` input switches the node to pull mode."*
+   Untrue since NDA-017 §2 replaced the `isInputConnected` gate with Run On Value Change.
+3. `expression`: *"re-evaluates it whenever any referenced input changes (or only on the `run`
+   signal, if `run` is connected)"* — the same NDA-017 §2 class, and it is Rule 4's own worked
+   example sitting in the docs as if it were the design.
+4. `javascriptfunction`: *"if `run` is unconnected it runs whenever a connected input changes"* —
+   likewise.
+
+Plus `net.noodl.externallink`'s *"it returns nothing — the page is left (or a tab opened) and
+that is the whole contract"*, untrue since NDA-004 gave the node `Success`/`Failure`/`Error`, and
+`noodl.cloud.sendemail`'s `sent`/`failed` port entries.
+
+### The sweep — three wires rewritten, and a rewriter that silently missed three files
+
+The renames were swept two-sided against every `.json` in the repo, with a control set asserted
+non-zero first. **Six live wires** needed rewriting: three `Open File Picker` → `success`, two
+`Send Email` → `sent`/`failed`, and one more picker wire in `library/modules/image-cropper`.
+
+⚠️ **The first rewriter reported `0 wire(s)` for three of the five files and looked clean.** It
+matched `fromId` and `fromProperty` on the *same line*, which is how one file happens to be
+formatted and not how the other three are. A clean-looking run that has missed a file is exactly
+what the phase has now hit three times, in three different disguises — inline-TypeScript specs,
+a single-line connection object, and now a multi-line one. The second pass tracks the enclosing
+connection object across lines.
+
+⚠️ **A `json.dumps` round-trip reformatted a 106-line diff out of a two-word prose edit.** Redone
+by line from `git show HEAD:<path>`, forward-only rather than by `git checkout` on a file with
+uncommitted work in it.
+
+Sanity checks that made the zeroes believable: the control set returned 6 wires before any target
+was believed, and the sweep demonstrably reaches `library/prefabs`, where `Show Popup`'s `Closed`
+has two wires that deliberately stay.
+
+### ⚠️ NDA-010's five rows called `close()` directly, which is a route no author has
+
+`nda-010-close-popup-targeting.test.ts` drove the node by calling the method. Under "only the
+port mints" that reports nothing — correctly — so the rows now pulse `Close`. A method call is
+not an invocation, and a suite that drives one is testing a graph nobody can build.
+
+### The discrimination check — twenty-seven reverts, eighteen exact
+
+**Build 1a**
+
+| Revert | Predicted | Actual |
+|---|---|---|
+| Component Object mints inside the coalescing guard | 1 | **1, that row** |
+| Component Object drains its tokens before `fetch()` | 1 | **1, that row** |
+| Parent Component Object's no-parent `Fetch` back to a bare return | 1 | **1, that row** |
+| Parent Component Object mints in the `targetComponent` setter | 1 | **1, that row** |
+| Open File Picker's supersede branch removed | 1 | **1, that row** |
+| Open File Picker's empty-`FileList` branch reports `done` | 2 | **2, those two** |
+| Event Sender reports before dispatching | **0** | **0** |
+| Send Email mints inside the coalescing guard | 1 | **1, that row** |
+| Response settles the token again after a refusing callback | 1 | **2 — wrong** |
+| Unique Id's `New` stops minting | 2 | **3 — wrong** |
+
+**Builds 1b / 1c / 2**
+
+| Revert | Predicted | Actual |
+|---|---|---|
+| Close Popup mints inside the coalescing guard | 1 | **1, that row** |
+| Close Popup's no-popup branch reports `done` | 3 | **4 — wrong** |
+| External Link's SSR branch back to a bare return | 1 | **1, that row** |
+| Navigate To Path's SSR branch back to a bare return | 1 | **1, that row** |
+| Show Popup reports `done` before `showPopup` resolves | 1 | **1, that row** |
+| Condition mints in `scheduleEvaluate` rather than at `Evaluate` | 2 | **1 — wrong** |
+| Condition reports `done` before `ontrue`/`onfalse` | 1 | **2 — wrong** |
+| Expression settles its tokens inside the dedup | 1 | **2 — wrong** |
+| Function's no-script branch back to a bare return | 1 | **1, that row** |
+| Logic Builder's no-blocks branch back to a bare return | 1 | **1, that row** |
+| Logic Builder's block-signal reserved guard removed | 1 | **1, that row** |
+| States' already-in-that-state guard back to a bare return | 1 | **0 — wrong** |
+| States' pending-target guard back to a bare return | 1 | **2 — wrong** |
+| States pulses `failure` twice on an unknown state | 1 | **1, that row** |
+| Stream Buffer's empty-`Flush` branch back to a bare return | 2 | **1 — wrong** |
+| Stream Buffer settles an `Add` and its triggered flush separately | 1 | **0 — wrong** |
+| Text Accumulator reads `hadSomethingToClear` after the reset | 1 | **1, that row** |
+
+⚠️ **The one that is worth more than a corrected prediction: States' already-in-that-state guard
+has no row that discriminates it, and the revert is what proved that.** Reverting it to a bare
+`return` reddened **nothing**, because `scheduleGoToState`'s *pending-target* guard catches the
+same request one frame earlier — `pendingTarget` falls back to `internal.state`, so a `To A` on a
+node already in `A` never reaches `goToState` at all. With a token in hand the `goToState` guard
+may be unreachable outright. It is left in place (it is reached from the setter routes, which
+carry no token) and recorded as a **measured non-discrimination** rather than papered over with a
+row that fakes one.
+
+⚠️ **The dedup revert reddens the first pulse's row too** — an independent second measurement of
+last session's recorded lesson, on a different node. A value-driven run has already announced the
+same message, so the pulse's failure is a repeat and its outcome is swallowed as well.
+
+⚠️ **Four misses are the same mistake as last session's, one directory over:** the prediction
+counted rows in the *new* file and forgot the pre-existing suites that touch the same node.
+`Unique Id` reddened `completion-signals.test.ts`, `Close Popup` reddened both `nda-010` and
+`mute-node-completion`, `Response` reddened `response-node.test.ts`. Per-fixture is not enough —
+it has to be per *node*, across every fixture in the repo.
+
+⚠️ **Two reverts failed to reproduce their own fault, and that is recorded rather than tidied.**
+Moving Condition's mint into `scheduleEvaluate` changes nothing for the coalescing row, because
+that scheduler is called once per trigger either way. And Stream Buffer's "settle twice" revert
+called `doFlush()` without the token, so only one report ever happened — the revert was wrong,
+not the code.
+
+⚠️ **`npx jest <fileA> <fileB>` is not verbose.** Jest only prints per-test `✓`/`✕` lines when a
+single test path matches, so the first revert run parsed **four rows as zero failures** and three
+of them read as "wrong" when the harness simply could not see them. Pass `--verbose`.
+
+### Noise, measured by exclusion
+
+The absolute totals are unusable while two sessions share the branch, so each package was run
+in full and again with this session's new files ignored, and the difference read line by line
+rather than counted.
+
+| Suite | Lines from these builds | What they are |
+|---|---|---|
+| `noodl-runtime` | **8** | `expression/threw`, `function/script-threw`, `function/script-not-compiled`, `logic-builder/blocks-threw`, `logic-builder/reserved-port-name` ×2 |
+| `noodl-viewer-react` | **12** | `open-file-picker/open-failed`, `close-popup/no-popup-in-scope`, `event-sender/no-channel`, `external-link/blocked`, `states/reserved-port-name`, `show-popup/no-target`, `show-popup/target-failed`, `parent-component-object/no-ancestor`, `parent-component-object/fetch-no-parent`, `states/no-states`, `states/unknown-state`, `navigate-to-path/no-path` |
+
+Every line in both differences is an NDA-004 failure a row explicitly asserts.
+
+⚠️ **Exclusion cannot isolate rows added to a *pre-existing* file.** The eleven rows added to
+`agent-stream-nodes.test.ts` are not in either figure. They raise nothing new: `Stream Buffer`'s
+only failure code was already exercised there, and `Text Accumulator`'s mis-wired-chunk raise was
+too.
+
+### Gates — measured before and after
+
+| Gate | Before | After |
+|---|---|---|
+| `noodl-runtime` jest | 107 suites, 2008 passing, 13 skipped | **108 suites, 2044 passing, 13 skipped** |
+| `noodl-viewer-react` jest | 59 suites, 802 passing | **62 suites, 847 passing** |
+| `typecheck:runtime` | pass | pass |
+| viewer-react `tsc` | pass | pass |
+| `typecheck:cloud` | pass | pass |
+| `catalog:check` | pass | pass |
+| `catalog:merge:check` | pass | pass |
+| `cloud-library:check` | pass | pass |
+| editor `test:ci` | 2007 specs, 0 failures | **1995 specs, 0 failures** |
+
+⚠️ **The editor spec count fell by 12 and none of it is this session's.** The concurrent
+phase-36 session's `3901a415 refactor(obs-002): retire the Trigger Chain Debugger` deleted them,
+between the baseline run and the first re-run. Attribute before you compare — that is the second
+session running to hit this on this branch.
+
+Also measured, though not one of the nine: `noodl-viewer-cloud` jest, **5 suites / 69 passing**
+(from 5 / 57).
+
+95 corpus rows added across four new files, plus 11 into `agent-stream-nodes.test.ts`. Eleven
+pre-existing specs updated.
+
+### ⚠️ Live QA — owed, and blocked for a reason worth stating
+
+`lsof -i :8574` came back **held**, by an `Electron … --dev` process belonging to the concurrent
+phase-36 session's `nodegx-observe` build. Nothing built in this session has been driven in the
+real editor.
+
+The rebuild half is blocked for a second and more decisive reason: `npm run build --prefix
+packages/noodl-viewer-react` rewrites the three shipped bundles in
+`packages/noodl-editor/src/external/`, which is the **same checkout** that running editor is
+serving from. Doing it would hot-reload someone else's live preview mid-session. Reading
+`NodeLibraryData` off their editor without rebuilding would have been worse than no answer, not
+better: the bundle it is running predates every port added here, so it would have reported the
+old surface with complete confidence.
+
+**What is therefore unverified for all eighteen nodes:** that the new ports reach the editor's
+node library as connectable ports, that `Completed` counts equal raw invocation counts on a real
+click, and that the eleven new failure codes reach the warnings chip with provenance. Every one
+of those has a corpus row asserting the runtime half; none has been seen in the app.
+
+### What remains of §0's 82 — measured
+
+**79 done. 3 remain**, all in Data.
+
+| Remaining | Count | Note |
+|---|---|---|
+| **Data** | 3 | `net.noodl.HTTP`, `net.noodl.OptimisticUpdate`, `RunTasks`. ⚠️ `Run Tasks`' existing `done` already means `Completed` — see above; it is a two-step rename. `HTTP` has `success`/`failure`/`canceled` and an abort path; `Optimistic Update` has `applied`/`committed`/`rolledBack`/`timedOut`, which are almost certainly four *later* events rather than one invocation's outcome, and wants the same grep before anything is renamed. |
+| **§3** `Treat Unchanged as` | — | Still not started. ⚠️ A declared `default` does not run its setter — FINDINGS **A-D1**. The Variables family remains the obvious first home. |
+| **§5** the validator's dead-end check | — | Still not started. The absent-`Unchanged` list grew by nine this session: `Event Sender`, `Unique Id`, `net.noodl.ComponentObject`, `net.noodl.ParentComponentObject`, `noodl.cloud.response`, `noodl.cloud.sendemail`, `NavigationClosePopup`, `NavigationShowPopup`, `Condition`, `Expression`. Absent-`Failure` grew by five: `Unique Id`, `net.noodl.ComponentObject`, `Condition`, and (already recorded) the Variables family. |
+
+Carried forward unchanged: `GlobalStore.Set`'s and `Update Record`'s unmeasured `Unchanged`
+candidates; `Counter`'s `Reset` guard that has never fired; `Items Rendered` firing with zero item
+nodes after a `Refresh` (the one-character fix is `() => this.refresh()`).
+
+New and carried forward from this session:
+
+⚠️ **`States`' `goToState` same-state guard is unreachable from any action port** — see the
+discrimination note above. Repairing or removing it is a behaviour question, not a rename, and it
+was not this slice's to make.
