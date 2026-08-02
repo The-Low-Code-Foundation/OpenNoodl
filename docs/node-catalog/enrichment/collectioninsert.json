@@ -1,20 +1,32 @@
 {
   "typeName": "CollectionInsert",
   "summary": "Insert Object Into Array: appends an existing object, referenced by its id, to a shared array when Do fires.",
-  "description": "When `add` (Do) fires, resolves `collectionId` (Array Id) to the shared array and `modifyId` (Object Id) to the shared object, appends the object to the end of the array, and fires `modified` (Done). Both ids must be set — a missing Object Id or Array Id raises an editor warning and nothing happens. Because arrays are shared by id, every Array node and Repeater bound to the same Array Id sees the new item immediately.",
+  "description": "When `add` (Do) fires, resolves `collectionId` (Array Id) to the shared array and `modifyId` (Object Id) to the shared object, appends the object to the end of the array, and reports one outcome: `done` (Done) when the object was added, or `unchanged` (Unchanged) when the array already held it — arrays hold each object once, so a repeat insert changes nothing. `failure` (Failure) fires when either id is unset. `completed` (Completed) fires after all three. Because arrays are shared by id, every Array node and Repeater bound to the same Array Id sees the new item immediately.",
   "whenToUse": "Adding items to a local shared array — typically right after Create New Object has created the object to add. For removing use Remove Object From Array; for cloud data use the record nodes instead (nothing here is persisted).",
   "ports": {
     "add": "Signal input (Do); performs the insert after other inputs have settled.",
     "collectionId": "Value input: id of the shared array to append to.",
     "modifyId": "Connection-only value input: the id of the object to insert — typically Create New Object's `id` output.",
-    "modified": "Signal (Done); fires after the object has been appended."
+    "done": "Signal (Done); fires after the object has been appended.",
+    "unchanged": "Signal (Unchanged); fires when the object was already in the array, so nothing was added. Not a failure — the array holds what the author asked for.",
+    "failure": "Signal (Failure); fires when the array or the object could not be resolved. `error` carries the reason.",
+    "completed": "Signal (Completed); fires after every Do whatever the outcome. Wire this to carry on regardless of whether anything changed."
   },
-  "examples": ["data-shared-array-add-remove"],
+  "examples": [
+    "data-shared-array-add-remove"
+  ],
   "patterns": [
     "Create New Object `created` → `add` and `id` → `modifyId`: the canonical create-then-insert flow."
   ],
   "antiPatterns": [
     "Trying to insert a raw value or JS object — `modifyId` takes an object id, not the data itself; create an object first with Create New Object."
   ],
-  "relatedNodes": ["Collection2", "CollectionRemove", "CollectionClear", "CollectionNew", "NewModel", "Model2"]
+  "relatedNodes": [
+    "Collection2",
+    "CollectionRemove",
+    "CollectionClear",
+    "CollectionNew",
+    "NewModel",
+    "Model2"
+  ]
 }

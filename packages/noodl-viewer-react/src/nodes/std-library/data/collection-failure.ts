@@ -21,7 +21,7 @@
  */
 
 import Collection from '@noodl/runtime/src/collection';
-import type { CollectionLike, NodeDefinitionOptions, NodeInstance } from '@noodl/types';
+import type { CollectionLike, NodeDefinitionOptions, NodeInstance, OutcomeToken } from '@noodl/types';
 
 /** A node definition part-way through assembly, as the three call sites hand it over. */
 type FailableCollectionDef = Partial<NodeDefinitionOptions> & Pick<NodeDefinitionOptions, 'name'>;
@@ -35,11 +35,11 @@ export interface FailableCollectionInstance extends NodeInstance {
   };
   setCollection(collection: CollectionLike | undefined): void;
   /** The array to act on could not be resolved. */
-  _failNoCollection(action: string): void;
+  _failNoCollection(token: OutcomeToken, action: string): void;
   /** The object to insert or remove was never supplied. */
-  _failNoObjectId(action: string): void;
+  _failNoObjectId(token: OutcomeToken, action: string): void;
   /** The Object Id names a record this runtime has never loaded. */
-  _failUnknownObjectId(action: string, id: string): void;
+  _failUnknownObjectId(token: OutcomeToken, action: string, id: string): void;
   /** A `Do` that succeeded sheds whatever the last one raised. */
   _clearCollectionFailure(): void;
 }
@@ -113,13 +113,15 @@ export function addCollectionFailure(def: FailableCollectionDef, codePrefix: str
   const methods: Record<string, unknown> =
     def.methods || def.prototypeExtensions || (def.methods = {});
 
+  /**
+   * ⚠️ **`failure` is no longer declared here.** ERG-001 §1: the three outcome signals and
+   * `Completed` come from one place, `outcomeOutputs()`, so a node cannot end up with a
+   * `Failure` port whose name or description disagrees with the helper that fires it. This
+   * mixin keeps the `Error` *string* — the readable half of the Failure Contract's pair — and
+   * the three `_fail…` methods, which now report through the contract rather than pulsing the
+   * port themselves.
+   */
   Object.assign(def.outputs, {
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      description: 'Fires when the array or the object could not be resolved, so nothing was changed',
-      group: 'Events'
-    },
     error: {
       type: 'string',
       displayName: 'Error',
@@ -131,17 +133,23 @@ export function addCollectionFailure(def: FailableCollectionDef, codePrefix: str
     }
   });
 
-  function raise(this: FailableCollectionInstance, code: string, message: string) {
+  /**
+   * The `Error` string is written and flagged *before* the outcome is reported, because
+   * `reportOutcome` sends the pulse — a graph wiring `Failure -> show` must already be able to
+   * read the reason when it lands. The raise on the runtime channel moved inside
+   * `reportOutcome` so that every failure in the library carries its code the same way.
+   */
+  function raise(this: FailableCollectionInstance, token: OutcomeToken, code: string, message: string) {
     this._internal.error = message;
     this.flagOutputDirty('error');
-    this.raiseRuntimeError(codePrefix + '/' + code, message);
-    this.sendSignalOnOutput('failure');
+    this.reportOutcome(token, 'failure', { code: codePrefix + '/' + code, message });
   }
 
   Object.assign(methods, {
-    _failNoCollection: function (this: FailableCollectionInstance, action: string) {
+    _failNoCollection: function (this: FailableCollectionInstance, token: OutcomeToken, action: string) {
       raise.call(
         this,
+        token,
         'no-array',
         'Nothing to ' +
           action +
@@ -149,9 +157,10 @@ export function addCollectionFailure(def: FailableCollectionDef, codePrefix: str
       );
     },
 
-    _failNoObjectId: function (this: FailableCollectionInstance, action: string) {
+    _failNoObjectId: function (this: FailableCollectionInstance, token: OutcomeToken, action: string) {
       raise.call(
         this,
+        token,
         'no-object-id',
         'Nothing to ' + action + ' — no Object Id was supplied. Connect one before triggering this node.'
       );
@@ -178,9 +187,10 @@ export function addCollectionFailure(def: FailableCollectionDef, codePrefix: str
      * (`model.ts:249-253`) — so a record that exists only because something still holds it is not
      * mistaken for an absent one.
      */
-    _failUnknownObjectId: function (this: FailableCollectionInstance, action: string, id: string) {
+    _failUnknownObjectId: function (this: FailableCollectionInstance, token: OutcomeToken, action: string, id: string) {
       raise.call(
         this,
+        token,
         'unknown-object-id',
         `Nothing to ${action} — no record with the Id "${id}" has been loaded, so this would have ` +
           'done nothing. Connect the Id from a query, a Repeater item or an Object node rather than ' +

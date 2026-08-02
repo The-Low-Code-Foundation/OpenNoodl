@@ -453,14 +453,26 @@ describe('NDA-012: pinned behaviour awaiting a decision', () => {
     await graph.settle(4);
 
     /**
-     * `Array.prototype.add` early-returns on `contains` (`collection.ts:590-604`), so the second
-     * `Do` changes nothing and still signals `Done`. Its sibling `Remove Object From Array` was
-     * fixed for the case that is *impossible* (an id nothing has loaded can never be in the
-     * array); this one is merely *redundant* — the object is there, which is what the author
-     * asked for. Pinned so the difference is a decision rather than an accident.
+     * ✅ **The decision this row was pinned for was taken on 2026-08-01, and taken here.**
+     *
+     * It used to read: `Array.prototype.add` early-returns on `contains`
+     * (`collection.ts:590-604`), so the second `Do` changes nothing and still signals `Done` —
+     * *"pinned so the difference is a decision rather than an accident"*. Richard's answer was
+     * that neither `Done` nor `Failure` is right and the library needs a third outcome, which
+     * became `ERG-001` and `dev-docs/reference/OUTCOME-CONTRACT.md`.
+     *
+     * So the second `Do` now reports **`Unchanged`**, and the distinction from the sibling
+     * `Remove Object From Array` survives intact: that node's fixed case is *impossible* (an id
+     * nothing has loaded can never be in the array) and stays a `Failure`; this one is merely
+     * *redundant* — the object is there, which is what the author asked for.
+     *
+     * The rows that pin the new behaviour in full are in `erg-001-outcome-contract.test.ts`.
+     * What is kept here is the array-family half: the array really does stay at size 1, and the
+     * no-op is still not a failure.
      */
     expect(Collection.get(arrayId).size()).toBe(1);
-    expect(graph.signalsFor('insert').filter((s) => s === 'modified')).toHaveLength(2);
+    expect(graph.signalsFor('insert').filter((s) => s === 'done')).toHaveLength(1);
+    expect(graph.signalsFor('insert').filter((s) => s === 'unchanged')).toHaveLength(1);
     expect(graph.signalsFor('insert')).not.toContain('failure');
   });
 

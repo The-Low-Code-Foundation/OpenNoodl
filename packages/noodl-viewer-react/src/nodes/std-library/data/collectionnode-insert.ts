@@ -1,6 +1,7 @@
 'use strict';
 
 import Model from '@noodl/runtime/src/model';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type { CollectionLike, NodeDefinitionOptions, NodeModule } from '@noodl/types';
 
 import {
@@ -52,6 +53,7 @@ const CollectionInsertNode: NodeDefinitionOptions = {
       group: 'Actions',
       valueChangedToTrue: function (this: CollectionInsertInstance) {
         const internal = this._internal;
+        const outcome = this.beginOutcome();
 
         this.scheduleAfterInputsHaveUpdated(() => {
           this._clearCollectionFailure();
@@ -62,33 +64,42 @@ const CollectionInsertNode: NodeDefinitionOptions = {
           // a cloud function and an exported build nothing whatsoever — and there was no graph
           // surface either way, so even in the editor nothing downstream could branch on it.
           if (internal.modifyId === undefined) {
-            this._failNoObjectId('insert');
+            this._failNoObjectId(outcome, 'insert');
             return;
           }
 
           if (internal.collection === undefined) {
-            this._failNoCollection('insert');
+            this._failNoCollection(outcome, 'insert');
             return;
           }
 
+          /**
+           * ERG-001 §2 — the node that raised the contract, and the reference implementation.
+           *
+           * `Array.prototype.add` early-returns when the array already holds the item
+           * (`collection.ts:594`), so two `Do` pulses with the same Object Id leave the array at
+           * size 1. The node signalled `Done` both times, which is why "add to cart, then
+           * animate the new row" animated a row that did not appear.
+           *
+           * Not `Failure`: the author asked for the item to be in the array and it is. Richard's
+           * framing is the whole reason `Unchanged` exists as a third outcome — a chain breaks
+           * when a node emits nothing, and folding this into `Failure` breaks it for a state the
+           * author explicitly asked for.
+           */
           const model = Model.get(internal.modifyId);
+          const alreadyPresent = internal.collection.contains(model);
           internal.collection.add(model);
-          this.sendSignalOnOutput('modified');
+          this.reportOutcome(outcome, alreadyPresent ? 'unchanged' : 'done');
         });
       }
     }
   },
   outputs: {
-    modified: {
-      group: 'Events',
-      type: 'signal',
-      displayName: 'Done',
-      // NDA-012 (Data): the sentence carries the pinned ambiguity. Inserting an id the array
-      // already holds is a no-op that still reports Done — filed for a decision, not repaired.
-      description:
-        'Fires after the insert has been applied, including when the object was already in the ' +
-        'array and nothing changed'
-    }
+    ...outcomeOutputs({
+      done: 'Fires once the object has been added to the array',
+      unchanged: 'Fires when the object was already in the array, so nothing was added',
+      failure: 'Fires when the array or the object could not be resolved, so nothing was changed'
+    })
   },
   prototypeExtensions: {
     setCollectionID: function (this: CollectionInsertInstance, id: string | undefined) {

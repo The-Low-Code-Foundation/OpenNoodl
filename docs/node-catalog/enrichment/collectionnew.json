@@ -1,18 +1,27 @@
 {
   "typeName": "CollectionNew",
   "summary": "Create New Array: makes a fresh array with a generated id when Do fires, optionally copying an input array's contents into it.",
-  "description": "On the `new` (Do) signal, creates a brand-new shared array under a freshly generated unique id. If an array is connected to `items`, its current contents are copied into the new array once, at creation time — later changes to the source are not tracked, so the result is a snapshot. After creation, `id` outputs the new array's id and `created` (Done) fires. Each trigger of Do creates another new array.",
+  "description": "On the `new` (Do) signal, creates a brand-new shared array under a freshly generated unique id. If an array is connected to `items`, its current contents are copied into the new array once, at creation time — later changes to the source are not tracked, so the result is a snapshot. After creation, `id` outputs the new array's id and `done` (Done) fires, followed by `completed` (Completed). There is no Failure or Unchanged port: the node builds its own array, so it can neither fail to find one nor do nothing. Each trigger of Do creates another new array.",
   "whenToUse": "When you need an anonymous or per-instance array instead of one fixed well-known id — e.g. snapshotting a live array before batch-processing it, or creating a sub-array whose id you store on an object. If one well-known shared array is enough, just use Array (Collection2) with a fixed id.",
   "ports": {
     "new": "Signal input (Do); creates the array. Every trigger creates a new array with a new id.",
     "items": "Value input; the contents to copy into the new array at creation time. A one-time snapshot, not a live link.",
     "id": "String value: the generated id of the most recently created array. Feed it to an Array node's `collectionId` or an Insert/Remove node's Array Id.",
-    "created": "Signal (Done); fires after the array exists and `id` is valid."
+    "done": "Signal (Done); fires after the array exists and `id` is valid.",
+    "completed": "Signal (Completed); fires after every Do. Present on every action even when, as here, Done is the only possible outcome."
   },
-  "examples": ["data-run-tasks-batch"],
+  "examples": [
+    "data-run-tasks-batch"
+  ],
   "patterns": [
     "`id` → Collection2 `collectionId`: bind an Array node to the newly created array to read it.",
     "Snapshot before a batch: source `items` → this `items`, Do on the user action, `created` → Run Tasks `run`."
   ],
-  "relatedNodes": ["Collection2", "CollectionInsert", "CollectionClear", "RunTasks", "NewModel"]
+  "relatedNodes": [
+    "Collection2",
+    "CollectionInsert",
+    "CollectionClear",
+    "RunTasks",
+    "NewModel"
+  ]
 }

@@ -1,6 +1,7 @@
 'use strict';
 
 import Collection from '@noodl/runtime/src/collection';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type { CollectionLike, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
 
@@ -56,12 +57,12 @@ const CollectionNewNode: NodeDefinitionOptions = {
         return this._internal.collection ? this._internal.collection.getId() : undefined;
       }
     },
-    created: {
-      group: 'Events',
-      type: 'signal',
-      displayName: 'Done',
-      description: 'Fires once the new array exists and Id is up to date'
-    }
+    /**
+     * ERG-001: no `Failure` and no `Unchanged`, and both absences are the contract's own
+     * exemptions rather than an oversight. `Collection.get()` with no name builds a fresh
+     * array every time, so this node cannot fail to find one and cannot no-op.
+     */
+    ...outcomeOutputs({ done: 'Fires once the new array exists and Id is up to date' })
   },
   prototypeExtensions: {
     setCollection: function (this: CollectionNewInstance, collection: CollectionLike) {
@@ -71,6 +72,7 @@ const CollectionNewNode: NodeDefinitionOptions = {
     scheduleNew: function (this: CollectionNewInstance) {
       if (this.hasScheduledNew) return;
       this.hasScheduledNew = true;
+      const outcome = this.beginOutcome();
 
       this.scheduleAfterInputsHaveUpdated(() => {
         this.hasScheduledNew = false;
@@ -78,9 +80,11 @@ const CollectionNewNode: NodeDefinitionOptions = {
         const collection = Collection.get();
         if (this._internal.sourceCollection !== undefined) collection.set(this._internal.sourceCollection);
 
+        // `setCollection` flags `id` dirty. The outcome is reported after it, so a graph wiring
+        // `Done -> …` alongside `Id` already has the new id when the pulse lands.
         this.setCollection(collection);
 
-        this.sendSignalOnOutput('created');
+        this.reportOutcome(outcome, 'done');
       });
     }
   }

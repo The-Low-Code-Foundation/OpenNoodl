@@ -4771,6 +4771,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the array has been emptied"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -4790,18 +4812,18 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when the array or the object could not be resolved, so nothing was changed"
+          "description": "Fires when no array is bound, so nothing was changed"
         },
         {
-          "name": "modified",
-          "displayName": "Done",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the array holds no items"
+          "description": "Fires when the array was already empty, so nothing was removed"
         }
       ],
       "dynamicPorts": null,
@@ -4809,12 +4831,15 @@
       "enrichment": {
         "typeName": "CollectionClear",
         "summary": "Clear Array: empties a shared array (removes all items) when Do fires.",
-        "description": "When `clear` (Do) fires, resolves `collectionId` (Array Id) to the shared array, replaces its contents with an empty list, and fires `modified` (Done). The Array Id must be set before the signal arrives. The objects that were in the array are not destroyed — only the array is emptied — and every node bound to the same Array Id sees the empty array immediately.",
+        "description": "When `clear` (Do) fires, resolves `collectionId` (Array Id) to the shared array, replaces its contents with an empty list and fires `done` (Done), or `unchanged` (Unchanged) when the array was already empty. `failure` (Failure) fires when no array is bound. `completed` (Completed) fires after all three. The Array Id must be set before the signal arrives. The objects that were in the array are not destroyed — only the array is emptied — and every node bound to the same Array Id sees the empty array immediately.",
         "whenToUse": "Reset-style actions on local shared arrays ('clear the list', 'empty the cart'). To remove a single item use Remove Object From Array; this node is all-or-nothing.",
         "ports": {
           "clear": "Signal input (Do); empties the array. Requires `collectionId` to be set.",
           "collectionId": "Value input: id of the shared array to empty.",
-          "modified": "Signal (Done); fires after the array has been emptied."
+          "done": "Signal (Done); fires after the array has been emptied.",
+          "unchanged": "Signal (Unchanged); fires when the array was already empty.",
+          "failure": "Signal (Failure); fires when no array is bound. `error` carries the reason.",
+          "completed": "Signal (Completed); fires after every Do whatever the outcome."
         },
         "examples": [
           "data-shared-array-add-remove"
@@ -4883,6 +4908,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the object has been added to the array"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -4905,15 +4952,15 @@
           "description": "Fires when the array or the object could not be resolved, so nothing was changed"
         },
         {
-          "name": "modified",
-          "displayName": "Done",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires after the insert has been applied, including when the object was already in the array and nothing changed"
+          "description": "Fires when the object was already in the array, so nothing was added"
         }
       ],
       "dynamicPorts": null,
@@ -4921,13 +4968,16 @@
       "enrichment": {
         "typeName": "CollectionInsert",
         "summary": "Insert Object Into Array: appends an existing object, referenced by its id, to a shared array when Do fires.",
-        "description": "When `add` (Do) fires, resolves `collectionId` (Array Id) to the shared array and `modifyId` (Object Id) to the shared object, appends the object to the end of the array, and fires `modified` (Done). Both ids must be set — a missing Object Id or Array Id raises an editor warning and nothing happens. Because arrays are shared by id, every Array node and Repeater bound to the same Array Id sees the new item immediately.",
+        "description": "When `add` (Do) fires, resolves `collectionId` (Array Id) to the shared array and `modifyId` (Object Id) to the shared object, appends the object to the end of the array, and reports one outcome: `done` (Done) when the object was added, or `unchanged` (Unchanged) when the array already held it — arrays hold each object once, so a repeat insert changes nothing. `failure` (Failure) fires when either id is unset. `completed` (Completed) fires after all three. Because arrays are shared by id, every Array node and Repeater bound to the same Array Id sees the new item immediately.",
         "whenToUse": "Adding items to a local shared array — typically right after Create New Object has created the object to add. For removing use Remove Object From Array; for cloud data use the record nodes instead (nothing here is persisted).",
         "ports": {
           "add": "Signal input (Do); performs the insert after other inputs have settled.",
           "collectionId": "Value input: id of the shared array to append to.",
           "modifyId": "Connection-only value input: the id of the object to insert — typically Create New Object's `id` output.",
-          "modified": "Signal (Done); fires after the object has been appended."
+          "done": "Signal (Done); fires after the object has been appended.",
+          "unchanged": "Signal (Unchanged); fires when the object was already in the array, so nothing was added. Not a failure — the array holds what the author asked for.",
+          "failure": "Signal (Failure); fires when the array or the object could not be resolved. `error` carries the reason.",
+          "completed": "Signal (Completed); fires after every Do whatever the outcome. Wire this to carry on regardless of whether anything changed."
         },
         "examples": [
           "data-shared-array-add-remove"
@@ -4990,7 +5040,18 @@
       ],
       "outputs": [
         {
-          "name": "created",
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
           "displayName": "Done",
           "group": "Events",
           "plug": "output",
@@ -5017,13 +5078,14 @@
       "enrichment": {
         "typeName": "CollectionNew",
         "summary": "Create New Array: makes a fresh array with a generated id when Do fires, optionally copying an input array's contents into it.",
-        "description": "On the `new` (Do) signal, creates a brand-new shared array under a freshly generated unique id. If an array is connected to `items`, its current contents are copied into the new array once, at creation time — later changes to the source are not tracked, so the result is a snapshot. After creation, `id` outputs the new array's id and `created` (Done) fires. Each trigger of Do creates another new array.",
+        "description": "On the `new` (Do) signal, creates a brand-new shared array under a freshly generated unique id. If an array is connected to `items`, its current contents are copied into the new array once, at creation time — later changes to the source are not tracked, so the result is a snapshot. After creation, `id` outputs the new array's id and `done` (Done) fires, followed by `completed` (Completed). There is no Failure or Unchanged port: the node builds its own array, so it can neither fail to find one nor do nothing. Each trigger of Do creates another new array.",
         "whenToUse": "When you need an anonymous or per-instance array instead of one fixed well-known id — e.g. snapshotting a live array before batch-processing it, or creating a sub-array whose id you store on an object. If one well-known shared array is enough, just use Array (Collection2) with a fixed id.",
         "ports": {
           "new": "Signal input (Do); creates the array. Every trigger creates a new array with a new id.",
           "items": "Value input; the contents to copy into the new array at creation time. A one-time snapshot, not a live link.",
           "id": "String value: the generated id of the most recently created array. Feed it to an Array node's `collectionId` or an Insert/Remove node's Array Id.",
-          "created": "Signal (Done); fires after the array exists and `id` is valid."
+          "done": "Signal (Done); fires after the array exists and `id` is valid.",
+          "completed": "Signal (Completed); fires after every Do. Present on every action even when, as here, Done is the only possible outcome."
         },
         "examples": [
           "data-run-tasks-batch"
@@ -5097,6 +5159,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the object has been removed from the array"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -5119,15 +5203,15 @@
           "description": "Fires when the array or the object could not be resolved, so nothing was changed"
         },
         {
-          "name": "modified",
-          "displayName": "Done",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the object is no longer in the array"
+          "description": "Fires when the object was not in the array, so nothing was removed"
         }
       ],
       "dynamicPorts": null,
@@ -5135,13 +5219,16 @@
       "enrichment": {
         "typeName": "CollectionRemove",
         "summary": "Remove Object From Array: removes an object, referenced by its id, from a shared array when Do fires.",
-        "description": "When `remove` (Do) fires, resolves `collectionId` (Array Id) to the shared array and `modifyId` (Object Id) to the shared object, removes that object from the array, and fires `modified` (Done). If either id is unset, nothing happens. Only the array membership changes — the object itself continues to exist and can still be reached by its id. Every Array node and Repeater bound to the same Array Id updates immediately.",
+        "description": "When `remove` (Do) fires, resolves `collectionId` (Array Id) to the shared array and `modifyId` (Object Id) to the shared object, removes that object from the array, and reports one outcome: `done` (Done) when the object was removed, or `unchanged` (Unchanged) when it was not in this array. An Object Id naming a record nothing has loaded is `failure` (Failure) instead — that removal is impossible rather than redundant — as is an unset id. `completed` (Completed) fires after all three. Only the array membership changes — the object itself continues to exist and can still be reached by its id. Every Array node and Repeater bound to the same Array Id updates immediately.",
         "whenToUse": "Per-item delete actions in local lists. Inside a Repeater's item component, feed `modifyId` from Repeater Item's `itemId` — that is the idiomatic 'remove this row'. For clearing everything use Clear Array; for cloud records use Delete Record.",
         "ports": {
           "remove": "Signal input (Do); performs the removal after other inputs have settled.",
           "collectionId": "Value input: id of the shared array to remove from.",
           "modifyId": "Connection-only value input: the id of the object to remove — inside a repeater item, wire Repeater Item `itemId` here.",
-          "modified": "Signal (Done); fires after the object has been removed."
+          "done": "Signal (Done); fires after the object has been removed.",
+          "unchanged": "Signal (Unchanged); fires when the object was not in this array, so nothing was removed.",
+          "failure": "Signal (Failure); fires when the array or the object could not be resolved. `error` carries the reason.",
+          "completed": "Signal (Completed); fires after every Do whatever the outcome."
         },
         "examples": [
           "data-shared-array-add-remove"

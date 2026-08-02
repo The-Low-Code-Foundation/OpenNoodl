@@ -1,13 +1,23 @@
 {
   "typeName": "CollectionClear",
   "summary": "Clear Array: empties a shared array (removes all items) when Do fires.",
-  "description": "When `clear` (Do) fires, resolves `collectionId` (Array Id) to the shared array, replaces its contents with an empty list, and fires `modified` (Done). The Array Id must be set before the signal arrives. The objects that were in the array are not destroyed — only the array is emptied — and every node bound to the same Array Id sees the empty array immediately.",
+  "description": "When `clear` (Do) fires, resolves `collectionId` (Array Id) to the shared array, replaces its contents with an empty list and fires `done` (Done), or `unchanged` (Unchanged) when the array was already empty. `failure` (Failure) fires when no array is bound. `completed` (Completed) fires after all three. The Array Id must be set before the signal arrives. The objects that were in the array are not destroyed — only the array is emptied — and every node bound to the same Array Id sees the empty array immediately.",
   "whenToUse": "Reset-style actions on local shared arrays ('clear the list', 'empty the cart'). To remove a single item use Remove Object From Array; this node is all-or-nothing.",
   "ports": {
     "clear": "Signal input (Do); empties the array. Requires `collectionId` to be set.",
     "collectionId": "Value input: id of the shared array to empty.",
-    "modified": "Signal (Done); fires after the array has been emptied."
+    "done": "Signal (Done); fires after the array has been emptied.",
+    "unchanged": "Signal (Unchanged); fires when the array was already empty.",
+    "failure": "Signal (Failure); fires when no array is bound. `error` carries the reason.",
+    "completed": "Signal (Completed); fires after every Do whatever the outcome."
   },
-  "examples": ["data-shared-array-add-remove"],
-  "relatedNodes": ["Collection2", "CollectionInsert", "CollectionRemove", "CollectionNew"]
+  "examples": [
+    "data-shared-array-add-remove"
+  ],
+  "relatedNodes": [
+    "Collection2",
+    "CollectionInsert",
+    "CollectionRemove",
+    "CollectionNew"
+  ]
 }

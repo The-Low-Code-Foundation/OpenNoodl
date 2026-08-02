@@ -207,7 +207,7 @@ describe('NDA-004 §2: Insert Object Into Array', () => {
     await pressDo(graph, 'some-object');
 
     expect(graph.signalsFor('mutator')).toContain('failure');
-    expect(graph.signalsFor('mutator')).not.toContain('modified');
+    expect(graph.signalsFor('mutator')).not.toContain('done');
   });
 
   test('the diagnosis reaches the runtime channel, not just the editor', async () => {
@@ -237,7 +237,7 @@ describe('NDA-004 §2: Insert Object Into Array', () => {
     await pressDo(graph);
 
     expect(graph.signalsFor('mutator')).toContain('failure');
-    expect(graph.signalsFor('mutator')).not.toContain('modified');
+    expect(graph.signalsFor('mutator')).not.toContain('done');
     expect(graph.errors.map((e) => e.code)).toEqual(['insert-into-array/no-object-id']);
   });
 
@@ -249,7 +249,7 @@ describe('NDA-004 §2: Insert Object Into Array', () => {
     const graph = await mutatorGraph({ kind: 'insert', arrayId });
     await pressDo(graph, 'object-a');
 
-    expect(graph.signalsFor('mutator')).toEqual(['modified']);
+    expect(graph.signalsFor('mutator')).toEqual(['done', 'completed']);
     expect(graph.signalsFor('mutator')).not.toContain('failure');
     expect(graph.errors).toEqual([]);
     expect(Collection.get(arrayId).size()).toBe(1);
@@ -263,7 +263,7 @@ describe('NDA-004 §2: Remove Object From Array', () => {
     await pressDo(graph, 'some-object');
 
     expect(graph.signalsFor('mutator')).toContain('failure');
-    expect(graph.signalsFor('mutator')).not.toContain('modified');
+    expect(graph.signalsFor('mutator')).not.toContain('done');
     expect(graph.errors.map((e) => e.code)).toEqual(['remove-from-array/no-array']);
   });
 
@@ -283,7 +283,7 @@ describe('NDA-004 §2: Remove Object From Array', () => {
     const graph = await mutatorGraph({ kind: 'remove', arrayId });
     await pressDo(graph, 'object-a');
 
-    expect(graph.signalsFor('mutator')).toEqual(['modified']);
+    expect(graph.signalsFor('mutator')).toEqual(['done', 'completed']);
     expect(graph.errors).toEqual([]);
     expect(Collection.get(arrayId).size()).toBe(1);
     expect(Collection.get(arrayId).get(0).getId()).toBe('object-b');
@@ -317,7 +317,7 @@ describe('NDA-012: Remove Object From Array, an Object Id nothing has loaded', (
     await pressDo(graph, 'nda012-never-loaded');
 
     expect(graph.signalsFor('mutator')).toContain('failure');
-    expect(graph.signalsFor('mutator')).not.toContain('modified');
+    expect(graph.signalsFor('mutator')).not.toContain('done');
     expect(graph.errors.map((e) => e.code)).toEqual(['remove-from-array/unknown-object-id']);
     // The array is untouched — which was true before the fix too. What changed is that the node
     // now says so.
@@ -340,7 +340,7 @@ describe('NDA-012: Remove Object From Array, an Object Id nothing has loaded', (
     const graph = await mutatorGraph({ kind: 'remove', arrayId });
     await pressDo(graph, 'nda012-held-only-by-the-array');
 
-    expect(graph.signalsFor('mutator')).toEqual(['modified']);
+    expect(graph.signalsFor('mutator')).toEqual(['done', 'completed']);
     expect(graph.errors).toEqual([]);
     expect(Collection.get(arrayId).size()).toBe(0);
   });
@@ -353,7 +353,19 @@ describe('NDA-012: Remove Object From Array, an Object Id nothing has loaded', (
    * defensible reading, and unlike the row above the operation is not impossible, merely
    * unnecessary. Pinned so the current behaviour is a decision rather than an accident.
    */
-  test('(pinned) a record in a different array is a silent no-op, by current design', async () => {
+  /**
+   * ✅ **Was `(pinned) a record in a different array is a silent no-op, by current design`.**
+   *
+   * `ERG-001 §0` re-read this path and found it is a *third* case, not covered by DA-vi's
+   * failure verdict and not by the duplicate-insert `Unchanged` either. `Model.exists` is true —
+   * the record is loaded, it is simply in a different array — so `Array.prototype.remove`'s
+   * `if (idx !== -1)` (`collection.ts:611`) makes it a no-op that the node reported as `Done`.
+   * Redundant, not impossible: `Unchanged`.
+   *
+   * The row keeps its original job of pinning that this raises **nothing** — `Unchanged` is not
+   * an error, and a `Failure` here would fire on a graph working exactly as written.
+   */
+  test('a record in a different array reports Unchanged, and still raises nothing', async () => {
     const arrayId = freshArrayId();
     const otherId = freshArrayId();
     Collection.get(arrayId).set([Model.get('object-a')]);
@@ -362,7 +374,7 @@ describe('NDA-012: Remove Object From Array, an Object Id nothing has loaded', (
     const graph = await mutatorGraph({ kind: 'remove', arrayId });
     await pressDo(graph, 'nda012-elsewhere');
 
-    expect(graph.signalsFor('mutator')).toEqual(['modified']);
+    expect(graph.signalsFor('mutator')).toEqual(['unchanged', 'completed']);
     expect(graph.errors).toEqual([]);
     expect(Collection.get(arrayId).size()).toBe(1);
   });
@@ -377,7 +389,7 @@ describe('NDA-004 §2: Clear Array', () => {
     await expect(pressDo(graph)).resolves.toBeUndefined();
 
     expect(graph.signalsFor('mutator')).toContain('failure');
-    expect(graph.signalsFor('mutator')).not.toContain('modified');
+    expect(graph.signalsFor('mutator')).not.toContain('done');
     expect(graph.errors.map((e) => e.code)).toEqual(['clear-array/no-array']);
   });
 
@@ -389,7 +401,7 @@ describe('NDA-004 §2: Clear Array', () => {
     const graph = await mutatorGraph({ kind: 'clear', arrayId });
     await pressDo(graph);
 
-    expect(graph.signalsFor('mutator')).toEqual(['modified']);
+    expect(graph.signalsFor('mutator')).toEqual(['done', 'completed']);
     expect(graph.errors).toEqual([]);
     expect(Collection.get(arrayId).size()).toBe(0);
   });
@@ -451,7 +463,7 @@ describe('NDA-004 §2: an unresolved Array Id must not be answered with a throwa
     // undefined)` returned a real collection, so the node stayed "bound", the insert "worked",
     // and `Done` fired — the array the author had named just never changed.
     expect(boundCollection(graph)).toBeUndefined();
-    expect(graph.signalsFor('mutator')).not.toContain('modified');
+    expect(graph.signalsFor('mutator')).not.toContain('done');
     expect(graph.errors.map((e) => e.code)).toEqual(['insert-into-array/no-array']);
     expect(Collection.get(arrayId).size()).toBe(0);
   });
@@ -467,7 +479,7 @@ describe('NDA-004 §2: an unresolved Array Id must not be answered with a throwa
     await pressDo(graph, 'object-a');
 
     expect(boundCollection(graph)).toBe(Collection.get(arrayId));
-    expect(graph.signalsFor('mutator')).toEqual(['modified']);
+    expect(graph.signalsFor('mutator')).toEqual(['done', 'completed']);
     expect(Collection.get(arrayId).size()).toBe(1);
   });
 
@@ -540,8 +552,10 @@ describe('NDA-004 §2: the ports exist, which signalsFor cannot tell you', () =>
     expect(mutator.hasOutput('failure')).toBe(true);
     expect(mutator.hasOutput('error')).toBe(true);
     // The completion signal is still there beside them — a node that reports only failure is
-    // half a fix.
-    expect(mutator.hasOutput('modified')).toBe(true);
+    // half a fix. ERG-001 renamed it from `modified` to `done` (one of four internal names the
+    // library used for one display name) and added the universal `Completed` beside it.
+    expect(mutator.hasOutput('done')).toBe(true);
+    expect(mutator.hasOutput('completed')).toBe(true);
   });
 });
 
@@ -573,9 +587,13 @@ describe('NDA-004 §2: the two Array nodes that correctly have no Failure port',
     const graph = await familyGraph();
     const create = graph.node('create');
 
-    expect(create.hasOutput('created')).toBe(true);
+    expect(create.hasOutput('done')).toBe(true);
     expect(create.hasOutput('failure')).toBe(false);
     expect(create.hasOutput('error')).toBe(false);
+    // ERG-001: `Unchanged` is exempt for the same reason `Failure` is — the node builds a fresh
+    // array every time and cannot no-op. `Completed` has no exemption and is present.
+    expect(create.hasOutput('unchanged')).toBe(false);
+    expect(create.hasOutput('completed')).toBe(true);
   });
 
   test('Array has none: its Id input is a value arriving, not a Do — the Object node trap', async () => {

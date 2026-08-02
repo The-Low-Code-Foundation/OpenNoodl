@@ -1,6 +1,7 @@
 'use strict';
 
 import Model from '@noodl/runtime/src/model';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type { CollectionLike, NodeDefinitionOptions, NodeModule } from '@noodl/types';
 
 import {
@@ -54,6 +55,7 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
       group: 'Actions',
       valueChangedToTrue: function (this: CollectionRemoveInstance) {
         const internal = this._internal;
+        const outcome = this.beginOutcome();
 
         this.scheduleAfterInputsHaveUpdated(() => {
           this._clearCollectionFailure();
@@ -64,12 +66,12 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
           // was that the array had not changed. Same shape as `Add Record Relation` and
           // `Remove Record Relation`, fixed in the first §2 batch.
           if (internal.modifyId === undefined) {
-            this._failNoObjectId('remove');
+            this._failNoObjectId(outcome, 'remove');
             return;
           }
 
           if (internal.collection === undefined) {
-            this._failNoCollection('remove');
+            this._failNoCollection(outcome, 'remove');
             return;
           }
 
@@ -77,24 +79,35 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
           // fresh object that is by construction not in the array — the removal is a guaranteed
           // no-op and `Done` below was reporting it as success. See `_failUnknownObjectId`.
           if (!Model.exists(internal.modifyId)) {
-            this._failUnknownObjectId('remove', internal.modifyId);
+            this._failUnknownObjectId(outcome, 'remove', internal.modifyId);
             return;
           }
 
+          /**
+           * ERG-001 §0 found a **third** path here that the task spec's own §2 note does not
+           * cover, and the distinction is what makes `Unchanged` a real category rather than a
+           * softer `Failure`:
+           *
+           * - an id nothing has loaded is **impossible** to remove (the guard above, DA-vi's
+           *   verdict) — `Failure`;
+           * - a loaded object that simply is not a member of *this* array is **redundant**.
+           *   `Array.prototype.remove` is `if (idx !== -1) …` (`collection.ts:611`), so it is a
+           *   silent no-op that the node reported as `Done` — `Unchanged`.
+           */
           const model = Model.get(internal.modifyId);
+          const wasMember = internal.collection.contains(model);
           internal.collection.remove(model);
-          this.sendSignalOnOutput('modified');
+          this.reportOutcome(outcome, wasMember ? 'done' : 'unchanged');
         });
       }
     }
   },
   outputs: {
-    modified: {
-      group: 'Events',
-      type: 'signal',
-      displayName: 'Done',
-      description: 'Fires once the object is no longer in the array'
-    }
+    ...outcomeOutputs({
+      done: 'Fires once the object has been removed from the array',
+      unchanged: 'Fires when the object was not in the array, so nothing was removed',
+      failure: 'Fires when the array or the object could not be resolved, so nothing was changed'
+    })
   },
   prototypeExtensions: {
     setCollectionID: function (this: CollectionRemoveInstance, id: string | undefined) {

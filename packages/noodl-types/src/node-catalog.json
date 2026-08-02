@@ -4483,6 +4483,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the array has been emptied"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -4502,18 +4524,18 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when the array or the object could not be resolved, so nothing was changed"
+          "description": "Fires when no array is bound, so nothing was changed"
         },
         {
-          "name": "modified",
-          "displayName": "Done",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the array holds no items"
+          "description": "Fires when the array was already empty, so nothing was removed"
         }
       ],
       "dynamicPorts": null,
@@ -4575,6 +4597,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the object has been added to the array"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -4597,15 +4641,15 @@
           "description": "Fires when the array or the object could not be resolved, so nothing was changed"
         },
         {
-          "name": "modified",
-          "displayName": "Done",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires after the insert has been applied, including when the object was already in the array and nothing changed"
+          "description": "Fires when the object was already in the array, so nothing was added"
         }
       ],
       "dynamicPorts": null,
@@ -4653,7 +4697,18 @@
       ],
       "outputs": [
         {
-          "name": "created",
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
           "displayName": "Done",
           "group": "Events",
           "plug": "output",
@@ -4734,6 +4789,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the object has been removed from the array"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -4756,15 +4833,15 @@
           "description": "Fires when the array or the object could not be resolved, so nothing was changed"
         },
         {
-          "name": "modified",
-          "displayName": "Done",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the object is no longer in the array"
+          "description": "Fires when the object was not in the array, so nothing was removed"
         }
       ],
       "dynamicPorts": null,

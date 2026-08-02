@@ -1,3 +1,4 @@
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type { CollectionLike, NodeDefinitionOptions, NodeModule } from '@noodl/types';
 
 import {
@@ -38,6 +39,8 @@ const CollectionClearNode: NodeDefinitionOptions = {
       description: 'Removes every item from the array, or fires Failure if no array is bound',
       group: 'Actions',
       valueChangedToTrue(this: CollectionClearInstance) {
+        const outcome = this.beginOutcome();
+
         this.scheduleAfterInputsHaveUpdated(() => {
           const collection = this._internal.collection;
 
@@ -46,24 +49,27 @@ const CollectionClearNode: NodeDefinitionOptions = {
           // thrown out of a scheduled callback, from a node whose Array Id an author had simply
           // not filled in yet. Its two siblings at least returned.
           if (collection === undefined) {
-            this._failNoCollection('clear');
+            this._failNoCollection(outcome, 'clear');
             return;
           }
 
           this._clearCollectionFailure();
+          // ERG-001. Clearing an array that is already empty is the post-condition already
+          // holding — the author asked for an empty array and has one. Reported before the
+          // `set([])` because after it the distinction is gone.
+          const wasEmpty = collection.length === 0;
           collection.set([]);
-          this.sendSignalOnOutput('modified');
+          this.reportOutcome(outcome, wasEmpty ? 'unchanged' : 'done');
         });
       }
     }
   },
   outputs: {
-    modified: {
-      group: 'Events',
-      type: 'signal',
-      displayName: 'Done',
-      description: 'Fires once the array holds no items'
-    }
+    ...outcomeOutputs({
+      done: 'Fires once the array has been emptied',
+      unchanged: 'Fires when the array was already empty, so nothing was removed',
+      failure: 'Fires when no array is bound, so nothing was changed'
+    })
   },
   methods: {
     setCollectionID: function (this: CollectionClearInstance, id: string | undefined) {
