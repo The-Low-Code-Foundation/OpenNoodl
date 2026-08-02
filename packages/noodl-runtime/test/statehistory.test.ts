@@ -1098,14 +1098,15 @@ describe('Undo / Redo node', () => {
     node.setInputValue('undo', true);
     node.update();
 
-    expect(signals).toEqual(['undone']);
+    // ERG-001 §4: the contract's per-invocation ports now land after the specific signal.
+    expect(signals).toEqual(['undone', 'done', 'completed']);
     expect(store.hasKey('app', 'a')).toBe(false);
 
     signals.length = 0;
     node.setInputValue('redo', true);
     node.update();
 
-    expect(signals).toEqual(['redone']);
+    expect(signals).toEqual(['redone', 'done', 'completed']);
     expect(store.getKey('app', 'a')).toBe(1);
   });
 
@@ -1122,11 +1123,18 @@ describe('Undo / Redo node', () => {
     node.setInputValue('targetIndex', 1);
     node.update();
 
-    expect(signals).toEqual(['jumped']);
+    expect(signals).toEqual(['jumped', 'done', 'completed']);
     expect(store.getKey('app', 'n')).toBe(1);
   });
 
-  it('emits nothing at the ends of the history', () => {
+  /**
+   * ⚠️ **This row inverted with ERG-001 §4, deliberately.** It used to assert `[]` — and the
+   * node's own comment called that an "ordinary end-stop, so no signal and no error", then named
+   * the workaround it forced: poll `canUndo`/`canRedo` before every press. §0.3 called it the
+   * clearest single argument for the outcome contract in the library. The specific `Undone` /
+   * `Redone` signals are still silent, which is right; the invocation reports `Unchanged`.
+   */
+  it('reports Unchanged at the ends of the history, where it used to emit nothing', () => {
     const context = createContext();
     tracked(context);
 
@@ -1135,7 +1143,8 @@ describe('Undo / Redo node', () => {
     node.setInputValue('undo', true);
     node.update();
 
-    expect(signals).toEqual([]);
+    expect(signals).toEqual(['unchanged', 'completed']);
+    // Still not an error: an end-stop is not a failure.
     expect(output(node, 'error')).toBeUndefined();
   });
 
@@ -1151,7 +1160,7 @@ describe('Undo / Redo node', () => {
 
     // NDA-004 §2: this used to assert `[]`, which encoded the defect rather than the claim —
     // the node reported into its `Error` port and gave a graph nothing to sequence off.
-    expect(signals).toEqual(['failure']);
+    expect(signals).toEqual(['failure', 'completed']);
     expect(String(output(node, 'error'))).toContain('outside the history');
     expect(raised).toEqual([{ code: 'undo/operation-failed', message: expect.stringContaining('outside the history') }]);
   });
@@ -1164,7 +1173,7 @@ describe('Undo / Redo node', () => {
     node.setInputValue('undo', true);
     node.update();
 
-    expect(signals).toEqual(['failure']);
+    expect(signals).toEqual(['failure', 'completed']);
     expect(String(output(node, 'error'))).toContain('No State History node is tracking');
     expect(raised).toEqual([
       { code: 'undo/operation-failed', message: expect.stringContaining('No State History node is tracking') }
@@ -1190,7 +1199,7 @@ describe('Undo / Redo node', () => {
     node.setInputValue('undo', true);
     node.update();
     expect(output(node, 'error')).toBeDefined();
-    expect(signals).toEqual(['failure']);
+    expect(signals).toEqual(['failure', 'completed']);
 
     tracked(context);
     store.setKey('app', 'a', 1);
@@ -1202,7 +1211,7 @@ describe('Undo / Redo node', () => {
 
     expect(output(node, 'error')).toBeUndefined();
     // The clear must be silent. One `failure`, from the failure — not a second from the fix.
-    expect(signals).toEqual(['failure', 'undone']);
+    expect(signals).toEqual(['failure', 'completed', 'undone', 'done', 'completed']);
     expect(raised).toHaveLength(1);
   });
 

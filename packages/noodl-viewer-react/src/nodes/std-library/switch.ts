@@ -1,3 +1,4 @@
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type { InspectInfo, NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
 /**
@@ -11,6 +12,7 @@ interface SwitchInstance extends NodeInstance {
     initialized: boolean;
   };
   emitSignals(): void;
+  setStateByAction(next: boolean): void;
 }
 
 const Switch: NodeDefinitionOptions = {
@@ -30,27 +32,17 @@ const Switch: NodeDefinitionOptions = {
     on: {
       displayName: 'On',
       group: 'Change State',
-      description: 'Switches on, doing nothing if it is already on',
+      description: 'Switches on, or fires Unchanged if it is already on',
       valueChangedToTrue(this: SwitchInstance) {
-        if (this._internal.state === true) {
-          return;
-        }
-        this._internal.state = true;
-        this.flagOutputDirty('state');
-        this.emitSignals();
+        this.setStateByAction(true);
       }
     },
     off: {
       displayName: 'Off',
       group: 'Change State',
-      description: 'Switches off, doing nothing if it is already off',
+      description: 'Switches off, or fires Unchanged if it is already off',
       valueChangedToTrue(this: SwitchInstance) {
-        if (this._internal.state === false) {
-          return;
-        }
-        this._internal.state = false;
-        this.flagOutputDirty('state');
-        this.emitSignals();
+        this.setStateByAction(false);
       }
     },
     flip: {
@@ -58,9 +50,9 @@ const Switch: NodeDefinitionOptions = {
       group: 'Change State',
       description: 'Switches to whichever state it is not currently in',
       valueChangedToTrue(this: SwitchInstance) {
-        this._internal.state = !this._internal.state;
-        this.flagOutputDirty('state');
-        this.emitSignals();
+        // Flip cannot no-op — it always lands on the other state — so it reports `Done`
+        // unconditionally and the node still gets exactly one outcome per invocation.
+        this.setStateByAction(!this._internal.state);
       }
     },
     onFromStart: {
@@ -102,9 +94,38 @@ const Switch: NodeDefinitionOptions = {
       type: 'signal',
       group: 'Signals',
       description: 'Fires when the switch becomes off'
-    }
+    },
+
+    /**
+     * ERG-001 §4, §0.3's register. `On` when already on was `if (state === true) return;` — a
+     * bare return, and none of the three signals above fires either, because all three are
+     * about a *change*. So a graph wired "On, then do the next thing" stopped dead whenever the
+     * switch happened to be on already, which is the common case for an idempotent On.
+     *
+     * Not a failure: the switch is on, which is what `On` asked for.
+     */
+    ...outcomeOutputs({
+      done: 'Fires when the switch actually changed state',
+      unchanged: 'Fires when it was already in that state, so none of the Switched signals fired'
+    })
   },
   prototypeExtensions: {
+    /**
+     * `On`, `Off` and `Flip` share this: the only thing that differed between them was the
+     * value, and the outcome contract would otherwise have made three near-identical bodies.
+     */
+    setStateByAction(this: SwitchInstance, next: boolean) {
+      const outcome = this.beginOutcome();
+      if (this._internal.state === next) {
+        this.reportOutcome(outcome, 'unchanged');
+        return;
+      }
+      this._internal.state = next;
+      this.flagOutputDirty('state');
+      this.emitSignals();
+      // Last, after `Switched` and its sibling — the outcome summarises them.
+      this.reportOutcome(outcome, 'done');
+    },
     emitSignals(this: SwitchInstance) {
       if (this._internal.state === true) {
         this.sendSignalOnOutput('switchedToOn');

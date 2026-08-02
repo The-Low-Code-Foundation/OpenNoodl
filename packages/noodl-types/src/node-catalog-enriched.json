@@ -5982,6 +5982,17 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "countChanged",
           "displayName": "Count Changed",
           "plug": "output",
@@ -6000,6 +6011,28 @@
           },
           "isSignal": false,
           "description": "The count as it stands"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the count actually moved"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when Limits Enabled held the count where it was, so nothing moved"
         }
       ],
       "dynamicPorts": null,
@@ -27377,7 +27410,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Switches off, doing nothing if it is already off"
+          "description": "Switches off, or fires Unchanged if it is already off"
         },
         {
           "name": "on",
@@ -27389,7 +27422,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Switches on, doing nothing if it is already on"
+          "description": "Switches on, or fires Unchanged if it is already on"
         },
         {
           "name": "onFromStart",
@@ -27405,6 +27438,28 @@
         }
       ],
       "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the switch actually changed state"
+        },
         {
           "name": "state",
           "displayName": "Current State",
@@ -27447,6 +27502,17 @@
           },
           "isSignal": true,
           "description": "Fires when the switch becomes on"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when it was already in that state, so none of the Switched signals fired"
         }
       ],
       "dynamicPorts": null,
@@ -29991,7 +30057,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Starts the countdown, and does nothing while one is already running — use Restart to begin again"
+          "description": "Starts the countdown, or fires Unchanged while one is already running — use Restart to begin again"
         },
         {
           "name": "startDelay",
@@ -30018,6 +30084,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the action changed what the timer was doing"
+        },
+        {
           "name": "timerFinished",
           "displayName": "Finished",
           "plug": "output",
@@ -30036,6 +30124,17 @@
           },
           "isSignal": true,
           "description": "Fires when the countdown begins, once Start Delay has elapsed"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires on a Start while one is already running, or a Stop with nothing running"
         }
       ],
       "dynamicPorts": null,
@@ -36193,7 +36292,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Steps the store forward one entry, doing nothing when it is already at the end"
+          "description": "Steps the store forward one entry, or fires Unchanged when it is already at the end"
         },
         {
           "name": "storeName",
@@ -36229,7 +36328,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Steps the store back one entry, doing nothing when it is already at the beginning"
+          "description": "Steps the store back one entry, or fires Unchanged when it is already at the beginning"
         }
       ],
       "outputs": [
@@ -36243,6 +36342,28 @@
           },
           "isSignal": false,
           "description": "Comma-separated keys the restored entry put back as the same live object rather than as a copy"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the step actually moved the store"
         },
         {
           "name": "error",
@@ -36298,6 +36419,17 @@
           },
           "isSignal": true,
           "description": "Fires when a step forward actually happened, and not when the history was already at its end"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the history had nowhere to go — an Undo at the beginning or a Redo at the end. Not a failure: this is an ordinary end-stop, and it used to be silent"
         },
         {
           "name": "undone",

@@ -1,3 +1,4 @@
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type { NodeDefinitionOptions, NodeInstance, Timer as SchedulerTimer } from '@noodl/types';
 
 interface TimerInstance extends NodeInstance {
@@ -48,10 +49,17 @@ const Timer: NodeDefinitionOptions = {
   inputs: {
     start: {
       displayName: 'Start',
-      description: 'Starts the countdown, and does nothing while one is already running — use Restart to begin again',
+      description: 'Starts the countdown, or fires Unchanged while one is already running — use Restart to begin again',
       valueChangedToTrue: function (this: TimerInstance) {
+        const outcome = this.beginOutcome();
+        // ERG-001 §4, §0.3's register. A `Start` on a running timer did nothing and said
+        // nothing — and `Started` does not fire either, so there was no signal at all. Not a
+        // failure: a countdown is running, which is what `Start` asked for.
         if (this._internal._animation._isRunning === false) {
           this._internal._animation.start();
+          this.reportOutcome(outcome, 'done');
+        } else {
+          this.reportOutcome(outcome, 'unchanged');
         }
       }
     },
@@ -59,7 +67,11 @@ const Timer: NodeDefinitionOptions = {
       displayName: 'Restart',
       description: 'Begins the countdown again from zero, whether or not one is already running',
       valueChangedToTrue: function (this: TimerInstance) {
+        const outcome = this.beginOutcome();
+        // Restart cannot no-op — it begins again whether or not one was running — which is the
+        // whole difference between it and Start, and why only one of the two gets `Unchanged`.
         this._internal._animation.start();
+        this.reportOutcome(outcome, 'done');
       }
     },
     duration: {
@@ -84,7 +96,10 @@ const Timer: NodeDefinitionOptions = {
       displayName: 'Stop',
       description: 'Abandons the countdown, so Finished never fires for it',
       valueChangedToTrue: function (this: TimerInstance) {
+        const outcome = this.beginOutcome();
+        const wasRunning = this._internal._animation._isRunning !== false;
         this._internal._animation.stop();
+        this.reportOutcome(outcome, wasRunning ? 'done' : 'unchanged');
       }
     }
   },
@@ -98,7 +113,18 @@ const Timer: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Finished',
       description: 'Fires once Duration has elapsed, and not at all for a countdown that was stopped'
-    }
+    },
+
+    /**
+     * ERG-001 §4. Distinct from `Started` and `Finished`, which are about the *countdown*:
+     * `Started` fires only after Start Delay elapses and `Finished` only when the countdown
+     * runs out. These are about the invocation — exactly one per Start, Restart or Stop, the
+     * moment it is handled.
+     */
+    ...outcomeOutputs({
+      done: 'Fires when the action changed what the timer was doing',
+      unchanged: 'Fires on a Start while one is already running, or a Stop with nothing running'
+    })
   }
 };
 

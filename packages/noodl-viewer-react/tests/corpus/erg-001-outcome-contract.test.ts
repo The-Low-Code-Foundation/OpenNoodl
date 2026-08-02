@@ -46,6 +46,8 @@ import ComponentObjectModule from '../../src/nodes/std-library/componentutils/co
 import SetComponentObjectPropertiesModule from '../../src/nodes/std-library/componentutils/setcomponentobjectproperties';
 import SetParentComponentObjectPropertiesModule from '../../src/nodes/std-library/componentutils/setparentcomponentobjectproperties';
 import { GroupModule } from './visual-container';
+import SwitchModule from '../../src/nodes/std-library/switch';
+import TimerModule from '../../src/nodes/std-library/timer';
 
 /** `Collection.get(name)` is a process-wide registry, so every row needs its own array. */
 let arrayCounter = 0;
@@ -432,6 +434,149 @@ describe('ERG-001 §4: Set Parent Component Object Properties', () => {
     expect(signals).toContain('completed');
     expect(signals.indexOf('completed')).toBeGreaterThan(signals.indexOf('failure'));
     expect(graph.errors.map((e) => e.code)).toContain('set-parent-component-object-properties/no-ancestor');
+  });
+});
+
+// =================================================================================================
+// §4 — §0.3's Unchanged register, the two entries that live in this package
+// =================================================================================================
+
+/**
+ * `Counter` and `Undo / Redo` are pinned in
+ * `packages/noodl-runtime/test/corpus/erg-001-unchanged-register.test.ts`; `Switch` and `Timer`
+ * are here because that is where they live. Same register, same shape: a legitimate no-op that
+ * emitted **nothing**, so it was a dead chain as well as a missing outcome.
+ */
+async function actionGraph(
+  module: NodeModule,
+  type: string,
+  port: string,
+  parameters: Record<string, unknown> = {}
+): Promise<CorpusGraph> {
+  const graph = await createCorpusGraph({
+    modules: [TriggerModule, module],
+    data: {
+      components: [
+        {
+          name: '/root',
+          nodes: [
+            { id: 'trigger', type: 'corpus.Trigger' },
+            { id: 'target', type, parameters }
+          ],
+          connections: [{ sourceId: 'trigger', sourcePort: 'go', targetId: 'target', targetPort: port }]
+        }
+      ]
+    } as never
+  });
+
+  await graph.settle(4);
+  return graph;
+}
+
+describe('ERG-001 §4: Switch already in that state', () => {
+  test('On when already on reports Unchanged, where it used to report nothing at all', async () => {
+    const graph = await actionGraph(SwitchModule as unknown as NodeModule, 'Switch', 'on');
+
+    graph.node<TriggerInstance>('trigger').go();
+    await graph.settle(3);
+    expect(outcomesOf(graph, 'target')).toEqual(['done']);
+
+    graph.node<TriggerInstance>('trigger').go();
+    await graph.settle(3);
+
+    // `switch.ts:35-37` was a bare `return`, and none of `Switched`, `Switched To On` or
+    // `Switched To Off` fires either — all three are about a *change*. So an idempotent `On`,
+    // which is the common case, stopped the chain dead.
+    expect(outcomesOf(graph, 'target')).toEqual(['done', 'unchanged']);
+    expect(graph.signalsFor('target').filter((s) => s === 'completed').length).toBe(2);
+    expect(graph.errors).toEqual([]);
+  });
+
+  test('(control) a real flip still fires Switched and reports Done', async () => {
+    const graph = await actionGraph(SwitchModule as unknown as NodeModule, 'Switch', 'on');
+
+    graph.node<TriggerInstance>('trigger').go();
+    await graph.settle(3);
+
+    expect(outcomesOf(graph, 'target')).toEqual(['done']);
+    expect(graph.signalsFor('target')).toContain('switched');
+    expect(graph.signalsFor('target')).toContain('switchedToOn');
+  });
+
+  test('Flip cannot no-op, so it always reports Done', async () => {
+    const graph = await actionGraph(SwitchModule as unknown as NodeModule, 'Switch', 'flip');
+
+    for (let i = 0; i < 3; i++) {
+      graph.node<TriggerInstance>('trigger').go();
+      await graph.settle(3);
+    }
+
+    // The three actions share one body; this is what stops that sharing from giving `Flip` an
+    // `Unchanged` it can never legitimately report.
+    expect(outcomesOf(graph, 'target')).toEqual(['done', 'done', 'done']);
+  });
+});
+
+/**
+ * Run one scheduler frame.
+ *
+ * ⚠️ Needed, and the reason is a real property of this runtime rather than a test artefact:
+ * `Timer.start()` only *queues* into `newTimers`, and `_isRunning` is set to `true` inside
+ * `runTimers` (`timerscheduler.ts:181`). The corpus harness drives graph updates, not animation
+ * frames, so without this a started timer never becomes a running one and the node's `Start`
+ * guard — which reads `_isRunning` — would answer "not running" for a timer it had just
+ * started. Driving the real scheduler is the honest way to reach the state under test; setting
+ * `_isRunning` by hand would be asserting against a fake.
+ */
+function runTimerFrame(graph: CorpusGraph, atMs: number): void {
+  (graph.context as unknown as { timerScheduler: { runTimers(t: number): void } }).timerScheduler.runTimers(atMs);
+}
+
+describe('ERG-001 §4: Timer Start on a running timer', () => {
+  test('Start while one is already running reports Unchanged', async () => {
+    // ⚠️ The duration is load-bearing. `Duration` defaults to 0, and a zero-length countdown
+    // has already finished by the time the second `Start` arrives — so the node correctly
+    // reports `done` twice and the row would be measuring the default, not the no-op.
+    const graph = await actionGraph(TimerModule as unknown as NodeModule, 'Timer', 'start', { duration: 60000 });
+
+    graph.node<TriggerInstance>('trigger').go();
+    await graph.settle(3);
+    expect(outcomesOf(graph, 'target')).toEqual(['done']);
+
+    // One frame, so the queued timer actually becomes a running one.
+    runTimerFrame(graph, 0);
+
+    // `timer.ts:53-55` is `if (_isRunning === false) start()` — the else was a silent nothing,
+    // and `Started` does not re-fire for a countdown already under way.
+    graph.node<TriggerInstance>('trigger').go();
+    await graph.settle(3);
+
+    expect(outcomesOf(graph, 'target')).toEqual(['done', 'unchanged']);
+    expect(graph.signalsFor('target').filter((s) => s === 'completed').length).toBe(2);
+  });
+
+  test('(control) Restart cannot no-op and reports Done every time', async () => {
+    const graph = await actionGraph(TimerModule as unknown as NodeModule, 'Timer', 'restart', { duration: 60000 });
+
+    graph.node<TriggerInstance>('trigger').go();
+    await graph.settle(3);
+    runTimerFrame(graph, 0);
+    graph.node<TriggerInstance>('trigger').go();
+    await graph.settle(3);
+
+    // The difference between Start and Restart *is* this, and it is why only one gets
+    // `Unchanged`. Without this row, "Timer always says Unchanged on the second press" passes.
+    expect(outcomesOf(graph, 'target')).toEqual(['done', 'done']);
+  });
+
+  test('Stop with nothing running reports Unchanged', async () => {
+    const graph = await actionGraph(TimerModule as unknown as NodeModule, 'Timer', 'stop', { duration: 60000 });
+
+    graph.node<TriggerInstance>('trigger').go();
+    await graph.settle(3);
+
+    expect(outcomesOf(graph, 'target')).toEqual(['unchanged']);
+    expect(graph.signalsFor('target')).toContain('completed');
   });
 });
 

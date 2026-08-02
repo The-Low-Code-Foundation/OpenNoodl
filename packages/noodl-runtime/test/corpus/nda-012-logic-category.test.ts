@@ -151,17 +151,24 @@ describe('NDA-012 Logic — Switch emits at boot', () => {
   /**
    * The control, and it is what makes the row above a defect rather than a preference: `On` and
    * `Off` *do* guard (`switch.ts:34-36,46-48`), so this is an inconsistency inside one file rather
-   * than a house style. Setting `State` to the value it already holds re-announces it; asking `Off`
-   * for a state it is already in correctly says nothing.
+   * than a house style. Setting `State` to the value it already holds re-announces it; asking
+   * `Off` for a state it is already in does not.
+   *
+   * ⚠️ **This row's assertion changed with ERG-001 §4, and the change is the point.** It used to
+   * assert *total* silence, which was the guard's whole observable behaviour and the defect the
+   * outcome contract exists to close — the chain died. `Switched` and its two siblings are still
+   * silent, which is what this row is about; the invocation now reports `Unchanged` beside them.
    */
-  test('Off is silent when already off, so the guard exists and State simply skips it', async () => {
+  test('Off when already off fires none of the Switched signals, and reports Unchanged instead', async () => {
     const graph = await switchGraph({});
-    const before = graph.signalsFor('sw').length;
+    const before = graph.signalsFor('sw').filter((s) => s.startsWith('switched'));
 
     graph.node<TriggerInstance>('trigger').go();
     await graph.settle(3);
 
-    expect(graph.signalsFor('sw').length).toBe(before);
+    expect(graph.signalsFor('sw').filter((s) => s.startsWith('switched'))).toEqual(before);
+    expect(graph.signalsFor('sw')).toContain('unchanged');
+    expect(graph.signalsFor('sw')).toContain('completed');
   });
 });
 

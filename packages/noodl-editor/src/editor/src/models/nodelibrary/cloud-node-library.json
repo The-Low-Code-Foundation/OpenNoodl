@@ -3031,6 +3031,27 @@
           "type": "signal",
           "plug": "output",
           "displayName": "Count Changed"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged"
         }
       ]
     },
@@ -3875,7 +3896,7 @@
           "plug": "input",
           "group": "Actions",
           "displayName": "Undo",
-          "description": "Steps the store back one entry, doing nothing when it is already at the beginning"
+          "description": "Steps the store back one entry, or fires Unchanged when it is already at the beginning"
         },
         {
           "name": "redo",
@@ -3886,7 +3907,7 @@
           "plug": "input",
           "group": "Actions",
           "displayName": "Redo",
-          "description": "Steps the store forward one entry, doing nothing when it is already at the end"
+          "description": "Steps the store forward one entry, or fires Unchanged when it is already at the end"
         },
         {
           "name": "jumpTo",
@@ -3933,6 +3954,27 @@
           "plug": "output",
           "group": "Status",
           "displayName": "By-Reference Keys"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged"
         },
         {
           "name": "failure",

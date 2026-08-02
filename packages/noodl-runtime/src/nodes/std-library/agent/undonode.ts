@@ -13,7 +13,9 @@
  * history *is* reported, because that is a graph that computed the wrong number, and so is
  * driving any of this at a store nothing is tracking.
  */
-import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule, OutcomeToken } from '@noodl/types';
+
+import { outcomeOutputs } from '../../../outcome';
 
 import { HistoryNavigation, stateHistoryManager } from './statehistory';
 
@@ -21,15 +23,18 @@ interface UndoInstance extends NodeInstance {
   _internal: {
     storeName: string;
     targetIndex: number;
-    /** Actions queued this frame, in the order their signals arrived. */
-    queued: ('undo' | 'redo' | 'jumpTo')[];
+    /**
+     * Actions queued this frame, in the order their signals arrived, each carrying the outcome
+     * token for the invocation that queued it (ERG-001 §4).
+     */
+    queued: { action: 'undo' | 'redo' | 'jumpTo'; outcome: OutcomeToken }[];
     scheduled: boolean;
     byReferenceKeys: string;
     error?: string;
   };
   queue(action: 'undo' | 'redo' | 'jumpTo'): void;
   runQueued(): void;
-  report(action: string, result: HistoryNavigation | null): void;
+  report(outcome: OutcomeToken, signal: string, result: HistoryNavigation | null): void;
   setError(message: string | undefined): void;
 }
 
@@ -88,7 +93,7 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
     },
     undo: {
       displayName: 'Undo',
-      description: 'Steps the store back one entry, doing nothing when it is already at the beginning',
+      description: 'Steps the store back one entry, or fires Unchanged when it is already at the beginning',
       group: 'Actions',
       valueChangedToTrue: function (this: UndoInstance) {
         this.queue('undo');
@@ -96,7 +101,7 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
     },
     redo: {
       displayName: 'Redo',
-      description: 'Steps the store forward one entry, doing nothing when it is already at the end',
+      description: 'Steps the store forward one entry, or fires Unchanged when it is already at the end',
       group: 'Actions',
       valueChangedToTrue: function (this: UndoInstance) {
         this.queue('redo');
@@ -151,13 +156,14 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
         return this._internal.byReferenceKeys;
       }
     },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      description:
-        'Fires when the step could not be made, because nothing is tracking the store or Target Index is outside the history',
-      group: 'Events'
-    },
+    ...outcomeOutputs({
+      done: 'Fires when the step actually moved the store',
+      unchanged:
+        'Fires when the history had nowhere to go — an Undo at the beginning or a Redo at the ' +
+        'end. Not a failure: this is an ordinary end-stop, and it used to be silent',
+      failure:
+        'Fires when the step could not be made, because nothing is tracking the store or Target Index is outside the history'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -176,7 +182,10 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
      * index happened to be there from last time.
      */
     queue: function (this: UndoInstance, action: 'undo' | 'redo' | 'jumpTo') {
-      this._internal.queued.push(action);
+      // ERG-001 §4: one token per *queued action*, not per drain. Several `Undo`s can arrive
+      // in one frame and each is an invocation the author made, so each owes exactly one
+      // outcome.
+      this._internal.queued.push({ action, outcome: this.beginOutcome() });
       if (this._internal.scheduled) return;
       this._internal.scheduled = true;
 
@@ -193,37 +202,56 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
       if (!stateHistoryManager.isTracking(this._internal.storeName)) {
         // A silent no-op here is the worst outcome: the button appears wired and does
         // nothing, and there is no store-side error to find.
-        this.setError(`No State History node is tracking store "${this._internal.storeName}"`);
+        const message = `No State History node is tracking store "${this._internal.storeName}"`;
+        this.setError(message);
+        // One outcome per queued invocation: three `Undo`s against an untracked store are
+        // three failures, not one.
+        for (const queued of actions) {
+          this.reportOutcome(queued.outcome, 'failure', { code: UNDO_ERROR_CODE, message });
+        }
         return;
       }
 
-      for (const action of actions) {
-        if (action === 'undo') {
-          this.report('undone', stateHistoryManager.undo(this._internal.storeName));
-        } else if (action === 'redo') {
-          this.report('redone', stateHistoryManager.redo(this._internal.storeName));
+      for (const queued of actions) {
+        if (queued.action === 'undo') {
+          this.report(queued.outcome, 'undone', stateHistoryManager.undo(this._internal.storeName));
+        } else if (queued.action === 'redo') {
+          this.report(queued.outcome, 'redone', stateHistoryManager.redo(this._internal.storeName));
         } else {
           const index = this._internal.targetIndex;
           const result = stateHistoryManager.jumpTo(this._internal.storeName, index);
           if (result === null) {
-            this.setError(`Target index ${index} is outside the history`);
+            const message = `Target index ${index} is outside the history`;
+            this.setError(message);
+            this.reportOutcome(queued.outcome, 'failure', { code: UNDO_ERROR_CODE, message });
             continue;
           }
-          this.report('jumped', result);
+          this.report(queued.outcome, 'jumped', result);
         }
       }
     },
 
-    report: function (this: UndoInstance, signal: string, result: HistoryNavigation | null) {
-      // `null` means the history had nowhere to go. That is an ordinary end-stop, so no
-      // signal and no error — `canUndo` / `canRedo` are how a graph asks in advance.
-      if (result === null) return;
+    report: function (this: UndoInstance, outcome: OutcomeToken, signal: string, result: HistoryNavigation | null) {
+      /**
+       * ERG-001 §4, and this node is §0.3's clearest single argument for the contract.
+       *
+       * `null` means the history had nowhere to go — an ordinary end-stop. The comment that
+       * used to sit here said "no signal and no error … `canUndo` / `canRedo` are how a graph
+       * asks in advance", which names the workaround it was forcing on authors: poll a boolean
+       * before every press, because the press itself tells you nothing. It is `Unchanged` now.
+       */
+      if (result === null) {
+        this.reportOutcome(outcome, 'unchanged');
+        return;
+      }
 
       this.setError(undefined);
       this._internal.byReferenceKeys = result.byReferenceKeys.join(',');
       this.flagOutputDirty('byReferenceKeys');
       this.flagOutputDirty('fullyRestorable');
       this.sendSignalOnOutput(signal);
+      // Last, after `Undone`/`Redone`/`Jumped` and the values they describe.
+      this.reportOutcome(outcome, 'done');
     },
 
     /**
@@ -240,15 +268,19 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
      * the new port fires on every successful operation, which is the Object node's defect
      * inverted.
      */
+    /**
+     * The `Error` string only — ERG-001 §4 moved the signal and the raise into `reportOutcome`.
+     *
+     * ⚠️ That move fixes a second thing, and it is worth naming. The dedupe below (`if the
+     * message is the same, return`) used to gate the **signal** as well as the string, so
+     * pressing `Undo` twice at the start of a history raised and signalled once and then went
+     * silent — a per-node latch on a per-invocation fact, which is NV-iii's shape. The dedupe
+     * is right for a *value* output, which is all it now guards.
+     */
     setError: function (this: UndoInstance, message: string | undefined) {
       if (this._internal.error === message) return;
       this._internal.error = message;
       this.flagOutputDirty('error');
-
-      if (message !== undefined) {
-        this.sendSignalOnOutput('failure');
-        this.raiseRuntimeError(UNDO_ERROR_CODE, message);
-      }
     }
   }
 };
