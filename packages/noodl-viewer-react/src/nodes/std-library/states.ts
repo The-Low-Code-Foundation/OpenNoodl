@@ -263,7 +263,25 @@ const StatesNode: NodeDefinitionOptions = {
 
         // Register output values at this point
         for (const i in internal.values) {
-          this.registerOutputIfNeeded(internal.values[i]);
+          const name = internal.values[i];
+
+          /**
+           * ERG-001 §0.2 — the one unguarded verbatim-name surface in the library, guarded on the
+           * path that owns it. Value names become output ports **as written**, and the
+           * `hasOutput` skip in `registerOutputIfNeeded` is a silent one: a value called `done`
+           * would resolve to the outcome contract's signal and the author's value output would
+           * simply not exist, with nothing anywhere saying why. That is FINDINGS **SR-ix**.
+           */
+          if (RESERVED_OUTPUTS.indexOf(name) !== -1) {
+            this.raiseRuntimeError(
+              'states/reserved-port-name',
+              `"${name}" is one of the node's own output ports and cannot also be a value — rename the value`,
+              { name }
+            );
+            continue;
+          }
+
+          this.registerOutputIfNeeded(name);
         }
       }
     },
@@ -374,28 +392,15 @@ const StatesNode: NodeDefinitionOptions = {
       const internal = this._internal;
 
       /**
-       * ERG-001 §0.2 — the one unguarded verbatim-name surface in the library.
-       *
-       * Value names become output ports **as written**, and the `hasOutput` skip below is a
-       * silent one: a value called `done` would resolve to the outcome contract's signal, and
-       * the author's value output would simply not exist, with nothing anywhere saying why.
-       * That is FINDINGS **SR-ix** exactly — on `Logic Builder` the same shape was already live
-       * and silent against the node's own `error` and `run` ports, and the lesson recorded there
-       * is to check whether a stated cost is already being paid.
-       *
-       * Reported rather than dropped quietly, following the `logic-builder/reserved-port-name`
-       * precedent (`logic-builder.ts:79`, `:273-277`), and reported *before* the reserved names
-       * spread through §4 rather than after.
+       * ⚠️ The reserved check is **not** here, and that is deliberate — ERG-001 live QA,
+       * 2026-08-02. This method has two callers and only one of them carries a name an author
+       * chose: the `values` setter below passes what was typed, while `nodescope.ts:121` passes
+       * the source port of every connection, which is how a runtime-discovered output is brought
+       * into being. Judging the name here cannot tell those apart, so wiring the node's own
+       * `State Changed` — or any of the four ports §4 added — raised the collision against a
+       * graph with nothing wrong with it. The check now sits on the `values` path, which is the
+       * only one with a name to judge.
        */
-      if (RESERVED_OUTPUTS.indexOf(name) !== -1) {
-        this.raiseRuntimeError(
-          'states/reserved-port-name',
-          `"${name}" is one of the node's own output ports and cannot also be a value — rename the value`,
-          { name }
-        );
-        return;
-      }
-
       if (this.hasOutput(name)) return;
 
       this.registerOutput(name, {

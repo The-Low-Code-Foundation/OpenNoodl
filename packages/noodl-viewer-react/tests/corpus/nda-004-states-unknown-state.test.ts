@@ -298,7 +298,74 @@ describe('ERG-001 §0.2: States reserves the outcome-contract port names', () =>
 
     expect(graph.node('states').hasOutput('opacity')).toBe(true);
     expect(graph.errors.filter((e) => e.code === 'states/reserved-port-name')).toEqual([]);
-  });});
+  });
+
+  /**
+   * ⚠️ ERG-001 live QA, 2026-08-02 — the guard above was firing on the node's **own** ports.
+   *
+   * `registerOutputIfNeeded` is reached from two places, and only one of them carries an author's
+   * value name. `states.ts`'s `values` setter passes names the author typed; `nodescope.ts:121`
+   * passes the *source port of every connection*, which is how a runtime-discovered output comes
+   * into existence. The reserved check sat above the `hasOutput` skip and so could not tell them
+   * apart: wiring `State Changed` — or any of the four ports §4 had just added — into anything at
+   * all raised `states/reserved-port-name` and told the author to "rename the value" they had
+   * never created. Found by wiring a correctly-configured node in the real editor, where the
+   * warnings chip showed it against a node with nothing wrong with it.
+   *
+   * The check belongs on the `values` path, which is the only one with a name to judge.
+   */
+  test.each(['stateChanged', 'done', 'unchanged', 'completed', 'failure'])(
+    'wiring the node\'s own "%s" output raises nothing',
+    async (port) => {
+      const graph = await createCorpusGraph({
+        modules: [StatesModule as unknown as NodeModule, SinkModule],
+        data: {
+          components: [
+            {
+              name: '/root',
+              nodes: [
+                { id: 'sink', type: 'corpus.Sink' },
+                { id: 'states', type: 'States', parameters: { states: 'A,B', values: 'x' } }
+              ],
+              connections: [{ sourceId: 'states', sourcePort: port, targetId: 'sink', targetPort: 'ping' }]
+            }
+          ]
+        } as never
+      });
+      await graph.settle(4);
+
+      expect(graph.errors.filter((e) => e.code === 'states/reserved-port-name')).toEqual([]);
+    }
+  );
+
+  /**
+   * The other half, and the reason the fix is a move rather than a deletion: the author-value
+   * collision must still be caught when the very same name arrives by the other route. Without
+   * this row the fix above could be "delete the guard" and everything would stay green.
+   */
+  test('a value named "done" is still refused even while the node\'s own "done" is wired', async () => {
+    const graph = await createCorpusGraph({
+      modules: [StatesModule as unknown as NodeModule, SinkModule],
+      data: {
+        components: [
+          {
+            name: '/root',
+            nodes: [
+              { id: 'sink', type: 'corpus.Sink' },
+              { id: 'states', type: 'States', parameters: { states: 'A,B', values: 'done' } }
+            ],
+            connections: [{ sourceId: 'states', sourcePort: 'done', targetId: 'sink', targetPort: 'ping' }]
+          }
+        ]
+      } as never
+    });
+    await graph.settle(4);
+
+    const raised = graph.errors.filter((e) => e.code === 'states/reserved-port-name');
+    expect(raised.length).toBeGreaterThan(0);
+    expect(raised[0].message).toContain('done');
+  });
+});
 
 /**
  * OBS-003 — the near-match half of the phase-36 worked example.
