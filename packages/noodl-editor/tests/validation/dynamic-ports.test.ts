@@ -50,7 +50,7 @@ describe('SUB-006 dynamic-port guards', () => {
     // Expression "a + b" yields inputs a and b at runtime.
     const p = project(
       [node('num', 'Number'), node('ex', 'Expression')],
-      [{ fromId: 'num', fromProperty: 'stored', toId: 'ex', toProperty: 'a' }]
+      [{ fromId: 'num', fromProperty: 'completed', toId: 'ex', toProperty: 'a' }]
     );
     expect(errorsOf(validator.validate(p)).length).toBe(0);
   });
@@ -58,7 +58,7 @@ describe('SUB-006 dynamic-port guards', () => {
   it('does NOT error on numbered inputs (And)', () => {
     const p = project(
       [node('b1', 'Boolean'), node('and', 'And')],
-      [{ fromId: 'b1', fromProperty: 'stored', toId: 'and', toProperty: 'input5' }]
+      [{ fromId: 'b1', fromProperty: 'completed', toId: 'and', toProperty: 'input5' }]
     );
     expect(errorsOf(validator.validate(p)).length).toBe(0);
   });
@@ -69,7 +69,7 @@ describe('SUB-006 dynamic-port guards', () => {
     // must skip rather than error.
     const p = project(
       [node('b', 'Boolean'), node('ti', 'Text Input')],
-      [{ fromId: 'b', fromProperty: 'stored', toId: 'ti', toProperty: 'disabled' }]
+      [{ fromId: 'b', fromProperty: 'completed', toId: 'ti', toProperty: 'disabled' }]
     );
     expect(errorsOf(validator.validate(p)).length).toBe(0);
   });
@@ -89,7 +89,7 @@ describe('SUB-006 dynamic-port guards', () => {
     // not suppressing true positives.
     const p = project(
       [node('a', 'Boolean'), node('b', 'Boolean')],
-      [{ fromId: 'a', fromProperty: 'stored', toId: 'b', toProperty: 'nope' }]
+      [{ fromId: 'a', fromProperty: 'completed', toId: 'b', toProperty: 'nope' }]
     );
     const errs = errorsOf(validator.validate(p));
     expect(errs.length).toBe(1);

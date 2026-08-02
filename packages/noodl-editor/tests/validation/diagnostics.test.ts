@@ -92,8 +92,12 @@ describe('SUB-006 AI-fixability contract', () => {
               { id: 'n2', type: 'Boolean' }
             ],
             connections: [
-              // Boolean has no input "inputt" (its inputs are saveValue, value)
-              { fromId: 'n2', fromProperty: 'stored', toId: 'n2', toProperty: 'inputt' }
+              // Boolean has no input "inputt" (its inputs are saveValue, value).
+              // ⚠️ The *source* port must be a real one, or the first NonexistentPort
+              // diagnostic found below is about the output rather than the input, and its
+              // alternatives are the output list. ERG-001 removed `stored` from this family;
+              // `completed` is what replaced it.
+              { fromId: 'n2', fromProperty: 'completed', toId: 'n2', toProperty: 'inputt' }
             ]
           }
         }
