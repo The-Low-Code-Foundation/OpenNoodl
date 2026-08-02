@@ -185,7 +185,35 @@ in the type so nobody "tidies" it away.
 
 ## 4. ⚠️ Could not verify
 
-### C1 — **Criterion 7: live QA. NOT MET. Not attempted.**
+### ✅ C1 — criterion 7: live QA, **partly paid 2026-08-02**
+
+Driven in the running editor during phase-35 closeout, on a purpose-built project (`erg-qa`).
+**Rows 1 and 2 of the table below pass, including the one flagged as riskiest.** Rows 3 and 4 are
+still owed. What was measured:
+
+| Item | Result |
+|---|---|
+| **Row 2 — `Function.scriptInputs` reorder (the riskiest)** | ✅ **Passes.** Three entries reordered to Third/First/Second through Advanced (raw JSON) and saved. Every child port kept the right owner — `intype-First@aa11`, `intype-Second@bb22`, `intype-Third@qi90` — and `intype-First=number` survived. The panel redrew as Third→String, First→**Number**, Second→String. **No port was orphaned and no id was re-minted.** This is what the id-stability code exists for and it now has a live observation |
+| **Row 1 — the comma refusal** | ✅ **Passes.** `Page Inputs.pathParams` decoded `"alpha,beta"` into two rows. Adding `gamma,delta` is refused with a visible inline message — *"gamma,delta" contains a comma. This list is stored comma-separated, so an entry cannot contain one."* — and the stored parameter stayed `"alpha,beta"`. **Nothing was written.** The silent one-entry-becomes-two bug §2 describes is closed |
+| **Row 1 — the add field** | ✅ **Passes.** `+` opens a **one-line inline "Entry name" field**, not the 8-row `// Add your comment here...` textarea. D5's "criterion 4 is met by no list input reaching that popup at all" is confirmed on screen |
+| **The `{ }` popout, sizing and placement** | ✅ Opens as a centred panel titled with the port name and its type badge (`scriptInputs` / `proplist`), Easy·Advanced toggle, Save·Close. Legible at the default size; nothing clipped |
+| **The `fa fa-code` icon** | ✅ Renders as a proper `</>` glyph on every list section. **Not** hit by phase 24's Material-icons-as-text bug |
+| **Ids visible in the JSON view** | ✅ Confirmed — `id: "aa11"` etc. are shown in both Easy and Advanced, which is what makes a code-mode reorder safe rather than destructive (D2) |
+| Row 3 — `Global Store.initialState` JS-literal recovery | ❌ still owed |
+| Row 4 — `Repeater.items` binding chip | ❌ still owed |
+| C3 legibility at 20+ entries, C4 undo/redo | ❌ still owed |
+
+⚠️ **A trap for whoever drives these next, which cost this session two restarts.** The per-entry
+**Type dropdowns did not exist at first**, and it looked exactly like a defect in this task. It is
+not. Those child ports are created by `JavascriptModule.setup()`
+(`noodl-viewer-react/src/nodes/std-library/javascript.ts:706`), which returns immediately unless
+`context.editorConnection.isRunningLocally()`. A project with **no home component set** never
+mounts a viewer, so nothing ever announces them, and the property panel is empty of them while the
+parameters sit correctly on the node. Set `rootNodeId` in `project.json` to a visual node in `App`
+before concluding anything about a dynamic port. **This is the same `setup()` blind spot ERG-005's
+§0 warns about** — measure it live or not at all.
+
+### C1 (original) — **Criterion 7: live QA. NOT MET. Not attempted.**
 
 The Electron editor takes a single-instance lock and a concurrent session held it for this session's
 whole duration. Running it would have hijacked their live session, and `lerna exec` resolves package
