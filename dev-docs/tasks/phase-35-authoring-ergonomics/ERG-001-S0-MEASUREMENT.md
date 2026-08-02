@@ -111,8 +111,17 @@ loading-spinner   NavigationShowPopup.Closed   ->  Component Outputs.Done
 supabase          <component>.Done             ->  <component>.Do, RouterNavigate.navigate, Condition.eval
 ```
 
-**Every authored `Done` is on a component interface, never on a library node's own port.** The
-library side is always the internal name — `stored`, `out-Done`, `Closed`. Two consequences:
+⚠️ **This sweep had a blind spot, and the editor gate found it.** It looked for the names being
+*reserved* and not for the names being *renamed away from*. `packages/noodl-editor/tests/testfs/`
+`git-repo-utf8/project.json` wires `CollectionInsert.modified` five times, and nothing here saw it
+because `modified` was not on the list of strings being searched for. The semantic validator's
+false-positive corpus caught it on the first `test:ci` after the rename — which is the check
+working, but the lesson generalises to §4: **before renaming a port, sweep for the old name too.**
+A rename has two sides and §0 only swept one.
+
+Otherwise: **every authored `Done` is on a component interface, never on a library node's own
+port.** The library side is always the internal name — `stored`, `out-Done`, `Closed`. Two
+consequences:
 
 1. The reserved names are safe to add to library nodes today. The sweep is **not** empty, but
    nothing it found blocks the addition.
@@ -401,3 +410,54 @@ Generated from the catalog. `Dyn` marks a node whose real port set is not fully 
 | `Video` — Video | Pause, Play, Reset, Restart | Did Mount (`didMount`), Hover End (`hoverEnd`), Hover Start (`hoverStart`), On Can Play (`onCanPlay`), Click (`onClick`), On Pause (`onPause`), On Play (`onPlay`), Playback Failure (`onPlaybackFailure`), Pointer Down (`pointerDown`), Pointer Enter (`pointerEnter`), Pointer Up (`pointerUp`), Will Unmount (`willUnmount`) | ⚠️ |
 
 <!-- END GENERATED TABLE -->
+
+---
+
+## §1 / §2 — built 2026-08-02
+
+Commits `503941c6` (§1), `9b73b29f` (§2), `689d3176` (the States guard).
+
+**Richard's two decisions, taken 2026-08-02** on the questions this document raised:
+
+1. **Unify the `Done` wire name on `done`**, sweeping the repo. Applied to the Array family here;
+   `SetModelProperties`/`net.noodl.Set*ComponentObjectProperties` (`stored`) and `NewModel`
+   (`created`) belong to §4, and `library/prefabs/supabase` is the one shipped wire that breaks
+   when they move.
+2. **Rename `GlobalStore.Set` and `ActionDispatcher`'s existing `Completed` to `Done`** and mint
+   the real universal `Completed`. Not yet applied — those two are §4.
+
+### What exists now
+
+- `packages/noodl-runtime/src/outcome.ts` — `outcomeOutputs()`, the declaration side.
+- `Node.prototype.beginOutcome()` / `reportOutcome()` — the emit side, so all three runtimes get
+  it. The **token**, not the node, carries "has this invocation reported yet", which is what makes
+  NV-iii's latched-first-result class unrepresentable and what survives an async action.
+- The Array family (`CollectionInsert`, `CollectionRemove`, `CollectionClear`, `CollectionNew`)
+  adopted in full, with `done` replacing `modified`/`created`.
+- `States` reserves `done`/`unchanged`/`completed` (plus its own `failure`/`stateChanged`) and
+  reports a collision, closing §0.2 Result 4's one unguarded surface **before** §4 needs it.
+- 14 new corpus rows in `erg-001-outcome-contract.test.ts`, 5 in the States file.
+
+### The discrimination check, predicted then run
+
+| Revert | Predicted | Actual |
+|---|---|---|
+| Insert always reports `done` | 3 red | **3 red, the same three** |
+| drop the `Completed` emit | 11 red / 3 green | 12 red / 2 green |
+
+⚠️ The second was **not** a clean prediction miss: the revert I wrote replaced the
+`if (this.hasOutput(COMPLETED_PORT))` condition with `if (false)`, which also switched **on** the
+`outcome/missing-completed` raise in the `else` branch. That reddened one extra row — the one
+asserting `Unchanged` raises nothing — which is the guard doing its job rather than a row pinning
+the wrong thing. Recorded because the phase's standard is to predict before running, and a
+prediction that misses deserves the reason.
+
+### Still owed on ERG-001
+
+- **§3** `Treat Unchanged as` — not started.
+- **§4** the per-node sweep, which is the bulk. §0's table is its scope.
+- **§5** the validator's dead-end check, and `description` coverage for §4's new ports.
+- **Live QA.** ⚠️ The three viewer bundles under `packages/noodl-editor/src/external/` are
+  **untracked build artifacts that nothing rebuilds**, and all three still contain
+  `sendSignalOnOutput('modified')`. A deployed app keeps the old ports until
+  `npm run build --prefix packages/noodl-viewer-react` runs.
