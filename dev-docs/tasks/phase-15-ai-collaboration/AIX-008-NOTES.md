@@ -6,8 +6,10 @@
 corpus AIX-007 measured on, with the same style vocabulary injected, so the
 $/component here is comparable to its baseline
 **Sessions:** 16 recorded — 12 treatment, 4 control — at **$1.84** in
-`sandbox.jsonl`, plus one discarded shakedown session at $0.23 whose artifacts
-were deleted before the measured runs. **Total spend $2.07.**
+`sandbox.jsonl`; 5 more control-arm sessions at **$0.43** in
+`sandbox-after-fix/`, run after the fix below; plus one discarded shakedown
+session at $0.23 whose artifacts were deleted before the measured runs.
+**Total spend $2.50.**
 **Harness:** `packages/noodl-editor/scripts/aix15-live/`, `--mode=sandbox`
 **Artifacts:** `measurements/live/sandbox.jsonl` plus, per session, the
 transcript, the candidate, the model's raw `sample_data`, both datasets
@@ -21,8 +23,8 @@ optional `submit_component` field whose records take precedence over the
 editor's heuristics. Nobody had ever seen a model fill it in.
 
 This is that run. It closes the residual, and it found three things no fixture
-could have produced — one of which means a documented success criterion does not
-hold.
+could have produced. One of them was a documented success criterion quietly
+failing, so that one is fixed here and re-measured rather than filed.
 
 ---
 
@@ -33,7 +35,7 @@ hold.
 | Does a real model fill `sample_data`? | **Yes — 9 of 9 times** that the component it built actually read a backend. The three sessions that supplied nothing all built a component that queried nothing, which is exactly what the prompt tells them to do. |
 | Is what it supplies usable? | **Yes, and it is the better of the two sources.** The collection name matched the graph's own in **9/9** (0 records keyed to a class nothing queries), field coverage of the graph's reads was **100%** every time, no placeholder-shaped values at all, and the copy reads as content: "Sunset Jazz Night", "ORD-1042", "Aiko Tanaka". |
 | What does it cost? | **+234 input tokens per request, identical to the token in all four pairs.** $0.0007–$0.0019 per component — **2–5% of AIX-007's $0.0352 baseline** — plus $0.0009–$0.0027 of output on the components that use it. |
-| Did the real candidates break anything? | **Three defects.** One of them means "renders populated lists without a backend" fails for **6 of the 9** data-reading candidates a real model produced. |
+| Did the real candidates break anything? | **Three defects.** The first meant "renders populated lists without a backend" failed for **8 of the 12** candidates that read data at all — **fixed here**, and re-measured on the same candidates: **8 of 8 now populated, 0 still blank**, with the 4 that already worked unchanged field for field. |
 | Did the shim hold? | **144/144 probes**, nine per session across all sixteen, driven through the *installed* shim rather than the responder. |
 
 ---
@@ -56,8 +58,8 @@ orders.slice().sort((a,b)=>new Date(b.datePlaced)-new Date(a.datePlaced))
 
 and, in another run, into a `JavaScriptFunction` doing the same thing. Five field
 names, all of them read, **none of them on a wire**. The account page did the
-same for its saved-articles list. Six of the nine data-reading candidates bound
-their data this way.
+same for its saved-articles list. **Eight of the twelve candidates that read
+data at all bound it this way** — every one that was not the event card.
 
 The consequence is measured, not inferred. With `sample_data` stripped, the
 dataset the editor builds for that page is:
@@ -70,31 +72,110 @@ Five records with no fields. `o.orderNumber` is `undefined` on every one of them
 The preview renders **"5 orders, totalling $0.00"** over five blank rows — which
 is worse than an empty list, because it looks like it worked.
 
-| Candidate | binds via | fields the heuristics recover | fields the model's data fills |
+Across both arms:
+
+| Candidate | binds via | fields the heuristics recovered | fields the model's data fills |
 | --- | --- | --: | --: |
-| `event-card` ×3 | `prop-<field>` wires off `DbModel2` | **5–6 of 6** | 6 of 6 |
-| `orders-summary` ×3 | `Expression` / `JavaScriptFunction` | **0** | 5 |
-| `account` ×3 | `JavaScriptFunction` | **0** | 2–3 |
+| `event-card` ×4 | `prop-<field>` wires off `DbModel2` | **5–6 of 6** | 6 of 6 |
+| `orders-summary` ×4 | `Expression` / `JavaScriptFunction` | **0** | 5 |
+| `account` ×4 | `JavaScriptFunction` / `Script` | **0** | 2–3 |
 
 So the spec's success criterion **"a project with no backend configured still
-renders populated lists and cards" does not hold** for code-bound bindings, and
-those were the majority of what a real model produced.
+renders populated lists and cards" did not hold** for code-bound bindings, and
+those were the majority of what a real model produced. It appeared to hold only
+because `sample_data` was papering over it — and `sample_data` is the half a
+user can reject.
 
-What makes this survivable today is the thing nobody had checked: **the model's
-own `sample_data` closes the gap completely**, because it supplies exactly the
-field names its own expression reads — it wrote both. The two sources are not
-"nicer copy" versus "inference" as the spec framed them. For code-bound data,
-`sample_data` is the *only* source of field names that exists.
+### The fix: read the code too
 
-Two ways out, neither taken here, because both change shipping behaviour and the
-choice is a product judgement:
+`discoverDataShape` now has a third source. It scans the parameters the node
+catalog marks `codeeditor: javascript` — `expression`, `functionScript`, `code`,
+`mapScript`, `templateScript`, `generatedCode`, `requestScript`,
+`responseScript` — blanks out string literals and comments, and takes every
+`x.y` / `x?.y` member read whose object is not a namespace (`Math`, `JSON`,
+`Inputs`, `inputs`, …) and whose property is not language (`map`, `length`,
+`toFixed`, …). It is a regex, not a parser, deliberately: computed access
+(`row[key]`) names nothing a dataset can serve, and a scope analysis would be a
+lot of machinery to recover names a stop list gets for free.
 
-- **Read the code.** Extend `discoverDataShape` to scan `Expression` and
-  `JavaScriptFunction` parameters for property reads off the collection input.
-  Restores the heuristic fallback, at the price of a regex over user code.
-- **Say so instead.** When a queried class ends up with zero fields, the preview
-  toolbar could say the data could not be inferred, rather than serving five
-  empty records that render as blanks.
+The class comes from walking *upstream* to the node that names a collection.
+Two things about that walk were learned by running it rather than by writing it:
+
+- **One hop is not enough.** A live candidate sorted in one `Expression` and fed
+  that into two more, so the two Expressions naming four of the five fields were
+  two hops from the node that said `Orders`. A one-hop version recovered
+  `datePlaced` and nothing else. The walk is now transitive (bounded at 6 hops),
+  stopping at the first node that names a class.
+- **`Script` nodes use lower-case `inputs`/`outputs`.** `Function` scripts read
+  `Inputs.x`; a `Script` node is `define({ run: function (inputs, outputs) {…} })`.
+  Stop-listing only the capitalised pair put fields called `items` and `text` on
+  every record of a real candidate.
+- **Blanking literals with a chain of regexes has to pick a loser.** Strip
+  comments first and the `//` inside `'https://…'` eats the rest of the line —
+  including the only real field on it, which a spec caught. Strip strings first
+  and `// don't` eats the rest of *that* line. It is one left-to-right pass now,
+  where whichever opens first consumes the other; and template literals keep
+  their `${…}` expressions, because a model writes `` `${o.title}` `` as
+  readily as it writes `+`.
+
+**The scan is additive by construction.** Names attributed to a class are
+unioned in, and unattributed code reads go to their own pool that is used *only*
+for a class that would otherwise have no fields at all. A class the wires
+already described is left exactly as it was — asserted in the specs, and
+confirmed on the real corpus below.
+
+### The measurement
+
+Every candidate the live run recorded, replayed through the new synthesiser with
+**sample data ignored** — so this is the fallback measured on its own, on the
+identical graphs, with none of the model's run-to-run variance mixed in:
+
+```bash
+node packages/noodl-editor/scripts/aix15-live/dist/aix15-harness.cjs \
+  --mode=sandbox --replay=dev-docs/tasks/phase-15-ai-collaboration/measurements/live/sandbox
+```
+
+| Candidate | before | after |
+| --- | --- | --- |
+| `event-card` ×4 | 5–6 fields | **unchanged, field for field** |
+| `orders-summary` ×4 | **blank — 0 fields** | **5 fields** |
+| `account` ×4 | **blank — 0 fields** | **2–3 fields** |
+| `book-list` ×4 | reads no data at all | reads no data at all |
+
+**8 of 8 previously-blank candidates now populate; 0 remain blank; the 4 that
+already worked are untouched.** And the recovered field sets match the model's
+own `sample_data` name for name — `orderNumber, customerName, total, status,
+datePlaced` for orders, `title, savedAt` for the account page — which is about
+as good an independent check as this could get: two different mechanisms, the
+same answer.
+
+Confirmed live as well, on four candidates written *after* the fix existed, with
+`sample_data` ablated (`measurements/live/sandbox-after-fix/`, $0.43):
+
+| Fresh candidate | fields from inference |
+| --- | --: |
+| `event-card` | 6 |
+| `orders-summary` | **5** (0 before the fix) |
+| `account` | **2** (0 before the fix) |
+| `book-list` | reads no data at all — it built the row again, 6 runs of 6 |
+
+Three of three data-reading candidates populate; none is blank.
+
+### And when even that finds nothing
+
+A class the scan cannot describe no longer renders a plausible blank. The
+dataset carries `unknownShape`, the export turns it into a `notice`, and the
+preview toolbar shows an amber "Fields unknown" with the full sentence on hover:
+
+> Orders is read in a way this preview cannot infer fields from, so those
+> records are empty — what you see is the layout, not the data. Ask the agent
+> for sample data, or switch to the real backend.
+
+This is the same rule the spec already sets for a logic-only candidate, applied
+to the data instead of the graph, and for the same reason: five blank rows under
+a heading that says "5 orders" reads as a broken component, and silently-empty-
+but-plausible is the exact failure mode the mount-path bug produced earlier in
+this task's history.
 
 ## 2. The model's sample data reaches the network; the heuristics never do
 
@@ -112,7 +193,10 @@ third-party image host, and the Desired State's "no network egress" is not true
 of the path the spec prefers.
 
 The heuristic path never does this: `synth.placeholderImage` returns an inline
-`data:image/svg+xml` URI precisely so there is no network and no CSP surprise.
+`data:image/svg+xml` URI **specifically** to avoid it — no request, no CSP
+surprise, and it reads as a placeholder at a glance instead of pretending to be
+a photograph. That is the shape a fix should convert model-supplied image URLs
+*into*, rather than any kind of proxying or allow-listing.
 
 This is a regression in the isolation guarantee introduced by preferring the
 model's data, and it is invisible to every existing spec because no fixture ever
@@ -148,6 +232,32 @@ the time. It never forgot it once. The three prompts whose phrasing left no room
 to decompose ("take the event id as a component input and look the event up",
 "a line saying how many orders there are") built the querying component every
 time.
+
+## One trap, paid for in a live session
+
+Worth recording because it will bite the next person appending to this harness.
+`main()` is invoked partway up `harness.ts`, and new modes are appended *below*
+it. `main()` is `async`, but nothing in it awaits before it dispatches, so
+`main → runSandbox → session.run → the chat wrapper` can execute in a single
+synchronous turn — before the module-level statements below `main()` have run.
+
+**esbuild lowers module-level `const` to `var`, so a constant declared down
+there reads as `undefined` rather than throwing a temporal-dead-zone
+`ReferenceError`.** The ablation's `indexOf(undefined)` found nothing, decided
+the system prompt had changed, and threw — killing one live session.
+
+It hid perfectly: `--arms=both` is fine, because the treatment arm's awaits let
+the module finish evaluating before the control arm ever runs. Only
+`--arms=without` on its own reaches the constant in the first synchronous pass.
+The values that section needs before its first await are now hoisted `function`
+declarations, which are initialised before any statement runs.
+
+The guard itself was also wrong, and that is the more general lesson: a
+correctness check that can fire mid-run should not be able to destroy the run.
+"Already stripped" and "never there" are indistinguishable from inside a
+per-request hook, so the assertion now runs **once per arm** against the
+product's own prompt and tool definitions, before any money is spent, and the
+strip itself is idempotent.
 
 ## Two smaller observations, neither a defect
 
@@ -269,6 +379,12 @@ it will commit. That is a property of data-reading components, not of
 - **Nothing was rendered.** This is headless: the export is built, the dataset is
   built, and the shim answers. Whether the runtime *paints* the model's data
   needs a running editor, and the Sample-data / Real-backend toggle needs a human.
+- **The "Fields unknown" chip has never been seen on screen.** Its text, its
+  presence and the dataset flag behind it are spec-covered, and the export
+  carries the notice — but no live candidate in nineteen sessions produced a
+  class the scan could not describe, so the amber chip itself is unrendered.
+  Reproduce it deliberately with a page that queries a collection and reads no
+  field from it (`shapelessPayload` in the specs is exactly that graph).
 - **The `<img>` egress in finding 2 is reasoned, not observed.** No browser was
   involved, so no request to `picsum.photos` was watched leaving the machine.
 - **One model, one project, one effort level** — `claude-sonnet-5` at `low`
@@ -293,6 +409,12 @@ node packages/noodl-editor/scripts/aix15-live/dist/aix15-harness.cjs \
 
 `--arms=with|without|both` (default both), `--reps=<n>`, plus the shared
 `--only=`, `--effort=`, `--outdir=` flags.
+
+`--replay=<dir>` re-runs the dataset synthesiser over every recorded
+`*.candidate.json` under a directory, with no provider and nothing spent. Sample
+data is ignored on purpose: it is how the "renders populated lists with no
+backend" criterion gets re-checked for free whenever the synthesiser changes,
+on candidates a model actually wrote rather than on fixtures written to pass.
 
 One note for whoever runs this next. The `sandbox` mode is the first in this
 harness to construct a real `ProjectModel`, which drags in editor code that reads

@@ -823,8 +823,13 @@ import {
   candidateComponent,
   componentClosure
 } from '../../src/editor/src/models/AiAssistant/authoring/sandboxExport';
-import { buildSandboxDataset, discoverDataShape } from '../../src/editor/src/models/AiAssistant/authoring/sandboxData';
-import { SUBMIT_COMPONENT } from '../../src/editor/src/models/AiAssistant/authoring/tools';
+import {
+  buildSandboxDataset,
+  discoverDataShape,
+  unknownShapeNotice
+} from '../../src/editor/src/models/AiAssistant/authoring/sandboxData';
+import { AUTHORING_TOOLS, SUBMIT_COMPONENT } from '../../src/editor/src/models/AiAssistant/authoring/tools';
+import { systemPrompt } from '../../src/editor/src/models/AiAssistant/authoring/prompts/authoring';
 import type { AgentSampleData } from '../../src/editor/src/models/AiAssistant/authoring/types';
 import { ProjectModel } from '../../src/editor/src/models/projectmodel';
 import { buildEffectiveTokens, readStoredTokens } from '../../src/editor/src/models/StyleTokensModel/ProjectTokenCss';
@@ -838,16 +843,60 @@ import { SANDBOX_PROMPTS } from './corpus';
  * heading and removed up to the next blank line — the ablation arm has to send
  * a prompt that never mentions the field, or the "what does it cost" arm is
  * measuring the schema alone.
+ *
+ * Returned from a function rather than held in a `const`, and that is not a
+ * style choice.
+ *
+ * `main()` is invoked partway up this file; everything below it — this section —
+ * is module-level code that has not run yet when `main()` starts. `main()` is
+ * `async`, but nothing in it awaits before it reaches this mode, so the whole
+ * chain (`main` → `runSandbox` → `session.run` → the chat wrapper) executes in
+ * one synchronous turn. esbuild lowers module-level `const` to `var`, so a
+ * constant declared down here reads as `undefined` rather than throwing a
+ * temporal-dead-zone `ReferenceError` — silently, and only on the code path
+ * that reaches it first.
+ *
+ * It cost a live session to find: `--arms=both` was fine, because the treatment
+ * arm's awaits let the module finish evaluating before the control arm ran,
+ * and `--arms=without` on its own was not. Function declarations are hoisted
+ * and initialised before any statement runs, so they are immune.
  */
-const SAMPLE_DATA_HEADING = '\n\nSAMPLE DATA FOR THE PREVIEW';
+function sampleDataHeading(): string {
+  return '\n\nSAMPLE DATA FOR THE PREVIEW';
+}
 
+/**
+ * Idempotent on purpose. An earlier version threw when the block was already
+ * absent, to catch the case where the prompt changed and the ablation had
+ * quietly become a no-op — and that guard then fired mid-run and killed a
+ * session, because "already stripped" and "never there" look identical from
+ * inside a per-request hook. The check belongs once per arm, where it can
+ * distinguish the two; see `assertAblationBites`.
+ */
 function stripSampleDataGuidance(content: string): string {
-  const start = content.indexOf(SAMPLE_DATA_HEADING);
-  if (start === -1) {
+  const heading = sampleDataHeading();
+  const start = content.indexOf(heading);
+  if (start === -1) return content;
+  const end = content.indexOf('\n\n', start + heading.length);
+  return end === -1 ? content.slice(0, start) : content.slice(0, start) + content.slice(end);
+}
+
+/**
+ * The control arm is only worth running if it removes something. Checked once,
+ * against the product's own prompt and tool definitions, before any money is
+ * spent — so a prompt rewrite that renames the block fails here rather than
+ * producing an arm that silently measures nothing.
+ */
+function assertAblationBites(): void {
+  const prompt = systemPrompt('create');
+  if (prompt.indexOf(sampleDataHeading()) === -1) {
     throw new Error('The system prompt no longer contains the SAMPLE DATA block — the ablation would be a no-op.');
   }
-  const end = content.indexOf('\n\n', start + SAMPLE_DATA_HEADING.length);
-  return end === -1 ? content.slice(0, start) : content.slice(0, start) + content.slice(end);
+  const submit = AUTHORING_TOOLS.find((tool) => tool.name === SUBMIT_COMPONENT);
+  const properties = (submit?.parameters as { properties?: Record<string, unknown> } | undefined)?.properties;
+  if (!properties || !('sample_data' in properties)) {
+    throw new Error('submit_component no longer declares sample_data — the ablation would be a no-op.');
+  }
 }
 
 /**
@@ -859,16 +908,12 @@ function stripSampleDataGuidance(content: string): string {
  * unmodified product; it is the control that is synthetic.
  */
 function ablateSampleData(request: AiChatRequest): AiChatRequest {
-  let removedProperty = false;
   const tools = request.tools?.map((tool) => {
     if (tool.name !== SUBMIT_COMPONENT) return tool;
     const parameters = JSON.parse(JSON.stringify(tool.parameters)) as {
       properties?: Record<string, unknown>;
     };
-    if (parameters.properties && 'sample_data' in parameters.properties) {
-      delete parameters.properties.sample_data;
-      removedProperty = true;
-    }
+    delete parameters.properties?.sample_data;
     return { ...tool, parameters: parameters as Record<string, unknown> };
   });
 
@@ -876,17 +921,21 @@ function ablateSampleData(request: AiChatRequest): AiChatRequest {
     message.role === 'system' ? { ...message, content: stripSampleDataGuidance(message.content) } : message
   );
 
-  if (request.tools && !removedProperty) {
-    throw new Error('submit_component no longer declares sample_data — the ablation would be a no-op.');
-  }
-
   return { ...request, tools, messages };
 }
 
-/** Values that read as a placeholder rather than as something a person wrote. */
-const PLACEHOLDER_VALUE = /^(lorem|ipsum|foo|bar|baz|test|sample|example|string|value|item|todo|tbd|n\/a)\b/i;
-/** `Title 1`, `Name 2` — the shape the editor's own heuristics produce. */
-const ENUMERATED_VALUE = /^[A-Z][a-z]+(?: [a-z]+)* \d+$/;
+/**
+ * Values that read as a placeholder rather than as something a person wrote,
+ * and `Title 1` / `Name 2`, the shape the editor's own heuristics produce.
+ * Hoisted functions for the reason `sampleDataHeading` explains.
+ */
+function placeholderValuePattern(): RegExp {
+  return /^(lorem|ipsum|foo|bar|baz|test|sample|example|string|value|item|todo|tbd|n\/a)\b/i;
+}
+
+function enumeratedValuePattern(): RegExp {
+  return /^[A-Z][a-z]+(?: [a-z]+)* \d+$/;
+}
 
 interface FieldJudgement {
   /** Fields the graph reads off this class (attributed plus pooled). */
@@ -955,7 +1004,7 @@ function judgeSampleData(
       const values = records.map((record) => record[field]).filter((value) => value !== undefined);
       for (const value of values) {
         if (typeof value !== 'string') continue;
-        if (value.trim() === '' || PLACEHOLDER_VALUE.test(value) || ENUMERATED_VALUE.test(value)) {
+        if (value.trim() === '' || placeholderValuePattern().test(value) || enumeratedValuePattern().test(value)) {
           placeholderValues.push(`${className}.${field} = ${JSON.stringify(value)}`);
         }
       }
@@ -1268,9 +1317,11 @@ interface ArmTotals {
  */
 async function runSandbox(run: Run): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  if (args.replay) return replaySandbox(run, path.resolve(args.replay));
   const reps = Math.max(1, Number(args.reps ?? 1));
   const arms: Array<'with' | 'without'> =
     args.arms === 'with' ? ['with'] : args.arms === 'without' ? ['without'] : ['with', 'without'];
+  if (arms.indexOf('without') !== -1) assertAblationBites();
 
   const { graph, project: projectJson } = loadGraph(CORPUS_PROJECT);
 
@@ -1501,4 +1552,89 @@ async function runSandbox(run: Run): Promise<void> {
       );
     }
   }
+}
+
+/**
+ * Replay recorded candidates through the dataset synthesiser, with no provider
+ * involved and nothing spent.
+ *
+ * This exists because of what the first live run found: the synthesiser learned
+ * fields from wires, and a real model binds a list in code. Fixing that needs a
+ * before/after on *the same candidates* — new sessions would mix the fix in with
+ * the model's own run-to-run variance and prove nothing. Sample data is
+ * deliberately ignored here: the criterion under test is the fallback, "a
+ * project with no backend configured still renders populated lists and cards",
+ * and sample data is precisely what was papering over it.
+ *
+ *   --mode=sandbox --replay=dev-docs/tasks/phase-15-ai-collaboration/measurements/live/sandbox
+ */
+async function replaySandbox(run: Run, dir: string): Promise<void> {
+  const { project: projectJson } = loadGraph(CORPUS_PROJECT);
+
+  const candidates: string[] = [];
+  const walk = (at: string) => {
+    for (const entry of fs.readdirSync(at, { withFileTypes: true })) {
+      const full = path.join(at, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.candidate.json')) candidates.push(full);
+    }
+  };
+  walk(dir);
+  candidates.sort();
+
+  console.log(`replay — ${candidates.length} candidate(s) from ${path.relative(REPO_ROOT, dir)}`);
+  console.log('(sample data ignored: this measures the heuristic fallback on its own)\n');
+
+  let populated = 0;
+  let blank = 0;
+  let noData = 0;
+
+  for (const file of candidates) {
+    const slug = path.basename(file, '.candidate.json');
+    const arm = path.basename(path.dirname(file));
+    const files = JSON.parse(fs.readFileSync(file, 'utf8')) as ComponentFiles;
+
+    const project = ProjectModel.fromJSON(JSON.parse(JSON.stringify(projectJson)));
+    const { component } = candidateComponent(files);
+    const dataset = buildSandboxDataset({ components: componentClosure(project, component) });
+
+    const classNames = Object.keys(dataset.classes);
+    const unknown = dataset.unknownShape ?? [];
+    const filled = classNames.filter((name) => (dataset.classes[name].fields ?? []).length > 0);
+
+    if (classNames.length === 0) noData++;
+    else if (unknown.length === 0) populated++;
+    else blank++;
+
+    const verdict =
+      classNames.length === 0 ? 'no data read' : unknown.length === 0 ? 'POPULATED' : `BLANK: ${unknown.join(', ')}`;
+    console.log(
+      `  ${(arm + '/' + slug).padEnd(28)} ${verdict.padEnd(24)} ` +
+        filled.map((name) => `${name}[${dataset.classes[name].fields.join(', ')}]`).join(' ')
+    );
+
+    record({
+      mode: 'sandbox',
+      slug: `replay:${arm}/${slug}`,
+      provider: run.providerId,
+      model: '(none — replay)',
+      status: classNames.length === 0 ? 'no-data' : unknown.length === 0 ? 'populated' : 'blank',
+      durationMs: 0,
+      costUsd: 0,
+      detail: {
+        arm,
+        replayOf: path.relative(REPO_ROOT, file),
+        datasetClasses: classNames,
+        unknownShape: unknown,
+        fieldsByClass: Object.fromEntries(classNames.map((name) => [name, dataset.classes[name].fields])),
+        notice: unknownShapeNotice(unknown)
+      },
+      artifacts: []
+    });
+  }
+
+  console.log(
+    `\n  ${populated} populated · ${blank} still blank · ${noData} read no data at all ` +
+      `(of ${candidates.length})`
+  );
 }

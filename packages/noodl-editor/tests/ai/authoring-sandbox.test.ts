@@ -10,7 +10,12 @@
  */
 
 import { buildCandidate } from '../../src/editor/src/models/AiAssistant/authoring/candidate';
-import { buildSandboxDataset, discoverDataShape } from '../../src/editor/src/models/AiAssistant/authoring/sandboxData';
+import {
+  buildSandboxDataset,
+  codeFields,
+  discoverDataShape,
+  unknownShapeNotice
+} from '../../src/editor/src/models/AiAssistant/authoring/sandboxData';
 import {
   buildSandboxExport,
   candidateComponent,
@@ -55,6 +60,186 @@ function bookListPayload(): SubmitPayload {
     visualRoots: ['group']
   };
 }
+
+/**
+ * The shape a real model actually produces for a list, found by running AIX-008
+ * against a live provider: the collection goes straight into an `Expression`
+ * and the field names live inside the code string, on no wire at all. Six of
+ * nine data-reading candidates bound their data this way.
+ */
+function ordersPayload(): SubmitPayload {
+  return {
+    nodes: [
+      { id: 'root', type: 'Group' },
+      { id: 'query', type: 'DbCollection2', parameters: { collectionName: 'Orders' } },
+      {
+        id: 'rows',
+        type: 'Expression',
+        parameters: {
+          expression:
+            "orders.slice().sort((a,b) => a.total - b.total)" +
+            ".map(o => (o.orderNumber || '') + ' — ' + o.customerName + ' $' + o.total.toFixed(2)).join('\\n')"
+        }
+      },
+      { id: 'text', type: 'Text', parent: 'root' }
+    ],
+    connections: [
+      { fromId: 'query', fromProperty: 'items', toId: 'rows', toProperty: 'orders' },
+      { fromId: 'rows', fromProperty: 'asString', toId: 'text', toProperty: 'text' }
+    ],
+    visualRoots: ['root']
+  };
+}
+
+/** A page that queries a class and reads nothing off any record, anywhere. */
+function shapelessPayload(): SubmitPayload {
+  return {
+    nodes: [
+      { id: 'root', type: 'Group' },
+      { id: 'query', type: 'DbCollection2', parameters: { collectionName: 'Orders' } },
+      { id: 'text', type: 'Text', parent: 'root' }
+    ],
+    connections: [{ fromId: 'query', fromProperty: 'count', toId: 'text', toProperty: 'text' }],
+    visualRoots: ['root']
+  };
+}
+
+describe('AIX-008 fields read inside code', () => {
+  it('reads field names out of an Expression, and not the language around them', () => {
+    const found = codeFields({
+      parameters: {
+        expression: "o.orderNumber + ' ' + o.customerName + ' ' + o.total.toFixed(2) + items.length"
+      }
+    } as never);
+
+    expect([...found].sort()).toEqual(['customerName', 'orderNumber', 'total']);
+  });
+
+  it('ignores the runtime’s own surfaces, so Inputs.items is not a field called items', () => {
+    const found = codeFields({
+      parameters: {
+        functionScript:
+          'var rows = Inputs.items || [];\n' +
+          'Outputs.list = rows.map(function (it) { return it.title + Math.round(it.rating); });'
+      }
+    } as never);
+
+    expect([...found].sort()).toEqual(['rating', 'title']);
+  });
+
+  it('ignores the Script node’s lower-case inputs/outputs too', () => {
+    // `Function` scripts read `Inputs.x`; `Script` nodes are written as
+    // `define({ run: function (inputs, outputs) { … } })`. Missing the
+    // lower-case pair put fields called `items` and `text` on every record.
+    const found = codeFields({
+      parameters: {
+        code:
+          "define({ inputs: { items: 'array' }, outputs: { text: 'string' }, run: function (inputs, outputs) {" +
+          '  var rows = inputs.items || [];' +
+          '  outputs.text = rows.map(function (i) { return i.title + i.savedAt; }).join();' +
+          '} });'
+      }
+    } as never);
+
+    expect([...found].sort()).toEqual(['savedAt', 'title']);
+  });
+
+  it('does not mistake a URL in a string literal for a field', () => {
+    // The `//` in `https://` used to be read as a line comment, which ate the
+    // rest of the line — including the only real field on it.
+    const found = codeFields({
+      parameters: { code: "var url = 'https://example.com/orders'; Outputs.value = row.reference;" }
+    } as never);
+
+    expect([...found]).toEqual(['reference']);
+  });
+
+  it('does not mistake an apostrophe in a comment for a string either', () => {
+    const found = codeFields({
+      parameters: { expression: "// don't count the ones we skip\nrow.reference + row.amount" }
+    } as never);
+
+    expect([...found].sort()).toEqual(['amount', 'reference']);
+  });
+
+  it('reads through a template literal to the expressions inside it', () => {
+    const found = codeFields({
+      parameters: { expression: 'items.map(o => `${o.title} — ${o.author} (https://x.example/y)`)' }
+    } as never);
+
+    expect([...found].sort()).toEqual(['author', 'title']);
+  });
+
+  it('attributes them to the collection wired into the code node', () => {
+    const { component } = candidateComponent(files(ordersPayload()));
+    const shape = discoverDataShape([component]);
+
+    expect([...(shape.byClass.get('Orders') ?? [])].sort()).toEqual(['customerName', 'orderNumber', 'total']);
+    // Attributed, so nothing had to fall back to the unattributed pool.
+    expect([...shape.codePooled]).toEqual([]);
+  });
+
+  it('follows the collection through a chain of code nodes', () => {
+    // A live candidate sorted in one Expression and fed that into two more, so
+    // the two that named four of the five fields were two hops from the node
+    // that says "Orders". A one-hop walk recovered one field of five.
+    const { component } = candidateComponent(
+      files({
+        nodes: [
+          { id: 'root', type: 'Group' },
+          { id: 'query', type: 'DbCollection2', parameters: { collectionName: 'Orders' } },
+          { id: 'sorted', type: 'Expression', parameters: { expression: '[...items].sort((a,b) => a.placedAt - b.placedAt)' } },
+          { id: 'rows', type: 'Expression', parameters: { expression: "items.map(o => o.orderNumber + o.status).join('')" } },
+          { id: 'text', type: 'Text', parent: 'root' }
+        ],
+        connections: [
+          { fromId: 'query', fromProperty: 'items', toId: 'sorted', toProperty: 'items' },
+          { fromId: 'sorted', fromProperty: 'result', toId: 'rows', toProperty: 'items' },
+          { fromId: 'rows', fromProperty: 'asString', toId: 'text', toProperty: 'text' }
+        ],
+        visualRoots: ['root']
+      })
+    );
+
+    expect([...(discoverDataShape([component]).byClass.get('Orders') ?? [])].sort()).toEqual([
+      'orderNumber',
+      'placedAt',
+      'status'
+    ]);
+  });
+
+  it('fills the records a code-bound list reads, which is the whole point', () => {
+    const dataset = buildSandboxDataset({ components: [candidateComponent(files(ordersPayload())).component] });
+    const first = dataset.classes.Orders.records[0];
+
+    expect(dataset.classes.Orders.records.length).toBe(5);
+    expect(dataset.classes.Orders.fields.sort()).toEqual(['customerName', 'orderNumber', 'total']);
+    // What matters is that every field the code reads has *a* value; which
+    // shape each one takes is `synthesizeValue`'s business, and it reads
+    // `orderNumber` as a number because the name ends in "number".
+    expect(first.orderNumber === undefined).toBe(false);
+    expect(typeof first.customerName).toBe('string');
+    expect(typeof first.total).toBe('number');
+    expect(dataset.unknownShape).toEqual([]);
+  });
+
+  it('adds nothing to a class the wires already described', () => {
+    // The guarantee the code scan is only allowed to keep: strictly more
+    // coverage, never a different answer where there already was one.
+    const withoutCode = buildSandboxDataset({ components: [candidateComponent(files(bookListPayload())).component] });
+
+    const payload = bookListPayload();
+    payload.nodes.push({
+      id: 'unrelated',
+      type: 'Expression',
+      parameters: { expression: 'anything.inventedField + 1' }
+    });
+    const withCode = buildSandboxDataset({ components: [candidateComponent(files(payload)).component] });
+
+    expect(withCode.classes.Books.fields.sort()).toEqual(withoutCode.classes.Books.fields.sort());
+    expect(withCode.classes.Books.fields.indexOf('inventedField')).toBe(-1);
+  });
+});
 
 describe('AIX-008 sandbox data discovery', () => {
   it('finds the classes a graph queries and the fields it reads', () => {
@@ -149,6 +334,28 @@ describe('AIX-008 sandbox export', () => {
 
     const named = result.json!.components.filter((c) => c.name === existing.name);
     expect(named.length).toBe(1);
+  });
+
+  it('says the fields are unknown rather than serving plausible blanks', () => {
+    // The failure this exists to prevent: five records with nothing on them,
+    // rendering as five empty rows under a heading that claims five results —
+    // which reads as a broken component rather than as an unguessable shape.
+    const result = buildSandboxExport({ project: loadProject(), files: files(shapelessPayload()) });
+
+    expect(result.json).toBeTruthy();
+    expect((result.json!.metadata!.sandbox as SandboxDataset).unknownShape).toEqual(['Orders']);
+    expect(result.notice).toContain('Orders');
+    expect(result.notice).toContain('layout, not the data');
+  });
+
+  it('carries no caveat when the fields were found', () => {
+    const result = buildSandboxExport({ project: loadProject(), files: files(ordersPayload()) });
+    expect(result.notice).toBeUndefined();
+  });
+
+  it('says nothing when there is nothing to say', () => {
+    expect(unknownShapeNotice([])).toBeUndefined();
+    expect(unknownShapeNotice(undefined)).toBeUndefined();
   });
 
   it('says so rather than rendering white when there is nothing visual', () => {

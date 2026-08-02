@@ -98,7 +98,7 @@ export type { PromptProjectDocs } from './prompts/authoring';
 export { dispatchProjectDocTool, GET_PROJECT_DOC, projectDocToolLabel, projectDocTools } from './projectDocsTool';
 export { countStyleValues, formatStyleFindings, styleLintCandidate } from './styleLint';
 export type { StyleLint, StyleLintOptions } from './styleLint';
-export { buildSandboxDataset, discoverDataShape } from './sandboxData';
+export { buildSandboxDataset, codeFields, discoverDataShape, unknownShapeNotice } from './sandboxData';
 export type { BuildSandboxDatasetOptions } from './sandboxData';
 export { buildSandboxExport, candidateComponent, componentClosure } from './sandboxExport';
 export type { SandboxExport, SandboxExportOptions } from './sandboxExport';
