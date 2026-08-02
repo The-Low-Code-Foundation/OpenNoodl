@@ -2355,3 +2355,183 @@ dead-chain class.
 1191 lines, and the only one of the three still unmeasured. It has `success`/`failure`/`canceled`
 and an abort path. Run the grep before assuming any of them is an invocation outcome; that grep
 has now overturned two of the phase's predictions and confirmed a third.
+
+---
+
+## §4 closed, and §5 built — 2026-08-02
+
+**82 of 82.** Re-derived from a regenerated `node-catalog.json` rather than counted from prose:
+every live, non-deprecated catalog node with a signal input now declares `completed`. §0's scope
+is complete.
+
+### The last three, built
+
+| Node | Shape | Renames |
+|---|---|---|
+| `RunTasks` | rename + two dead chains closed | `done` → `completed`, then `success` → `done` |
+| `net.noodl.OptimisticUpdate` | **purely additive** | none |
+| `net.noodl.HTTP` | rename + one dead chain closed | `success` → `done` |
+
+The two-step order on `Run Tasks` held exactly as predicted, and `failure` kept its name on all
+three — it already carried the contract's meaning everywhere it appeared.
+
+### ⚠️ Three predictions in the previous session's measurement were wrong
+
+Recorded in the same spirit as the two it overturned itself, because the pattern is now
+established: **reading a guard is not measuring it.**
+
+1. **`OptimisticUpdate` is not "mostly a rename".** It is purely additive. `Applied`,
+   `Committed` and `Rolled Back` say *which phase* of a three-phase lifecycle resolved, and the
+   contract's shared `Done` cannot — an author wiring "when committed, show a tick" and "when
+   rolled back, show the error" needs two wires, not one wire plus a poll of `Is Committed`.
+   This is the WebSocket node's decision (`websocket.ts:652`) for the same reason. No project
+   file breaks.
+
+2. **`pickTransaction`'s falsy return is not a dead chain.** The claim was that `doCommit` and
+   `doRollback` "return silently — an unmeasured `Unchanged`-or-`Failure` candidate". Both of
+   its empty-handed exits call `reportFailure`, which already fired `failure` and raised. That
+   is now stated in `doCommit` itself so it is not re-derived a third time.
+
+3. ⚠️ **This session made the same class of error and the corpus caught it.** Reading
+   `scheduleRun`'s `hasScheduledRun` guard, it predicted that two `Do` pulses sent back to back
+   would coalesce into one run. They do not: `sendSignalOnOutput` flushes the scheduled
+   operation before the second pulse arrives, so the second reaches `run()` separately and finds
+   `state === 'running'`. The row's original comment had been right all along. The source now
+   records the measured behaviour beside the guard.
+
+### The design questions the last session left open, answered
+
+- **`Abort` is `Done`, not `Failure`.** The run did its work and stopped when it was told to;
+  folding that into `Failure` is the collapse Rule 1 exists to stop. `Aborted` fires first — the
+  outcome is the last thing an action does — and is what distinguishes it from an ordinary
+  completion. The same answer serves HTTP's `Cancel`, except that a cancelled *request* reports
+  `Unchanged`, because unlike an aborted run it did no work and changed nothing.
+- **`Completed` fires twice for one honoured abort or cancel**, once per action port. Two
+  invocations, so "exactly one outcome" per invocation still holds. Pinned by an exact
+  `toEqual` in both fixtures rather than left as prose.
+- **The empty-list path stayed `Done`.** RT-4 is now the guard on that reading, with the
+  argument in the row.
+
+### ⚠️ `net.noodl.OptimisticUpdate`'s `Unchanged` is the contract's headline case
+
+`Rolled Back` fires whether or not the old value was actually restored, so the only way to tell
+a real rollback from a superseded one was to poll the `error` string. That is `Insert Object Into
+Array`'s defect verbatim — the one the contract opens with — surviving in a second family.
+
+The post-condition a rollback establishes is "the value this update wrote is no longer in the
+store". When something newer has already replaced it, that held before the action ran and nothing
+needed doing. **Restored is `Done`, superseded is `Unchanged`**, and the two rows sit next to each
+other in `optimisticupdate.test.ts` for exactly that contrast.
+
+### ⚠️ HTTP had never raised on the error bus, ever
+
+1191 lines, and every failure ended on the `error` string an author can only poll. No deployed
+app's `On App Error` had ever seen an HTTP failure. Four codes now — `http/no-url`,
+`http/error-status`, `http/timeout`, `http/network-error` — and this is a **new capability**
+rather than a rename, so it has its own row.
+
+⚠️ Its tokens are drained into a local the promise closure captures. Requests genuinely overlap
+on this node: `hasScheduledFetch` is cleared at the *top* of `doFetch`, so a second `Fetch` while
+one is in flight starts a second request, and a token read from `_internal` inside a `.then`
+would be settled by whichever response happened to land first.
+
+### ⚠️ The `catalog:examples` gate was RED at HEAD, and had been for several builds
+
+Measured with the gate's own `--dir` flag against `git show HEAD:` copies, which is the cheap way
+to get a baseline without touching a shared checkout: **44/50**, with three `ERROR
+[nonexistent-port]` rows. Three shipped examples wired ports that earlier ERG-001 renames had
+deleted — `CollectionNew.created`, `String.stored`, `Number.stored`. Now **46/50**; the remaining
+four are pre-existing `signal-driven-stale-input` warnings, untouched by this session.
+
+The lesson is not "run the gate". It is that **a rename sweep must include the example corpus**,
+and that the sweep script used in earlier builds did not — the same "rewriter that silently
+missed three files" this document already records, one layer further out.
+
+⚠️ `Number.stored → width` was additionally a **signal wired into a value input**, so that one is
+repaired to `savedValue` rather than renamed. A dangling wire hid a second defect underneath it.
+
+⚠️ `cloud-library:check` was green at HEAD and the `Run Tasks` commit left it red for one commit.
+All four catalog gates need running after any port rename; three is not enough.
+
+### ⚠️ A control was rescued from being vacuously true
+
+NDA-009 **K2** asserted `not.toContain('success')` on a node whose `success` port the rename was
+about to delete. It would have passed for ever, whatever the node did. Restated positively as
+well as negatively. This is the "a sweep returning zero looks the same clean or broken" shape
+appearing inside a fixture, and a rename is exactly when to look for it.
+
+### The reserved-name sweep the handover asked for — clean, and structurally so
+
+`registerOutputIfNeeded` in `httpnode.ts`, `dbcollectionnode2.ts`, `modelnode2.ts` and
+`restnode.ts` all open with `if (this.hasOutput(name)) return;`, so a node's own declared ports
+short-circuit before any name test. The `States` defect was a **raise sitting above that early
+return**; none of these four has a raise at all. HTTP additionally prefixes every author-minted
+output with `out-`, so a Response Mapping named "completed" cannot collide however it is spelled.
+
+⚠️ What the sweep *did* surface, unfixed and out of scope: the prefix tests silently decline to
+register a name that does not match. Combined with `nodescope.ts:121` routing every connection's
+source port through this method, a wire from a misspelled port on these nodes registers nothing
+and warns nobody — the standing `addConnection` trap, one layer deeper.
+
+---
+
+## §5 — the dead-end check, and the two predicates measurement rejected
+
+Success criterion 6, built as a semantic-validator rule (`unwired-outcome`, warning, enabled by
+default). **The measurement is the deliverable here, more than the rule.**
+
+Criterion 6 asks the validator to flag "an action with every outcome unwired". Written literally,
+that check is unusable. Three predicates, each measured against the 50 shipped examples:
+
+| Predicate | Firings | True positives |
+|---|---|---|
+| Every outcome unwired, chain continues from another signal | 7 | **0** |
+| `done` wired, `unchanged`/`completed` not | 6 | ~1 |
+| `done` **and** `failure` wired, `unchanged`/`completed` not | **1** | **1** |
+
+⚠️ **The first fails structurally, not for want of tuning.** Almost every action in the library
+also publishes *announcements* — `Applied`, `On Message`, `On Stop`, `On True`, `Timer Finished`
+— and an announcement is very often the **better** thing to sequence from, being more specific
+than the generic outcome. Wiring `Optimistic Update`'s `Applied` to the request that follows is
+correct authoring; sending the request when the apply *failed* would be the mistake.
+
+⚠️ **The second fails for a subtler reason worth keeping.** `Unchanged` very often means *the
+user cancelled* — a dismissed `Open File Picker`, an abandoned HTTP request — and **not**
+continuing is then exactly right. "Did the author want to carry on through the no-op?" is
+genuinely not derivable from a graph in which both answers are common and correct.
+
+Requiring `failure` as well is what makes intent readable: an author who has routed two different
+outcomes to two different places is demonstrably enumerating them, so a missing third is a gap in
+what they built rather than a shape they chose.
+
+**The one firing was a true positive.** `agent-optimistic-rename` wired the request's `done` to
+Commit and `failure` to Rollback and had no route for a cancelled request — which reports
+`unchanged`, reaches neither branch, and leaves the optimistic update open until its own
+30-second deadline. Fixed, with the example's prose now saying why there are three outcomes.
+
+Four of the seven new specs are **controls that pin the rejected shapes**, so a later widening of
+the rule reddens a row rather than quietly reintroducing the noise.
+
+### Gates — measured
+
+| Gate | Result |
+|---|---|
+| `noodl-runtime` jest | 108 suites, **2047** passing, 13 skipped |
+| editor jasmine (`test:ci`) | **2002** specs, 0 failures |
+| `typecheck:runtime` / `viewer` / `editor` / `editor-tests` | clean |
+| `catalog:check` / `catalog:merge:check` / `cloud-library:check` | green |
+| `catalog:examples` | 46/50 (**was 44/50 at HEAD**) |
+
+### What remains
+
+| Item | State |
+|---|---|
+| **§0's 82** | ✅ **Complete. 82/82, measured from the regenerated catalog.** |
+| **§5** dead-end check | ✅ Built, with its false-positive measurements recorded. |
+| **§3** `Treat Unchanged as` | ❌ **Still not started** — the one piece of the spec never begun. ⚠️ A declared `default` does not run its setter (FINDINGS **A-D1**), so the default behaviour must be correct *without* it. The Variables family remains the obvious first home. |
+| **Criterion 8** live QA | ❌ Not paid for this session's five nodes. The previous session's debt was for the eighteen before them; these five have been driven by no editor. |
+
+Carried forward unchanged: `GlobalStore.Set`'s and `Update Record`'s unmeasured `Unchanged`
+candidates; `Counter`'s `Reset` guard that has never fired; `Items Rendered` firing with zero item
+nodes after a `Refresh` (the one-character fix is `() => this.refresh()`); and `States`'
+`goToState` same-state guard being unreachable from any action port.
