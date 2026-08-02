@@ -12,6 +12,13 @@ import { SidebarModel, SidebarModelEvent } from '@noodl-models/sidebar/sidebarmo
 import { listWorkflows, runWorkflow, deleteWorkflow } from '@noodl-models/workflow/WorkflowBackendClient';
 import { WorkflowDocument } from '@noodl-models/workflow/WorkflowDocument';
 import { WorkflowEditorEvent, WorkflowEditorService } from '@noodl-models/workflow/WorkflowEditorService';
+import {
+  discardWorkflowProposal,
+  listWorkflowProposals,
+  type BackendProposals,
+  type WorkflowProposal
+} from '@noodl-models/workflow/WorkflowProposalClient';
+import { openWorkflowProposal, ProposalRefused } from '@noodl-models/workflow/workflowProposalReview';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import styles from './WorkflowsPanel.module.scss';
@@ -36,6 +43,7 @@ export const WorkflowsPanel_ID = 'workflows';
  */
 export function WorkflowsPanel() {
   const [workflows, setWorkflows] = useState<WorkflowRef[]>([]);
+  const [proposals, setProposals] = useState<BackendProposals[]>([]);
   const [unreachable, setUnreachable] = useState<string[]>([]);
   const [backendCount, setBackendCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -57,6 +65,12 @@ export function WorkflowsPanel() {
     setWorkflows(result.workflows);
     setUnreachable(result.unreachable);
     setBackendCount(result.backendCount);
+    // WFA-007: a proposal is staged by another PROCESS, so there is no event to
+    // listen for — this panel's existing refresh points (open, become active,
+    // backend status change, the Refresh button) are the moments it can learn
+    // about one. Same staleness F61 records for a trigger written out of
+    // process, and it will close the same way: a backend-side change bus.
+    setProposals(await listWorkflowProposals());
     setLoading(false);
     // WFA-005: a workflow's triggers are drawn on its canvas as entry nodes, and
     // they are edited from a different surface (the Triggers panel, MCP, the
@@ -163,6 +177,38 @@ export function WorkflowsPanel() {
     [guard, refresh, service]
   );
 
+  /**
+   * Open a proposal as a diff on the canvas.
+   *
+   * A candidate the backend would refuse never opens: the message is the
+   * BACKEND's, shown as the proposal's failure, because being asked to accept
+   * something that cannot be saved is worse than being told the AI got it wrong.
+   */
+  const review = useCallback(
+    (backend: BackendProposals, proposal: WorkflowProposal) =>
+      guard(`Reviewing ${proposal.workflow.name || proposal.workflowId}`, async () => {
+        try {
+          await openWorkflowProposal(proposal, { backendName: backend.backendName, onDone: refresh });
+        } catch (e) {
+          if (e instanceof ProposalRefused) {
+            setError(e.message);
+            return;
+          }
+          throw e;
+        }
+      }),
+    [guard, refresh]
+  );
+
+  const discard = useCallback(
+    (backend: BackendProposals, proposal: WorkflowProposal) =>
+      guard('Discarding the proposal', async () => {
+        await discardWorkflowProposal(backend.backendId, proposal.proposalId);
+        await refresh();
+      }),
+    [guard, refresh]
+  );
+
   const create = useCallback(
     () =>
       guard('Creating', async () => {
@@ -265,10 +311,19 @@ export function WorkflowsPanel() {
                 </button>
               </div>
             )}
-            {status && <div className={styles.Status}>{status}</div>}
-            {error && <div className={styles.Error}>{error}</div>}
           </div>
         )}
+
+        {/*
+          WFA-007: status and error moved OUT of the open-workflow bar.
+          They lived inside `{document && …}`, so anything that failed while no
+          workflow was open reported itself to nobody — which is exactly what
+          WFA-004's notes describe as "a click that appears to do nothing is
+          what a thrown-and-caught open looks like". Opening a workflow, and now
+          reviewing a proposal, are both things you do with nothing open.
+        */}
+        {status && <div className={`${styles.Notice} ${styles.Status}`}>{status}</div>}
+        {error && <div className={`${styles.Notice} ${styles.Error}`}>{error}</div>}
 
         {creating && (
           <div className={styles.Form}>
@@ -322,6 +377,46 @@ export function WorkflowsPanel() {
         {unreachable.length > 0 && (
           <div className={styles.Notice}>Could not read workflows from {unreachable.join(', ')}.</div>
         )}
+
+        {/* WFA-007: proposals first — an unreviewed suggestion is the thing
+            that needs a decision, and burying it under the workflow list is how
+            "review your AI's work" becomes a feature nobody finds. */}
+        {proposals
+          .filter((backend) => backend.proposals.length > 0)
+          .map((backend) => (
+            <div key={`proposals-${backend.backendId}`}>
+              <div className={styles.ProposalGroup}>
+                Proposed for {backend.backendName} — {backend.proposals.length} awaiting review
+              </div>
+              {backend.proposals.map((proposal) => (
+                <div key={proposal.proposalId} className={styles.Proposal}>
+                  <div className={styles.ProposalTitle}>
+                    {proposal.workflow.name || proposal.workflowId}
+                    <span className={styles.ProposalMeta}>
+                      {' '}
+                      — {proposal.mode === 'create' ? 'new workflow' : 'changes to an existing workflow'}
+                    </span>
+                  </div>
+                  <div className={styles.ProposalMeta}>
+                    From {proposal.origin}. Nothing is written until you accept.
+                  </div>
+                  {proposal.note && <div className={styles.ProposalNote}>“{proposal.note}”</div>}
+                  <div className={styles.Actions}>
+                    <button
+                      className={`${styles.Button} ${styles.Primary}`}
+                      onClick={() => review(backend, proposal)}
+                      disabled={busy}
+                    >
+                      Review on the canvas
+                    </button>
+                    <button className={styles.Button} onClick={() => discard(backend, proposal)} disabled={busy}>
+                      Discard
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
 
         {grouped.map((group) => (
           <div key={group.id}>

@@ -21,6 +21,7 @@ import {
   applyAuthoredPlan,
   buildChangeSet,
   graphComponentFromFiles,
+  materializeSelection,
   pathToLegacyName,
   PlanningSession,
   PlanRun,
@@ -244,9 +245,9 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     const files = run?.filesFor(id);
     if (!run || !project || !files) return;
     const operation = run.plan.operations.find((op) => op.id === id);
+    const changeSet = buildChangeSet(project, files);
     AppRegistry.instance.openDocument(ChangeReviewDocumentProvider.ID, {
-      changeSet: buildChangeSet(project, files),
-      files,
+      changeSet,
       title: `Review ${operation?.target ?? id} — plan operation`,
       acceptLabel: 'Keep',
       contextNote:
@@ -254,8 +255,12 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
         'until you apply the whole plan.',
       // Plan mode: accepting a (possibly partial) selection re-stages it on the
       // operation. NOTHING reaches the project until the plan is applied.
-      onAcceptFiles: (selected: ComponentFiles) => {
-        run.setOperationFiles(id, selected);
+      //
+      // WFA-007 moved materialisation out of the review document — it is the
+      // COMPONENT materializer, and a document that renders a diff should not
+      // know that a component is three JSON files. Behaviour is unchanged.
+      onAccept: (rejected: ReadonlySet<string>) => {
+        run.setOperationFiles(id, materializeSelection(changeSet, files, rejected).files);
         return null;
       },
       onReject: () => excludeOperation(id)

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 
 import styles from './ExecutionDetail.module.scss';
+import { buildFixRequest, canRequestFix, type FixRequestExecution } from './fixRequest';
 import { NodeStepList } from './NodeStepList';
 import { useExecutionDetail } from '../../hooks/useExecutionDetail';
 
@@ -48,6 +49,8 @@ function summariseSteps(steps: { status: string }[]): string {
 export function ExecutionDetail({ executionId, onBack, onPinToCanvas, onCancel }: Props) {
   const { execution, loading, error, refresh } = useExecutionDetail(executionId);
   const [cancelState, setCancelState] = useState<'idle' | 'cancelling' | string>('idle');
+  /** WFA-007 §6: whether the fix request has just been copied. */
+  const [fixCopied, setFixCopied] = useState(false);
 
   const steps = execution?.steps ?? [];
   const stepSummary = useMemo(() => summariseSteps(steps), [steps]);
@@ -159,6 +162,38 @@ export function ExecutionDetail({ executionId, onBack, onPinToCanvas, onCancel }
             <span className={styles.Value}>{stepSummary}</span>
           </div>
         </section>
+
+        {/*
+          WFA-007 §6 — the first hop of "a failed run becomes a fix".
+
+          It copies a request rather than opening a chat, because the agent that
+          holds `update_backend_workflow` is not inside this editor (see
+          ExecutionDetail/fixRequest.ts). The rest of the loop IS here: the
+          answer comes back to the Workflows panel as a proposal and lands on the
+          canvas as a diff.
+
+          Only on a failed WORKFLOW run with steps — a cloud function call
+          records none (WFA-002 Finding 2), so there would be nothing to name.
+        */}
+        {canRequestFix(execution as unknown as FixRequestExecution) && (
+          <section className={styles.Section}>
+            <h4 className={styles.SectionTitle}>Ask for a fix</h4>
+            <button
+              className={styles.PinButton}
+              onClick={async () => {
+                await navigator.clipboard.writeText(buildFixRequest(execution as unknown as FixRequestExecution));
+                setFixCopied(true);
+              }}
+            >
+              {fixCopied ? 'Copied — paste it to your agent' : 'Copy a fix request'}
+            </button>
+            <div className={styles.FixHint}>
+              Carries this run, its failing step and the error. It asks for the answer as a{' '}
+              <strong>proposal</strong>, so it arrives in the Workflows panel as a diff on the canvas and nothing is
+              written until you accept it.
+            </div>
+          </section>
+        )}
 
         {execution.errorMessage && (
           <section className={styles.Section}>
