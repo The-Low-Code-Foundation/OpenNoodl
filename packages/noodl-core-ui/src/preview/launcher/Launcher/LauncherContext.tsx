@@ -79,6 +79,17 @@ export interface LauncherContextValue {
   // GitHub repos for clone feature (optional - for Storybook compatibility)
   githubRepos?: UseGitHubReposReturn | null;
   onCloneRepo?: (repo: NoodlGitHubRepo) => Promise<void>;
+
+  /**
+   * Open the app-wide settings (theme, AI provider and key). The launcher owns
+   * the entry point; the host owns the dialog, because the real settings
+   * components live in the editor and writing a launcher-local copy of the
+   * credentials form would be a second source of truth for a secret.
+   *
+   * Omitted in Storybook, where there is no host — the gear is then absent
+   * rather than present and inert.
+   */
+  onOpenSettings?: () => void;
 }
 
 const LauncherContext = createContext<LauncherContextValue | null>(null);

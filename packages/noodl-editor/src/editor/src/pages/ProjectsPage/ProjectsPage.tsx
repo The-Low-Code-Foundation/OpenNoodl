@@ -59,10 +59,10 @@ import { ProjectOrganizationService } from '../../services/ProjectOrganizationSe
 import getDocsEndpoint from '../../utils/getDocsEndpoint';
 import { LocalProjectsModel, ProjectItemWithRuntime } from '../../utils/LocalProjectsModel';
 import { tracker } from '../../utils/tracker';
-import { AiSettingsSection } from '../../views/panels/AiSettings/AiSettingsSection';
 import { getLessonsState } from '../../views/projectsview.lessonstate';
 import { MigrationWizard } from '../../views/migration/MigrationWizard';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
+import { LauncherSettingsDialog, LauncherSettingsSection } from './LauncherSettingsDialog';
 
 export interface ProjectsPageProps extends IRouteProps {
   from: TSFixme;
@@ -468,22 +468,23 @@ export function ProjectsPage(props: ProjectsPageProps) {
    * closes, availability is recomputed so the entry card reflects what the user
    * just did without needing the modal reopened.
    */
-  const handleConfigureAi = useCallback(() => {
+  const openSettingsDialog = useCallback((initialSection?: LauncherSettingsSection) => {
     DialogLayerModel.instance.showDialog(
-      (close) =>
-        React.createElement(
-          'div',
-          { style: { width: '420px', maxHeight: '80vh', overflowY: 'auto', background: 'var(--theme-color-bg-1)' } },
-          React.createElement(AiSettingsSection, null),
-          React.createElement(
-            'div',
-            { style: { display: 'flex', justifyContent: 'flex-end', padding: 'var(--spacing-4)' } },
-            React.createElement('button', { type: 'button', onClick: close }, 'Done')
-          )
-        ),
-      { onClose: () => setAiConfigVersion((n) => n + 1) }
+      (close) => <LauncherSettingsDialog onClose={close} initialSection={initialSection} />,
+      {
+        // One dialog, whichever door was used: the gear and the entry card's
+        // setup action must not be able to stack two of these.
+        id: 'launcher-settings',
+        onClose: () => setAiConfigVersion((n) => n + 1)
+      }
     );
   }, []);
+
+  /** The gear in the launcher header — settings with nothing pre-selected. */
+  const handleOpenSettings = useCallback(() => openSettingsDialog(), [openSettingsDialog]);
+
+  /** The route out of "AI is not configured", from the entry card. */
+  const handleConfigureAi = useCallback(() => openSettingsDialog('ai'), [openSettingsDialog]);
 
   const aiAvailability = useMemo(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- aiConfigVersion is the re-read trigger
@@ -997,6 +998,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
         onGitHubDisconnect={handleGitHubDisconnect}
         githubRepos={githubRepos}
         onCloneRepo={handleCloneRepo}
+        onOpenSettings={handleOpenSettings}
       />
 
       <ProjectCreationWizard

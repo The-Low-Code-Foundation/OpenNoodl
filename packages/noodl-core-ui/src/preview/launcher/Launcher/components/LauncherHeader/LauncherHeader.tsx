@@ -44,8 +44,15 @@ function getAvatarInitials(name?: string | null, login?: string | null): string 
 export interface LauncherHeaderProps {}
 
 export function LauncherHeader({}: LauncherHeaderProps) {
-  const { activePageId, setActivePageId, githubUser, githubIsAuthenticated, githubIsConnecting, onGitHubConnect } =
-    useLauncherContext();
+  const {
+    activePageId,
+    setActivePageId,
+    githubUser,
+    githubIsAuthenticated,
+    githubIsConnecting,
+    onGitHubConnect,
+    onOpenSettings
+  } = useLauncherContext();
 
   const initials = getAvatarInitials(githubUser?.name, githubUser?.login);
 
@@ -78,6 +85,25 @@ export function LauncherHeader({}: LauncherHeaderProps) {
       <div className={css['Actions']}>
         {!githubIsAuthenticated && onGitHubConnect && (
           <GitHubConnectButton onConnect={onGitHubConnect} isConnecting={githubIsConnecting} />
+        )}
+
+        {/* Theme and the AI provider/key are app-wide, and both were previously
+            reachable only from inside an open project. An inline glyph rather
+            than the icon font, matching the avatar beside it. */}
+        {onOpenSettings && (
+          <button
+            type="button"
+            className={css['SettingsButton']}
+            onClick={onOpenSettings}
+            title="Settings"
+            aria-label="Settings"
+            data-test="launcher-settings"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <circle cx="8" cy="8" r="2.4" />
+              <path d="M8 1.6l.9 1.7 1.9-.3.6 1.8 1.8.6-.3 1.9 1.7.9-1.7.9.3 1.9-1.8.6-.6 1.8-1.9-.3-.9 1.7-.9-1.7-1.9.3-.6-1.8-1.8-.6.3-1.9L1.6 8l1.7-.9-.3-1.9 1.8-.6.6-1.8 1.9.3z" />
+            </svg>
+          </button>
         )}
 
         <div

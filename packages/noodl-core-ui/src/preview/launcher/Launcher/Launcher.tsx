@@ -70,6 +70,9 @@ export interface LauncherProps {
   // GitHub repos for clone feature (optional - for Storybook compatibility)
   githubRepos?: UseGitHubReposReturn | null;
   onCloneRepo?: (repo: NoodlGitHubRepo) => Promise<void>;
+
+  /** Open the app-wide settings dialog (theme, AI provider and key). */
+  onOpenSettings?: () => void;
 }
 
 // FIXME: make the mock data real
@@ -215,7 +218,8 @@ export function Launcher({
   onGitHubConnect,
   onGitHubDisconnect,
   githubRepos,
-  onCloneRepo
+  onCloneRepo,
+  onOpenSettings
 }: LauncherProps) {
   // Determine initial tab: props > deep link > persisted > default
   const deepLinkTab = parseDeepLink();
@@ -345,7 +349,8 @@ export function Launcher({
         onGitHubConnect,
         onGitHubDisconnect,
         githubRepos,
-        onCloneRepo
+        onCloneRepo,
+        onOpenSettings
       }}
     >
       <div className={css['Root']}>
