@@ -6,18 +6,25 @@
   "exclude": [
     "packages/noodl-runtime/dist-types"
   ],
-  "commit": "b22cfab0",
+  "commit": "2a86bd2f",
   "max": {
-    "TSFixme": 540,
-    "any": 336,
+    "TSFixme": 539,
+    "any": 380,
     "@ts-ignore": 17,
     "@ts-nocheck": 0,
-    "@ts-expect-error": 79
+    "@ts-expect-error": 80
   },
   "byPackage": {
+    "nodegx-backend-contract": {
+      "TSFixme": 0,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 1
+    },
     "nodegx-backend": {
       "TSFixme": 0,
-      "any": 16,
+      "any": 17,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -30,8 +37,8 @@
       "@ts-expect-error": 11
     },
     "noodl-editor": {
-      "TSFixme": 492,
-      "any": 132,
+      "TSFixme": 487,
+      "any": 129,
       "@ts-ignore": 6,
       "@ts-nocheck": 0,
       "@ts-expect-error": 62
@@ -73,7 +80,7 @@
     },
     "noodl-runtime": {
       "TSFixme": 0,
-      "any": 58,
+      "any": 69,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -87,14 +94,14 @@
     },
     "noodl-viewer-cloud": {
       "TSFixme": 0,
-      "any": 6,
+      "any": 7,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
     "noodl-viewer-react": {
-      "TSFixme": 30,
-      "any": 71,
+      "TSFixme": 34,
+      "any": 105,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 4
@@ -108,6 +115,13 @@
     }
   },
   "byFile": {
+    "packages/nodegx-backend-contract/tests/contract.test.ts": {
+      "TSFixme": 0,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 1
+    },
     "packages/nodegx-backend/src/backup/schema-migrate.ts": {
       "TSFixme": 0,
       "any": 2,
@@ -173,7 +187,7 @@
     },
     "packages/nodegx-backend/src/workflow/WorkflowRunner.ts": {
       "TSFixme": 0,
-      "any": 1,
+      "any": 2,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -332,6 +346,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 2
     },
+    "packages/noodl-editor/src/editor/src/ViewerConnection.ts": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/src/editor/src/contexts/NodeGraphContext/NodeGraphContext.tsx": {
       "TSFixme": 1,
       "any": 0,
@@ -388,13 +409,6 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/models/AiAssistant/DatabaseSchemaExtractor.ts": {
-      "TSFixme": 2,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
     "packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/preview.ts": {
       "TSFixme": 1,
       "any": 0,
@@ -440,6 +454,13 @@
     "packages/noodl-editor/src/editor/src/models/NodeTypeAdapters/FilterRecordsAdapter.ts": {
       "TSFixme": 0,
       "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/src/editor/src/models/NodeTypeAdapters/NamedPortsAdapter.ts": {
+      "TSFixme": 4,
+      "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -515,14 +536,14 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/models/nodegraphmodel/NodeGraphModel.ts": {
-      "TSFixme": 3,
+      "TSFixme": 4,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/models/nodegraphmodel/NodeGraphNode.ts": {
-      "TSFixme": 27,
+      "TSFixme": 28,
       "any": 6,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -578,7 +599,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/models/projectmodel.modules.ts": {
-      "TSFixme": 2,
+      "TSFixme": 3,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -599,6 +620,20 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/models/warningsmodel.ts": {
+      "TSFixme": 2,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/src/editor/src/models/workflow/WorkflowDocument.ts": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/src/editor/src/models/workflow/WorkflowGraphModel.ts": {
       "TSFixme": 2,
       "any": 0,
       "@ts-ignore": 0,
@@ -753,7 +788,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/utils/exporter/json.ts": {
-      "TSFixme": 4,
+      "TSFixme": 5,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -780,9 +815,9 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/utils/keyboardhandler.ts": {
-      "TSFixme": 1,
-      "any": 0,
+    "packages/noodl-editor/src/editor/src/utils/ipc.ts": {
+      "TSFixme": 0,
+      "any": 1,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -822,21 +857,7 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/utils/triggerChain/TriggerChainRecorder.ts": {
-      "TSFixme": 0,
-      "any": 1,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
     "packages/noodl-editor/src/editor/src/validation/loadV2Project.ts": {
-      "TSFixme": 0,
-      "any": 1,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/Clippy/components/GrowingTextArea/GrowingTextArea.tsx": {
       "TSFixme": 0,
       "any": 1,
       "@ts-ignore": 0,
@@ -1005,7 +1026,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/nodegrapheditor.ts": {
-      "TSFixme": 8,
+      "TSFixme": 7,
       "any": 1,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1039,6 +1060,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-editor/src/editor/src/views/nodegrapheditor/NodeContextMenu.ts": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/src/editor/src/views/nodegrapheditor/NodeGraphEditorConnection.ts": {
       "TSFixme": 0,
       "any": 8,
@@ -1054,6 +1082,13 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/nodegrapheditor/NodeGraphEditorNodePainter.ts": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/src/editor/src/views/nodegrapheditor/OverlayViews.ts": {
       "TSFixme": 1,
       "any": 0,
       "@ts-ignore": 0,
@@ -1098,13 +1133,6 @@
     "packages/noodl-editor/src/editor/src/views/nodegrapheditor/canvas/InteractionController.ts": {
       "TSFixme": 18,
       "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/BackendServicesPanel/hooks/useLocalBackends.ts": {
-      "TSFixme": 0,
-      "any": 1,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -1154,20 +1182,6 @@
     "packages/noodl-editor/src/editor/src/views/panels/ComponentsPanelNew/hooks/useComponentActions.ts": {
       "TSFixme": 6,
       "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/ExecutionHistoryPanel/hooks/useExecutionDetail.ts": {
-      "TSFixme": 0,
-      "any": 1,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/ExecutionHistoryPanel/hooks/useExecutionHistory.ts": {
-      "TSFixme": 0,
-      "any": 1,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -1278,7 +1292,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/ByobFilterType.ts": {
-      "TSFixme": 3,
+      "TSFixme": 2,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1340,6 +1354,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/ListValueType.ts": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/LogicBuilderHiddenType.ts": {
       "TSFixme": 1,
       "any": 0,
@@ -1383,7 +1404,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/Ports.ts": {
-      "TSFixme": 10,
+      "TSFixme": 11,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1391,13 +1412,6 @@
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/PropListType.ts": {
       "TSFixme": 3,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/QueryFilterType.ts": {
-      "TSFixme": 1,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1425,7 +1439,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/StringList/StringListType.ts": {
-      "TSFixme": 2,
+      "TSFixme": 1,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1458,6 +1472,13 @@
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 4
+    },
+    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/WorkflowTypes.ts": {
+      "TSFixme": 9,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/Pages/Pages.tsx": {
       "TSFixme": 0,
@@ -1494,6 +1515,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/ListValueEditor.tsx": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/NodeLabel/NodeLabel.tsx": {
       "TSFixme": 1,
       "any": 0,
@@ -1515,91 +1543,28 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QueryEditPopup/QueryEditPopup.tsx": {
-      "TSFixme": 4,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QueryFilterEditor/QueryFilterEditor.tsx": {
-      "TSFixme": 3,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QueryGroup/QueryGroup.tsx": {
-      "TSFixme": 6,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QueryPointerRule/QueryPointerRule.tsx": {
-      "TSFixme": 4,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QueryPointerRuleEditPopup/QueryPointerRuleEditPopup.tsx": {
-      "TSFixme": 4,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QueryRelationRule/QueryRelationRule.tsx": {
-      "TSFixme": 4,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QueryRelationRuleEditPopup/QueryRelationRuleEditPopup.tsx": {
-      "TSFixme": 4,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QueryRule/QueryRule.tsx": {
-      "TSFixme": 4,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QueryRuleEditPopup/QueryRuleEditPopup.tsx": {
-      "TSFixme": 4,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QueryRulePopup/QueryRulePopup.tsx": {
+    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QuerySorting/QueryRulePopup/QueryRulePopup.tsx": {
       "TSFixme": 1,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QuerySortingEditor/QuerySortingEditor.tsx": {
+    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QuerySorting/QuerySortingEditor/QuerySortingEditor.tsx": {
       "TSFixme": 5,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QuerySortingRule/QuerySortingRule.tsx": {
+    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QuerySorting/QuerySortingRule/QuerySortingRule.tsx": {
       "TSFixme": 4,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QueryEditor/QuerySortingRuleEditPopup/QuerySortingRuleEditPopup.tsx": {
+    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/QuerySorting/QuerySortingRuleEditPopup/QuerySortingRuleEditPopup.tsx": {
       "TSFixme": 4,
       "any": 0,
       "@ts-ignore": 0,
@@ -1690,13 +1655,6 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/views/panels/schemamanager/SchemaPanel.tsx": {
-      "TSFixme": 0,
-      "any": 1,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
     "packages/noodl-editor/src/editor/src/views/popuplayer.ts": {
       "TSFixme": 6,
       "any": 0,
@@ -1741,7 +1699,14 @@
     },
     "packages/noodl-editor/src/shared/utils/projectmodules.ts": {
       "TSFixme": 0,
-      "any": 2,
+      "any": 3,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/lib-006/placeholderRule.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -1767,8 +1732,29 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-editor/tests/canvas/InteractionController.test.ts": {
+      "TSFixme": 6,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/canvas/NodeCommentStripe.test.ts": {
+      "TSFixme": 2,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/tests/canvas/NodeSelector.test.ts": {
       "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/canvas/WireLabels.test.ts": {
+      "TSFixme": 3,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1833,6 +1819,13 @@
     "packages/noodl-editor/tests/versioning/parity.test.ts": {
       "TSFixme": 0,
       "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/workflow/workflowproposal.test.ts": {
+      "TSFixme": 2,
+      "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -1928,6 +1921,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-runtime/src/api/backends/ParseAuthAdapter.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-runtime/src/api/queryutils.ts": {
       "TSFixme": 0,
       "any": 1,
@@ -1965,7 +1965,7 @@
     },
     "packages/noodl-runtime/src/nodecontext.ts": {
       "TSFixme": 0,
-      "any": 21,
+      "any": 22,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -1980,6 +1980,41 @@
     "packages/noodl-runtime/src/nodescope.ts": {
       "TSFixme": 0,
       "any": 17,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-runtime/test/backends/realtime-transports.test.ts": {
+      "TSFixme": 0,
+      "any": 4,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-runtime/test/corpus/nda-012-data-record-family.test.ts": {
+      "TSFixme": 0,
+      "any": 2,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-runtime/test/nodes/numeric-objectid-identity.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-runtime/test/nodes/query-records-empty-sort.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-runtime/test/nodes/record-picker-single-backend.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -2006,6 +2041,13 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-viewer-cloud/src/nodes/cloud/sendemail.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-cloud/tests/erg-001-cloud-node-outcomes.test.ts": {
       "TSFixme": 0,
       "any": 1,
       "@ts-ignore": 0,
@@ -2138,13 +2180,6 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-viewer-react/src/nodes/std-library/user/userservice.ts": {
-      "TSFixme": 0,
-      "any": 1,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
     "packages/noodl-viewer-react/src/noodl-js-api.ts": {
       "TSFixme": 0,
       "any": 1,
@@ -2161,7 +2196,7 @@
     },
     "packages/noodl-viewer-react/src/react-component-node.ts": {
       "TSFixme": 2,
-      "any": 28,
+      "any": 31,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -2169,6 +2204,55 @@
     "packages/noodl-viewer-react/src/styles.ts": {
       "TSFixme": 2,
       "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/corpus/erg-001-navigation-outcomes.test.ts": {
+      "TSFixme": 0,
+      "any": 3,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/corpus/nda-004-navigation-failure.test.ts": {
+      "TSFixme": 0,
+      "any": 9,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/corpus/nda-012-page-router-path-and-reset.test.ts": {
+      "TSFixme": 2,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/corpus/nda-012-page-router-reset.test.ts": {
+      "TSFixme": 2,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/inputinjector.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/nda-008-stack-replace-transition.test.ts": {
+      "TSFixme": 0,
+      "any": 7,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/nda-016-layout-sizemode.test.ts": {
+      "TSFixme": 0,
+      "any": 12,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
