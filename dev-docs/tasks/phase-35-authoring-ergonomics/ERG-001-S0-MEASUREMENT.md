@@ -1125,6 +1125,11 @@ noise, and it is stated as a delta rather than as "no new noise".
 
 62 corpus rows added across three files.
 
+⚠️ **The `noodl-runtime` "after" figure is this slice's own work, measured at `fcf52c14`.** A
+re-run now reports **100 suites, 1859 passing**, because the concurrent phase-36 session merged
+`OBS-001`'s trace substrate (`193419fc`) into this branch in between. Attribute before you
+compare — two sessions commit to `cline-dev` from this checkout.
+
 ### What remains of §0's 82 — measured
 
 **34 done. 48 remain**, and there is still no design in most of them.
