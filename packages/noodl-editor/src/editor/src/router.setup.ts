@@ -37,7 +37,6 @@ import { ProvenancePanel } from './views/panels/ProvenancePanel';
 import { SearchPanel } from './views/panels/search-panel/search-panel';
 import { SETTINGS_PANEL_ID, SettingsPanel } from './views/panels/SettingsPanel';
 // import { TopologyMapPanel } from './views/panels/TopologyMapPanel'; // Disabled - shelved feature
-import { TriggerChainDebuggerPanel } from './views/panels/TriggerChainDebuggerPanel';
 import { UndoQueuePanel } from './views/panels/UndoQueuePanel/UndoQueuePanel';
 import { VersionControlPanel_ID } from './views/panels/VersionControlPanel';
 import { VersionControlPanel } from './views/panels/VersionControlPanel/VersionControlPanel';
@@ -305,20 +304,6 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     panel: ProvenancePanel
   });
 
-  // ⚠️ Still registered, still `experimental`, and still reading the old snapshot recorder.
-  // OBS-002 replaces what it was for — but whether it is rebuilt on the trace substrate or
-  // retired outright is open question 3 in the phase-36 README and is not this task's call.
-  // Its forward-chain view is a genuine companion surface to the backward walk, and the
-  // Provenance panel's own root-event list is a first pass at the same idea.
-  SidebarModel.instance.register({
-    experimental: true,
-    id: 'trigger-chain-debugger',
-    name: 'Trigger Chain Debugger',
-    description: 'Records and visualizes chains of events triggered from user interactions in the preview.',
-    order: 10,
-    icon: IconName.Play,
-    panel: TriggerChainDebuggerPanel
-  });
 
   if (config.devMode) {
     SidebarModel.instance.register({

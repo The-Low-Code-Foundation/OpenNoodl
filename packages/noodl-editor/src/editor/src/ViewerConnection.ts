@@ -11,7 +11,6 @@ import { WarningsModel } from './models/warningsmodel';
 import DebugInspector from './utils/debuginspector';
 import * as Exporter from './utils/exporter';
 import { getIpc } from './utils/ipc';
-import { triggerChainRecorder } from './utils/triggerChain';
 
 const port = process.env.NOODLPORT || 8574;
 
@@ -190,14 +189,10 @@ export class ViewerConnection extends Model {
       const content = JSON.parse(request.content);
       DebugInspector.instance.setConnectionsToPulse(content.connectionsToPulse);
 
-      // Also capture for trigger chain recorder if recording.
-      // Pass the WHOLE snapshot: connectiondebugpulse sends the full set of
-      // currently-pulsing connections every frame, so the recorder needs the
-      // sequence to detect which connections just started (rising edges) vs
-      // which are the same pulse still lingering in the runtime's ~100ms window.
-      if (triggerChainRecorder.isRecording()) {
-        triggerChainRecorder.captureConnectionSnapshot(content.connectionsToPulse);
-      }
+      // The Trigger Chain Debugger used to tap this snapshot too. It is gone (phase 36): the
+      // snapshot is a map keyed by output id, so a wire firing twice inside the linger window
+      // overwrites itself and the second firing is unrecoverable. OBS-001's `TraceBuffer` records
+      // per-edge events instead, and `traceEvents` above is the channel that carries them.
     } else if (request.cmd === 'debuginspectorvalues' && request.type === 'viewer') {
       DebugInspector.instance.setInspectorValues(request.content.inspectors);
     } else if (request.cmd === 'connectionValue' && request.type === 'viewer') {

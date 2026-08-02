@@ -4,5 +4,4 @@ export * from './iconsets.test';
 export * from './keyboardhandler.spec';
 export * from './ParameterValueResolver.test';
 export * from './projectmodules.test';
-export * from './TriggerChainRecorder.spec';
 export * from './verify-json.spec';
