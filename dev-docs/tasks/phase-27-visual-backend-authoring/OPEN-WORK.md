@@ -31,17 +31,26 @@ a one-time secret**.
 
 ## Unowned findings, and what each needs
 
-### F57 — a property-panel checkbox does not respond to a dispatched click
+### F66 — the editor runs a prebuilt backend bundle that nothing rebuilds
 
-**Unchanged since 2026-07-28, and the one item on this page an agent cannot close.** The Request
-node's *Allow Unauthenticated* toggle reports a real 32×19 rect and a real `<input type=checkbox>`,
-and `Input.dispatchMouseEvent` at its centre changed nothing. `PropertyPanelCheckbox` is used by
-**every** node type.
+**New, 2026-08-02.** A dev-launched editor spawns `packages/nodegx-backend/dist/index.js`, and no
+launch step rebuilds it. During this pass the route WFA-007 had just added answered *"Not found"* on a
+freshly started backend, from a bundle a day old.
 
-**Size: S to diagnose, unknown to fix.** What it needs is one question answered by a human hand: **does
-a real click work?** If it does, this is a driving note every future live pass needs; if it does not,
-it is a defect on every property panel in the editor. The two answers want opposite fixes, which is
-why it stays filed as unknown. Asked of Richard on 2026-08-02.
+**Size: S.** What it needs is either a rebuild in the editor's backend-spawn path or a loud staleness
+check — comparing the bundle's mtime against the package's newest source would do. Until then, **every
+backend live pass must run `npm run build` in `packages/nodegx-backend` first**, because an unbuilt
+change is indistinguishable from an unwritten one.
+
+### F68 — a proposal that omits a server-defaulted field reads as changing it
+
+**New, 2026-08-02.** A candidate that left out `concurrency` produced *"Changed
+metadata.concurrency: 1 → (unset)"* in the review, beside the real changes.
+
+**Size: S.** What it needs is a decision about where the default lives: either the change set ignores a
+field the candidate never mentions, or `normalize` fills it before diffing. Cosmetic today, but the
+review surface's whole value is that a reviewer reads every line — a class of change they learn to
+skim is a real cost.
 
 ### F62 — `noodl.cloud.aggregate` cannot be configured or fired at all
 
@@ -129,6 +138,15 @@ because there was nowhere else to put them.
   gone, so it cannot be settled further.
 - **F63 / F64** — new and already fixed; recorded in PROGRESS.md because both are lessons about gates
   rather than about this phase.
+- **F55** — closed 2026-08-02. The first clean tree since 07-28 made the re-pin honest; raised
+  deliberately with the reasons per cluster, TSFixme unchanged at 539, and the generated
+  `TYPE-ESCAPE-HATCHES.md` regenerated so the gate and the targeting document agree.
+- **F57** — closed 2026-08-02, and it never needed the human click. `elementFromPoint` at the
+  toggle's centre returned the faux div, not the input: a **PAR-002 regression** that left every
+  boolean in the property panel and every settings toggle mouse-dead for a week. The lesson is worth
+  more than the fix — "a synthetic click did nothing" was treated for five days as possibly an
+  artefact of driving, when one hit-test would have settled it.
+- **F67** — accepting a proposal left the panel advertising it; fixed and verified live.
 
 ## What is deliberately not here
 
