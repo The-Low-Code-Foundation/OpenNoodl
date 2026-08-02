@@ -379,6 +379,7 @@ export function useComponentActions(options: UseComponentActionsOptions = {}) {
       label: 'New folder name',
       okLabel: 'Add',
       cancelLabel: 'Cancel',
+      placeholder: 'e.g. Screens',
       onOk: (folderName: string) => {
         // Validate name
         if (!folderName || folderName.trim() === '') {

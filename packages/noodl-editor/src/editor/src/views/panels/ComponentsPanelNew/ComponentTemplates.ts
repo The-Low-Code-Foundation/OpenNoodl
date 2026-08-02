@@ -42,6 +42,8 @@ class ComponentTemplate {
       label: 'New component name',
       okLabel: 'Add',
       cancelLabel: 'Cancel',
+      // F26: this is the prompt a user meets when creating a cloud function.
+      placeholder: 'e.g. ProductCard',
       onOk(localName) {
         options.onCreate(localName);
       },

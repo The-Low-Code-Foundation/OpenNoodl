@@ -581,6 +581,9 @@ export class NodeGraphEditorNode {
       value: currentComment,
       // A comment is free text, not the comma separated list the other call sites edit
       splitCommaSeparated: false,
+      // F26: THE call site the eight-row code editor was written for. Every
+      // other one is a name prompt and now gets the single-line default.
+      multiline: true,
       onOk: (newComment: string) => {
         // Set comment with undo support
         model.setComment(newComment || undefined, {

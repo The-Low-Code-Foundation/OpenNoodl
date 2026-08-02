@@ -2,6 +2,7 @@ import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { AggregateRecordsAdapter } from '@noodl-models/NodeTypeAdapters/AggregateRecordsAdapter';
 import { CloudFunctionAdapter } from '@noodl-models/NodeTypeAdapters/CloudFunctionAdapter';
 import { FilterRecordsAdapter } from '@noodl-models/NodeTypeAdapters/FilterRecordsAdapter';
+import { NamedPortsAdapter } from '@noodl-models/NodeTypeAdapters/NamedPortsAdapter';
 import { PageInputsAdapter } from '@noodl-models/NodeTypeAdapters/PageInputsAdapter';
 import { QueryRecordsAdapter } from '@noodl-models/NodeTypeAdapters/QueryRecordsAdapter';
 import { RouterAdapter } from '@noodl-models/NodeTypeAdapters/RouterAdapter';
@@ -17,7 +18,11 @@ const _adapters = {
   DbCollection2: () => QueryRecordsAdapter,
   FilterDBModels: () => FilterRecordsAdapter,
   CloudFunction2: () => CloudFunctionAdapter,
-  AggregateRecords: () => AggregateRecordsAdapter
+  AggregateRecords: () => AggregateRecordsAdapter,
+  // WFA-009. The key is a label; unlike its neighbours this adapter is bound to
+  // no node type — it acts on whatever the node library says has a
+  // `namedports/list` rule.
+  NamedPorts: () => NamedPortsAdapter
 };
 
 const _listeners = {

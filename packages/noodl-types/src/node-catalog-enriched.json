@@ -54747,9 +54747,23 @@
       ],
       "dynamicPorts": {
         "mechanisms": [
+          "declared-port-groups",
           "runtime-discovered"
         ],
-        "description": "Output ports mirror the parameters declared for the cloud function (one output per request parameter)."
+        "description": "Output ports mirror the parameters declared for the cloud function (one output per request parameter).",
+        "declaredPortGroups": [
+          {
+            "name": "namedports/list",
+            "parameter": "params",
+            "port": {
+              "displayName": "{{*}}",
+              "group": "Parameters",
+              "name": "pm-{{*}}",
+              "plug": "output",
+              "type": "*"
+            }
+          }
+        ]
       },
       "parameterEncoding": {
         "known": true,
@@ -54938,6 +54952,18 @@
               "errorMessage"
             ],
             "name": "conditionalports/extended"
+          },
+          {
+            "condition": "status = success OR status NOT SET",
+            "name": "namedports/list",
+            "parameter": "params",
+            "port": {
+              "displayName": "{{*}}",
+              "group": "Parameters",
+              "name": "pm-{{*}}",
+              "plug": "input",
+              "type": "*"
+            }
           }
         ]
       },

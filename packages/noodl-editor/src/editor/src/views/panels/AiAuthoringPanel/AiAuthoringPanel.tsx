@@ -18,6 +18,7 @@ import {
   AuthoringSession,
   AuthoringSetupError,
   buildChangeSet,
+  materializeSelection,
   pathToLegacyName,
   StagingError,
   updateAuthoredComponent,
@@ -382,11 +383,18 @@ export function AiAuthoringPanel() {
     const files = session?.stagedFiles;
     if (!session || !project || !files) return;
 
+    // WFA-007 moved materialisation out of the review document: it is the
+    // COMPONENT materializer, and the document had to stop knowing that a
+    // component is three JSON files before it could review anything else.
+    // Behaviour here is unchanged.
+    const changeSet = buildChangeSet(project, files);
     AppRegistry.instance.openDocument(ChangeReviewDocumentProvider.ID, {
-      changeSet: buildChangeSet(project, files),
-      files,
+      changeSet,
       title: `Review ${session.legacyName}`,
-      onAcceptFiles: acceptFiles,
+      onAccept: (rejected: ReadonlySet<string>) => {
+        const selection = materializeSelection(changeSet, files, rejected);
+        return acceptFiles(selection.files, { rejectedCount: selection.rejected.size });
+      },
       onReject: reject
     });
   }, [acceptFiles, reject]);

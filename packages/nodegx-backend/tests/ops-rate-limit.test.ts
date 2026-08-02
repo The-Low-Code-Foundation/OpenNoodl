@@ -208,8 +208,15 @@ describe('BAK-009 rate limiting over real sockets', () => {
     // secret. Reviewed and left in the `admin` budget — it is an operator action
     // taken once, mints server-side, and needs no budget of its own; the thing
     // that must not be cheap to guess is the secret, not the route.
+    // WFA-007 moved it by 1: `POST /admin/workflow-defs/validate`, the dry run.
+    // Reviewed and left in the `admin` budget, and this one is worth a sentence
+    // because it is the first route the EDITOR calls in a loop: the review
+    // surface validates a candidate when it opens a proposal and again on every
+    // accept. That is two calls per human decision, not per keystroke, so it
+    // sits far inside the admin budget — and if it ever did not, the honest fix
+    // would be to stop revalidating, not to widen the budget.
     expect(counts).toEqual({
-      admin: 72,
+      admin: 73,
       auth: 15,
       data: 17,
       files: 4,

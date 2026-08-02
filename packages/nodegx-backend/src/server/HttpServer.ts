@@ -853,6 +853,16 @@ export class HttpServer {
         access: { kind: 'admin' },
         handler: (ctx) => adminWorkflows.create(ctx)
       },
+      // WFA-007: the dry run. Registered BEFORE any `admin/workflow-defs/:id`
+      // POST would be, so a workflow that happened to be called "validate"
+      // could never shadow it. There is no such route today; the ordering is
+      // the guarantee that adding one later cannot break this quietly.
+      {
+        method: 'POST',
+        pattern: 'admin/workflow-defs/validate',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminWorkflows.validate(ctx)
+      },
       {
         method: 'GET',
         pattern: 'admin/workflow-defs/:id',

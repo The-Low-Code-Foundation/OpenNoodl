@@ -19,6 +19,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { BackendClient, listBackends, requireBackend } from '../backend/client';
+import { writeProposal } from '../backend/workflowProposals';
+import { ToolError } from '../errors';
 import { guarded, jsonResult } from './util';
 
 const ruleValue = z
@@ -922,11 +924,28 @@ export function registerBackendWriteTools(server: McpServer): void {
   const workflowStep = z.object({
     id: z.string().describe('Unique within the workflow; also the execution-history nodeId'),
     name: z.string().optional(),
+    /**
+     * WFA-007 §4: this was a `z.enum([...nine kinds])` — a BUNDLED COPY of the
+     * step vocabulary, inside the one package whose whole doctrine is that the
+     * vocabulary is served because it differs per backend. It could accept a
+     * kind an older backend cannot run (rejected later, by a 400 mid-save) and
+     * could reject a kind a newer backend serves (rejected here, by a schema
+     * nobody can update from the outside). Both are the drift the served
+     * registry exists to prevent.
+     *
+     * So the string is open and the SERVED catalog is the gate:
+     * `refuseUnservedKinds` reads `GET /admin/workflow-step-kinds` from the
+     * target backend and refuses anything it does not serve, naming the tool
+     * that would have answered the question.
+     */
     kind: z
-      .enum(['call-function', 'branch', 'switch', 'for-each', 'merge', 'retry', 'stop', 'wait', 'wait-until'])
+      .string()
       .describe(
-        'What the step runs. call-function invokes a cloud function (WF-001); the rest are WF-002 Series-1 ' +
-          'kinds. Call list_backend_step_kinds for each kind\'s params, routes and output shape.'
+        'What the step runs, e.g. call-function / branch / switch / for-each / merge / retry / stop / wait / ' +
+          'wait-until. THE AUTHORITY IS THE TARGET BACKEND: call list_backend_step_kinds against the backend ' +
+          "you are authoring for, and use what it returns — for each kind's params, routes and output shape, " +
+          'and because the vocabulary differs between backend versions. A kind this backend does not serve is ' +
+          'refused before anything is written.'
       ),
     ref: z
       .string()
@@ -975,6 +994,174 @@ export function registerBackendWriteTools(server: McpServer): void {
     steps: z.array(workflowStep).describe('The step DAG (must be acyclic; every edge target must exist)')
   };
 
+  /**
+   * WFA-007 §4 — the served registry is the contract, so make the tool enforce it.
+   *
+   * The step vocabulary is served by the backend precisely because it can differ
+   * between backends. An agent that authors a kind this backend cannot execute
+   * is producing a proposal that could never be accepted, and finding that out
+   * from a 400 in the middle of a save is later and less useful than finding it
+   * out here, one lookup earlier, with the tool that answers the question named.
+   */
+  async function refuseUnservedKinds(client: BackendClient, steps: { id?: string; kind?: string }[]): Promise<void> {
+    const { json } = await client.request('GET', '/admin/workflow-step-kinds');
+    const catalog = json as { kinds?: { kind?: string }[] } | null;
+    // A backend that answers the catalog with something that is not a catalog
+    // is not evidence that a kind is wrong — say nothing rather than refuse on
+    // a guess. The write path's own validation still applies.
+    const served = (catalog?.kinds || []).map((k) => k.kind).filter((k): k is string => typeof k === 'string');
+    if (served.length === 0) return;
+
+    const unknown = (steps || [])
+      .filter((s) => s && typeof s.kind === 'string' && !served.includes(s.kind))
+      .map((s) => `step "${s.id}" uses kind "${s.kind}"`);
+    if (unknown.length === 0) return;
+
+    throw new ToolError(
+      'invalid-argument',
+      `This backend does not serve ${unknown.length === 1 ? 'that step kind' : 'those step kinds'}: ` +
+        `${unknown.join('; ')}. It serves: ${served.join(', ')}. ` +
+        'Call list_backend_step_kinds against THIS backend and author from what it returns — the step ' +
+        'vocabulary is served per backend and versions differ, which is why it is served rather than bundled.',
+      { unknown, served }
+    );
+  }
+
+  /** The definition currently on the backend, or null when there is none. */
+  async function currentWorkflow(
+    client: BackendClient,
+    id: string
+  ): Promise<{ id: string; steps?: { id?: string; ui?: unknown }[] } | null> {
+    const { status, json } = await client.request(
+      'GET',
+      `/admin/workflow-defs/${encodeURIComponent(id)}`,
+      undefined,
+      [404]
+    );
+    if (status === 404) return null;
+    return (json as { workflow?: { id: string; steps?: { id?: string; ui?: unknown }[] } })?.workflow || null;
+  }
+
+  /**
+   * WFA-007 §5 — id-keeping, in the one field an agent cannot know.
+   *
+   * A step's `ui` is its canvas position: editor-owned, engine-ignored, and
+   * absent from every authoring example. An update that re-sent the steps
+   * without it would silently re-lay-out a workflow somebody had arranged by
+   * hand — the diff would then read as "every step moved", which is exactly the
+   * unreadable-diff failure §5 exists to prevent.
+   *
+   * So a proposed step whose id matches an existing one, and which says nothing
+   * about position, keeps the position it had. AIX-002's field-carryover
+   * pattern, applied to the field it matters for.
+   */
+  function carryOverStepUi(
+    steps: { id?: string; ui?: unknown }[],
+    existing: { steps?: { id?: string; ui?: unknown }[] } | null
+  ): { id?: string; ui?: unknown }[] {
+    if (!existing?.steps?.length) return steps;
+    const byId = new Map(existing.steps.filter((s) => s?.id).map((s) => [s.id as string, s]));
+    return (steps || []).map((step) => {
+      if (!step || step.ui !== undefined || !step.id) return step;
+      const previous = byId.get(step.id);
+      return previous?.ui !== undefined ? { ...step, ui: previous.ui } : step;
+    });
+  }
+
+  /**
+   * Either write the definition, or stage it for review — the §1 fork.
+   *
+   * `propose: true` writes NOTHING to the backend. It asks the backend whether
+   * the definition would be accepted (the WFA-007 dry run), refuses to stage one
+   * that would not, and otherwise drops a proposal file the editor's Workflows
+   * panel picks up and renders as a diff on the canvas.
+   *
+   * `propose: false` is the historical behaviour and stays the default: this
+   * task makes a reviewable path exist, it does not close the direct one, and
+   * a tool that silently stopped writing would break every agent flow built on
+   * it. What changed is that there is now somewhere better to send it.
+   */
+  async function writeOrPropose(args: {
+    client: BackendClient;
+    workflowId: string | undefined;
+    body: Record<string, unknown>;
+    propose?: boolean;
+    note?: string;
+    /** POST for a create, PUT for an update. */
+    method: 'POST' | 'PUT';
+    routePath: string;
+  }) {
+    const { client, body, propose, note, method, routePath } = args;
+    if (!propose) {
+      const { json } = await client.request(method, routePath, body);
+      return jsonResult(json);
+    }
+
+    const workflowId = args.workflowId || (body.id as string | undefined);
+    if (!workflowId) {
+      throw new ToolError(
+        'invalid-argument',
+        'A proposal needs an id, because the reviewer is shown a diff against whatever the backend already ' +
+          'has under that id. Pass `id` (any value matching [A-Za-z0-9][A-Za-z0-9_-]{0,63}) when proposing.'
+      );
+    }
+
+    const candidate = { ...body, id: workflowId };
+    const { json } = await client.request('POST', '/admin/workflow-defs/validate', candidate);
+    const verdict = json as { valid?: boolean; errors?: string[] };
+    if (!verdict?.valid) {
+      throw new ToolError(
+        'validation-failed',
+        `This backend would refuse to save that definition, so it was NOT staged for review — a proposal a ` +
+          `user cannot accept is worse than no proposal:\n${(verdict?.errors || ['(no reason given)'])
+            .map((e) => `  - ${e}`)
+            .join('\n')}\nFix it and propose again.`,
+        { errors: verdict?.errors || [] }
+      );
+    }
+
+    const existing = await currentWorkflow(client, workflowId);
+    const { proposalId, file } = writeProposal({
+      backendId: client.descriptor.id,
+      mode: existing ? 'update' : 'create',
+      workflowId,
+      origin: 'noodl-mcp',
+      note,
+      workflow: candidate
+    });
+
+    return jsonResult({
+      proposed: true,
+      proposalId,
+      backendId: client.descriptor.id,
+      backendName: client.descriptor.name,
+      workflowId,
+      mode: existing ? 'update' : 'create',
+      file,
+      validatedAgainst: client.descriptor.name,
+      note:
+        'Nothing was written to the backend. This is waiting in the editor: Workflows panel → Proposals → ' +
+        'Review, where it renders as a diff on the canvas. It is written only if the user accepts it.'
+    });
+  }
+
+  const proposeField = {
+    propose: z
+      .boolean()
+      .optional()
+      .describe(
+        'Stage this for HUMAN REVIEW instead of writing it. Prefer true whenever a person has the NodeGX ' +
+          'editor open: the workflow arrives on their canvas as a diff (added / removed / changed steps and ' +
+          'edges) and nothing is written until they accept it. The candidate is validated against this backend ' +
+          'first and refused if it would not save. Default false, which writes straight to the backend with ' +
+          'nobody looking.'
+      ),
+    note: z
+      .string()
+      .optional()
+      .describe('One or two sentences shown to the reviewer: what this changes and why. Proposals only.')
+  };
+
   server.registerTool(
     'create_backend_workflow',
     {
@@ -984,13 +1171,29 @@ export function registerBackendWriteTools(server: McpServer): void {
         'execution over a DAG of steps (each step invokes a cloud function in v1). The definition is validated ' +
         '(acyclic, edges resolve, every step reference is to a step that exists upstream) and REJECTED with the ' +
         'reason if invalid — never silently accepted. It is ' +
-        'persisted and deploys with the backend. Point a trigger at it with target {kind:"workflow", name:<id>}.',
-      inputSchema: { backendId: z.string().optional(), id: z.string().optional().describe('Omit to mint one'), ...workflowFields }
+        'persisted and deploys with the backend. Point a trigger at it with target {kind:"workflow", name:<id>}. ' +
+        'Every `kind` must be one THIS backend serves — call list_backend_step_kinds first; the vocabulary is ' +
+        'per backend and this tool refuses a kind it does not serve. Pass `propose: true` to put it in front of ' +
+        'a human on the editor canvas instead of writing it.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        id: z.string().optional().describe('Omit to mint one; REQUIRED when proposing'),
+        ...workflowFields,
+        ...proposeField
+      }
     },
-    guarded(async ({ backendId, ...body }) => {
+    guarded(async ({ backendId, propose, note, ...body }) => {
       const client = await requireBackend(backendId);
-      const { json } = await client.request('POST', '/admin/workflow-defs', body);
-      return jsonResult(json);
+      await refuseUnservedKinds(client, body.steps || []);
+      return writeOrPropose({
+        client,
+        workflowId: body.id,
+        body,
+        propose,
+        note,
+        method: 'POST',
+        routePath: '/admin/workflow-defs'
+      });
     })
   );
 
@@ -1058,13 +1261,35 @@ export function registerBackendWriteTools(server: McpServer): void {
     'update_backend_workflow',
     {
       title: 'Update a backend workflow',
-      description: 'Replace a WF-001 workflow definition by id. Same fields as create; re-validated strictly.',
-      inputSchema: { backendId: z.string().optional(), id: z.string().describe('The workflow id'), ...workflowFields }
+      description:
+        'Replace a WF-001 workflow definition by id. Same fields as create; re-validated strictly. ' +
+        'READ get_backend_workflow FIRST AND REUSE ITS STEP IDS: a step id is the execution-history nodeId and ' +
+        'the canvas node id, so a re-numbered update reviews as a wholesale replacement rather than as the ' +
+        'handful of changes you actually made, and it orphans every past run of that workflow. Step canvas ' +
+        'positions (`ui`) you omit are carried over from the existing step with the same id. Pass ' +
+        '`propose: true` to put the change in front of a human as a diff on the editor canvas instead of ' +
+        'writing it.',
+      inputSchema: {
+        backendId: z.string().optional(),
+        id: z.string().describe('The workflow id'),
+        ...workflowFields,
+        ...proposeField
+      }
     },
-    guarded(async ({ backendId, id, ...body }) => {
+    guarded(async ({ backendId, id, propose, note, ...body }) => {
       const client = await requireBackend(backendId);
-      const { json } = await client.request('PUT', `/admin/workflow-defs/${encodeURIComponent(id)}`, body);
-      return jsonResult(json);
+      await refuseUnservedKinds(client, body.steps || []);
+      const existing = await currentWorkflow(client, id);
+      const withPositions = { ...body, steps: carryOverStepUi(body.steps || [], existing) };
+      return writeOrPropose({
+        client,
+        workflowId: id,
+        body: withPositions,
+        propose,
+        note,
+        method: 'PUT',
+        routePath: `/admin/workflow-defs/${encodeURIComponent(id)}`
+      });
     })
   );
 

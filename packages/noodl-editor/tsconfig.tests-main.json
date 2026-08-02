@@ -12,6 +12,10 @@
   },
   // `utils/provenance` is renderer-side but import-free by design (OBS-002); it is
   // reached from tests-unit/ and pulls none of the renderer in with it.
+  // WFA-009 adds the second of these: `dynamicPortRules` is renderer-side and
+  // import-free by the same design, so `tests-unit/` can grade the port rules
+  // (and the committed `cloud-node-library.json` they are declared in) without
+  // starting Electron. Its one consumer, `nodelibrary.ts`, is not reached.
   //
   // `utils/import-engine/legacy` is the same shape (LIB-006): the assessment core,
   // the report builder and the verdict are pure, and the two files that are NOT —
@@ -24,6 +28,8 @@
     "tests-main",
     "tests-unit",
     "src/editor/src/utils/provenance",
+    "src/editor/src/models/nodelibrary/dynamicPortRules.ts",
+    "src/editor/src/models/nodelibrary/cloud-node-library.json",
     "src/editor/src/utils/import-engine/legacy",
     "src/editor/src/validation"
   ]
