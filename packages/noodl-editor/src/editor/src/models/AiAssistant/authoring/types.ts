@@ -94,6 +94,12 @@ export interface CandidateValidation {
   diagnostics: Diagnostic[];
   /** The error-severity subset — what rejects a submission. */
   errors: Diagnostic[];
+  /**
+   * Update mode only: error-severity diagnostics the BASE component already
+   * had. Reported, never charged — they are not the agent's to fix, and asking
+   * it to fix them produces a "repair" of the user's own work.
+   */
+  preExisting?: Diagnostic[];
   summary: { errors: number; warnings: number; infos: number };
 }
 

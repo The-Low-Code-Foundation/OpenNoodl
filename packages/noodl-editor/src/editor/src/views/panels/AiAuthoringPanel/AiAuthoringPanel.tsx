@@ -315,7 +315,12 @@ export function AiAuthoringPanel() {
     const project = ProjectModel.instance;
     if (!session || !project) return 'The authoring session is no longer available.';
 
-    const validation = validateCandidateComponent(fromProjectModel(project), session.legacyName, files);
+    // Same baseline the loop validated against, so an error the component
+    // already had cannot block the accept of a revision that correctly left it
+    // alone (see `ValidateCandidateOptions.baseline`).
+    const validation = validateCandidateComponent(fromProjectModel(project), session.legacyName, files, {
+      ...(session.baseComponentFiles ? { baseline: session.baseComponentFiles } : {})
+    });
     if (!validation.ok) {
       const lines = validation.errors.slice(0, 3).map(formatDiagnosticLine);
       return `The selected subset is not a valid component: ${lines.join(' · ')}`;

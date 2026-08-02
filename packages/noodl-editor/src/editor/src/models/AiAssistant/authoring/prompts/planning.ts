@@ -81,12 +81,21 @@ HOW TO SCOPE
 Call ${SUBMIT_PLAN} with the operations. If the request is impossible or already satisfied, say so in
 prose and do not submit a plan.`;
 
-/** The opening user turn: overview first, task last (same recency logic as authoring). */
-export function planningUserMessage(request: string, projectOverview: string): string {
+/**
+ * The opening user turn: overview first, task last (same recency logic as
+ * authoring).
+ *
+ * `docsOverview` is the block the system prompt's doc-operation rule refers to
+ * ("only when the project's docs are listed in the overview material"). Absent
+ * when the project has no docs, which keeps the rule's condition honest in both
+ * directions.
+ */
+export function planningUserMessage(request: string, projectOverview: string, docsOverview?: string): string {
   return [
     '--- PROJECT OVERVIEW ---',
     projectOverview,
     '--- END PROJECT OVERVIEW ---',
+    ...(docsOverview ? ['', '--- PROJECT DOCUMENTS ---', docsOverview, '--- END PROJECT DOCUMENTS ---'] : []),
     '',
     '--- THE REQUEST ---',
     request,

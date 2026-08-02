@@ -385,6 +385,16 @@ export class AuthoringSession {
     return this.stagedSample;
   }
 
+  /**
+   * Update mode: the component as it stood when this session opened. Exposed so
+   * the accept path can re-validate against the SAME baseline the loop used —
+   * a candidate accepted while carrying a pre-existing error would otherwise be
+   * refused at apply time by a gate that forgot where the error came from.
+   */
+  get baseComponentFiles(): ComponentFiles | undefined {
+    return this.baseFiles;
+  }
+
   get state(): AuthoringSessionState {
     const phase: AuthoringPhase = this.inFlight
       ? 'working'
@@ -803,7 +813,12 @@ export class AuthoringSession {
       };
     }
 
-    const validation = validateCandidateComponent(this.graph, this.legacyName, candidate.files);
+    const validation = validateCandidateComponent(this.graph, this.legacyName, candidate.files, {
+      // Update mode: whatever the component already fails on is not this
+      // submission's fault, and rejecting over it makes the agent "fix" the
+      // user's own graph — see `ValidateCandidateOptions.baseline`.
+      ...(this.baseFiles ? { baseline: this.baseFiles } : {})
+    });
     if (validation.ok) {
       const warnings = validation.diagnostics.filter((d) => d.severity === 'warning');
       // AIX-006: the candidate passed the gate — now lint its styling. Scoped to
@@ -820,7 +835,14 @@ export class AuthoringSession {
         styleFindings,
         text: [
           `Component accepted — it validates cleanly (${validation.summary.warnings} warning(s)).`,
-          ...warnings.map(formatDiagnosticLine)
+          ...warnings.map(formatDiagnosticLine),
+          ...(validation.preExisting?.length
+            ? [
+                `${validation.preExisting.length} problem(s) carried over from the component as it already ` +
+                  'was — not yours to fix, and correctly left alone:',
+                ...validation.preExisting.map(formatDiagnosticLine)
+              ]
+            : [])
         ].join('\n')
       };
     }

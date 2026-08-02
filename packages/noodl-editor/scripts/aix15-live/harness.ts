@@ -10,7 +10,7 @@
  * fixtures — which proves the plumbing and says nothing about what a model
  * actually does.
  *
- * This is one harness with six modes rather than six harnesses because they
+ * This is one harness with several modes rather than one harness each, because they
  * differ only in which session they drive; the provider construction, the `.env`
  * read, the JSONL record and the artifact dump are identical, and duplicating
  * them five times would have produced five places for the cost accounting to
@@ -26,7 +26,9 @@
  *   node packages/noodl-editor/scripts/aix15-live/dist/aix15-harness.cjs --mode=plan
  *
  * Flags:
- *   --mode=update|agentic|plan|scope|review|explain   (required)
+ *   --mode=update|agentic|plan|scope|review|explain|plan-docs   (required)
+ *   --model=<id>            NOT optional in practice: the registry default reads
+ *                           EditorSettings, which this bundle stubs
  *   --provider=anthropic|openai|openai-compatible|ollama  (default anthropic)
  *   --model=<id>            omit to use the provider's registry default
  *   --only=slug1,slug2      run a subset of the mode's corpus
@@ -56,10 +58,13 @@ import { createProvider } from '../../src/editor/src/models/AiAssistant/client/A
 import type { AiEffort, AiProvider, AiProviderId } from '../../src/editor/src/models/AiAssistant/client/types';
 import { AI_EFFORT_LEVELS, AI_PROVIDER_IDS } from '../../src/editor/src/models/AiAssistant/client/types';
 
+import { docLint } from '../../src/editor/src/models/AiAssistant/authoring/docLint';
+
 import {
   AGENTIC_PROMPTS,
   AGENTIC_TYPES,
   EXPLAIN_PROMPTS,
+  PLAN_DOC_PROMPTS,
   PLAN_PROMPTS,
   SCOPE_PROMPTS,
   UPDATE_PROMPTS
@@ -81,7 +86,7 @@ const CORPUS_PROJECT = path.join(REPO_ROOT, 'packages/noodl-editor/tests/testfs/
 const AGENT_CHAT_PROJECT = path.join(REPO_ROOT, 'project-examples/agent-chat/project.json');
 const DEFAULT_OUT_DIR = path.join(REPO_ROOT, 'dev-docs/tasks/phase-15-ai-collaboration/measurements/live');
 
-const MODES = ['update', 'agentic', 'plan', 'scope', 'review', 'explain'] as const;
+const MODES = ['update', 'agentic', 'plan', 'scope', 'review', 'explain', 'plan-docs'] as const;
 type Mode = (typeof MODES)[number];
 
 function parseArgs(argv: string[]): Record<string, string> {
@@ -786,6 +791,9 @@ async function main(): Promise<void> {
     case 'explain':
       await runExplain(run);
       break;
+    case 'plan-docs':
+      await runPlanDocs(run);
+      break;
   }
 
   const jsonl = path.join(outDir, `${mode}.jsonl`);
@@ -803,3 +811,178 @@ main().catch((error) => {
   console.error(error instanceof Error ? error.stack : error);
   process.exit(1);
 });
+
+// ── Mode: plan-docs (AIX-011 criterion 7, live) ──────────────────────────────
+
+/**
+ * The plan path again, but against a project that HAS documents.
+ *
+ * A separate mode rather than a flag on `plan`, because it measures a different
+ * thing and must not move the published `plan` numbers: `plan` measures plan
+ * quality and per-component fan-out cost against a project with no docs, and
+ * this measures what the doc-authoring turn writes.
+ *
+ * The residual it closes: neither live plan run contained a `doc` operation, so
+ * `DocSession`'s output had never been read. The reason turned out to be
+ * mechanical — the planning prompt permits a doc operation only "when the
+ * project's docs are listed in the overview material", and nothing listed them
+ * (`PlanningSession` built its context with no docs at all). With that fixed,
+ * the question this mode answers is the editorial one: does the authored
+ * document record intent, decisions and rejected alternatives, or does it
+ * restate the graph — and does `docLint` fire on real output.
+ */
+async function runPlanDocs(run: Run): Promise<void> {
+  const { graph, project } = loadGraph(CORPUS_PROJECT);
+  const components = (project.components as { name: string }[]) ?? [];
+  const byName = new Map(components.map((c) => [c.name, c]));
+
+  for (const prompt of PLAN_DOC_PROMPTS) {
+    if (!wants(run, prompt.slug)) continue;
+    console.log(`\n▶ plan-docs ${prompt.slug}`);
+    const startedAt = Date.now();
+
+    // The project's docs, by the path a plan operation names them with.
+    const docBaselines = new Map<string, string>();
+    if (prompt.docs.architecture) docBaselines.set('docs/ARCHITECTURE.md', prompt.docs.architecture);
+    if (prompt.docs.brief) docBaselines.set('docs/BRIEF.md', prompt.docs.brief);
+    if (prompt.docs.conventions) docBaselines.set('docs/CONVENTIONS.md', prompt.docs.conventions);
+
+    const planning = new PlanningSession(graph, prompt.request, {
+      chat: run.chat,
+      effort: run.effort,
+      projectDocs: prompt.docs
+    });
+    const abortController = new AbortController();
+    const timer = setTimeout(() => abortController.abort(), run.timeoutMs);
+    const planned = await planning.run({ abortController });
+    clearTimeout(timer);
+
+    if (planned.status !== 'planned' || !planned.plan) {
+      console.log(`  ${planned.status} — ${planned.note ?? '(no note)'}`);
+      record({
+        mode: 'plan-docs',
+        slug: prompt.slug,
+        provider: run.providerId,
+        model: [...run.served].pop() ?? '(unknown)',
+        status: planned.status,
+        durationMs: Date.now() - startedAt,
+        costUsd: planned.costUsd,
+        detail: { request: prompt.request, note: planned.note, turns: planned.turns },
+        artifacts: []
+      });
+      continue;
+    }
+
+    const plan = planned.plan;
+    const docOps = plan.operations.filter((op) => op.kind === 'doc');
+    console.log(
+      `  planned ${plan.operations.length} operation(s), ${docOps.length} doc — ${usd(planned.costUsd)}`
+    );
+    for (const op of plan.operations) console.log(`    ${op.kind.padEnd(6)} ${op.target}`);
+
+    const planRun = new PlanRun(graph, plan, {
+      baseFilesFor: (legacyName) => {
+        const legacy = byName.get(legacyName) ?? byName.get(`/${legacyName}`);
+        return legacy ? (buildComponentV2Files(legacy as never, '1970-01-01T00:00:00.000Z') as ComponentFiles) : undefined;
+      },
+      docBaselineFor: (relPath) => docBaselines.get(relPath),
+      // The authoring sessions see the same docs the planner did, so
+      // `get_project_doc` answers with the real file rather than with nothing.
+      session: { chat: run.chat, effort: run.effort, projectDocs: prompt.docs },
+      doc: { chat: run.chat, effort: run.effort }
+    });
+
+    let lastOp: string | undefined;
+    planRun.onChange((state) => {
+      if (state.activeOperationId && state.activeOperationId !== lastOp) {
+        lastOp = state.activeOperationId;
+        const op = state.operations.find((o) => o.operation.id === lastOp);
+        if (op) console.log(`    · ${op.operation.kind} ${op.operation.target}`);
+      }
+    });
+
+    const finalState = await planRun.run();
+
+    const artifacts: string[] = [
+      writeArtifact(run, `plan-docs/${prompt.slug}.plan.json`, JSON.stringify(plan, null, 2))
+    ];
+    const docResults: Record<string, unknown>[] = [];
+    for (const op of finalState.operations) {
+      const files = planRun.filesFor(op.operation.id);
+      if (files) {
+        artifacts.push(
+          writeArtifact(
+            run,
+            `plan-docs/${prompt.slug}/${op.operation.id}-${slugify(op.operation.target)}.json`,
+            JSON.stringify(files, null, 2)
+          )
+        );
+      }
+      const doc = planRun.docFor(op.operation.id);
+      if (!doc) continue;
+      // Both halves of the document go to disk: a doc turn is judged as a diff
+      // against what the human wrote, and only the proposed half was ever kept.
+      artifacts.push(
+        writeArtifact(run, `plan-docs/${prompt.slug}/${op.operation.id}-proposed.md`, doc.proposed),
+        writeArtifact(run, `plan-docs/${prompt.slug}/${op.operation.id}-baseline.md`, doc.baseline ?? '(no file)')
+      );
+      // Re-lint the FINAL body here rather than trusting the session's record:
+      // the loop's findings are the ones that survived its own advisory pass,
+      // and "does the lint fire on real output" is a question about the lint.
+      const relint = docLint(doc.proposed, { baseline: doc.baseline });
+      docResults.push({
+        path: doc.path,
+        summary: doc.summary,
+        chars: doc.proposed.length,
+        baselineChars: doc.baseline?.length ?? 0,
+        created: doc.baseline === null,
+        lintFindingsFromSession: doc.lintFindings,
+        lintFindingsOnFinalBody: relint.lines,
+        // Cheap legibility signals a reader can check against the file itself.
+        keptBaselineLines: doc.baseline
+          ? doc.baseline
+              .split('\n')
+              .filter((l) => l.trim().length > 0 && doc.proposed.includes(l.trim())).length
+          : 0,
+        baselineLines: doc.baseline ? doc.baseline.split('\n').filter((l) => l.trim().length > 0).length : 0
+      });
+      console.log(
+        `    doc ${doc.path} — ${doc.proposed.length} chars, ${relint.lines.length} lint finding(s)` +
+          `${doc.summary ? ` · "${doc.summary}"` : ''}`
+      );
+      for (const line of relint.lines) console.log(`        lint: ${line}`);
+    }
+
+    const staged = finalState.operations.filter((o) => o.status === 'staged').length;
+    console.log(`  staged ${staged}/${finalState.operations.length} — ${usd(finalState.costUsd)}`);
+
+    record({
+      mode: 'plan-docs',
+      slug: prompt.slug,
+      provider: run.providerId,
+      model: [...run.served].pop() ?? '(unknown)',
+      status: finalState.phase,
+      durationMs: Date.now() - startedAt,
+      costUsd:
+        planned.costUsd === null || finalState.costUsd === null ? null : planned.costUsd + finalState.costUsd,
+      detail: {
+        request: prompt.request,
+        planCostUsd: planned.costUsd,
+        fanOutCostUsd: finalState.costUsd,
+        docOperationsPlanned: docOps.length,
+        operations: plan.operations.map((o) => ({ id: o.id, kind: o.kind, target: o.target, intent: o.intent })),
+        outcome: finalState.operations.map((o) => ({
+          id: o.operation.id,
+          kind: o.operation.kind,
+          target: o.operation.target,
+          status: o.status,
+          error: o.error,
+          staged: o.staged,
+          stagedDoc: o.stagedDoc
+        })),
+        docs: docResults
+      },
+      artifacts
+    });
+  }
+}

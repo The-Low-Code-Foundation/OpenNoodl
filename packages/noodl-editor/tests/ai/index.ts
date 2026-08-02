@@ -58,6 +58,15 @@ export * from './authoring-plan-staging.test';
 // graph-restatement lint that keeps AIX-009's design line mechanical, and the
 // plan doc write path on real files.
 export * from './authoring-doc-session.test';
+
+// AIX-011 live-provider residuals: an update session must be judged against the
+// component it revises — the missing-component-id structural dead end, and the
+// pre-existing unknown-type errors that made an agent retype module nodes.
+export * from './authoring-update-baseline.test';
+
+// …and the write-path half of the same fix: the backfilled component id, saved
+// through `project.toDirectory` and compared as bytes after one undo.
+export * from './authoring-update-idless.test';
 export * from './plan-doc-writer.test';
 
 // AIX-010: project review & docs retrofit. The page map (from Router/Page node

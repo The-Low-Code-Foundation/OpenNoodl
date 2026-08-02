@@ -108,6 +108,14 @@ noise; the first is not, and it is unexplained. `/App` is the router host, and a
 update session for it is the one case where the candidate must preserve routing
 the agent cannot see. Worth a targeted run when credit is restored.
 
+> **Closed 2026-08-02** — and it was not about the router. `/App` is the one
+> component of 44 whose `project.json` entry has no `id`, so every candidate
+> failed the schema check on a field `submit_component` cannot express. The hunt
+> also turned up a worse defect on the update that *did* succeed: pre-existing
+> `unknown-node-type` errors were charged to the agent, which retyped four
+> module-provided nodes to `Text` while keeping their ids — a clean-looking
+> diff over destroyed content. See AIX-011-NOTES.md, "The two live residuals".
+
 **Project-scope authoring costs 5–6× standalone authoring per component.**
 AIX-007 measured $0.035/component standalone. Inside a plan fan-out it was
 $0.18–0.22 — each session carries the plan context and more of the project
@@ -118,6 +126,13 @@ answer and it is not a regression, but it does mean a five-operation plan is a
 Also worth noting: **neither plan contained a `doc` operation**, so AIX-011
 criterion 7's doc-authoring turn still has no live sample. The mechanism is spec
 -covered on real files; what it *writes* is unmeasured.
+
+> **Closed 2026-08-02.** The reason was mechanical, not editorial: the planning
+> prompt permits a doc operation "only when the project's docs are listed in the
+> overview material", and nothing ever listed them — `PlanningSession` built its
+> context with no docs at all. With that fixed, two runs produced two plans with
+> a doc operation in each. Both revisions are pure additions that keep every
+> line the human wrote. See AIX-011-NOTES.md and `--mode=plan-docs`.
 
 ---
 
@@ -175,8 +190,13 @@ node packages/noodl-editor/scripts/aix15-live/build.mjs
 node packages/noodl-editor/scripts/aix15-live/dist/aix15-harness.cjs --mode=plan
 ```
 
-`--mode=update|agentic|plan|scope|review|explain`, `--only=<slug>`,
+`--mode=update|agentic|plan|scope|review|explain|plan-docs`, `--only=<slug>`,
 `--model=`, `--effort=`, `--outdir=`. Keys come from the repo-root `.env`.
+
+**`--model=` is not optional in practice.** Without it the registry default
+resolves through `EditorSettings`, which this bundle stubs, and the run dies on
+"No model specified for the Anthropic provider" before making a request. Every
+run recorded here used `--model=claude-sonnet-5`.
 
 The AIX-002 harness (`scripts/aix002-measure`) is untouched: its flags and JSONL
 shape are a published measurement artifact, so this is a sibling rather than an

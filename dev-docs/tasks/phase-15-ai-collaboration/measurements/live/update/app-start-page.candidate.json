@@ -1,0 +1,565 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "name": "App",
+    "path": "/App",
+    "type": "visual",
+    "modified": "2026-08-02T17:10:19.805Z",
+    "metadata": {
+      "canvasSize": {
+        "width": "1039px",
+        "height": "751px"
+      },
+      "canvasPos": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "id": "9e57b388-69ad-46ed-95e7-f197ec51dd4a",
+    "modifiedBy": "ai-authoring",
+    "description": "Root app component; router now starts on the Profile page while keeping both Article and Profile pages reachable."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "9e57b388-69ad-46ed-95e7-f197ec51dd4a",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "246f9453-a119-ac78-171e-3806cf596ecc",
+        "type": "Group",
+        "x": -111.4681915301291,
+        "y": 254.4376377651178,
+        "children": [
+          "e9a5a4b0-557c-167c-a398-5cef585d856d"
+        ],
+        "parameters": {
+          "backgroundColor": "#FFFFFF",
+          "scrollEnabled": true
+        }
+      },
+      {
+        "id": "e9a5a4b0-557c-167c-a398-5cef585d856d",
+        "type": "Router",
+        "parent": "246f9453-a119-ac78-171e-3806cf596ecc",
+        "parameters": {
+          "name": "Main",
+          "pages": {
+            "routes": [
+              "/Pages/Article",
+              "/Pages/Profile"
+            ],
+            "startPage": "/Pages/Profile"
+          },
+          "clip": "scroll"
+        }
+      },
+      {
+        "id": "c11859a8-6f8e-02ea-f9e4-71ab7efdaec3",
+        "type": "Collection2",
+        "x": -743.9675329444627,
+        "y": 105.60567770568736,
+        "parameters": {
+          "collectionId": "Article Slugs"
+        }
+      },
+      {
+        "id": "98bd9a76-517f-d2f4-86a7-e8c756cc9257",
+        "type": "JavaScriptFunction",
+        "x": -444.60668800752023,
+        "y": 605.9197272651145,
+        "parameters": {
+          "functionScript": "// This function checks whether or not there are new articles which Noodl doesn't know\n// about, coming from Contentful.\n//\n// If new articles are present, these are added to the list of known Article_Ids.\n//\n// Simply input the result from your REST query and your list of known Article_Ids from\n// Noodl DB.\n\nif(Inputs.array && Inputs.knownArticles){ \n    const filtered = Inputs.array.filter(item => (\n        Inputs.knownArticles.items.filter(article => (\n            article.article_id == item.sys.id)).length < 1\n    ));\n    if(filtered.length > 0){\n        for(let x in filtered){\n            Outputs.newArticleId = filtered[x].sys.id;\n            Outputs.ratings = Noodl.Object.create({'article_id':filtered[x].sys.id})\n            Outputs.doCreate();\n        }\n    }\n}"
+        },
+        "dynamicports": [
+          {
+            "name": "in-array",
+            "displayName": "array",
+            "plug": "input",
+            "type": "*",
+            "group": "Inputs",
+            "index": 4
+          },
+          {
+            "name": "in-knownArticles",
+            "displayName": "knownArticles",
+            "plug": "input",
+            "type": "*",
+            "group": "Inputs",
+            "index": 5
+          },
+          {
+            "name": "out-doCreate",
+            "displayName": "doCreate",
+            "plug": "output",
+            "type": "signal",
+            "group": "Outputs",
+            "index": 6
+          },
+          {
+            "name": "out-newArticleId",
+            "displayName": "newArticleId",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 7
+          },
+          {
+            "name": "out-ratings",
+            "displayName": "ratings",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "id": "f90e6eae-94f4-ab2c-139a-dd03bf70fc6e",
+        "type": "DbCollection2",
+        "x": -795.759579309524,
+        "y": 508.8120739511081,
+        "parameters": {
+          "collectionName": "Article",
+          "storageEnableLimit": true,
+          "storageLimit": 999999
+        },
+        "dynamicports": [
+          {
+            "name": "collectionName",
+            "type": {
+              "name": "enum",
+              "enums": [
+                {
+                  "label": "User",
+                  "value": "_User"
+                },
+                {
+                  "label": "Role",
+                  "value": "_Role"
+                },
+                {
+                  "value": "ShineSignUpData",
+                  "label": "ShineSignUpData"
+                },
+                {
+                  "value": "LandingPageForm",
+                  "label": "LandingPageForm"
+                },
+                {
+                  "value": "GlossaryViewed",
+                  "label": "GlossaryViewed"
+                },
+                {
+                  "value": "Comment",
+                  "label": "Comment"
+                },
+                {
+                  "value": "Article",
+                  "label": "Article"
+                }
+              ],
+              "allowEditOnly": true
+            },
+            "displayName": "Class",
+            "plug": "input",
+            "group": "General",
+            "index": 6
+          },
+          {
+            "name": "storageFilterType",
+            "type": {
+              "name": "enum",
+              "allowEditOnly": true,
+              "enums": [
+                {
+                  "value": "simple",
+                  "label": "Visual"
+                },
+                {
+                  "value": "json",
+                  "label": "Javascript"
+                }
+              ]
+            },
+            "displayName": "Filter",
+            "default": "simple",
+            "plug": "input",
+            "group": "General",
+            "index": 7
+          },
+          {
+            "type": "boolean",
+            "plug": "input",
+            "group": "Limit",
+            "name": "storageEnableLimit",
+            "displayName": "Use limit",
+            "index": 8
+          },
+          {
+            "type": "number",
+            "default": 10,
+            "plug": "input",
+            "group": "Limit",
+            "name": "storageLimit",
+            "displayName": "Limit",
+            "index": 9
+          },
+          {
+            "type": "number",
+            "default": 0,
+            "plug": "input",
+            "group": "Limit",
+            "name": "storageSkip",
+            "displayName": "Skip",
+            "index": 10
+          },
+          {
+            "type": "signal",
+            "plug": "input",
+            "group": "Actions",
+            "name": "storageFetch",
+            "displayName": "Do",
+            "index": 11
+          },
+          {
+            "name": "visualFilter",
+            "plug": "input",
+            "type": {
+              "name": "query-filter",
+              "schema": {
+                "properties": {
+                  "createdAt": {
+                    "type": "Date"
+                  },
+                  "updatedAt": {
+                    "type": "Date"
+                  },
+                  "article_id": {
+                    "type": "String",
+                    "required": true
+                  },
+                  "likes_count": {
+                    "type": "Number",
+                    "required": false
+                  },
+                  "ratings": {
+                    "type": "Object",
+                    "required": false
+                  }
+                }
+              },
+              "allowEditOnly": true
+            },
+            "displayName": "Filter",
+            "group": "Filter",
+            "index": 12
+          },
+          {
+            "name": "visualSort",
+            "plug": "input",
+            "type": {
+              "name": "query-sorting",
+              "schema": {
+                "properties": {
+                  "createdAt": {
+                    "type": "Date"
+                  },
+                  "updatedAt": {
+                    "type": "Date"
+                  },
+                  "article_id": {
+                    "type": "String",
+                    "required": true
+                  },
+                  "likes_count": {
+                    "type": "Number",
+                    "required": false
+                  },
+                  "ratings": {
+                    "type": "Object",
+                    "required": false
+                  }
+                }
+              },
+              "allowEditOnly": true
+            },
+            "displayName": "Sort",
+            "group": "Sorting",
+            "index": 13
+          }
+        ]
+      },
+      {
+        "id": "2467a328-b9ce-a4ab-2488-fc1270d5d5fc",
+        "type": "NewDbModelProperties",
+        "x": -180.75957930952393,
+        "y": 718.9290808151097,
+        "parameters": {
+          "collectionName": "Article",
+          "accessControl": [],
+          "prop-likes_count": 0
+        },
+        "dynamicports": [
+          {
+            "name": "collectionName",
+            "displayName": "Class",
+            "group": "General",
+            "type": {
+              "name": "enum",
+              "enums": [
+                {
+                  "label": "User",
+                  "value": "_User"
+                },
+                {
+                  "label": "Role",
+                  "value": "_Role"
+                },
+                {
+                  "value": "ShineSignUpData",
+                  "label": "ShineSignUpData"
+                },
+                {
+                  "value": "LandingPageForm",
+                  "label": "LandingPageForm"
+                },
+                {
+                  "value": "GlossaryViewed",
+                  "label": "GlossaryViewed"
+                },
+                {
+                  "value": "Comment",
+                  "label": "Comment"
+                },
+                {
+                  "value": "Article",
+                  "label": "Article"
+                }
+              ],
+              "allowEditOnly": true
+            },
+            "plug": "input",
+            "index": 6
+          },
+          {
+            "type": {
+              "name": "date"
+            },
+            "plug": "input",
+            "group": "Properties",
+            "name": "prop-createdAt",
+            "displayName": "createdAt",
+            "index": 7
+          },
+          {
+            "type": {
+              "name": "date"
+            },
+            "plug": "input",
+            "group": "Properties",
+            "name": "prop-updatedAt",
+            "displayName": "updatedAt",
+            "index": 8
+          },
+          {
+            "type": {
+              "name": "string"
+            },
+            "plug": "input",
+            "group": "Properties",
+            "name": "prop-article_id",
+            "displayName": "article_id",
+            "index": 9
+          },
+          {
+            "type": {
+              "name": "number"
+            },
+            "plug": "input",
+            "group": "Properties",
+            "name": "prop-likes_count",
+            "displayName": "likes_count",
+            "index": 10
+          },
+          {
+            "type": {
+              "name": "*"
+            },
+            "plug": "input",
+            "group": "Properties",
+            "name": "prop-ratings",
+            "displayName": "ratings",
+            "index": 11
+          }
+        ]
+      },
+      {
+        "id": "91c6350d-54f1-fe23-eb77-9a40d06995b5",
+        "type": "/Logic Components/Contentful GraphQL",
+        "label": "Get all Article slugs and article Id's",
+        "x": -474.0342096115385,
+        "y": 220.39381800217677,
+        "parameters": {
+          "Query": ""
+        }
+      },
+      {
+        "id": "721da4bc-2d04-8a27-8707-2c7a6060418f",
+        "type": "Expression",
+        "label": "Extract array of Articles from GraphQl result",
+        "x": -721.1728336706433,
+        "y": 263.78811545025394,
+        "parameters": {
+          "expression": "result.articleCollection.items"
+        },
+        "dynamicports": [
+          {
+            "name": "result",
+            "type": {
+              "name": "*",
+              "editAsType": "string"
+            },
+            "plug": "input",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "id": "ddef2951-0900-5469-4253-51767f478f6a",
+        "type": "String",
+        "label": "Get all slugs query",
+        "x": -487.8922532281124,
+        "y": 36.06929510680436,
+        "parameters": {
+          "value": "query { articleCollection { items { slug sys{id} } }}"
+        }
+      },
+      {
+        "id": "3af1b37d-5695-fa53-c7cb-8c913d491cc1",
+        "type": "Variable2",
+        "x": 281.38488156419714,
+        "y": 338.6726210114417,
+        "parameters": {
+          "name": "Current Page Title"
+        }
+      },
+      {
+        "id": "e698c6c3-e118-9ef9-8831-aec968392e0e",
+        "type": "CSS Definition",
+        "x": -417.69457472938393,
+        "y": 376.28137209046633,
+        "parameters": {
+          "style": ".pointer:hover{\n    cursor: pointer !important;\n}"
+        }
+      },
+      {
+        "id": "c0d9e721-263a-738a-5ead-44e8815166c6",
+        "type": "CSS Definition",
+        "label": "Inter Font Import",
+        "x": -185.08058800863114,
+        "y": -1.7309807898276688,
+        "parameters": {
+          "style": "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');"
+        }
+      },
+      {
+        "id": "02057267-8d73-8f6d-3368-cbe5d355c769",
+        "type": "/Logic Components/Tracking",
+        "x": 167.63171374679337,
+        "y": 101.86470651879876
+      },
+      {
+        "id": "19a26f5d-1016-eb13-6f22-885f2bbf6c98",
+        "type": "Collection2",
+        "label": "Articles",
+        "x": -704.3682862532066,
+        "y": 679.8647065187988,
+        "parameters": {
+          "collectionId": "all articles"
+        }
+      }
+    ],
+    "visualRoots": [
+      "246f9453-a119-ac78-171e-3806cf596ecc"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "9e57b388-69ad-46ed-95e7-f197ec51dd4a",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "f90e6eae-94f4-ab2c-139a-dd03bf70fc6e",
+        "fromProperty": "items",
+        "toId": "98bd9a76-517f-d2f4-86a7-e8c756cc9257",
+        "toProperty": "in-knownArticles"
+      },
+      {
+        "fromId": "98bd9a76-517f-d2f4-86a7-e8c756cc9257",
+        "fromProperty": "out-newArticleId",
+        "toId": "2467a328-b9ce-a4ab-2488-fc1270d5d5fc",
+        "toProperty": "prop-article_id"
+      },
+      {
+        "fromId": "98bd9a76-517f-d2f4-86a7-e8c756cc9257",
+        "fromProperty": "out-doCreate",
+        "toId": "2467a328-b9ce-a4ab-2488-fc1270d5d5fc",
+        "toProperty": "store"
+      },
+      {
+        "fromId": "91c6350d-54f1-fe23-eb77-9a40d06995b5",
+        "fromProperty": "queryResult",
+        "toId": "721da4bc-2d04-8a27-8707-2c7a6060418f",
+        "toProperty": "result"
+      },
+      {
+        "fromId": "721da4bc-2d04-8a27-8707-2c7a6060418f",
+        "fromProperty": "result",
+        "toId": "c11859a8-6f8e-02ea-f9e4-71ab7efdaec3",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "246f9453-a119-ac78-171e-3806cf596ecc",
+        "fromProperty": "didMount",
+        "toId": "91c6350d-54f1-fe23-eb77-9a40d06995b5",
+        "toProperty": "Do"
+      },
+      {
+        "fromId": "ddef2951-0900-5469-4253-51767f478f6a",
+        "fromProperty": "savedValue",
+        "toId": "91c6350d-54f1-fe23-eb77-9a40d06995b5",
+        "toProperty": "Query"
+      },
+      {
+        "fromId": "721da4bc-2d04-8a27-8707-2c7a6060418f",
+        "fromProperty": "result",
+        "toId": "98bd9a76-517f-d2f4-86a7-e8c756cc9257",
+        "toProperty": "in-array"
+      },
+      {
+        "fromId": "e9a5a4b0-557c-167c-a398-5cef585d856d",
+        "fromProperty": "currentPageTitle",
+        "toId": "3af1b37d-5695-fa53-c7cb-8c913d491cc1",
+        "toProperty": "value"
+      },
+      {
+        "fromId": "246f9453-a119-ac78-171e-3806cf596ecc",
+        "fromProperty": "didMount",
+        "toId": "02057267-8d73-8f6d-3368-cbe5d355c769",
+        "toProperty": "doInit"
+      },
+      {
+        "fromId": "2467a328-b9ce-a4ab-2488-fc1270d5d5fc",
+        "fromProperty": "created",
+        "toId": "f90e6eae-94f4-ab2c-139a-dd03bf70fc6e",
+        "toProperty": "storageFetch"
+      },
+      {
+        "fromId": "f90e6eae-94f4-ab2c-139a-dd03bf70fc6e",
+        "fromProperty": "items",
+        "toId": "19a26f5d-1016-eb13-6f22-885f2bbf6c98",
+        "toProperty": "items"
+      }
+    ]
+  }
+}

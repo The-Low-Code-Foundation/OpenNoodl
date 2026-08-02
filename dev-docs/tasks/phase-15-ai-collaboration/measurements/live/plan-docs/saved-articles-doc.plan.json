@@ -1,0 +1,47 @@
+{
+  "request": "Let readers save articles to read later — a \"Saved\" page listing what they saved, and a save/unsave control that can go on an article. Store each save as a SavedArticle record with userId and articleId (the Contentful id, same as we do for ratings) — I do not want a second way of identifying an article appearing later, so make sure that decision is written down where the next person will find it.",
+  "operations": [
+    {
+      "id": "op-1",
+      "kind": "create",
+      "target": "Logic Components/Save Article",
+      "intent": "Logic component with in: [Do, articleId, userId] out: [Failure, Success] that creates/deletes a SavedArticle record keyed by userId and the Contentful articleId (same identifier used for ratings), toggling save state."
+    },
+    {
+      "id": "op-2",
+      "kind": "create",
+      "target": "Logic Components/Get Saved Articles",
+      "intent": "Logic component with in: [Do, userId] out: [Failure, Success, savedArticles] that queries all SavedArticle records for the given userId and returns the list of articleIds/article data for rendering the Saved page."
+    },
+    {
+      "id": "op-3",
+      "kind": "create",
+      "target": "Visual Components/Article/Save Button",
+      "intent": "A visual save/unsave toggle control with in: [articleId, userId, isSaved] out: [Toggled] that shows saved state and emits an event when clicked; to be placed on the Article page/component, invoking Save Article logic component."
+    },
+    {
+      "id": "op-4",
+      "kind": "create",
+      "target": "Pages/Saved",
+      "intent": "A new page that on mount calls Logic Components/Get Saved Articles with the current userId, and lists saved articles (using Contentful articleId to fetch/display each article, e.g. via Get Article From Slug or similar), each with a Save Button to unsave."
+    },
+    {
+      "id": "op-5",
+      "kind": "update",
+      "target": "Visual Components/Article/Article",
+      "intent": "Add the Save Button component (in: articleId, userId, isSaved) near the article content so readers can save/unsave the currently viewed article, wired to Logic Components/Save Article."
+    },
+    {
+      "id": "op-6",
+      "kind": "update",
+      "target": "App",
+      "intent": "Add navigation/routing entry to the new Pages/Saved (e.g. a 'Saved' link/route in the app's navigation) so readers can reach their saved articles list."
+    },
+    {
+      "id": "op-7",
+      "kind": "doc",
+      "target": "docs/ARCHITECTURE.md",
+      "intent": "Document the new Pages/Saved route, the SavedArticle data model (userId + Contentful articleId), and explicitly record that articleId (Contentful id) is the single canonical identifier for articles across ratings and saves, to prevent a second identifier scheme from emerging."
+    }
+  ]
+}

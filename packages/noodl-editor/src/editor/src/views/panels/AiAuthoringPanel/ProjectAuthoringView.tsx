@@ -278,7 +278,15 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     for (const op of operations) {
       if (op.kind === 'doc') continue;
       const legacyName = pathToLegacyName(op.operation.target);
-      const validation = validateCandidateComponent({ components }, legacyName, op.files);
+      // An update re-validates against its own base, exactly as its session did
+      // — otherwise a revision that correctly preserved a pre-existing problem
+      // passes the loop and is refused here (see `ValidateCandidateOptions`).
+      const existing = op.kind === 'update' ? project.getComponentWithName(legacyName) : undefined;
+      const validation = validateCandidateComponent({ components }, legacyName, op.files, {
+        ...(existing
+          ? { baseline: buildComponentV2Files(existing.toJSON(), new Date().toISOString()) as ComponentFiles }
+          : {})
+      });
       if (!validation.ok) {
         const lines = validation.errors.slice(0, 3).map(formatDiagnosticLine);
         setNote({

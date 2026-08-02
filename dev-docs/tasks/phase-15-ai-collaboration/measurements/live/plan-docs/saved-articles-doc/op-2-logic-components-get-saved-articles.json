@@ -1,0 +1,110 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "82e908be-13b4-43da-8d2a-e5c8cdf4faf8",
+    "name": "Get Saved Articles",
+    "path": "/Logic Components/Get Saved Articles",
+    "type": "visual",
+    "created": "2026-08-02T17:13:41.586Z",
+    "modified": "2026-08-02T17:13:41.586Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Queries all SavedArticle records for a given userId and outputs the matching list for rendering the Saved page."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "82e908be-13b4-43da-8d2a-e5c8cdf4faf8",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "in",
+        "type": "Component Inputs",
+        "label": "Inputs",
+        "x": 0,
+        "y": 0,
+        "ports": [
+          {
+            "name": "Do",
+            "plug": "output",
+            "type": "signal"
+          },
+          {
+            "name": "userId",
+            "plug": "output",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "id": "query",
+        "type": "DbCollection2",
+        "label": "Query SavedArticle records",
+        "x": 300,
+        "y": 0,
+        "parameters": {
+          "collectionName": "SavedArticle"
+        }
+      },
+      {
+        "id": "out",
+        "type": "Component Outputs",
+        "label": "Outputs",
+        "x": 600,
+        "y": 0,
+        "ports": [
+          {
+            "name": "Failure",
+            "plug": "input",
+            "type": "signal"
+          },
+          {
+            "name": "Success",
+            "plug": "input",
+            "type": "signal"
+          },
+          {
+            "name": "savedArticles",
+            "plug": "input",
+            "type": "array"
+          }
+        ]
+      }
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "82e908be-13b4-43da-8d2a-e5c8cdf4faf8",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "in",
+        "fromProperty": "Do",
+        "toId": "query",
+        "toProperty": "fetch"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "userId",
+        "toId": "query",
+        "toProperty": "userId"
+      },
+      {
+        "fromId": "query",
+        "fromProperty": "fetched",
+        "toId": "out",
+        "toProperty": "Success"
+      },
+      {
+        "fromId": "query",
+        "fromProperty": "failure",
+        "toId": "out",
+        "toProperty": "Failure"
+      },
+      {
+        "fromId": "query",
+        "fromProperty": "items",
+        "toId": "out",
+        "toProperty": "savedArticles"
+      }
+    ]
+  }
+}

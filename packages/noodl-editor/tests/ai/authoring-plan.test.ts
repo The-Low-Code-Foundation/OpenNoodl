@@ -334,3 +334,54 @@ describe('AIX-011 prompt stability (AIX-007 guard)', () => {
     expect(withPlan.content.indexOf('PLAN CONTEXT LINE')).toBeGreaterThan(withPlan.cacheBoundary);
   });
 });
+
+/**
+ * AIX-011 criterion 7 — a `doc` operation is only plannable if the planner can
+ * see that the project has docs.
+ *
+ * The planning system prompt gates a doc operation on the project's docs being
+ * "listed in the overview material". Nothing listed them: `PlanningSession`
+ * built its context with no docs at all, and `projectOverview()` names only
+ * components. The condition was one the product could never satisfy — which is
+ * why both live plan runs contained zero doc operations and the doc-authoring
+ * turn had never once been seen against a real model.
+ */
+describe('AIX-011 criterion 7 — the planner can see the project docs', () => {
+  it('names the docs the project has, and says nothing when it has none', async () => {
+    let opening = '';
+    const chat = async (request: AiChatRequest): Promise<AiChatResponse> => {
+      opening = request.messages[1].content;
+      return toolResponse('submit_plan', {
+        operations: [{ kind: 'update', target: 'Pages/Article', intent: 'x' }]
+      });
+    };
+
+    const withDocs = new PlanningSession(loadGraph(), 'add author profiles', {
+      chat,
+      projectDocs: { architecture: '# Architecture\n\nThe page map lives here.' }
+    });
+    expect((await withDocs.run()).status).toBe('planned');
+    expect(opening.indexOf('docs/ARCHITECTURE.md')).toBeGreaterThan(-1);
+    expect(opening.indexOf('PROJECT DOCUMENTS')).toBeGreaterThan(-1);
+
+    const withoutDocs = new PlanningSession(loadGraph(), 'add author profiles', { chat, projectDocs: {} });
+    expect((await withoutDocs.run()).status).toBe('planned');
+    expect(opening.indexOf('PROJECT DOCUMENTS')).toBe(-1);
+  });
+
+  it('ignores a doc whose file is present but empty', async () => {
+    let opening = '';
+    const chat = async (request: AiChatRequest): Promise<AiChatResponse> => {
+      opening = request.messages[1].content;
+      return toolResponse('submit_plan', {
+        operations: [{ kind: 'update', target: 'Pages/Article', intent: 'x' }]
+      });
+    };
+    const session = new PlanningSession(loadGraph(), 'add author profiles', {
+      chat,
+      projectDocs: { conventions: '   \n' }
+    });
+    await session.run();
+    expect(opening.indexOf('PROJECT DOCUMENTS')).toBe(-1);
+  });
+});

@@ -17,6 +17,11 @@
 import { AiClient } from '../client';
 import type { AiEffort, AiMessage, AiToolCall } from '../client/types';
 import type { ExplainGraph } from '../explain/types';
+// Pure ProjectDocs submodules only, for the same reason `AuthoringSession`
+// imports them this way: the barrel would drag ProjectModel and the platform
+// filesystem into the headless measurement bundle.
+import { currentProjectDocs } from '../../ProjectDocs/currentDocs';
+import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
 import type { AuthoringChatFn } from './AuthoringSession';
 import { AUTHORING_EFFORT, AuthoringSetupError } from './AuthoringSession';
 import { AuthoringContextBuilder } from './ContextBuilder';
@@ -34,6 +39,14 @@ export interface PlanningOptions {
   maxTurns?: number;
   maxSubmits?: number;
   effort?: AiEffort;
+  /**
+   * AIX-011 criterion 7: the open project's `docs/` bodies, so the plan can
+   * contain a `doc` operation. Defaults to the installed provider's snapshot —
+   * the same default `AuthoringSession` takes, and for the same reason: a panel
+   * should not have to remember to wire this up. Pass `{}` to plan as if the
+   * project had no docs.
+   */
+  projectDocs?: ProjectDocsContent;
 }
 
 export type PlanningStatus = 'planned' | 'declined' | 'exhausted' | 'cancelled' | 'error';
@@ -87,7 +100,13 @@ export class PlanningSession {
     this.maxTurns = options.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
     this.effort = options.effort ?? AUTHORING_EFFORT;
-    this.context = new AuthoringContextBuilder(graph, options.budget);
+    this.context = new AuthoringContextBuilder(
+      graph,
+      options.budget,
+      undefined,
+      undefined,
+      options.projectDocs ?? currentProjectDocs()
+    );
     this.existingComponents = new Set(graph.components.map((c) => c.name));
   }
 
@@ -95,7 +114,10 @@ export class PlanningSession {
     const abortController = options.abortController ?? new AbortController();
     const messages: AiMessage[] = [
       { role: 'system', content: planningSystemPrompt() },
-      { role: 'user', content: planningUserMessage(this.request, this.context.projectOverview()) }
+      {
+        role: 'user',
+        content: planningUserMessage(this.request, this.context.projectOverview(), this.context.docsOverview())
+      }
     ];
 
     let turns = 0;

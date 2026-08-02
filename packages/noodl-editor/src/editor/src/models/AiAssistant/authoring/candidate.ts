@@ -190,6 +190,16 @@ export function buildCandidate(
   const component: ComponentV2File = base
     ? {
         ...JSON.parse(JSON.stringify(base.component)),
+        // Backfilled, not merely carried. A component whose project.json entry
+        // has no `id` — legacy projects have them, and `ComponentModel` only
+        // mints one on import (`rekeyAllIds`) — exports to a `component.json`
+        // with no id, and `{...base}` through a JSON round trip drops the
+        // undefined key entirely. The candidate then fails the SCHEMA check on
+        // `must have required property 'id'` on every submission, forever: the
+        // agent is handed an error about a field `submit_component` cannot
+        // express, so the repair loop cannot converge and the session exhausts.
+        // The component's identity was never the agent's to supply — so supply it.
+        id: componentId,
         modified: now,
         modifiedBy: 'ai-authoring',
         ...(payload.description ? { description: payload.description } : {})

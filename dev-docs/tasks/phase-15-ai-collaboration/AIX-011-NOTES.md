@@ -213,3 +213,324 @@ the honest-prose fixtures).
 6. Switching the panel's scope toggle mid-run disposes an in-flight `PlanRun`
    (unmount cleanup) — acceptable v1 behaviour, worth a second look with UX
    eyes.
+
+---
+
+## The two live residuals, closed (2026-08-02)
+
+`claude-sonnet-5`, effort `low`. Artifacts under
+`measurements/live/`: `update.jsonl` and `update/app-start-page.*` (the fixed
+runs), `update-app-before-fix.jsonl` (the failure, reproduced deliberately),
+`plan-docs.jsonl` + `plan-docs/` and `plan-docs-run2.jsonl` + `plan-docs-run2/`
+(the plans, every candidate, and both halves of each authored document).
+**$2.64 of API spend**, itemised at the bottom.
+
+Both residuals turned out to be the same defect wearing two masks: **an update
+session was judged against a standard its own subject does not meet.** Neither
+is about the model.
+
+### 1. `update /App` — the mechanism, not a hypothesis
+
+`/App` is the one component of the corpus project's 44 whose `project.json`
+entry has **no `id`**. `buildComponentV2Files` copies `component.id` through
+verbatim, so the base's `component.json` has no id either; `buildCandidate`
+then spread that base through `JSON.parse(JSON.stringify(…))`, which drops an
+`undefined` key entirely. Every candidate therefore failed the *structural*
+check on
+
+```
+SCHEMA component.json /: must have required property 'id'
+```
+
+— a field `submit_component` does not have and the agent cannot supply. Four
+submissions, four identical rejections, `exhausted`. It could never have
+converged, and no amount of re-running would have looked any different.
+
+Reproduced deterministically before spending anything: a **perfect
+resubmission** — the candidate a model produces by copying the component back
+verbatim — fails the same way. If that cannot pass, nothing can.
+
+Then reproduced live, with the fix backed out, to see it end to end:
+
+```
+✗ submit rejected (1 problem(s))
+    SCHEMA component.json /: must have required property 'id'
+    … ×4
+[authoring] /App → exhausted — 4 turns, 4 submits          $0.16
+```
+
+which is the live pass's "exhausted after four submits", exactly.
+
+**Fix:** `buildCandidate` backfills `component.id` from the id it already mints
+for the nodes/connections files, so the candidate is self-consistent. The
+component's identity was never the agent's to supply.
+
+**After (three consecutive runs, `--mode=update --only=app-start-page`):**
+`authored` 3/3, **first attempt every time**, 14/14 base node ids kept,
+$0.045 / $0.037 / $0.037. The candidate changed exactly one parameter on
+exactly one node: the Router's `pages.startPage`. `pages.routes` — the routing
+"the agent cannot see" the residual worried about — came back intact.
+
+Two notes for whoever touches this next:
+
+- The id-less component is **legacy-shaped, not exotic**: `ComponentModel` only
+  mints an id on import (`rekeyAllIds`), and 19 of the repo's test-fixture
+  projects have components without one. Applying an AI update to such a
+  component now writes an id into `project.json`, which is a repair, not a
+  side effect — but it is a write that was not there before.
+- `buildComponentV2Files` still exports an id-less component to an
+  id-less `component.json`. That is the exporter's problem rather than the
+  authoring loop's, and it is untouched here. Filed, not fixed.
+
+### 2. The defect the /App hunt found: silent retyping of module nodes
+
+Running the same question against the *other* update in both live plans turned
+up something worse than a failed session. `/Visual Components/Article/Article`
+holds four module-provided nodes — three `Markdown`, one `module.inlineHtml` —
+whose types the catalog does not carry. Strict validation reported all four as
+`unknown-node-type` **errors on the agent's candidate**, and the agent, told to
+take diagnostics literally and never argue with one, did the only thing that
+satisfies them:
+
+```
+RETYPED de810a44… module.inlineHtml -> Text
+RETYPED 4d325072… Markdown          -> Text
+RETYPED 1f7b0595… Markdown          -> Text
+RETYPED b22047aa… Markdown          -> Text
+```
+
+Both live plan runs did it, identically. And because the ids were kept, this
+scored as a **100%-ids-kept clean revision** and renders in the diff as four
+*modified* nodes rather than four deletions. The metric that was supposed to
+prove an update is reviewable was the thing hiding it.
+
+**Fix:** `validateCandidateComponent` takes an optional `baseline` (update mode
+passes the base files). Error-severity diagnostics whose `code | nodeId | port |
+message` is *identical* to one the base already produces move from `errors` to
+`preExisting`: reported to the agent and to the reviewer, never charged. A NEW
+unknown type on a new node still blocks — spec-asserted, because a blanket
+amnesty per component would be a different and much worse change. The update
+prompt now also says these types are real and must come back verbatim.
+
+**After, live:** `Article` in the plan-docs run came back 29/29 ids kept, **0
+retyped**, all three `Markdown` and the `module.inlineHtml` intact, with three
+new nodes for the save control.
+
+Both accept paths (`AiAuthoringPanel.acceptFiles`, `ProjectAuthoringView`'s
+pre-apply re-validation) pass the same baseline. Without that, a candidate the
+loop accepted would have been refused at apply — the fix would have moved the
+failure rather than removed it.
+
+### 3. Criterion 7's doc turn — why there was never a sample
+
+Not editorial. **Mechanical.** The planning system prompt permits a doc
+operation "only when the project's docs are listed in the overview material" —
+and nothing ever listed them: `PlanningSession` built its context builder with
+no docs at all, and `projectOverview()` names components and nothing else. The
+condition for planning a doc operation was one the product could not satisfy,
+in the harness *and in the editor panel*. The panel's write path, baseline
+reader and `includeDocs` plumbing were all already correct; the planner simply
+never asked.
+
+`PlanningSession` now takes `projectDocs` (defaulting to the same installed
+provider `AuthoringSession` uses, so the panel needed no change) and
+`ContextBuilder.docsOverview()` lists the docs the project actually has —
+paths and purposes, never bodies.
+
+**Result — two runs, two plans, a doc operation in both.** New harness mode
+`--mode=plan-docs`: same plan path, against a project treated as having a
+human-written `docs/ARCHITECTURE.md`.
+
+| Run | Ops | Component ops staged | Doc | Cost |
+| --- | --- | --- | --- | --- |
+| 1 | 7 (1 doc) | 6/6 | `docs/ARCHITECTURE.md`, 1690 chars | $0.83 |
+| 2 | 6 (1 doc) | 4/5 (`Pages/Saved` exhausted — see §4) | `docs/ARCHITECTURE.md`, 1862 chars | $1.53 |
+
+**Is what it writes any good?** Yes, and specifically in the way the design
+line asks for. Both revisions are **pure additions** — every line of the
+human's prose survives byte-identical, including the rejected alternative about
+caching Contentful articles. Neither restates the graph: no node types, no
+wiring, no counts. What they add is the decision the user asked to have written
+down:
+
+> The Contentful `articleId` is the one and only identifier used to relate
+> reader-generated records to an article — ratings, comments, and now
+> `SavedArticle` (keyed by `userId` + `articleId`) all reuse it. Do not
+> introduce a second way of identifying an article […]
+
+Run 2 did something a fixture could not have: `Pages/Saved` failed its session,
+and the doc **recorded the failure** rather than describing the app it was
+asked for —
+
+> A nav entry to a "Saved" page has been added, gated by `Is user logged in?`,
+> but the page itself does not exist yet — the entry currently has nowhere to
+> route to.
+
+That is `PlanRun`'s "the doc turn sees what the fan-out actually built,
+including what it failed to build", working against a real model. Measured
+rather than eyeballed: run 2's revision kept **22 of 22** non-blank baseline
+lines.
+
+**`docLint` on real output: no false positives, and no true positive either.**
+Zero findings on both authored docs — and zero across **all 20** live-authored
+markdown files in `measurements/live/` (the AIX-010 review's three drafts, the
+scoping documents, the Explain answers). Reading them, that is the right
+answer: none of them contains a restating sentence. The lint's positive path is
+spec-covered (`authoring-doc-session.test.ts`) but has still never fired on
+live output, so "the advisory works in anger" remains unverified — it is now
+unverified for the encouraging reason rather than the alarming one.
+
+### 4. Recorded, not fixed: a create session that reads until it cannot build
+
+`plan-docs` run 2's `Pages/Saved` operation went **11 turns, 0 submissions**,
+`exhausted`, at **117,167 of the 120,000-character context budget** — and cost
+most of that run's $1.51. It never submitted anything at all; it spent the
+whole round reading. The same operation in run 1 authored on its first
+submission at 109k chars, so this is the same session shape landing either side
+of a line.
+
+Two things follow, neither of them addressed here:
+
+- A page created inside a plan is the most context-hungry operation there is —
+  it carries the plan block, the catalog, the style vocabulary and several
+  component reads — and the budget refusal (`BUDGET_REFUSAL`) arrives as prose
+  in a tool result rather than as anything that changes the model's strategy.
+- A single operation can therefore cost more than the other five put together
+  while producing nothing. The panel still says nothing about what a plan will
+  cost; the live pass's "a five-operation plan is a ~$0.90 action" is now
+  better read as "$0.8–$1.5, with the variance concentrated in the sessions
+  that fail".
+
+### 5. The two front doors: MCP already had the right policy
+
+Both fixes change what the *editor* accepts, so the obvious worry is that
+`noodl-mcp`'s write-gate — which shares this policy "by convention, not by
+import" — now disagrees with it. Checked, and the answer is the opposite of the
+worry: **MCP had both behaviours already, and the editor was the odd one out.**
+
+- `planTools.ts`'s `validateStaged` has carried the pre-existing-error
+  exemption since AIX-011 landed, in as many words: *"for updates only NEW
+  errors (relative to the on-disk baseline) reject, so a component that already
+  carried strict-mode errors stays editable."* It diffs baseline diagnostics by
+  key, exactly as the editor now does.
+- MCP never meets an id-less component at all. It reads `component.json` from a
+  v2 project on disk, and `ProjectStore.readComponentFiles` already synthesises
+  `{ id: key, … }` when the file is absent. The id-less base is a *legacy
+  `project.json`* shape, which only the editor's `buildComponentV2Files` path
+  produces.
+
+So this change closes a divergence rather than opening one. To keep it closed,
+the editor's `diagnosticKey` is now byte-for-byte the one in `planTools.ts`
+(`[code, nodeId, port, plug, connection, message]`), with a comment in each
+naming the other — the twins are cheap to keep aligned and expensive to
+discover apart.
+
+**`noodl-mcp` jest under node 22: 76 passed, 29 skipped, 1 failed.** The
+failure is **pre-existing on the base commit** — verified by extracting
+`32e3a946` to a scratch tree and running the same suite there, where it fails
+identically with none of this work present. It is
+`tools.test.ts` → *"create_component validates, writes and updates the
+registry"*, and the three errors are:
+
+```
+duplicate-node-id  Node id "page"   is reused across 2 components: /Pages/Home, /Pages/Settings
+duplicate-node-id  Node id "layout" …
+duplicate-node-id  Node id "nav"    …
+```
+
+The spec authors a component with the generic ids `page`, `layout`, `nav`,
+which collide with the fixture's `/Pages/Home`. Worth someone's attention on
+its own terms, and it is the same shape of problem as §2 one level up:
+`create_component`'s gate is **component-scoped** and accepts those ids, and
+then the **project-scoped** `validate_project` calls them errors. Two gates,
+two answers, one write. Not this task's to fix — recorded so it is not
+rediscovered as a regression of this one.
+
+### 6. The id backfill on disk — what it writes, and what it does not
+
+The backfill puts something in `project.json` that was not there, so it gets
+criterion 4's treatment rather than an argument: a real `ProjectModel`, the
+corpus project, saved through the product's own `project.toDirectory`, and the
+bytes compared. `tests/ai/authoring-update-idless.test.ts`.
+
+`/App` is the right subject twice over — it is the id-less component, **and it
+holds the project's root node**, so an update to it takes the
+root-restoration branch of `updateAuthoredComponentInGroup`.
+
+What the project actually keys on, checked rather than assumed:
+
+| Consumer | Keys on | Affected? |
+| --- | --- | --- |
+| Project root | `rootNodeId` — a **node** id | No |
+| Component references (`/Pages/Article`) | component **name** | No |
+| Router `pages.routes` | component **names** | No |
+| `ProjectExporter` v2 files | `component.id` | Yes — and this is the consumer that was *failing* without it |
+
+Measured after a real save: `/App` gains a string id; all 44 components then
+have distinct ids (43 + the one that was `undefined`); `rootNodeId` is
+unchanged and still resolves to a node inside `/App`; the Router's
+`pages.routes` survives with only `startPage` moved. **One undo, and
+`project.json` is byte-identical to the pre-apply save** — including the
+*absence* of the id, which is the half that could have leaked. The same holds
+through `applyAuthoredPlan`.
+
+So the backfill is safe at the layer it sits in, and the exporter defect
+(`buildComponentV2Files` exporting an id-less `component.json`) stays filed
+rather than fixed. It is worth being explicit about why that is the right split
+and not just the cheaper one: `buildCandidate` **must** produce a schema-valid
+candidate whatever it is handed — it is the boundary between untrusted model
+output and the project — so it needs this guarantee even if the exporter is
+fixed tomorrow. Fixing the exporter as well would make id-less components
+impossible upstream; it would not make this backfill redundant.
+
+### Gates
+
+- `npx tsc --noEmit` in `packages/noodl-editor`: clean.
+- `webpack.test-ci.js`: compiled successfully.
+- Editor Electron suite: **2027 specs / 0 failures** (seed 36641), all ten new
+  specs among them.
+- `noodl-mcp` jest under node 22: **76 passed, 29 skipped, 1 failed** — the
+  failure pre-existing on `32e3a946`, proved by running the same suite against
+  an extracted copy of that commit. See §5.
+- +5 specs `tests/ai/authoring-update-baseline.test.ts`, +3
+  `tests/ai/authoring-update-idless.test.ts` (the on-disk half — both
+  registered in `tests/ai/index.ts`, the spec-barrel trap), +2 in
+  `authoring-plan.test.ts` for the planner's docs block.
+
+Two environment traps cost real time and are worth writing down for the next
+worktree agent:
+
+- **`packages/node_modules/dugite` does not exist in a fresh worktree**, so
+  every Git spec dies on "Git could not be found at the expected path". A
+  symlink to the primary checkout's copy fixes it; without it the suite is not
+  a gate, it is a partial.
+- **A sibling session's cleanup can kill your gate.** Another agent was running
+  `pkill -f "webpack-cli --config=webpackconfigs/webpack.test-ci.js"` and
+  `pkill -f run-electron-tests`, which matches *any* worktree's processes, not
+  just its own. Three of my runs died at exit 144 mid-suite and looked like
+  crashes. Invoking the build through a differently-named config, and launching
+  `Electron test.js --ci` directly rather than through `run-electron-tests.js`,
+  dodges both patterns.
+
+### Spend
+
+| Run | $ |
+| --- | --- |
+| `update /App` ×3 (after the fix) | 0.12 |
+| `update /App` ×1 (fix backed out, to see the failure end to end) | 0.16 |
+| `plan-docs` run 1 | 0.83 |
+| `plan-docs` run 2 | 1.53 |
+| **Total** | **$2.64** |
+
+### One stale line in the reproduce instructions
+
+`LIVE-PROVIDER-PASS.md` documents
+
+```bash
+node packages/noodl-editor/scripts/aix15-live/dist/aix15-harness.cjs --mode=plan
+```
+
+Without `--model=`, that errors immediately with *"No model specified for the
+Anthropic provider"*: the registry default resolves through `EditorSettings`,
+which the harness bundle stubs. Every run in this pass passed
+`--model=claude-sonnet-5` explicitly. Costs nothing but a confusing minute.
