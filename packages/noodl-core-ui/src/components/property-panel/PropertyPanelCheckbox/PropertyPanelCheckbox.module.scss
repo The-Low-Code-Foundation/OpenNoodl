@@ -18,6 +18,14 @@
    input/onChange contract as the old faux checkbox. */
 .FauxCheckbox {
   position: relative;
+  /* F57: the visual is NOT the click target — the real <input> is underneath it,
+     transparent and filling the same box. This element needs `position` for its
+     knob `::after`, and that alone put it in the positioned paint layer where,
+     being the later sibling, it covered the input and swallowed every click. The
+     toggle was mouse-dead in the whole app from PAR-002 (2026-07-26) until this
+     line: reachable by keyboard, by nothing else. Before PAR-002 this element had
+     no `position` at all, which is the only reason clicks used to land. */
+  pointer-events: none;
   width: 32px;
   height: 19px;
   border-radius: var(--radius-full);
@@ -52,7 +60,10 @@
     outline-offset: 1px;
   }
 
-  &:hover:not(.is-checked) {
+  /* Hover follows the input now, not this element — `pointer-events: none` means
+     `&:hover` can never match. Same shape as the `:focus-visible` rule below,
+     which was already written this way. */
+  .Checkbox:hover + &:not(.is-checked) {
     background-color: var(--theme-color-fg-muted);
   }
 
