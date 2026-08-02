@@ -5,11 +5,11 @@
 **Project:** `packages/noodl-editor/tests/testfs/git-repo-utf8` — the same 44-component
 corpus AIX-007 measured on, with the same style vocabulary injected, so the
 $/component here is comparable to its baseline
-**Sessions:** 16 recorded — 12 treatment, 4 control — at **$1.84** in
-`sandbox.jsonl`; 5 more control-arm sessions at **$0.43** in
-`sandbox-after-fix/`, run after the fix below; plus one discarded shakedown
-session at $0.23 whose artifacts were deleted before the measured runs.
-**Total spend $2.50.**
+**Sessions:** 21 recorded, 20 of them producing a candidate — 12 treatment and 4
+control at **$1.84** in `sandbox.jsonl`, then 5 more control-arm sessions at
+**$0.43** in `sandbox-after-fix/` run after the fix below — plus one discarded
+shakedown session at $0.23 whose artifacts were deleted before the measured
+runs. **Total spend $2.50.**
 **Harness:** `packages/noodl-editor/scripts/aix15-live/`, `--mode=sandbox`
 **Artifacts:** `measurements/live/sandbox.jsonl` plus, per session, the
 transcript, the candidate, the model's raw `sample_data`, both datasets
@@ -36,7 +36,7 @@ failing, so that one is fixed here and re-measured rather than filed.
 | Is what it supplies usable? | **Yes, and it is the better of the two sources.** The collection name matched the graph's own in **9/9** (0 records keyed to a class nothing queries), field coverage of the graph's reads was **100%** every time, no placeholder-shaped values at all, and the copy reads as content: "Sunset Jazz Night", "ORD-1042", "Aiko Tanaka". |
 | What does it cost? | **+234 input tokens per request, identical to the token in all four pairs.** $0.0007–$0.0019 per component — **2–5% of AIX-007's $0.0352 baseline** — plus $0.0009–$0.0027 of output on the components that use it. |
 | Did the real candidates break anything? | **Three defects.** The first meant "renders populated lists without a backend" failed for **8 of the 12** candidates that read data at all — **fixed here**, and re-measured on the same candidates: **8 of 8 now populated, 0 still blank**, with the 4 that already worked unchanged field for field. |
-| Did the shim hold? | **144/144 probes**, nine per session across all sixteen, driven through the *installed* shim rather than the responder. |
+| Did the shim hold? | **180/180 probes**, nine per candidate across all twenty, driven through the *installed* shim rather than the responder. |
 
 ---
 
@@ -99,7 +99,8 @@ catalog marks `codeeditor: javascript` — `expression`, `functionScript`, `code
 lot of machinery to recover names a stop list gets for free.
 
 The class comes from walking *upstream* to the node that names a collection.
-Two things about that walk were learned by running it rather than by writing it:
+Three things here were learned by running the scanner rather than by writing it,
+which is the same lesson this whole document is about, one level down:
 
 - **One hop is not enough.** A live candidate sorted in one `Expression` and fed
   that into two more, so the two Expressions naming four of the five fields were
@@ -295,12 +296,13 @@ ones a preview actually makes:
 | `GET https://api.stripe.com/v1/charges` | a REST node pointed anywhere at all |
 | `GET /noodl_modules/…/index.js` | the viewer's own assets must pass through |
 
-**144/144 green.** The data probes are graded on the served record matching the
+**180/180 green**, across every candidate in both runs. The data probes are
+graded on the served record matching the
 dataset *field by field*, not merely on a 200 — so a pass means the model's
 "Sunset Jazz Night" arrived at the node that asked for it, through the mount
 path, through the no-endpoint path, and through BYOB.
 
-Also asserted rather than eyeballed, on all sixteen candidates:
+Also asserted rather than eyeballed, on all twenty candidates:
 
 - the candidate is spliced in as `rootComponent` and appears exactly once,
 - the project's serialisation is **byte-identical before and after** the export
@@ -381,7 +383,7 @@ it will commit. That is a property of data-reading components, not of
   needs a running editor, and the Sample-data / Real-backend toggle needs a human.
 - **The "Fields unknown" chip has never been seen on screen.** Its text, its
   presence and the dataset flag behind it are spec-covered, and the export
-  carries the notice — but no live candidate in nineteen sessions produced a
+  carries the notice — but no live candidate in twenty produced a
   class the scan could not describe, so the amber chip itself is unrendered.
   Reproduce it deliberately with a page that queries a collection and reads no
   field from it (`shapelessPayload` in the specs is exactly that graph).
@@ -396,7 +398,7 @@ it will commit. That is a property of data-reading components, not of
 - **`sample_data` keyed to a class the graph never queries never happened**, so
   the "records the runtime holds and nothing reads" path is still untested
   against a real model.
-- **The `unrenderable` path never fired.** All sixteen candidates had a visual
+- **The `unrenderable` path never fired.** All twenty candidates had a visual
   root, so the logic-only message is still only spec-covered.
 
 ## Reproducing
