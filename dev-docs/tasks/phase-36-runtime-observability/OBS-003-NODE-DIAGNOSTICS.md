@@ -11,6 +11,7 @@
 | **Difficulty** | 🟢 Easy per check, unbounded in aggregate |
 | **Prerequisites** | **none** |
 | **Ships** | incrementally, from the first check |
+| **Status** | ✅ **Built** 2026-08-02 — see [OBS-003-NOTES.md](./OBS-003-NOTES.md) |
 
 ## Objective
 
@@ -107,12 +108,41 @@ reporting facts. An agent reading a bare graph is guessing.
 
 ## Acceptance
 
-- [ ] The convention is written down before the second check is authored.
-- [ ] The States case-mismatch scenario produces a red ring and a Problems entry with the suggestion,
-      with no debugger open and no trace running.
-- [ ] Fixing the condition clears the warning.
-- [ ] A busy fixture shows no measurable frame-time regression from the checks.
-- [ ] Warnings appear as ⚠ annotations on an OBS-002 walk once that exists.
+- [x] The convention is written down before the second check is authored —
+      [`DIAGNOSTICS-CONTRACT.md`](../../reference/DIAGNOSTICS-CONTRACT.md), committed before the
+      batch.
+- [x] The States case-mismatch scenario produces a red ring and a Problems entry with the
+      suggestion, with no debugger open and no trace running. **Verified live.**
+- [x] Fixing the condition clears the warning. **Verified live for both checks — and the case where
+      it did *not* clear was found live, not by the corpus.**
+- [x] A busy fixture shows no measurable frame-time regression. **~14 ns per wire delivery, inside
+      this machine's run-to-run noise.** Measured A/B rather than asserted; see the notes.
+- [x] Warnings appear as ⚠ annotations on an OBS-002 walk. **Verified live, in structural mode** —
+      a cold editor with nothing fired.
+
+## What changed against this spec while building
+
+⚠️ **The worked example was already half-built.** `_failUnknownState` (NDA-004 §2) already raised
+`states/unknown-state` and already listed the real state names. What was missing was the *"Did you
+mean?"* half — which is the actual example, because listing the names only helps an author who
+reads the list and spots one capital letter.
+
+⚠️ **Two of the proposed checks were dropped, and why matters.**
+
+- *"Any node — a required input has no connection and no value."* **No port definition in the
+  library declares a port required.** The check has no data to run on; it would have had to invent
+  the notion first.
+- *"Set Variable — wrote to a variable nothing reads."* This is a **static, whole-graph** question,
+  not a node-local invariant, and belongs in the semantic validator. The contract's *What is not a
+  diagnostic* section says so.
+
+⚠️ **"Repeater — Items received an array of primitives where objects are indexed" was not built.**
+It needs to know how the template indexes its item, which is not knowable from the Repeater. The
+plain non-array case is built and is the one that costs afternoons.
+
+⚠️ **The spec assumed `sendWarning` was the whole channel. It is now one of three**, and the
+contract's first job turned out to be saying which conditions belong on which — the Failure
+Contract and the Outcome Contract both landed after this task was written.
 
 ## Notes
 

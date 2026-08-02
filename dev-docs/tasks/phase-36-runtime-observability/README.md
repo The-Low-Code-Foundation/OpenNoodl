@@ -82,10 +82,10 @@ LLM over a raw graph dump guesses. An LLM over a provenance walk is good **for f
 |---|---|---|---|
 | [OBS-001](./OBS-001-TRACE-SUBSTRATE.md) | The trace substrate | 1 | ✅ **Built.** Append-only per-edge event log + session dictionary. **Replaces a map that structurally cannot record the same wire firing twice** |
 | [OBS-002](./OBS-002-PROVENANCE-WALK.md) | The provenance walk | 1 | ✅ **Built** — see [OBS-002-NOTES.md](./OBS-002-NOTES.md). Right-click → backward walk, all three annotation layers wired, click-to-reveal. The shelved panel is **not** retired; that is still open question 3 |
-| [OBS-003](./OBS-003-NODE-DIAGNOSTICS.md) | Node-local diagnostics | 2 | Layer 3. **Zero dependencies — ships alone, on infrastructure that already exists.** The one task left |
+| [OBS-003](./OBS-003-NODE-DIAGNOSTICS.md) | Node-local diagnostics | 2 | ✅ **Built** — see [OBS-003-NOTES.md](./OBS-003-NOTES.md). [`DIAGNOSTICS-CONTRACT.md`](../../reference/DIAGNOSTICS-CONTRACT.md), three checks, and layer 3 reaching the walk |
 | [OBS-004](./OBS-004-AGENT-ACCESS.md) | Agent access | 3 | ✅ **Built** — see [OBS-004-NOTES.md](./OBS-004-NOTES.md). `nodegx-observe` MCP server, node-id-addressed input injection, and a token on every relay `register` |
 
-**Tiers 1 and 3 are complete** as of 2026-08-02; **OBS-003 is the only task left in the phase.**
+**Phase 36 is complete** as of 2026-08-02. All four tasks are built.
 Read [OBS-002-NOTES.md](./OBS-002-NOTES.md) before building on the trace: three of its defects were
 surfaces stating more than they knew, and the same trap is available to anything else built over it.
 [OBS-004-NOTES.md](./OBS-004-NOTES.md) records what agent access actually shipped, and the one
@@ -95,9 +95,24 @@ open"**, because browsers do not apply the same-origin policy to WebSockets.
 ⚠️ **Tier 3 landed before tier 2, against the intended order.** The reason was territory, not
 appetite: OBS-003's first batch of checks lives in the same runtime node files phase 35's ERG-001
 was actively rewriting, and OBS-004 is disjoint from both. The argument for building tier 2 first
-is unaffected and still correct — **OBS-004 is only as good as the layers under it**, and today its
-`get_warnings` returns whatever the existing `sendWarning` call sites happen to emit, which is
-thin. OBS-003 is what makes it good.
+was unaffected and correct — **OBS-004 is only as good as the layers under it** — and OBS-003 has
+since landed, so `WalkRow.warnings` now carries node-authored diagnoses in both the editor's panel
+and `nodegx-observe`.
+
+### The one thing OBS-003 changed about the design position
+
+The spec above assumed `sendWarning` was *the* channel for node-local diagnosis. By the time OBS-003
+was built there were **three** — outcome ports, the runtime error bus, and `sendWarning` — and
+nothing said which one a given condition belongs on. [`DIAGNOSTICS-CONTRACT.md`](../../reference/DIAGNOSTICS-CONTRACT.md)
+settles it on one line:
+
+> **A failure is an event. A diagnostic is a predicate.**
+
+A failure happened at a moment and belongs where a deployed app's operator can see it. A diagnostic
+is true continuously until the author changes something — it has no moment, and the only person who
+can act on it is the author. **Editor-only is the correct audience for a diagnostic, not a
+limitation**, which is the exact inverse of the Failure Contract's argument and is stated out loud
+so nobody "fixes" it later.
 
 **Tiers are stopping points.** Tier 1 is the product and must ship together — OBS-001 alone is
 invisible, OBS-002 without it is layer 1 only (which is still useful, and is a legitimate early
@@ -183,6 +198,14 @@ None blocking; all are refinements that can be answered when the task is picked 
 3. **Does the shelved panel get rebuilt or retired?** OBS-002 assumes the walk replaces it and the
    `experimental` flag comes off something new. The forward-chain view is a genuine companion surface
    and could keep the old panel's identity instead.
+
+   ⚠️ **Still untouched at the end of the phase, and now the only unanswered *build* question in
+   it.** No task touched `TriggerChainDebuggerPanel`; it remains registered `experimental: true` in
+   [router.setup.ts](../../../packages/noodl-editor/src/editor/src/router.setup.ts) and still reads
+   the snapshot recorder OBS-001 replaced — so it is not merely unfinished, it is reading a source
+   the phase has superseded. Either it gets rebuilt on `TraceBuffer` as the forward-chain companion
+   to the walk, or it gets deleted; leaving it registered against the old recorder is the one
+   outcome that costs something.
 4. ~~**OBS-004 scope.**~~ **Answered: token first.** Richard chose the token handshake over
    deferring. Shipped: every peer presents a per-launch token in its `register`, and a peer that has
    not is neither sent to nor read from.
@@ -193,7 +216,15 @@ None blocking; all are refinements that can be answered when the task is picked 
    `editor`, and read the project export and every traced value out of the running app — no prompt,
    no CORS preflight, nothing to notice. The token was overdue rather than newly required.
 
-5. **New: do the two MCP servers merge?** `nodegx-observe` ships **inside `packages/noodl-mcp`** as
+5. **New: should the error bus be able to withdraw a warning?** OBS-003 found that
+   `createEditorWarningSubscriber` only ever calls `sendWarning`, so a node that raises keeps its
+   danger ring and Problems entry until the project is reloaded — **including after the author has
+   fixed the cause**. `states/unknown-state` now pairs raise with clear explicitly; every other
+   `raiseRuntimeError` site in the library does not. The general question — *when is a past failure
+   no longer interesting?* — belongs to [`FAILURE-CONTRACT.md`](../../reference/FAILURE-CONTRACT.md)
+   rather than to this phase.
+
+6. **New: do the two MCP servers merge?** `nodegx-observe` ships **inside `packages/noodl-mcp`** as
    a second binary — one dependency set, one build, no shared code path. That is a packaging
    decision taken to avoid adding a package (and a lockfile change) while a concurrent session held
    the checkout, not a judgement that they belong together. The spec's warning that the two must not

@@ -79,6 +79,23 @@ The fifth row is the one that will be argued about. `States` is the worked examp
 already raises `states/unknown-state`. The near-match suggestion this contract's first batch adds is
 a *better message on an existing raise*, not a new diagnostic.
 
+### The hybrid, and it is not a loophole
+
+One node can produce both, and `States` does. The failure is an event — the transition was refused,
+`On App Error` saw it, a deployed console logged it, and none of that is retractable. But the
+*editor's danger ring* raised by that event is a standing claim about the node's **current** state,
+and once the author fixes the name that claim is false.
+
+So a node that raises may also **withdraw the editor's claim** with
+`setDiagnostic(sameCode, null)`, without retracting anything on the bus. The rule for where to put
+that call is the one every diagnostic follows and is easy to get wrong here:
+
+⚠️ **Evaluate it where the corrected value arrives, not where the corrected value takes effect.**
+The first attempt on `States` cleared inside `goToState` after the unknown-state guard, and a live
+run found it doing nothing in the commonest case: the correction of `"Clicked"` is `"clicked"` —
+the state the node is *already in* — and two separate `state === current` early returns skip it.
+The predicate is about the name on the input, not about whether a transition results.
+
 ---
 
 ## The API
@@ -124,7 +141,10 @@ if (this.diagnosticsEnabled) {
 
 > **`<node-type>/<condition>`, kebab-case, in the same namespace as failure codes.**
 
-`'repeater/items-not-a-collection'`, `'states/unknown-state'`, `'node/nan-input'`.
+`'repeater/items-not-a-collection'`, `'states/unknown-state'`, `'node/nan-input/<port>'`.
+
+A check that is **per-port** appends the port as a third segment. One node with two NaN inputs then
+carries two independently clearable diagnostics rather than one that flickers between them.
 
 One namespace for both is the point, not an accident:
 
@@ -168,7 +188,7 @@ Use `setDiagnostic(key, null)`, or `clearWarning(component, node, key)` if you a
 > **The gate is `editorConnection.isRunningLocally()`, and it is checked before anything else.**
 
 ⚠️ **`if (this.context.editorConnection)` is not a gate.** A deployed build constructs an
-`EditorConnection` anyway ([`noodl-runtime.ts:285`](../../packages/noodl-runtime/src/noodl-runtime.ts)),
+`EditorConnection` anyway ([`noodl-runtime.ts:286-295`](../../packages/noodl-runtime/noodl-runtime.ts)),
 so that guard is *true in production*, and every warning behind it is formatted, JSON-serialised and
 pushed onto a send queue that will never drain. This was already a measured leak once — see the
 comment on `sendTimer` in [`editorconnection.ts`](../../packages/noodl-runtime/src/editorconnection.ts).
@@ -264,8 +284,8 @@ The first batch, and what each one proves:
 | Key | Node | Pins |
 |---|---|---|
 | `repeater/items-not-a-collection` | Repeater | the predicate shape, and clearing on the good value |
-| `node/nan-input` | base `Node` | a generic check, and that the hot path stays cheap |
-| `states/unknown-state` | States | *not new* — the near-match suggestion is a better message on an existing raise |
+| `node/nan-input/<port>` | base `Node` | a generic check, per-port keys, and that the hot path stays cheap — measured at **~14 ns per wire delivery**, inside run-to-run noise |
+| `states/unknown-state` | States | *not new* — the near-match suggestion is a better message on an existing raise, plus the hybrid withdrawal above |
 
 Every check ships with a corpus row proving **both** halves: that it fires on the bad input, and
 that it stays silent on the good one. A check with only the first half is untested — a predicate

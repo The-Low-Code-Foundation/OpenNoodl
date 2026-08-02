@@ -63,6 +63,22 @@ this.raiseRuntimeError(code, message, detail?)
 
 ### Interaction with other contracts
 
+- **Diagnostics ([`DIAGNOSTICS-CONTRACT.md`](./DIAGNOSTICS-CONTRACT.md), phase 36 OBS-003):** the
+  boundary is **event vs predicate**. This contract owns conditions that *happened* — the node was
+  asked to act and could not. It does **not** own conditions that are simply *true*, like "`Items`
+  is not an array": those have no moment, would fire `On App Error` for nothing, and can only be
+  acted on by the author in the editor. Those go to `setDiagnostic`, which is editor-only **by
+  design** rather than by limitation.
+
+  ⚠️ **A failure raised here can never be withdrawn.** `createEditorWarningSubscriber` only ever
+  calls `sendWarning`; nothing goes back. So a node that raises keeps its danger ring and its
+  Problems entry until the project is reloaded — *including after the author has fixed the cause*,
+  which is how a Problems panel becomes noise. Two nodes pair raise with an explicit clear on the
+  same code (`foreach.tsx`'s `repeater/template-script-syntax-error`, `states.ts`'s
+  `states/unknown-state`); every other site in the library does not. **Whether the channel itself
+  should carry a withdrawal — and what "this failure is no longer interesting" means — is an open
+  question against this contract.**
+
 - **Reactivity:** the cycle breakers (500 sends/iteration, 100 iterations) report through this
   channel when they trip — decided in the Reactivity Contract. Both now raise
   `runtime/cyclic-loop`, with a `detail` naming which breaker tripped and, for the send limit,
