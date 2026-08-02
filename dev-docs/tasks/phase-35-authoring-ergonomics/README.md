@@ -90,3 +90,24 @@ lives.** See
 The lesson generalises past this phase: **a contract that makes a port universal destroys the
 information value of that port for everything that was reading it as a discriminator.** Worth
 checking before the next library-wide port addition.
+
+🔴 **Every output-port description in the library was being dropped on the way to the editor.**
+Found 2026-08-02 by ERG-004's live QA, measured against the running editor's `NodeLibrary`:
+**1656 of 1809 input ports carried a description and 0 of 1144 outputs did.** `exportOutput` in
+`nodelibraryexport.ts` was a hand-copied near-duplicate of `formatPort` that omitted
+`description`. Fixed by delegating, verified live (**0 → 1031**), and pinned by
+`packages/noodl-runtime/test/nodelibraryexport.port-descriptions.test.ts` — confirmed to fail
+without the fix, 4 of 6 rows.
+
+⚠️ **The lesson is about the gates, not the bug.** The text was in the node definitions and in
+the committed catalog (1045/1144 outputs documented), because the catalog generator builds its
+ports from its own capture of the definitions and borrows only `typecasts` and the picker index
+from that file. So `catalog:check`, `catalog:merge:check` and the 153/153 enrichment sweep were
+all green over a library the editor could not see. **The defect lived in the one hop no fixture
+covered: runtime → editor. A green catalog is not evidence that an author can read anything.**
+
+A second finding from the same pass is **referred, not fixed**, because it changes the port
+contract of two shipped nodes: `Object Changed` has no producer in the library at all, and the
+wiring the Data category teaches (`Object.Id` → its `Object` port) is accepted by the typecast
+table, `eval`'d as a JavaScript literal, and silently replaced with `{}`. Options and a
+recommendation in [`ERG-004-NOTES.md`](./ERG-004-NOTES.md) §7.4. **Needs Richard.**

@@ -119,3 +119,55 @@ That is now much less destructive than it was — `filesystem.writeJson` indents
 its output as of 2026-07-28, so a save no longer collapses the file to one line —
 but key order and derived fields still move. **Check `git status` before every
 commit**, and `git checkout --` this file if a gate run dirtied it.
+
+---
+
+## `generate-erg004.py` — the ERG-004 change-detection project
+
+Written 2026-08-02 for ERG-004's live QA (phase 35). Unlike `nodegx-qa-fixture`
+this one is **not committed as a project directory** — the generator is the
+artefact, and it writes to
+`~/vscode_projects/NodeGX test projects/erg004-qa`, outside the repo. Run it, add
+the directory to `~/Library/Application Support/NodeGX/recently_opened_project.json`
+if it is not already there, and **restart the app** — the launcher reads that
+file only at start.
+
+### What it is for
+
+Driving `Object Changed` and `Array Changed` in a real viewer with a real frame
+clock, which `renderToStaticMarkup` cannot provide. It carries:
+
+| Feature | Serves |
+|---|---|
+| A labelled readout row per value port (`OC key: …`) | Reading a value by DOM position produced one confident wrong conclusion. The label travels with the value |
+| A `Counter` per signal port | The values tell you *what* a signal carried; only a count tells you **which** signal fired, and that a sort fires none |
+| Both nodes wired **twice** — from live values and from `Id` strings | The by-id half is the measurement, and is deliberately mis-wired |
+| A `Script` node publishing `Noodl.Object.get(id)` / `Noodl.Array.get(id)` | Today this is the **only** way to feed either node — see ERG-004-NOTES §7.4 |
+
+Mutations are driven from outside over CDP against the same ids, so nothing
+depends on clicking a button:
+
+```bash
+npm run cdp -- eval "Noodl.Object.get('qa-obj').set('name','alpha')" --target=viewer
+```
+
+### ⚠️ Two nodes in it are wrong on purpose
+
+`OC by id` and `AC by id` raise `invalid-object` / `invalid-array`. **Delete them
+before using this project to judge a clean-Problems-panel criterion** — with them
+gone the panel is empty.
+
+### ⚠️ A hand-authored `Script` node needs its `dynamicports` on disk
+
+The runtime registers a Script node's outputs from `this.model.outputPorts` — what
+the *exported graph* carries — not from the ports its own parser derives from the
+code. With `"dynamicports": []` the node parses fine, runs `setup` fine, and
+throws *"Node Javascript2 doesn't have a port named obj"* the moment `setup`
+touches an output. The generator writes them; the editor writes them back on save.
+
+### ⚠️ Regenerate before every run
+
+The same "opening it rewrites it" hazard as above, and here it bites harder
+because the project is hand-authored: after a live deletion test the autosaved
+file had genuinely lost the deleted node, and the next run measured a dead half
+of the graph that briefly read as a regression. Re-run the generator each time.
