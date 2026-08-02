@@ -219,8 +219,11 @@ the honest-prose fixtures).
 ## The two live residuals, closed (2026-08-02)
 
 `claude-sonnet-5`, effort `low`. Artifacts under
-`measurements/live/` (`update.jsonl`, `plan-docs.jsonl`, `plan-docs/`,
-`run2/`). **$2.64 of API spend**, itemised at the bottom.
+`measurements/live/`: `update.jsonl` and `update/app-start-page.*` (the fixed
+runs), `update-app-before-fix.jsonl` (the failure, reproduced deliberately),
+`plan-docs.jsonl` + `plan-docs/` and `plan-docs-run2.jsonl` + `plan-docs-run2/`
+(the plans, every candidate, and both halves of each authored document).
+**$2.64 of API spend**, itemised at the bottom.
 
 Both residuals turned out to be the same defect wearing two masks: **an update
 session was judged against a standard its own subject does not meet.** Neither
@@ -313,6 +316,27 @@ prompt now also says these types are real and must come back verbatim.
 retyped**, all three `Markdown` and the `module.inlineHtml` intact, with three
 new nodes for the save control.
 
+### 4. Recorded, not fixed: a create session that reads until it cannot build
+
+`plan-docs` run 2's `Pages/Saved` operation went **11 turns, 0 submissions**,
+`exhausted`, at **117,167 of the 120,000-character context budget** — and cost
+most of that run's $1.51. It never submitted anything at all; it spent the
+whole round reading. The same operation in run 1 authored on its first
+submission at 109k chars, so this is the same session shape landing either side
+of a line.
+
+Two things follow, neither of them addressed here:
+
+- A page created inside a plan is the most context-hungry operation there is —
+  it carries the plan block, the catalog, the style vocabulary and several
+  component reads — and the budget refusal (`BUDGET_REFUSAL`) arrives as prose
+  in a tool result rather than as anything that changes the model's strategy.
+- A single operation can therefore cost more than the other five put together
+  while producing nothing. The panel still says nothing about what a plan will
+  cost; the live pass's "a five-operation plan is a ~$0.90 action" is now
+  better read as "$0.8–$1.5, with the variance concentrated in the sessions
+  that fail".
+
 Both accept paths (`AiAuthoringPanel.acceptFiles`, `ProjectAuthoringView`'s
 pre-apply re-validation) pass the same baseline. Without that, a candidate the
 loop accepted would have been refused at apply — the fix would have moved the
@@ -341,7 +365,7 @@ human-written `docs/ARCHITECTURE.md`.
 | Run | Ops | Component ops staged | Doc | Cost |
 | --- | --- | --- | --- | --- |
 | 1 | 7 (1 doc) | 6/6 | `docs/ARCHITECTURE.md`, 1690 chars | $0.83 |
-| 2 | 6 (1 doc) | 4/5 | `docs/ARCHITECTURE.md`, 1862 chars | $1.53 |
+| 2 | 6 (1 doc) | 4/5 (`Pages/Saved` exhausted — see §4) | `docs/ARCHITECTURE.md`, 1862 chars | $1.53 |
 
 **Is what it writes any good?** Yes, and specifically in the way the design
 line asks for. Both revisions are **pure additions** — every line of the
@@ -364,7 +388,9 @@ asked for —
 > route to.
 
 That is `PlanRun`'s "the doc turn sees what the fan-out actually built,
-including what it failed to build", working against a real model.
+including what it failed to build", working against a real model. Measured
+rather than eyeballed: run 2's revision kept **22 of 22** non-blank baseline
+lines.
 
 **`docLint` on real output: no false positives, and no true positive either.**
 Zero findings on both authored docs — and zero across **all 20** live-authored
