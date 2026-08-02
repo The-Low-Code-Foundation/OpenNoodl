@@ -492,3 +492,165 @@ pulse it while `Done` stays quiet — was not built. The behaviour itself is pin
 over the real node definitions in a real `NodeContext`, including the ordering and the
 per-invocation reset, so this is a gap in the *consequence* claim, not the *mechanism* one — which
 is the distinction DV-ii insists on, and the reason it is recorded as owed rather than met.
+
+
+---
+
+## §4 — built 2026-08-02
+
+Commits `a6a56ed2` → `7c93ce64`. **20 of §0's 82 actions now satisfy the contract** (the four
+Array nodes from §2, plus the sixteen below). The register of what remains is at the end.
+
+### The rename is finished (Build 1)
+
+All six nodes from the next-session table, and Richard's two 2026-08-02 decisions are both
+applied:
+
+| Node | Was | Is |
+|---|---|---|
+| `NewModel` | `created` | `done` |
+| `SetModelProperties` | `stored` | `done` |
+| `net.noodl.SetComponentObjectProperties` | `stored` | `done` |
+| `net.noodl.SetParentComponentObjectProperties` | `stored` | `done` |
+| `net.noodl.GlobalStore.Set` | `completed` (meant "succeeded") | `done` + a real universal `completed` |
+| `net.noodl.ActionDispatcher` | `completed` (per action) | `actionCompleted` + the contract's four |
+
+**⚠️ The `ActionDispatcher` decision, in the open as the prompt asked.** Richard's decision was
+"rename the `Completed`-that-means-`Done` to `Done`". On this node that would have replaced one
+lie with another, because its `completed` is **per action** and one `Dispatch` of an array of
+five produces five of them, minutes apart, long after the invocation ended. So the port keeps
+its meaning under a name that says which granularity it is — `actionCompleted` / "Action
+Completed" — and the contract's ports are minted beside it. `actionCompleted` rather than
+`actionDone` because `Completed` is the word authors already know for this port and a third word
+for one fact would be its own cost. The node now reads:
+
+```
+Dispatched / Action Completed / Failed / Refused     per action
+Done / Unchanged / Failure / Completed               per invocation of Dispatch or Cancel All
+```
+
+`Dispatch` is `Done` when anything at all was admitted — a partial admission counts, and the
+refused members are on `Refused` with their reason — and `Failure` when nothing was. `Cancel All`
+is `Done` when it dropped something and `Unchanged` when there was nothing to drop, a path that
+opened `if (!internal.dispatcher) return;`.
+
+### ⚠️ §0.2 Result 5's blind spot, measured properly
+
+The prompt was right that a rename has two sides. Re-swept for the names being *renamed away
+from*: **21 wires across 12 files**, where §0 Result 5 listed one. §0's sweep script also read
+`sourceId`/`sourcePort` when the on-disk keys are `fromId`/`fromProperty`, so its first
+corrected run still reported zero — worth knowing, because a sweep that returns nothing looks
+identical whether it is clean or broken.
+
+| Where | Wires |
+|---|---|
+| `library/prefabs/` (filters, form, multi-choice ×2, pagination, selection-pills, stripe, supabase, tab-bar) | 9 |
+| `docs/node-catalog/examples/agent-server-driven-actions.json` | 1 |
+| `packages/noodl-editor/tests/testfs/git-repo-utf8/project.json` | 10 |
+
+All migrated as **text, anchored on each source node's id**, so a node type outside the six keeps
+its own `stored`/`created`/`completed` (the Variables family's `stored` is untouched). The diff
+is 21 lines; `json.dump` was not used.
+
+### DV-viii — five of nine Visual nodes (Build 2a)
+
+`Video`, `Drag`, `Group`, `Checkbox`, `Text Input`. One mechanism, because they share one:
+`outcomeOnInnerComponent` wraps `withInnerComponent` and reports from *inside* the queued
+action, so `Done` lands after the element has the action. A component that declines returns a
+reason string — the shape Group's scroll actions already used — and that becomes `Failure`.
+
+⚠️ The queue's 16-deep cap was the last path on which a Visual action could end in silence. A
+discarded entry now reports `Failure` (`visual/action-dropped`).
+
+### §0.3's `Unchanged` register — four of eight (Build 2b)
+
+`Counter` at its limits, `Switch` already in state, `Timer.Start` on a running timer (and
+`Stop` with nothing running), `Undo`/`Redo` at the end of history. `Checkbox` was closed with
+Build 2a.
+
+Two things found while adopting it:
+
+- **`Undo`'s `setError` deduped the signal, not just the string.** A second identical failure was
+  silent — a per-node latch on a per-invocation fact, NV-iii's shape in a different node. The
+  signal and the raise moved into `reportOutcome`; the dedupe now guards only the `Error` value.
+- **One token per queued action, not per drain.** `Undo` coalesces a frame's presses into one
+  scheduled run. Coalescing the work is right; coalescing the outcomes loses invocations.
+
+### The discrimination check, predicted then run — four times, all exact
+
+| Revert | Predicted | Actual |
+|---|---|---|
+| Checkbox's `Unchanged` back to a bare `return` | 2 red, control green | **2 red** |
+| Video back to `withInnerComponent` | 6 red, ports row + cap control green | **6 red** |
+
+(§1/§2's two are recorded above.)
+
+### Live QA — criterion 8 **met in full**, 2026-08-02
+
+The running-preview half that §1/§2 recorded as owed. Built in the running editor against
+`bcn010-live`: a real `Button`, an `Object` supplying a fixed id so the second press is a genuine
+duplicate, a `CollectionInsert`, and two `Counter`s feeding two `Text` nodes — one behind `Done`,
+one behind `Completed`.
+
+| Clicks | Done counter | Completed counter |
+|---|---|---|
+| 1 | 1 | 1 |
+| 2 | **1** | **2** |
+| 3 | **1** | **3** |
+
+The duplicate insert continued through `Completed` and stopped at `Done`, in the real app, from
+real clicks. No `[renderer:exception]` and no `outcome/*` error in `.logs/dev.log`.
+
+⚠️ Two things worth knowing for the next person driving this:
+
+- The editor **accepted both wires** from `CollectionInsert.done` and `.completed` through the
+  real `addConnection` path, which is independent evidence that the ports reached the editor's
+  node library as connectable ports and not just as catalog rows.
+- `project.setRootComponent(undefined)` throws (`projectmodel.ts:163` dereferences `.graph`), so
+  `bcn010-live` was left with `/App` as its home component. Harmless — it is a scratch QA project
+  outside the repo, and it previously showed the "no HOME component" error page.
+
+### What remains of §0's 82 — the honest register
+
+**20 done.** The four Array nodes (§2), the six of Build 1, the five Visual, plus `Counter`,
+`Switch`, `Timer`, `Undo / Redo` and `Checkbox` — Checkbox counted once.
+
+Still owed, in the order the next slice should take them:
+
+| Remaining | Why it was not done here |
+|---|---|
+| `Router` and `Page Stack` — `Reset` | `resetAsync` is async through an `asyncQueue`, and `reset()` is *also* called on mount by `RouterHandler`/`navigation-handler`, which is not an invocation of the `Reset` input. The token has to travel and the mount path must report nothing. Real design, not a sweep. |
+| `RouterNavigate` — `Navigate` to the current page | §0.3's entry, and entangled with the Router work above (`router.tsx:401-410`). |
+| `Page` — `Page Ready`, `State History` — `Clear History` | Small; grouped with the navigation slice because they share the file set. |
+| `net.noodl.WebSocket`, `net.noodl.SSE` — `Disconnect` | §0.3 lists only the disconnect-when-not-connected path, but Rule 1 covers *every* action and these nodes' `Connect`/`Send` are async with outcomes that need designing. Adopting one input and not the others is exactly the per-node divergence `outcome.ts` warns about. |
+| `For Each` / `For Each Actions` | §0's "emits nothing at all" table, not yet read. |
+| the other ~57 actions | The bulk of §4, by category. |
+| **§3** `Treat Unchanged as` | Not started. ⚠️ A declared `default` does not run its setter — FINDINGS **A-D1**. |
+| **§5** the validator's dead-end check | Not started. `description` is present on every port added here. |
+
+⚠️ **`GlobalStore.Set` has an unmeasured `Unchanged` candidate.** `setKey` ends in `Model.set`
+without `forceChange`, which does not notify when the value compares equal — so re-writing a key
+with the value it already holds is a real no-op of exactly the shape §0.3 collects. Not added:
+`setKey` returns `void`, detecting it means changing that signature and reasoning about `merge`,
+and §0.3 never measured this node. Deriving the verdict from the shape of the code is the mistake
+§0.3 exists to prevent.
+
+⚠️ **`Counter`'s `Reset` guard reads `this.currentValue` and has never fired** (PLAT-003 NOTES
+§25). Left verbatim: repairing it changes when `Count Changed` fires, which is a behaviour change
+dressed as a rename.
+
+### Gates — measured before and after
+
+| Gate | Before | After |
+|---|---|---|
+| `noodl-runtime` jest | 94 suites, 1767 passing, 13 skipped | **96 suites, 1789 passing, 13 skipped** |
+| `noodl-viewer-react` jest | 51 suites, 598 passing | **52 suites, 627 passing** |
+| `typecheck:runtime` | pass | pass |
+| viewer-react `tsc` | pass | pass |
+| `typecheck:cloud` | pass | pass |
+| `catalog:check` | pass | pass |
+| `catalog:merge:check` | pass | pass |
+| `cloud-library:check` | pass | pass |
+| editor `test:ci` | 2007 specs, 0 failures | **2007 specs, 0 failures** |
+
+0 failures and no new warnings throughout. 45 corpus rows added across four files.
