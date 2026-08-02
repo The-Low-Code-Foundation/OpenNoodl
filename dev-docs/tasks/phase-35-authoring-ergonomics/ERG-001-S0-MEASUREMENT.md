@@ -888,3 +888,269 @@ to prevent.
 ⚠️ **`Counter`'s `Reset` guard reads `this.currentValue` and has never fired** (PLAT-003 NOTES
 §25). Left verbatim: repairing it changes when `Count Changed` fires, which is a behaviour change
 dressed as a rename.
+
+---
+
+## §4, the long tail — three builds, 2026-08-02
+
+Commits `537b14aa` + `58c2dfb5` (streaming), `f3a4a1a9` (Repeater), `fcf52c14` (Variables).
+**34 of §0's 82 actions now satisfy the contract, up from 30.**
+
+⚠️ **The previous entry's "27" was an arithmetic slip.** Its own enumeration — four Array
+nodes, six of Build 1, five Visual, `Counter`/`Switch`/`Timer`/`Undo`, seven navigation — lands
+on 26, with `Checkbox` counted twice in the prose. Every number in this section is **measured**
+against `packages/noodl-types/src/node-catalog.json` (a node counts as adopted when it publishes
+`completed`) rather than counted from prose; the script is eight lines and worth re-deriving
+rather than trusting a running total.
+
+### The eight nodes, and the shape each got
+
+| Node | Signal inputs | Ports |
+|---|---|---|
+| `net.noodl.WebSocket` | `Connect`, `Disconnect`, `Send` | `done` · `unchanged` · `failure` ×5 · `completed` |
+| `net.noodl.SSE` | `Connect`, `Disconnect` | `done` · `unchanged` · `failure` · `completed` |
+| `For Each` — Repeater | `Refresh` | `done` · `failure` ×3 · `completed` — **no `Unchanged`** |
+| `For Each Actions` — Repeater Item | `Remove Completed` | `done` · `unchanged` · `completed` — **no `Failure`** |
+| `String` · `Number` · `Boolean` · `Color` | `Set` | `done` · `unchanged` · `completed` — **no `Failure`**, and `Stored` removed |
+
+### Build 1 — the streaming pair, and why `Connect` settles late
+
+§0.3 measured one path here (`Disconnect` when nothing is connected) but Rule 1 covers every
+action, so `Connect` and `Send` were decided at the same time.
+
+`Connect` is async and reuses the navigation slice's token shape: `pendingConnect` is
+**optional**, minted only in the input handler, so auto-connect and the url-change rebuild report
+nothing. It settles at the **first terminal state** — `open` → `Done`, `error` → `Failure` —
+which means a first attempt that drops and a retry that then opens is **one `Done`**, not a
+`Failure` followed by a `Done`. The alternative would end an author's chain dead on a connection
+that is, in the end, open, which is the class this contract closes. A `Connect` superseded by a
+later `Connect`, a `Disconnect` or a url change is `Unchanged`, not `Failure` — the author asked
+for it.
+
+⚠️ **The one honest cost, recorded rather than hidden:** a `Connect` that retries for ever
+(`Auto Reconnect` on with an unlimited retry budget) stays pending and reports nothing until it
+opens, gives up, or is superseded. `Max Retries` and `Auto Reconnect` are what bound it.
+
+`Send` needed the connection to say *why* a value did not reach the socket, so
+`WebSocketConnection.send` returns a named result instead of a boolean.
+
+- **queued → `Done`.** The postcondition of `Send` is "the value is owed to the wire", and a
+  queued message is owed. `Queue Size` and `On Message Sent` distinguish "accepted" from
+  "written".
+- **policy `Drop` → `Unchanged`.** The author configured it; a `Failure` firing on a graph
+  working exactly as written is how authors are trained to ignore the port.
+- **five refusals → `Failure`,** each with its own code.
+
+`SseConnection.disconnect` and `WebSocketConnection.disconnect` likewise return whether they
+closed anything — the step `stateHistoryManager.clearHistory` took in the navigation slice, safe
+for the same reason: both classes are internal to their node and every caller is in the repo.
+
+### Build 2 — the Repeater, and a defect found by building it
+
+⚠️ **`Items Rendered` could not be made into `Refresh`'s `Done`.** It fires whenever the
+operation queue drains having done work, which includes a collection `add` and the initial bind.
+It is a list-level announcement, and it is the right one; it is simply not tied to any
+invocation. `Refresh` reports at the end of `refresh()`'s own async body instead.
+
+⚠️ **No `Unchanged` on the Repeater, and the empty list is the reason.** The tempting
+`Unchanged` is "you refreshed a list that was empty and still is" — and taking it would put the
+*common* empty case on a different wire from the common non-empty one, which is `Run Tasks`'
+defect with the sign flipped. `Page Stack`'s exemption, for the same reason. `refresh()`'s one
+combined early return is split in three so each refusal names itself (`repeater/no-template`,
+`repeater/no-items`, `repeater/no-target`).
+
+`For Each Actions` **never cleared its `removeCompletedCallback`**, so a second
+`Remove Completed` called the Repeater's callback again — NV-iii's latch, in the node whose whole
+job is a one-shot handshake.
+
+⚠️ **FILED, NOT FIXED — measured, not inferred.** `Items Rendered` fires with **zero item nodes
+existing** after a `Refresh`. `_queueOperation` is handed `() => { this.refresh(); }`, whose block
+body drops the promise, so `_runQueueOperations`' `await op()` returns immediately and the queue
+drains while the rebuild is still awaiting `addItem` per item. Probed directly:
+
+```
+[{"signal":"itemsRendered","items":0},{"signal":"done","items":3},{"signal":"completed","items":3}]
+```
+
+That is the defect NDA-004 §3 added the port to prevent, still live on one of the two paths into
+a rebuild. A corpus row pins the measured ordering; repairing it changes *when* an existing
+signal fires, which is a behaviour change and was not this slice's to make. **The one-character
+fix is `() => this.refresh()`**, and `Done` is honest about the same moment until someone takes it.
+
+### Build 3 — the Variables family, and the first port that already *was* `Completed`
+
+The node had computed the answer since NDA-002 §3 — `setValueTo`'s `changed` guard — and thrown
+it away by returning `void`.
+
+⚠️ **`Stored` is removed rather than renamed.** It fired after every `Set` whatever happened,
+which is exactly what Rule 2 promises, so it is the one port in the library whose meaning was
+already `Completed`. §0.2 Result 3 found the mirror image twice — a `Completed` that meant
+"succeeded" — and those had to be renamed because adopting the reserved name in place would have
+inverted a wire an author had drawn. Here the name fits, so keeping both would have shipped two
+ports that always fire together. Renaming it to `done` would have been the other lie, because
+`done` must mean "changed something".
+
+The two-sided sweep found **no wire to `stored` on any of these four**. The four hits are on the
+deprecated `Variable` node — a different type — inside 2020 merge-algorithm golden fixtures,
+which are not live graphs and must not be edited.
+
+⚠️ **With `Value` left ticked under Run On Value Change (the default), a `Set` can only ever
+report `Unchanged`,** because NDA-017 §2 made `Set` additive and `Value` has already stored by
+the time it fires. That is measured as its own corpus row rather than designed around, and it is
+what the live run below shows.
+
+### ⚠️ Three corrections to the recipe, all found the hard way
+
+**1. `m.addConnection` accepting a wire proves nothing.** The previous entry recorded it as
+"independent evidence the ports reached the editor's node library as connectable". It is not:
+the first live rig wired `Counter.increaseCount` and `Counter.count`, **neither of which exists**
+(the real names are `increase` and `currentCount`), and `addConnection` accepted all of them
+silently. The rig then read as "the node reports nothing" when the truth was "the wires go
+nowhere". **The raw counter wired straight off the Button is what caught it** — it read 0 after
+four clicks, which no node-side defect could explain. Check port names against `NodeLibraryData`
+before believing a rig.
+
+**2. A rename must be swept in *source*, not only in project files — and that is how this one
+got half-done.** The `stored` sweep read every `.json` in the repo, found the four hits were on a
+deprecated node in 2020 merge fixtures, and concluded it was safe. It was not: **five SUB-006
+validator specs build their graphs inline in TypeScript** and wired `stored` as the source port
+of a `Boolean`/`Number`. The editor gate went to **5 failures** and only the final full run
+caught it (`9b4cf2bd`). Four rigs asserting "0 errors" got 1, and the AI-fixability rig found the
+*output's* `NonexistentPort` diagnostic before the input's and read the wrong alternatives list.
+⚠️ **An intermediate `test:ci` run had been captured with `tail -4`, which cut off the Jasmine
+summary line — so the gate looked green when it had never been read.** Capture the summary, not
+the tail.
+
+**3. `catalog:merge:check` still does not catch a stale enrichment entry, and this session hit it
+twice.** All four Variables enrichment files described the removed `stored` port and every check
+passed. Worse, the *inverse* also passes: an `unchanged` entry written for a port `For Each`
+deliberately does not have reached `node-catalog-enriched.json` and had to be removed by hand.
+**Grep `docs/node-catalog/enrichment/` against the real port set, in both directions.**
+
+### The discrimination check — twelve reverts, eleven exact
+
+| Revert | Predicted | Actual |
+|---|---|---|
+| WS `Disconnect` reports `done` unconditionally | 2 | **2, those two** |
+| WS `Connect` token minted on the auto-connect path too | 7 | **7, those seven** |
+| WS connect token settled at the first *attempt* failure | 1 | **1, that row** |
+| WS `Send` reports `done` for a policy drop | 1 | **1, that row** |
+| SSE `doDisconnect` always claims it closed something | 2 | **2, those two** |
+| Repeater `Refresh` token minted in `scheduleRefresh` | 2 | **7 — wrong, see below** |
+| Repeater no-items branch reports `done` | 1 | **1, that row** |
+| `Remove Completed` does not clear the callback | 1 | **1, that row** |
+| empty rebuild reports `unchanged` | 2 | **2, those two** |
+| Variable `Set` reports `done` unconditionally | 9 | **9** |
+| Variable `setValueTo` ignores `hasBeenSet` | 3 | **3** |
+| Variable token moved from `Set` into `setValueTo` | 6 | **6** |
+
+⚠️ **The one miss is recorded rather than tidied away.** Moving the Repeater's mint into
+`scheduleRefresh` reddens seven rows, not two, because *every* setter on that node schedules a
+refresh: a row that binds `Items` and then pulses `Refresh` gets two outcomes where it asserted
+one. The claim "only the port mints" is therefore load-bearing across the whole file, not just in
+the two rows written to state it — a stronger result than the prediction expected, which is why
+the miss is worth more than a corrected prediction would have been.
+
+### Live QA — the rig, and the two things no corpus row can show
+
+Driven headlessly against `bcn010-live` after `npm run build --prefix packages/noodl-viewer-react`.
+All three shipped bundles (`external/viewer`, `external/deploy`, `external/ssr`) carry
+`reportOutcome` and the new failure codes.
+
+**The editor surface**, straight off `NodeLibraryData` — `stored` gone from all four Variables:
+
+```
+net.noodl.WebSocket -> [done, completed, unchanged, failure]
+net.noodl.SSE       -> [done, completed, unchanged, failure]
+For Each            -> [itemsRendered, done, completed, failure]   <- no unchanged, as designed
+For Each Actions    -> [done, completed, unchanged]                <- no failure, as designed
+String/Number/Boolean/Color -> [changed, done, completed, unchanged]   stored? false
+```
+
+**The running preview** — a real `String` Variable with `Value` unticked under Run On Value
+Change, `Set` wired to a real Button, counters on `Done` / `Unchanged` / `Completed` and a raw
+click counter wired straight off the Button. Real clicks:
+
+| | raw clicks | Done | Unchanged | Completed |
+|---|---|---|---|---|
+| **boot** | 0 | **0** | **0** | **0** |
+| clicks 1–4, same value | 4 | **0** | **4** | 4 |
+| change `Value`, no click | 4 | 0 | 4 | **4** |
+| click 5, new value | 5 | **1** | 4 | **5** |
+
+Three claims a corpus row cannot make. The boot row: nothing reported before any invocation. The
+value-change row: writing `Value` with the checkbox unticked reports **nothing at all** — the
+mount-path rule, live. And the same button reports `Unchanged` four times then `Done` when the
+value genuinely differs, which is the discrimination the contract exists for. **`Completed`
+equals the raw click count on every row** — Rule 2, proved live.
+
+And the Repeater, with no `Items` bound:
+
+| REFRESH click | Done | Failure | Completed |
+|---|---|---|---|
+| 1 | 0 | **1** | 1 |
+| 2 | 0 | **2** | 2 |
+
+No `[renderer:exception]` and no `outcome/*`, `repeater/*`, `websocket/*` or `sse/*` error in
+`.logs/dev.log`.
+
+⚠️ **One thing the live run did *not* confirm:** that the failure *code* reaches the editor's
+warnings panel. The panel was closed and no `WarningsModel` handle was reachable from the
+renderer; in the editor the error bus routes to the editor subscriber rather than the console, so
+`.logs/dev.log` is silent by design. The corpus rows assert the codes on the error bus directly,
+which is the FAILURE-CONTRACT's own observable — but the panel rendering is unverified for these
+four codes.
+
+### Noise, measured rather than asserted
+
+`noodl-runtime`'s jest emitted **242** `console.error` blocks before this session and **250**
+after: eight new lines, each one the NDA-004 channel carrying a `Failure` that a row explicitly
+asserts (`websocket/connect-failed` ×3, `sse/connect-failed` ×2, `websocket/not-connected`,
+`websocket/nothing-to-send`, `websocket/queue-full`). That is the contract working, not stray
+noise, and it is stated as a delta rather than as "no new noise".
+
+### Gates — measured before and after
+
+| Gate | Before | After |
+|---|---|---|
+| `noodl-runtime` jest | 97 suites, 1795 passing, 13 skipped | **99 suites, 1843 passing, 13 skipped** |
+| `noodl-viewer-react` jest | 53 suites, 664 passing | **54 suites, 678 passing** |
+| `typecheck:runtime` | pass | pass |
+| viewer-react `tsc` | pass | pass |
+| `typecheck:cloud` | pass | pass |
+| `catalog:check` | pass | pass |
+| `catalog:merge:check` | pass | pass |
+| `cloud-library:check` | pass | pass |
+| editor `test:ci` | 2007 specs, 0 failures | **2007 specs, 0 failures** (5 failures first — see correction 2) |
+
+62 corpus rows added across three files.
+
+### What remains of §0's 82 — measured
+
+**34 done. 48 remain**, and there is still no design in most of them.
+
+| Remaining | Count | Note |
+|---|---|---|
+| **Cloud Services** | 11 | Every one already has `Success`/`Failure`; mostly a rename to `done` plus a real `completed`. `Record`/`User` also carry `Changed`/`Fetched`, which are value-level events like `Items Rendered` — do not fold them in. |
+| **Data** | 20 | The largest block. `HTTP Request`, `Optimistic Update`, `Stream Buffer`, `Text Accumulator` and `Run Tasks` are multi-action; the rest are single-action renames. |
+| **CustomCode** | 3 | ⚠️ `Logic Builder` registers block names verbatim — FINDINGS **SR-ix**, the collision is live and silent. Read NDA-004 §3 before touching it. |
+| **Cloud** | 2 | `Response`, `Send Email`. |
+| **Component Utilities** | 2 | `Component Object`, `Parent Component Object` — `Fetch`. |
+| **Navigation** | 4 | `Close Popup`, `External Link`, `Navigate To Path`, `Show Popup`. ⚠️ `Close Popup` is NV-iii's original latch. |
+| **Animation / Events / Logic / String / Utilities** | 6 | `States`, `Send Event`, `Condition`, `Unique Id`, `Open File Picker`. ⚠️ `Condition` has no completion path at all today. |
+| **§3** `Treat Unchanged as` | — | Not started. The Variables family is now the obvious first home: it already carries `Treat empty as` in exactly this shape. ⚠️ A declared `default` does not run its setter — FINDINGS **A-D1**. |
+| **§5** the validator's dead-end check | — | Not started. ⚠️ It must not flag `Page Stack`'s and `For Each`'s missing `Unchanged`, or `State History`'s, `For Each Actions`' and the Variables' missing `Failure` — all are the contract's exemptions, each recorded with its reasoning and each with a corpus row asserting the port is **absent**. |
+
+Still open and still unmeasured, carried forward verbatim:
+
+⚠️ **`GlobalStore.Set` has an unmeasured `Unchanged` candidate.** `setKey` ends in `Model.set`
+without `forceChange`, so re-writing a key with the value it already holds is a real no-op.
+Adding it means changing `setKey`'s `void` return and reasoning about `merge`. §0.3 never
+measured this node; deriving the verdict from the shape of the code is what that section exists
+to prevent. ⚠️ Note that this session took exactly that step **three** times —
+`WebSocketConnection.send`/`.disconnect`, `SseConnection.disconnect`, `setValueTo` — and it was
+safe every time for the reason the note gives for *not* taking it there: each class is internal
+to one node and every caller is in the repo. `setKey` is not.
+
+⚠️ **`Counter`'s `Reset` guard reads `this.currentValue` and has never fired** (PLAT-003 NOTES
+§25). Left verbatim: repairing it changes when `Count Changed` fires.
