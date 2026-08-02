@@ -25,6 +25,15 @@
 import { subscribeReviewVisibility } from '../../src/editor/src/views/panels/AiAuthoringPanel/ProjectReviewBanner';
 import { EventDispatcher } from '../../src/shared/utils/EventDispatcher';
 
+/*
+ * `ProjectModel.instanceHasChanged` always carries `{ oldInstance }` — see
+ * `ProjectModel.setInstance`. Emitting it bare passes in isolation and then
+ * fails whenever some other spec has already registered one of the real
+ * listeners (`EditorEventBindings`, `ProjectSettingsModel`), both of which read
+ * `args.oldInstance` off an object they are entitled to assume exists. That is
+ * an order-dependent failure the seed decides, so these emits carry the real
+ * payload shape rather than the smallest one that happened to work.
+ */
 describe('ProjectReviewBanner — one banner unmounting keeps the other listening (AIX-010)', () => {
   it('re-evaluates the surviving banner after the first one is disposed', () => {
     let build = 0;
@@ -33,7 +42,7 @@ describe('ProjectReviewBanner — one banner unmounting keeps the other listenin
     const stopBuild = subscribeReviewVisibility(() => (build += 1));
     const stopDocs = subscribeReviewVisibility(() => (docs += 1));
 
-    EventDispatcher.instance.emit('ProjectModel.instanceHasChanged');
+    EventDispatcher.instance.emit('ProjectModel.instanceHasChanged', { oldInstance: undefined });
     expect(build).toBe(1);
     expect(docs).toBe(1);
 
@@ -41,7 +50,7 @@ describe('ProjectReviewBanner — one banner unmounting keeps the other listenin
     // panel's listener too, and `docs` stayed at 1 forever.
     stopBuild();
 
-    EventDispatcher.instance.emit('ProjectModel.instanceHasChanged');
+    EventDispatcher.instance.emit('ProjectModel.instanceHasChanged', { oldInstance: undefined });
     expect(build).toBe(1);
     expect(docs).toBe(2);
 
@@ -59,7 +68,7 @@ describe('ProjectReviewBanner — one banner unmounting keeps the other listenin
     stopA();
     stopB();
 
-    EventDispatcher.instance.emit('ProjectModel.instanceHasChanged');
+    EventDispatcher.instance.emit('ProjectModel.instanceHasChanged', { oldInstance: undefined });
     expect(calls).toBe(0);
   });
 
@@ -73,7 +82,7 @@ describe('ProjectReviewBanner — one banner unmounting keeps the other listenin
     stopMine();
     stopMine();
 
-    EventDispatcher.instance.emit('ProjectModel.instanceHasChanged');
+    EventDispatcher.instance.emit('ProjectModel.instanceHasChanged', { oldInstance: undefined });
     expect(mine).toBe(0);
     expect(theirs).toBe(1);
 
