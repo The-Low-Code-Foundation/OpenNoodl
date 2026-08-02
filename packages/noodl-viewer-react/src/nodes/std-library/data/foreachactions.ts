@@ -1,5 +1,6 @@
 import { Node } from '@noodl/runtime';
 import { forgetForEachItem, resolveForEachItem } from '@noodl/runtime/src/foreachitem';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
 /** `this` inside the Repeater Item node. */
@@ -8,6 +9,11 @@ interface ForEachActionsInstance extends NodeInstance {
     /**
      * Set by {@link ForEachActionsInstance.tryRemove} while the Repeater waits for the
      * `Try Remove` handshake to complete.
+     *
+     * ⚠️ **Cleared the moment it is called.** ERG-001: it never used to be, so a second
+     * `Remove Completed` pulse called the Repeater's callback again — NV-iii's latch, in the
+     * node whose whole job is a one-shot handshake. Clearing it is also what makes the second
+     * pulse honestly `Unchanged` instead of a second `Done`.
      */
     removeCompletedCallback?(): void;
   };
@@ -41,7 +47,18 @@ const ForEachActionsDefinition: NodeDefinitionOptions = {
         'only when Try Remove is connected',
       group: 'Events',
       valueChangedToTrue: function (this: ForEachActionsInstance) {
-        this._internal.removeCompletedCallback && this._internal.removeCompletedCallback();
+        // ERG-001. This line was `callback && callback()` — silent whether or not there was a
+        // handshake to complete, which is §0's "emits nothing at all" entry for this node.
+        const outcome = this.beginOutcome();
+        const callback = this._internal.removeCompletedCallback;
+        // Cleared before it runs, not after: the callback destroys this item, and a Repeater
+        // that re-entered here would otherwise find the slot still full.
+        this._internal.removeCompletedCallback = undefined;
+        if (callback) callback();
+        // Nothing waiting is a no-op an author may have written on purpose — `Remove Completed`
+        // pulsed unconditionally beside an exit animation is a reasonable graph — so it is
+        // `Unchanged` and this node has no `Failure` port at all.
+        this.reportOutcome(outcome, callback ? 'done' : 'unchanged');
       }
     }
   },
@@ -68,7 +85,17 @@ const ForEachActionsDefinition: NodeDefinitionOptions = {
       get(this: ForEachActionsInstance) {
         return this.getItemId();
       }
-    }
+    },
+
+    // ERG-001 §4. One action — `Remove Completed` — and no `Failure`: completing a handshake
+    // that is not running is a no-op, not an error, and a `Failure` that fires on a graph
+    // working exactly as written is how authors are trained to ignore the port.
+    ...outcomeOutputs({
+      done: 'Fires when a removal really was waiting on this handshake and has now been released',
+      unchanged:
+        'Fires when no removal was waiting — Try Remove had not been raised, or this handshake ' +
+        'was already completed'
+    })
   },
   prototypeExtensions: {
     /**

@@ -15,8 +15,12 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  NodeOutcome,
+  OutcomeToken
 } from '@noodl/types';
+
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 
 import guid from '../../../guid';
 
@@ -112,6 +116,19 @@ interface ForEachInstance extends NodeInstance {
     inputMappingScript?: string;
     inputMapFunc?(map: (mappings: Record<string, string | ((model: ModelLike) => unknown)>) => void, object: unknown): void;
     hasScheduledRefresh?: boolean;
+    /**
+     * `Refresh` invocations waiting on the next rebuild.
+     *
+     * ERG-001 §4. An array rather than one slot because `scheduleRefresh` coalesces: two
+     * `Refresh` pulses in a frame produce one rebuild but are still two invocations, and each
+     * is owed its own outcome — Undo's lesson from Build 2b.
+     *
+     * ⚠️ **Only the `Refresh` port pushes to it.** Every setter on this node also calls
+     * `scheduleRefresh`, and none of those is an invocation of a port, so a rebuild driven by
+     * `Items` arriving or a `Template` changing reports nothing. Same mount-path rule the
+     * navigation slice established for `Router.reset`.
+     */
+    pendingRefreshOutcomes: OutcomeToken[];
     /** Messages already raised during the current rebuild — see `reportTemplateProblem`. */
     reportedTemplateProblems?: Set<string>;
     hasScheduledCopyItems?: boolean;
@@ -136,6 +153,8 @@ interface ForEachInstance extends NodeInstance {
   _deleteItem(item: ForEachItemNode): void;
   _deleteAllItemNodes(): void;
   refresh(): Promise<void>;
+  /** Ends every `Refresh` this rebuild answered. A no-op for a setter-driven rebuild. */
+  settleRefresh(outcome: NodeOutcome, code?: string, message?: string): void;
   _queueOperation(op: QueuedOperation): void;
   _runQueueOperations(): Promise<void>;
   /** Fires `Items Rendered` once the operation queue has drained. See NDA-004 §3. */
@@ -172,6 +191,7 @@ const ForEachDefinition: NodeDefinitionOptions = {
     this._internal.itemOutputs = {};
     this._internal.collection = Collection.get(); // We keep an internal collection so we don't have to refresh all content if the input items collection changes
     this._internal.queuedOperations = [];
+    this._internal.pendingRefreshOutcomes = [];
     this._internal.mountedOperations = [];
 
     // Add an item
@@ -306,6 +326,10 @@ const ForEachDefinition: NodeDefinitionOptions = {
       description: 'Rebuilds every item from the current Items, discarding any state the item components held',
       type: 'signal',
       valueChangedToTrue: function (this: ForEachInstance) {
+        // ERG-001 §4. Minted here, at the port, and nowhere else — `scheduleRefresh` is also
+        // reached from `items`, `template`, `templateScript`, `templateType` and
+        // `updateTarget`, and none of those is an invocation the author asked for.
+        this._internal.pendingRefreshOutcomes.push(this.beginOutcome());
         this.scheduleRefresh();
       }
     }
@@ -331,7 +355,26 @@ const ForEachDefinition: NodeDefinitionOptions = {
       displayName: 'Items Rendered',
       description:
         'Fires once every item component exists and has been added; item creation is spread across frames, so this is the only honest moment to measure or scroll the list'
-    }
+    },
+
+    // ERG-001 §4. `Refresh`'s own outcome, and it is deliberately *not* `Items Rendered`:
+    // that one fires whenever the operation queue drains having done work, which includes a
+    // single `add` from a collection change and the initial bind. It is a list-level
+    // announcement and it is the right one; it is simply not tied to any invocation.
+    //
+    // ⚠️ **No `Unchanged`, on purpose.** `Refresh` tears every item down and rebuilds from the
+    // current `Items` unconditionally, so there is no state in which it declines to act. The
+    // tempting `Unchanged` — "you refreshed a list that was empty and still is" — would put the
+    // common empty case on a different wire from the common non-empty one, which is `Run Tasks`'
+    // defect with the sign flipped. Same exemption `Page Stack` took.
+    ...outcomeOutputs({
+      done:
+        'Fires once a Refresh has torn the list down and rebuilt it from the current Items, ' +
+        'including when that leaves the list empty',
+      failure:
+        'Fires when the Repeater could not rebuild: no Items bound, no Template set, or nothing ' +
+        'to render into'
+    })
   },
   prototypeExtensions: {
     updateTarget: function (this: ForEachInstance, targetId: string | undefined) {
@@ -600,9 +643,34 @@ const ForEachDefinition: NodeDefinitionOptions = {
 
       this._internal.itemNodes = [];
     },
+    /**
+     * End every `Refresh` this rebuild answered, at most once each.
+     *
+     * ERG-001 §4. The tokens are drained by the caller and passed in, so a `Refresh` pulsed
+     * *during* the async rebuild belongs to the next pass rather than being settled by this
+     * one. A rebuild nobody asked for arrives here with an empty list and reports nothing,
+     * which is what keeps every setter-driven refresh silent.
+     */
+    settleRefresh: function (this: ForEachInstance, outcome: NodeOutcome, code?: string, message?: string) {
+      const tokens = this._internal.pendingRefreshOutcomes;
+      if (tokens.length === 0) return;
+      this._internal.pendingRefreshOutcomes = [];
+      for (const token of tokens) {
+        this.reportOutcome(token, outcome, outcome === 'failure' ? { code, message } : undefined);
+      }
+    },
     refresh: async function (this: ForEachInstance) {
       const internal = this._internal;
       internal.hasScheduledRefresh = false;
+
+      // Taken now, before any await: these are the invocations *this* pass answers. One pulsed
+      // while the rebuild is in flight schedules another pass and is settled by that one.
+      const answered = internal.pendingRefreshOutcomes;
+      internal.pendingRefreshOutcomes = [];
+      const settle = (outcome: NodeOutcome, code?: string, message?: string) => {
+        internal.pendingRefreshOutcomes = answered;
+        this.settleRefresh(outcome, code, message);
+      };
 
       // NDA-012 (Visual) D1/B2. Per-item template failures are reported once per rebuild, not
       // once per item: a 5,000-row list whose Template names a component that does not exist
@@ -611,7 +679,16 @@ const ForEachDefinition: NodeDefinitionOptions = {
       // Keyed by message, so *distinct* problems in one rebuild are all still reported.
       internal.reportedTemplateProblems = new Set<string>();
 
-      if (!(internal.template || internal.templateFunction) || !internal.items) return;
+      // ERG-001 split this one condition in two so the diagnosis names which half is missing.
+      // Behaviour is unchanged — both still return before any teardown.
+      if (!(internal.template || internal.templateFunction)) {
+        settle('failure', 'repeater/no-template', 'The Repeater has no Template, so there is nothing to build each item from');
+        return;
+      }
+      if (!internal.items) {
+        settle('failure', 'repeater/no-items', 'The Repeater has no Items bound, so there is no list to rebuild');
+        return;
+      }
 
       // NDA-013: resync the private collection from whatever is currently bound to `items`
       // before rebuilding, so Refresh actually re-reads the source instead of rebuilding
@@ -641,7 +718,10 @@ const ForEachDefinition: NodeDefinitionOptions = {
       this._deleteAllItemNodes();
 
       //check if we have a target to add nodes to
-      if (!internal.target) return;
+      if (!internal.target) {
+        settle('failure', 'repeater/no-target', 'The Repeater is not inside anything that can hold its items, so there is nowhere to render them');
+        return;
+      }
 
       // figure out our index in our target
       const baseIndex = this._internal.target.getChildren().indexOf(this as unknown as ForEachItemNode) + 1;
@@ -652,6 +732,10 @@ const ForEachDefinition: NodeDefinitionOptions = {
 
         await this.addItem(model, baseIndex + i);
       }
+
+      // Last, once every item node for this pass exists. ⚠️ Not `Items Rendered`'s moment and
+      // not meant to be: that one follows the *queue* draining, which spans other work too.
+      settle('done');
     },
     _queueOperation(this: ForEachInstance, op: QueuedOperation) {
       this._internal.queuedOperations.push(op);

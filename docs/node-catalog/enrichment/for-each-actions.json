@@ -6,7 +6,10 @@
   "ports": {
     "itemId": "The id of this row's item object; wire into Object/Set Object Properties `modelId` or bubble it out via Component Outputs.",
     "tryRemove": "Signal output firing when removal of this row is requested — run your exit animation, then confirm.",
-    "removeCompleted": "Signal input; confirms removal after `tryRemove`, letting the repeater delete the instance."
+    "removeCompleted": "Signal input; confirms removal after `tryRemove`, letting the repeater delete the instance.",
+    "done": "Signal; a removal really was waiting on this handshake and has now been released.",
+    "unchanged": "Signal; no removal was waiting \u2014 Try Remove had not been raised, or this handshake was already completed. Pulsing Remove Completed unconditionally beside an exit animation is a reasonable graph, so this is not an error and there is no Failure port.",
+    "completed": "Signal; fires after every Remove Completed, whatever the outcome."
   },
   "examples": ["comp-repeater-set-item-object"],
   "patterns": [

@@ -8951,6 +8951,39 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Refresh has torn the list down and rebuilt it from the current Items, including when that leaves the list empty"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the Repeater could not rebuild: no Items bound, no Template set, or nothing to render into"
+        },
+        {
           "name": "itemActionItemId",
           "displayName": "Item Id",
           "group": "Actions",
@@ -9043,6 +9076,28 @@
           "description": "Fires once this repeated item has been created and Item Id is available"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a removal really was waiting on this handshake and has now been released"
+        },
+        {
           "name": "itemId",
           "displayName": "Item Id",
           "group": "General",
@@ -9063,6 +9118,17 @@
           },
           "isSignal": true,
           "description": "Fires before the Repeater destroys this item, and holds the removal until Remove Completed is pulsed — connect it only if something must run first"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when no removal was waiting — Try Remove had not been raised, or this handshake was already completed"
         }
       ],
       "dynamicPorts": null,

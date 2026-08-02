@@ -113,7 +113,11 @@ describe('NDA-004 §3: Repeater — Items Rendered', () => {
     graph.node('repeater').setInputValue('refresh', true);
     await graph.settle();
 
-    expect(graph.signalsFor('repeater')).toEqual(['itemsRendered', 'itemsRendered']);
+    // ERG-001 §4 gave `Refresh` its own outcome. ⚠️ Note the order: `itemsRendered` lands
+    // *before* `done`, and the ERG-001 corpus row measures why — see
+    // `corpus/erg-001-repeater-outcomes.test.ts`, "Items Rendered fires before a Refresh's
+    // items exist".
+    expect(graph.signalsFor('repeater')).toEqual(['itemsRendered', 'itemsRendered', 'done', 'completed']);
   });
 
   /**
