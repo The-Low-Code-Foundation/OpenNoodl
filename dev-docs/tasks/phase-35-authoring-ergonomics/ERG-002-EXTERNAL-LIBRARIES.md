@@ -25,14 +25,23 @@ surface.**
 
 A folder under `<project>/noodl_modules/<name>/` with a `manifest.json`. Scanned by exactly one
 scanner, [`projectmodules.ts`](../../../packages/noodl-editor/src/shared/utils/projectmodules.ts) —
-LIB-003 merged the two that used to exist. `injectIntoHtml` (`:275-302`) then:
+LIB-003 merged the two that used to exist. `injectIntoHtml` (originally `:275-302`, now `:676-738` —
+see the correction below) then:
 
 - injects a `<script>` tag for the module's own `index`;
 - injects a `<script>` tag for **every entry in `dependencies`** — and already handles both absolute
-  `http(s)` URLs and project-relative paths (`:296-297`);
-- filters on `runtimes` so a module can declare it is browser-only (`:285`);
+  `http(s)` URLs and project-relative paths (originally `:296-297`, now `:697-698`);
+- filters on `runtimes` so a module can declare it is browser-only (originally `:285`, now `:686`);
 - is consumed by **all four** HTML paths: the editor preview's web-server, the deploy
   `HtmlProcessor`, the headless `noodl-preview` loader and `ViewerConnection`.
+
+> **Correction (ERG-002 build, 2026-08-02):** the line numbers above are as measured 2026-08-01, before
+> this task's own additions. The build inserted the "verify on add" check and the
+> register/list/remove functions (§2) directly into `projectmodules.ts`, ahead of the scan/inject code
+> — so `injectIntoHtml` and everything after it shifted down by ~400 lines. The *behaviour* described is
+> unchanged (this task deliberately reused the mechanism rather than replacing it); only the citations
+> moved. Re-verify line numbers against the file before trusting a citation here again — this is the
+> same "measured claim, not a standing truth" trap the repo's memory index already tracks elsewhere.
 
 And `noodl_modules/` **ships verbatim in a deploy** — it is absent from `build/ignore.ts`'s defaults,
 checked, and NDA-007 §2 confirmed it live: the asset resolved over http in a real deployed build, and
@@ -46,8 +55,9 @@ modules panel returns the icon picker and the settings tab's legacy-ports notice
 
 A raw HTML string in project settings, injected at `{{#customHeadCode#}}`
 ([`html-processor.ts:46-66`](../../../packages/noodl-editor/src/editor/src/utils/compilation/build/processors/html-processor.ts#L46-L66),
-and `web-server.js:73` for the preview). No validation, no assistance, no participation in the module
-system. **This is the "very specific head code" of the ask.**
+correct as measured, and `web-server.js:72` for the preview — off by one from the original `:73`
+citation, corrected during the ERG-002 build). No validation, no assistance, no participation in the
+module system. **This is the "very specific head code" of the ask.**
 
 ### ⚠️ And the correction that matters
 
@@ -121,7 +131,9 @@ work. Pin the version in the URL either way.
 ## §3 — ⚠️ The SSR/SSG trap, stated up front
 
 **A library attached to `window` does not exist during server rendering.** SSR reads
-`globalThis.__noodl_modules` (`external/ssr/index.js:68`, populated in `runtime-globals.js:33-36`),
+`globalThis.__noodl_modules` (`packages/noodl-viewer-react/static/ssr/index.js:68` — the spec draft's
+`external/ssr/index.js` citation was wrong, there is no `external/` directory; corrected during the
+ERG-002 build, populated in `runtime-globals.js:33-36`),
 which only carries modules that called `Noodl.defineModule`. A third-party UMD bundle assigning a
 browser global is not in that list, and there is no `window` for it to assign to.
 

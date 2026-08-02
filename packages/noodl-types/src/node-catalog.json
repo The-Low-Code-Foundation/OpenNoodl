@@ -31774,6 +31774,121 @@
       "parameterEncoding": null
     },
     {
+      "typeName": "net.noodl.ArrayChanged",
+      "displayName": "Array Changed",
+      "category": "Logic",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": false,
+      "availableIn": [
+        "browser"
+      ],
+      "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
+      "inputs": [
+        {
+          "name": "array",
+          "displayName": "Array",
+          "plug": "input",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "The Array to watch. Items arriving and leaving are reported as they happen, and edits to the Objects inside it are reported as Item Changed; sending a different Array reports Array Replaced"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "arrayReplaced",
+          "displayName": "Array Replaced",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a different Array arrives on the input, including the first one and including an explicit clear; Index, Item and Key are empty and Count is the new length"
+        },
+        {
+          "name": "count",
+          "displayName": "Count",
+          "group": "Array",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "How many items the watched Array holds now. Kept accurate through reordering and length changes, which send no signal because they add and remove nothing"
+        },
+        {
+          "name": "index",
+          "displayName": "Index",
+          "group": "Change",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "The position the last signal was about; empty after Array Replaced, which is about no single item"
+        },
+        {
+          "name": "item",
+          "displayName": "Item",
+          "group": "Change",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The item the last signal was about; empty after Array Replaced"
+        },
+        {
+          "name": "itemAdded",
+          "displayName": "Item Added",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when an item is added to the watched Array; Index and Item describe it"
+        },
+        {
+          "name": "itemChanged",
+          "displayName": "Item Changed",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when one of the Objects inside the watched Array is edited in place; Key names the property that changed. Items that are not Noodl Objects cannot be watched"
+        },
+        {
+          "name": "itemRemoved",
+          "displayName": "Item Removed",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when an item is removed from the watched Array; Index is the position it occupied"
+        },
+        {
+          "name": "key",
+          "displayName": "Key",
+          "group": "Change",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The property of Item that changed, after Item Changed; empty after the other signals, which are about the item as a whole"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
+    },
+    {
       "typeName": "net.noodl.ComponentObject",
       "displayName": "Component Object",
       "category": "Component Utilities",
@@ -32685,6 +32800,100 @@
           },
           "isSignal": false,
           "description": "Every value completed by the most recent Parse, in order"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
+    },
+    {
+      "typeName": "net.noodl.ObjectChanged",
+      "displayName": "Object Changed",
+      "category": "Logic",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": false,
+      "availableIn": [
+        "browser"
+      ],
+      "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
+      "inputs": [
+        {
+          "name": "object",
+          "displayName": "Object",
+          "plug": "input",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false,
+          "description": "The Object to watch. Changes to its keys are reported as they happen; sending a different Object reports Object Replaced. A plain JavaScript object that is not a Noodl Object cannot be watched key-by-key — only its replacement is reported"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "key",
+          "displayName": "Key",
+          "group": "Change",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The key the last Key Added or Key Changed was about; empty after Object Replaced, which is about no single key"
+        },
+        {
+          "name": "keyAdded",
+          "displayName": "Key Added",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a key that did not exist on the watched Object now does"
+        },
+        {
+          "name": "keyChanged",
+          "displayName": "Key Changed",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a key that already existed on the watched Object is given a different value"
+        },
+        {
+          "name": "objectReplaced",
+          "displayName": "Object Replaced",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a different Object arrives on the input, including the first one and including an explicit clear; Key is empty and Value / Previous Value carry the Objects themselves"
+        },
+        {
+          "name": "previousValue",
+          "displayName": "Previous Value",
+          "group": "Change",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The value that key held before — empty when the key has just been added — or, after Object Replaced, the Object that was being watched before"
+        },
+        {
+          "name": "value",
+          "displayName": "Value",
+          "group": "Change",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The new value of that key — or, after Object Replaced, the Object that just arrived"
         }
       ],
       "dynamicPorts": null,

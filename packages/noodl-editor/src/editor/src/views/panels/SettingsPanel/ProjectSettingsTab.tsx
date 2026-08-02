@@ -15,6 +15,7 @@ import { Ports } from '../propertyeditor/DataTypes/Ports';
 import { HTML_TITLE_PORT, ProjectSettingsModel } from './ProjectSettingsModel';
 import { DeploySection } from './sections/DeploySection';
 import { IdentitySection } from './sections/IdentitySection';
+import { LibrariesSection } from './sections/LibrariesSection';
 import { PWASection } from './sections/PWASection';
 import { RuntimeSection } from './sections/RuntimeSection';
 import { SEOSection } from './sections/SEOSection';
@@ -169,6 +170,15 @@ export function ProjectSettingsTab() {
       <PWASection pwa={config.pwa} onChange={updatePWA} />
 
       <VariablesSection variables={config.variables} onChange={updateVariables} />
+
+      {/*
+        ERG-002: register a third-party JS library (PocketBase, tinyMCE, …) —
+        writes a noodl_modules manifest the existing injector already ships to
+        preview/deploy/SSR. Sits with the other React sections rather than the
+        legacy ports view below since, unlike a port, "add a library" is an
+        action with its own verify-before-save step, not a value to bind.
+      */}
+      <LibrariesSection />
 
       {/*
         The legacy imperative ports view — head code, navigation, and whatever

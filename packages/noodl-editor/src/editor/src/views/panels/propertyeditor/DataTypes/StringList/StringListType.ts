@@ -1,27 +1,27 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
-import PopupLayer from '../../../../popuplayer';
+import { decodeStringList, encodeStringList } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
+
 import { ToastLayer } from '../../../../ToastLayer/ToastLayer';
+import { openListValueEditor } from '../../components/ListValueEditor';
 import { StringListInput } from '../../components/StringListInput';
 import { TypeView } from '../../TypeView';
-import { getEditType } from '../../utils';
+import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../../utils';
 
-// Helper to normalize list input - handles both string and array formats
-function normalizeList(value): string[] {
-  if (value === undefined || value === null || value === '') {
-    return [];
-  }
-  if (Array.isArray(value)) {
-    // Already an array (legacy proplist data) - extract labels if objects
-    return value.map((item) => (typeof item === 'object' && item.label ? item.label : String(item)));
-  }
-  if (typeof value === 'string') {
-    return value.split(',').filter(Boolean);
-  }
-  return [];
-}
-
+/**
+ * ERG-003 — the `stringlist` row.
+ *
+ * Storage is unchanged and deliberately so: a `stringlist` is a comma-separated
+ * string, and twenty-nine files under `noodl-runtime/src/nodes` and
+ * `noodl-viewer-react/src/nodes` independently `split(',')` it. The measurement
+ * and the decision are in ERG-003-NOTES.md. What changed is that the format's
+ * one real failure — an entry containing a comma — is now refused instead of
+ * silently becoming two entries, and that the list can also be edited as JSON.
+ *
+ * `decodeStringList`/`encodeStringList` are the only code that knows the format;
+ * this class no longer splits or joins anything itself.
+ */
 export class StringListType extends TypeView {
   el: TSFixme;
   private root: Root | null = null;
@@ -43,8 +43,9 @@ export class StringListType extends TypeView {
     view.value = parent.model.getParameter(p.name);
     view.parent = parent;
 
-    view.list = normalizeList(view.value);
+    view.list = decodeStringList(view.value);
     view.listIsDefault = parent.model.parameters[p.name] === undefined;
+    view.isConnected = parent.model.isPortConnected(p.name, 'target');
 
     return view;
   }
@@ -63,95 +64,86 @@ export class StringListType extends TypeView {
     return this.el;
   }
 
-  private listUpdated() {
-    let newValue: TSFixme = this.list.join(',');
-    if (newValue === '') newValue = undefined;
+  /**
+   * Write `next` through the codec. Returns an error message when the list was
+   * rejected, in which case nothing is stored — the caller shows the message
+   * next to the field rather than the value quietly changing shape.
+   */
+  private commit(next: string[]): string | undefined {
+    const encoded = encodeStringList(next);
+    if (!encoded.ok) return encoded.error;
 
-    this.parent.setParameter(this.name, newValue);
+    this.parent.setParameter(this.name, encoded.value);
     this.parent.notifyListeners('panelResized');
 
-    this.list = normalizeList(this.parent.model.getParameter(this.name));
+    this.list = decodeStringList(this.parent.model.getParameter(this.name));
     this.listIsDefault = this.parent.model.parameters[this.name] === undefined;
 
     this.renderReact();
+    return undefined;
   }
 
-  private performAdd(name: string) {
-    if (name === '') {
-      return { success: false, message: 'Entry name cannot be empty' };
-    } else if (this.list.indexOf(name) !== -1) {
-      return { success: false, message: 'Cannot create an entry with the same name as an existing one.' };
-    } else {
-      this.list.push(name);
-      this.listUpdated();
-
-      return { success: true };
-    }
+  private performAdd(name: string): string | undefined {
+    return this.commit([...this.list, name]);
   }
 
-  private performRename(args: { oldName: string; newName: string }) {
-    if (args.newName === '') {
-      return { success: false, message: 'Entry name cannot be empty' };
-    } else if (this.list.indexOf(args.newName) !== -1) {
-      return { success: false, message: 'Entry with that name already exists.' };
-    } else {
-      const idx = this.list.indexOf(args.oldName);
-      this.list[idx] = args.newName;
-      this.listUpdated();
-
-      return { success: true };
-    }
+  private performRename(oldName: string, newName: string): string | undefined {
+    const idx = this.list.indexOf(oldName);
+    if (idx === -1) return undefined;
+    const next = [...this.list];
+    next[idx] = newName;
+    return this.commit(next);
   }
 
-  private performDelete(item: string): { success: boolean; message?: string } {
-    const idx = this.list.indexOf(item);
-    if (idx !== -1) this.list.splice(idx, 1);
-    this.listUpdated();
-
-    return { success: true };
+  private performDelete(item: string): void {
+    const error = this.commit(this.list.filter((x) => x !== item));
+    if (error) ToastLayer.showError(error);
   }
 
   private renderReact() {
     if (!this.root) return;
 
+    this.isConnected = this.parent.model.isPortConnected(this.name, 'target');
+
     this.root.render(
       React.createElement(StringListInput, {
         items: [...this.list],
         isDefault: this.listIsDefault,
-        onAddClick: (anchor: HTMLElement) => {
-          const popup = new PopupLayer.StringInputPopup({
-            label: 'New entry',
-            okLabel: 'Add',
-            cancelLabel: 'Cancel',
-            onOk: (name: string) => {
-              const result = this.performAdd(name);
-              if (!result.success) {
-                ToastLayer.showError(result.message);
-              }
-            }
-          });
-          popup.render();
-
-          PopupLayer.instance.showPopup({
-            content: popup,
-            attachTo: anchor,
-            position: 'top'
-          });
-        },
-        onRename: (oldName: string, newName: string) => {
-          const result = this.performRename({ oldName, newName });
-          if (!result.success) {
-            ToastLayer.showError(result.message);
-          }
-        },
-        onDelete: (name: string) => {
-          const result = this.performDelete(name);
-          if (!result.success) {
-            ToastLayer.showError(result.message);
-          }
-        }
+        isConnected: this.isConnected,
+        connectionLabel: this.isConnected ? getConnectionSourceLabel(this.parent.model, this.name) : undefined,
+        onConnectionClick: this.isConnected ? getConnectionSourceNavigate(this.parent.model, this.name) : undefined,
+        onAdd: (name: string) => this.performAdd(name),
+        onRename: (oldName: string, newName: string) => this.performRename(oldName, newName),
+        onDelete: (name: string) => this.performDelete(name),
+        onOpenCode: (anchor: HTMLElement) => this.openEditor(anchor)
       })
     );
+  }
+
+  private openEditor(anchor: HTMLElement) {
+    this.parent.hidePopout();
+
+    openListValueEditor({
+      parent: this.parent,
+      anchor,
+      portType: 'stringlist',
+      displayName: this.displayName,
+      stored: this.parent.model.getParameter(this.name),
+      onCommit: (value) => {
+        this.parent.setParameter(this.name, value);
+        this.parent.notifyListeners('panelResized');
+        this.list = decodeStringList(this.parent.model.getParameter(this.name));
+        this.listIsDefault = this.parent.model.parameters[this.name] === undefined;
+        this.renderReact();
+      }
+    });
+  }
+
+  /** Re-read the model — the parameter can change under us (undo, variants). */
+  resetToDefault() {
+    this.list = decodeStringList(this.parent.model.getParameter(this.name));
+    this.listIsDefault = this.parent.model.parameters[this.name] === undefined;
+    this.renderReact();
   }
 
   dispose() {
