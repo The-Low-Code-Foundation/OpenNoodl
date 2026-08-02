@@ -25,7 +25,26 @@ export class SelectionActions {
     editor.commentLayer?.clearMultiselection();
     editor.selector.unselect();
 
-    if (!args?.disableHidePanels) {
+    /**
+     * A read-only editor is a *view of a graph*, not the app's canvas, and it
+     * must not drive the app's chrome.
+     *
+     * `hidePanels()` is global. A read-only editor belongs to a document that
+     * created its own `NodeGraphEditor` — the change review, the version-control
+     * diff, the authoring preview — and hiding the sidebar from there closes the
+     * panel whose `onOpen` handler (`router.setup.ts`) then reopens the *editor*
+     * document, unmounting the very document that asked. The route in is
+     * `switchToComponent(component, { node })`, which calls `clearSelection()`
+     * before selecting: every other action in this file already returns early
+     * when `readOnly`, and this one was simply missed.
+     *
+     * Measured 2026-08-02: clicking any change row, or "Walk through", in the
+     * change-review document navigated the app back to the editor document
+     * mid-render, ~246 React warnings deep. The click-to-focus that AIX-003's
+     * notes recorded as verified had never been exercised through a real
+     * document.
+     */
+    if (!args?.disableHidePanels && !editor.readOnly) {
       SidebarModel.instance?.hidePanels();
     }
 

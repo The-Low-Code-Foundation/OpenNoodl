@@ -8,5 +8,6 @@ export * from './nodegrapheditor';
 export * from './nodegraphmodel';
 export * from './nodelibrary-spec';
 export * from './propertyeditor';
+export * from './selectionactions-readonly.spec';
 export * from './typechangepropagation';
 export * from './warnings-model-spec';
