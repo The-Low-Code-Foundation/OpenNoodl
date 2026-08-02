@@ -33,6 +33,7 @@ conclusions **overrode my recommendation** and were better for it.
 | ID | Title | Tier | Focus |
 |---|---|---|---|
 | [ERG-001](./ERG-001-OUTCOME-CONTRACT.md) | The outcome contract | 1 | `Done` / `Unchanged` / `Failure` — exactly one — plus a universal `Completed`. The sixth contract |
+| ↳ [ERG-001 §0](./ERG-001-S0-MEASUREMENT.md) | **§0 measurement — done 2026-08-02** | — | 82 live actions, the collision sweep, the `Unchanged` register. **§0 was blocking; it is now the scope** |
 | [ERG-002](./ERG-002-EXTERNAL-LIBRARIES.md) | External libraries in app config | 1 | Pulling in PocketBase or tinyMCE without knowing what a UMD build is. **The module system already does this; nothing surfaces it** |
 | [ERG-003](./ERG-003-LIST-INPUT-EDITOR.md) | One editor for every list input | 2 | The visual JSON builder already in core-ui, applied to all 69 list-shaped ports. Three-way: visual / code / connect |
 | [ERG-004](./ERG-004-CHANGE-DETECTION.md) | Change detection inside objects and arrays | 2 | `Value Changed` compares identity, so editing an object in place is invisible. **Four of the five signals wanted are already broadcast and nothing listens** |
