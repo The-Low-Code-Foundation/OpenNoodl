@@ -1,0 +1,612 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "56fbb046-5420-45e5-b05c-9895f8b7f353",
+    "name": "Account Settings",
+    "path": "/Pages/Account Settings",
+    "type": "page",
+    "created": "2026-08-02T18:07:01.430Z",
+    "modified": "2026-08-02T18:07:01.430Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Account settings page: header with member name and avatar, Profile/Notifications/Privacy sections each with a heading and divider, a danger zone with account deletion, and Save/Cancel actions."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "56fbb046-5420-45e5-b05c-9895f8b7f353",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Page root",
+        "x": 0,
+        "y": 0,
+        "children": [
+          "header",
+          "profDivider",
+          "profHeading",
+          "profFields",
+          "notifDivider",
+          "notifHeading",
+          "notifRows",
+          "privDivider",
+          "privHeading",
+          "privRows",
+          "dangerDivider",
+          "dangerHeading",
+          "deleteBtn",
+          "actionsRow"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "alignItems": "stretch",
+          "backgroundColor": "var(--background)",
+          "paddingTop": "var(--space-8)",
+          "paddingBottom": "var(--space-8)",
+          "paddingLeft": "var(--space-8)",
+          "paddingRight": "var(--space-8)",
+          "rowGap": "var(--space-8)",
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "header",
+        "type": "Group",
+        "label": "Header",
+        "x": 0,
+        "y": 0,
+        "parent": "root",
+        "children": [
+          "avatar",
+          "headerNameCol"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "columnGap": "var(--space-4)"
+        }
+      },
+      {
+        "id": "avatar",
+        "type": "Image",
+        "label": "Avatar",
+        "x": 0,
+        "y": 0,
+        "parent": "header",
+        "parameters": {
+          "src": "https://i.pravatar.cc/150?img=12",
+          "alt": "Member avatar",
+          "sizeMode": "explicit",
+          "width": 64,
+          "height": 64,
+          "borderRadius": "var(--radius-full)",
+          "objectFit": "cover"
+        }
+      },
+      {
+        "id": "headerNameCol",
+        "type": "Group",
+        "label": "Name column",
+        "x": 150,
+        "y": 0,
+        "parent": "header",
+        "children": [
+          "headerName",
+          "headerSub"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "rowGap": "var(--space-1)"
+        }
+      },
+      {
+        "id": "headerName",
+        "type": "Text",
+        "label": "Member name",
+        "x": 0,
+        "y": 0,
+        "parent": "headerNameCol",
+        "parameters": {
+          "text": "Jamie Rivera",
+          "variant": "heading-2"
+        }
+      },
+      {
+        "id": "headerSub",
+        "type": "Text",
+        "label": "Header subtitle",
+        "x": 0,
+        "y": 80,
+        "parent": "headerNameCol",
+        "parameters": {
+          "text": "Manage your account settings",
+          "variant": "muted"
+        }
+      },
+      {
+        "id": "profDivider",
+        "type": "Group",
+        "label": "Divider",
+        "x": 0,
+        "y": 150,
+        "parent": "root",
+        "parameters": {
+          "height": 1,
+          "sizeMode": "explicit",
+          "backgroundColor": "var(--border)"
+        }
+      },
+      {
+        "id": "profHeading",
+        "type": "Text",
+        "label": "Profile heading",
+        "x": 0,
+        "y": 170,
+        "parent": "root",
+        "parameters": {
+          "text": "Profile",
+          "variant": "heading-3"
+        }
+      },
+      {
+        "id": "profFields",
+        "type": "Group",
+        "label": "Profile fields",
+        "x": 0,
+        "y": 190,
+        "parent": "root",
+        "children": [
+          "nameInput",
+          "emailInput",
+          "phoneInput"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "rowGap": "var(--space-3)"
+        }
+      },
+      {
+        "id": "nameInput",
+        "type": "net.noodl.controls.textinput",
+        "label": "Name input",
+        "x": 0,
+        "y": 0,
+        "parent": "profFields",
+        "parameters": {
+          "useLabel": true,
+          "labelText": "Name",
+          "startValue": "Jamie Rivera",
+          "borderColor": "var(--border)",
+          "backgroundColor": "var(--background)",
+          "borderStyle": "solid",
+          "borderWidth": 1,
+          "borderRadius": "var(--radius-md)"
+        }
+      },
+      {
+        "id": "emailInput",
+        "type": "net.noodl.controls.textinput",
+        "label": "Email input",
+        "x": 150,
+        "y": 0,
+        "parent": "profFields",
+        "parameters": {
+          "useLabel": true,
+          "labelText": "Email",
+          "type": "email",
+          "startValue": "jamie.rivera@example.com",
+          "borderColor": "var(--border)",
+          "backgroundColor": "var(--background)",
+          "borderStyle": "solid",
+          "borderWidth": 1,
+          "borderRadius": "var(--radius-md)"
+        }
+      },
+      {
+        "id": "phoneInput",
+        "type": "net.noodl.controls.textinput",
+        "label": "Phone input",
+        "x": 300,
+        "y": 0,
+        "parent": "profFields",
+        "parameters": {
+          "useLabel": true,
+          "labelText": "Phone",
+          "startValue": "+1 555 010 2938",
+          "borderColor": "var(--border)",
+          "backgroundColor": "var(--background)",
+          "borderStyle": "solid",
+          "borderWidth": 1,
+          "borderRadius": "var(--radius-md)"
+        }
+      },
+      {
+        "id": "notifDivider",
+        "type": "Group",
+        "label": "Divider",
+        "x": 0,
+        "y": 400,
+        "parent": "root",
+        "parameters": {
+          "height": 1,
+          "sizeMode": "explicit",
+          "backgroundColor": "var(--border)"
+        }
+      },
+      {
+        "id": "notifHeading",
+        "type": "Text",
+        "label": "Notifications heading",
+        "x": 0,
+        "y": 420,
+        "parent": "root",
+        "parameters": {
+          "text": "Notifications",
+          "variant": "heading-3"
+        }
+      },
+      {
+        "id": "notifRows",
+        "type": "Group",
+        "label": "Notifications rows",
+        "x": 0,
+        "y": 440,
+        "parent": "root",
+        "children": [
+          "emailNotifRow",
+          "pushNotifRow",
+          "digestRow"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "rowGap": "var(--space-2)"
+        }
+      },
+      {
+        "id": "emailNotifRow",
+        "type": "Group",
+        "label": "Email notif row",
+        "x": 0,
+        "y": 0,
+        "parent": "notifRows",
+        "children": [
+          "emailNotifLabel",
+          "emailNotifCheck"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "justifyContent": "space-between"
+        }
+      },
+      {
+        "id": "emailNotifLabel",
+        "type": "Text",
+        "label": "Email notif label",
+        "x": 0,
+        "y": 0,
+        "parent": "emailNotifRow",
+        "parameters": {
+          "text": "Email notifications",
+          "variant": "body"
+        }
+      },
+      {
+        "id": "emailNotifCheck",
+        "type": "net.noodl.controls.checkbox",
+        "label": "Email notif checkbox",
+        "x": 150,
+        "y": 0,
+        "parent": "emailNotifRow",
+        "parameters": {
+          "checked": true,
+          "borderColor": "var(--border)"
+        }
+      },
+      {
+        "id": "pushNotifRow",
+        "type": "Group",
+        "label": "Push notif row",
+        "x": 0,
+        "y": 60,
+        "parent": "notifRows",
+        "children": [
+          "pushNotifLabel",
+          "pushNotifCheck"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "justifyContent": "space-between"
+        }
+      },
+      {
+        "id": "pushNotifLabel",
+        "type": "Text",
+        "label": "Push notif label",
+        "x": 0,
+        "y": 0,
+        "parent": "pushNotifRow",
+        "parameters": {
+          "text": "Push notifications",
+          "variant": "body"
+        }
+      },
+      {
+        "id": "pushNotifCheck",
+        "type": "net.noodl.controls.checkbox",
+        "label": "Push notif checkbox",
+        "x": 150,
+        "y": 0,
+        "parent": "pushNotifRow",
+        "parameters": {
+          "checked": true,
+          "borderColor": "var(--border)"
+        }
+      },
+      {
+        "id": "digestRow",
+        "type": "Group",
+        "label": "Digest row",
+        "x": 0,
+        "y": 120,
+        "parent": "notifRows",
+        "children": [
+          "digestLabel",
+          "digestCheck"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "justifyContent": "space-between"
+        }
+      },
+      {
+        "id": "digestLabel",
+        "type": "Text",
+        "label": "Digest label",
+        "x": 0,
+        "y": 0,
+        "parent": "digestRow",
+        "parameters": {
+          "text": "Weekly digest",
+          "variant": "body"
+        }
+      },
+      {
+        "id": "digestCheck",
+        "type": "net.noodl.controls.checkbox",
+        "label": "Digest checkbox",
+        "x": 150,
+        "y": 0,
+        "parent": "digestRow",
+        "parameters": {
+          "checked": false,
+          "borderColor": "var(--border)"
+        }
+      },
+      {
+        "id": "privDivider",
+        "type": "Group",
+        "label": "Divider",
+        "x": 0,
+        "y": 650,
+        "parent": "root",
+        "parameters": {
+          "height": 1,
+          "sizeMode": "explicit",
+          "backgroundColor": "var(--border)"
+        }
+      },
+      {
+        "id": "privHeading",
+        "type": "Text",
+        "label": "Privacy heading",
+        "x": 0,
+        "y": 670,
+        "parent": "root",
+        "parameters": {
+          "text": "Privacy",
+          "variant": "heading-3"
+        }
+      },
+      {
+        "id": "privRows",
+        "type": "Group",
+        "label": "Privacy rows",
+        "x": 0,
+        "y": 690,
+        "parent": "root",
+        "children": [
+          "publicProfileRow",
+          "privacyLinkBtn"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "rowGap": "var(--space-2)"
+        }
+      },
+      {
+        "id": "publicProfileRow",
+        "type": "Group",
+        "label": "Public profile row",
+        "x": 0,
+        "y": 0,
+        "parent": "privRows",
+        "children": [
+          "publicProfileLabel",
+          "publicProfileCheck"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "justifyContent": "space-between"
+        }
+      },
+      {
+        "id": "publicProfileLabel",
+        "type": "Text",
+        "label": "Public profile label",
+        "x": 0,
+        "y": 0,
+        "parent": "publicProfileRow",
+        "parameters": {
+          "text": "Public profile",
+          "variant": "body"
+        }
+      },
+      {
+        "id": "publicProfileCheck",
+        "type": "net.noodl.controls.checkbox",
+        "label": "Public profile checkbox",
+        "x": 150,
+        "y": 0,
+        "parent": "publicProfileRow",
+        "parameters": {
+          "checked": false,
+          "borderColor": "var(--border)"
+        }
+      },
+      {
+        "id": "privacyLinkBtn",
+        "type": "net.noodl.controls.button",
+        "label": "Privacy policy link",
+        "x": 0,
+        "y": 60,
+        "parent": "privRows",
+        "parameters": {
+          "label": "Privacy Policy",
+          "backgroundColor": "transparent",
+          "color": "var(--primary)",
+          "borderWidth": 0,
+          "textDecoration": "none",
+          "paddingLeft": 0,
+          "paddingRight": 0,
+          "fontSize": "var(--text-sm)"
+        }
+      },
+      {
+        "id": "dangerDivider",
+        "type": "Group",
+        "label": "Divider",
+        "x": 0,
+        "y": 850,
+        "parent": "root",
+        "parameters": {
+          "height": 1,
+          "sizeMode": "explicit",
+          "backgroundColor": "var(--border)"
+        }
+      },
+      {
+        "id": "dangerHeading",
+        "type": "Text",
+        "label": "Danger zone heading",
+        "x": 0,
+        "y": 870,
+        "parent": "root",
+        "parameters": {
+          "text": "Danger Zone",
+          "variant": "heading-3",
+          "color": "var(--destructive)"
+        }
+      },
+      {
+        "id": "deleteBtn",
+        "type": "net.noodl.controls.button",
+        "label": "Delete account button",
+        "x": 0,
+        "y": 890,
+        "parent": "root",
+        "parameters": {
+          "label": "Delete account",
+          "backgroundColor": "var(--destructive)",
+          "color": "var(--destructive-foreground)",
+          "borderWidth": 0,
+          "boxShadowEnabled": true,
+          "boxShadowColor": "var(--shadow-sm)",
+          "borderRadius": "var(--radius-md)",
+          "alignX": "flex-start"
+        }
+      },
+      {
+        "id": "actionsRow",
+        "type": "Group",
+        "label": "Save/Cancel actions",
+        "x": 0,
+        "y": 1000,
+        "parent": "root",
+        "children": [
+          "cancelBtn",
+          "saveBtn"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "columnGap": "var(--space-3)",
+          "justifyContent": "flex-end"
+        }
+      },
+      {
+        "id": "cancelBtn",
+        "type": "net.noodl.controls.button",
+        "label": "Cancel button",
+        "x": 0,
+        "y": 0,
+        "parent": "actionsRow",
+        "parameters": {
+          "label": "Cancel",
+          "backgroundColor": "transparent",
+          "color": "var(--foreground)",
+          "borderWidth": "var(--border-1)",
+          "borderColor": "var(--border)",
+          "borderStyle": "solid",
+          "borderRadius": "var(--radius-md)"
+        }
+      },
+      {
+        "id": "saveBtn",
+        "type": "net.noodl.controls.button",
+        "label": "Save button",
+        "x": 150,
+        "y": 0,
+        "parent": "actionsRow",
+        "parameters": {
+          "label": "Save",
+          "backgroundColor": "var(--primary)",
+          "color": "var(--primary-foreground)",
+          "borderWidth": 0,
+          "boxShadowEnabled": true,
+          "boxShadowColor": "var(--shadow-sm)",
+          "borderRadius": "var(--radius-md)"
+        }
+      },
+      {
+        "id": "externalLink",
+        "type": "net.noodl.externallink",
+        "label": "Open privacy policy",
+        "x": 400,
+        "y": 690,
+        "parameters": {
+          "link": "/privacy-policy",
+          "openInNewTab": true
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "56fbb046-5420-45e5-b05c-9895f8b7f353",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "privacyLinkBtn",
+        "fromProperty": "onClick",
+        "toId": "externalLink",
+        "toProperty": "do"
+      }
+    ]
+  }
+}

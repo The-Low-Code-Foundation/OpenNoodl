@@ -153,3 +153,156 @@ describe('AIX-003 partial acceptance', () => {
     expectGateClean(materialized);
   });
 });
+
+/**
+ * AIX-003's live round trip (2026-08-02) put a real `claude-sonnet-5` proposal
+ * through this chain and broke two of its properties. Both are shapes the
+ * fixtures above cannot produce: they append nodes at the end of a parent and
+ * they have no wire labels, because that is how one writes a fixture. A model
+ * revising a real card inserts rows *between* the ones already there, and a
+ * project that uses CAN-002 labels brings them to the diff.
+ */
+describe('AIX-003 partial acceptance — shapes a live proposal has', () => {
+  beforeEach(() => {
+    UndoQueue.instance.clear();
+  });
+
+  /** Two children under one group, so a revision has somewhere to insert. */
+  function rowsPayload(): SubmitPayload {
+    return {
+      nodes: [
+        { id: 'g', type: 'Group', x: 0, y: 0 },
+        { id: 'first', type: 'Text', parent: 'g', x: 20, y: 0, parameters: { text: 'First' } },
+        { id: 'last', type: 'Text', parent: 'g', x: 20, y: 60, parameters: { text: 'Last' } }
+      ]
+    };
+  }
+
+  function projectWithRows(): ProjectModel {
+    const project = loadProject();
+    acceptAuthoredComponent(project, filesFor(rowsPayload()));
+    return project;
+  }
+
+  /** Sibling order as the canvas would lay it out, read back through the snapshot. */
+  function childOrder(files: ComponentFiles): string[] {
+    const snapshot = fromV2Files(files as unknown as V2ComponentFiles);
+    return [...snapshot.nodes.values()]
+      .filter((node) => node.parent === 'g')
+      .sort((a, b) => a.childIndex - b.childIndex)
+      .map((node) => node.id);
+  }
+
+  it('an inserted node lands where the proposal put it, not after the siblings it displaced', () => {
+    const project = projectWithRows();
+    const payload = rowsPayload();
+    payload.nodes.splice(2, 0, { id: 'middle', type: 'Text', parent: 'g', x: 20, y: 30, parameters: { text: 'Middle' } });
+    const files = filesFor(payload);
+    expect(childOrder(files)).toEqual(['first', 'middle', 'last']);
+
+    const changeSet = buildChangeSet(project, files);
+    // The diff has no `node-reordered` to offer: on the proposal's own side
+    // nothing moved, the insert simply pushed `last` along. Nothing but the
+    // materializer can put the two numbering schemes back together.
+    const { files: materialized } = materializeSelection(changeSet, files, []);
+
+    expect(childOrder(materialized)).toEqual(['first', 'middle', 'last']);
+    expectSameGraph(materialized, files);
+    expectGateClean(materialized);
+  });
+
+  it('rejecting the insert leaves the base order exactly as it was', () => {
+    const project = projectWithRows();
+    const payload = rowsPayload();
+    payload.nodes.splice(2, 0, { id: 'middle', type: 'Text', parent: 'g', x: 20, y: 30, parameters: { text: 'Middle' } });
+    const files = filesFor(payload);
+    const changeSet = buildChangeSet(project, files);
+    const insert = idOf(changeSet, (kind, anchor) => kind === 'node-added' && anchor === 'middle');
+
+    const { files: materialized } = materializeSelection(changeSet, files, [insert]);
+
+    expect(childOrder(materialized)).toEqual(['first', 'last']);
+    expectSameGraph(materialized, filesFor(rowsPayload()));
+  });
+
+  it('a rejected reorder keeps the base order while the rest of the proposal lands', () => {
+    const project = projectWithRows();
+    const payload = rowsPayload();
+    payload.nodes = [payload.nodes[0], payload.nodes[2], payload.nodes[1]];
+    payload.nodes.push({ id: 'extra', type: 'Text', parent: 'g', x: 20, y: 90, parameters: { text: 'Extra' } });
+    const files = filesFor(payload);
+    expect(childOrder(files)).toEqual(['last', 'first', 'extra']);
+
+    const changeSet = buildChangeSet(project, files);
+    const reorders = changeSet.changes.filter((entry) => entry.change.kind === 'node-reordered').map((e) => e.id);
+    expect(reorders.length > 0).toBe(true);
+
+    const { files: materialized } = materializeSelection(changeSet, files, reorders);
+
+    // The swap is refused; the new row is still accepted, and lands last as the
+    // proposal placed it relative to what stayed.
+    expect(childOrder(materialized)).toEqual(['first', 'last', 'extra']);
+    expectGateClean(materialized);
+  });
+
+  /**
+   * A wire label (CAN-002) is diffed as semantic, and `buildCandidate` drops
+   * every connection field but the four endpoints — so the reachable case is a
+   * base that has a label and a proposal that does not. The labelled side is
+   * built by hand here for that reason, not for convenience.
+   */
+  function wiredPayload(): SubmitPayload {
+    const payload = rowsPayload();
+    payload.nodes.push({
+      id: 'in',
+      type: 'Component Inputs',
+      x: -200,
+      y: 0,
+      ports: [{ name: 'Title', plug: 'output', type: '*' }]
+    });
+    payload.connections = [{ fromId: 'in', fromProperty: 'Title', toId: 'first', toProperty: 'text' }];
+    return payload;
+  }
+
+  function withWireLabel(files: ComponentFiles, label: string): ComponentFiles {
+    const copy: ComponentFiles = JSON.parse(JSON.stringify(files));
+    copy.connections.connections[0].label = label;
+    return copy;
+  }
+
+  it('a relabelled wire is one reviewable change, and accepting it keeps the new label', () => {
+    const project = loadProject();
+    acceptAuthoredComponent(project, withWireLabel(filesFor(wiredPayload()), 'the title'));
+    const proposed = withWireLabel(filesFor(wiredPayload()), 'the heading');
+
+    const changeSet = buildChangeSet(project, proposed);
+
+    expect(changeSet.changes.map((entry) => entry.change.kind)).toEqual(['connection-relabelled']);
+    // A kind with no id is not reviewable: ids key the rail, the closure and
+    // the rejection set, and two of them would collide on `undefined`.
+    expect(typeof changeSet.changes[0].id).toBe('string');
+    expect(changeSet.changes[0].id.startsWith('connection-relabelled:')).toBe(true);
+
+    const { files: materialized } = materializeSelection(changeSet, proposed, []);
+
+    expect(materialized.connections.connections[0].label).toBe('the heading');
+    expectSameGraph(materialized, proposed);
+    expectGateClean(materialized);
+  });
+
+  it('rejecting the relabel keeps the base label and nothing else changes', () => {
+    const project = loadProject();
+    const base = withWireLabel(filesFor(wiredPayload()), 'the title');
+    acceptAuthoredComponent(project, base);
+    const proposed = filesFor(wiredPayload());
+
+    const changeSet = buildChangeSet(project, proposed);
+    const relabel = changeSet.changes.find((entry) => entry.change.kind === 'connection-relabelled');
+    expect(relabel === undefined).toBe(false);
+
+    const { files: materialized } = materializeSelection(changeSet, proposed, [relabel!.id]);
+
+    expect(materialized.connections.connections[0].label).toBe('the title');
+    expectSameGraph(materialized, base);
+  });
+});

@@ -1,0 +1,613 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "901032c1-fac9-e845-c22b-665b1305f209",
+    "name": "Account Info Card",
+    "path": "/Visual Components/Profile/Account Info Card",
+    "type": "visual",
+    "metadata": {
+      "canvasPos": {
+        "x": 7224.381198466383,
+        "y": 0
+      }
+    },
+    "modified": "2026-08-02T17:09:00.889Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Account Info Card: shows the member's join date under the header, places Sign out next to Change password, and hides the DOB row when the profile has no date of birth."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "901032c1-fac9-e845-c22b-665b1305f209",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "3d46c9ff-32b3-0968-7c81-33a44ca46f37",
+        "type": "Group",
+        "x": -149,
+        "y": -157,
+        "children": [
+          "858e064a-3f6d-8fed-f62c-8b60339a8fe1",
+          "joinedDateText",
+          "336e8f68-8611-5413-ef8e-743f5b93e658",
+          "89f61103-f45b-1ff7-6543-5bc500a9eded",
+          "00ea0f9e-401d-41c4-0d1a-78358c6fe54d",
+          "changePwSignOutRow",
+          "984be19e-e7c4-066f-198c-884837c16d55"
+        ],
+        "parameters": {
+          "sizeMode": "contentHeight",
+          "paddingLeft": {
+            "value": 24,
+            "unit": "px"
+          },
+          "paddingRight": {
+            "value": 24,
+            "unit": "px"
+          },
+          "paddingTop": {
+            "value": 24,
+            "unit": "px"
+          },
+          "paddingBottom": {
+            "value": 24,
+            "unit": "px"
+          },
+          "borderRadius": {
+            "value": 10,
+            "unit": "px"
+          },
+          "boxShadowEnabled": true,
+          "width": {
+            "value": 95,
+            "unit": "%"
+          },
+          "alignX": "center",
+          "marginTop": {
+            "value": 24,
+            "unit": "px"
+          },
+          "alignItems": "center"
+        }
+      },
+      {
+        "id": "858e064a-3f6d-8fed-f62c-8b60339a8fe1",
+        "type": "Group",
+        "parent": "3d46c9ff-32b3-0968-7c81-33a44ca46f37",
+        "children": [
+          "7ab5c58b-bcaa-e950-1495-ec08a9160dfb",
+          "be6c1d8b-1e65-6c6f-0763-35341935dc38"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+          "alignItems": "center",
+          "marginBottom": {
+            "value": 24,
+            "unit": "px"
+          }
+        }
+      },
+      {
+        "id": "7ab5c58b-bcaa-e950-1495-ec08a9160dfb",
+        "type": "Text",
+        "parent": "858e064a-3f6d-8fed-f62c-8b60339a8fe1",
+        "parameters": {
+          "fontFamily": "Inter-Medium.ttf",
+          "color": "#77C2C6",
+          "text": "Account Info",
+          "sizeMode": "contentSize"
+        }
+      },
+      {
+        "id": "be6c1d8b-1e65-6c6f-0763-35341935dc38",
+        "type": "Group",
+        "parent": "858e064a-3f6d-8fed-f62c-8b60339a8fe1",
+        "children": [
+          "ad237532-bce6-5189-b490-5987e10db0e5"
+        ],
+        "parameters": {
+          "sizeMode": "contentSize"
+        }
+      },
+      {
+        "id": "ad237532-bce6-5189-b490-5987e10db0e5",
+        "type": "net.noodl.visual.icon",
+        "parent": "be6c1d8b-1e65-6c6f-0763-35341935dc38",
+        "parameters": {
+          "iconColor": "#77C2C6",
+          "iconIconSource": {
+            "class": "material-icons",
+            "code": "edit_note"
+          },
+          "alignY": "center",
+          "iconSize": {
+            "value": 24,
+            "unit": "px"
+          }
+        }
+      },
+      {
+        "id": "joinedDateText",
+        "type": "Text",
+        "label": "Member Since",
+        "x": -149,
+        "y": -90,
+        "parent": "3d46c9ff-32b3-0968-7c81-33a44ca46f37",
+        "parameters": {
+          "textStyle": "small",
+          "sizeMode": "contentSize",
+          "alignX": "left",
+          "marginBottom": {
+            "value": 8,
+            "unit": "px"
+          }
+        }
+      },
+      {
+        "id": "336e8f68-8611-5413-ef8e-743f5b93e658",
+        "type": "Group",
+        "parent": "3d46c9ff-32b3-0968-7c81-33a44ca46f37",
+        "children": [
+          "70dd0de0-d75c-c7c8-f131-7a2c0be051d6",
+          "9fcec0b0-abe3-410b-8971-7087ad02db5f"
+        ],
+        "parameters": {
+          "marginBottom": {
+            "value": 16,
+            "unit": "px"
+          }
+        }
+      },
+      {
+        "id": "70dd0de0-d75c-c7c8-f131-7a2c0be051d6",
+        "type": "Text",
+        "parent": "336e8f68-8611-5413-ef8e-743f5b93e658",
+        "parameters": {
+          "fontFamily": "Inter-Medium.ttf",
+          "text": "Email",
+          "sizeMode": "contentSize",
+          "alignX": "left"
+        }
+      },
+      {
+        "id": "9fcec0b0-abe3-410b-8971-7087ad02db5f",
+        "type": "Text",
+        "parent": "336e8f68-8611-5413-ef8e-743f5b93e658",
+        "parameters": {
+          "sizeMode": "contentSize",
+          "color": "var(--primary)",
+          "alignX": "left",
+          "marginTop": {
+            "value": 4,
+            "unit": "px"
+          },
+          "marginBottom": {
+            "value": 8,
+            "unit": "px"
+          }
+        }
+      },
+      {
+        "id": "89f61103-f45b-1ff7-6543-5bc500a9eded",
+        "type": "Group",
+        "parent": "3d46c9ff-32b3-0968-7c81-33a44ca46f37",
+        "children": [
+          "990524a3-d89b-2d94-0c26-f8ebf738ec66"
+        ],
+        "parameters": {
+          "marginBottom": {
+            "value": 8,
+            "unit": "px"
+          }
+        }
+      },
+      {
+        "id": "990524a3-d89b-2d94-0c26-f8ebf738ec66",
+        "type": "net.noodl.controls.textinput",
+        "parent": "89f61103-f45b-1ff7-6543-5bc500a9eded",
+        "parameters": {
+          "label": "Email"
+        },
+        "variant": "UI Text Input"
+      },
+      {
+        "id": "00ea0f9e-401d-41c4-0d1a-78358c6fe54d",
+        "type": "Text",
+        "parent": "3d46c9ff-32b3-0968-7c81-33a44ca46f37",
+        "parameters": {
+          "fontFamily": "Inter-Medium.ttf",
+          "text": "Password",
+          "sizeMode": "contentSize",
+          "alignX": "left"
+        }
+      },
+      {
+        "id": "changePwSignOutRow",
+        "type": "Group",
+        "label": "Change Password / Sign Out Row",
+        "parent": "3d46c9ff-32b3-0968-7c81-33a44ca46f37",
+        "children": [
+          "41d03b13-e79b-37c1-c72f-a5c67241e700",
+          "signOutText"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+          "alignItems": "center",
+          "marginTop": {
+            "value": 4,
+            "unit": "px"
+          },
+          "marginBottom": {
+            "value": 16,
+            "unit": "px"
+          },
+          "width": {
+            "value": 100,
+            "unit": "%"
+          }
+        }
+      },
+      {
+        "id": "41d03b13-e79b-37c1-c72f-a5c67241e700",
+        "type": "Text",
+        "label": "Change Password",
+        "parent": "changePwSignOutRow",
+        "parameters": {
+          "sizeMode": "contentSize",
+          "color": "var(--primary)",
+          "alignX": "left",
+          "text": "Change password",
+          "styleCss": "/* background-color: red; */\ncursor:pointer;"
+        }
+      },
+      {
+        "id": "signOutText",
+        "type": "Text",
+        "label": "Sign Out",
+        "parent": "changePwSignOutRow",
+        "parameters": {
+          "sizeMode": "contentSize",
+          "color": "var(--primary)",
+          "alignX": "right",
+          "text": "Sign out",
+          "styleCss": "cursor:pointer;"
+        }
+      },
+      {
+        "id": "984be19e-e7c4-066f-198c-884837c16d55",
+        "type": "Group",
+        "label": "DOB Container",
+        "parent": "3d46c9ff-32b3-0968-7c81-33a44ca46f37",
+        "children": [
+          "830e2ab7-b141-6eb9-b4d9-07278458640a",
+          "ca73e085-ae9e-7a43-48f8-90108cbb711a"
+        ]
+      },
+      {
+        "id": "830e2ab7-b141-6eb9-b4d9-07278458640a",
+        "type": "Text",
+        "parent": "984be19e-e7c4-066f-198c-884837c16d55",
+        "parameters": {
+          "fontFamily": "Inter-Bold.ttf",
+          "text": "DOB"
+        }
+      },
+      {
+        "id": "ca73e085-ae9e-7a43-48f8-90108cbb711a",
+        "type": "Text",
+        "label": "Text",
+        "parent": "984be19e-e7c4-066f-198c-884837c16d55",
+        "parameters": {
+          "text": "01/01/1970"
+        }
+      },
+      {
+        "id": "a23fb1e3-7c0f-eecb-90e3-5d2abcb80129",
+        "type": "net.noodl.user.User",
+        "x": -591.274763953879,
+        "y": 101.29130286562508,
+        "dynamicports": [
+          {
+            "type": {
+              "name": "date"
+            },
+            "plug": "output",
+            "group": "Properties",
+            "name": "prop-createdAt",
+            "displayName": "createdAt",
+            "index": 12
+          },
+          {
+            "type": "signal",
+            "plug": "output",
+            "group": "Changed Events",
+            "displayName": "createdAt Changed",
+            "name": "changed-createdAt",
+            "index": 13
+          },
+          {
+            "type": {
+              "name": "date"
+            },
+            "plug": "output",
+            "group": "Properties",
+            "name": "prop-updatedAt",
+            "displayName": "updatedAt",
+            "index": 14
+          },
+          {
+            "type": "signal",
+            "plug": "output",
+            "group": "Changed Events",
+            "displayName": "updatedAt Changed",
+            "name": "changed-updatedAt",
+            "index": 15
+          },
+          {
+            "type": {
+              "name": "boolean"
+            },
+            "plug": "output",
+            "group": "Properties",
+            "name": "prop-emailVerified",
+            "displayName": "emailVerified",
+            "index": 16
+          },
+          {
+            "type": "signal",
+            "plug": "output",
+            "group": "Changed Events",
+            "displayName": "emailVerified Changed",
+            "name": "changed-emailVerified",
+            "index": 17
+          },
+          {
+            "type": {
+              "name": "*"
+            },
+            "plug": "output",
+            "group": "Properties",
+            "name": "prop-liked_articles",
+            "displayName": "liked_articles",
+            "index": 18
+          },
+          {
+            "type": "signal",
+            "plug": "output",
+            "group": "Changed Events",
+            "displayName": "liked_articles Changed",
+            "name": "changed-liked_articles",
+            "index": 19
+          }
+        ]
+      },
+      {
+        "id": "3ee75ddb-1c04-1ce1-b1e2-bc54a634ce2f",
+        "type": "NavigationShowPopup",
+        "x": 200.03738955581753,
+        "y": 606.2829878718159,
+        "parameters": {
+          "target": "/Pop-ups/Sign in or Sign up /Forgotten Password"
+        }
+      },
+      {
+        "id": "b8ebea56-9aa9-b925-b6e3-e3622321ef3f",
+        "type": "net.noodl.user.SetUserProperties",
+        "x": 376.030746388234,
+        "y": 365.0416455569904,
+        "dynamicports": [
+          {
+            "type": {
+              "name": "*"
+            },
+            "plug": "input",
+            "group": "Properties",
+            "name": "prop-liked_articles",
+            "displayName": "liked_articles",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "id": "ff3c9b7d-6613-c1d4-8618-e27eb74618c8",
+        "type": "States",
+        "x": 325.67107862528985,
+        "y": 2.9964665044734033,
+        "parameters": {
+          "states": "Show,Edit",
+          "useTransitions": false
+        },
+        "dynamicports": [
+          {
+            "plug": "input",
+            "type": {
+              "name": "signal",
+              "allowConnectionsOnly": true
+            },
+            "displayName": "To Show",
+            "name": "to-Show",
+            "group": "Go to state",
+            "index": 6
+          },
+          {
+            "plug": "output",
+            "type": "boolean",
+            "displayName": "At Show",
+            "name": "at-Show",
+            "group": "Current state",
+            "index": 7
+          },
+          {
+            "plug": "output",
+            "type": "signal",
+            "displayName": "Has Reached Show",
+            "name": "reached-Show",
+            "group": "Current state",
+            "index": 8
+          },
+          {
+            "plug": "input",
+            "type": {
+              "name": "signal",
+              "allowConnectionsOnly": true
+            },
+            "displayName": "To Edit",
+            "name": "to-Edit",
+            "group": "Go to state",
+            "index": 9
+          },
+          {
+            "plug": "output",
+            "type": "boolean",
+            "displayName": "At Edit",
+            "name": "at-Edit",
+            "group": "Current state",
+            "index": 10
+          },
+          {
+            "plug": "output",
+            "type": "signal",
+            "displayName": "Has Reached Edit",
+            "name": "reached-Edit",
+            "group": "Current state",
+            "index": 11
+          },
+          {
+            "plug": "input",
+            "type": {
+              "name": "enum",
+              "enums": [
+                "Show",
+                "Edit"
+              ]
+            },
+            "group": "States",
+            "displayName": "State",
+            "name": "currentState",
+            "default": "Show",
+            "index": 12
+          }
+        ]
+      },
+      {
+        "id": "joinedDateFormat",
+        "type": "Date To String",
+        "label": "Format Join Date",
+        "x": -600,
+        "y": -90,
+        "parameters": {
+          "formatString": "Member since {monthShort} {year}"
+        }
+      },
+      {
+        "id": "dobCondition",
+        "type": "Expression",
+        "label": "Has DOB?",
+        "x": -600,
+        "y": 250,
+        "parameters": {
+          "expression": "dob ? true : false"
+        }
+      },
+      {
+        "id": "logoutNode",
+        "type": "net.noodl.user.LogOut",
+        "label": "Sign Out",
+        "x": 376,
+        "y": 500
+      }
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "901032c1-fac9-e845-c22b-665b1305f209",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "a23fb1e3-7c0f-eecb-90e3-5d2abcb80129",
+        "fromProperty": "email",
+        "toId": "9fcec0b0-abe3-410b-8971-7087ad02db5f",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "41d03b13-e79b-37c1-c72f-a5c67241e700",
+        "fromProperty": "onClick",
+        "toId": "3ee75ddb-1c04-1ce1-b1e2-bc54a634ce2f",
+        "toProperty": "show"
+      },
+      {
+        "fromId": "a23fb1e3-7c0f-eecb-90e3-5d2abcb80129",
+        "fromProperty": "email",
+        "toId": "990524a3-d89b-2d94-0c26-f8ebf738ec66",
+        "toProperty": "startValue"
+      },
+      {
+        "fromId": "990524a3-d89b-2d94-0c26-f8ebf738ec66",
+        "fromProperty": "onTextChanged",
+        "toId": "b8ebea56-9aa9-b925-b6e3-e3622321ef3f",
+        "toProperty": "email"
+      },
+      {
+        "fromId": "990524a3-d89b-2d94-0c26-f8ebf738ec66",
+        "fromProperty": "onEnter",
+        "toId": "b8ebea56-9aa9-b925-b6e3-e3622321ef3f",
+        "toProperty": "store"
+      },
+      {
+        "fromId": "be6c1d8b-1e65-6c6f-0763-35341935dc38",
+        "fromProperty": "onClick",
+        "toId": "ff3c9b7d-6613-c1d4-8618-e27eb74618c8",
+        "toProperty": "toggle"
+      },
+      {
+        "fromId": "b8ebea56-9aa9-b925-b6e3-e3622321ef3f",
+        "fromProperty": "done",
+        "toId": "ff3c9b7d-6613-c1d4-8618-e27eb74618c8",
+        "toProperty": "to-Show"
+      },
+      {
+        "fromId": "ff3c9b7d-6613-c1d4-8618-e27eb74618c8",
+        "fromProperty": "at-Show",
+        "toId": "336e8f68-8611-5413-ef8e-743f5b93e658",
+        "toProperty": "mounted"
+      },
+      {
+        "fromId": "ff3c9b7d-6613-c1d4-8618-e27eb74618c8",
+        "fromProperty": "at-Edit",
+        "toId": "89f61103-f45b-1ff7-6543-5bc500a9eded",
+        "toProperty": "mounted"
+      },
+      {
+        "fromId": "a23fb1e3-7c0f-eecb-90e3-5d2abcb80129",
+        "fromProperty": "prop-createdAt",
+        "toId": "joinedDateFormat",
+        "toProperty": "input"
+      },
+      {
+        "fromId": "joinedDateFormat",
+        "fromProperty": "currentValue",
+        "toId": "joinedDateText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "a23fb1e3-7c0f-eecb-90e3-5d2abcb80129",
+        "fromProperty": "prop-dob",
+        "toId": "dobCondition",
+        "toProperty": "dob"
+      },
+      {
+        "fromId": "dobCondition",
+        "fromProperty": "asBoolean",
+        "toId": "984be19e-e7c4-066f-198c-884837c16d55",
+        "toProperty": "mounted"
+      },
+      {
+        "fromId": "signOutText",
+        "fromProperty": "onClick",
+        "toId": "logoutNode",
+        "toProperty": "login"
+      }
+    ]
+  }
+}

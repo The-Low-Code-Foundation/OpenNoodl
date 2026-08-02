@@ -26,11 +26,12 @@
  *   node packages/noodl-editor/scripts/aix15-live/dist/aix15-harness.cjs --mode=plan
  *
  * Flags:
- *   --mode=update|agentic|plan|scope|review|explain|plan-docs   (required)
+ *   --mode=update|agentic|plan|scope|review|explain|plan-docs|changeset  (required)
+ *       `review` is AIX-010's project-docs review; `changeset` is AIX-003's
+ *       graph-native review of a change. Different features, same English word.
+ *   --provider=anthropic|openai|openai-compatible|ollama  (default anthropic)
  *   --model=<id>            NOT optional in practice: the registry default reads
  *                           EditorSettings, which this bundle stubs
- *   --provider=anthropic|openai|openai-compatible|ollama  (default anthropic)
- *   --model=<id>            omit to use the provider's registry default
  *   --only=slug1,slug2      run a subset of the mode's corpus
  *   --project=<path>        project.json to run against (each mode has a default)
  *   --outdir=<path>         artifacts + JSONL (default dev-docs/.../measurements/live)
@@ -69,6 +70,27 @@ import {
   SCOPE_PROMPTS,
   UPDATE_PROMPTS
 } from './corpus';
+import {
+  buildChangeSet,
+  excludedWith,
+  requiredWith,
+  type AuthoringChangeSet,
+  type ReviewChange
+} from '../../src/editor/src/models/AiAssistant/authoring/ChangeSet';
+import { materializeSelection } from '../../src/editor/src/models/AiAssistant/authoring/applyChangeSet';
+import { buildReviewComponent } from '../../src/editor/src/models/AiAssistant/authoring/reviewComponent';
+import { validateCandidateComponent } from '../../src/editor/src/models/AiAssistant/authoring/validate';
+import type { ProjectModel } from '../../src/editor/src/models/projectmodel';
+import { diffGraphs, fromV2Files, toLegacyComponent } from '../../src/editor/src/versioning';
+import type { GraphChange, V2ComponentFiles } from '../../src/editor/src/versioning';
+import {
+  countCosmetic,
+  createDisplayNameProvider,
+  describeSide,
+  presentChanges,
+  summarizeChanges
+} from '../../src/editor/src/views/panels/GraphDiffPanel/graphChangePresentation';
+import { CHANGESET_PROMPTS } from './corpus';
 
 // ── Plumbing (shared with the AIX-002 harness by convention, not by import:
 //    that harness's flags and JSONL shape are a published measurement artifact
@@ -86,7 +108,7 @@ const CORPUS_PROJECT = path.join(REPO_ROOT, 'packages/noodl-editor/tests/testfs/
 const AGENT_CHAT_PROJECT = path.join(REPO_ROOT, 'project-examples/agent-chat/project.json');
 const DEFAULT_OUT_DIR = path.join(REPO_ROOT, 'dev-docs/tasks/phase-15-ai-collaboration/measurements/live');
 
-const MODES = ['update', 'agentic', 'plan', 'scope', 'review', 'explain', 'plan-docs'] as const;
+const MODES = ['update', 'agentic', 'plan', 'scope', 'review', 'explain', 'plan-docs', 'changeset'] as const;
 type Mode = (typeof MODES)[number];
 
 function parseArgs(argv: string[]): Record<string, string> {
@@ -794,6 +816,9 @@ async function main(): Promise<void> {
     case 'plan-docs':
       await runPlanDocs(run);
       break;
+    case 'changeset':
+      await runChangeset(run);
+      break;
   }
 
   const jsonl = path.join(outDir, `${mode}.jsonl`);
@@ -983,6 +1008,483 @@ async function runPlanDocs(run: Run): Promise<void> {
         docs: docResults
       },
       artifacts
+    });
+  }
+}
+// ── Mode: changeset (AIX-003 — author → review → partially accept, live) ─────
+
+/**
+ * The one AIX-003 residual a fixture cannot close.
+ *
+ * Every property this mode asserts is already spec-covered — all-accepted
+ * reproduces the proposal, rejection closes over `requires`, a partial result
+ * passes the SUB-006 gate. The specs assert them against proposals written by
+ * the same hand as the assertions: explicit short ids, one change per intent,
+ * nothing incidental. This runs the same chain on a diff a model produced
+ * against a real component while thinking about the feature, not the review.
+ *
+ * The chain is: live authoring session → `buildChangeSet` → the closure
+ * (`requiredWith` / `excludedWith`) → `materializeSelection` → the same
+ * validation gate the Build panel runs before staging. Nothing is applied to a
+ * project: `buildChangeSet` reads exactly one thing off the project — the
+ * existing component of the same name — so the run supplies that and stops
+ * where the panel stops before a human presses Accept.
+ */
+
+const EPOCH = '1970-01-01T00:00:00.000Z';
+
+/** Fixed so a failing random subset can be reproduced from the record alone. */
+const SUBSET_SEED = 0x0a1c0003;
+
+/** The two rows the review UI refuses to make individually rejectable. */
+function isExcludableChange(change: GraphChange): boolean {
+  return change.kind !== 'component-renamed' && change.kind !== 'component-metadata-changed';
+}
+
+function asV2(files: ComponentFiles): V2ComponentFiles {
+  return files as unknown as V2ComponentFiles;
+}
+
+/** Semantic equality through the diff engine itself — the specs' own measure. */
+function graphDelta(a: ComponentFiles, b: ComponentFiles): GraphChange[] {
+  return diffGraphs(fromV2Files(asV2(a)), fromV2Files(asV2(b))).changes;
+}
+
+/**
+ * What a materialized graph would look like to the editor if the closure were
+ * wrong: wires whose endpoints are gone, nodes whose parent is gone. The
+ * SUB-006 gate is the real check; this says *how* a bad subset would be bad.
+ */
+function danglingRefs(files: ComponentFiles): { connections: number; parents: number } {
+  const ids = new Set(files.nodes.nodes.map((node) => node.id));
+  const connections = files.connections.connections.filter((c) => !ids.has(c.fromId) || !ids.has(c.toId)).length;
+  const parents = files.nodes.nodes.filter((node) => {
+    const parent = (node as { parent?: string }).parent;
+    return parent !== undefined && !ids.has(parent);
+  }).length;
+  return { connections, parents };
+}
+
+/** Deterministic PRNG so a reported subset can be reproduced from its seed. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+interface SelectionCheck {
+  rejectedInput: string[];
+  /** Size of the closure the materializer actually applied. */
+  closureSize: number;
+  valid: boolean;
+  errorCount: number;
+  /**
+   * Errors this selection introduced — the proposal's own gate result subtracted.
+   * The distinction is not pedantic: a proposal can be invalid on its own (a
+   * catalog that moved under a saved artifact will do it), and counting those
+   * against the closure would report a review defect that is nothing of the kind.
+   */
+  newErrors: string[];
+  /** Ids kept while something they require was rejected — must always be empty. */
+  brokenRequirements: string[];
+  dangling: { connections: number; parents: number };
+  nodes: number;
+  connections: number;
+  firstError?: string;
+}
+
+function errorMessages(validation: { errors: { message: string }[]; structural?: { errors: { message: string }[] }[] }) {
+  return [
+    ...(validation.structural ?? []).flatMap((f) => f.errors.map((e) => e.message)),
+    ...validation.errors.map((e) => e.message)
+  ];
+}
+
+function checkSelection(
+  graph: ExplainGraph,
+  changeSet: AuthoringChangeSet,
+  files: ComponentFiles,
+  rejectedInput: string[],
+  baseline: Set<string>
+): SelectionCheck {
+  const materialized = materializeSelection(changeSet, files, rejectedInput);
+  const validation = validateCandidateComponent(graph, changeSet.componentName, materialized.files);
+  const messages = errorMessages(validation);
+  const brokenRequirements = changeSet.changes
+    .filter((entry) => !materialized.rejected.has(entry.id) && entry.requires.some((r) => materialized.rejected.has(r)))
+    .map((entry) => entry.id);
+  return {
+    rejectedInput,
+    closureSize: materialized.rejected.size,
+    valid: validation.ok,
+    errorCount: validation.errors.length,
+    newErrors: [...new Set(messages.filter((message) => !baseline.has(message)))],
+    brokenRequirements,
+    dangling: danglingRefs(materialized.files),
+    nodes: materialized.files.nodes.nodes.length,
+    connections: materialized.files.connections.connections.length,
+    firstError: messages[0]
+  };
+}
+
+/**
+ * The rendered review, in the product's own words. The sentences, grouping and
+ * parameter detail come from `graphChangePresentation` — the module the change
+ * rail renders from — rather than from a formatter written here, because a
+ * harness that invents its own phrasing measures itself. This is the artifact a
+ * human fresh reviewer reads.
+ */
+function renderReview(changeSet: AuthoringChangeSet): string {
+  const displayName = createDisplayNameProvider();
+  const all = changeSet.changes.map((entry) => entry.change);
+  const groups = presentChanges(all, displayName, { includeCosmetic: false });
+  const byChange = new Map<GraphChange, ReviewChange>(changeSet.changes.map((entry) => [entry.change, entry]));
+
+  const lines: string[] = [
+    `# Review — ${changeSet.componentName}`,
+    '',
+    `_${changeSet.isNewComponent ? 'New component' : 'Modification'} · ${summarizeChanges(all)} · ` +
+      `${countCosmetic(all)} cosmetic change(s) not shown_`,
+    '',
+    'AIX-003 criterion: a reader who has not seen this change should be able to say what',
+    'happened from this page alone. The request that produced it is deliberately in a',
+    'separate file (`<slug>.request.md`) — a spoiler at the top of the page would answer',
+    'the question the test is asking.',
+    '',
+    'The bracketed "rejecting this also rejects …" notes are the change set\'s dependency',
+    'closure written out. The rail does not print them; it enforces them on click.',
+    ''
+  ];
+
+  for (const group of groups) {
+    lines.push(`## ${group.group} (${group.changes.length})`, '');
+    for (const presented of group.changes) {
+      const entry = byChange.get(presented.change);
+      const closure = entry ? excludedWith(changeSet, [entry.id]).size : 1;
+      const drag = closure > 1 ? ` _(rejecting this also rejects ${closure - 1} other change(s))_` : '';
+      lines.push(`- ${presented.text}${drag}`);
+      const change = presented.change as { params?: { name: string; base?: unknown; target?: unknown }[] };
+      for (const param of change.params ?? []) {
+        lines.push(`    - \`${param.name}\`: ${describeSide(param.base)} → ${describeSide(param.target)}`);
+      }
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+async function runChangeset(run: Run): Promise<void> {
+  const { graph, project } = loadGraph(CORPUS_PROJECT);
+  const components = (project.components as { name: string }[]) ?? [];
+  const byName = new Map(components.map((c) => [c.name, c]));
+
+  for (const prompt of CHANGESET_PROMPTS) {
+    if (!wants(run, prompt.slug)) continue;
+
+    const legacy = prompt.legacyName ? byName.get(prompt.legacyName) : undefined;
+    if (prompt.legacyName && !legacy) throw new Error(`${prompt.legacyName} is not in the corpus project.`);
+    const baseFiles = legacy ? (buildComponentV2Files(legacy as never, EPOCH) as ComponentFiles) : undefined;
+
+    console.log(
+      `\n▶ changeset ${prompt.slug} → ${prompt.componentPath}` +
+        (baseFiles ? ` (update, base ${baseFiles.nodes.nodes.length} nodes)` : ' (new component)')
+    );
+
+    // ── 1. Author, live ──────────────────────────────────────────────────────
+    const request = { description: prompt.description, componentPath: prompt.componentPath };
+    const session = baseFiles
+      ? AuthoringSession.createUpdate(graph, request, baseFiles, { chat: run.chat, effort: run.effort })
+      : AuthoringSession.create(graph, request, { chat: run.chat, effort: run.effort });
+    narrate(session);
+
+    const abortController = new AbortController();
+    const timer = setTimeout(() => abortController.abort(), run.timeoutMs);
+    const startedAt = Date.now();
+    const outcome = await session.run({ abortController });
+    clearTimeout(timer);
+    session.dispose();
+
+    if (!outcome.files) {
+      console.log(`  ${outcome.status} — no proposal, nothing to review. ${outcome.error ?? ''}`);
+      record({
+        mode: 'changeset',
+        slug: prompt.slug,
+        provider: run.providerId,
+        model: [...run.served].pop() ?? '(unknown)',
+        status: outcome.status,
+        durationMs: Date.now() - startedAt,
+        costUsd: outcome.metrics.costUsd,
+        detail: { componentPath: prompt.componentPath, rounds: outcome.rounds },
+        artifacts: [],
+        error: outcome.error
+      });
+      continue;
+    }
+
+    const files = outcome.files;
+
+    // ── 2. The change set, through the real adapter ──────────────────────────
+    // `buildChangeSet` reads one thing off the project: the existing component
+    // of the proposal's own name. A `ProjectModel` in a terminal process would
+    // drag the whole editor in, so the run supplies that one lookup — the same
+    // legacy JSON `ComponentModel.toJSON()` would hand back — and nothing else.
+    const lookups: string[] = [];
+    const shimProject = {
+      getComponentWithName: (name: string) => {
+        lookups.push(name);
+        return legacy && name === prompt.legacyName ? { toJSON: () => legacy } : undefined;
+      }
+    };
+    const changeSet = buildChangeSet(shimProject as unknown as ProjectModel, files);
+    const all = changeSet.changes.map((entry) => entry.change);
+    const excludable = changeSet.changes.filter((entry) => isExcludableChange(entry.change));
+
+    console.log(
+      `  change set: ${changeSet.changes.length} change(s) — ${summarizeChanges(all)}, ` +
+        `${countCosmetic(all)} cosmetic · resolved as ${changeSet.componentName}` +
+        `${changeSet.isNewComponent ? ' (new)' : ''}`
+    );
+
+    // ── 3. All-accepted must reproduce the proposal exactly ──────────────────
+    const allAccepted = materializeSelection(changeSet, files, []);
+    const residual = graphDelta(allAccepted.files, files);
+    console.log(
+      residual.length === 0
+        ? '  ✓ all-accepted reproduces the proposal (0 residual changes)'
+        : `  ✗ all-accepted differs from the proposal: ${residual.map((c) => c.kind).join(', ')}`
+    );
+
+    // The proposal's own gate result is the baseline every selection is judged
+    // against: the session already accepted these files, so anything the gate
+    // says about them is a statement about the proposal, not about the review.
+    const proposalValidation = validateCandidateComponent(graph, changeSet.componentName, files);
+    const baseline = new Set(errorMessages(proposalValidation));
+    if (!proposalValidation.ok) {
+      console.log(`  ! the proposal itself does not pass the gate: ${[...baseline].join(' / ')}`);
+    }
+
+    // ── 4. Every single-change rejection, closed and gated ───────────────────
+    const perChange = excludable.map((entry) => ({
+      id: entry.id,
+      kind: entry.change.kind,
+      requires: entry.requires,
+      ...checkSelection(graph, changeSet, files, [entry.id], baseline)
+    }));
+    const failures = perChange.filter(
+      (c) => c.newErrors.length > 0 || c.brokenRequirements.length > 0 || c.dangling.connections > 0
+    );
+    const maxClosure = perChange.reduce((max, c) => Math.max(max, c.closureSize), 0);
+    const independent = perChange.filter((c) => c.closureSize === 1).length;
+    console.log(
+      `  single-change rejections: ${perChange.length} swept, ${failures.length} failing · ` +
+        `closure 1..${maxClosure} · ${independent} independently rejectable`
+    );
+
+    // ── 5. Random subsets, seeded so a failure is reproducible ───────────────
+    const random = mulberry32(SUBSET_SEED);
+    const subsets: SelectionCheck[] = [];
+    for (let i = 0; i < 40 && excludable.length > 0; i++) {
+      const rejected = excludable.filter(() => random() < 0.3).map((entry) => entry.id);
+      if (rejected.length === 0) continue;
+      subsets.push(checkSelection(graph, changeSet, files, rejected, baseline));
+    }
+    const subsetFailures = subsets.filter((s) => s.newErrors.length > 0 || s.brokenRequirements.length > 0);
+    console.log(`  random subsets: ${subsets.length} swept, ${subsetFailures.length} failing`);
+
+    // ── 6. The falsifier: is the closure doing any work? ─────────────────────
+    // Same rejection through a change set whose `requires` edges have been
+    // stripped. If that produces the same graph, the closure proved nothing
+    // here and the "invalid subsets are unrepresentable" claim is untested by
+    // this diff — which is a result, not a pass.
+    const widest = perChange.reduce<(typeof perChange)[number] | undefined>(
+      (best, c) => (best === undefined || c.closureSize > best.closureSize ? c : best),
+      undefined
+    );
+    let falsifier: Record<string, unknown> | undefined;
+    if (widest && widest.closureSize > 1) {
+      const unclosed: AuthoringChangeSet = {
+        ...changeSet,
+        changes: changeSet.changes.map((entry) => ({ ...entry, requires: [] }))
+      };
+      const without = checkSelection(graph, unclosed, files, [widest.id], baseline);
+      falsifier = {
+        changeId: widest.id,
+        kind: widest.kind,
+        closed: {
+          closureSize: widest.closureSize,
+          valid: widest.valid,
+          newErrors: widest.newErrors,
+          dangling: widest.dangling
+        },
+        unclosed: {
+          closureSize: without.closureSize,
+          valid: without.valid,
+          newErrors: without.newErrors,
+          dangling: without.dangling,
+          firstError: without.firstError
+        }
+      };
+      console.log(
+        `  falsifier on ${widest.id}: closed ⇒ ${widest.valid ? 'valid' : 'INVALID'}, ` +
+          `unclosed ⇒ ${without.valid ? 'valid' : 'invalid'} with ` +
+          `${without.dangling.connections} dangling wire(s), ${without.dangling.parents} orphan(s)`
+      );
+    } else {
+      console.log('  falsifier: no change in this set drags another — the closure is untested by this diff');
+    }
+
+    // ── 7. The headline partial acceptance ───────────────────────────────────
+    const headlineReject = widest && widest.closureSize > 1 ? [widest.id] : perChange.slice(0, 2).map((c) => c.id);
+    const headline =
+      headlineReject.length > 0 ? checkSelection(graph, changeSet, files, headlineReject, baseline) : undefined;
+    const headlineFiles =
+      headlineReject.length > 0 ? materializeSelection(changeSet, files, headlineReject).files : undefined;
+
+    // ── 8. A relabel probe — no API cost, and it exercises a kind the corpus
+    //      has none of. Base and target are the same proposal apart from one
+    //      wire's label, so the whole diff should be that one change. ─────────
+    let relabel: Record<string, unknown> | undefined;
+    if (files.connections.connections.length > 0) {
+      const asLegacy = toLegacyComponent(fromV2Files(asV2(files)));
+      const probeProject = { getComponentWithName: () => ({ toJSON: () => asLegacy }) };
+      const idempotent = buildChangeSet(probeProject as unknown as ProjectModel, files);
+      const labelled: ComponentFiles = JSON.parse(JSON.stringify(files));
+      (labelled.connections.connections[0] as { label?: string }).label = 'live relabel probe';
+      const relabelSet = buildChangeSet(probeProject as unknown as ProjectModel, labelled);
+      const relabelAccepted = materializeSelection(relabelSet, labelled, []);
+      const relabelResidual = graphDelta(relabelAccepted.files, labelled);
+      relabel = {
+        roundTripChanges: idempotent.changes.map((entry) => entry.change.kind),
+        kinds: relabelSet.changes.map((entry) => entry.change.kind),
+        changeIds: relabelSet.changes.map((entry) => entry.id),
+        residualAfterAllAccepted: relabelResidual.map((c) => c.kind)
+      };
+      console.log(
+        `  relabel probe: base round trip ${idempotent.changes.length} change(s); ` +
+          `relabel diff [${relabelSet.changes.map((e) => e.change.kind).join(', ')}] with ids ` +
+          `[${relabelSet.changes.map((e) => String(e.id)).join(', ')}]; ` +
+          `all-accepted residual ${relabelResidual.length}`
+      );
+    }
+
+    // ── 9. Artifacts ─────────────────────────────────────────────────────────
+    const artifacts: string[] = [
+      writeArtifact(run, `changeset/${prompt.slug}.candidate.json`, JSON.stringify(files, null, 2)),
+      writeArtifact(
+        run,
+        `changeset/${prompt.slug}.changes.json`,
+        JSON.stringify(
+          {
+            componentName: changeSet.componentName,
+            isNewComponent: changeSet.isNewComponent,
+            changes: changeSet.changes.map((entry) => ({
+              id: entry.id,
+              kind: entry.change.kind,
+              category: entry.change.category,
+              requires: entry.requires,
+              excludedWith: [...excludedWith(changeSet, [entry.id])].filter((id) => id !== entry.id),
+              requiredWith: [...requiredWith(changeSet, [entry.id])].filter((id) => id !== entry.id)
+            }))
+          },
+          null,
+          2
+        )
+      ),
+      writeArtifact(run, `changeset/${prompt.slug}.review.md`, renderReview(changeSet)),
+      writeArtifact(
+        run,
+        `changeset/${prompt.slug}.request.md`,
+        `# What was asked for — ${changeSet.componentName}\n\n> ${prompt.description}\n`
+      ),
+      writeArtifact(
+        run,
+        `changeset/${prompt.slug}.review-component.json`,
+        JSON.stringify(buildReviewComponent(changeSet), null, 2)
+      )
+    ];
+    if (baseFiles) {
+      artifacts.push(writeArtifact(run, `changeset/${prompt.slug}.base.json`, JSON.stringify(baseFiles, null, 2)));
+    }
+    if (headlineFiles) {
+      artifacts.push(
+        writeArtifact(run, `changeset/${prompt.slug}.partial.json`, JSON.stringify(headlineFiles, null, 2))
+      );
+    }
+
+    const kindCounts: Record<string, number> = {};
+    for (const change of all) kindCounts[change.kind] = (kindCounts[change.kind] ?? 0) + 1;
+
+    record({
+      mode: 'changeset',
+      slug: prompt.slug,
+      provider: run.providerId,
+      model: [...run.served].pop() ?? '(unknown)',
+      status: outcome.status,
+      durationMs: Date.now() - startedAt,
+      costUsd: outcome.metrics.costUsd,
+      detail: {
+        componentPath: prompt.componentPath,
+        description: prompt.description,
+        legacyName: prompt.legacyName,
+        freshReviewer: prompt.freshReviewer === true,
+        firstAttemptValid: outcome.rounds.length > 0 ? outcome.rounds[0].ok : null,
+        baseNodes: baseFiles ? baseFiles.nodes.nodes.length : 0,
+        proposedNodes: files.nodes.nodes.length,
+        proposedConnections: files.connections.connections.length,
+        resolvedComponentName: changeSet.componentName,
+        componentLookups: lookups,
+        isNewComponent: changeSet.isNewComponent,
+        changeCount: changeSet.changes.length,
+        excludableCount: excludable.length,
+        cosmeticCount: countCosmetic(all),
+        summary: summarizeChanges(all),
+        kindCounts,
+        // The criterion the notes state: all-accepted reproduces the proposal,
+        // asserted through the diff engine's own equality.
+        allAcceptedResidual: residual.map((c) => c.kind),
+        allAcceptedReproducesProposal: residual.length === 0,
+        proposalPassesGate: proposalValidation.ok,
+        proposalGateErrors: [...baseline],
+        singleRejectionSweep: {
+          swept: perChange.length,
+          failing: failures.length,
+          maxClosure,
+          independentlyRejectable: independent,
+          failures: failures.map((f) => ({
+            id: f.id,
+            kind: f.kind,
+            valid: f.valid,
+            newErrors: f.newErrors,
+            brokenRequirements: f.brokenRequirements,
+            dangling: f.dangling,
+            firstError: f.firstError
+          }))
+        },
+        randomSubsetSweep: {
+          swept: subsets.length,
+          failing: subsetFailures.length,
+          failures: subsetFailures
+        },
+        falsifier,
+        headline: headline
+          ? { rejectedInput: headlineReject, ...headline }
+          : undefined,
+        relabelProbe: relabel,
+        changes: changeSet.changes.map((entry) => ({
+          id: entry.id,
+          kind: entry.change.kind,
+          category: entry.change.category,
+          requires: entry.requires
+        })),
+        rounds: outcome.rounds
+      },
+      artifacts,
+      error: outcome.error
     });
   }
 }

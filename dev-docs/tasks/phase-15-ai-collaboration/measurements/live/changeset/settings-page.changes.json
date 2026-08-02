@@ -1,0 +1,595 @@
+{
+  "componentName": "/Pages/Account Settings",
+  "isNewComponent": true,
+  "changes": [
+    {
+      "id": "node-added:root",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [
+        "node-added:actionsRow",
+        "node-added:saveBtn",
+        "node-added:cancelBtn",
+        "node-added:deleteBtn",
+        "node-added:dangerHeading",
+        "node-added:dangerDivider",
+        "node-added:privRows",
+        "node-added:privacyLinkBtn",
+        "connection-added:privacyLinkBtn:onClick->externalLink:do",
+        "node-added:publicProfileRow",
+        "node-added:publicProfileCheck",
+        "node-added:publicProfileLabel",
+        "node-added:privHeading",
+        "node-added:privDivider",
+        "node-added:notifRows",
+        "node-added:digestRow",
+        "node-added:digestCheck",
+        "node-added:digestLabel",
+        "node-added:pushNotifRow",
+        "node-added:pushNotifCheck",
+        "node-added:pushNotifLabel",
+        "node-added:emailNotifRow",
+        "node-added:emailNotifCheck",
+        "node-added:emailNotifLabel",
+        "node-added:notifHeading",
+        "node-added:notifDivider",
+        "node-added:profFields",
+        "node-added:phoneInput",
+        "node-added:emailInput",
+        "node-added:nameInput",
+        "node-added:profHeading",
+        "node-added:profDivider",
+        "node-added:header",
+        "node-added:headerNameCol",
+        "node-added:headerSub",
+        "node-added:headerName",
+        "node-added:avatar"
+      ],
+      "requiredWith": []
+    },
+    {
+      "id": "node-added:header",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [
+        "node-added:headerNameCol",
+        "node-added:headerSub",
+        "node-added:headerName",
+        "node-added:avatar"
+      ],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:avatar",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:header"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:header",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:headerNameCol",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:header"
+      ],
+      "excludedWith": [
+        "node-added:headerSub",
+        "node-added:headerName"
+      ],
+      "requiredWith": [
+        "node-added:header",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:headerName",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:headerNameCol"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:headerNameCol",
+        "node-added:header",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:headerSub",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:headerNameCol"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:headerNameCol",
+        "node-added:header",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:profDivider",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:profHeading",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:profFields",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [
+        "node-added:phoneInput",
+        "node-added:emailInput",
+        "node-added:nameInput"
+      ],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:nameInput",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:profFields"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:profFields",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:emailInput",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:profFields"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:profFields",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:phoneInput",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:profFields"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:profFields",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:notifDivider",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:notifHeading",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:notifRows",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [
+        "node-added:digestRow",
+        "node-added:digestCheck",
+        "node-added:digestLabel",
+        "node-added:pushNotifRow",
+        "node-added:pushNotifCheck",
+        "node-added:pushNotifLabel",
+        "node-added:emailNotifRow",
+        "node-added:emailNotifCheck",
+        "node-added:emailNotifLabel"
+      ],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:emailNotifRow",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:notifRows"
+      ],
+      "excludedWith": [
+        "node-added:emailNotifCheck",
+        "node-added:emailNotifLabel"
+      ],
+      "requiredWith": [
+        "node-added:notifRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:emailNotifLabel",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:emailNotifRow"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:emailNotifRow",
+        "node-added:notifRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:emailNotifCheck",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:emailNotifRow"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:emailNotifRow",
+        "node-added:notifRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:pushNotifRow",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:notifRows"
+      ],
+      "excludedWith": [
+        "node-added:pushNotifCheck",
+        "node-added:pushNotifLabel"
+      ],
+      "requiredWith": [
+        "node-added:notifRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:pushNotifLabel",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:pushNotifRow"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:pushNotifRow",
+        "node-added:notifRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:pushNotifCheck",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:pushNotifRow"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:pushNotifRow",
+        "node-added:notifRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:digestRow",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:notifRows"
+      ],
+      "excludedWith": [
+        "node-added:digestCheck",
+        "node-added:digestLabel"
+      ],
+      "requiredWith": [
+        "node-added:notifRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:digestLabel",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:digestRow"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:digestRow",
+        "node-added:notifRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:digestCheck",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:digestRow"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:digestRow",
+        "node-added:notifRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:privDivider",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:privHeading",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:privRows",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [
+        "node-added:privacyLinkBtn",
+        "connection-added:privacyLinkBtn:onClick->externalLink:do",
+        "node-added:publicProfileRow",
+        "node-added:publicProfileCheck",
+        "node-added:publicProfileLabel"
+      ],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:publicProfileRow",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:privRows"
+      ],
+      "excludedWith": [
+        "node-added:publicProfileCheck",
+        "node-added:publicProfileLabel"
+      ],
+      "requiredWith": [
+        "node-added:privRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:publicProfileLabel",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:publicProfileRow"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:publicProfileRow",
+        "node-added:privRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:publicProfileCheck",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:publicProfileRow"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:publicProfileRow",
+        "node-added:privRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:privacyLinkBtn",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:privRows"
+      ],
+      "excludedWith": [
+        "connection-added:privacyLinkBtn:onClick->externalLink:do"
+      ],
+      "requiredWith": [
+        "node-added:privRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:dangerDivider",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:dangerHeading",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:deleteBtn",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:actionsRow",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:root"
+      ],
+      "excludedWith": [
+        "node-added:saveBtn",
+        "node-added:cancelBtn"
+      ],
+      "requiredWith": [
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:cancelBtn",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:actionsRow"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:actionsRow",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:saveBtn",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:actionsRow"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:actionsRow",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "node-added:externalLink",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [
+        "connection-added:privacyLinkBtn:onClick->externalLink:do"
+      ],
+      "requiredWith": []
+    },
+    {
+      "id": "connection-added:privacyLinkBtn:onClick->externalLink:do",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:privacyLinkBtn",
+        "node-added:externalLink"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:externalLink",
+        "node-added:privacyLinkBtn",
+        "node-added:privRows",
+        "node-added:root"
+      ]
+    },
+    {
+      "id": "component-metadata-changed:componentType",
+      "kind": "component-metadata-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    }
+  ]
+}

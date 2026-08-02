@@ -1,0 +1,325 @@
+{
+  "name": "/Visual Components/Profile/Notification Preferences",
+  "graph": {
+    "roots": [
+      {
+        "id": "inputs",
+        "type": "Component Inputs",
+        "label": "Current settings in",
+        "x": 0,
+        "y": 0,
+        "ports": [
+          {
+            "name": "email",
+            "plug": "output",
+            "type": "boolean"
+          },
+          {
+            "name": "push",
+            "plug": "output",
+            "type": "boolean"
+          },
+          {
+            "name": "digest",
+            "plug": "output",
+            "type": "boolean"
+          }
+        ],
+        "annotation": "Created"
+      },
+      {
+        "id": "outputs",
+        "type": "Component Outputs",
+        "label": "New settings out",
+        "x": 900,
+        "y": 0,
+        "ports": [
+          {
+            "name": "Save",
+            "plug": "input",
+            "type": "signal"
+          },
+          {
+            "name": "email",
+            "plug": "input",
+            "type": "boolean"
+          },
+          {
+            "name": "push",
+            "plug": "input",
+            "type": "boolean"
+          },
+          {
+            "name": "digest",
+            "plug": "input",
+            "type": "boolean"
+          }
+        ],
+        "annotation": "Created"
+      },
+      {
+        "id": "touched",
+        "type": "Boolean",
+        "label": "Tracks whether any switch was touched",
+        "x": 300,
+        "y": 500,
+        "parameters": {
+          "value": true
+        },
+        "annotation": "Created"
+      },
+      {
+        "id": "card",
+        "type": "Group",
+        "label": "Card container",
+        "x": 0,
+        "y": 150,
+        "parameters": {
+          "flexDirection": "column",
+          "alignItems": "stretch",
+          "backgroundColor": "var(--surface)",
+          "borderRadius": "var(--radius-lg)",
+          "borderWidth": "var(--border-1)",
+          "borderColor": "var(--border)",
+          "borderStyle": "solid",
+          "paddingTop": "var(--space-6)",
+          "paddingBottom": "var(--space-6)",
+          "paddingLeft": "var(--space-6)",
+          "paddingRight": "var(--space-6)",
+          "rowGap": "var(--space-4)",
+          "boxShadow": "var(--shadow-sm)",
+          "sizeMode": "contentHeight",
+          "width": 400
+        },
+        "children": [
+          {
+            "id": "heading",
+            "type": "Text",
+            "label": "Card heading",
+            "x": 50,
+            "y": 200,
+            "parameters": {
+              "text": "Notification Preferences",
+              "variant": "heading-3"
+            },
+            "annotation": "Created"
+          },
+          {
+            "id": "rowEmail",
+            "type": "Group",
+            "label": "Email row",
+            "x": 50,
+            "y": 260,
+            "parameters": {
+              "flexDirection": "row",
+              "alignItems": "center",
+              "justifyContent": "space-between",
+              "columnGap": "var(--space-4)"
+            },
+            "children": [
+              {
+                "id": "labelEmail",
+                "type": "Text",
+                "label": "Email label",
+                "x": 80,
+                "y": 260,
+                "parameters": {
+                  "text": "Email notifications",
+                  "variant": "label"
+                },
+                "annotation": "Created"
+              },
+              {
+                "id": "cbEmail",
+                "type": "net.noodl.controls.checkbox",
+                "label": "Email switch",
+                "x": 250,
+                "y": 260,
+                "parameters": {
+                  "borderColor": "var(--border)"
+                },
+                "annotation": "Created"
+              }
+            ],
+            "annotation": "Created"
+          },
+          {
+            "id": "rowPush",
+            "type": "Group",
+            "label": "Push row",
+            "x": 50,
+            "y": 330,
+            "parameters": {
+              "flexDirection": "row",
+              "alignItems": "center",
+              "justifyContent": "space-between",
+              "columnGap": "var(--space-4)"
+            },
+            "children": [
+              {
+                "id": "labelPush",
+                "type": "Text",
+                "label": "Push label",
+                "x": 80,
+                "y": 330,
+                "parameters": {
+                  "text": "Push notifications",
+                  "variant": "label"
+                },
+                "annotation": "Created"
+              },
+              {
+                "id": "cbPush",
+                "type": "net.noodl.controls.checkbox",
+                "label": "Push switch",
+                "x": 250,
+                "y": 330,
+                "parameters": {
+                  "borderColor": "var(--border)"
+                },
+                "annotation": "Created"
+              }
+            ],
+            "annotation": "Created"
+          },
+          {
+            "id": "rowDigest",
+            "type": "Group",
+            "label": "Digest row",
+            "x": 50,
+            "y": 400,
+            "parameters": {
+              "flexDirection": "row",
+              "alignItems": "center",
+              "justifyContent": "space-between",
+              "columnGap": "var(--space-4)"
+            },
+            "children": [
+              {
+                "id": "labelDigest",
+                "type": "Text",
+                "label": "Digest label",
+                "x": 80,
+                "y": 400,
+                "parameters": {
+                  "text": "Weekly digest",
+                  "variant": "label"
+                },
+                "annotation": "Created"
+              },
+              {
+                "id": "cbDigest",
+                "type": "net.noodl.controls.checkbox",
+                "label": "Digest switch",
+                "x": 250,
+                "y": 400,
+                "parameters": {
+                  "borderColor": "var(--border)"
+                },
+                "annotation": "Created"
+              }
+            ],
+            "annotation": "Created"
+          },
+          {
+            "id": "saveBtn",
+            "type": "net.noodl.controls.button",
+            "label": "Save button",
+            "x": 50,
+            "y": 470,
+            "parameters": {
+              "label": "Save",
+              "backgroundColor": "var(--primary)",
+              "color": "var(--primary-foreground)",
+              "borderWidth": "var(--border-0)",
+              "boxShadow": "var(--shadow-sm)",
+              "enabled": false,
+              "size": "md"
+            },
+            "annotation": "Created"
+          }
+        ],
+        "annotation": "Created"
+      }
+    ],
+    "connections": [
+      {
+        "fromId": "inputs",
+        "fromProperty": "email",
+        "toId": "cbEmail",
+        "toProperty": "checked",
+        "annotation": "Created"
+      },
+      {
+        "fromId": "inputs",
+        "fromProperty": "push",
+        "toId": "cbPush",
+        "toProperty": "checked",
+        "annotation": "Created"
+      },
+      {
+        "fromId": "inputs",
+        "fromProperty": "digest",
+        "toId": "cbDigest",
+        "toProperty": "checked",
+        "annotation": "Created"
+      },
+      {
+        "fromId": "cbEmail",
+        "fromProperty": "onChange",
+        "toId": "touched",
+        "toProperty": "saveValue",
+        "annotation": "Created"
+      },
+      {
+        "fromId": "cbPush",
+        "fromProperty": "onChange",
+        "toId": "touched",
+        "toProperty": "saveValue",
+        "annotation": "Created"
+      },
+      {
+        "fromId": "cbDigest",
+        "fromProperty": "onChange",
+        "toId": "touched",
+        "toProperty": "saveValue",
+        "annotation": "Created"
+      },
+      {
+        "fromId": "touched",
+        "fromProperty": "savedValue",
+        "toId": "saveBtn",
+        "toProperty": "enabled",
+        "annotation": "Created"
+      },
+      {
+        "fromId": "cbEmail",
+        "fromProperty": "checked",
+        "toId": "outputs",
+        "toProperty": "email",
+        "annotation": "Created"
+      },
+      {
+        "fromId": "cbPush",
+        "fromProperty": "checked",
+        "toId": "outputs",
+        "toProperty": "push",
+        "annotation": "Created"
+      },
+      {
+        "fromId": "cbDigest",
+        "fromProperty": "checked",
+        "toId": "outputs",
+        "toProperty": "digest",
+        "annotation": "Created"
+      },
+      {
+        "fromId": "saveBtn",
+        "fromProperty": "onClick",
+        "toId": "outputs",
+        "toProperty": "Save",
+        "annotation": "Created"
+      }
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "56fbb046-5420-45e5-b05c-9895f8b7f353",
+    "name": "Account Settings",
+    "path": "/Pages/Account Settings",
+    "type": "page",
+    "created": "2026-08-02T18:07:01.430Z",
+    "modified": "2026-08-02T18:07:01.430Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Account settings page: header with member name and avatar, Profile/Notifications/Privacy sections each with a heading and divider, a danger zone with account deletion, and Save/Cancel actions."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "56fbb046-5420-45e5-b05c-9895f8b7f353",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "externalLink",
+        "type": "net.noodl.externallink",
+        "label": "Open privacy policy",
+        "x": 400,
+        "y": 690,
+        "parameters": {
+          "link": "/privacy-policy",
+          "openInNewTab": true
+        }
+      }
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "56fbb046-5420-45e5-b05c-9895f8b7f353",
+    "version": 1,
+    "connections": []
+  }
+}
