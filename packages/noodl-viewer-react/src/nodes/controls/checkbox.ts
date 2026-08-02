@@ -2,6 +2,7 @@ import { Checkbox } from '../../components/controls/Checkbox';
 import guid from '../../guid';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
 import { createNodeFromReactComponent } from '../../react-component-node';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import Utils from './utils';
 
 const CheckBoxNode = {
@@ -71,31 +72,19 @@ const CheckBoxNode = {
     check: {
       type: 'signal',
       displayName: 'Check',
-      description: 'Ticks the box if it is not already ticked; does not fire Changed',
+      description: 'Ticks the box if it is not already ticked, then fires Done — or Unchanged if it already was. Does not fire Changed',
       group: 'Actions',
       valueChangedToTrue() {
-        if (this._internal.checked === true) return;
-
-        this.props.checked = this._internal.checked = true;
-
-        this.forceUpdate();
-        this.flagOutputDirty('checked');
-        this._updateVisualState();
+        this.setCheckedByAction(true);
       }
     },
     uncheck: {
       type: 'signal',
       displayName: 'Uncheck',
-      description: 'Unticks the box if it is ticked; does not fire Changed',
+      description: 'Unticks the box if it is ticked, then fires Done — or Unchanged if it already was. Does not fire Changed',
       group: 'Actions',
       valueChangedToTrue() {
-        if (this._internal.checked === false) return;
-
-        this.props.checked = this._internal.checked = false;
-
-        this.forceUpdate();
-        this.flagOutputDirty('checked');
-        this._updateVisualState();
+        this.setCheckedByAction(false);
       }
     }
   },
@@ -155,6 +144,43 @@ const CheckBoxNode = {
       group: 'Events',
       description: 'Fires when the user ticks or unticks the box; the Checked input and the Check/Uncheck actions do not fire it',
       type: 'signal'
+    },
+
+    /**
+     * ERG-001 §4 / DV-viii, and the one Visual node in §0.3's `Unchanged` register.
+     *
+     * `Check` on an already-ticked box was `if (checked === true) return;` — a bare return, so
+     * the graph got nothing at all. `Changed` deliberately does not fire for these actions
+     * (it means "the *user* did it"), so there was no other signal either: the chain died, and
+     * the state the author asked for was already true.
+     *
+     * Not `Failure`. The box is ticked, which is what `Check` asked for.
+     */
+    ...outcomeOutputs({
+      done: 'Fires when Check or Uncheck actually flipped the box',
+      unchanged: 'Fires when the box was already in that state, so nothing was flipped and Changed did not fire'
+    })
+  },
+  methods: {
+    /**
+     * The one place `Check` and `Uncheck` differ is the value, so they share a body — the two
+     * used to be near-identical blocks and the outcome contract would have made that three
+     * near-identical blocks.
+     */
+    setCheckedByAction(next) {
+      const outcome = this.beginOutcome();
+      if (this._internal.checked === next) {
+        this.reportOutcome(outcome, 'unchanged');
+        return;
+      }
+
+      this.props.checked = this._internal.checked = next;
+
+      this.forceUpdate();
+      this.flagOutputDirty('checked');
+      this._updateVisualState();
+      // Last: the value is on the output before the pulse that describes it.
+      this.reportOutcome(outcome, 'done');
     }
   }
 };

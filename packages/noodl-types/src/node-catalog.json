@@ -6982,6 +6982,17 @@
           "description": "How many child elements are currently mounted inside this one"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "deltaX",
           "displayName": "Delta X",
           "group": "Values",
@@ -7013,6 +7024,28 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a snap animation has been started on the element"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the snap never reached the element, because it has still not mounted"
         },
         {
           "name": "onDrag",
@@ -11360,7 +11393,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Scrolls to the child at Index. ⚠️ There is no signal for when the scroll finishes",
+          "description": "Scrolls to the child at Index, then fires Done — or Failure with the reason it could not",
           "index": 505
         },
         {
@@ -11663,6 +11696,17 @@
           "description": "How many child elements are currently mounted inside this one"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "didMount",
           "displayName": "Did Mount",
           "group": "Mounted",
@@ -11672,6 +11716,28 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once Focus, Scroll To Element or Scroll To Index has been carried out"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the action did nothing and says why on Error — most often a scroll target that is not inside this group, or a group that has still not mounted"
         },
         {
           "name": "focusLost",
@@ -29416,7 +29482,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Seeks to the beginning and plays. ⚠️ There is no signal for when it has restarted"
+          "description": "Seeks to the beginning and plays, then fires Done"
         },
         {
           "name": "sizeMode",
@@ -29704,6 +29770,17 @@
           "description": "This element's position among its parent's children, counting from 0"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "didMount",
           "displayName": "Did Mount",
           "group": "Mounted",
@@ -29713,6 +29790,28 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Video Action has been carried out by the element"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the action never reached the element, because it has still not mounted"
         },
         {
           "name": "hoverEnd",
@@ -36979,7 +37078,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Ticks the box if it is not already ticked; does not fire Changed"
+          "description": "Ticks the box if it is not already ticked, then fires Done — or Unchanged if it already was. Does not fire Changed"
         },
         {
           "name": "checked",
@@ -37722,7 +37821,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Unticks the box if it is ticked; does not fire Changed"
+          "description": "Unticks the box if it is ticked, then fires Done — or Unchanged if it already was. Does not fire Changed"
         },
         {
           "name": "useIcon",
@@ -37855,6 +37954,17 @@
           "description": "This element's position among its parent's children, counting from 0"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "didMount",
           "displayName": "Did Mount",
           "group": "Mounted",
@@ -37864,6 +37974,17 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when Check or Uncheck actually flipped the box"
         },
         {
           "name": "enabled",
@@ -38017,6 +38138,17 @@
           },
           "isSignal": false,
           "description": "A reference to this node itself, for ports that take a node rather than a value"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the box was already in that state, so nothing was flipped and Changed did not fire"
         },
         {
           "name": "willUnmount",
@@ -46212,6 +46344,17 @@
           "description": "This element's position among its parent's children, counting from 0"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "didMount",
           "displayName": "Did Mount",
           "group": "Mounted",
@@ -46221,6 +46364,17 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when Set, Clear, Focus or Blur did something"
         },
         {
           "name": "enabled",
@@ -46398,6 +46552,17 @@
           },
           "isSignal": false,
           "description": "A reference to this node itself, for ports that take a node rather than a value"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Set or Clear left the field as it was — most often a Set while the field has focus, which is deliberately absorbed so it cannot overwrite what is being typed"
         },
         {
           "name": "willUnmount",

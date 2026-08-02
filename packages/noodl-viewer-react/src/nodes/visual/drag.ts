@@ -1,4 +1,5 @@
 import { Drag } from '../../components/visual/Drag';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 
 /**
@@ -64,10 +65,12 @@ const DragNode: ReactNodeDefinition = {
           const { snapPositionX, snapDurationX } = this._internal;
           // NDA-012 (Visual) A3, third instance. The worksheet filed this under `B1` — "a
           // `Do` before the component mounts is dropped … with no report" — so the *class* was
-          // split across two checks on three nodes. The drop is closed here with the same
-          // `withInnerComponent` the Group and Video cells used; the missing report is `B1`'s
-          // and stays with ERG-001.
-          this.withInnerComponent((inner) => inner.snapToPositionX(snapPositionX, snapDurationX));
+          // split across two checks on three nodes. The drop was closed with
+          // `withInnerComponent`; ERG-001 §4 closes the report, which is the half NDA-012
+          // explicitly left here.
+          this.outcomeOnInnerComponent((inner) => inner.snapToPositionX(snapPositionX, snapDurationX), {
+            code: 'drag/snap-x-failed'
+          });
         });
       }
     },
@@ -113,7 +116,9 @@ const DragNode: ReactNodeDefinition = {
       valueChangedToTrue() {
         this.scheduleAfterInputsHaveUpdated(() => {
           const { snapPositionY, snapDurationY } = this._internal;
-          this.withInnerComponent((inner) => inner.snapToPositionY(snapPositionY, snapDurationY));
+          this.outcomeOnInnerComponent((inner) => inner.snapToPositionY(snapPositionY, snapDurationY), {
+            code: 'drag/snap-y-failed'
+          });
         });
       }
     },
@@ -245,7 +250,16 @@ const DragNode: ReactNodeDefinition = {
       displayName: 'Delta Y',
       type: 'number',
       description: 'How far the element moved on Y since the last Drag Moved'
-    }
+    },
+    /**
+     * ERG-001 §4 / DV-viii. Seven of the eight Visual nodes with action inputs could not tell a
+     * graph their action had finished; this is one of them. The ports are shared by every action
+     * input on the node, which is the same shape `Run Tasks` and `Timer` already have.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once a snap animation has been started on the element',
+      failure: 'Fires when the snap never reached the element, because it has still not mounted'
+    })
   }
 };
 

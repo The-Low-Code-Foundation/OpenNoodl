@@ -2,6 +2,7 @@ import { TextInput } from '../../components/controls/TextInput';
 import guid from '../../guid';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
 import { createNodeFromReactComponent } from '../../react-component-node';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import Utils from './utils';
 
 function _styleTemplate(className, props) {
@@ -126,8 +127,13 @@ const TextInputNode = {
         'Writes the current Text into the field now. This is additional to Text applying as it arrives; untick Text under Run On Value Change to stop that',
       type: 'signal',
       valueChangedToTrue() {
+        const outcome = this.beginOutcome();
         this.scheduleAfterInputsHaveUpdated(() => {
-          this.setText(this._internal.text);
+          // ERG-001 §4 / DV-viii. `setText` abstains when the field has focus — it must not
+          // fight the typist mid-edit — and abstains again when the field is unmounted and the
+          // output already reads this text. Both were silent, and both are the author's `Set`
+          // doing exactly nothing. `Unchanged`, not `Failure`: the field holds what was asked.
+          this.reportOutcome(outcome, this.setText(this._internal.text) ? 'done' : 'unchanged');
         });
       }
     },
@@ -173,7 +179,8 @@ const TextInputNode = {
       displayName: 'Clear',
       description: 'Empties the field',
       valueChangedToTrue() {
-        this.clear();
+        const outcome = this.beginOutcome();
+        this.reportOutcome(outcome, this.clear() ? 'done' : 'unchanged');
       }
     },
     focus: {
@@ -182,7 +189,9 @@ const TextInputNode = {
       displayName: 'Focus',
       description: 'Puts the keyboard cursor in this field',
       valueChangedToTrue() {
+        const outcome = this.beginOutcome();
         this.context.setNodeFocused(this, true);
+        this.reportOutcome(outcome, 'done');
       }
     },
     blur: {
@@ -191,7 +200,9 @@ const TextInputNode = {
       displayName: 'Blur',
       description: 'Takes keyboard focus away from this field, which is what fires Blurred',
       valueChangedToTrue() {
+        const outcome = this.beginOutcome();
         this.context.setNodeFocused(this, false);
+        this.reportOutcome(outcome, 'done');
       }
     },
     textAlignX: {
@@ -264,7 +275,25 @@ const TextInputNode = {
       group: 'General',
       description: 'Fires whenever the Text output changes, so a graph can sequence off the new value rather than poll it',
       index: 2
-    }
+    },
+
+    /**
+     * ERG-001 §4 / DV-viii. Four action inputs — `Set`, `Clear`, `Focus`, `Blur` — and nothing
+     * terminal on any of them. `Text Changed` is not that signal: it fires when the *value*
+     * changes, from typing as much as from a `Set`, and it does not fire at all when a `Set` was
+     * absorbed.
+     *
+     * No `Failure`: none of the four can fail. `Set` and `Clear` can legitimately do nothing,
+     * which is `Unchanged`; `Focus` and `Blur` always report `Done`, because
+     * `setNodeFocused` has no answer to give and "the field was already focused" is not a fact
+     * this node holds.
+     */
+    ...outcomeOutputs({
+      done: 'Fires when Set, Clear, Focus or Blur did something',
+      unchanged:
+        'Fires when a Set or Clear left the field as it was — most often a Set while the field ' +
+        'has focus, which is deliberately absorbed so it cannot overwrite what is being typed'
+    })
   },
   methods: {
     _focus() {
@@ -275,7 +304,9 @@ const TextInputNode = {
       if (!this.innerReactComponentRef) return;
       this.innerReactComponentRef.blur();
     },
+    /** @returns whether anything actually changed — ERG-001 §4 reports `Unchanged` when not. */
     clear() {
+      const wasEmpty = this._internal.text === '' && this.outputPropValues['onTextChanged'] === '';
       // NDA-012 (Visual), A1. This blanked `props.startValue` and the DOM and left the node's own
       // copy of the text holding the old string. `Set` reads `_internal.text`, so a later `Set`
       // pulse **restored text the author had explicitly cleared** — and it also did not flag
@@ -295,19 +326,33 @@ const TextInputNode = {
         this.outputPropValues['onTextChanged'] = '';
         this.flagOutputDirty('onTextChanged');
       }
+
+      return !wasEmpty;
     },
+    /**
+     * @returns whether the text actually reached the field — ERG-001 §4's `Done` vs `Unchanged`.
+     *
+     * ⚠️ `props.startValue` is written on every path, including the two that abstain, and that
+     * is not a contradiction: it is the value a *later* mount will start from. What the return
+     * value answers is the author's question — "did my Set land?" — and on both abstaining paths
+     * the answer is no.
+     */
     setText(text) {
       this.props.startValue = text;
       if (this.innerReactComponentRef) {
         //the text component is currently mounted, and will signal the onTextChanged output
         if (this.innerReactComponentRef.hasFocus() === false) {
           this.innerReactComponentRef.setText(text);
+          return true;
         }
+        return false;
       } else if (this.outputPropValues['onTextChanged'] !== text) {
         //text component isn't mounted yet, set the output manually
         this.outputPropValues['onTextChanged'] = text;
         this.flagOutputDirty('onTextChanged');
+        return true;
       }
+      return false;
     }
   }
 };

@@ -3,6 +3,7 @@ import { flexDirectionValues } from '../../constants/flex';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
 import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 import { createTooltip } from '../../tooltips';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 
 const GroupNode: ReactNodeDefinition = {
   name: 'Group',
@@ -80,7 +81,7 @@ const GroupNode: ReactNodeDefinition = {
     },
     'scrollToIndex.do': {
       displayName: 'Scroll To Index - Do',
-      description: 'Scrolls to the child at Index. \u26a0\ufe0f There is no signal for when the scroll finishes',
+      description: 'Scrolls to the child at Index, then fires Done — or Failure with the reason it could not',
       group: 'Scroll To Index',
       type: 'signal',
       index: 505,
@@ -96,13 +97,16 @@ const GroupNode: ReactNodeDefinition = {
         this.scheduleAfterInputsHaveUpdated(() => {
           const childIndex = this._internal.scrollIndex;
           const duration = this._internal.scrollIndexDuration;
-          this.withInnerComponent((inner) => {
-            // B2: the component returns why it did nothing, and that reaches a deployed app.
-            const reason = inner.scrollToIndex(childIndex, duration);
-            if (typeof reason === 'string') {
-              this.raiseRuntimeError('group/scroll-to-index-failed', `Scroll To Index did nothing: ${reason}`);
-            }
-          });
+          // B2: the component returns why it did nothing, and that reaches a deployed app.
+          // ERG-001 §4 turns that return value into the contract's outcome — the raise still
+          // happens, inside `reportOutcome`, and `Completed` now fires either way.
+          this.outcomeOnInnerComponent(
+            (inner) => {
+              const reason = inner.scrollToIndex(childIndex, duration);
+              return typeof reason === 'string' ? `Scroll To Index did nothing: ${reason}` : undefined;
+            },
+            { code: 'group/scroll-to-index-failed' }
+          );
         });
       }
     },
@@ -116,12 +120,13 @@ const GroupNode: ReactNodeDefinition = {
         this.scheduleAfterInputsHaveUpdated(() => {
           const element = this._internal.scrollElement;
           const duration = this._internal.scrollElementDuration;
-          this.withInnerComponent((inner) => {
-            const reason = inner.scrollToElement(element, duration);
-            if (typeof reason === 'string') {
-              this.raiseRuntimeError('group/scroll-to-element-failed', `Scroll To Element did nothing: ${reason}`);
-            }
-          });
+          this.outcomeOnInnerComponent(
+            (inner) => {
+              const reason = inner.scrollToElement(element, duration);
+              return typeof reason === 'string' ? `Scroll To Element did nothing: ${reason}` : undefined;
+            },
+            { code: 'group/scroll-to-element-failed' }
+          );
         });
       }
     },
@@ -174,7 +179,11 @@ const GroupNode: ReactNodeDefinition = {
       description: 'Gives this group keyboard focus, so key events reach it',
       group: 'Focus',
       valueChangedToTrue() {
+        const outcome = this.beginOutcome();
         this.context.setNodeFocused(this, true);
+        // `setNodeFocused` is synchronous and has no failure path of its own; `Focused` still
+        // fires separately when the DOM actually takes focus, which is a different fact.
+        this.reportOutcome(outcome, 'done');
       }
     }
   },
@@ -402,7 +411,24 @@ const GroupNode: ReactNodeDefinition = {
       type: 'signal',
       group: 'Focus',
       description: 'Fires when keyboard focus leaves this group'
-    }
+    },
+
+    /**
+     * ERG-001 §4 / DV-viii. `Group` is the DV-viii node that was *nearly* there: its two scroll
+     * actions already raised on the error channel when the component declined
+     * (`group/scroll-to-*-failed`), and there was no signal an author could branch on. These
+     * ports are that raise, made wireable — and they cover `Focus` as well, which had neither.
+     *
+     * ⚠️ Shared by all three action inputs. That is the library's existing shape for a node with
+     * several `Do`s, and it means a graph wiring two of them must sequence on the values rather
+     * than assume which one a pulse belongs to.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once Focus, Scroll To Element or Scroll To Index has been carried out',
+      failure:
+        'Fires when the action did nothing and says why on Error — most often a scroll target ' +
+        'that is not inside this group, or a group that has still not mounted'
+    })
   },
   dynamicports: [
     {

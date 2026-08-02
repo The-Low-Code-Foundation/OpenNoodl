@@ -144,6 +144,16 @@ export type ReactNodeModel = GraphNodeModel;
 export type RunningTransition = Timer;
 
 /**
+ * A queued {@link ReactNodeInstance.withInnerComponent} action, with the drop callback the
+ * outcome contract needs attached to it.
+ *
+ * The callback rides on the function rather than being queued beside it so that the existing
+ * `_pendingInnerActions` array stays one list of callables — `_flushPendingInnerActions` calls
+ * every entry unchanged, and a caller that passes no `onDropped` is byte-for-byte what it was.
+ */
+export type PendingInnerAction = ((inner: any) => void) & { _onDropped?: () => void };
+
+/**
  * `this` inside every callback on a React node definition, and the type of
  * `props.noodlNode` in the React component the node renders.
  *
@@ -270,10 +280,27 @@ export interface ReactNodeInstance extends NodeInstance {
    * NDA-012 (Visual) A3 — run an action on the inner React component, deferring it until
    * there is one rather than dropping it. Use in place of
    * `this.innerReactComponentRef && this.innerReactComponentRef.doThing()`.
+   *
+   * @param onDropped ERG-001 §4 — called if the queue's 16-deep cap discards this action before
+   * the node ever mounts. That is the one path on which an action here can end in silence, so a
+   * caller holding an outcome token reports `Failure` from it rather than letting the invocation
+   * vanish. Callers with no outcome to report omit it.
    */
-  withInnerComponent(action: (inner: any) => void): void;
+  withInnerComponent(action: (inner: any) => void, onDropped?: () => void): void;
+  /**
+   * {@link withInnerComponent}, reporting the outcome contract's ports around it — ERG-001 §4.
+   *
+   * This is the shape every DV-viii Visual action has: defer to the inner component, then say
+   * what happened. Seven of the eight Visual nodes with action inputs could not tell a graph
+   * their action had finished, which is the largest single block the contract exists to close.
+   *
+   * `action` returns a **reason string** when the component declined to do anything (the shape
+   * `Group`'s two scroll actions already use) and `undefined` when it acted; those become
+   * `Failure` and `Done`. A discarded queue entry is `Failure` too, via `onDropped`.
+   */
+  outcomeOnInnerComponent(action: (inner: any) => string | void, options?: { code?: string }): void;
   /** Queued {@link withInnerComponent} actions; drained by the wrapper's ref callback. */
-  _pendingInnerActions?: ((inner: any) => void)[];
+  _pendingInnerActions?: PendingInnerAction[];
   _flushPendingInnerActions(): void;
   /** The node this one renders inside, hopping out of the component if it is a root. */
   getVisualParentNode(): ReactNodeInstance | undefined;
@@ -1404,14 +1431,47 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
        * capped. An author holding a button down against an unmounted node should not grow the
        * heap, and replaying two hundred queued `Play`s at mount would be its own defect.
        */
-      withInnerComponent(action) {
+      withInnerComponent(action, onDropped) {
         if (this.innerReactComponentRef) {
           action(this.innerReactComponentRef);
           return;
         }
         if (!this._pendingInnerActions) this._pendingInnerActions = [];
-        if (this._pendingInnerActions.length >= 16) this._pendingInnerActions.shift();
+        if (this._pendingInnerActions.length >= 16) {
+          const dropped = this._pendingInnerActions.shift();
+          // ERG-001 §4. The cap is right — replaying two hundred queued `Play`s at mount would
+          // be its own defect — but until now a dropped action was the *only* way an action here
+          // could end in silence, which is precisely the class the outcome contract closes. A
+          // caller that owns an outcome token says so, and the drop reports `Failure` rather
+          // than vanishing. Callers with no outcome to report pass nothing and behave as before.
+          if (dropped && dropped._onDropped) dropped._onDropped();
+        }
+        if (onDropped) (action as PendingInnerAction)._onDropped = onDropped;
         this._pendingInnerActions.push(action);
+      },
+      outcomeOnInnerComponent(action, options) {
+        const outcome = this.beginOutcome();
+        const code = (options && options.code) || 'visual/action-failed';
+        this.withInnerComponent(
+          (inner) => {
+            const reason = action(inner);
+            // The imperative call has already run, so its effects are in place before the
+            // outcome lands — "the outcome is the last thing an action does".
+            if (typeof reason === 'string') {
+              this.reportOutcome(outcome, 'failure', { code, message: reason });
+            } else {
+              this.reportOutcome(outcome, 'done');
+            }
+          },
+          () => {
+            this.reportOutcome(outcome, 'failure', {
+              code: 'visual/action-dropped',
+              message:
+                'This action waited for the element to exist and was discarded after 16 more ' +
+                'arrived behind it, so it never ran — the element has not mounted'
+            });
+          }
+        );
       },
       /** Called by the wrapper's ref callback once the inner component exists. */
       _flushPendingInnerActions() {

@@ -1,6 +1,7 @@
 import { Video } from '../../components/visual/Video';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
 import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import { resolveMediaSource } from './media-source';
 
 const VideoNode: ReactNodeDefinition = {
@@ -56,19 +57,22 @@ const VideoNode: ReactNodeDefinition = {
         // NDA-012 (Visual) A3. Was `this.innerReactComponentRef && …`, which drops the action
         // when it arrives in the frame the node mounts — React's ref callback commits after
         // the graph update that delivered the signal. See `withInnerComponent`.
-        this.withInnerComponent((inner) => inner.play());
+        //
+        // ERG-001 §4 / DV-viii: and it now *says* it played. This node had twelve outputs and
+        // not one of them could tell a graph a Video Action had finished.
+        this.outcomeOnInnerComponent((inner) => inner.play(), { code: 'video/play-failed' });
       }
     },
     restart: {
       type: 'signal',
       group: 'Video Actions',
       displayName: 'Restart',
-      description: 'Seeks to the beginning and plays. \u26a0\ufe0f There is no signal for when it has restarted',
+      description: 'Seeks to the beginning and plays, then fires Done',
       tooltip: {
         standard: 'Restart the video from the beginning'
       },
       valueChangedToTrue() {
-        this.withInnerComponent((inner) => inner.restart());
+        this.outcomeOnInnerComponent((inner) => inner.restart(), { code: 'video/restart-failed' });
       }
     },
     /**
@@ -91,7 +95,7 @@ const VideoNode: ReactNodeDefinition = {
       displayName: 'Pause',
       description: 'Pauses playback',
       valueChangedToTrue() {
-        this.withInnerComponent((inner) => inner.pause());
+        this.outcomeOnInnerComponent((inner) => inner.pause(), { code: 'video/pause-failed' });
       }
     },
     reset: {
@@ -100,7 +104,7 @@ const VideoNode: ReactNodeDefinition = {
       displayName: 'Reset',
       description: 'Stops playback and seeks to the beginning',
       valueChangedToTrue() {
-        this.withInnerComponent((inner) => inner.reset());
+        this.outcomeOnInnerComponent((inner) => inner.reset(), { code: 'video/reset-failed' });
       }
     },
     /**
@@ -292,7 +296,16 @@ const VideoNode: ReactNodeDefinition = {
       type: 'number',
       displayName: 'Video Height',
       description: 'Natural height of the video in pixels, known once it has loaded'
-    }
+    },
+    /**
+     * ERG-001 §4 / DV-viii. Seven of the eight Visual nodes with action inputs could not tell a
+     * graph their action had finished; this is one of them. The ports are shared by every action
+     * input on the node, which is the same shape `Run Tasks` and `Timer` already have.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once a Video Action has been carried out by the element',
+      failure: 'Fires when the action never reached the element, because it has still not mounted'
+    })
   }
 };
 
