@@ -52,7 +52,17 @@ export interface DecodeResult {
   unparseable: boolean;
 }
 
-export type EncodeResult<T = unknown> = { ok: true; value: T } | { ok: false; error: string };
+/**
+ * The complementary `error?: undefined` / `value?: undefined` members are load
+ * bearing, not decoration: this repo compiles with `strictNullChecks` off, and
+ * under that setting TypeScript does not narrow a union by a boolean literal
+ * discriminant — `if (!r.ok) return r.error` reports `error` as missing. Making
+ * both members structurally complete keeps the type honest at the call sites
+ * without asking every caller for a cast.
+ */
+export type EncodeResult<T = unknown> =
+  | { ok: true; value: T; error?: undefined }
+  | { ok: false; value?: undefined; error: string };
 
 /** `array`/`proplist`/`stringlist` all edit as JSON arrays; only `object` is an object. */
 export function expectedTypeFor(portType: ListPortType): 'array' | 'object' {

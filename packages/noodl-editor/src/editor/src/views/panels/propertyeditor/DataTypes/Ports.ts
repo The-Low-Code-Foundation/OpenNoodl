@@ -27,6 +27,7 @@ import { FontType } from './FontType';
 import { IconType } from './IconType';
 import { IdentifierType } from './IdentifierType';
 import { ImageType } from './ImageType';
+import { ListValueType } from './ListValueType';
 import { LogicBuilderHiddenType } from './LogicBuilderHiddenType';
 import { LogicBuilderWorkspaceType } from './LogicBuilderWorkspaceType';
 import { MarginPaddingType } from './MarginPaddingType';
@@ -358,7 +359,7 @@ export class Ports extends View {
       return NodeLibrary.nameForPortType(type) === 'array';
     }
 
-    // Object-typed ports edit as a literal in the same code editor as arrays.
+    // Object-typed ports edit as a literal, the same way arrays do.
     //
     // Without this branch `viewClassForPort` returned undefined and `_getPorts` filtered
     // the row out altogether, so an object-typed input was connection-only with nothing on
@@ -366,6 +367,9 @@ export class Ports extends View {
     // call its headers without wiring a Function node whose whole body was a literal.
     // `array` already had exactly this affordance, and `Node.setInputValue` parses a string
     // arriving on either type, so this is the existing pattern rather than a new one.
+    //
+    // ERG-003: both now route to `ListValueType` (the shared `JSONEditor`) rather than to
+    // `CodeEditorType`, so they gain a visual builder. The stored form is unchanged.
     function isOfObjectType() {
       return NodeLibrary.nameForPortType(type) === 'object';
     }
@@ -498,8 +502,8 @@ export class Ports extends View {
     else if (isOfBooleanType()) return BooleanType;
     else if (isOfTextAreaType()) return TextAreaType;
     else if (isOfCodeEditorType()) return CodeEditorType;
-    else if (isOfArrayType()) return CodeEditorType;
-    else if (isOfObjectType()) return CodeEditorType;
+    else if (isOfArrayType()) return ListValueType;
+    else if (isOfObjectType()) return ListValueType;
     else if (isOfMarginPaddingType()) return MarginPaddingType;
     else if (isOfNumberWithUnitsType()) return NumberWithUnits;
     else if (isOfDimensionType()) return Dimension;

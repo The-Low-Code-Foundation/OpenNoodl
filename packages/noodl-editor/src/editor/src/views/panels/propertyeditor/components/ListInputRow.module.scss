@@ -1,0 +1,43 @@
+/**
+ * ERG-003 — shared bits for the list property rows: the Edit button's summary
+ * line, and the inline rejection message the string/prop list builders show when
+ * a name is refused.
+ */
+
+.EditButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+}
+
+.Summary {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.EditLabel {
+  flex: none;
+  color: var(--theme-color-fg-default);
+}
+
+/**
+ * Shown under the list when an entry was refused. The entry is NOT stored when
+ * this appears, and the field stays open so the name can be corrected — which is
+ * the whole difference from the old behaviour, where a name containing a comma
+ * was accepted and quietly became two entries.
+ */
+.InlineError {
+  margin: 4px 0 2px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-danger-bg);
+  border-left: 2px solid var(--theme-color-danger);
+}
