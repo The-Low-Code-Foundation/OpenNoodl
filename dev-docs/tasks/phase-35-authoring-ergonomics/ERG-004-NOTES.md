@@ -496,8 +496,9 @@ Four things cost time, all of them reusable:
 
 1. **The §7.4 decision.** `Object Changed` is not wireable without a `Script` node. Needs
    Richard.
-2. **Port descriptions are not rendered anywhere in the editor**, for inputs or outputs.
-   Unowned.
+2. ~~**Port descriptions are not rendered anywhere in the editor**, for inputs or outputs.~~
+   ✅ **Closed for the property panel 2026-08-02.** See §7.9. The canvas port hover and the node
+   picker preview are still unowned, and signal ports still have no surface at all.
 3. ~~**The 14-port gap** between the catalog's 1045 documented outputs and the editor's 1031.~~
    ✅ **Closed 2026-08-02. It was never a defect — but chasing it found a red gate.** See §7.8.
 4. **§4.6 is still open** — the generalised audit of nodes pairing a signal with a
@@ -518,13 +519,21 @@ catalog extractor uses (`scripts/node-catalog/lib/bundle` + a throwaway entry mo
 | editor export (`generateNodeLibrary`) | **1031 / 1130** | 149 |
 | committed catalog | **1045 / 1144** | 153 |
 
-**The gap is exactly four node types and it is correct.** `noodl.cloud.aggregate`,
-`noodl.cloud.request`, `noodl.cloud.response` and `noodl.cloud.sendemail` are `availableIn: ['cloud']`
-— they carry 14 output ports between them, all 14 documented. The catalog extracts from the browser
+**The gap is exactly four node types.** `noodl.cloud.aggregate`, `noodl.cloud.request`,
+`noodl.cloud.response` and `noodl.cloud.sendemail` are `availableIn: ['cloud']` — they carry 14
+output ports between them, all 14 documented in the catalog. The catalog extracts from the browser
 **and** cloud registries; `generateNodeLibrary(browserRuntime…)` is the browser register only, and
 the editor gets cloud nodes through a **separate** channel. Among the 149 types both cover there are
-**zero** per-port discrepancies in either direction. Two correct numbers over two different
-populations.
+**zero** per-port discrepancies in either direction.
+
+⚠️ **So the two numbers compared different populations — but the gap was still real where it
+mattered.** The editor does not run `generateNodeLibrary(browserRuntime…)` alone; it **merges the
+cloud channel in**, so its live `NodeLibrary` covers all **153** types. Measured against the running
+editor *after* the regeneration below: **1045 / 1144 output ports documented, and all four cloud
+types at 3/3, 4/4, 4/4, 3/3** — exactly matching the catalog. Before the regeneration the editor
+carried those four types with **zero** descriptions. The 14-port shortfall was therefore a genuine
+14-description hole in what an author's editor could see, and closing it is what actually closed
+§7.7 item 3.
 
 #### 🔴 What the separate channel turned out to be carrying
 
@@ -548,3 +557,54 @@ editor hop. This is the sequel: the fix *did* cross that hop for the live librar
 **committed snapshot** of the pre-fix output sitting in the editor's source tree. A fix to a
 generator is not finished until every artefact that generator owns has been regenerated — and the
 way to find them is to run the gate that checks each one, not the ones you remember.
+
+### §7.9 — the descriptions now reach an author (2026-08-02)
+
+§7.7 item 2: the fix in §7.3 restored ~1656 input and ~1045 output descriptions into `NodeLibrary`
+that **no surface in the editor read**. This closes that for the property panel, which is where an
+author configures a port.
+
+**Where.** `Ports.renderParams`, the same seam BCN-010 chose for capability gates, plus a new
+`utils/portDescription.ts`. Rendered as a native `title` on the row.
+
+**Why one seam and not a prop.** `portDecoration.ts` already records the argument — twenty-nine row
+classes, each a place the wiring can be forgotten — and this task found the evidence that the
+per-class route genuinely does not hold: **`tooltip` is already copied onto the view in eleven
+`fromPort` implementations and rendered by two of them.** A field threaded per class is a field most
+classes drop. One edit at `renderParams` covers every row type, including ones not written yet.
+
+**Why `title`.** It is the idiom one line away in the same component (`ResetDot` carries
+`title="Reset to default"`), it needs no layout, and it cannot push a row's height around — which
+matters, because C3 in ERG-003 has just measured what row height costs this panel. **It is a floor,
+not a ceiling**: an info glyph, a help popover, or the text in the node picker preview would all be
+better and are all still unowned.
+
+**Measured in the running editor** (relaunched, not hot-reloaded — see the trap below), by comparing
+what is on screen against the node's own model rather than against itself, so "0 documented" cannot
+pass for "all covered":
+
+| Node | input ports | documented | on screen | not shown |
+|---|---|---|---|---|
+| `Repeater` | 5 | 5 | **3** | `refresh` (signal), `templateScript` (conditional, hidden) |
+| `Global Store` | 4 | 4 | **4** | — |
+| `Function` | 76 | 4 | **3** | `run` (signal) |
+| `Array` | 5 | 5 | **4** | `fetch` (signal) |
+
+**Every miss is a port with no property row by design** — a `signal`, which is connection-only, or a
+conditional port hidden by the current mode. Coverage is 100% of the rows that exist.
+
+⚠️ **So the honest remainder is signals.** A signal port's description now exists, is correct, and
+still has nowhere to appear, because the only surface it could use is the canvas port hover, which
+renders nothing. That is the next piece of this work and it is unowned.
+
+Pinned by `packages/noodl-editor/tests-unit/property-editor/portDescription.test.ts` — eight cases,
+and seven of them are about when it must **not** write a tooltip. An empty `title=""` renders as a
+blank grey box, and clobbering a row's own title replaces a specific message with a general one.
+`description` has already arrived wrong twice this phase (§7.3, §7.8), so `null`, a number and
+whitespace are not hypothetical inputs.
+
+⚠️ **The trap, again, and it cost a restart.** HMR reported the edited modules and then
+*"Nothing hot updated"* — the property editor already mounted in the renderer kept the old
+`renderParams`, and a live probe read **0 tooltips** against a change that was correct. That is
+indistinguishable from a broken change. **Relaunch the stack before measuring a change to a
+long-lived panel**; `tsc` clean and jest green said nothing about it either way.

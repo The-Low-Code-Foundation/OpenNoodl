@@ -5,6 +5,7 @@ import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { listPortTypeFor } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
 import { capabilityProbes, gateForPort, resolveGateTarget, type GateTarget } from '@noodl-utils/capability-gating';
 import { decoratePortElement } from '@noodl-utils/capability-gating/portDecoration';
+import { describePortElement } from '@noodl-utils/portDescription';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
 import View from '../../../../../../shared/ListenableView';
@@ -198,14 +199,23 @@ export class Ports extends View {
     const target = this.capabilityTarget();
     const typeName = this.model.type && (this.model.type.name || this.model.type.localName);
 
+    // ERG-004 §7.7 item 2: the port objects, so a row can be given its own
+    // `description`. Looked up by name rather than read off the view, because
+    // only some `fromPort` implementations keep a `.port` reference — the same
+    // reason the decoration below is a wrapper and not a prop.
+    const portsByName = new Map<string, TSFixme>();
+    for (const port of this._getPorts()) portsByName.set(port.name, port);
+
     for (const j in views) {
       const v = views[j];
       v.childViews && v.childViews.forEach((v) => v.render()); // Render any child views first
 
       // BCN-010: the one place every row's element passes through, whatever
       // class produced it. See `portDecoration.ts` for why the gate is a wrapper
-      // here rather than two props on twenty-nine row classes.
-      const el = v.render();
+      // here rather than two props on twenty-nine row classes. ERG-004's
+      // description hangs off the same seam, for the same reason — see
+      // `portDescription.ts`.
+      const el = describePortElement(v.render(), v.name ? portsByName.get(v.name) : undefined);
       const gate = typeName && v.name ? gateForPort(typeName, v.name, target) : undefined;
       els.push(gate ? decoratePortElement(el, gate, target, v.name) : el);
     }
