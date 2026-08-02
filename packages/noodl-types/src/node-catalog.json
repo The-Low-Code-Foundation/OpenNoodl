@@ -4067,6 +4067,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Signals",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Signals",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the function has returned and its result outputs are up to date"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -4087,17 +4109,6 @@
           },
           "isSignal": true,
           "description": "Fires when the function could not be reached or answered with an error, after the reason has been reported on the error channel"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Signals",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the function has returned and its result outputs are up to date"
         }
       ],
       "dynamicPorts": {
@@ -6517,6 +6528,28 @@
           },
           "isSignal": true,
           "description": "Fires when a property of the bound record changes, including a change another node made"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Fetch finished and the property outputs are up to date"
         },
         {
           "name": "error",
@@ -24505,6 +24538,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a link has been minted and Signed URL is up to date"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -24558,17 +24613,6 @@
           },
           "isSignal": false,
           "description": "False when the link only works because it carries your own credential — sending it to someone else either fails for them or hands them your session. True for a signed or public link"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once a link has been minted and Signed URL is up to date"
         },
         {
           "name": "ttlSeconds",
@@ -28472,6 +28516,28 @@
           "description": "The stored file, for wiring into a record property or a Cloud File node"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the file is stored and Cloud File is up to date"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -28547,17 +28613,6 @@
           },
           "isSignal": false,
           "description": "Size of the file being uploaded, in bytes"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the file is stored and Cloud File is up to date"
         }
       ],
       "dynamicPorts": {
@@ -47409,6 +47464,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the sign-in succeeded and a session has been stored"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -47429,17 +47506,6 @@
           },
           "isSignal": true,
           "description": "Fires when the sign-in was refused, after the reason has been reported on the error channel"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the sign-in succeeded and a session has been stored"
         }
       ],
       "dynamicPorts": null,
@@ -47476,6 +47542,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the session has been ended"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -47496,17 +47584,6 @@
           },
           "isSignal": true,
           "description": "Fires when the sign-out was refused, after the reason has been reported on the error channel"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the session has been ended"
         }
       ],
       "dynamicPorts": null,
@@ -47565,6 +47642,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the request has been accepted, which never means an account exists for that address"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -47585,17 +47684,6 @@
           },
           "isSignal": true,
           "description": "Fires when the request itself failed — no backend, no network, or rate limited — never because the address is unknown"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the request has been accepted, which never means an account exists for that address"
         }
       ],
       "dynamicPorts": null,
@@ -47895,7 +47983,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Writes the values below to the signed-in user; does nothing at all while nobody is signed in"
+          "description": "Writes the values below to the signed-in user, and fails when nobody is signed in"
         },
         {
           "name": "username",
@@ -47910,6 +47998,28 @@
         }
       ],
       "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the user record has been written"
+        },
         {
           "name": "error",
           "displayName": "Error",
@@ -47931,17 +48041,6 @@
           },
           "isSignal": true,
           "description": "Fires when the user record could not be written, after the reason has been reported on the error channel"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the user record has been written"
         }
       ],
       "dynamicPorts": {
@@ -48008,6 +48107,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires on the page the provider returned to, once the session has been established"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -48050,17 +48171,6 @@
           },
           "isSignal": false,
           "description": "True while a sign-in started on an earlier page load is still being exchanged"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires on the page the provider returned to, once the session has been established"
         }
       ],
       "dynamicPorts": null,
@@ -48130,6 +48240,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the account has been created and signed in"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -48150,17 +48282,6 @@
           },
           "isSignal": true,
           "description": "Fires when the account could not be created, after the reason has been reported on the error channel"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the account has been created and signed in"
         }
       ],
       "dynamicPorts": {
@@ -48240,6 +48361,28 @@
           },
           "isSignal": true,
           "description": "Fires when a property of the signed-in user changes, including a change another node made"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Fetch finished and the outputs below are up to date"
         },
         {
           "name": "email",

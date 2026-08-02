@@ -10,8 +10,11 @@ jest.mock('../../noodl-runtime', () => ({
   instance: { getMetaData: () => undefined }
 }));
 
+import type { NodeInstance } from '@noodl/types';
+
 import CloudFile = require('../../src/api/cloudfile');
 import CloudStore = require('../../src/api/cloudstore');
+import NodeCtor = require('../../src/node');
 import SignFileUrlModule = require('../../src/nodes/std-library/data/signfileurl');
 
 const node = SignFileUrlModule.node;
@@ -49,8 +52,30 @@ function makeInstance(): FakeInstance {
     },
     scheduleAfterInputsHaveUpdated(cb: () => void) {
       cb();
+    },
+    /**
+     * ERG-001. The outcome contract's port set, as this definition declares it.
+     *
+     * `reportOutcome` raises `outcome/missing-port` for anything the node cannot actually emit,
+     * so answering `true` unconditionally would turn a missing port into a silent pass. Reading
+     * the real `outputs` keys is what keeps that check live in this harness.
+     */
+    hasOutput(name: string) {
+      return Object.prototype.hasOwnProperty.call(node.outputs, name);
     }
   };
+
+  /**
+   * The **real** `beginOutcome` / `reportOutcome`, not stand-ins.
+   *
+   * They are the whole subject of the ERG-001 rows below — the duplicate guard, the raise, the
+   * `completed` that follows every outcome — so a hand-written double would be testing the
+   * double. They depend on nothing but `hasOutput`, `sendSignalOnOutput` and
+   * `raiseRuntimeError`, all of which this harness provides.
+   */
+  instance.beginOutcome = NodeCtor.prototype.beginOutcome.bind(instance as unknown as NodeInstance);
+  instance.reportOutcome = NodeCtor.prototype.reportOutcome.bind(instance as unknown as NodeInstance);
+
   for (const key of Object.keys(node.methods || {})) {
     instance[key] = (node.methods as Record<string, (...args: unknown[]) => unknown>)[key].bind(instance);
   }
@@ -78,7 +103,9 @@ describe('Sign File URL node', () => {
     const instance = makeInstance();
 
     expect(() => sign(instance)).not.toThrow();
-    expect(instance.signals).toEqual(['failure']);
+    // ERG-001: `Completed` follows every outcome, including a failure — that is the whole point
+    // of the port, and asserting the full array is what stops it quietly going missing.
+    expect(instance.signals).toEqual(['failure', 'completed']);
     expect(output(instance, 'error')).toBe('No file specified');
 
     // NDA-004 §2 / FINDINGS B-iv. Before this the message reached the `Error` port and stopped —
@@ -109,7 +136,10 @@ describe('Sign File URL node', () => {
     sign(instance);
 
     expect(spy).toHaveBeenCalledTimes(1);
-    expect(instance.signals).toEqual(['success']);
+    // ERG-001 §4: `success` was renamed to `done`. Asserting the exact array rather than
+    // `not.toContain('success')` is deliberate — the negative form passes vacuously once the
+    // port is gone, which is the trap this phase has already been caught by once.
+    expect(instance.signals).toEqual(['done', 'completed']);
     expect(output(instance, 'url')).toBe('https://example.test/files/abc123_photo.png?exp=1&sig=deadbeef');
     expect(output(instance, 'expiresAt')).toBe('2026-01-01T00:00:00.000Z');
     expect(output(instance, 'ttlSeconds')).toBe(300);
@@ -124,7 +154,7 @@ describe('Sign File URL node', () => {
     setFile(instance, new CloudFile({ name: 'abc123_photo.png', url: 'x' }));
     sign(instance);
 
-    expect(instance.signals).toEqual(['failure']);
+    expect(instance.signals).toEqual(['failure', 'completed']);
     expect(output(instance, 'error')).toBe('This file is private.');
     expect(output(instance, 'errorStatus')).toBe(119);
   });

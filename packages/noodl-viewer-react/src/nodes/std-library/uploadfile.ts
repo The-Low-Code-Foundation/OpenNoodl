@@ -10,8 +10,10 @@ import type {
   InspectInfo,
   NodeContextLike,
   NodeDefinitionOptions,
-  NodeInstance
+  NodeInstance,
+  OutcomeToken
 } from '@noodl/types';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 
 /** What `CloudStore.uploadFile`'s `error` callback is given, and what `setError` reads. */
 interface UploadError {
@@ -39,9 +41,9 @@ interface UploadFileInstance extends NodeInstance {
     progressTotal?: number;
     progressLoaded?: number;
   };
-  setError(err: UploadError | string): void;
+  setError(err: UploadError | string, tokens?: OutcomeToken[]): void;
   fileTarget(): FileTarget | undefined;
-  cloudStore(): CloudStoreLike | undefined;
+  cloudStore(tokens: OutcomeToken[]): CloudStoreLike | undefined;
 }
 
 /** The subset of `CloudStore` this node uses. `cloudstore.js` is still JavaScript. */
@@ -160,15 +162,22 @@ const UploadFile: NodeDefinitionOptions = {
       group: 'Actions',
       description: 'Starts uploading File, and fails straight away when no file has been set',
       valueChangedToTrue(this: UploadFileInstance) {
+        // ERG-001. Minted in the input handler and carried through the whole transfer, which is
+        // the `websocket.ts::pendingConnect` shape — an upload can take minutes, and the token
+        // rather than the node is what remembers this invocation has not answered yet. There is
+        // no coalescing guard on this node, so each `Upload` owns its own token in the closure
+        // and two concurrent uploads cannot settle each other.
+        const outcome = this.beginOutcome();
+
         this.scheduleAfterInputsHaveUpdated(() => {
           const file = this._internal.file;
 
           if (!file) {
-            this.setError('No file specified');
+            this.setError('No file specified', [outcome]);
             return;
           }
 
-          const store = this.cloudStore();
+          const store = this.cloudStore([outcome]);
           if (!store) return;
 
           store.uploadFile({
@@ -199,9 +208,10 @@ const UploadFile: NodeDefinitionOptions = {
             }) => {
               this._internal.cloudFile = new CloudFile(response);
               this.flagOutputDirty('cloudFile');
-              this.sendSignalOnOutput('success');
+              // Last, after the value it is about.
+              this.reportOutcome(outcome, 'done');
             },
-            error: (e: UploadError) => this.setError(e)
+            error: (e: UploadError) => this.setError(e, [outcome])
           });
         });
       }
@@ -217,18 +227,20 @@ const UploadFile: NodeDefinitionOptions = {
         return this._internal.cloudFile;
       }
     },
-    success: {
-      group: 'Events',
-      displayName: 'Success',
-      type: 'signal',
-      description: 'Fires once the file is stored and Cloud File is up to date'
-    },
-    failure: {
-      group: 'Events',
-      displayName: 'Failure',
-      type: 'signal',
-      description: 'Fires when the file could not be stored, after the reason has been reported on the error channel'
-    },
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4. `Success` renamed to `Done`, plus the universal `Completed`.
+    //
+    // ⚠️ **`Progress Changed` below is not an outcome and is left exactly as it is.** It fires
+    // many times per invocation — folding it in would break "exactly one" on the first upload
+    // large enough to report progress. Same relationship `Fetched` has to `Record`'s `Fetch`.
+    //
+    // ⚠️ **No `Unchanged`.** Uploading a file that happens to match one already stored is still
+    // a transfer and still writes; nothing here compares.
+    ...outcomeOutputs({
+      done: 'Fires once the file is stored and Cloud File is up to date',
+      failure: 'Fires when the file could not be stored, after the reason has been reported on the error channel'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -318,15 +330,21 @@ const UploadFile: NodeDefinitionOptions = {
      * fallback to the default: falling back would upload the user's file to a
      * different backend from the one the graph names, silently. Same rule, and
      * the same sentence, as `dbmodelcrudbase.ts::cloudStoreForScope`.
+     *
+     * ⚠️ ERG-001: it takes the caller's token rather than opening its own, so the refusal here
+     * and the caller's bare `return` are one event rather than two. A second report against the
+     * same token would raise `outcome/duplicate`, which is what the corpus row for this path
+     * reads the absence of.
      */
-    cloudStore(this: UploadFileInstance): CloudStoreLike | undefined {
+    cloudStore(this: UploadFileInstance, tokens: OutcomeToken[]): CloudStoreLike | undefined {
       const store = (CloudStore as unknown as {
         forBackend(modelScope: unknown, backendId: string | undefined): CloudStoreLike | undefined;
       }).forBackend(this.nodeScope ? this.nodeScope.modelScope : undefined, this._internal.backendId);
 
       if (!store) {
         this.setError(
-          `The backend this node is set to ("${this._internal.backendId}") is not configured in this project.`
+          `The backend this node is set to ("${this._internal.backendId}") is not configured in this project.`,
+          tokens
         );
       }
       return store;
@@ -365,18 +383,23 @@ const UploadFile: NodeDefinitionOptions = {
     },
     // `err` is a string on the "no file" path and an object from CloudStore. `hasOwnProperty`
     // on a string primitive boxes it and returns false, so both paths work.
-    setError(this: UploadFileInstance, err: UploadError | string) {
+    //
+    // ERG-001: the `failure` pulse and the raise both go through `reportOutcome`, so the outcome
+    // and its reason cannot drift apart and `Completed` follows automatically. `tokens` is
+    // optional so a direct call is still a real, complete failure — see `login.ts::setError`.
+    setError(this: UploadFileInstance, err: UploadError | string, tokens?: OutcomeToken[]) {
       this._internal.error = err.hasOwnProperty('error') ? (err as UploadError).error : err;
       //use the error code. If there is none, use the http status
       this._internal.errorStatus = (err as UploadError).code || (err as UploadError).status || 0;
       this.flagOutputDirty('error');
       this.flagOutputDirty('errorStatus');
-      this.sendSignalOnOutput('failure');
 
       // NDA-004 §2 / FINDINGS B-iv: the message reached the `Error` port and stopped — no
       // diagnosis in any runtime, the editor included.
-      this.raiseRuntimeError(UPLOAD_ERROR_CODE, String(this._internal.error), {
-        status: this._internal.errorStatus
+      reportOutcomes(this, tokens || [this.beginOutcome()], 'failure', {
+        code: UPLOAD_ERROR_CODE,
+        message: String(this._internal.error),
+        detail: { status: this._internal.errorStatus }
       });
     }
   }

@@ -17,6 +17,7 @@ jest.mock('../../noodl-runtime', () => ({
 }));
 
 import CloudStore = require('../../src/api/cloudstore');
+import NodeCtor = require('../../src/node');
 import NewRecordModule = require('../../src/nodes/std-library/data/newdbmodelpropertiesnode');
 import SetRecordModule = require('../../src/nodes/std-library/data/setdbmodelpropertiesnode');
 import DeleteRecordModule = require('../../src/nodes/std-library/data/deletedbmodelpropertiesnode');
@@ -110,7 +111,10 @@ function installFetch() {
 }
 
 /** A `this` the mixin-built node methods can run on. */
-function makeInstance(module: { node?: { methods?: Record<string, unknown> } }, internal: Record<string, unknown>) {
+function makeInstance(
+  module: { node?: { methods?: Record<string, unknown>; outputs?: Record<string, unknown> } },
+  internal: Record<string, unknown>
+) {
   const instance: Record<string, unknown> = {
     _internal: internal,
     id: 'n1',
@@ -131,9 +135,24 @@ function makeInstance(module: { node?: { methods?: Record<string, unknown> } }, 
       cb();
     },
     isInputConnected: () => false,
-    hasOutput: () => false,
+    /**
+     * ERG-001: the definition's own declared outputs, where this used to answer `false` flatly.
+     *
+     * Flat `false` was fine while nothing read it for a real port, but `reportOutcome` raises
+     * `outcome/missing-port` for anything the node cannot emit — so a blanket `false` would turn
+     * every outcome in this file into a spurious error rather than a signal. The dynamic
+     * `prop-…` / `changed-…` ports are still absent from the static set, which is what the
+     * original `false` was standing in for.
+     */
+    hasOutput: (name: string) => Object.prototype.hasOwnProperty.call(module.node?.outputs || {}, name),
     _getACL: () => undefined
   };
+
+  // ERG-001. The real outcome members: they depend only on `hasOutput`, `sendSignalOnOutput` and
+  // `raiseRuntimeError`, all of which this harness provides, and standing them in would mean the
+  // Record family's CRUD verbs ran their outcome path against a double.
+  instance.beginOutcome = NodeCtor.prototype.beginOutcome.bind(instance as never);
+  instance.reportOutcome = NodeCtor.prototype.reportOutcome.bind(instance as never);
 
   const methods = (module.node?.methods || {}) as Record<string, (...args: unknown[]) => unknown>;
   for (const key of Object.keys(methods)) {
@@ -297,6 +316,9 @@ describe('Record (read) against a Directus backend', () => {
     expect(captured).toHaveLength(1);
     expect(captured[0].method).toBe('GET');
     expect(captured[0].url).toBe('http://localhost:8055/items/articles/7');
-    expect(instance.signals).toEqual(['fetched']);
+    // ERG-001 §4: `Fetched` is the value-level announcement and stays exactly where it was;
+    // `Done` is the *invocation's* outcome, added beside it, with `Completed` after. The order
+    // is the contract's — the outcome is the last thing an action does.
+    expect(instance.signals).toEqual(['fetched', 'done', 'completed']);
   });
 });

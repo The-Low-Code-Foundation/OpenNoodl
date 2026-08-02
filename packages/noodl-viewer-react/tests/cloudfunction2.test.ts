@@ -5,6 +5,7 @@
  * node's `failure` output instead of throwing.
  */
 import NoodlRuntime from '@noodl/runtime';
+import NodeCtor from '@noodl/runtime/src/node';
 
 import CloudFunction2Module from '../src/nodes/std-library/data/cloudfunction2';
 
@@ -51,10 +52,28 @@ function makeDeployShapedInstance(): FakeInstance {
     raiseRuntimeError(code: string, message: string) {
       this.raised.push({ code, message });
     },
+    // ERG-001. Reading the definition's real output keys, so `reportOutcome`'s
+    // `outcome/missing-port` check stays live in this harness rather than being answered `true`
+    // for a port the node cannot actually emit.
+    hasOutput(name: string) {
+      return Object.prototype.hasOwnProperty.call(node.outputs, name);
+    },
     sendSignalOnOutput(name: string) {
       this.signalsSent.push(name);
+    },
+    // ERG-001. The rows below now drive `scheduleCall` — the method the `Call` port reaches —
+    // rather than poking `doCall`, so the deferral has to actually run. Synchronous here, which
+    // is what `signfileurl.test.ts` and the Record family's harnesses also do.
+    scheduleAfterInputsHaveUpdated(cb: () => void) {
+      cb();
     }
   };
+
+  // ERG-001. The **real** `beginOutcome` / `reportOutcome` rather than doubles: they are what
+  // turns this node's failure into a graph-visible outcome, so standing them in would test the
+  // stand-in. Both depend only on members this harness already provides.
+  instance.beginOutcome = NodeCtor.prototype.beginOutcome.bind(instance as never);
+  instance.reportOutcome = NodeCtor.prototype.reportOutcome.bind(instance as never);
 
   // Bind the node's methods the way the runtime does.
   for (const key of Object.keys(node.methods)) {
@@ -77,9 +96,15 @@ test('doCall with no editorConnection and no cloudServices does not throw and si
 
   const instance = makeDeployShapedInstance();
 
-  expect(() => (instance.doCall as () => void)()).not.toThrow();
-  expect(instance.signalsSent).toContain('failure');
-  expect(instance.signalsSent).not.toContain('success');
+  // ⚠️ ERG-001: `scheduleCall`, not `doCall`. `doCall` is the deferred half; the *port* is what
+  // opens an invocation, and poking the inner method directly would run the work with no
+  // invocation behind it — which is exactly the state a node must never report an outcome from.
+  expect(() => (instance.scheduleCall as () => void)()).not.toThrow();
+  // ERG-001 §4: `success` was renamed to `done`, and `completed` follows every outcome.
+  // ⚠️ This used to read `not.toContain('success')`, which passes **vacuously** the moment the
+  // port stops existing — the exact trap this phase was already caught by once. The exact array
+  // cannot pass vacuously.
+  expect(instance.signalsSent).toEqual(['failure', 'completed']);
 
   // NDA-004 §2 / FINDINGS B-iv. Before this the message reached the `Error` port and stopped;
   // `doCall`'s own `'cloud-function-2'` warning covers the same condition but is editor-only,
@@ -115,7 +140,10 @@ test('doCall with no editorConnection but valid cloudServices reaches the reques
   try {
     const instance = makeDeployShapedInstance();
 
-    expect(() => (instance.doCall as () => void)()).not.toThrow();
+    // ⚠️ ERG-001: `scheduleCall`, not `doCall`. `doCall` is the deferred half; the *port* is what
+  // opens an invocation, and poking the inner method directly would run the work with no
+  // invocation behind it — which is exactly the state a node must never report an outcome from.
+  expect(() => (instance.scheduleCall as () => void)()).not.toThrow();
     expect(instance.signalsSent).not.toContain('failure');
     expect(opened).toEqual(['POST https://backend.example/functions/myFunction']);
   } finally {

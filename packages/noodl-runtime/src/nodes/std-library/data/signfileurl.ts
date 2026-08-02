@@ -42,11 +42,13 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
 import CloudFile = require('../../../api/cloudfile');
 import CloudStore = require('../../../api/cloudstore');
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 import { recordBackendPickerPorts, recordSchemaContext } from './record-ports';
 import { sendSchemaPorts, staticPortNames } from './schema-ports';
 
@@ -86,8 +88,8 @@ interface SignFileUrlInstance extends NodeInstance {
     error?: unknown;
     errorStatus?: number;
   };
-  setError(err: SignError | string): void;
-  cloudStore(): CloudStoreLike | undefined;
+  setError(err: SignError | string, tokens?: OutcomeToken[]): void;
+  cloudStore(tokens: OutcomeToken[]): CloudStoreLike | undefined;
 }
 
 /** NDA-004 §2 — see `setError`. Also the editor's warning key; the bus keys by `code`. */
@@ -127,14 +129,19 @@ const SignFileUrl: NodeDefinitionOptions = {
       group: 'Actions',
       description: 'Mints a fresh link for File, refused for a caller who could not read the file directly',
       valueChangedToTrue(this: SignFileUrlInstance) {
+        // ERG-001. Minted in the input handler and carried through the async sign, which is the
+        // `router-navigate.ts` / `websocket.ts` token shape. Nothing else in this file mints one,
+        // so there is no route into `signFileUrl` that can report an outcome without a `Sign`.
+        const outcome = this.beginOutcome();
+
         this.scheduleAfterInputsHaveUpdated(() => {
           const cloudFile = this._internal.cloudFile;
           if (!cloudFile) {
-            this.setError('No file specified');
+            this.setError('No file specified', [outcome]);
             return;
           }
 
-          const store = this.cloudStore();
+          const store = this.cloudStore([outcome]);
           if (!store) return;
 
           store.signFileUrl({
@@ -155,9 +162,10 @@ const SignFileUrl: NodeDefinitionOptions = {
               this.flagOutputDirty('isShareable');
               this.flagOutputDirty('expiresAt');
               this.flagOutputDirty('ttlSeconds');
-              this.sendSignalOnOutput('success');
+              // Last, after the values it is about.
+              this.reportOutcome(outcome, 'done');
             },
-            error: (e: SignError) => this.setError(e)
+            error: (e: SignError) => this.setError(e, [outcome])
           });
         });
       }
@@ -232,19 +240,19 @@ const SignFileUrl: NodeDefinitionOptions = {
         return this._internal.ttlSeconds;
       }
     },
-    success: {
-      group: 'Events',
-      displayName: 'Success',
-      type: 'signal',
-      description: 'Fires once a link has been minted and Signed URL is up to date'
-    },
-    failure: {
-      group: 'Events',
-      displayName: 'Failure',
-      type: 'signal',
-      description:
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4. `Success` renamed to `Done`, which is the family-wide wire name §0.2 Result 2
+    // settled on, plus the universal `Completed`.
+    //
+    // ⚠️ **No `Unchanged`.** Every `Sign` mints a fresh link — there is no post-condition that
+    // can already hold — and a port that can never fire is what §5's dead-end check exists to
+    // complain about.
+    ...outcomeOutputs({
+      done: 'Fires once a link has been minted and Signed URL is up to date',
+      failure:
         'Fires when no link could be minted — no file was set, or the backend refused the caller access — after the reason has been reported on the error channel'
-    },
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -281,15 +289,23 @@ const SignFileUrl: NodeDefinitionOptions = {
         });
       }
     },
-    /** The routed store. A backend id naming nothing is an error, never a fallback. */
-    cloudStore(this: SignFileUrlInstance): CloudStoreLike | undefined {
+    /**
+     * The routed store. A backend id naming nothing is an error, never a fallback.
+     *
+     * ⚠️ It takes the caller's token rather than opening its own. Both halves used to call
+     * `setError` independently, so the refusal *and* the caller's bare `return` were two events
+     * for one invocation; with one token, a second report would raise `outcome/duplicate` — which
+     * is what the corpus row for this path reads the absence of.
+     */
+    cloudStore(this: SignFileUrlInstance, tokens: OutcomeToken[]): CloudStoreLike | undefined {
       const store = (CloudStore as unknown as {
         forBackend(modelScope: unknown, backendId: string | undefined): CloudStoreLike | undefined;
       }).forBackend(this.nodeScope ? this.nodeScope.modelScope : undefined, this._internal.backendId);
 
       if (!store) {
         this.setError(
-          `The backend this node is set to ("${this._internal.backendId}") is not configured in this project.`
+          `The backend this node is set to ("${this._internal.backendId}") is not configured in this project.`,
+          tokens
         );
       }
       return store;
@@ -297,18 +313,28 @@ const SignFileUrl: NodeDefinitionOptions = {
     // Same shape as Upload File's setError: `err` is a string on the "no file"
     // path and an object from CloudStore. `hasOwnProperty` on a boxed string
     // primitive returns false, so both paths work.
-    setError(this: SignFileUrlInstance, err: SignError | string) {
+    //
+    // ERG-001: the `failure` pulse and the raise both go through `reportOutcome` now, so the
+    // outcome and its reason cannot drift apart and `Completed` follows automatically. The
+    // values are flagged first, deliberately — the outcome is the last thing an action does.
+    //
+    // `tokens` is optional for one reason and it is not convenience: NDA-004's rows call this
+    // funnel directly, since what they are about is where a diagnosis *goes* rather than what
+    // triggered it. Minting one here keeps that a real, complete failure rather than a special
+    // case — there is no branch in which the reason reaches the channel without an outcome.
+    setError(this: SignFileUrlInstance, err: SignError | string, tokens?: OutcomeToken[]) {
       this._internal.error = err.hasOwnProperty('error') ? (err as SignError).error : err;
       this._internal.errorStatus = (err as SignError).code || (err as SignError).status || 0;
       this.flagOutputDirty('error');
       this.flagOutputDirty('errorStatus');
-      this.sendSignalOnOutput('failure');
 
       // NDA-004 §2 / FINDINGS B-iv: the message reached the `Error` port and stopped — no
       // diagnosis in any runtime, the editor included. `detail` carries the status because
       // the node distinguishes "no file specified" (0) from a backend refusal.
-      this.raiseRuntimeError(SIGN_ERROR_CODE, String(this._internal.error), {
-        status: this._internal.errorStatus
+      reportOutcomes(this, tokens || [this.beginOutcome()], 'failure', {
+        code: SIGN_ERROR_CODE,
+        message: String(this._internal.error),
+        detail: { status: this._internal.errorStatus }
       });
     }
   }

@@ -11,6 +11,7 @@ import type {
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule,
+  OutcomeToken,
   RuntimeDiscoveredPort
 } from '@noodl/types';
 
@@ -20,6 +21,7 @@ import EdgeTriggeredInput = require('../../../edgetriggeredinput');
 import { forgetForEachItem, resolveForEachItem } from '../../../foreachitem';
 import ModelImport = require('../../../model');
 import CloudStore = require('../../../api/cloudstore');
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 
 import { recordBackendPickerPorts, recordClassPorts, recordFieldPorts, recordSchemaContext } from './record-ports';
 import { sendSchemaPorts, staticPortNames } from './schema-ports';
@@ -60,6 +62,19 @@ interface DbModelNodeInstance extends NodeInstance {
     repeaterComponent?: string;
     /** The `Backend` picker's value: a backend id, `'_endpoint_'`, or `'_active_'`. */
     backendId?: string;
+    /**
+     * ERG-001. Invocations of `Fetch` that have not reported yet.
+     *
+     * An array because `scheduleOnce` coalesces — two `Fetch` pulses in one update pass do one
+     * read, and must still produce two outcomes. `foreach.tsx`'s `pendingRefreshOutcomes` is the
+     * same shape for the same reason.
+     *
+     * ⚠️ Lazily created in `scheduleFetch` rather than in `initialize`, and that is not
+     * defensiveness for its own sake: several suites build this node as a bag of bound methods
+     * and never call `initialize`, so an eager field is `undefined` exactly where the first
+     * `Fetch` reads it.
+     */
+    pendingFetch?: OutcomeToken[];
     /** `scheduleOnce` writes `hasScheduled<Type>` flags here. */
     [extra: string]: unknown;
   };
@@ -68,7 +83,7 @@ interface DbModelNodeInstance extends NodeInstance {
   setModel(model: ModelLike | undefined): void;
   bindToRepeaterItem(): void;
   scheduleOnce(type: string, cb: () => void): void;
-  setError(err: string): void;
+  setError(err: string, tokens?: OutcomeToken[]): void;
   clearWarnings(): void;
   scheduleFetch(): void;
   scheduleStore(): void;
@@ -148,12 +163,21 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       group: 'Events',
       description: 'Fires when a property of the bound record changes, including a change another node made'
     },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description: 'Fires when the record could not be read, after the reason has been reported on the error channel'
-    },
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4. `Done` is **added**, not renamed from `Fetched`.
+    //
+    // ⚠️ `Fetched` and `Changed` are value-level announcements, in the relationship
+    // `Items Rendered` has to the Repeater's `Refresh`: `setModel` fires `Fetched` straight
+    // from the **`Id` input setter**, where there is no invocation to have an outcome. Folding
+    // it in would report `Done` for a value binding. A corpus row pins that path as silent.
+    //
+    // ⚠️ **No `Unchanged`.** `Fetch` always re-reads the backend — "replacing the copy held in
+    // memory" is the input's own description — so it cannot no-op.
+    ...outcomeOutputs({
+      done: 'Fires when a Fetch finished and the property outputs are up to date',
+      failure: 'Fires when the record could not be read, after the reason has been reported on the error channel'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -317,13 +341,21 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
      * the finding's whole point one layer down: a helper that looks shared, copied. Same
      * family, same code, so a subscriber sees one kind of event with `nodeType` to separate
      * them by.
+     *
+     * ERG-001: the `failure` pulse and the raise both go through `reportOutcome`, so the outcome
+     * and its reason cannot drift apart and `Completed` follows automatically. `tokens` is
+     * optional because NDA-004's rows call this funnel directly — minting one here keeps that a
+     * real, complete failure rather than a branch where a reason reaches the channel with no
+     * outcome behind it.
      */
-    setError: function (this: DbModelNodeInstance, err: string) {
+    setError: function (this: DbModelNodeInstance, err: string, tokens?: OutcomeToken[]) {
       this._internal.error = err;
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
 
-      this.raiseRuntimeError(STORAGE_OP_ERROR_CODE, err);
+      reportOutcomes(this, tokens || [this.beginOutcome()], 'failure', {
+        code: STORAGE_OP_ERROR_CODE,
+        message: err
+      });
     },
     clearWarnings(this: DbModelNodeInstance) {
       if (this.context.editorConnection) {
@@ -339,10 +371,22 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       const _this = this;
       const internal = this._internal;
 
+      // ERG-001. Minted here, in the only method the `Fetch` port reaches. Every other route
+      // into this node's record — `setModelID` from the `Id` setter, `bindToRepeaterItem`, a
+      // `change` on the bound model — is a value binding with no invocation behind it, and
+      // reports nothing. That claim is what a corpus row reads directly.
+      const pending = internal.pendingFetch || (internal.pendingFetch = []);
+      pending.push(this.beginOutcome());
+
       this.scheduleOnce('Fetch', function () {
+        // Taken into a local before any async work: a second `Fetch` arriving while this read
+        // is in flight owns its own batch rather than being settled by this request's answer.
+        const tokens = internal.pendingFetch || [];
+        internal.pendingFetch = [];
+
         // Don't do fetch if no id
         if (internal.modelId === undefined || internal.modelId === '') {
-          _this.setError('Missing Id.');
+          _this.setError('Missing Id.', tokens);
           return;
         }
 
@@ -350,7 +394,10 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
         // nothing selected this resolves to exactly the store `forScope` used to return.
         const cloudstore = CloudStore.forBackend(_this.nodeScope.modelScope, internal.backendId as string | undefined);
         if (!cloudstore) {
-          _this.setError(`The backend this node is set to ("${internal.backendId}") is not configured in this project.`);
+          _this.setError(
+            `The backend this node is set to ("${internal.backendId}") is not configured in this project.`,
+            tokens
+          );
           return;
         }
 
@@ -376,10 +423,12 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
               if (_this.hasOutput('prop-' + key)) _this.flagOutputDirty('prop-' + key);
             }
 
+            // The value-level announcement first, then the invocation's outcome last.
             _this.sendSignalOnOutput('fetched');
+            reportOutcomes(_this, tokens, 'done');
           },
           error: function (err: string) {
-            _this.setError(err || 'Failed to fetch.');
+            _this.setError(err || 'Failed to fetch.', tokens);
           }
         });
       });

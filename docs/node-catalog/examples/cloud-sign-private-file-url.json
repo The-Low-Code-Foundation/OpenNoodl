@@ -84,7 +84,7 @@
         },
         {
           "fromId": "upload",
-          "fromProperty": "success",
+          "fromProperty": "done",
           "toId": "signer",
           "toProperty": "sign"
         },

@@ -1,22 +1,22 @@
 {
   "typeName": "net.noodl.user.SignUp",
   "summary": "Creates a new user account on the cloud backend and logs it in, with inputs for custom user properties.",
-  "description": "Sign Up creates a user from the current `username`, `password` and optional `email` (string values), plus one input per custom property on the User class, when `signup` (Do, signal) is triggered. On success the new account is immediately logged in — the session is stored in the browser, every User node updates, their Logged In signal fires — and `success` (signal) fires. On failure (e.g. username taken) `error` (string value) is set and `failure` (signal) fires, and no account is created.",
+  "description": "Sign Up creates a user from the current `username`, `password` and optional `email` (string values), plus one input per custom property on the User class, when `signup` (Do, signal) is triggered. On success the new account is immediately logged in — the session is stored in the browser, every User node updates, their Logged In signal fires — and `done` (signal) fires. On failure (e.g. username taken) `error` (string value) is set and `failure` (signal) fires, and no account is created.",
   "whenToUse": "The action node behind a registration form. For signing in an existing user use Log In; for editing the signed-in user's properties later use Set User Properties.",
   "ports": {
     "signup": "Signal input (displayed 'Do'); performs the sign-up after pending input updates so all field values are current.",
-    "success": "Signal; fires once the account exists and the user is logged in — no separate Log In step is needed.",
+    "done": "Signal; fires once the account exists and the user is logged in — no separate Log In step is needed.",
     "failure": "Signal; fires when the backend rejects the sign-up. Show `error` to the user.",
     "error": "String value holding the backend's error message, e.g. an already-taken username."
   },
   "runtimeBehavior": "The editor generates one value input per custom property in the User class schema (stored as `prop-<name>`, typed from the schema; built-ins like username, password, email and system fields are excluded). These set the new user's properties at creation time.",
   "examples": ["user-signup-and-profile"],
   "patterns": [
-    "Text Inputs → `username`/`password`/`email`, Button `onClick` → `signup`, `success` → navigate into the app: the standard registration form.",
+    "Text Inputs → `username`/`password`/`email`, Button `onClick` → `signup`, `done` → navigate into the app: the standard registration form.",
     "Fill `prop-<name>` inputs at sign-up for properties every account must have, instead of a follow-up Set User Properties call."
   ],
   "antiPatterns": [
-    "Triggering Log In from `success` — sign-up already establishes the session."
+    "Triggering Log In from `done` — sign-up already establishes the session."
   ],
   "relatedNodes": ["net.noodl.user.LogIn", "net.noodl.user.User", "net.noodl.user.SetUserProperties"]
 }

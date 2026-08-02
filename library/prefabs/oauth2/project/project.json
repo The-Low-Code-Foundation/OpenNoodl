@@ -752,7 +752,7 @@
                 "connections": [
                     {
                         "fromId": "22acfaa0-3ed8-f685-8562-7a3a2fed80e3",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "58945f80-7c0f-ec57-9004-8ccf5cee7b18",
                         "toProperty": "run"
                     },

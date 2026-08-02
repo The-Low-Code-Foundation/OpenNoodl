@@ -1648,7 +1648,7 @@
                     },
                     {
                         "fromId": "30303931-270f-1563-f3e6-82f1ddadf833",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "a53f922a-b06e-67e2-083b-d0203f660144",
                         "toProperty": "run"
                     },
@@ -1946,7 +1946,7 @@
                     },
                     {
                         "fromId": "e014e55f-9595-2483-86bf-0cd54b449bee",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "da268c12-11e3-7765-3d7a-532ee71e14e3",
                         "toProperty": "run"
                     },

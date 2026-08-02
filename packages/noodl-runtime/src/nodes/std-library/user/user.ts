@@ -11,6 +11,7 @@ import type {
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule,
+  OutcomeToken,
   RuntimeDiscoveredPort
 } from '@noodl/types';
 
@@ -33,6 +34,7 @@ const USER_FETCH_ERROR_CODE = 'user/fetch-failed';
 const NoodlRuntime = require('../../../../noodl-runtime');
 const { Node } = require('../../../../noodl-runtime');
 
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 import { sendSchemaPorts, staticPortNames } from '../data/schema-ports';
 import {
   USER_OUTPUT_IGNORE_PARSE,
@@ -59,12 +61,18 @@ interface UserNodeInstance extends NodeInstance {
     /** The `Backend` picker's value. Absent and `_active_` both mean "the default". */
     backendId?: string;
     onModelChangedCallback(args: ModelChangeEvent): void;
+    /**
+     * ERG-001. Invocations of `Fetch` that have not reported yet — an array because
+     * `scheduleOnce` coalesces two pulses in an update pass into one read, and two invocations
+     * must still produce two outcomes.
+     */
+    pendingFetch?: OutcomeToken[];
     /** `hasScheduled<Type>` flags, written by {@link scheduleOnce}. */
     [flag: string]: unknown;
   };
   scheduleOnce(type: string, cb: () => void): void;
   currentUserModel(): ModelLike | undefined;
-  setError(err: string): void;
+  setError(err: string, tokens?: OutcomeToken[]): void;
   clearWarnings(): void;
   setUserModel(model: ModelLike | undefined): void;
   scheduleFetch(): void;
@@ -170,12 +178,25 @@ const UserNodeDefinition: NodeDefinitionOptions = {
       group: 'Events',
       description: 'Fires when a property of the signed-in user changes, including a change another node made'
     },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description: 'Fires when the user record could not be read, after the reason has been reported on the error channel'
-    },
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4. `Done` is **added**, not renamed from `Fetched`, so that this node and its
+    // documented twin `Record` publish one port set. On `Record` the two genuinely come apart —
+    // `Fetched` fires from the `Id` **setter**, where there is no invocation — and splitting the
+    // family so that one says `Fetched` and the other `Done` for the same author gesture is the
+    // per-node divergence `outcome.ts`'s docstring exists to prevent.
+    //
+    // ⚠️ **On this node they co-fire**, because `User` has no bind path, and that is recorded
+    // rather than designed away: it is a property of there being one path here, not of the two
+    // ports meaning the same thing. A corpus row asserts the co-firing and its order.
+    //
+    // ⚠️ **No `Unchanged`.** `Fetch` always re-reads the backend — it is "how an expired session
+    // is discovered" — so it cannot no-op.
+    ...outcomeOutputs({
+      done: 'Fires when a Fetch finished and the outputs below are up to date',
+      failure:
+        'Fires when the user record could not be read, after the reason has been reported on the error channel'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -253,12 +274,21 @@ const UserNodeDefinition: NodeDefinitionOptions = {
         cb();
       });
     },
-    setError: function (this: UserNodeInstance, err: string) {
+    /**
+     * ERG-001: the `failure` pulse and the raise both go through `reportOutcome`, so the outcome
+     * and its reason cannot drift apart and `Completed` follows automatically. `tokens` is
+     * optional because NDA-004's rows call this funnel directly — minting one here keeps that a
+     * real, complete failure rather than a branch where a reason reaches the channel with no
+     * outcome behind it.
+     */
+    setError: function (this: UserNodeInstance, err: string, tokens?: OutcomeToken[]) {
       this._internal.error = err;
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
 
-      this.raiseRuntimeError(USER_FETCH_ERROR_CODE, err);
+      reportOutcomes(this, tokens || [this.beginOutcome()], 'failure', {
+        code: USER_FETCH_ERROR_CODE,
+        message: err
+      });
     },
     clearWarnings(this: UserNodeInstance) {
       if (this.context.editorConnection) {
@@ -307,7 +337,18 @@ const UserNodeDefinition: NodeDefinitionOptions = {
       return userService.current;
     },
     scheduleFetch: function (this: UserNodeInstance) {
+      // ERG-001. Minted here, in the only method the `Fetch` port reaches. The four session
+      // events this node subscribes to in `initialize` all run `setUserModel` with no invocation
+      // behind them, and none of them reports.
+      const pending = this._internal.pendingFetch || (this._internal.pendingFetch = []);
+      pending.push(this.beginOutcome());
+
       this.scheduleOnce('Fetch', () => {
+        // Taken into a local before the request goes out, so a second `Fetch` arriving in
+        // flight owns its own batch rather than being settled by this one's answer.
+        const tokens = this._internal.pendingFetch || [];
+        this._internal.pendingFetch = [];
+
         const userService = NoodlRuntime.Services.UserService.forScope(this.nodeScope.modelScope);
         userService.fetchCurrentUser({
           backendId: this._internal.backendId,
@@ -316,10 +357,12 @@ const UserNodeDefinition: NodeDefinitionOptions = {
           success: () => {
             this.setUserModel(this.currentUserModel());
 
+            // The value-level announcement first, then the invocation's outcome last.
             this.sendSignalOnOutput('fetched');
+            reportOutcomes(this, tokens, 'done');
           },
           error: (err: string) => {
-            this.setError(err || 'Failed to fetch.');
+            this.setError(err || 'Failed to fetch.', tokens);
           }
         });
       });

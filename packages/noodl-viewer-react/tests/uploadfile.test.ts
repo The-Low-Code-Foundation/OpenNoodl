@@ -38,6 +38,8 @@ jest.mock('@noodl/runtime/src/api/cloudfile', () => {
   };
 });
 
+import NodeCtor from '@noodl/runtime/src/node';
+
 import UploadFileModule from '../src/nodes/std-library/uploadfile';
 
 const node = UploadFileModule.node;
@@ -65,8 +67,23 @@ function makeInstance(): FakeInstance {
     },
     scheduleAfterInputsHaveUpdated(cb: () => void) {
       cb();
+    },
+    // ERG-001. The definition's real output keys, so `reportOutcome`'s `outcome/missing-port`
+    // check stays live here rather than being answered `true` for a port that does not exist.
+    hasOutput(name: string) {
+      return Object.prototype.hasOwnProperty.call(node.outputs, name);
+    },
+    // Recorded rather than stubbed away: a failure raised here is what the outcome carries.
+    raiseRuntimeError() {
+      /* the ERG-001 rows read `signals`; NDA-004's own rows live in the corpus */
     }
   };
+
+  // ERG-001. The **real** outcome members, for the reason `signfileurl.test.ts` gives: they are
+  // the subject, so a double would be testing the double.
+  instance.beginOutcome = NodeCtor.prototype.beginOutcome.bind(instance as never);
+  instance.reportOutcome = NodeCtor.prototype.reportOutcome.bind(instance as never);
+
   for (const key of Object.keys(node.methods || {})) {
     instance[key] = (node.methods as Record<string, (...args: unknown[]) => unknown>)[key].bind(instance);
   }

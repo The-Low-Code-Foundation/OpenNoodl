@@ -4277,6 +4277,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Signals",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Signals",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the function has returned and its result outputs are up to date"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -4297,17 +4319,6 @@
           },
           "isSignal": true,
           "description": "Fires when the function could not be reached or answered with an error, after the reason has been reported on the error channel"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Signals",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the function has returned and its result outputs are up to date"
         }
       ],
       "dynamicPorts": {
@@ -4325,11 +4336,11 @@
       "enrichment": {
         "typeName": "CloudFunction2",
         "summary": "Calls a cloud function component from the browser: send parameters, run the server-side graph, receive its results.",
-        "description": "Cloud Function is the browser-side caller of a cloud function — a component that lives on the cloud runtime and starts with a Request node and ends with a Response node. Pick the target in the `function` input; the node then grows one `in-<name>` input per parameter declared on the function's Request node and one `out-<name>` output per value declared on its Response nodes. Triggering `call` (Call, signal) POSTs the current `in-` values to the server, where the function's graph runs; when the Response sends a success reply the `out-` outputs update and `success` (signal) fires. On a failure reply — or any transport error — `error` (string value) is set and `failure` (signal) fires. The logged-in user's session token is sent along automatically, so the function sees the caller's identity.",
+        "description": "Cloud Function is the browser-side caller of a cloud function — a component that lives on the cloud runtime and starts with a Request node and ends with a Response node. Pick the target in the `function` input; the node then grows one `in-<name>` input per parameter declared on the function's Request node and one `out-<name>` output per value declared on its Response nodes. Triggering `call` (Call, signal) POSTs the current `in-` values to the server, where the function's graph runs; when the Response sends a success reply the `out-` outputs update and `done` (signal) fires. On a failure reply — or any transport error — `error` (string value) is set and `failure` (signal) fires. The logged-in user's session token is sent along automatically, so the function sees the caller's identity.",
         "whenToUse": "Use it whenever browser logic needs work done with server-side trust: secrets, security-sensitive writes, aggregations, or multi-record transactions. For plain reads of database classes prefer DbCollection2 (Query Records) directly. Do not use the deprecated v1 'Cloud Function' node in new graphs.",
         "ports": {
           "call": "Signal input; sends the request with the current `in-` parameter values after all pending input updates have been applied.",
-          "success": "Signal; fires after a success response, after all `out-` outputs have been updated with the returned results.",
+          "done": "Signal; fires after a success response, after all `out-` outputs have been updated with the returned results.",
           "failure": "Signal; fires when the function replies with failure status or the request itself fails. Read `error` for the message.",
           "error": "String value with the last error message (the Response node's Error Message on a failure reply)."
         },
@@ -4340,7 +4351,7 @@
         ],
         "patterns": [
           "Button `onClick` → `call`, `out-<name>` → visual inputs: the request/response cycle for an action the client must not perform itself.",
-          "`success` → a Query Records fetch action: refresh client data after a server-side write."
+          "`done` → a Query Records fetch action: refresh client data after a server-side write."
         ],
         "antiPatterns": [
           "Wiring `out-` outputs somewhere without also handling `failure` leaves errors invisible — surface `error` in the UI or react to `failure`."
@@ -7234,6 +7245,28 @@
           "description": "Fires when a property of the bound record changes, including a change another node made"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Fetch finished and the property outputs are up to date"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -7340,7 +7373,7 @@
       "enrichment": {
         "typeName": "DbModel2",
         "summary": "Record: binds to one cloud database record by id and exposes each of its properties as an output that follows the record.",
-        "description": "DbModel2 (Record) points at a single record of a cloud database class and exposes one value output per property of that class (registered as `prop-<property>`), plus a `changed-<property>` signal per property. Setting `modelId` binds the node to the record in the app's local record store — properties already known locally (for example from a Query Records result) appear immediately, and `fetched` fires. Triggering `fetch` (Fetch, signal) loads the record fresh from the server by id; while `fetch` is connected, local change events no longer drive the outputs, so updates arrive only when you fetch. `changed` fires whenever the bound record changes from anywhere in the app (a Update Record elsewhere, a live query update).",
+        "description": "DbModel2 (Record) points at a single record of a cloud database class and exposes one value output per property of that class (registered as `prop-<property>`), plus a `changed-<property>` signal per property. Setting `modelId` binds the node to the record in the app's local record store — properties already known locally (for example from a Query Records result) appear immediately, and `fetched` fires. Triggering `fetch` (Fetch, signal) loads the record fresh from the server by id; while `fetch` is connected, local change events no longer drive the outputs, so updates arrive only when you fetch. `changed` fires whenever the bound record changes from anywhere in the app (a Update Record elsewhere, a live query update). `fetched` and `changed` are value-level announcements and fire on binding as well as on a fetch; `done`/`failure`/`completed` are the outcome of a `fetch` invocation specifically, so wire those to sequence a chain and `fetched` to react to the data.",
         "whenToUse": "Use it to read one record's properties — a detail page, or the current item inside a repeater (set `idSource` to 'From repeater'). It does not write: pair it with SetDbModelProperties to save edits. For lists of records use DbCollection2 (Query Records); for records from a non-cloud (BYOB) backend use noodl.byob.QueryData, whose results are plain objects, not records.",
         "ports": {
           "modelId": "Value input (connections only): the record id to bind to; a full record object is also accepted and dereferenced to its id.",
@@ -26550,6 +26583,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a link has been minted and Signed URL is up to date"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -26605,17 +26660,6 @@
           "description": "False when the link only works because it carries your own credential — sending it to someone else either fails for them or hands them your session. True for a signed or public link"
         },
         {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once a link has been minted and Signed URL is up to date"
-        },
-        {
           "name": "ttlSeconds",
           "displayName": "TTL (Seconds)",
           "group": "General",
@@ -26662,7 +26706,7 @@
       "enrichment": {
         "typeName": "Sign File URL",
         "summary": "Mints a short-lived signed URL for a cloud file, for previewing or downloading files uploaded as private.",
-        "description": "Sign File URL takes a `cloudfile` handle (from Upload File or a record's file property) and, when `sign` fires, asks the backend for a time-limited signed URL to it. A private file's plain `url` 403s for anyone but its owner; the signed URL works for the short window it is valid, which is the intended usage — sign right before rendering, not once and persist. On `success` the signed `url`, its `expiresAt`, and `ttlSeconds` are available; `failure` carries `error`/`errorStatus` the same shape Upload File uses.",
+        "description": "Sign File URL takes a `cloudfile` handle (from Upload File or a record's file property) and, when `sign` fires, asks the backend for a time-limited signed URL to it. A private file's plain `url` 403s for anyone but its owner; the signed URL works for the short window it is valid, which is the intended usage — sign right before rendering, not once and persist. On `done` the signed `url`, its `expiresAt`, and `ttlSeconds` are available; `failure` carries `error`/`errorStatus` the same shape Upload File uses.",
         "whenToUse": "Previewing or linking to a file that was uploaded with Upload File's `private` input set. Not needed for public (non-private) files — their plain `cloudFile.url` already works for anyone who can reach the app.",
         "ports": {
           "file": "The cloudfile to sign; set before firing `sign`.",
@@ -26676,7 +26720,7 @@
           "cloud-sign-private-file-url"
         ],
         "patterns": [
-          "Fire `sign` from the same signal that produced the `cloudFile` (e.g. Upload File's `success`), so the graph never holds a `cloudFile` without also having signed it."
+          "Fire `sign` from the same signal that produced the `cloudFile` (e.g. Upload File's `done`), so the graph never holds a `cloudFile` without also having signed it."
         ],
         "antiPatterns": [
           "Persisting a signed `url` (e.g. saving it to a record) instead of the plain cloudfile — the signature expires and the stored link stops working; store the cloudfile, sign again at render time."
@@ -30874,6 +30918,28 @@
           "description": "The stored file, for wiring into a record property or a Cloud File node"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the file is stored and Cloud File is up to date"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -30949,17 +31015,6 @@
           },
           "isSignal": false,
           "description": "Size of the file being uploaded, in bytes"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the file is stored and Cloud File is up to date"
         }
       ],
       "dynamicPorts": {
@@ -30975,13 +31030,13 @@
       "enrichment": {
         "typeName": "Upload File",
         "summary": "Uploads a browser file to cloud storage when triggered, reporting progress and yielding a cloudfile handle.",
-        "description": "Upload File takes a browser File (typically from Open File Picker) on its untyped `file` input and, when `upload` fires, stores it in the cloud backend's file storage. Progress streams out (`progressLoadedPercent`, byte counts, `progressChanged`), and on `success` the stored file is available as `cloudFile` — the handle to attach to a record's file property or unwrap with Cloud File. `failure` carries `error` and `errorStatus`.",
+        "description": "Upload File takes a browser File (typically from Open File Picker) on its untyped `file` input and, when `upload` fires, stores it in the cloud backend's file storage. Progress streams out (`progressLoadedPercent`, byte counts, `progressChanged`), and on `done` the stored file is available as `cloudFile` — the handle to attach to a record's file property or unwrap with Cloud File. `failure` carries `error` and `errorStatus`.",
         "whenToUse": "Attachments, avatars, imports — any user-picked file that must persist server-side. The upload stores the file only; associating it with a record is a separate write (Create/Set Record).",
         "ports": {
           "file": "The browser file to upload; untyped so any file source connects.",
           "private": "Boolean, default false. When true the backend ACLs the upload to its uploader instead of leaving it public — the resulting cloudfile's plain `url` then only works for the uploader (or an admin); use Sign File URL to get a usable link back out.",
           "upload": "Signal; starts the upload.",
-          "cloudFile": "The stored file's handle, valid from `success` onward.",
+          "cloudFile": "The stored file's handle, valid from `done` onward.",
           "progressLoadedPercent": "Number level 0–100 while uploading; drive progress UI from here.",
           "bucket": "Supabase Storage bucket to upload into. Supabase only, and there is no default.",
           "path": "Object path inside the bucket, e.g. avatars/me.png. Supabase only; blank uses the file's own name.",
@@ -30995,11 +31050,11 @@
           "cloud-sign-private-file-url"
         ],
         "patterns": [
-          "Picker `success` → `upload`, upload `success` → record write: three nodes, each owning one step.",
-          "`private: true` uploads pair with Sign File URL: wire the same `success` signal to both the record write and the signer."
+          "Picker `success` → `upload`, upload `done` → record write: three nodes, each owning one step.",
+          "`private: true` uploads pair with Sign File URL: wire the same `done` signal to both the record write and the signer."
         ],
         "antiPatterns": [
-          "Treating `cloudFile` as set before `success` fired — sequence record writes on the success signal.",
+          "Treating `cloudFile` as set before `done` fired — sequence record writes on the Done signal.",
           "Setting `private: true` and then binding `cloudFile.url` straight to an Image/link — a private file's plain url 403s for anyone but the uploader; sign it first."
         ],
         "relatedNodes": [
@@ -50919,6 +50974,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the sign-in succeeded and a session has been stored"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -50939,17 +51016,6 @@
           },
           "isSignal": true,
           "description": "Fires when the sign-in was refused, after the reason has been reported on the error channel"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the sign-in succeeded and a session has been stored"
         }
       ],
       "dynamicPorts": null,
@@ -50957,11 +51023,11 @@
       "enrichment": {
         "typeName": "net.noodl.user.LogIn",
         "summary": "Logs a user into the cloud backend with username and password, establishing the session the User node reflects.",
-        "description": "Log In sends the current `username` and `password` (string values) to the cloud backend when `login` (Do, signal) is triggered. On success the returned session is stored in the browser (it persists across reloads), the app-wide user service switches to the logged-in user — which updates every User node and fires their Logged In signal — and `success` (signal) fires. On a bad login or network problem `error` (string value) is set with the message and `failure` (signal) fires; nothing about the current session changes.",
+        "description": "Log In sends the current `username` and `password` (string values) to the cloud backend when `login` (Do, signal) is triggered. On success the returned session is stored in the browser (it persists across reloads), the app-wide user service switches to the logged-in user — which updates every User node and fires their Logged In signal — and `done` (signal) fires. On a bad login or network problem `error` (string value) is set with the message and `failure` (signal) fires; nothing about the current session changes.",
         "whenToUse": "The action node behind a login form. To read who is logged in, or to react to session changes, use the User node; to create an account use Sign Up (which also logs the new user in); to end the session use Log Out.",
         "ports": {
           "login": "Signal input (displayed 'Do'); performs the login after pending input updates, so username/password wired from inputs are current.",
-          "success": "Signal; fires once the session is established. Typical next step: navigate to the logged-in page.",
+          "done": "Signal; fires once the session is established. Typical next step: navigate to the logged-in page.",
           "failure": "Signal; fires on rejected credentials or request failure. Show `error` to the user.",
           "error": "String value holding the backend's error message from the last failed attempt."
         },
@@ -50969,11 +51035,11 @@
           "user-login-flow"
         ],
         "patterns": [
-          "Text Input `text` → `username`/`password`, Button `onClick` → `login`, `success` → navigation: the standard login form.",
+          "Text Input `text` → `username`/`password`, Button `onClick` → `login`, `done` → navigation: the standard login form.",
           "`error` → a Text node's `text`: surface backend messages like 'Invalid username/password' directly."
         ],
         "antiPatterns": [
-          "Driving logged-in UI from this node's `success` signal alone — state belongs to the User node's `authenticated` boolean, which also covers sessions restored on reload."
+          "Driving logged-in UI from this node's `done` signal alone — state belongs to the User node's `authenticated` boolean, which also covers sessions restored on reload."
         ],
         "relatedNodes": [
           "net.noodl.user.User",
@@ -51013,6 +51079,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the session has been ended"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -51033,17 +51121,6 @@
           },
           "isSignal": true,
           "description": "Fires when the sign-out was refused, after the reason has been reported on the error channel"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the session has been ended"
         }
       ],
       "dynamicPorts": null,
@@ -51051,18 +51128,18 @@
       "enrichment": {
         "typeName": "net.noodl.user.LogOut",
         "summary": "Ends the current user session on the cloud backend and clears it from the browser.",
-        "description": "Log Out ends the current session when its `login` input (displayed 'Do', signal) is triggered: the backend session is revoked, the stored session is removed from the browser, and the app-wide user service switches to logged-out — updating every User node (`authenticated` becomes false) and firing their Logged Out signal. `success` (signal) fires when this completes; `failure` (signal) fires with `error` (string value) set if the request fails.",
-        "whenToUse": "The action behind a log-out button or menu item. To react to the session ending (e.g. navigate to the login page), listen on this node's `success` or the User node's Logged Out signal.",
+        "description": "Log Out ends the current session when its `login` input (displayed 'Do', signal) is triggered: the backend session is revoked, the stored session is removed from the browser, and the app-wide user service switches to logged-out — updating every User node (`authenticated` becomes false) and firing their Logged Out signal. `done` (signal) fires when this completes; `failure` (signal) fires with `error` (string value) set if the request fails.",
+        "whenToUse": "The action behind a log-out button or menu item. To react to the session ending (e.g. navigate to the login page), listen on this node's `done` or the User node's Logged Out signal.",
         "ports": {
           "login": "Signal input (displayed 'Do'); note the file-key name is `login` even though this node logs out.",
-          "success": "Signal; fires once the session has ended.",
+          "done": "Signal; fires once the session has ended.",
           "failure": "Signal; fires if the logout request fails. Read `error` for the message."
         },
         "examples": [
           "user-login-flow"
         ],
         "patterns": [
-          "Button `onClick` → `login` (Do), `success` → navigate to the public/login page."
+          "Button `onClick` → `login` (Do), `done` → navigate to the public/login page."
         ],
         "relatedNodes": [
           "net.noodl.user.LogIn",
@@ -51123,6 +51200,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the request has been accepted, which never means an account exists for that address"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -51143,17 +51242,6 @@
           },
           "isSignal": true,
           "description": "Fires when the request itself failed — no backend, no network, or rate limited — never because the address is unknown"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the request has been accepted, which never means an account exists for that address"
         }
       ],
       "dynamicPorts": null,
@@ -51161,23 +51249,23 @@
       "enrichment": {
         "typeName": "net.noodl.user.RequestMagicLink",
         "summary": "Asks the backend to email a one-click sign-in link. Succeeds identically whether or not the address has an account.",
-        "description": "Request Magic Link posts `email` (string value) to the backend's `/auth/magic-link` when `send` (Do, signal) is triggered. The backend mails a single-use, short-lived link; clicking it signs the user in on the page named by `redirect` (defaulting to the page the request was made from), where the runtime picks up the one-time code and establishes an ordinary session. `success` (signal) means THE REQUEST WAS ACCEPTED — never that an account exists. The endpoint answers identically for known and unknown addresses on purpose, because a public endpoint that answers differently is an account-existence oracle. `failure` (signal) with `error` (string value) means the request itself failed: no backend configured, a network error, or the rate limit.",
+        "description": "Request Magic Link posts `email` (string value) to the backend's `/auth/magic-link` when `send` (Do, signal) is triggered. The backend mails a single-use, short-lived link; clicking it signs the user in on the page named by `redirect` (defaulting to the page the request was made from), where the runtime picks up the one-time code and establishes an ordinary session. `done` (signal) means THE REQUEST WAS ACCEPTED — never that an account exists. The endpoint answers identically for known and unknown addresses on purpose, because a public endpoint that answers differently is an account-existence oracle. `failure` (signal) with `error` (string value) means the request itself failed: no backend configured, a network error, or the rate limit.",
         "whenToUse": "For passwordless sign-in, and as a password-free recovery path on backends that use provider sign-in. Requires the backend to have SMTP configured (BAK-002) and magic links enabled in the Auth section — with either missing, the request is still accepted and no mail is sent, which is deliberate anti-enumeration and shows up in the backend's log rather than in the app.",
         "ports": {
           "send": "Signal input (displayed 'Do'); posts the request after pending input updates.",
           "email": "String value; the address to mail.",
           "redirect": "String value; where the link should land the user. Defaults to the current page. Must be same-origin with the backend or on its redirectAllowList — an off-list target means no mail is sent.",
-          "success": "Signal; the request was accepted. Show 'if that address has an account, a link is on its way'.",
+          "done": "Signal; the request was accepted. Show 'if that address has an account, a link is on its way'.",
           "failure": "Signal; the request could not be made. Show `error`.",
           "error": "String value with the reason the request failed."
         },
         "patterns": [
-          "Text Input `text` → `email`, Button `onClick` → `send`, `success` → a neutral confirmation message.",
+          "Text Input `text` → `email`, Button `onClick` → `send`, `done` → a neutral confirmation message.",
           "Put a Sign In With node on the landing page named by `redirect` so the app can react to the click's outcome."
         ],
         "antiPatterns": [
           "Showing 'check your inbox' only when the account exists — this node cannot tell you that, and a UI that appears to know re-creates the oracle the backend removed.",
-          "Treating `success` as 'signed in'. The sign-in happens when the user clicks the link, on a later page load."
+          "Treating `done` as 'signed in'. The sign-in happens when the user clicks the link, on a later page load."
         ],
         "relatedNodes": [
           "net.noodl.user.SignInWith",
@@ -51499,7 +51587,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Writes the values below to the signed-in user; does nothing at all while nobody is signed in"
+          "description": "Writes the values below to the signed-in user, and fails when nobody is signed in"
         },
         {
           "name": "username",
@@ -51514,6 +51602,28 @@
         }
       ],
       "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the user record has been written"
+        },
         {
           "name": "error",
           "displayName": "Error",
@@ -51535,17 +51645,6 @@
           },
           "isSignal": true,
           "description": "Fires when the user record could not be written, after the reason has been reported on the error channel"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the user record has been written"
         }
       ],
       "dynamicPorts": {
@@ -51561,11 +51660,11 @@
       "enrichment": {
         "typeName": "net.noodl.user.SetUserProperties",
         "summary": "Saves changes to the signed-in user's email, username and custom properties on the cloud backend.",
-        "description": "Set User Properties writes the current values of its `email` and `username` (string values) and its per-property inputs to the signed-in user when `store` (Do, signal) is triggered. On success the server confirms the update, the local user model changes — User nodes see the new values and fire their per-property Changed signals — and `success` (signal) fires. On failure `error` (string value) is set and `failure` (signal) fires. It requires a signed-in session; it is also available inside cloud functions, where it acts on the calling user.",
+        "description": "Set User Properties writes the current values of its `email` and `username` (string values) and its per-property inputs to the signed-in user when `store` (Do, signal) is triggered. On success the server confirms the update, the local user model changes — User nodes see the new values and fire their per-property Changed signals — and `done` (signal) fires. On failure `error` (string value) is set and `failure` (signal) fires. It requires a signed-in session; it is also available inside cloud functions, where it acts on the calling user.",
         "whenToUse": "The action behind a profile/settings form for the logged-in user. To set properties at account creation use Sign Up's property inputs; to read properties use the User node. It cannot edit other users — do that server-side in a cloud function with appropriate trust.",
         "ports": {
           "store": "Signal input (displayed 'Do'); saves after pending input updates so all wired field values are current.",
-          "success": "Signal; fires when the backend has accepted the update.",
+          "done": "Signal; fires when the backend has accepted the update.",
           "failure": "Signal; fires when saving fails (e.g. not signed in). Read `error` for the message."
         },
         "runtimeBehavior": "The editor generates one value input per custom property in the User class schema (stored as `prop-<name>`, typed from the schema). In the browser the built-ins password and emailVerified are excluded along with system fields; only wired or set inputs are sent as changes.",
@@ -51573,7 +51672,7 @@
           "user-signup-and-profile"
         ],
         "patterns": [
-          "Text Input `text` → `prop-<name>`, Save button `onClick` → `store`, `success` → a confirmation state: the standard profile form.",
+          "Text Input `text` → `prop-<name>`, Save button `onClick` → `store`, `done` → a confirmation state: the standard profile form.",
           "User node property output → Text Input `text` (initial value), edited value → back into `prop-<name>` here: read-modify-write on one screen."
         ],
         "relatedNodes": [
@@ -51635,6 +51734,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires on the page the provider returned to, once the session has been established"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -51677,17 +51798,6 @@
           },
           "isSignal": false,
           "description": "True while a sign-in started on an earlier page load is still being exchanged"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires on the page the provider returned to, once the session has been established"
         }
       ],
       "dynamicPorts": null,
@@ -51695,26 +51805,26 @@
       "enrichment": {
         "typeName": "net.noodl.user.SignInWith",
         "summary": "Signs a user in via an identity provider (Google, GitHub, any OpenID Connect issuer) configured on the backend. Redirects away.",
-        "description": "Sign In With drives BAK-004's redirect flow. Triggering `signIn` (Do, signal) sends the whole browser to the backend's `/oauth/<provider>/start`, which redirects on to the identity provider — so nothing downstream of `Do` runs, and the graph on that page is torn down. The provider sends the user back to the URL given in `redirect` (defaulting to the page they left) carrying a one-time code, which the runtime's user service exchanges for an ordinary session before any node sees it. On that LATER page load this node fires `success` (signal) or `failure` (signal) with `error` (string value); `signingIn` (boolean value) is true while the exchange is in flight. `notice` (string value) is set in the one case where a sign-in succeeds but the user should be told something: the backend linked this identity to an existing account whose email address had never been verified, and removed that account's old password.",
+        "description": "Sign In With drives BAK-004's redirect flow. Triggering `signIn` (Do, signal) sends the whole browser to the backend's `/oauth/<provider>/start`, which redirects on to the identity provider — so nothing downstream of `Do` runs, and the graph on that page is torn down. The provider sends the user back to the URL given in `redirect` (defaulting to the page they left) carrying a one-time code, which the runtime's user service exchanges for an ordinary session before any node sees it. On that LATER page load this node fires `done` (signal) or `failure` (signal) with `error` (string value); `signingIn` (boolean value) is true while the exchange is in flight. `notice` (string value) is set in the one case where a sign-in succeeds but the user should be told something: the backend linked this identity to an existing account whose email address had never been verified, and removed that account's old password.",
         "whenToUse": "For 'Sign in with Google/GitHub/SSO' buttons on an app served by a NodeGX backend. Configure the provider first in the Backend Services panel's Auth section (or via MCP) — a provider that is not configured refuses the redirect with an explanation rather than sending the user to a broken provider page. Use Log In for username/password, Request Magic Link for passwordless email, and the User node to read who is signed in.",
         "ports": {
           "signIn": "Signal input (displayed 'Do'); NAVIGATES THE BROWSER AWAY after pending input updates. Treat it as the end of the flow, not a step in it.",
           "provider": "String value; the provider id configured on the backend ('google', 'github', or whatever the operator named their OIDC provider). Read the list from GET /auth/providers.",
           "redirect": "String value; where the provider should send the browser back to. Defaults to the current page. Must be same-origin with the backend or listed in the backend's redirectAllowList, otherwise the sign-in is refused before it starts.",
-          "success": "Signal; fires on the RETURNING page load once the session exists.",
+          "done": "Signal; fires on the RETURNING page load once the session exists.",
           "failure": "Signal; fires on the returning page load when the sign-in was refused, cancelled, or could not be completed.",
           "signingIn": "Boolean value; true between the return landing and the session being established. Drive a spinner from this.",
           "error": "String value holding the reason the last sign-in failed.",
           "notice": "String value; non-empty only when the backend linked to an existing unverified account and revoked its password. Show it."
         },
         "patterns": [
-          "Put the node on both the page the user leaves from and the page they come back to — `Do` on the first, `success`/`failure` on the second. Pointing `redirect` at the same page makes one node do both.",
-          "`success` → navigation, `error` → a Text node's `text`: the whole flow in three connections.",
+          "Put the node on both the page the user leaves from and the page they come back to — `Do` on the first, `done`/`failure` on the second. Pointing `redirect` at the same page makes one node do both.",
+          "`done` → navigation, `error` → a Text node's `text`: the whole flow in three connections.",
           "`signingIn` → a Group's `visible`: the return leg is a network round trip, so there is a real moment to cover."
         ],
         "antiPatterns": [
           "Wiring anything downstream of `Do` and expecting it to run — the page is gone.",
-          "Reading logged-in state from `success` alone; the User node's `authenticated` boolean is the state, and it also covers sessions restored on reload.",
+          "Reading logged-in state from `done` alone; the User node's `authenticated` boolean is the state, and it also covers sessions restored on reload.",
           "Hard-coding an app URL in `redirect` that is not on the backend's redirectAllowList — the refusal happens at the start of the flow, not the end."
         ],
         "relatedNodes": [
@@ -51789,6 +51899,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the account has been created and signed in"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -51809,17 +51941,6 @@
           },
           "isSignal": true,
           "description": "Fires when the account could not be created, after the reason has been reported on the error channel"
-        },
-        {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the account has been created and signed in"
         }
       ],
       "dynamicPorts": {
@@ -51835,11 +51956,11 @@
       "enrichment": {
         "typeName": "net.noodl.user.SignUp",
         "summary": "Creates a new user account on the cloud backend and logs it in, with inputs for custom user properties.",
-        "description": "Sign Up creates a user from the current `username`, `password` and optional `email` (string values), plus one input per custom property on the User class, when `signup` (Do, signal) is triggered. On success the new account is immediately logged in — the session is stored in the browser, every User node updates, their Logged In signal fires — and `success` (signal) fires. On failure (e.g. username taken) `error` (string value) is set and `failure` (signal) fires, and no account is created.",
+        "description": "Sign Up creates a user from the current `username`, `password` and optional `email` (string values), plus one input per custom property on the User class, when `signup` (Do, signal) is triggered. On success the new account is immediately logged in — the session is stored in the browser, every User node updates, their Logged In signal fires — and `done` (signal) fires. On failure (e.g. username taken) `error` (string value) is set and `failure` (signal) fires, and no account is created.",
         "whenToUse": "The action node behind a registration form. For signing in an existing user use Log In; for editing the signed-in user's properties later use Set User Properties.",
         "ports": {
           "signup": "Signal input (displayed 'Do'); performs the sign-up after pending input updates so all field values are current.",
-          "success": "Signal; fires once the account exists and the user is logged in — no separate Log In step is needed.",
+          "done": "Signal; fires once the account exists and the user is logged in — no separate Log In step is needed.",
           "failure": "Signal; fires when the backend rejects the sign-up. Show `error` to the user.",
           "error": "String value holding the backend's error message, e.g. an already-taken username."
         },
@@ -51848,11 +51969,11 @@
           "user-signup-and-profile"
         ],
         "patterns": [
-          "Text Inputs → `username`/`password`/`email`, Button `onClick` → `signup`, `success` → navigate into the app: the standard registration form.",
+          "Text Inputs → `username`/`password`/`email`, Button `onClick` → `signup`, `done` → navigate into the app: the standard registration form.",
           "Fill `prop-<name>` inputs at sign-up for properties every account must have, instead of a follow-up Set User Properties call."
         ],
         "antiPatterns": [
-          "Triggering Log In from `success` — sign-up already establishes the session."
+          "Triggering Log In from `done` — sign-up already establishes the session."
         ],
         "relatedNodes": [
           "net.noodl.user.LogIn",
@@ -51927,6 +52048,28 @@
           },
           "isSignal": true,
           "description": "Fires when a property of the signed-in user changes, including a change another node made"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Fetch finished and the outputs below are up to date"
         },
         {
           "name": "email",
@@ -52008,7 +52151,7 @@
       "enrichment": {
         "typeName": "net.noodl.user.User",
         "summary": "Reads the currently signed-in user: id, username, email, custom properties, and an authenticated boolean, kept live across session changes.",
-        "description": "User mirrors the current session's user. Its value outputs — `id`, `username`, `email` (strings) and one output per custom property on the User class — always reflect the signed-in user, and `authenticated` (boolean) is true exactly while a user is signed in. The node tracks the app-wide user service: it updates when Log In or Sign Up succeeds, when a stored session is restored, and when Log Out runs or the session is lost, so a single connection from `authenticated` can gate an entire logged-in UI. `changed` (signal) fires when the user's data changes. Triggering `fetch` (signal) re-reads the user from the server, firing `fetched` on completion or `failure` with `error` (string value) set. It also works inside cloud functions, where it reflects the calling user's session.",
+        "description": "User mirrors the current session's user. Its value outputs — `id`, `username`, `email` (strings) and one output per custom property on the User class — always reflect the signed-in user, and `authenticated` (boolean) is true exactly while a user is signed in. The node tracks the app-wide user service: it updates when Log In or Sign Up succeeds, when a stored session is restored, and when Log Out runs or the session is lost, so a single connection from `authenticated` can gate an entire logged-in UI. `changed` (signal) fires when the user's data changes. Triggering `fetch` (signal) re-reads the user from the server, firing `fetched` and then `done` on completion, or `failure` with `error` (string value) set; `completed` follows either way. `fetched` is the value-level announcement — the twin Record node fires it on binding too — and `done` is this invocation's outcome. It also works inside cloud functions, where it reflects the calling user's session.",
         "whenToUse": "The one node to read who is logged in and their properties, anywhere in the app. It performs no actions — pair it with Log In, Sign Up, Log Out and Set User Properties for those.",
         "ports": {
           "authenticated": "Boolean value; true while a user is signed in. The canonical driver for logged-in/logged-out UI, including sessions restored on page load.",
@@ -55341,7 +55484,7 @@
             },
             {
               "fromId": "upload",
-              "fromProperty": "success",
+              "fromProperty": "done",
               "toId": "create_attachment",
               "toProperty": "store"
             },
@@ -56123,7 +56266,7 @@
             },
             {
               "fromId": "upload",
-              "fromProperty": "success",
+              "fromProperty": "done",
               "toId": "signer",
               "toProperty": "sign"
             },
@@ -59544,7 +59687,7 @@
     {
       "id": "user-signup-and-profile",
       "title": "Sign up, then set profile properties",
-      "description": "Sign Up creates the account and starts a session (`success` fires once the user is signed up and logged in). Custom profile fields beyond username/email/password are written afterwards with Set User Properties, whose property inputs are generated from the user-class schema — here `displayName` is set from the same form, triggered by the signup succeeding. Chain the signals: signup `success` → set-properties `store`.",
+      "description": "Sign Up creates the account and starts a session (`done` fires once the user is signed up and logged in). Custom profile fields beyond username/email/password are written afterwards with Set User Properties, whose property inputs are generated from the user-class schema — here `displayName` is set from the same form, triggered by the signup succeeding. Chain the signals: signup `done` → set-properties `store`.",
       "demonstrates": [
         "net.noodl.user.SignUp",
         "net.noodl.user.SetUserProperties"
@@ -59661,7 +59804,7 @@
             },
             {
               "fromId": "do_signup",
-              "fromProperty": "success",
+              "fromProperty": "done",
               "toId": "set_profile",
               "toProperty": "store"
             }

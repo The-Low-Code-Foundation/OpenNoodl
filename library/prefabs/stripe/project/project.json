@@ -4023,7 +4023,7 @@
                     },
                     {
                         "fromId": "d1c8521e-9ce9-7e84-4540-d4a6443f45fe",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "dd81541b-1685-7738-29d4-c7f8cd0cad46",
                         "toProperty": "do"
                     },
@@ -4041,7 +4041,7 @@
                     },
                     {
                         "fromId": "d1c8521e-9ce9-7e84-4540-d4a6443f45fe",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "2eebd562-6ada-fb44-d40b-0d985c2b8537",
                         "toProperty": "Success"
                     },
@@ -4315,7 +4315,7 @@
                     },
                     {
                         "fromId": "035ed5b6-1ef1-f3a5-31ca-e06d1fc0ad71",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "388c0aff-3988-2862-8bf9-fa3112f11e2b",
                         "toProperty": "Success"
                     },
@@ -4345,7 +4345,7 @@
                     },
                     {
                         "fromId": "035ed5b6-1ef1-f3a5-31ca-e06d1fc0ad71",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "32d75794-88aa-8f26-56fa-92d37db59044",
                         "toProperty": "do"
                     },
@@ -4653,7 +4653,7 @@
                     },
                     {
                         "fromId": "0a8d76e8-0e00-c817-031a-23993604a660",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "e7b95eec-54c1-7905-ffff-319417ceac34",
                         "toProperty": "to-No"
                     },
@@ -4689,7 +4689,7 @@
                     },
                     {
                         "fromId": "b27e5f07-e847-aff0-44c2-4b21efcab1c2",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "c4124b9d-f65b-54d5-a57b-a921d3daaa79",
                         "toProperty": "Plan Renewed"
                     },
@@ -4707,7 +4707,7 @@
                     },
                     {
                         "fromId": "6c6e29a7-2e56-817e-f7e7-7950e0a8df8a",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "c4124b9d-f65b-54d5-a57b-a921d3daaa79",
                         "toProperty": "Plan Canceled"
                     },
@@ -4743,13 +4743,13 @@
                     },
                     {
                         "fromId": "b27e5f07-e847-aff0-44c2-4b21efcab1c2",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "0a8d76e8-0e00-c817-031a-23993604a660",
                         "toProperty": "call"
                     },
                     {
                         "fromId": "6c6e29a7-2e56-817e-f7e7-7950e0a8df8a",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "0a8d76e8-0e00-c817-031a-23993604a660",
                         "toProperty": "call"
                     },
@@ -5641,7 +5641,7 @@
                     },
                     {
                         "fromId": "e271c781-b97c-6b77-b7c2-98223fa888f7",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "11001c28-aa73-10bf-e78d-9a359465d14c",
                         "toProperty": "to-No"
                     },
@@ -5677,7 +5677,7 @@
                     },
                     {
                         "fromId": "f5869b4f-41d6-bfe4-41de-a5652780fb33",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "f8e54361-be7c-3198-b283-618b80723bfe",
                         "toProperty": "Plan Changed"
                     },

@@ -1,6 +1,7 @@
 'use strict';
 
-import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule, OutcomeToken } from '@noodl/types';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 
 import UserService from './userservice';
 
@@ -45,9 +46,11 @@ interface RequestMagicLinkInstance extends NodeInstance {
     email?: string;
     redirect?: string;
     error?: string;
+    /** ERG-001. Invocations of `Do` that have not reported yet — see `login.ts`. */
+    pendingSend?: OutcomeToken[];
   };
   sendScheduled?: boolean;
-  setError(err: string): void;
+  setError(err: string, tokens?: OutcomeToken[]): void;
   scheduleSend(): void;
 }
 
@@ -65,19 +68,19 @@ const RequestMagicLinkNodeDefinition: NodeDefinitionOptions = {
     if (this._internal.error) return [{ type: 'text', value: `Error: ${this._internal.error}` }];
   },
   outputs: {
-    success: {
-      description: 'Fires once the request has been accepted, which never means an account exists for that address',
-      type: 'signal',
-      displayName: 'Success',
-      group: 'Events'
-    },
-    failure: {
-      description:
-        'Fires when the request itself failed — no backend, no network, or rate limited — never because the address is unknown',
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events'
-    },
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4. `Success` renamed to `Done`, plus the universal `Completed`.
+    //
+    // ⚠️ **No `Unchanged`.** The endpoint is deliberately anti-enumerating and answers
+    // identically for a known and an unknown address (see the module note), so this node cannot
+    // tell the two apart — and inventing an `Unchanged` for "no such user" would hand back the
+    // account-existence oracle the backend removed.
+    ...outcomeOutputs({
+      done: 'Fires once the request has been accepted, which never means an account exists for that address',
+      failure:
+        'Fires when the request itself failed — no backend, no network, or rate limited — never because the address is unknown'
+    }),
     error: {
       description: 'Why the last request failed; empty until one does',
       type: 'string',
@@ -117,12 +120,15 @@ const RequestMagicLinkNodeDefinition: NodeDefinitionOptions = {
     }
   },
   methods: {
-    setError(this: RequestMagicLinkInstance, err: string) {
+    /** ERG-001 — the funnel now reports the outcome too. See `login.ts::setError`. */
+    setError(this: RequestMagicLinkInstance, err: string, tokens?: OutcomeToken[]) {
       this._internal.error = err;
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
 
-      this.raiseRuntimeError(REQUEST_MAGIC_LINK_ERROR_CODE, err);
+      reportOutcomes(this, tokens || [this.beginOutcome()], 'failure', {
+        code: REQUEST_MAGIC_LINK_ERROR_CODE,
+        message: err
+      });
     },
     clearWarnings(this: RequestMagicLinkInstance) {
       if (this.context.editorConnection) {
@@ -132,11 +138,18 @@ const RequestMagicLinkNodeDefinition: NodeDefinitionOptions = {
       }
     },
     scheduleSend(this: RequestMagicLinkInstance) {
+      // ERG-001. Minted before the coalescing guard — see `login.ts::scheduleLogIn`.
+      const pending = this._internal.pendingSend || (this._internal.pendingSend = []);
+      pending.push(this.beginOutcome());
+
       if (this.sendScheduled === true) return;
       this.sendScheduled = true;
 
       this.scheduleAfterInputsHaveUpdated(() => {
         this.sendScheduled = false;
+
+        const tokens = this._internal.pendingSend || [];
+        this._internal.pendingSend = [];
 
         UserService.instance.requestMagicLink({
           email: this._internal.email,
@@ -144,9 +157,10 @@ const RequestMagicLinkNodeDefinition: NodeDefinitionOptions = {
           success: () => {
             this._internal.error = undefined;
             this.flagOutputDirty('error');
-            this.sendSignalOnOutput('success');
+            // Last, after the value it clears.
+            reportOutcomes(this, tokens, 'done');
           },
-          error: (e) => this.setError(e)
+          error: (e) => this.setError(e, tokens)
         });
       });
     }

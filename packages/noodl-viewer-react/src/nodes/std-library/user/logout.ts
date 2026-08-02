@@ -1,6 +1,7 @@
 'use strict';
 
-import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type { NodeDefinitionOptions, NodeInstance, NodeModule, OutcomeToken } from '@noodl/types';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 
 import UserService from './userservice';
 
@@ -25,9 +26,11 @@ interface LogOutInstance extends NodeInstance {
   _internal: {
     /** Message from the last failed attempt. */
     error?: string;
+    /** ERG-001. Invocations of `Do` that have not reported yet — see `login.ts`. */
+    pendingLogOut?: OutcomeToken[];
   };
   logOutScheduled?: boolean;
-  setError(err: string): void;
+  setError(err: string, tokens?: OutcomeToken[]): void;
   scheduleLogOut(): void;
 }
 
@@ -38,18 +41,18 @@ const LogOutNodeDefinition: NodeDefinitionOptions = {
   category: 'Cloud Services',
   color: 'data',
   outputs: {
-    success: {
-      description: 'Fires once the session has been ended',
-      type: 'signal',
-      displayName: 'Success',
-      group: 'Events'
-    },
-    failure: {
-      description: 'Fires when the sign-out was refused, after the reason has been reported on the error channel',
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events'
-    },
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4. `Success` renamed to `Done`, plus the universal `Completed`.
+    //
+    // ⚠️ **No `Unchanged`**, and this one was measured rather than assumed: the tempting no-op is
+    // "signing out when nobody is signed in", but `ParseAuthAdapter.logOut` POSTs `/logout`
+    // unconditionally and only clears the session on the response. There is no local branch that
+    // could report `Unchanged` without changing what the node does.
+    ...outcomeOutputs({
+      done: 'Fires once the session has been ended',
+      failure: 'Fires when the sign-out was refused, after the reason has been reported on the error channel'
+    }),
     error: {
       description: 'Why the last sign-out failed; empty until one does',
       type: 'string',
@@ -73,12 +76,15 @@ const LogOutNodeDefinition: NodeDefinitionOptions = {
     }
   },
   methods: {
-    setError(this: LogOutInstance, err: string) {
+    /** ERG-001 — the funnel now reports the outcome too. See `login.ts::setError`. */
+    setError(this: LogOutInstance, err: string, tokens?: OutcomeToken[]) {
       this._internal.error = err;
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
 
-      this.raiseRuntimeError(LOG_OUT_ERROR_CODE, err);
+      reportOutcomes(this, tokens || [this.beginOutcome()], 'failure', {
+        code: LOG_OUT_ERROR_CODE,
+        message: err
+      });
     },
     clearWarnings(this: LogOutInstance) {
       if (this.context.editorConnection) {
@@ -88,18 +94,25 @@ const LogOutNodeDefinition: NodeDefinitionOptions = {
       }
     },
     scheduleLogOut(this: LogOutInstance) {
+      // ERG-001. Minted before the coalescing guard — see `login.ts::scheduleLogIn`.
+      const pending = this._internal.pendingLogOut || (this._internal.pendingLogOut = []);
+      pending.push(this.beginOutcome());
+
       if (this.logOutScheduled === true) return;
       this.logOutScheduled = true;
 
       this.scheduleAfterInputsHaveUpdated(() => {
         this.logOutScheduled = false;
 
+        const tokens = this._internal.pendingLogOut || [];
+        this._internal.pendingLogOut = [];
+
         UserService.instance.logOut({
           success: () => {
-            this.sendSignalOnOutput('success');
+            reportOutcomes(this, tokens, 'done');
           },
           error: (e) => {
-            this.setError(e);
+            this.setError(e, tokens);
           }
         });
       });

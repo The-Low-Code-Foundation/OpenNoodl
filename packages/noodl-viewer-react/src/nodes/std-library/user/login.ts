@@ -1,6 +1,7 @@
 'use strict';
 
-import type { NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type { NodeDefinitionOptions, NodeInstance, NodeModule, OutcomeToken } from '@noodl/types';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 
 import UserService from './userservice';
 
@@ -27,9 +28,17 @@ interface LogInInstance extends NodeInstance {
     password?: string;
     /** Message from the last failed attempt; drives both the `error` output and the warning. */
     error?: string;
+    /**
+     * ERG-001. Invocations of `Do` that have not reported yet.
+     *
+     * An array because `logInScheduled` coalesces two pulses in an update pass into one attempt,
+     * deliberately — and two invocations must still produce two outcomes.
+     * `foreach.tsx`'s `pendingRefreshOutcomes` is the same shape for the same reason.
+     */
+    pendingLogIn?: OutcomeToken[];
   };
   logInScheduled?: boolean;
-  setError(err: string): void;
+  setError(err: string, tokens?: OutcomeToken[]): void;
   scheduleLogIn(): void;
 }
 
@@ -40,18 +49,17 @@ const LoginNodeDefinition: NodeDefinitionOptions = {
   category: 'Cloud Services',
   color: 'data',
   outputs: {
-    success: {
-      description: 'Fires once the sign-in succeeded and a session has been stored',
-      type: 'signal',
-      displayName: 'Success',
-      group: 'Events'
-    },
-    failure: {
-      description: 'Fires when the sign-in was refused, after the reason has been reported on the error channel',
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events'
-    },
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4. `Success` renamed to `Done` — the family-wide wire name §0.2 Result 2 settled
+    // on — plus the universal `Completed`.
+    //
+    // ⚠️ **No `Unchanged`.** `UserService.logIn` reaches the backend unconditionally; there is no
+    // local "already signed in as this user" check to make a no-op out of.
+    ...outcomeOutputs({
+      done: 'Fires once the sign-in succeeded and a session has been stored',
+      failure: 'Fires when the sign-in was refused, after the reason has been reported on the error channel'
+    }),
     error: {
       description: 'Why the last sign-in failed; empty until one does',
       type: 'string',
@@ -91,12 +99,21 @@ const LoginNodeDefinition: NodeDefinitionOptions = {
     }
   },
   methods: {
-    setError(this: LogInInstance, err: string) {
+    /**
+     * ERG-001: the `failure` pulse and the raise both go through `reportOutcome`, so the outcome
+     * and its reason cannot drift apart and `Completed` follows automatically. `tokens` is
+     * optional because NDA-004's rows call this funnel directly — minting one here keeps that a
+     * real, complete failure rather than a branch where a reason reaches the channel with no
+     * outcome behind it.
+     */
+    setError(this: LogInInstance, err: string, tokens?: OutcomeToken[]) {
       this._internal.error = err;
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
 
-      this.raiseRuntimeError(LOG_IN_ERROR_CODE, err);
+      reportOutcomes(this, tokens || [this.beginOutcome()], 'failure', {
+        code: LOG_IN_ERROR_CODE,
+        message: err
+      });
     },
     clearWarnings(this: LogInInstance) {
       if (this.context.editorConnection) {
@@ -106,20 +123,31 @@ const LoginNodeDefinition: NodeDefinitionOptions = {
       }
     },
     scheduleLogIn(this: LogInInstance) {
+      // ERG-001. Minted *before* the coalescing guard, so the second `Do` of a pair still gets an
+      // outcome even though it does not get a second attempt. This is the only method the `Do`
+      // port reaches, and nothing else in this file mints a token.
+      const pending = this._internal.pendingLogIn || (this._internal.pendingLogIn = []);
+      pending.push(this.beginOutcome());
+
       if (this.logInScheduled === true) return;
       this.logInScheduled = true;
 
       this.scheduleAfterInputsHaveUpdated(() => {
         this.logInScheduled = false;
 
+        // Taken into a local before the request goes out, so a second `Do` arriving in flight
+        // owns its own batch rather than being settled by this one's answer.
+        const tokens = this._internal.pendingLogIn || [];
+        this._internal.pendingLogIn = [];
+
         UserService.instance.logIn({
           username: this._internal.username,
           password: this._internal.password,
           success: () => {
-            this.sendSignalOnOutput('success');
+            reportOutcomes(this, tokens, 'done');
           },
           error: (e) => {
-            this.setError(e);
+            this.setError(e, tokens);
           }
         });
       });

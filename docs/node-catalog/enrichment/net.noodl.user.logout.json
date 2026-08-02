@@ -1,16 +1,16 @@
 {
   "typeName": "net.noodl.user.LogOut",
   "summary": "Ends the current user session on the cloud backend and clears it from the browser.",
-  "description": "Log Out ends the current session when its `login` input (displayed 'Do', signal) is triggered: the backend session is revoked, the stored session is removed from the browser, and the app-wide user service switches to logged-out — updating every User node (`authenticated` becomes false) and firing their Logged Out signal. `success` (signal) fires when this completes; `failure` (signal) fires with `error` (string value) set if the request fails.",
-  "whenToUse": "The action behind a log-out button or menu item. To react to the session ending (e.g. navigate to the login page), listen on this node's `success` or the User node's Logged Out signal.",
+  "description": "Log Out ends the current session when its `login` input (displayed 'Do', signal) is triggered: the backend session is revoked, the stored session is removed from the browser, and the app-wide user service switches to logged-out — updating every User node (`authenticated` becomes false) and firing their Logged Out signal. `done` (signal) fires when this completes; `failure` (signal) fires with `error` (string value) set if the request fails.",
+  "whenToUse": "The action behind a log-out button or menu item. To react to the session ending (e.g. navigate to the login page), listen on this node's `done` or the User node's Logged Out signal.",
   "ports": {
     "login": "Signal input (displayed 'Do'); note the file-key name is `login` even though this node logs out.",
-    "success": "Signal; fires once the session has ended.",
+    "done": "Signal; fires once the session has ended.",
     "failure": "Signal; fires if the logout request fails. Read `error` for the message."
   },
   "examples": ["user-login-flow"],
   "patterns": [
-    "Button `onClick` → `login` (Do), `success` → navigate to the public/login page."
+    "Button `onClick` → `login` (Do), `done` → navigate to the public/login page."
   ],
   "relatedNodes": ["net.noodl.user.LogIn", "net.noodl.user.User"]
 }

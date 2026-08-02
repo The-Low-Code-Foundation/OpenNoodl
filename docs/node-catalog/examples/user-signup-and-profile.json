@@ -1,7 +1,7 @@
 {
   "id": "user-signup-and-profile",
   "title": "Sign up, then set profile properties",
-  "description": "Sign Up creates the account and starts a session (`success` fires once the user is signed up and logged in). Custom profile fields beyond username/email/password are written afterwards with Set User Properties, whose property inputs are generated from the user-class schema — here `displayName` is set from the same form, triggered by the signup succeeding. Chain the signals: signup `success` → set-properties `store`.",
+  "description": "Sign Up creates the account and starts a session (`done` fires once the user is signed up and logged in). Custom profile fields beyond username/email/password are written afterwards with Set User Properties, whose property inputs are generated from the user-class schema — here `displayName` is set from the same form, triggered by the signup succeeding. Chain the signals: signup `done` → set-properties `store`.",
   "demonstrates": ["net.noodl.user.SignUp", "net.noodl.user.SetUserProperties"],
   "components": [
     {
@@ -29,7 +29,7 @@
         { "fromId": "signup_btn", "fromProperty": "onClick", "toId": "do_signup", "toProperty": "signup" },
         { "fromId": "do_signup", "fromProperty": "error", "toId": "error_text", "toProperty": "text" },
         { "fromId": "name_input", "fromProperty": "onTextChanged", "toId": "set_profile", "toProperty": "displayName" },
-        { "fromId": "do_signup", "fromProperty": "success", "toId": "set_profile", "toProperty": "store" }
+        { "fromId": "do_signup", "fromProperty": "done", "toId": "set_profile", "toProperty": "store" }
       ]
     }
   ]

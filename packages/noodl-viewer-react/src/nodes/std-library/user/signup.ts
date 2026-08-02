@@ -6,8 +6,10 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 
 import UserService from './userservice';
 
@@ -37,9 +39,11 @@ interface SignUpInstance extends NodeInstance {
     userProperties: Record<string, unknown>;
     /** Message from the last failed attempt. */
     error?: string;
+    /** ERG-001. Invocations of `Do` that have not reported yet — see `login.ts`. */
+    pendingSignUp?: OutcomeToken[];
   };
   signUpScheduled?: boolean;
-  setError(err: string): void;
+  setError(err: string, tokens?: OutcomeToken[]): void;
   setUserProperty(name: string, value: unknown): void;
   scheduleSignUp(): void;
 }
@@ -68,19 +72,16 @@ const SignUpNodeDefinition: NodeDefinitionOptions = {
     internal.userProperties = {};
   },
   outputs: {
-    success: {
-      description: 'Fires once the account has been created and signed in',
-      type: 'signal',
-      displayName: 'Success',
-      group: 'Events'
-    },
-    failure: {
-      description:
-        'Fires when the account could not be created, after the reason has been reported on the error channel',
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events'
-    },
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4. `Success` renamed to `Done`, plus the universal `Completed`.
+    //
+    // ⚠️ **No `Unchanged`.** A sign-up either creates an account or is refused; an address that
+    // already has one is a backend refusal, not a post-condition that already held.
+    ...outcomeOutputs({
+      done: 'Fires once the account has been created and signed in',
+      failure: 'Fires when the account could not be created, after the reason has been reported on the error channel'
+    }),
     error: {
       description: 'Why the last sign-up failed; empty until one does',
       type: 'string',
@@ -129,12 +130,15 @@ const SignUpNodeDefinition: NodeDefinitionOptions = {
     }
   },
   methods: {
-    setError(this: SignUpInstance, err: string) {
+    /** ERG-001 — the funnel now reports the outcome too. See `login.ts::setError`. */
+    setError(this: SignUpInstance, err: string, tokens?: OutcomeToken[]) {
       this._internal.error = err;
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
 
-      this.raiseRuntimeError(SIGN_UP_ERROR_CODE, err);
+      reportOutcomes(this, tokens || [this.beginOutcome()], 'failure', {
+        code: SIGN_UP_ERROR_CODE,
+        message: err
+      });
     },
     clearWarnings(this: SignUpInstance) {
       if (this.context.editorConnection) {
@@ -146,11 +150,18 @@ const SignUpNodeDefinition: NodeDefinitionOptions = {
     scheduleSignUp(this: SignUpInstance) {
       const internal = this._internal;
 
+      // ERG-001. Minted before the coalescing guard — see `login.ts::scheduleLogIn`.
+      const pending = internal.pendingSignUp || (internal.pendingSignUp = []);
+      pending.push(this.beginOutcome());
+
       if (this.signUpScheduled === true) return;
       this.signUpScheduled = true;
 
       this.scheduleAfterInputsHaveUpdated(() => {
         this.signUpScheduled = false;
+
+        const tokens = internal.pendingSignUp || [];
+        internal.pendingSignUp = [];
 
         UserService.instance.signUp({
           username: this._internal.username,
@@ -158,10 +169,10 @@ const SignUpNodeDefinition: NodeDefinitionOptions = {
           email: this._internal.email,
           properties: internal.userProperties,
           success: () => {
-            this.sendSignalOnOutput('success');
+            reportOutcomes(this, tokens, 'done');
           },
           error: (e) => {
-            this.setError(e);
+            this.setError(e, tokens);
           }
         });
       });

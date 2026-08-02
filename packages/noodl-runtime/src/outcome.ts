@@ -14,10 +14,33 @@
  * each picked one.
  */
 
-import type { OutputPortDefinition } from '@noodl/types';
+import type { NodeInstance, OutcomeFailureOptions, OutcomeToken, OutputPortDefinition } from '@noodl/types';
 
 /** The three terminal outcomes. Exactly one per invocation. */
 export type NodeOutcome = 'done' | 'unchanged' | 'failure';
+
+/**
+ * End every invocation in a coalesced batch with the same outcome.
+ *
+ * ERG-001 §4. Several actions defer their work through a `scheduleXxx` guard that drops the
+ * *second* pulse in an update pass — which is deliberate and is how "set the fields, then press
+ * Do" batches. It must not drop the second pulse's **outcome**: two invocations are two
+ * invocations, and Rule 1 is about each of them.
+ *
+ * `foreach.tsx` established the shape (`pendingRefreshOutcomes` is an array for exactly this
+ * reason) and the Cloud Services family needed it eight more times, so it is written once here
+ * rather than eight times. The array is the caller's — drain it into a local before the async
+ * work starts, so a second `Do` arriving mid-flight owns its own batch rather than being settled
+ * by the first request's answer.
+ */
+export function reportOutcomes(
+  node: NodeInstance,
+  tokens: OutcomeToken[],
+  outcome: NodeOutcome,
+  options?: OutcomeFailureOptions
+): void {
+  for (const token of tokens) node.reportOutcome(token, outcome, options);
+}
 
 /** The universal completion signal, which every action emits after its outcome. */
 export const COMPLETED_PORT = 'completed';

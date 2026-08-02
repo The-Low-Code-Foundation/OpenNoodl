@@ -1,6 +1,7 @@
 'use strict';
 
-import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule, OutcomeToken } from '@noodl/types';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 
 import UserService, { OAuthReturnState } from './userservice';
 
@@ -48,9 +49,17 @@ interface SignInWithInstance extends NodeInstance {
     error?: string;
     notice?: string;
     signingIn: boolean;
+    /**
+     * ERG-001. The invocations awaiting an answer, from either of this node's two roles.
+     *
+     * One list rather than two, because at most one of the roles is live on a given page load:
+     * the launcher's token is minted and then the document is replaced, and the receiver's is
+     * minted on a page the launcher never ran on.
+     */
+    pendingSignIn?: OutcomeToken[];
   };
   signInScheduled?: boolean;
-  setError(err: string): void;
+  setError(err: string, tokens?: OutcomeToken[]): void;
   applyReturn(state: OAuthReturnState): void;
   scheduleSignIn(): void;
 }
@@ -83,18 +92,22 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
     if (this._internal.error) return [{ type: 'text', value: `Error: ${this._internal.error}` }];
   },
   outputs: {
-    success: {
-      description: 'Fires on the page the provider returned to, once the session has been established',
-      type: 'signal',
-      displayName: 'Success',
-      group: 'Events'
-    },
-    failure: {
-      description: 'Fires when the sign-in did not complete, after the reason has been reported on the error channel',
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events'
-    },
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4. `Success` renamed to `Done`, plus the universal `Completed`.
+    //
+    // ⚠️ **This is the one node in the family the contract's "one real exception" applies to.**
+    // `Do` hands over to the provider and `window.location.href` replaces the document, so on
+    // that path there is no downstream node left to observe a pulse and the node reports
+    // nothing. Its *refusals* are synchronous and do report, because on those paths nothing
+    // navigates. The outcome an author actually wants arrives on the **return leg**, on a later
+    // page load, and that is where `Done` comes from.
+    //
+    // ⚠️ **No `Unchanged`.** A sign-in either completes, is refused, or leaves the page.
+    ...outcomeOutputs({
+      done: 'Fires on the page the provider returned to, once the session has been established',
+      failure: 'Fires when the sign-in did not complete, after the reason has been reported on the error channel'
+    }),
     signingIn: {
       description: 'True while a sign-in started on an earlier page load is still being exchanged',
       type: 'boolean',
@@ -153,14 +166,17 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
     }
   },
   methods: {
-    setError(this: SignInWithInstance, err: string) {
+    /** ERG-001 — the funnel now reports the outcome too. See `login.ts::setError`. */
+    setError(this: SignInWithInstance, err: string, tokens?: OutcomeToken[]) {
       this._internal.error = err;
       this._internal.signingIn = false;
       this.flagOutputDirty('error');
       this.flagOutputDirty('signingIn');
-      this.sendSignalOnOutput('failure');
 
-      this.raiseRuntimeError(SIGN_IN_WITH_ERROR_CODE, err);
+      reportOutcomes(this, tokens || [this.beginOutcome()], 'failure', {
+        code: SIGN_IN_WITH_ERROR_CODE,
+        message: err
+      });
     },
     clearWarnings(this: SignInWithInstance) {
       if (this.context.editorConnection) {
@@ -169,6 +185,20 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
         this.context.editorConnection.clearWarning(component, this.id, 'user-signinwith-warning');
       }
     },
+    /**
+     * The receiver half — a sign-in resolving on a *later page load*, in a fresh graph.
+     *
+     * ⚠️ **This is the one place in the phase where something other than a port opens an
+     * invocation, and it is deliberate.** "Only the port mints" exists to stop setter and mount
+     * paths *duplicating* a port's outcome; here there is no port invocation in this graph to
+     * duplicate, because the `Do` that started this happened on a page that no longer exists.
+     * The return leg is the only place the answer can be known, so it is where the outcome comes
+     * from.
+     *
+     * ⚠️ `inProgress` is a **state**, not a terminal outcome: it sets `Signing In` and waits, so
+     * no token is minted for it. Minting one there would leave it open when the real answer
+     * arrived and the second report would raise `outcome/duplicate`.
+     */
     applyReturn(this: SignInWithInstance, state: OAuthReturnState) {
       if (state.inProgress) {
         this._internal.signingIn = true;
@@ -178,6 +208,8 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
       this._internal.signingIn = false;
       this.flagOutputDirty('signingIn');
 
+      const tokens = [this.beginOutcome()];
+
       if (state.succeeded) {
         // The notice is set when the backend's linking rule revoked an old
         // password (see BACKEND-AUTH.md). It is the one thing a sign-in can
@@ -186,12 +218,31 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
         this._internal.error = undefined;
         this.flagOutputDirty('notice');
         this.flagOutputDirty('error');
-        this.sendSignalOnOutput('success');
+        // Last, after the values it is about.
+        reportOutcomes(this, tokens, 'done');
         return;
       }
-      this.setError(state.error || 'Sign-in could not be completed.');
+      this.setError(state.error || 'Sign-in could not be completed.', tokens);
     },
+    /**
+     * The launcher half — hand over to the provider, which navigates the browser away.
+     *
+     * ⚠️ **An accepted handover reports nothing, and that is the contract's one real exception
+     * applied literally.** `signInWithProvider` sets `window.location.href`; the document is
+     * replaced, so there is no downstream node left to observe a `Done` or a `Completed`. The
+     * navigation slice deliberately kept `Done` on *its* navigating path, and the difference is
+     * worth naming: a `Navigate` in a nav bar outside the Router demonstrably survives, so a
+     * silent `Completed` there would have defeated Rule 2. Nothing survives this redirect.
+     *
+     * Both refusals — no backend configured, no provider set — are raised synchronously by the
+     * adapter *before* it touches `location`, so the token is still open for them and they do
+     * report. That is why `pendingSignIn` is left holding a token that is simply never settled
+     * on the success path: the page is gone before it could matter.
+     */
     scheduleSignIn(this: SignInWithInstance) {
+      const pending = this._internal.pendingSignIn || (this._internal.pendingSignIn = []);
+      pending.push(this.beginOutcome());
+
       if (this.signInScheduled === true) return;
       this.signInScheduled = true;
 
@@ -200,12 +251,15 @@ const SignInWithNodeDefinition: NodeDefinitionOptions = {
         this._internal.signingIn = true;
         this.flagOutputDirty('signingIn');
 
+        const tokens = this._internal.pendingSignIn || [];
+        this._internal.pendingSignIn = [];
+
         UserService.instance.signInWithProvider({
           provider: this._internal.provider,
           redirect: this._internal.redirect,
           // Only reached when the redirect never happens — no backend
           // configured, or no provider set on the node.
-          error: (message) => this.setError(message)
+          error: (message) => this.setError(message, tokens)
         });
       });
     }

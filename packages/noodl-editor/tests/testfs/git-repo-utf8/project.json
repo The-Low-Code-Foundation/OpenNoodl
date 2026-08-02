@@ -3106,7 +3106,7 @@
                     },
                     {
                         "fromId": "889708ce-d6f0-c997-5518-5f086301023b",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "879ac636-1763-a8c9-79fd-ac00f585ed8d",
                         "toProperty": "navigate"
                     },
@@ -7221,7 +7221,7 @@
                     },
                     {
                         "fromId": "8736e365-abd1-aa20-784b-5ae92c1d9841",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "981d3d9e-8e03-800b-1282-07b1e0eb0da3",
                         "toProperty": "do"
                     }
@@ -8059,7 +8059,7 @@
                     },
                     {
                         "fromId": "33dc8173-3432-13af-ca09-6090325c9e8b",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "3f681e59-aef1-5ecb-8ace-908c4d42fec0",
                         "toProperty": "fetch"
                     },
@@ -8101,7 +8101,7 @@
                     },
                     {
                         "fromId": "33dc8173-3432-13af-ca09-6090325c9e8b",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "9168e008-8e61-9c75-366b-97289da0c7f0",
                         "toProperty": "sendEvent"
                     }
@@ -14326,7 +14326,7 @@
                     },
                     {
                         "fromId": "5812b1f2-094c-ea7a-8ed9-61d14f28702a",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "c1222d32-f6d7-56b9-61b6-12ff2859742b",
                         "toProperty": "fetch"
                     },
@@ -21485,7 +21485,7 @@
                     },
                     {
                         "fromId": "b8ebea56-9aa9-b925-b6e3-e3622321ef3f",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "ff3c9b7d-6613-c1d4-8618-e27eb74618c8",
                         "toProperty": "to-Show"
                     },

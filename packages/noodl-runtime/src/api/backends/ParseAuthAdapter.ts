@@ -664,7 +664,25 @@ export class ParseAuthAdapter extends AuthEvents implements IAuthAdapter {
     }
   ): void {
     const _cu = this.getCurrentUser(handle);
-    if (_cu !== undefined) {
+    /**
+     * ⚠️ **ERG-001 §4: this `if` had no `else`, and that was a dead chain.**
+     *
+     * With nobody signed in, neither `success` nor `error` ran — so the `Set User Properties`
+     * node could not report anything and the graph simply stopped, with no diagnosis anywhere.
+     * That is the exact class the Outcome Contract exists to close ("a node that emits nothing
+     * is a dead chain with no diagnostic"), and the node's own `Do` description had written it
+     * down as intended behaviour.
+     *
+     * The sentence is `RestAuthAdapter.setUserProperties`'s, verbatim: the REST twin has always
+     * refused this path properly, and two wordings for one condition is what the Failure
+     * Contract calls noise. Strictly additive — no caller can regress on a path that used to
+     * call nothing at all.
+     */
+    if (_cu === undefined) {
+      options.error('Nobody is signed in.');
+      return;
+    }
+    {
       //make a shallow copy to feed through the serialiser, which will modify the object
       const propsToSave = this.serializeObject({ ...options.properties }, '_User');
 

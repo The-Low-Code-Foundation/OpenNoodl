@@ -123,7 +123,7 @@
         },
         {
           "fromId": "upload",
-          "fromProperty": "success",
+          "fromProperty": "done",
           "toId": "create_attachment",
           "toProperty": "store"
         },

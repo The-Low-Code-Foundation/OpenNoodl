@@ -8,9 +8,11 @@ import type {
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule,
+  OutcomeToken,
   RuntimeDiscoveredPort
 } from '@noodl/types';
 
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 import { isParseWireContext } from '../data/record-ports';
 import { sendSchemaPorts, staticPortNames } from '../data/schema-ports';
 import {
@@ -56,10 +58,16 @@ interface SetUserPropertiesNodeInstance extends NodeInstance {
     error?: string;
     /** The `Backend` picker's value. Absent and `_active_` both mean "the default". */
     backendId?: string;
+    /**
+     * ERG-001. Invocations of `Do` that have not reported yet — an array because
+     * `storeScheduled` coalesces two pulses in an update pass into one write, deliberately,
+     * and two invocations must still produce two outcomes.
+     */
+    pendingStore?: OutcomeToken[];
   };
   /** On the instance rather than in `_internal`, like String Format's `formatScheduled`. */
   storeScheduled?: boolean;
-  setError(err: string): void;
+  setError(err: string, tokens?: OutcomeToken[]): void;
   clearWarnings(): void;
   scheduleStore(): void;
   setUserProperty(name: string, value: unknown): void;
@@ -78,18 +86,18 @@ const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
   },
   getInspectInfo() {},
   outputs: {
-    success: {
-      type: 'signal',
-      displayName: 'Success',
-      group: 'Events',
-      description: 'Fires once the user record has been written'
-    },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description: 'Fires when the user record could not be written, after the reason has been reported on the error channel'
-    },
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4. `Success` renamed to `Done` — the family-wide wire name §0.2 Result 2 settled
+    // on — plus the universal `Completed`.
+    //
+    // ⚠️ **No `Unchanged`.** The node writes whatever the inputs hold and no adapter diffs the
+    // record first, so there is no post-condition that can already hold.
+    ...outcomeOutputs({
+      done: 'Fires once the user record has been written',
+      failure:
+        'Fires when the user record could not be written, after the reason has been reported on the error channel'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -104,7 +112,11 @@ const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
     store: {
       displayName: 'Do',
       group: 'Actions',
-      description: 'Writes the values below to the signed-in user; does nothing at all while nobody is signed in',
+      // ERG-001 §4: "does nothing at all while nobody is signed in" was accurate and was the
+      // contract's headline class — `ParseAuthAdapter.setUserProperties` called neither callback
+      // on that path, so the chain died with no diagnostic. It now refuses with a sentence, in
+      // `RestAuthAdapter`'s wording, and this description says so instead.
+      description: 'Writes the values below to the signed-in user, and fails when nobody is signed in',
       valueChangedToTrue: function (this: SetUserPropertiesNodeInstance) {
         this.scheduleStore();
       }
@@ -129,12 +141,21 @@ const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
     }
   },
   methods: {
-    setError: function (this: SetUserPropertiesNodeInstance, err: string) {
+    /**
+     * ERG-001: the `failure` pulse and the raise both go through `reportOutcome`, so the outcome
+     * and its reason cannot drift apart and `Completed` follows automatically. `tokens` is
+     * optional because NDA-004's rows call this funnel directly — minting one here keeps that a
+     * real, complete failure rather than a branch where a reason reaches the channel with no
+     * outcome behind it.
+     */
+    setError: function (this: SetUserPropertiesNodeInstance, err: string, tokens?: OutcomeToken[]) {
       this._internal.error = err;
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
 
-      this.raiseRuntimeError(SET_USER_PROPERTIES_ERROR_CODE, err);
+      reportOutcomes(this, tokens || [this.beginOutcome()], 'failure', {
+        code: SET_USER_PROPERTIES_ERROR_CODE,
+        message: err
+      });
     },
     clearWarnings(this: SetUserPropertiesNodeInstance) {
       if (this.context.editorConnection) {
@@ -146,11 +167,22 @@ const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
     scheduleStore: function (this: SetUserPropertiesNodeInstance) {
       const internal = this._internal;
 
+      // ERG-001. Minted before the coalescing guard, so the second `Do` of a pair still gets an
+      // outcome even though it does not get a second write. This is the only method the `Do`
+      // port reaches, and nothing else in this file mints a token.
+      const pending = internal.pendingStore || (internal.pendingStore = []);
+      pending.push(this.beginOutcome());
+
       if (this.storeScheduled === true) return;
       this.storeScheduled = true;
 
       this.scheduleAfterInputsHaveUpdated(() => {
         this.storeScheduled = false;
+
+        // Taken into a local before the write goes out, so a second `Do` arriving in flight
+        // owns its own batch rather than being settled by this one's answer.
+        const tokens = internal.pendingStore || [];
+        internal.pendingStore = [];
 
         const UserService = NoodlRuntime.Services.UserService;
         UserService.forScope(this.nodeScope.modelScope).setUserProperties({
@@ -159,12 +191,12 @@ const SetUserPropertiesNodeDefinition: NodeDefinitionOptions = {
           username: this._internal.username,
           properties: internal.userProperties,
           success: () => {
-            this.sendSignalOnOutput('success');
+            reportOutcomes(this, tokens, 'done');
           },
           // `UserService` always hands the error callback a string, never an Error —
           // every method unwraps the backend's `{ error, code }` first (NOTES §15.x).
           error: (e: string) => {
-            this.setError(e);
+            this.setError(e, tokens);
           }
         });
       });

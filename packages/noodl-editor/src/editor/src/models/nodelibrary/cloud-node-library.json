@@ -1051,6 +1051,20 @@
           "displayName": "Changed"
         },
         {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
           "name": "failure",
           "type": "signal",
           "plug": "output",
@@ -2338,11 +2352,18 @@
           "displayName": "TTL (Seconds)"
         },
         {
-          "name": "success",
+          "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Success"
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         },
         {
           "name": "failure",
@@ -3213,7 +3234,7 @@
           "plug": "input",
           "group": "Actions",
           "displayName": "Do",
-          "description": "Writes the values below to the signed-in user; does nothing at all while nobody is signed in"
+          "description": "Writes the values below to the signed-in user, and fails when nobody is signed in"
         },
         {
           "name": "email",
@@ -3232,11 +3253,18 @@
           "description": "New username for the signed-in user; leave blank to keep the current one"
         },
         {
-          "name": "success",
+          "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Success"
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         },
         {
           "name": "failure",
@@ -3305,6 +3333,20 @@
           "plug": "output",
           "group": "Events",
           "displayName": "Changed"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         },
         {
           "name": "failure",
