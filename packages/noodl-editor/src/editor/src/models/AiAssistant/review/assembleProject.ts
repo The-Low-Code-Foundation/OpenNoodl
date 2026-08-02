@@ -248,7 +248,12 @@ export function renderBackend(backend: BackendSummary | undefined): string {
       'must be written as a TODO for the human to confirm.'
     );
   } else if (backend.collections.length === 0) {
-    lines.push('', 'The backend reports no collections. This project stores nothing server-side.');
+    // Only reachable with nothing configured at all — a configured backend whose
+    // schema is unread is `schemaAvailable: false` above, never an empty list.
+    // With no backend there is no "backend" to report anything, so say that.
+    if (backend.cloud || backend.services.length > 0) {
+      lines.push('', 'The backend reports no collections. This project stores nothing server-side.');
+    }
   } else {
     lines.push('', `Collections (${backend.collections.length}), with their real fields:`);
     for (const collection of backend.collections) {
@@ -261,6 +266,11 @@ export function renderBackend(backend: BackendSummary | undefined): string {
       '',
       'These names and types are read from the live backend schema. Use them verbatim; do not invent fields.'
     );
+    // A schema that is available and *partial* has to say which part is missing,
+    // or "here are the collections" reads as "here are all of them".
+    if (backend.schemaNote) {
+      lines.push('', `Not everything could be read — ${backend.schemaNote}.`);
+    }
   }
 
   if (lines.length === 0) return 'This project has no backend configured.';
