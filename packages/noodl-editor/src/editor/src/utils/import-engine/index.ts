@@ -12,6 +12,12 @@
  *   plan(inventory, source, selection, target) → ImportPlan   (plan.ts, pure)
  *   apply(plan, target) → ImportResult     (apply.ts, I/O shell over applyModel.ts)
  *
+ * LIB-006 adds a fourth concern that rides the same three stages rather than
+ * forking them: every apply() assesses the source against the node catalog,
+ * marks what it could not convert, takes the one sanctioned mechanical
+ * conversion, and writes an import report into the target project. See
+ * `./legacy`.
+ *
  * LIB-004 shipped a `legacyAdapter` strangler so the old checkbox popups could
  * run on this engine unchanged. LIB-005 replaced those popups with
  * `views/ImportFlow`, which calls these three stages directly, and the adapter
@@ -28,5 +34,6 @@ export type { PortTypeLookup, BuildInventoryInput } from './inventory';
 export { plan } from './plan';
 export type { TargetProject, PlanOptions } from './plan';
 export { apply } from './apply';
+export * from './legacy';
 export { applyModelChanges } from './applyModel';
 export type { ImportSource, ImportTarget, PreparedComponent, ModelApplyResult } from './applyModel';

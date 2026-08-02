@@ -27,7 +27,15 @@
  */
 
 import type { ConnectionV2 } from '../../../schemas';
+// Pure ProjectDocs submodules only — the barrel would drag ProjectModel and the
+// platform filesystem into the headless measurement bundle.
+import { currentImportReport } from '../../../utils/import-engine/legacy/currentReport';
+import type { ImportReport } from '../../../utils/import-engine/legacy/types';
 import { formatDiagnosticLine } from '../../../validation';
+import { currentProjectDocs } from '../../ProjectDocs/currentDocs';
+import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
+import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
+import type { StyleTokenRecord } from '../../StyleTokensModel/TokenCategories';
 import { AiClient } from '../client';
 import type {
   AiChatRequest,
@@ -40,25 +48,19 @@ import type {
 } from '../client/types';
 import { findComponent } from '../explain/graph';
 import type { ExplainGraph } from '../explain/types';
-import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
-import type { StyleTokenRecord } from '../../StyleTokensModel/TokenCategories';
-// Pure ProjectDocs submodules only — the barrel would drag ProjectModel and the
-// platform filesystem into the headless measurement bundle.
-import { currentProjectDocs } from '../../ProjectDocs/currentDocs';
-import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
 import { buildCandidate, pathToLegacyName } from './candidate';
 import { AuthoringContextBuilder } from './ContextBuilder';
 import { PartialPayloadScanner } from './partial';
-import type { OpeningTurn } from './prompts/authoring';
+import { dispatchProjectDocTool, GET_PROJECT_DOC, projectDocToolLabel, projectDocTools } from './projectDocsTool';
 import {
   initialUserMessage,
   nudgeMessage,
   refineMessage,
   styleAdvisoryMessage,
   systemPrompt,
-  updateUserMessage
+  updateUserMessage,
+  type OpeningTurn
 } from './prompts/authoring';
-import { dispatchProjectDocTool, GET_PROJECT_DOC, projectDocToolLabel, projectDocTools } from './projectDocsTool';
 import { styleLintCandidate } from './styleLint';
 import {
   AUTHORING_TOOLS,
@@ -138,6 +140,14 @@ export interface AuthoringSessionOptions {
    * for standalone sessions, whose behaviour is unchanged byte for byte.
    */
   planContext?: string;
+  /**
+   * LIB-006: the open project's import report, so a session authoring against a
+   * legacy import knows what the importer could not convert. Defaults to
+   * whatever the installed provider holds (same seam as `projectDocs`), so the
+   * panel needs no wiring; pass `null` to author as if the project had never
+   * been imported — the control arm, and every headless spec that does not care.
+   */
+  importReport?: ImportReport | null;
 }
 
 const DEFAULT_MAX_TURNS = 12;
@@ -318,13 +328,16 @@ export class AuthoringSession {
     this.styleGuidance = options.styleGuidance ?? true;
     this.styleTokenRecords = options.styleTokenRecords;
     const projectDocs = options.projectDocs ?? currentProjectDocs();
+    // `null` means "deliberately without"; `undefined` means "use the project's".
+    const importReport = options.importReport === null ? undefined : options.importReport ?? currentImportReport();
     this.context = new AuthoringContextBuilder(
       graph,
       options.budget,
       undefined,
       options.styleVocabulary,
       projectDocs,
-      options.libraries
+      options.libraries,
+      importReport
     );
     this.docTools = projectDocTools(projectDocs);
     this.legacyName = pathToLegacyName(request.componentPath);
@@ -479,7 +492,8 @@ export class AuthoringSession {
         this.styleGuidance ? this.context.styleVocabulary() : undefined,
         this.promptDocs(),
         planBlock,
-        this.context.libraryOverview()
+        this.context.libraryOverview(),
+        this.context.importReport()
       );
     } else {
       opening = initialUserMessage(
@@ -489,7 +503,8 @@ export class AuthoringSession {
         this.styleGuidance ? this.context.styleVocabulary() : undefined,
         this.promptDocs(),
         planBlock,
-        this.context.libraryOverview()
+        this.context.libraryOverview(),
+        this.context.importReport()
       );
     }
     this.messages.push(

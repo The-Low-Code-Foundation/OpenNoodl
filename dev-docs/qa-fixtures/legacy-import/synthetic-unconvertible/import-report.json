@@ -1,0 +1,336 @@
+{
+  "reportFormatVersion": "1",
+  "generatedBy": "LIB-006",
+  "generatedAt": "2026-08-02T00:00:00.000Z",
+  "source": {
+    "dir": "<fixture>/synthetic-unconvertible",
+    "projectName": "Synthetic unconvertible fixture",
+    "projectVersion": "1"
+  },
+  "target": {},
+  "counts": {
+    "converted": 7,
+    "converted-with-changes": 3,
+    "placeholder": 4,
+    "dropped": 2
+  },
+  "coverage": {
+    "constructsAssessed": 16,
+    "findingsEmitted": 13,
+    "silentlyConverted": 3
+  },
+  "findings": [
+    {
+      "id": "node:/App:n-byob-query:noodl.byob.QueryData",
+      "kind": "node",
+      "outcome": "placeholder",
+      "reason": "type-removed",
+      "original": "noodl.byob.QueryData",
+      "message": "\"Query Data\" (`noodl.byob.QueryData`) was removed from NodeGX and nothing provides it. The node is kept exactly as authored so you can see what was there, but it will not run.",
+      "location": {
+        "component": "/App",
+        "nodeId": "n-byob-query",
+        "nodeLabel": "Fetch users"
+      },
+      "equivalents": [
+        "DbCollection2"
+      ],
+      "portChanges": [
+        {
+          "from": "records",
+          "to": "items"
+        },
+        {
+          "from": "fetch",
+          "to": "storageFetch"
+        },
+        {
+          "from": "create",
+          "to": "store"
+        },
+        {
+          "from": "update",
+          "to": "store"
+        },
+        {
+          "from": "delete",
+          "to": "store"
+        }
+      ],
+      "recommendation": "The BYOB family was retired when the backend contract converged (BCN-004/010). The replacement takes different port names, so an automatic rewrite would re-point wires onto ports that mean something else. Replace it with `DbCollection2` and re-point the wires listed above by hand."
+    },
+    {
+      "id": "node:/App:n-byob-create:noodl.byob.CreateRecord",
+      "kind": "node",
+      "outcome": "placeholder",
+      "reason": "type-removed",
+      "original": "noodl.byob.CreateRecord",
+      "message": "\"Create Record\" (`noodl.byob.CreateRecord`) was removed from NodeGX and nothing provides it. The node is kept exactly as authored so you can see what was there, but it will not run.",
+      "location": {
+        "component": "/App",
+        "nodeId": "n-byob-create",
+        "nodeLabel": "Add user"
+      },
+      "equivalents": [
+        "NewDbModelProperties"
+      ],
+      "portChanges": [
+        {
+          "from": "records",
+          "to": "items"
+        },
+        {
+          "from": "fetch",
+          "to": "storageFetch"
+        },
+        {
+          "from": "create",
+          "to": "store"
+        },
+        {
+          "from": "update",
+          "to": "store"
+        },
+        {
+          "from": "delete",
+          "to": "store"
+        },
+        {
+          "from": "success",
+          "to": "created"
+        }
+      ],
+      "recommendation": "The BYOB family was retired when the backend contract converged (BCN-004/010). The replacement takes different port names, so an automatic rewrite would re-point wires onto ports that mean something else. Replace it with `NewDbModelProperties` and re-point the wires listed above by hand."
+    },
+    {
+      "id": "node:/App:n-byob-subscribe:noodl.byob.SubscribeToChanges",
+      "kind": "node",
+      "outcome": "placeholder",
+      "reason": "type-removed",
+      "original": "noodl.byob.SubscribeToChanges",
+      "message": "\"Subscribe To Changes\" (`noodl.byob.SubscribeToChanges`) was removed from NodeGX and nothing provides it. The node is kept exactly as authored so you can see what was there, but it will not run.",
+      "location": {
+        "component": "/App",
+        "nodeId": "n-byob-subscribe",
+        "nodeLabel": "Watch users"
+      },
+      "equivalents": [],
+      "recommendation": "Realtime subscription stopped being a node in BCN-008; it is now a property of the Query Records node. There is no node to convert to — delete this one and rebuild the behaviour."
+    },
+    {
+      "id": "node:/App:n-rest-plain:REST2",
+      "kind": "node",
+      "outcome": "converted-with-changes",
+      "reason": "rest-to-http",
+      "original": "REST2",
+      "converted": "net.noodl.HTTP",
+      "message": "Converted from REST to HTTP Request. `method` has no HTTP Request equivalent and was not carried — check the request still does what you meant.",
+      "location": {
+        "component": "/App",
+        "nodeId": "n-rest-plain",
+        "nodeLabel": "Fetch weather"
+      },
+      "equivalents": [
+        "net.noodl.HTTP"
+      ],
+      "portChanges": [
+        {
+          "from": "resource",
+          "to": "url"
+        },
+        {
+          "from": "fetch",
+          "to": "fetch"
+        },
+        {
+          "from": "success",
+          "to": "success"
+        },
+        {
+          "from": "failure",
+          "to": "failure"
+        },
+        {
+          "from": "cancel",
+          "to": "cancel"
+        },
+        {
+          "from": "canceled",
+          "to": "canceled"
+        }
+      ],
+      "recommendation": "Set the method on the HTTP Request node, or add a header, to restore the `method` behaviour."
+    },
+    {
+      "id": "node:/App:n-rest-scripted:REST2",
+      "kind": "node",
+      "outcome": "converted",
+      "reason": "rest-has-scripts",
+      "original": "REST2",
+      "message": "This REST node carries a request or response script. It is left as a REST node — REST still runs — because rewriting it to HTTP Request would discard that code, and HTTP Request has nowhere to put it.",
+      "location": {
+        "component": "/App",
+        "nodeId": "n-rest-scripted",
+        "nodeLabel": "Signed request"
+      },
+      "equivalents": [
+        "net.noodl.HTTP",
+        "JavaScriptFunction"
+      ],
+      "recommendation": "To modernise by hand: an HTTP Request node for the call, and a Function node either side for what the scripts did."
+    },
+    {
+      "id": "node:/App:n-module-node:SomeModuleProvidedNode",
+      "kind": "node",
+      "outcome": "placeholder",
+      "reason": "type-unresolved",
+      "original": "SomeModuleProvidedNode",
+      "message": "`SomeModuleProvidedNode` resolves to no node type in NodeGX and no module is being imported that could provide it. The node is kept exactly as authored so you can see what was there, but it will not run.",
+      "location": {
+        "component": "/App",
+        "nodeId": "n-module-node",
+        "nodeLabel": "From a module we do not have"
+      },
+      "equivalents": [],
+      "recommendation": "If this came from a module, install the module and re-import. Otherwise delete the node and rebuild the behaviour with a built-in type."
+    },
+    {
+      "id": "user-code:/App:n-fn-legacy-react:findDOMNode",
+      "kind": "user-code",
+      "outcome": "converted",
+      "reason": "react19-user-code",
+      "original": "findDOMNode",
+      "message": "Code in this node uses findDOMNode, which the React 19 runtime removed. The code is carried across verbatim; it will fail at runtime if the project runs on React 19.",
+      "location": {
+        "component": "/App",
+        "nodeId": "n-fn-legacy-react",
+        "nodeLabel": "Measure row",
+        "parameter": "functionScript"
+      },
+      "equivalents": [],
+      "recommendation": "use a ref instead"
+    },
+    {
+      "id": "type:Label",
+      "kind": "node",
+      "outcome": "converted",
+      "reason": "type-deprecated",
+      "original": "Label",
+      "message": "`Label` is deprecated but still works, so it was imported unchanged. 1 instance. A current replacement exists.",
+      "occurrences": 1,
+      "sampleLocations": [
+        {
+          "component": "/App",
+          "nodeId": "n-label",
+          "nodeLabel": "Old label"
+        }
+      ],
+      "equivalents": [
+        "Text"
+      ],
+      "recommendation": "Optional. Replacing it with `Text` is a behaviour change nobody asked for — do it deliberately, with the diff in front of you, not as part of the import."
+    },
+    {
+      "id": "project-field:deviceSettings",
+      "kind": "project-field",
+      "outcome": "dropped",
+      "reason": "field-not-carried",
+      "original": "deviceSettings",
+      "message": "The project carried device settings. NodeGX does not read or write them, so they are lost on the first save.",
+      "location": {
+        "field": "deviceSettings"
+      },
+      "equivalents": [],
+      "recommendation": "Nothing in NodeGX consumes this field. If the settings mattered, re-express them as project settings or a viewport configuration; there is no automatic path."
+    },
+    {
+      "id": "project-field:thumbnailURI",
+      "kind": "project-field",
+      "outcome": "dropped",
+      "reason": "field-not-carried",
+      "original": "thumbnailURI",
+      "message": "The project carried an embedded thumbnail. NodeGX regenerates thumbnails from the running project, so the stored one is not carried.",
+      "location": {
+        "field": "thumbnailURI"
+      },
+      "equivalents": [],
+      "benign": true,
+      "recommendation": "No action needed — the launcher regenerates the thumbnail when the project first renders."
+    },
+    {
+      "id": "project-field:rootComponent",
+      "kind": "project-field",
+      "outcome": "converted-with-changes",
+      "reason": "root-component-to-node-id",
+      "original": "rootComponent",
+      "converted": "rootNodeId",
+      "message": "The project's home was recorded by component name (\"App\"). NodeGX records it by node id, so the field is rewritten on load.",
+      "location": {
+        "field": "rootComponent"
+      },
+      "equivalents": [],
+      "recommendation": "No action needed, unless the home page is wrong after the import."
+    },
+    {
+      "id": "project-field:version",
+      "kind": "project-field",
+      "outcome": "converted-with-changes",
+      "reason": "project-version-upgraded",
+      "original": "version 1",
+      "converted": "version 4",
+      "message": "The project was written in project format 1 and was upgraded to 4 on load.",
+      "location": {
+        "field": "version"
+      },
+      "equivalents": [],
+      "recommendation": "No action needed. The upgrade chain is well-trodden and runs on every open."
+    },
+    {
+      "id": "backend:cloudservices",
+      "kind": "backend",
+      "outcome": "converted",
+      "reason": "external-backend-unverified",
+      "original": "cloudservices",
+      "message": "The project points at an external backend (https://parse.example.invalid/parse). The configuration is carried across and still resolves, but nothing here can check that the backend answers or that its schema still matches.",
+      "location": {
+        "field": "metadata.cloudservices"
+      },
+      "equivalents": [],
+      "recommendation": "Open Backend Services after the import and confirm the endpoint. Every Record, Query and User node in the project depends on it."
+    }
+  ],
+  "verdict": {
+    "recommendation": "rebuild",
+    "fidelity": 0.625,
+    "nodeCount": 10,
+    "unconvertedCount": 6,
+    "reasons": [
+      "6 of 16 constructs (38%) could not be converted.",
+      "The imported set is 10 nodes.",
+      "Both thresholds are met: at or under 150 nodes, and at or over 25% unconverted."
+    ],
+    "message": "This project is small (10 nodes) and 38% of it did not convert. Rebuilding it in NodeGX will almost certainly cost you less than repairing this import. The entries below tell you what the project did, which is the part worth keeping — treat them as a specification to rebuild from rather than a defect list to work through."
+  },
+  "handoff": {
+    "repairable": [
+      "node:/App:n-byob-query:noodl.byob.QueryData",
+      "node:/App:n-byob-create:noodl.byob.CreateRecord"
+    ],
+    "unrepairable": [
+      "node:/App:n-byob-subscribe:noodl.byob.SubscribeToChanges",
+      "node:/App:n-module-node:SomeModuleProvidedNode",
+      "project-field:deviceSettings"
+    ],
+    "catalogTypes": [
+      "DbCollection2",
+      "NewDbModelProperties"
+    ],
+    "instructions": [
+      "Every entry with outcome `placeholder` is a node still present in the project, with its original type name, parameters and wiring intact. Nothing was dropped; you do not need the source project to know what was there.",
+      "Look each `equivalents` type up in the node catalog (SUB-004/005) before proposing a replacement — the ports differ between a legacy node and its replacement more often than not, and `portChanges` lists the ones we know about.",
+      "Propose repairs through the authoring loop (AIX-002) as a whole-component candidate. It arrives as a reviewable diff against the live component; the user accepts or rejects it. Do not edit nodes in place.",
+      "The semantic validator (SUB-006) will reject a candidate that leaves a placeholder unresolved or wires a port that does not exist. Run it before submitting; its diagnostics are the fastest way to find a wrong port name.",
+      "When `verdict.recommendation` is `rebuild`, say so to the user before offering repairs. A specification to rebuild from is a better deliverable than twenty partial fixes, and the entries below are that specification."
+    ]
+  }
+}
