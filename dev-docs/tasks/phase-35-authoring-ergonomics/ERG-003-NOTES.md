@@ -199,9 +199,10 @@ still owed. What was measured:
 | **The `{ }` popout, sizing and placement** | ✅ Opens as a centred panel titled with the port name and its type badge (`scriptInputs` / `proplist`), Easy·Advanced toggle, Save·Close. Legible at the default size; nothing clipped |
 | **The `fa fa-code` icon** | ✅ Renders as a proper `</>` glyph on every list section. **Not** hit by phase 24's Material-icons-as-text bug |
 | **Ids visible in the JSON view** | ✅ Confirmed — `id: "aa11"` etc. are shown in both Easy and Advanced, which is what makes a code-mode reorder safe rather than destructive (D2) |
-| Row 3 — `Global Store.initialState` JS-literal recovery | ❌ still owed |
-| Row 4 — `Repeater.items` binding chip | ❌ still owed |
-| C3 legibility at 20+ entries, C4 undo/redo | ❌ still owed |
+| **Row 3 — `Global Store.initialState` JS-literal recovery** | ✅ **Passes.** See below |
+| **Row 4 — `Repeater.items` binding chip** | ✅ **Passes.** See below |
+| **C4 — undo/redo** | ✅ **Passes** through the real commit path. See below |
+| **C3 — legibility at 20+ entries** | ⚠️ **Measured, and it is poor.** 11% of the content visible. See below |
 
 ⚠️ **A trap for whoever drives these next, which cost this session two restarts.** The per-entry
 **Type dropdowns did not exist at first**, and it looked exactly like a defect in this task. It is
@@ -212,6 +213,102 @@ mounts a viewer, so nothing ever announces them, and the property panel is empty
 parameters sit correctly on the node. Set `rootNodeId` in `project.json` to a visual node in `App`
 before concluding anything about a dynamic port. **This is the same `setup()` blind spot ERG-005's
 §0 warns about** — measure it live or not at all.
+
+### C1 — the four remaining rows, driven 2026-08-02
+
+Driven on a purpose-built fixture, `dev-docs/qa-fixtures/generate-erg003.py` → `erg003-qa`, which
+carries one node per row **plus a control for each**, because two of these rows are only meaningful
+against a control: *"the hint appears"* says nothing until *"the hint does not always appear"* has
+been shown.
+
+#### ✅ Row 3 — `Global Store.initialState`, a JavaScript literal
+
+Stored on disk as `{ Authorization: 'Bearer x', retries: 3 }` — unquoted key, single quotes, **not
+valid JSON** — and opened cold, which is the reopen case the row asks for.
+
+- The row reads **"2 properties"**. **The value is not blanked.**
+- The popout carries the hint, verbatim: *"This was stored as a JavaScript literal. It is shown as
+  JSON; saving will store the JSON form."* — in an amber-bordered box above the editor.
+- Easy mode recovered both properties with the right types: `Authorization : STRING "Bearer x"`,
+  `retries : NUMBER 3`.
+- **The control settles it.** `GS json`, holding the same data as canonical JSON, shows **no hint**
+  and the same "2 properties". The hint is specific, not decoration.
+- The popout is centred, titled with the port name and a `object` type badge, nothing clipped, and
+  the `fa fa-code` glyph renders as a proper `</>`.
+
+⚠️ **One finding, not a failure of the row: the hint lives only in the popout.** The property-panel
+row says "2 properties" and nothing else, identically to the canonical-JSON control. An author who
+never opens `{ }` has no way to know the stored value is a JS literal that a future Save will
+rewrite. The warning is attached to the place where you are already about to find out.
+
+#### ✅ Row 4 — `Repeater.items`, the binding chip
+
+- **Wired** (`Array.items` → `Rep bound.items`): the row is a chip reading
+  **"Bound to `The Array` · `Items`"**, naming the source **node and port**, with a link glyph and
+  no Edit button. The stale local value the node still carries in `parameters.items` is **not**
+  offered. Criterion 5 met.
+- **Unwired** (`Rep local`, 3 entries): the row reads **"3 items"** with an **Edit** button, which
+  opens the shared editor.
+
+#### ✅ C4 — undo/redo through the new commit path
+
+Driven the way an author does it — open `{ }`, click the `✕` on item `[2]` in the Easy tree, **Save**
+— then undo and redo, reading the model and the rendered row **on separate ticks** after each:
+
+| Step | model | row |
+|---|---|---|
+| baseline | 3 items | `3 items` |
+| Save (item deleted through the UI) | 2 items | `2 items` |
+| **undo** | 3 items | `3 items` |
+| **redo** | 2 items | `2 items` |
+
+The row re-reads the model on both. C4's expectation — that this is *better* than the old
+`StringListType`, which never re-read — holds.
+
+⚠️ **A probe trap that made this look broken, and cost a detour.** Calling
+`node.setParameter('items', …, {undo:true})` **directly** changes the model and does **not** re-render
+the row; only the popout's own Save path and undo/redo do. A first pass driven that way read as a
+one-step lag and looked exactly like a defect. **Drive the UI.** (And read the row by finding its
+label with a `TreeWalker` — the panel label is a bare text node, so `querySelector` cannot reach it,
+and a regex over `innerText` is the positional reading ERG-004 §7.5 already warned about.)
+
+**One observation, not a defect.** Save rewrites the stored string **pretty-printed** —
+`[\n{\n"n":1\n},\n{\n"n":2\n}\n]` where the fixture wrote `[{"n":1},{"n":2},{"n":3}]`. The value is
+identical; the storage form is not. Worth knowing because it lands in `project.json` as diff noise
+on any list an author opens and saves without changing anything.
+
+#### ⚠️ C3 — Easy mode at 24 entries is not legible, and the reason is structural
+
+Measured on a `Function` with 24 `scriptInputs`, the case C3 named (*"a Cloud Function `params` list
+can be long"*):
+
+| | |
+|---|---|
+| tree viewport | **269 px** |
+| tree content | **2456 px** |
+| **visible** | **11%** — about **2.6 of 24 entries** |
+| per entry | ~102 px |
+| horizontal | 489 px content in a 484 px box — it overflows sideways too |
+
+**The cost is structural, not cosmetic.** Every proplist entry renders as *three* rows:
+
+```
+[0]  OBJECT  (2 properties)  + Add Property  ✕
+     id    : STRING  "l00"   ✎ ✕
+     label : STRING  "id"    ✎ ✕
+```
+
+— and the `id` row is machine-generated noise the author never edits. D2 is right that ids must be
+**visible** for a code-mode reorder to be safe, but that argument is about **Advanced** mode. In
+Easy mode the id triples the height of every row to show a value nobody types.
+
+⚠️ **The property panel behind it is more legible than the editor meant to improve on it** — it
+renders the same 24 entries as label + Type dropdown, two rows each, with the ids not shown at all.
+
+This is a real ergonomics gap and it is **not fixed here**; it is C3 answered rather than C3 closed.
+The cheapest shape for a fix is an Easy-mode summary row per proplist entry (the label, its type,
+and the id only on demand), which would take a 24-entry list from ~2456 px to roughly a third of
+that. **Unowned.**
 
 ### C1 (original) — **Criterion 7: live QA. NOT MET. Not attempted.**
 
