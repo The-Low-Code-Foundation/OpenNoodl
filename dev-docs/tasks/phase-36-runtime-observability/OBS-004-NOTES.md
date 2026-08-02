@@ -181,6 +181,26 @@ Neither would have shown up in this task's own tests; both are real today.
 - **Buffer scale is still untested.** Unchanged from OBS-001: 250k events with a 200-char preview
   cap, never run at that size.
 
+## A pre-existing failure found while running the suites, and not fixed here
+
+`packages/noodl-mcp` — **`tools.test.ts › create_component validates, writes and updates the
+registry` fails, and did before this task.** It is unrelated to OBS-004 (nothing here touches the
+validator, the catalog or the project format) and unrelated to phase 35's catalog rewrites.
+
+The cause, established rather than guessed:
+
+- The untouched fixture validates clean — 0 errors, 10 nodes.
+- The component the test creates validates clean at creation — 0 errors, 5 nodes.
+- The whole-project validation afterwards reports **3 × `duplicate-node-id`**: the new component
+  uses the ids `page`, `layout` and `nav`, and `/Pages/Home` in the fixture already has all three.
+
+So the test fixture reuses node ids across components, and `duplicateNodeId.ts` — added by
+`7fd3e053` (SUB-012) — now flags that as an error. Either the rule's severity is wrong for
+cross-component reuse, or the fixture needs distinct ids; that is a SUB-012 judgement, not one to
+make from here.
+
+Everything else is green: 93 editor jest specs, 753 viewer-react, 121 of 122 noodl-mcp.
+
 ## Traps for the next session
 
 - ⚠️ **The relay token changes every editor launch.** Anything holding one across a restart —

@@ -64,6 +64,11 @@ automation at all.
   jest and where pure code belongs.
 - The editor takes a **single-instance lock**. If another session is driving it, never run
   `dev:stop` — it kills by checkout and takes their run down too.
+- ⚠️ **`noodl-mcp`'s `tools.test.ts › create_component …` already fails, and is nobody's fallout.**
+  The fixture reuses the node ids `page`/`layout`/`nav` across components and `duplicateNodeId.ts`
+  (SUB-012, `7fd3e053`) flags that as an error. Diagnosed in [OBS-004-NOTES.md](./OBS-004-NOTES.md);
+  do not attribute it to your change, and do not "fix" it without deciding whether the rule or the
+  fixture is wrong.
 
 ---
 
