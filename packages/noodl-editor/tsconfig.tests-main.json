@@ -10,5 +10,7 @@
     "noEmit": true,
     "module": "CommonJS"
   },
-  "include": ["src/main", "tests-main"]
+  // `utils/provenance` is renderer-side but import-free by design (OBS-002); it is
+  // reached from tests-unit/ and pulls none of the renderer in with it.
+  "include": ["src/main", "tests-main", "tests-unit", "src/editor/src/utils/provenance"]
 }
