@@ -28,7 +28,9 @@
       "@noodl-constants/*": ["./packages/noodl-editor/src/editor/src/constants/*"],
       "@noodl-contexts/*": ["./packages/noodl-editor/src/editor/src/contexts/*"],
       "@noodl-types/*": ["./packages/noodl-editor/src/editor/src/types/*"],
-      "@noodl-store/*": ["./packages/noodl-editor/src/editor/src/store/*"]
+      "@noodl-store/*": ["./packages/noodl-editor/src/editor/src/store/*"],
+      "@noodl-versioning": ["./packages/noodl-editor/src/editor/src/versioning/index.ts"],
+      "@noodl-versioning/*": ["./packages/noodl-editor/src/editor/src/versioning/*"]
     }
   },
   "include": [
