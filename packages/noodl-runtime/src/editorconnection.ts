@@ -94,6 +94,8 @@ interface EditorConnection extends RuntimeEditorConnection, EventSender {
   sendInspectId(id: string): void;
   sendSelectComponent(componentName: string): void;
   sendPulsingConnections(connectionMap: Record<string, { connections: unknown[] }>): void;
+  sendTraceDictionary(dictionary: unknown): void;
+  sendTraceEvents(events: unknown[]): void;
   sendDynamicPorts(id: string, ports: RuntimeDiscoveredPort[], options?: SendDynamicPortsOptions): void;
   sendNodeSubLabel(nodeId: string, subLabel: string | undefined): void;
   clearWarnings(componentName: string, nodeId: string): void;
@@ -208,6 +210,19 @@ EditorConnection.prototype.connect = function (this: EditorConnection, address) 
       if (self.isRunningLocally()) {
         content = JSON.parse(message.content);
         self.emit('debuggingEnabledChanged', content.enabled);
+      }
+    } else if (message.cmd === 'traceEnabled') {
+      // OBS-001. Wired exactly like `debuggingEnabled` above, including the `isRunningLocally`
+      // gate: the trace captures every value in the app, so it must never be switchable on a
+      // deployed runtime by anything that can reach the socket.
+      if (self.isRunningLocally()) {
+        content = JSON.parse(message.content);
+        self.emit('traceEnabledChanged', content.enabled);
+      }
+    } else if (message.cmd === 'getTraceEvents') {
+      if (self.isRunningLocally()) {
+        content = JSON.parse(message.content);
+        await self.emit('getTraceEvents', { clientId: content.clientId, afterSeq: content.afterSeq });
       }
     } else if (message.cmd === 'getConnectionValue') {
       if (self.isRunningLocally()) {
@@ -368,6 +383,32 @@ EditorConnection.prototype.sendConnectionValue = function (this: EditorConnectio
     cmd: 'connectionValue',
     type: 'viewer',
     content: { connectionId, value }
+  });
+};
+
+/**
+ * The session dictionary (OBS-001): ids to names, types, components, and the topology.
+ * Sent once when tracing starts and again whenever the graph is replaced.
+ */
+EditorConnection.prototype.sendTraceDictionary = function (this: EditorConnection, dictionary) {
+  this.send({
+    cmd: 'traceDictionary',
+    type: 'viewer',
+    content: JSON.stringify(dictionary)
+  });
+};
+
+/**
+ * A batch of trace events, in the nested wire shape.
+ *
+ * Batched by the caller rather than sent per event: `send` already coalesces on a 200ms timer
+ * and chunks at 50 messages, and one event per message would defeat both.
+ */
+EditorConnection.prototype.sendTraceEvents = function (this: EditorConnection, events) {
+  this.send({
+    cmd: 'traceEvents',
+    type: 'viewer',
+    content: JSON.stringify({ events })
   });
 };
 

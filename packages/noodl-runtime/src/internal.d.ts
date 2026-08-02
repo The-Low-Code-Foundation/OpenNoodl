@@ -44,6 +44,9 @@ export interface RuntimeEditorConnection extends EditorConnectionLike {
   sendConnectionValue(connectionId: string, value: unknown): void;
   sendPulsingConnections(connections: unknown): void;
   sendDebugInspectorValues(values: unknown[]): void;
+  /** OBS-001. See `tracebuffer.ts`. */
+  sendTraceDictionary(dictionary: unknown): void;
+  sendTraceEvents(events: unknown[]): void;
 }
 
 /**
@@ -76,6 +79,23 @@ export interface RuntimeNodeContext {
   updateDirtyNodes(): void;
   connectionSentValue(sourcePort: RuntimeOutputProperty, value: unknown): void;
   connectionSentSignal(sourcePort: RuntimeOutputProperty): void;
+
+  /**
+   * OBS-001. Read on the propagation hot path before anything else happens — when this is
+   * false the trace costs one boolean per send and allocates nothing. See `tracebuffer.ts`.
+   */
+  traceEnabled: boolean;
+  /** The `seq` whose delivery is being processed, or 0 at a root. Set by `Node.update`. */
+  _currentCause: number;
+  /** Records one edge crossing and returns its `seq`, or 0 when not tracing. */
+  traceEdgeSend(
+    fromNode: string,
+    fromPort: string,
+    toNode: string,
+    toPort: string,
+    value: unknown,
+    kind: 'value' | 'signal'
+  ): number;
   isWarningTypeEnabled(warningType: string): boolean;
   getDefaultValueForInput(nodeType: string, inputName: string): unknown;
 
@@ -174,6 +194,8 @@ export interface RuntimeNode extends NodeInstance {
   _outputList: RuntimeOutputProperty[];
   _isUpdating: boolean;
   _inputValuesQueue: Record<string, unknown[]>;
+  /** OBS-001: the `seq` that queued each entry of `_inputValuesQueue`, same order. */
+  _inputCauseQueue: Record<string, number[]>;
   _afterInputsHaveUpdatedCallbacks: Array<(this: RuntimeNode) => void>;
   _signalsSentThisUpdate: Record<string, boolean>;
   _deleted: boolean;
@@ -225,8 +247,9 @@ export interface RuntimeNode extends NodeInstance {
   _evaluateExpressionParameter(paramValue: unknown, portName: string): unknown;
   _updateDependencies(): void;
   _performDirtyUpdate(): void;
-  _setValueFromConnection(inputName: string, value: unknown, sourceType?: unknown): void;
-  _setPulseFromConnection(inputName: string): void;
+  /** `causeSeq` is OBS-001's trace id for the edge that carried this value; omitted when not tracing. */
+  _setValueFromConnection(inputName: string, value: unknown, sourceType?: unknown, causeSeq?: number): void;
+  _setPulseFromConnection(inputName: string, causeSeq?: number): void;
   _hasInputBeenSetFromAConnection(inputName: string): boolean;
   _onNodeDeleted(): void;
   _onNodeModelParameterUpdated(event: NodeModelParameterUpdatedEvent): void;

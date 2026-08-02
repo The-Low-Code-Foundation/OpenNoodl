@@ -80,6 +80,8 @@ const Node = function Node(this: RuntimeNode, context: RuntimeNodeContext, id: s
   this._outputList = [];
   this._isUpdating = false;
   this._inputValuesQueue = {};
+  /** OBS-001: shifted in lockstep with `_inputValuesQueue`, populated only while tracing. */
+  this._inputCauseQueue = {};
   this._afterInputsHaveUpdatedCallbacks = [];
 
   this._internal = {};
@@ -544,6 +546,10 @@ Node.prototype.update = function () {
   this._isUpdating = true;
   const maxUpdateIterations = 100;
 
+  // OBS-001: resolved once per update rather than per queue entry. Undefined — the only case
+  // when nobody is tracing — is what makes the drain loop below cost nothing.
+  const tracingContext = this.context && this.context.traceEnabled === true ? this.context : undefined;
+
   try {
     while (this._dirty && !this._cyclicLoop) {
       this._updateDependencies();
@@ -563,15 +569,31 @@ Node.prototype.update = function () {
           const queue = this._inputValuesQueue[inputName];
           if (queue.length > 0) {
             const queued = queue.shift();
-            if (queued === SIGNAL_PULSE) {
-              // Both halves in the same pass: the rising edge is the event, and the
-              // falling edge only rearms the detector. Splitting them across passes is
-              // what used to desynchronise a signal from the value it pairs with.
-              this.setInputValue(inputName, true);
-              this.setInputValue(inputName, false);
-            } else {
-              this.setInputValue(inputName, queued);
+
+            // OBS-001: for the duration of this input's processing, the event that delivered
+            // it *is* the cause of anything this node sends. Restored afterwards rather than
+            // zeroed, because a node updating inside another node's update (a component
+            // instance, an after-input callback) must not erase its caller's cause.
+            const causeQueue = tracingContext ? this._inputCauseQueue[inputName] : undefined;
+            const previousCause = tracingContext ? tracingContext._currentCause : 0;
+            if (tracingContext) {
+              tracingContext._currentCause = causeQueue && causeQueue.length > 0 ? causeQueue.shift() : 0;
             }
+
+            try {
+              if (queued === SIGNAL_PULSE) {
+                // Both halves in the same pass: the rising edge is the event, and the
+                // falling edge only rearms the detector. Splitting them across passes is
+                // what used to desynchronise a signal from the value it pairs with.
+                this.setInputValue(inputName, true);
+                this.setInputValue(inputName, false);
+              } else {
+                this.setInputValue(inputName, queued);
+              }
+            } finally {
+              if (tracingContext) tracingContext._currentCause = previousCause;
+            }
+
             if (queue.length > 0) {
               hasMoreInputs = true;
             }
@@ -831,7 +853,7 @@ Node.prototype.reportOutcome = function (token, outcome, options) {
  * plain object wired to `Id` from a `*` output (NDA-012 C3). Both are cases the typecast
  * table never claimed. The wording is worth amending to match.
  */
-Node.prototype._setValueFromConnection = function (inputName, value, sourceType) {
+Node.prototype._setValueFromConnection = function (inputName, value, sourceType, causeSeq) {
   const sourceTypeName =
     typeof sourceType === 'string' ? sourceType : sourceType && (sourceType as { name?: string }).name;
 
@@ -867,7 +889,7 @@ Node.prototype._setValueFromConnection = function (inputName, value, sourceType)
   }
 
   this._valuesFromConnections[inputName] = value;
-  this.queueInput(inputName, value);
+  this.queueInput(inputName, value, causeSeq);
 };
 
 /**
@@ -876,18 +898,28 @@ Node.prototype._setValueFromConnection = function (inputName, value, sourceType)
  * The port settles at `false`, exactly as it did when the pulse was two separate sends,
  * so anything reading `_valuesFromConnections` sees what it always saw.
  */
-Node.prototype._setPulseFromConnection = function (inputName) {
+Node.prototype._setPulseFromConnection = function (inputName, causeSeq) {
   this._valuesFromConnections[inputName] = false;
-  this.queueInput(inputName, SIGNAL_PULSE);
+  this.queueInput(inputName, SIGNAL_PULSE, causeSeq);
 };
 
 Node.prototype._hasInputBeenSetFromAConnection = function (inputName) {
   return this._valuesFromConnections.hasOwnProperty(inputName);
 };
 
-Node.prototype.queueInput = function (inputName, value) {
+Node.prototype.queueInput = function (inputName, value, causeSeq) {
   if (!this._inputValuesQueue[inputName]) {
     this._inputValuesQueue[inputName] = [];
+  }
+
+  // OBS-001. A parallel queue rather than a wrapper around `value`: the consolidation rules
+  // below inspect queued values directly (`=== true`, `instanceof Object`, `.unit`), and every
+  // node in the library reads what comes out of this queue. Boxing the value would change what
+  // all of them see. The parallel queue is maintained in lockstep and only when tracing is on,
+  // so an untraced app pays nothing.
+  const tracing = causeSeq !== undefined && this.context !== undefined && this.context.traceEnabled === true;
+  if (tracing && !this._inputCauseQueue[inputName]) {
+    this._inputCauseQueue[inputName] = [];
   }
 
   //when values are queued during the very first update, make the last value overwrite previous ones
@@ -916,10 +948,12 @@ Node.prototype.queueInput = function (inputName, value) {
       }
 
       this._inputValuesQueue[inputName].length = 0;
+      if (this._inputCauseQueue[inputName]) this._inputCauseQueue[inputName].length = 0;
     }
   }
 
   this._inputValuesQueue[inputName].push(value);
+  if (tracing) this._inputCauseQueue[inputName].push(causeSeq);
   this.flagDirty();
 };
 

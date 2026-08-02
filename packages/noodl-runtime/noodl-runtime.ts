@@ -124,6 +124,7 @@ interface NoodlRuntime {
   prefetchBundles(bundleNames: string[], numParallelFetches: number): Promise<void>;
   _setupEditorCommunication(args: NoodlRuntimeArgs): void;
   setDebugInspectorsEnabled(enabled: boolean): void;
+  setTraceEnabled(enabled: boolean): void;
   registerModule(module: NoodlModule): void;
   registerGraphModelListeners(): void;
   reload(): void;
@@ -391,6 +392,16 @@ NoodlRuntime.prototype._setupEditorCommunication = function (args: NoodlRuntimeA
 
 NoodlRuntime.prototype.setDebugInspectorsEnabled = function (enabled: boolean) {
   this.context.setDebugInspectorsEnabled(enabled);
+};
+
+/**
+ * OBS-001. Note this is *not* also wired in `viewer.jsx` the way `debuggingEnabledChanged` is:
+ * `NodeContext` subscribes to `traceEnabledChanged` itself, so the trace works in every runtime
+ * that has an editor connection — including the cloud runtime, which never runs `viewer.jsx`.
+ * This method exists for hosts that drive the runtime directly rather than over the relay.
+ */
+NoodlRuntime.prototype.setTraceEnabled = function (enabled: boolean) {
+  this.context.setTraceEnabled(enabled);
 };
 
 NoodlRuntime.prototype.registerModule = function (module: NoodlModule) {
