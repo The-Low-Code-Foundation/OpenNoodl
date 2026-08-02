@@ -16,7 +16,8 @@ started for this task — another session held the dev stack — so everything b
 | `d812a6eb` | The editor reads the review queue an agent writes to |
 | `671bcf63` | A workflow proposal as a change set, with closures re-derived from the engine |
 | `a8b121e3` | A proposal arrives as a diff on the canvas, and accept is the only write |
-| (this) | Docs and notes |
+| `eb6673fe` | Docs and notes |
+| `ff5b8ec1` | Declare the dry run to the two gates that noticed it |
 
 ---
 
@@ -125,6 +126,23 @@ one field the reader had explicitly kept. Caught by the spec that asserts which 
 produces, which is the only reason it was caught at all: nothing throws, nothing warns, and the
 save is a 200.
 
+### Two BAK-009 gates caught the new route, and both were right to
+
+Running the *whole* nodegx-backend suite rather than only `tests/workflow` is what found these.
+
+- **The audit trail** requires every state-changing admin route to declare an action *or* be listed
+  as deliberately exempt — "considered, and this one changes nothing" is a declaration too. The dry
+  run joins `POST /admin/permissions/check`, which is the identical shape and already carries that
+  reasoning. It matters that it is exempt while POST/PUT `workflow-defs` are audited: the review
+  surface validates on open and again on every accept, so auditing it would bury the two entries an
+  operator actually wants.
+- **The rate-limit tally** is asserted route by route. `admin` 72 → 73, reviewed, left in the admin
+  budget, with the reason written into the spec — it is the first route the *editor* calls in a
+  loop, twice per human decision, which is far inside that budget. If it ever were not, the honest
+  fix would be to stop revalidating rather than to widen the budget.
+
+Both are the kind of gate that only fires when you run the suite you did not think you needed.
+
 ### A review component must carry the workflow name prefix
 
 `ViewerConnection.isWorkflowModelEvent` filters model traffic by testing for `/#__workflow__/`. A
@@ -169,11 +187,14 @@ which is the boundary doing its job.
 | `typecheck:editor`, `typecheck:editor-tests`, nodegx-backend `typecheck` | ✅ clean |
 | `packages/noodl-editor` **Jasmine** — `tests/workflow/workflowproposal.test.ts` (6 specs) | ⛔ **not run** — `test:ci` starts Electron |
 
-**Two gates were already red on this base**, both verified as pre-existing rather than caused here:
+**Three things were already red on this base**, each verified as pre-existing by re-running against
+`HEAD`'s files rather than assumed:
 
 - `packages/noodl-mcp` `tests/tools.test.ts` — one failure (`create_component` / `validate_project`).
-  Verified by restoring `HEAD`'s `backendTools.ts` and re-running: identical failure. Nothing in this
-  task touches that path.
+  Verified by restoring `HEAD`'s `backendTools.ts`: identical failure. Nothing here touches that path.
+- `packages/nodegx-backend` `tests/email-flows.test.ts` — two failures, both *Send Email node
+  (WorkflowRunner integration)* specs timing out at 30 s. Verified by restoring `HEAD`'s four backend
+  source files: identical failure.
 - `npm run colors` — `noodl-editor` +15 hex, **all in `ProvenancePanel.module.scss`** (OBS-002/004
   territory). The SCSS added here uses tokens only and contributes zero.
 
