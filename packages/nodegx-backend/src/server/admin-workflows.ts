@@ -39,6 +39,19 @@ export interface WorkflowDeletedResponse {
   id: string;
 }
 
+/**
+ * `POST /admin/workflow-defs/validate` (WFA-007) — the dry run.
+ *
+ * `valid: false` is a **200**, not a 400: the caller asked a question and got an
+ * answer. A 400 here would be indistinguishable from the route being wrong, and
+ * the whole point is to distinguish "this would be rejected" from "something
+ * went wrong asking".
+ */
+export interface WorkflowValidateResponse {
+  valid: boolean;
+  errors: string[];
+}
+
 /** `POST /admin/workflow-defs/:id/run`. */
 export interface WorkflowRunResponse {
   run: WorkflowRunResult;
@@ -74,6 +87,27 @@ export class AdminWorkflowRoutes {
     const def = this.subsystem().registry.get(ctx.params.id);
     if (!def) throw new HttpError(404, `No workflow "${ctx.params.id}"`);
     sendJSON(ctx.res, 200, { workflow: def } satisfies WorkflowResponse);
+  }
+
+  /**
+   * WFA-007 — validate a candidate definition against THIS backend, writing
+   * nothing.
+   *
+   * The editor's review surface asks this before it renders a proposal (a
+   * candidate that could not be saved must never be offered as a choice) and
+   * again after a partial accept (whatever the review's dependency closures
+   * miss, the authoritative validator sees). MCP asks it before staging a
+   * proposal, so an agent gets the backend's own errors instead of the user
+   * getting an unacceptable choice.
+   *
+   * The version skew this closes is real: a definition valid against one
+   * backend is not necessarily valid against another, which is the same reason
+   * the step-kind registry is served rather than bundled.
+   */
+  async validate(ctx: RequestContext): Promise<void> {
+    const body = await readJSONBody(ctx.req);
+    const errors = this.subsystem().registry.validate(body as unknown as WorkflowInput);
+    sendJSON(ctx.res, 200, { valid: errors.length === 0, errors } satisfies WorkflowValidateResponse);
   }
 
   async create(ctx: RequestContext): Promise<void> {

@@ -90,7 +90,14 @@ const ACTIONS: Record<string, string> = {
 const NOT_AUDITED: Record<string, string> = {
   // A server-side dry run: it answers "what would the rules decide?" and
   // changes nothing. It is a read that happens to need a body.
-  'POST admin/permissions/check': 'dry run — changes nothing'
+  'POST admin/permissions/check': 'dry run — changes nothing',
+  // WFA-007's dry run, exactly the same shape as the one above: it answers
+  // "would you accept this definition?" and writes nothing — deliberately, since
+  // that is the whole reason it exists separately from POST/PUT workflow-defs,
+  // which ARE audited as workflow.create / workflow.update. The editor's review
+  // surface calls it on every proposal it opens and again on every accept, so
+  // auditing it would bury the two entries an operator actually wants.
+  'POST admin/workflow-defs/validate': 'dry run — changes nothing'
 };
 
 /** Why a privileged route is exempt from the trail, or null if it is not exempt. */

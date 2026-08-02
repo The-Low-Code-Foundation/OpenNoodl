@@ -158,3 +158,45 @@
   font-size: 12px;
   padding: 4px 6px;
 }
+
+/* ---------------------------------------------------------------------------
+   WFA-007 — proposals awaiting review.
+   Tokens only (UIX-001); no hex anywhere. The accent is the amber warning
+   token rather than danger: an unreviewed proposal is something waiting for
+   you, not something wrong — red stays reserved for an actual error under
+   phase 23's law.
+--------------------------------------------------------------------------- */
+
+.ProposalGroup {
+  padding: 10px 16px 2px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theme-color-warning);
+}
+
+.Proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+  box-shadow: inset 2px 0 0 var(--theme-color-warning);
+}
+
+.ProposalTitle {
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+}
+
+.ProposalMeta {
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.ProposalNote {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default-shy);
+  font-style: italic;
+}

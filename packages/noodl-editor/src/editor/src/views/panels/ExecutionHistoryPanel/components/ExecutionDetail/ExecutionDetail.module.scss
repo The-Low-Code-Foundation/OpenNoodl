@@ -211,3 +211,11 @@
 .Error {
   color: var(--theme-color-danger);
 }
+
+/* WFA-007 §6 — the fix-request affordance. Tokens only. */
+.FixHint {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default-shy);
+}

@@ -32,77 +32,57 @@ import type { NodeLibraryData, NodeLibraryDataNodeType } from '@noodl-models/nod
 
 import { WIRE_TYPE_ERROR } from '../../views/nodegrapheditor/canvas/CanvasTheme';
 import type { StepKindCatalog, StepKindSpec, StepParamSpec } from './types';
-
-/** Node type names are namespaced so nothing can collide with a runtime node. */
-export const WORKFLOW_TYPE_PREFIX = 'workflow.';
-
-/** The one input every step has: "an edge reached me". */
-export const PORT_IN = 'in';
-/** The unconditional success edge. */
-export const PORT_NEXT = 'next';
-/** The failure edge. */
-export const PORT_ON_ERROR = 'onError';
-/** Route output ports are `route:<name>`, so a route can be called `next` safely. */
-export const ROUTE_PORT_PREFIX = 'route:';
-
-/** The port group every route output lands in, so they sort together. */
-const GROUP_ROUTES = 'Routes';
-const GROUP_PARAMS = 'Params';
-
-export function routePortName(route: string): string {
-  return ROUTE_PORT_PREFIX + route;
-}
-
-export function isRoutePort(portName: string): boolean {
-  return portName.startsWith(ROUTE_PORT_PREFIX);
-}
-
-export function routeNameFromPort(portName: string): string {
-  return portName.slice(ROUTE_PORT_PREFIX.length);
-}
+import {
+  GROUP_PARAMS,
+  GROUP_ROUTES,
+  PORT_FIRES,
+  PORT_IN,
+  PORT_NEXT,
+  PORT_ON_ERROR,
+  PORT_TYPE_CASES,
+  PORT_TYPE_CONDITION,
+  PORT_TYPE_FUNCTION_REF,
+  PORT_TYPE_PATH,
+  PORT_TYPE_TRIGGER_INFO,
+  PORT_TYPE_VALUE,
+  routePortName,
+  triggerTypeName,
+  typeNameForKind,
+  WORKFLOW_TYPE_PREFIX
+} from './workflowPorts';
 
 /**
- * Trigger node types (WFA-005). Nested INSIDE the workflow prefix on purpose —
- * `kindFromTypeName` checks for this longer prefix first and answers `undefined`,
- * so a trigger node is not a step to any of the code that asks "what kind of
- * step is this?". That matters most in `WorkflowDocument.toInput`, which walks
- * every node on the canvas: without the guard a trigger would be written into
- * the definition as a step of kind `trigger.webhook` and the backend would
- * refuse the save.
+ * The port and type-name vocabulary lives in `workflowPorts.ts` (WFA-007) and is
+ * re-exported here unchanged.
+ *
+ * It moved because this module imports `CanvasTheme`, so anything reusing the
+ * names dragged the whole canvas in — and WFA-007 needs the definition⇄graph
+ * translation in a form that can be diffed and unit-tested without Electron.
+ * Every existing import of these symbols still resolves through this module.
  */
-export const TRIGGER_TYPE_PREFIX = 'workflow.trigger.';
-
-/** The trigger's one output: "this is where the run starts". */
-export const PORT_FIRES = 'fires';
-
-/** A read-only fact about a trigger, shown in the property editor. */
-export const PORT_TYPE_TRIGGER_INFO = 'workflow-trigger-info';
-
-/** The cloud function a step calls, with what it resolves to (WFA-006). */
-export const PORT_TYPE_FUNCTION_REF = 'workflow-function-ref';
-
-export function typeNameForKind(kind: string): string {
-  return WORKFLOW_TYPE_PREFIX + kind;
-}
-
-export function triggerTypeName(triggerType: string): string {
-  return TRIGGER_TYPE_PREFIX + triggerType;
-}
-
-export function isTriggerTypeName(typeName: string): boolean {
-  return typeName.startsWith(TRIGGER_TYPE_PREFIX);
-}
-
-export function triggerTypeFromTypeName(typeName: string): string | undefined {
-  return isTriggerTypeName(typeName) ? typeName.slice(TRIGGER_TYPE_PREFIX.length) : undefined;
-}
-
-export function kindFromTypeName(typeName: string): string | undefined {
-  // A trigger is not a step kind. Checked first, because its type name also
-  // starts with the workflow prefix.
-  if (isTriggerTypeName(typeName)) return undefined;
-  return typeName.startsWith(WORKFLOW_TYPE_PREFIX) ? typeName.slice(WORKFLOW_TYPE_PREFIX.length) : undefined;
-}
+export {
+  WORKFLOW_TYPE_PREFIX,
+  PORT_IN,
+  PORT_NEXT,
+  PORT_ON_ERROR,
+  ROUTE_PORT_PREFIX,
+  routePortName,
+  isRoutePort,
+  routeNameFromPort,
+  TRIGGER_TYPE_PREFIX,
+  PORT_FIRES,
+  PORT_TYPE_TRIGGER_INFO,
+  PORT_TYPE_FUNCTION_REF,
+  typeNameForKind,
+  triggerTypeName,
+  isTriggerTypeName,
+  triggerTypeFromTypeName,
+  kindFromTypeName,
+  PORT_TYPE_CONDITION,
+  PORT_TYPE_PATH,
+  PORT_TYPE_VALUE,
+  PORT_TYPE_CASES
+} from './workflowPorts';
 
 /**
  * Category → the canvas colour taxonomy.
@@ -129,10 +109,6 @@ function colorForCategory(category: string): string {
  * can dispatch to the controls WFA-004 adds; the rest reuse the port types the
  * property editor has always understood.
  */
-export const PORT_TYPE_CONDITION = 'workflow-condition';
-export const PORT_TYPE_PATH = 'workflow-path';
-/** A param that accepts anything, including a `{"$path": …}` reference. */
-export const PORT_TYPE_VALUE = 'workflow-value';
 
 function portTypeForParam(param: StepParamSpec, catalog?: StepKindCatalog): unknown {
   switch (param.type) {
@@ -198,8 +174,6 @@ function portTypeForRawParam(param: StepParamSpec, catalog?: StepKindCatalog): u
   }
   return portTypeForParam(param, catalog);
 }
-
-export const PORT_TYPE_CASES = 'workflow-cases';
 
 /** A signal output that paints its name on the wire. */
 function routePort(route: string, index: number, description: string) {
