@@ -1,7 +1,7 @@
 # Phase 33 — Progress
 
 **Track R — Alpha Launch**
-**6 tasks specced. ALPHA-005 complete; ALPHA-006 added 2026-07-31.**
+**7 tasks specced. ALPHA-005 complete; ALPHA-006 added 2026-07-31; ALPHA-007 added 2026-08-02.**
 **Phase overview:** [README.md](./README.md)
 
 ## Status vocabulary
@@ -14,10 +14,11 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 |---|---|---|---|
 | [ALPHA-001](./ALPHA-001-FIRST-HOUR.md) The cold-install first hour | 1 | 📋 Specced | Discharges seven tasks' owed live-QA in one pass. Part A can start as soon as the tree is clean; Part B needs ALPHA-002 |
 | [ALPHA-002](./ALPHA-002-RELEASE-CUT.md) A release that reaches a Mac | 1 | 📋 Specced | **The v0.1.0 draft has no macOS artifacts at all.** The credential half is human-only and is the long pole |
-| [ALPHA-003](./ALPHA-003-CRASH-AND-FEEDBACK.md) Find out when it breaks | 2 | 📋 Specced | Depends on ALPHA-005 — nothing transmits before a policy names it |
+| [ALPHA-003](./ALPHA-003-CRASH-AND-FEEDBACK.md) Find out when it breaks | 2 | 📋 Specced | Depends on ALPHA-005 — nothing transmits before a policy names it. **Re-scoped 2026-08-02** — its "report a problem" half moved to ALPHA-007; retains the log, `crashReporter`, and the no-provider state |
 | [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 📋 Specced | **Re-scoped 2026-07-31** — platform half moved to ALPHA-006; retains the authored concept set, getting-started and troubleshooting. Blocked on ALPHA-006 |
 | [ALPHA-005](./ALPHA-005-LEGAL-SURFACE.md) The paperwork that ships with a binary | 2 | ✅ **Complete** | 2026-07-30. `PRIVACY.md` + `TERMS.md` written from the code, licence fields added, both reachable from the Application/Help menus and shown at first run. **Criterion 5 (an outside reader) is owed** — see below |
 | [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) The docs platform, and the old site's disposition | 2 | 📋 Specced | Blocked on phase 30 Tier 1. **§1 (help panel reads the bundled catalog) is independently valuable and should go first** — it closes all 54 undocumented nodes on its own |
+| [ALPHA-007](./ALPHA-007-FEEDBACK-LOOP.md) A feedback loop that closes | 2 | 📋 Specced | **No prerequisites — transmits nothing.** Part A (composer → pre-filled issue) ships alone; Part B (labels, `/triage` skill) is a day. Verify the URL prefill by hand before writing any dialog code |
 
 ## Recommended order
 
@@ -26,13 +27,16 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
    signed build exists.
 2. **ALPHA-005** — half a day, unblocks ALPHA-003.
 3. **ALPHA-001 Part A** — as soon as the working tree is clean.
-4. **ALPHA-003**.
-5. **ALPHA-001 Part B** — needs the build from step 1.
-6. **ALPHA-006 §1** — the help panel off the network. Independent of everything else
+4. **ALPHA-007** — nothing blocks it, and it is what makes ALPHA-001's findings
+   reproducible by someone other than the person who hit them. Part B first if you
+   want the queue to exist before the reports do.
+5. **ALPHA-003**.
+6. **ALPHA-001 Part B** — needs the build from step 1.
+7. **ALPHA-006 §1** — the help panel off the network. Independent of everything else
    here, and it closes all 54 undocumented nodes without a website existing.
-7. **ALPHA-006** — the rest, after phase 30 Tier 1 lands so the node reference has
+8. **ALPHA-006** — the rest, after phase 30 Tier 1 lands so the node reference has
    something true to generate from.
-8. **ALPHA-004** — once there is a site to write into.
+9. **ALPHA-004** — once there is a site to write into.
 
 ## Findings register
 
@@ -51,6 +55,8 @@ phases 25 and 27 — check the highest existing number before allocating.
 | F69 | The Help Center's links still point at **`docs.noodl.net`**, the Noodl forum and the Noodl Discord, and its Algolia index is `docs_2-9` — Noodl's old documentation index | `packages/noodl-editor/src/editor/src/views/HelpCenter/HelpCenter.tsx` | ALPHA-006 §6 |
 | F70 | **54 of 156 nodes (35%) have no working documentation page.** Every `docs` URL in `node-catalog.json` was resolved against the docs repo's file list: 102 hit a real page, **6 point at the wrong path**, **33 point at a page that does not exist**, **15 nodes have no `docs` URL at all**. It is not a random 35% — it is precisely the NodeGX-era library: all five BYOB nodes, the whole realtime family, the entire agentic-UI/state set, Logic Builder, email, magic-link/OAuth. `docs-parser.ts:75` swallows the 404, so the help panel shows nothing rather than an error | `packages/noodl-types/src/node-catalog.json` × `The-Low-Code-Foundation/opennoodl-docs`, measured 2026-07-31 | ALPHA-006 §1 |
 | F71 | **The docs site is the editor's content CDN, not a docs site.** `getDocsEndpoint()` has 10 call sites across **7 payload types**, and 6 are not documentation: the prefab/module library index and zips, the Learn lesson index, the new-project templates, the tutorials list, the what's-new feed. Moving or archiving that origin silently empties the **Library panel, the Learn lesson list and the new-project template picker** — all three fail without an error. Two served paths have no consumer at all (`static/nodepickerdefaults/`, `static/version.json`) | `packages/noodl-editor/src/editor/src/utils/getDocsEndpoint.ts` + 10 consumers, 2026-07-31 | ALPHA-006 §5 |
+
+| F72 | **The triage queue the issue forms promise does not exist.** All three forms declare `needs-triage`, and `node_report.yml` also declares `node-library`. **Neither label exists on the repo** — the label set is still GitHub's stock nine. GitHub silently drops labels it cannot resolve, so every report filed since 2026-07-30 is unlabelled beyond `bug`/`enhancement`, and `gh issue list --label needs-triage` returns nothing by construction. Related: there is **no severity vocabulary at all**, neither a form field nor a label, so the queue can only be ranked by date | `.github/ISSUE_TEMPLATE/*.yml` × `gh label list`, measured 2026-08-02 | ALPHA-007 §6 |
 
 ## Pre-existing findings this phase adopts
 
@@ -169,3 +175,41 @@ evidence, not speculation — each was measured.
 
   **Nothing built.** Four documents touched: ALPHA-006 created, ALPHA-004 re-scoped,
   README and this file updated.
+
+- **2026-08-02 — ALPHA-007 specced, ALPHA-003 re-scoped.** Richard had built an
+  in-game feedback capture for a side project — screenshot, full state blob, severity,
+  filed to a local queue an agent then works through — and asked whether NodeGX could
+  do the same against GitHub issues for alpha testers.
+
+  It can, but not the obvious way. **A GitHub token cannot ship in an Electron app**
+  (`asar` is not encryption) and this repo is public, so "the app files the issue"
+  means a proxy we host, OAuth, or a pre-filled form the user submits. Working
+  through the four designs produced one non-obvious conclusion worth recording: the
+  pre-filled-form design **transmits nothing from the app** — the user's own browser
+  posts, under their own identity, to a payload they can read first. That is what
+  separates it from ALPHA-003, whose ALPHA-005 gate exists precisely because it
+  transmits. So it split out rather than being folded in, and it is now the only
+  Tier 2 task with no prerequisites.
+
+  Two things sharpened the design against the prior art. The game's report carries
+  the player's own save; **a NodeGX report carries someone else's project**, which can
+  contain a client's proprietary graph and their API keys — onto a public repo,
+  permanently. Hence the review-before-send screen and a redactor with a behavioural
+  acceptance criterion (§3, criterion 4). And Electron removes the prior art's
+  largest dependency outright: `webContents.capturePage()` replaces fetching
+  `html2canvas` from a CDN to rasterise the DOM.
+
+  Richard then added the consuming half — contributors with write access working the
+  queue from Claude Code via `gh`. That is what made it one task rather than two: both
+  halves share the issue body, so it gets a `render: json` **diagnostics fence** that is
+  legible to a human and parseable by an agent. Designing either half alone gets that
+  contract wrong.
+
+  **F72** came out of the scoping: the three issue forms have been declaring a
+  `needs-triage` label since 2026-07-30 that **has never existed**, so the queue they
+  promise is empty by construction and every report filed so far is unlabelled.
+
+  **Nothing built.** Four documents touched: ALPHA-007 created, ALPHA-003 §2 and
+  criterion 3 handed off, README and this file updated. The `/triage` skill's
+  reference implementation lives outside this repo (`~/vscode_projects/dead-weight`)
+  and is cited in ALPHA-007 §7 rather than copied.

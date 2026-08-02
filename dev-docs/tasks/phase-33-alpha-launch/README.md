@@ -29,10 +29,16 @@ been scheduled: nobody's task list contains "get the certificates".
 | [ALPHA-004](./ALPHA-004-USER-DOCS.md) | Documentation for someone who is not us | 2 | Everything in `docs/` is developer reference. There is no "what is a node" |
 | [ALPHA-005](./ALPHA-005-LEGAL-SURFACE.md) | The paperwork that ships with a binary | 2 | We distribute an app that sends project content to third-party AI providers |
 | [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) | The docs platform, and the old site's disposition | 2 | Split from ALPHA-004 on 2026-07-31. **54 of 156 nodes have no working documentation page**, and the docs origin turns out to be the editor's content CDN for seven payload types — six of which are not documentation |
+| [ALPHA-007](./ALPHA-007-FEEDBACK-LOOP.md) | A feedback loop that closes | 2 | Split from ALPHA-003 on 2026-08-02. In-app report composer → pre-filled GitHub issue, and the contributor-side triage loop that consumes it. **Transmits nothing, so it is the only Tier 2 task with no prerequisites** |
 
 ALPHA-006 was not part of the original five. It exists because ALPHA-004 assumed a
 site to write into, and the site is a 413 MB fork of Noodl's that three editor panels
 silently depend on.
+
+ALPHA-007 was not either. It exists because ALPHA-003's "report a problem" half turned
+out to be separable from its "find out when it breaks" half — the report path can be
+built so that nothing leaves the machine except through the user's own browser, which
+removes the privacy-policy gate and makes it the one Tier 2 task that can start today.
 
 **Tier 1 gates the alpha. Tier 2 makes the alpha worth running.** You could ship
 without Tier 2 — you would simply learn nothing from having shipped, which defeats

@@ -69,12 +69,20 @@ Renderer exceptions must reach it. The dev loop already mirrors renderer console
 into main stdout and writes uncaught exceptions to `.logs/dev.log` (REV-008); this
 is the same idea for packaged builds, where there is no terminal to mirror into.
 
-### 2. `Help → Open log folder` and `Help → Report a problem`
+### 2. `Help → Open log folder`
 
 The log is worthless if finding it requires knowing what `getPath('logs')` resolves
-to on three platforms. "Report a problem" opens the GitHub issue form with version,
-OS and architecture pre-filled — the three fields that are both essential to triage
-and most likely to be wrong when typed from memory.
+to on three platforms.
+
+> **Moved out 2026-08-02.** "Report a problem" — the in-app composer and the
+> pre-filled issue form — is now [ALPHA-007](./ALPHA-007-FEEDBACK-LOOP.md) in full,
+> because it turned out not to transmit anything and therefore does not share this
+> task's ALPHA-005 gate. It can ship today; this cannot.
+>
+> The dependency runs the other way from what you would expect: **ALPHA-007 owns the
+> redactor**, being the thing that publishes. This task reuses it for the on-disk log
+> rather than writing a second one. If ALPHA-003 runs first, write the redactor here
+> to ALPHA-007 §3's specification and let it take the dependency.
 
 ### 3. Electron's `crashReporter` for native crashes
 
@@ -94,7 +102,8 @@ panel throws" is a bad first impression that no amount of crash reporting improv
    the Help menu, on all three platforms.
 2. An uncaught renderer exception, a main-process exception and a native renderer
    crash each leave a record.
-3. "Report a problem" opens the issue form with version, OS and arch pre-filled.
+3. ~~"Report a problem" opens the issue form with version, OS and arch pre-filled.~~
+   **Moved to [ALPHA-007](./ALPHA-007-FEEDBACK-LOOP.md) criterion 1.**
 4. Nothing leaves the machine that the privacy policy does not name — verified by
    reading the policy against the code, not by intent.
 5. The log contains no project content, no credentials, and no absolute path above
