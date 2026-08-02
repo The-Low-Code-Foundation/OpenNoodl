@@ -6408,6 +6408,19 @@
       "shortDocs": "https://docs.noodl.net/nodes/cloud-functions/request-short.md",
       "category": "Cloud",
       "color": "data",
+      "dynamicports": [
+        {
+          "name": "namedports/list",
+          "parameter": "params",
+          "port": {
+            "name": "pm-{{*}}",
+            "displayName": "{{*}}",
+            "type": "*",
+            "plug": "output",
+            "group": "Parameters"
+          }
+        }
+      ],
       "connectionPanel": {
         "groupPriority": [
           "General",
@@ -6495,6 +6508,18 @@
               "description": "Message returned to the caller; used only when Status is Failure"
             }
           ]
+        },
+        {
+          "name": "namedports/list",
+          "condition": "status = success OR status NOT SET",
+          "parameter": "params",
+          "port": {
+            "name": "pm-{{*}}",
+            "displayName": "{{*}}",
+            "type": "*",
+            "plug": "input",
+            "group": "Parameters"
+          }
         }
       ],
       "connectionPanel": {
