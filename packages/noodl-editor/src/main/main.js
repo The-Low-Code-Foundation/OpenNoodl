@@ -262,6 +262,16 @@ function launchApp() {
     }
   }
 
+  // OBS-004 — the editor renderer's copy of the relay token.
+  //
+  // ⚠️ Not `process.env`. `createWindow()` runs before `startServer()`, so a token minted by
+  // the server would already have missed the renderer's process spawn; and the renderer would
+  // have no way to tell an unset variable from one it was too early to see.
+  //
+  // `handle` rather than `on`+`returnValue`: a synchronous IPC blocks the renderer, and
+  // `ViewerConnection` already defers its first connect by a second, so it can await.
+  ipcMain.handle('relay-token', () => require('./src/relay-token').getRelayToken(app));
+
   ipcMain.on('editor-api-response', function (event, args) {
     const token = args.token;
 

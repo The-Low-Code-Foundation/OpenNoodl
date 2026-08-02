@@ -50,6 +50,29 @@ interface EditorConnectionOptions {
   clientId?: string;
 }
 
+/** OBS-004 — per-connection options. Today: the relay token. */
+interface ConnectOptions {
+  /**
+   * The relay's launch token. Omit in a browser and it is read from
+   * `window.__nodegxRelayToken`, which the editor's web server injects into the page it
+   * serves — so the page that was served by the relay always has the credential for it, and
+   * no caller had to be changed.
+   */
+  token?: string;
+}
+
+/**
+ * OBS-004 — the token the editor's web server injected into this page.
+ *
+ * Returns `undefined` off-browser and in a deployed build, where there is no relay to
+ * authenticate to and `EditorConnection` is constructed but never usefully connected.
+ */
+function relayTokenFromPage(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const token = (window as unknown as { __nodegxRelayToken?: unknown }).__nodegxRelayToken;
+  return typeof token === 'string' ? token : undefined;
+}
+
 /** One prefix/plug slice of the port set to run rename detection over. */
 interface DetectRenamedSpec {
   prefix?: string;
@@ -86,9 +109,12 @@ interface EditorConnection extends RuntimeEditorConnection, EventSender {
 
   on(eventName: string, callback: (data?: unknown) => void, ref?: unknown): void;
 
+  /** Set once a rejected register has already triggered one reload; see {@link connect}. */
+  hasRetriedRegistration?: boolean;
+
   isRunningLocally(): boolean;
-  connect(address: string): void;
-  reconnect(address: string): void;
+  connect(address: string, options?: ConnectOptions): void;
+  reconnect(address: string, options?: ConnectOptions): void;
   isConnected(): boolean;
   send(data: unknown): void;
   sendInspectId(id: string): void;
@@ -153,10 +179,11 @@ EditorConnection.prototype.isRunningLocally = function (this: EditorConnection) 
   return runningLocallyInBrowser;
 };
 
-EditorConnection.prototype.connect = function (this: EditorConnection, address) {
+EditorConnection.prototype.connect = function (this: EditorConnection, address, options) {
   this.socket = this.wsOptions ? new this.ws(address, this.wsOptions) : new this.ws(address);
 
   const self = this;
+  const token = (options && options.token) || relayTokenFromPage();
 
   this.socket.addEventListener('open', function () {
     self.clientId = self.fixedClientId || guid();
@@ -164,7 +191,9 @@ EditorConnection.prototype.connect = function (this: EditorConnection, address) 
       JSON.stringify({
         cmd: 'register',
         type: 'viewer',
-        clientId: self.clientId
+        clientId: self.clientId,
+        // OBS-004. Absent in a deployed build, where there is no relay listening anyway.
+        token: token
       })
     );
     self.emit('connected');
@@ -172,7 +201,7 @@ EditorConnection.prototype.connect = function (this: EditorConnection, address) 
 
   this.socket.addEventListener('close', function (event) {
     if (self.reconnectOnClose) {
-      self.reconnect(address);
+      self.reconnect(address, options);
     }
     console.log('Editor connection closed', event.code, event.reason);
     self.emit('connectionClosed');
@@ -191,6 +220,27 @@ EditorConnection.prototype.connect = function (this: EditorConnection, address) 
 
     if (message.cmd === 'registered') {
       //ignore
+    } else if (message.cmd === 'registerRejected') {
+      // OBS-004. The usual cause is benign and self-healing: the preview was opened in a
+      // second browser window, the editor was then restarted, and this page is still holding
+      // the *previous* launch's token. Reloading re-fetches the HTML, and the token is
+      // injected into the HTML, so one reload fixes it.
+      //
+      // ⚠️ Bounded to a single attempt. The page could be served from the browser's HTTP
+      // cache, in which case the reload returns the same stale token and a naive retry is an
+      // infinite reload loop — the worst possible failure for a diagnostic path.
+      self.reconnectOnClose = false;
+      if (!self.hasRetriedRegistration && typeof window !== 'undefined' && window.location) {
+        self.hasRetriedRegistration = true;
+        console.log('The editor rejected this preview; reloading to pick up the current token');
+        window.location.reload();
+      } else {
+        console.log(
+          'The editor rejected this preview: ' +
+            (message.reason || 'unknown reason') +
+            '. Reload the page, or reopen the preview from the editor.'
+        );
+      }
     } else if (message.cmd === 'export') {
       content = JSON.parse(message.content);
       if (message.type === 'full' && message.target === this.clientId) {
@@ -265,11 +315,11 @@ EditorConnection.prototype.connect = function (this: EditorConnection, address) 
   });
 };
 
-EditorConnection.prototype.reconnect = function (this: EditorConnection, address) {
+EditorConnection.prototype.reconnect = function (this: EditorConnection, address, options) {
   const self = this;
 
   setTimeout(function () {
-    self.connect(address);
+    self.connect(address, options);
   }, 2000);
 };
 

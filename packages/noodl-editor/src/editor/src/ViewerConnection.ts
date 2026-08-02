@@ -10,9 +10,33 @@ import { ProjectModel } from './models/projectmodel';
 import { WarningsModel } from './models/warningsmodel';
 import DebugInspector from './utils/debuginspector';
 import * as Exporter from './utils/exporter';
+import { getIpc } from './utils/ipc';
 import { triggerChainRecorder } from './utils/triggerChain';
 
 const port = process.env.NOODLPORT || 8574;
+
+/**
+ * OBS-004 — this window's copy of the relay token, fetched once.
+ *
+ * Cached as a promise rather than a value because `connect()` is called again on every
+ * reconnect: without the cache a flapping socket would issue an IPC round trip per attempt.
+ *
+ * ⚠️ Resolves to `undefined` outside Electron, which is where the editor's Jasmine specs run.
+ * The relay will reject that, and correctly — the specs do not use it — but a *throw* here
+ * would take out `ViewerConnection`'s construction and with it every spec that merely imports
+ * this module.
+ */
+let relayTokenPromise: Promise<string | undefined> | undefined;
+
+function getRelayToken(): Promise<string | undefined> {
+  if (!relayTokenPromise) {
+    const ipc = getIpc();
+    relayTokenPromise = ipc
+      ? (ipc.invoke('relay-token') as Promise<string | undefined>).catch(() => undefined)
+      : Promise.resolve(undefined);
+  }
+  return relayTokenPromise;
+}
 
 /**
  * WFA-004: is this model event about a workflow graph rather than the project?
@@ -73,8 +97,13 @@ export class ViewerConnection extends Model {
     this.ws = new WebSocket(address);
     this.ws.addEventListener('open', function () {
       console.log('Connected to viewer server at ' + address);
-      _this.send({ cmd: 'register', type: 'editor' });
-      _this.watchAndExportModelChanges();
+      // OBS-004: the register is now the token handshake, so it has to wait for the token.
+      // Nothing else may go out before it — an unauthorised peer is closed on its first
+      // message — and `send()` no-ops unless the socket is OPEN, so the await is safe.
+      getRelayToken().then((token) => {
+        _this.send({ cmd: 'register', type: 'editor', token });
+        _this.watchAndExportModelChanges();
+      });
     });
     this.ws.addEventListener('close', function () {
       console.log('Connection to viewer server lost, attemtping to reconnect...');
@@ -108,6 +137,18 @@ export class ViewerConnection extends Model {
 
   processRequest(request) {
     if (!request) return;
+
+    // OBS-004: the relay refused this peer. The editor cannot self-heal from it the way the
+    // preview can (it has no page to reload), so this is a loud, single, actionable line
+    // rather than a reconnect storm's worth of "Unknown request".
+    if (request.cmd === 'registerRejected') {
+      console.error(
+        'The project relay rejected this editor window: ' +
+          (request.reason || 'unknown reason') +
+          '. The preview will not connect until the editor is restarted.'
+      );
+      return;
+    }
 
     // A new viewer is connected
     if (request.cmd === 'registered' && request.type === 'viewer') {

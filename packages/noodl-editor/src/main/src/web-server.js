@@ -4,13 +4,12 @@ const https = require('https');
 const path = require('path');
 const URL = require('url');
 
-const WebSocket = require('ws');
-const WebSocketServer = WebSocket.Server;
-
 // projectmodules is now an ES module (TS default export); under webpack's
 // CJS↔ESM interop the singleton class lives on `.default`.
 const ProjectModules = require('../../shared/utils/projectmodules').default;
 const JSONStorage = require('../../shared/utils/jsonstorage');
+const { getRelayToken, injectRelayToken } = require('./relay-token');
+const { startWebSocketServer } = require('./relay-server');
 
 function parseRangeHeader(range, length) {
   if (!range || range.length === 0) {
@@ -79,6 +78,8 @@ function startServer(app, projectGetSettings, projectGetInfo, projectGetComponen
                 .replace('src="/react.production.min.js"', 'src="/react19/react.production.min.js"')
                 .replace('src="/react-dom.production.min.js"', 'src="/react19/react-dom.production.min.js"');
             }
+
+            injected = injectRelayToken(injected, getRelayToken(app));
 
             response.writeHead(200, {
               'Content-Type': 'text/html'
@@ -250,90 +251,10 @@ function startServer(app, projectGetSettings, projectGetInfo, projectGetComponen
     console.log('webserver hustling bytes on port', port);
     process.env.NOODLPORT = port;
 
+    // Mint the token before the first socket can arrive, so an early `register` cannot race it.
+    getRelayToken(app);
+
     startWebSocketServer(server);
-  });
-}
-
-function startWebSocketServer(server) {
-  // Websocket server for sending updates and debugging
-  var connectedSockets = [];
-  var services = {};
-
-  function broadcastMessage(msg, type) {
-    var broadcastToType = type === 'viewer' ? 'editor' : 'viewer';
-    for (var i = 0; i < connectedSockets.length; i++) {
-      var s = connectedSockets[i];
-      if (!type || s.type === broadcastToType) {
-        s.ws.readyState === WebSocket.OPEN && s.ws.send(msg);
-      }
-    }
-  }
-
-  var wss = new WebSocketServer({
-    server: server
-  });
-
-  wss.on('connection', function (ws) {
-    var handle = {
-      ws: ws
-    };
-    connectedSockets.push(handle);
-
-    (function () {
-      var _handle = handle;
-
-      ws.on('message', function (message) {
-        var request = JSON.parse(message);
-        if (request.cmd === 'register') {
-          _handle.type = request.type;
-          _handle.clientId = request.clientId;
-
-          // A viewer is connected, broadcast to editors
-          if (request.type === 'viewer')
-            broadcastMessage(
-              JSON.stringify({
-                cmd: 'registered',
-                type: _handle.type,
-                clientId: _handle.clientId
-              }),
-              _handle.type
-            );
-
-          if (_handle.type === 'service' && request.service)
-            // A new serivce is registered
-            services[request.service] = handle;
-        }
-        // If this is a request to a service, pass it along to the service
-        else if (request.service) {
-          var s = services[request.service];
-          s && s.ws.send(message);
-        } else {
-          // If there is a target client, send the message to that client
-          if (request.target) {
-            for (var i = 0; i < connectedSockets.length; i++)
-              if (connectedSockets[i].clientId === request.target) connectedSockets[i].ws.send(message);
-          }
-          // Broadcast message to other connected sockets
-          // message from viewers should go to connected editors and vice versa
-          else broadcastMessage(message, _handle.type);
-        }
-      });
-
-      ws.on('error', (e) => {
-        console.log('ws error', e);
-      });
-
-      ws.on('close', function () {
-        const idx = connectedSockets.indexOf(_handle);
-        const clientId = connectedSockets[idx].clientId;
-        connectedSockets.splice(idx, 1);
-        const msg = JSON.stringify({
-          cmd: 'disconnect',
-          clientId: clientId
-        });
-        broadcastMessage(msg, 'viewer'); // Notify editor that a viewer disconnected
-      });
-    })();
   });
 }
 
