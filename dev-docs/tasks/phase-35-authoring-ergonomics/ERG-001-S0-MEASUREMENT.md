@@ -457,7 +457,38 @@ prediction that misses deserves the reason.
 - **§3** `Treat Unchanged as` — not started.
 - **§4** the per-node sweep, which is the bulk. §0's table is its scope.
 - **§5** the validator's dead-end check, and `description` coverage for §4's new ports.
-- **Live QA.** ⚠️ The three viewer bundles under `packages/noodl-editor/src/external/` are
-  **untracked build artifacts that nothing rebuilds**, and all three still contain
-  `sendSignalOnOutput('modified')`. A deployed app keeps the old ports until
-  `npm run build --prefix packages/noodl-viewer-react` runs.
+- **Live QA.** ⚠️ The viewer bundles under `packages/noodl-editor/src/external/` are **untracked
+  build artifacts that nothing rebuilds as part of a test run**, so a deployed app keeps the old
+  ports until `npm run build --prefix packages/noodl-viewer-react` runs. Run here on 2026-08-02;
+  `viewer/`, `deploy/` and `ssr/noodl.deploy.js` now carry `reportOutcome` and no longer contain
+  `sendSignalOnOutput('modified')`.
+
+  ⚠️ **And a trap for whoever checks this next.** `src/external/` also holds
+  **`viewer 3/`, `deploy 2/` and `ssr 3/`** — stale duplicates dated 2025-12-06 that no build
+  writes to and that `.gitignore` covers along with the rest of `src/external`. Grepping them for
+  the new port names says the rebuild failed when it succeeded. The live paths are the unsuffixed
+  ones.
+
+### Live QA — run 2026-08-02, editor surface ✅, runtime behaviour ⏳
+
+Driven headlessly against the running editor (`bcn010-live`), after
+`npm run build --prefix packages/noodl-viewer-react`.
+
+**What was established, and could not have been by a corpus row:**
+
+| Claim | Evidence |
+|---|---|
+| The editor's node library carries the contract's ports | `NodeLibraryData` → `CollectionInsert` outputs are `done "Done"`, `completed "Completed"`, `unchanged "Unchanged"`, `failure "Failure"`, `error "Error"` — all `signal` but `error` |
+| An **author** can see them before placing the node | The node picker's KEY PORTS panel lists `Done` / `Completed` / `Unchanged` as OUT, "6 of 8" |
+| They survive onto the canvas | Node placed through the real picker; its model reports `["Done","Completed","Unchanged","Failure","Error"]` |
+| The shipped bundles carry the change | `external/viewer/`, `external/deploy/`, `external/ssr/` all contain `reportOutcome` and no `sendSignalOnOutput('modified')` |
+
+No `[renderer:exception]` and no `outcome/*` error in `.logs/dev.log` for the session.
+
+⏳ **Still owed — success criterion 8 in full.** The criterion asks for *"one graph in the running
+editor where a duplicate insert continues through `Completed` and stops at `Done`"*. What is above
+is the **editor** half; the running-preview half — wiring `Completed` and watching a second `Do`
+pulse it while `Done` stays quiet — was not built. The behaviour itself is pinned by 14 corpus rows
+over the real node definitions in a real `NodeContext`, including the ordering and the
+per-invocation reset, so this is a gap in the *consequence* claim, not the *mechanism* one — which
+is the distinction DV-ii insists on, and the reason it is recorded as owed rather than met.
