@@ -14,8 +14,8 @@ import React from 'react';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 
-import { ResultSummary } from '../model/summary';
 import css from '../ImportFlow.module.scss';
+import { ResultSummary } from '../model/summary';
 
 export interface ResultStageProps {
   summary: ResultSummary;

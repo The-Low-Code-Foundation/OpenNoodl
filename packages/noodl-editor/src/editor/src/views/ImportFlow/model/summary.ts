@@ -8,10 +8,13 @@
  * between the model changes (one undo step) and the file writes (not undoable).
  *
  * @module noodl-editor/views/ImportFlow/model/summary
- */
-
-import type { ImportPlan, ImportReport, ImportResult, PlannedItem } from '@noodl-utils/import-engine';
-import { reportSummaryLine } from '@noodl-utils/import-engine';
+ */ import {
+  reportSummaryLine,
+  type ImportPlan,
+  type ImportReport,
+  type ImportResult,
+  type PlannedItem
+} from '@noodl-utils/import-engine';
 
 import { CATEGORY_NOUN, ItemCategory, splitPath } from './items';
 import { PlannedStatus } from './selection';
@@ -192,8 +195,8 @@ export function summarizeResult(
   const undoNote = isExport
     ? 'Nothing in your project changed — this was written to the archive.'
     : staysBehind.length > 0
-      ? `Undo removes the imported components and variants in one step. ${staysBehind.join(' and ')} stay.`
-      : 'Undo removes everything this import added, in one step.';
+    ? `Undo removes the imported components and variants in one step. ${staysBehind.join(' and ')} stay.`
+    : 'Undo removes everything this import added, in one step.';
 
   // LIB-006: the assessment, if the import produced one. Export stages into a
   // throwaway project, so its report describes the staging copy rather than
