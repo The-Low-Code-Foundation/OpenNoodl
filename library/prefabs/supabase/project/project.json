@@ -1082,7 +1082,7 @@
                                 "label": "Login Form",
                                 "parameters": {
                                     "flexDirection": "column",
-                                    "backgroundColor": "#FFFFFF",
+                                    "backgroundColor": "White",
                                     "borderRadius": {
                                         "value": 8,
                                         "unit": "px"
@@ -1431,7 +1431,7 @@
                                         "label": "Login Form",
                                         "parameters": {
                                             "flexDirection": "column",
-                                            "backgroundColor": "#FFFFFF",
+                                            "backgroundColor": "White",
                                             "borderRadius": {
                                                 "value": 8,
                                                 "unit": "px"
@@ -2445,7 +2445,7 @@
                                 "label": "Login Form",
                                 "parameters": {
                                     "flexDirection": "column",
-                                    "backgroundColor": "#FFFFFF",
+                                    "backgroundColor": "White",
                                     "borderRadius": {
                                         "value": 8,
                                         "unit": "px"
@@ -2914,7 +2914,7 @@
                                 "label": "Login Form",
                                 "parameters": {
                                     "flexDirection": "column",
-                                    "backgroundColor": "#FFFFFF",
+                                    "backgroundColor": "White",
                                     "borderRadius": {
                                         "value": 8,
                                         "unit": "px"
@@ -3893,7 +3893,7 @@
                         "x": 238,
                         "y": 164,
                         "parameters": {
-                            "backgroundColor": "#FFFFFF",
+                            "backgroundColor": "White",
                             "minHeight": {
                                 "value": 100,
                                 "unit": "vh"
@@ -4323,7 +4323,7 @@
                                 "unit": "px"
                             },
                             "borderBottomStyle": "solid",
-                            "borderBottomColor": "#5836F533",
+                            "borderBottomColor": "Supabase/Header Tint",
                             "borderBottomWidth": {
                                 "value": 1,
                                 "unit": "px"
@@ -4341,7 +4341,7 @@
                                 "value": 0,
                                 "unit": "px"
                             },
-                            "boxShadowColor": "#5836F533",
+                            "boxShadowColor": "Supabase/Header Tint",
                             "borderStyle": "none",
                             "maxHeight": {
                                 "value": 80,
@@ -7343,6 +7343,7 @@
                 "Grey - 800": "#383838",
                 "Primary": "#5836F5",
                 "Primary Dark": "#3F22B8",
+                "Supabase/Header Tint": "#5836F533",
                 "White": "#FFFFFF"
             }
         }

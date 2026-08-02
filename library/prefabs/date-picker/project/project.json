@@ -115,7 +115,7 @@
                                 "value": 40,
                                 "unit": "px"
                             },
-                            "borderColor": "#999",
+                            "borderColor": "Grey - 400",
                             "flexDirection": "column",
                             "sizeMode": "contentHeight",
                             "borderWidth": {

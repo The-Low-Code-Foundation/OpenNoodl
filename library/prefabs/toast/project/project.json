@@ -382,7 +382,7 @@
                                         "value": 56,
                                         "unit": "px"
                                     },
-                                    "backgroundColor": "#F75A4F3F",
+                                    "backgroundColor": "Toast/Danger Tint",
                                     "alignItems": "center",
                                     "justifyContent": "center"
                                 },
@@ -619,7 +619,7 @@
                                         "value": 56,
                                         "unit": "px"
                                     },
-                                    "backgroundColor": "#49AD7F3F",
+                                    "backgroundColor": "Toast/Success Tint",
                                     "alignItems": "center",
                                     "justifyContent": "center"
                                 },
@@ -1272,7 +1272,7 @@
                                         "value": 56,
                                         "unit": "px"
                                     },
-                                    "backgroundColor": "#F2C4413F",
+                                    "backgroundColor": "Toast/Notice Tint",
                                     "alignItems": "center",
                                     "justifyContent": "center"
                                 },
@@ -1361,6 +1361,9 @@
                 "Grey - 900": "#1F1F1F",
                 "Notice": "#F2C441",
                 "Success": "#49AD7F",
+                "Toast/Danger Tint": "#F75A4F3F",
+                "Toast/Notice Tint": "#F2C4413F",
+                "Toast/Success Tint": "#49AD7F3F",
                 "White": "#FFFFFF"
             }
         }

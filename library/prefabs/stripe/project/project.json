@@ -6345,11 +6345,11 @@
                                 }
                             ],
                             "intype-SuccessColor": "color",
-                            "in-SuccessColor": "#49AD7F",
+                            "in-SuccessColor": "Success",
                             "intype-FailureColor": "color",
-                            "in-FailureColor": "#F75A4F",
+                            "in-FailureColor": "Danger",
                             "intype-DefaultColor": "color",
-                            "in-DefaultColor": "#000000"
+                            "in-DefaultColor": "Grey - 900"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -8299,6 +8299,7 @@
                 }
             },
             "colors": {
+                "Danger": "#F75A4F",
                 "Grey - 200": "#F4F4F4",
                 "Grey - 300": "#E9E9E9",
                 "Grey - 400": "#CECECE",
@@ -8306,6 +8307,7 @@
                 "Grey - 900": "#1F1F1F",
                 "Primary": "#5836F5",
                 "Primary Dark": "#3F22B8",
+                "Success": "#49AD7F",
                 "White": "#FFFFFF"
             }
         }
