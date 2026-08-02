@@ -90,6 +90,9 @@ function makeSource(project: ProjectModelLike): ImportSource<ProjectComponentLik
 function makeTarget(project: ProjectModelLike, undo: UndoActionGroup): ImportTarget<ProjectComponentLike> {
   const args = { undo, label: 'import' };
   return {
+    hasComponent(name) {
+      return project.getComponentWithName(name) !== undefined;
+    },
     existingComponentId(name) {
       return project.getComponentWithName(name)?.id;
     },

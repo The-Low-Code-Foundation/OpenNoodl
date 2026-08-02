@@ -50,6 +50,10 @@ export interface ImportSource<M = unknown, V = unknown> {
 
 /** Mutates the target project. Model ops should enroll in the caller's undo group. */
 export interface ImportTarget<M = unknown, V = unknown> {
+  /** Whether a component already exists under this name. Asked separately from
+   * `existingComponentId` because a component can exist WITHOUT an id — see the
+   * overwrite path below. */
+  hasComponent(name: string): boolean;
   /** The existing component's id under this name, for overwrite-id-reuse; undefined if none. */
   existingComponentId(name: string): string | undefined;
   removeComponentByName(name: string): void;
@@ -113,10 +117,18 @@ export function applyModelChanges<M, V>(
     }
     // Overwrite reuses the target's id (references keep resolving); else keep
     // the fresh id from re-keying.
-    const existingId = target.existingComponentId(targetName);
-    if (existingId !== undefined) {
+    //
+    // Removal is gated on EXISTENCE, not on having an id. Gating both on
+    // `existingComponentId !== undefined` conflated "no such component" with
+    // "component exists but carries no id", so an id-less component was never
+    // removed and `addComponent` appended a SECOND component under the same
+    // name. That is not a fixture curiosity: every real project has exactly one
+    // id-less component — its root (`/App`) — so overwriting it on import
+    // duplicated the root of the target project.
+    if (target.hasComponent(targetName)) {
+      const existingId = target.existingComponentId(targetName);
       target.removeComponentByName(targetName);
-      ref.setId(existingId);
+      if (existingId !== undefined) ref.setId(existingId);
     }
     target.addComponent(ref.model);
     componentsImported.push(targetName);

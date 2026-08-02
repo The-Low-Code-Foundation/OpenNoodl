@@ -60,10 +60,16 @@ class FakeTarget implements ImportTarget<FakeComponent> {
   public mergedStyles: { colors: Record<string, unknown>; text: Record<string, unknown> } | undefined;
   public readonly addedVariants: unknown[] = [];
   constructor(
-    private readonly existing: Record<string, string> = {},
+    // Value `undefined` means "this component exists but carries no id" — the
+    // real shape of every project's root component. Keep it distinguishable
+    // from an absent key, or the id-less-overwrite case cannot be expressed.
+    private readonly existing: Record<string, string | undefined> = {},
     private readonly existingVariants: Record<string, boolean> = {}
   ) {}
 
+  hasComponent(name: string): boolean {
+    return Object.prototype.hasOwnProperty.call(this.existing, name);
+  }
   existingComponentId(name: string): string | undefined {
     return this.existing[name];
   }
@@ -136,6 +142,23 @@ describe('LIB-004 import engine — applyModelChanges', () => {
     expect(target.added.length).toBe(1);
     expect(target.added[0].id).toBe('TARGET-MAIN-ID'); // NOT the fresh id
     expect(result.componentsImported).toEqual(['/Main']);
+  });
+
+  // Regression, found by live QA 2026-08-02 — not reachable from the old fake,
+  // which keyed `existing` by id and so could not represent this state at all.
+  // Every real project has exactly one component with no id: its root (`/App`).
+  // Overwriting it appended a SECOND `/App` instead of replacing the first,
+  // because removal was gated on `existingComponentId !== undefined`.
+  it('evicts an existing component that carries NO id, instead of duplicating it', () => {
+    const source = new FakeSource({ '/App': true });
+    const target = new FakeTarget({ '/App': undefined }); // exists, no id — a project root
+
+    const result = applyModelChanges(componentPlan([{ name: '/App', policy: ADD }]), source, target);
+
+    expect(target.removed).toEqual(['/App']); // the defect: this was []
+    expect(target.added.length).toBe(1); // the consequence: this was 1 alongside a surviving original
+    expect(target.added[0].id).toBeDefined(); // keeps its fresh re-keyed id, nothing to reuse
+    expect(result.componentsImported).toEqual(['/App']);
   });
 
   it('imports nothing for a skip policy', () => {
