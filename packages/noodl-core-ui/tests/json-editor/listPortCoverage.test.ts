@@ -9,8 +9,16 @@
  * ⚠️ This corrects the spec. §0 tabulated 69 ports (array 26, stringlist 25,
  * object 11, proplist 7). Those figures are exact — but they count **inputs and
  * outputs together**, and the property panel only ever builds rows for
- * `getPorts('input')`. The editable surface is 46 input ports; the other 23 are
- * outputs and have no editor to give them. See ERG-003-NOTES.md.
+ * `getPorts('input')`. The editable surface is the input half; the outputs have
+ * no editor to give them. See ERG-003-NOTES.md.
+ *
+ * ⚠️ The census below is a snapshot of a library that grows, and it is meant to
+ * fail when the library changes — that is what makes a catalog change legible in
+ * the diff. §0's 69 was the total on 2026-08-01; ERG-004 then landed
+ * `Object Changed` and `Array Changed`, each with one list-shaped input, taking
+ * the surface to 48 inputs / 23 outputs / 71 total. When this fails, check that
+ * the new ports still *resolve* (the invariant) before updating the numbers (the
+ * snapshot) — the coverage loop below is the assertion that actually matters.
  */
 
 import { listPortTypeFor, LIST_PORT_TYPES } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
@@ -68,33 +76,47 @@ describe('ERG-003 criterion 2 — the list-shaped port surface, derived from the
     expect(listLike.sort()).toEqual([...LIST_PORT_TYPES].sort());
   });
 
-  it('every list-shaped INPUT port resolves to a covered type — 46 of them', () => {
-    expect(inputs.length).toBe(46);
-    expect(countBy(inputs)).toEqual({ array: 10, object: 4, stringlist: 25, proplist: 7 });
-
-    // The routing function must claim every one of them; nothing falls through.
+  // The invariant, asserted before any count. A census that drifts must never be
+  // able to mask a port that has silently lost its editor — which is exactly what
+  // happened when ERG-004 merged: the `toBe(46)` aborted the block before this
+  // loop ever ran.
+  it('every list-shaped INPUT port resolves to a covered type — nothing falls through', () => {
+    expect(inputs.length).toBeGreaterThan(0);
     for (const row of inputs) {
       expect(LIST_PORT_TYPES).toContain(row.listType as never);
     }
   });
 
-  it('the spec’s 69 is inputs + outputs, and 23 of those are outputs with no editor', () => {
+  it('the input census — 48 editable ports', () => {
+    expect(inputs.length).toBe(48);
+    expect(countBy(inputs)).toEqual({ array: 11, object: 5, stringlist: 25, proplist: 7 });
+  });
+
+  it('the spec’s 69 was inputs + outputs, and 23 of those are outputs with no editor', () => {
     expect(outputs.length).toBe(23);
     expect(countBy(outputs)).toEqual({ array: 16, object: 7, stringlist: 0, proplist: 0 });
 
-    // The exact arithmetic behind §0's table, so the correction is checkable.
+    // The exact arithmetic behind §0's table, so the correction stays checkable.
+    // §0's 69 (array 26, object 11) plus ERG-004's two inputs = 71.
     const combined = countBy([...inputs, ...outputs]);
-    expect(combined).toEqual({ array: 26, stringlist: 25, object: 11, proplist: 7 });
-    expect(inputs.length + outputs.length).toBe(69);
+    expect(combined).toEqual({ array: 27, stringlist: 25, object: 12, proplist: 7 });
+    expect(inputs.length + outputs.length).toBe(71);
   });
 
   it('names the nodes each type appears on, so a catalog change is legible in the diff', () => {
     const nodesFor = (t: string) => [...new Set(inputs.filter((r) => r.listType === t).map((r) => r.node))].sort();
 
     expect(nodesFor('proplist')).toEqual(['Component Stack', 'Create Record', 'Function', 'Script', 'Update Record']);
-    expect(nodesFor('object')).toEqual(['Global Store', 'Send Email', 'Server-Sent Events', 'State Snapshot']);
+    expect(nodesFor('object')).toEqual([
+      'Global Store',
+      'Object Changed',
+      'Send Email',
+      'Server-Sent Events',
+      'State Snapshot'
+    ]);
     expect(nodesFor('array')).toEqual([
       'Array',
+      'Array Changed',
       'Array Filter',
       'Array Map',
       'Create New Array',
