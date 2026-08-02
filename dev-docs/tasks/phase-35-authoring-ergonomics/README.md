@@ -122,6 +122,20 @@ that was put to him**, and in both cases for a reason worth keeping.
 | How should `Object Changed` become wireable? | **Add an object-valued output to the `Object` node** — not the recommended "resolve an id string on the input" | [`ERG-004-NOTES.md`](./ERG-004-NOTES.md) §7.4. ⚠️ `Array Changed`/`Collection2` needs the same treatment or the pair is fixed apart; and the id-string path still has to stop silently becoming `{}` |
 | Where does the asynchrony marker live? | **Declared in the node definitions**, not the enrichment catalog | [NDA-017](../phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md#-the-asynchrony-proxy-is-dead-2026-08-02). The file's own reasoning for enrichment was wrong on its own terms and has been corrected: a node knows its own asynchrony, so it is not *"what the source cannot know"* |
 
+## Session of 2026-08-02 (second half) — what closed
+
+| Item | State |
+|---|---|
+| **ERG-005 §0** | ✅ **Met, nothing owed** — all five questions plus Richard's named `Function` case |
+| **ERG-003 C1** | ✅ Rows 3 and 4 and C4 **pass**; C3 measured and **poor** (11% of a 24-entry list visible), named and unowned |
+| **ERG-004 §7.7 item 2** — descriptions unreadable | ✅ **Closed for the property panel.** Signals remain: their description exists and has nowhere to appear |
+| **ERG-004 §7.7 item 3** — the 14-port gap | ✅ Closed. It was a **stale committed artefact**, and `cloud-library:check` had been red for several commits |
+| **ERG-003 `listValueCodec`** | ✅ An orphaned, finished, green fix found uncommitted in the checkout — verified (4 of 45 fail without it) and committed |
+
+**Still open, all unowned:** ERG-004 §4.6's `sendValue` sweep; ERG-002's four remainders and
+ERG-003's Option A; a real surface for **signal**-port descriptions; ERG-003's C3 Easy-mode density;
+and the two decisions Richard took above, neither of which is built.
+
 ## ERG-005 §0 is answered (2026-08-02) — and it made §1 bigger
 
 Five questions about how a `Component Input`'s type is inferred, measured against the running editor
