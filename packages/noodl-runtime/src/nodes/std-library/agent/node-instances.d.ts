@@ -26,7 +26,7 @@
  * is why `globalstorenode.ts` could narrow its `_internal` inline and these could not.
  */
 
-import type { NodeInstance } from '@noodl/types';
+import type { NodeInstance, NodeOutcome, OutcomeToken } from '@noodl/types';
 
 import type { SseConnection, SseConnectionState, SseTransportEnv } from './sse-connection';
 import type { SseFrame } from './stream-parsers';
@@ -68,6 +68,17 @@ export type SseInternal = {
   eventType: string;
   autoConnectScheduled: boolean;
   /**
+   * The `Connect` invocation still waiting for the stream to open, if there is one.
+   *
+   * ERG-001. `Connect` returns with the request in flight, so "has this invocation reported
+   * yet" has to travel with the invocation rather than sit on the node — the `PendingNavigation`
+   * shape from `router-navigate.ts`.
+   *
+   * ⚠️ **Optional on purpose.** `scheduleAutoConnect` also reaches `doConnect`, and auto-connect
+   * is not an invocation of the `Connect` port; it passes no token and so reports nothing.
+   */
+  pendingConnect: OutcomeToken | null;
+  /**
    * Injectable environment, read once per connect.
    *
    * Production leaves this empty and the connection falls through to the platform
@@ -82,9 +93,12 @@ export interface SseNodeInstance extends NodeInstance {
   _internal: SseInternal;
 
   scheduleAutoConnect(): void;
-  doConnect(): void;
-  doDisconnect(): void;
+  /** @param outcome present only when an author's `Connect` port started this. */
+  doConnect(outcome?: OutcomeToken): void;
+  /** @returns whether there was a stream to stop — `Done` versus `Unchanged`. */
+  doDisconnect(): boolean;
   teardownConnection(): void;
+  settleConnect(outcome: NodeOutcome, code?: string, message?: string): void;
   handleState(state: SseConnectionState): void;
   handleFrame(frame: { event: string; data: string; id: string }): void;
   handleError(message: string): void;

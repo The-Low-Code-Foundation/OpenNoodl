@@ -87,6 +87,33 @@ export interface WebSocketLike {
 
 export type WebSocketConstructorLike = new (url: string, protocols?: string | string[]) => WebSocketLike;
 
+/**
+ * What one `send()` did with its value — the four states, named.
+ *
+ * ⚠️ **This replaced a `boolean`**, and it did so for ERG-001: the node has to tell `Done`
+ * ("owed to the wire") from `Unchanged` ("discarded by the Drop policy the author configured")
+ * from `Failure` ("refused"), and a boolean collapses the last three into one. Taking the same
+ * step `stateHistoryManager.clearHistory` took in the navigation slice is safe here for the
+ * same reason it was safe there: this class is internal to `websocket.ts` and every caller is
+ * in the repo.
+ */
+export type WebSocketSendResult =
+  /** Handed to the socket. */
+  | { kind: 'sent' }
+  /** Held in order until the socket reopens. Still owed, so still a `Done` to the graph. */
+  | { kind: 'queued' }
+  /** Discarded by the `drop` policy, and counted. The author asked for this. */
+  | { kind: 'dropped' }
+  /** Refused. `code` is the NDA-004 code the node reports it under. */
+  | { kind: 'failed'; code: string; message: string };
+
+/** Codes for {@link WebSocketSendResult}, so the node and this class cannot spell them apart. */
+export const WS_ERROR_NOTHING_TO_SEND = 'websocket/nothing-to-send';
+export const WS_ERROR_NOT_CONNECTED = 'websocket/not-connected';
+export const WS_ERROR_QUEUE_FULL = 'websocket/queue-full';
+export const WS_ERROR_ENCODE_FAILED = 'websocket/encode-failed';
+export const WS_ERROR_SEND_FAILED = 'websocket/send-failed';
+
 /** Tuning knobs. Every one of them maps to an input port on the node. */
 export interface WebSocketConnectionConfig {
   url?: string;
@@ -460,9 +487,14 @@ export class WebSocketConnection {
    * Teardown is done inline rather than waiting for the `close` event, so the
    * node reaches `closed` deterministically even if the socket never fires one
    * (a socket still in CONNECTING is the case that bites).
+   *
+   * @returns whether there was anything to close. ERG-001: this is the difference between the
+   * node reporting `Done` and reporting `Unchanged`, and it is the one path on this pair of
+   * nodes that §0.3 actually measured — a `Disconnect` on a node that was never connected used
+   * to be a silent exit.
    */
-  disconnect(): void {
-    if (this._disposed) return;
+  disconnect(): boolean {
+    if (this._disposed) return false;
 
     this._clearReconnectTimer();
     this._stopHeartbeat();
@@ -487,12 +519,13 @@ export class WebSocketConnection {
       // Never connected and not trying to: nothing happened, so say nothing.
       this.state = 'closed';
       this._emitStatus();
-      return;
+      return false;
     }
 
     this.state = 'closed';
     this._emitStatus();
     this._invoke(() => this._callbacks.onClose && this._callbacks.onClose(1000, 'Client disconnect', false));
+    return true;
   }
 
   /**
@@ -528,18 +561,20 @@ export class WebSocketConnection {
   /**
    * Send `value`, or apply the send-while-disconnected policy.
    *
-   * Returns whether the value reached a socket. Everything that did not is
-   * either in the queue (`queueSize`) or counted as lost (`droppedCount`) —
-   * there is no third, invisible outcome.
+   * Returns what became of the value. Everything that did not reach a socket is either in the
+   * queue (`queueSize`) or counted as lost (`droppedCount`) — there is no third, invisible
+   * outcome, and since ERG-001 there is no fourth, unnamed one either: the *reason* it did not
+   * reach the socket is what the node turns into `Done` / `Unchanged` / `Failure`.
    */
-  send(value: unknown): boolean {
-    if (this._disposed) return false;
+  send(value: unknown): WebSocketSendResult {
+    if (this._disposed) return { kind: 'dropped' };
 
     if (value === undefined || value === null) {
       // Almost always a wiring mistake, and the phase-3.5 draft returned
       // silently here. Say so instead.
-      this._reportError('Nothing to send: the Message input is empty');
-      return false;
+      const message = 'Nothing to send: the Message input is empty';
+      this._reportError(message);
+      return { kind: 'failed', code: WS_ERROR_NOTHING_TO_SEND, message };
     }
 
     if (this.state !== 'open' || !this._socket) {
@@ -549,12 +584,14 @@ export class WebSocketConnection {
           // "where did my messages go" has an answer on the canvas.
           this.droppedCount++;
           this._emitStatus();
-          return false;
+          return { kind: 'dropped' };
 
-        case 'error':
+        case 'error': {
           this.droppedCount++;
-          this._reportError('Cannot send: the connection is not open (state: ' + this.state + ')');
-          return false;
+          const message = 'Cannot send: the connection is not open (state: ' + this.state + ')';
+          this._reportError(message);
+          return { kind: 'failed', code: WS_ERROR_NOT_CONNECTED, message };
+        }
 
         case 'queue':
         default: {
@@ -565,13 +602,14 @@ export class WebSocketConnection {
             // stops is far easier to reason about than one with a hole in the
             // middle. It also makes the loss attributable to a specific send.
             this.droppedCount++;
-            this._reportError('Send queue is full (' + limit + ' messages); this message was dropped');
-            return false;
+            const message = 'Send queue is full (' + limit + ' messages); this message was dropped';
+            this._reportError(message);
+            return { kind: 'failed', code: WS_ERROR_QUEUE_FULL, message };
           }
           this._queue.push(value);
           this.queueSize = this._queue.length;
           this._emitStatus();
-          return false;
+          return { kind: 'queued' };
         }
       }
     }
@@ -580,14 +618,15 @@ export class WebSocketConnection {
   }
 
   /** Hand a value straight to the socket. Assumes the socket is open. */
-  private _sendNow(value: unknown, notify: boolean): boolean {
+  private _sendNow(value: unknown, notify: boolean): WebSocketSendResult {
     let frame: unknown;
     try {
       frame = this._encode(value);
     } catch (e) {
       this.droppedCount++;
-      this._reportError('Could not encode the message: ' + this._describe(e));
-      return false;
+      const message = 'Could not encode the message: ' + this._describe(e);
+      this._reportError(message);
+      return { kind: 'failed', code: WS_ERROR_ENCODE_FAILED, message };
     }
 
     try {
@@ -596,14 +635,15 @@ export class WebSocketConnection {
       // Usually InvalidStateError from a socket that has just closed. The close
       // handler will deal with the connection; here we only record the loss.
       this.droppedCount++;
-      this._reportError('Send failed: ' + this._describe(e));
-      return false;
+      const message = 'Send failed: ' + this._describe(e);
+      this._reportError(message);
+      return { kind: 'failed', code: WS_ERROR_SEND_FAILED, message };
     }
 
     if (notify) {
       this._invoke(() => this._callbacks.onSent && this._callbacks.onSent(value));
     }
-    return true;
+    return { kind: 'sent' };
   }
 
   private _encode(value: unknown): unknown {
@@ -633,7 +673,7 @@ export class WebSocketConnection {
 
     while (this._queue.length > 0 && this.state === 'open' && this._socket) {
       const value = this._queue.shift();
-      if (!this._sendNow(value, true)) {
+      if (this._sendNow(value, true).kind !== 'sent') {
         this._queue.unshift(value);
         break;
       }
@@ -857,7 +897,7 @@ export class WebSocketConnection {
     if (message) {
       // notify: false — a heartbeat is not an application message and must not
       // fire On Message Sent.
-      if (this._sendNow(message, false) && reply) {
+      if (this._sendNow(message, false).kind === 'sent' && reply) {
         this._pendingPingAt = this._now();
       }
     }

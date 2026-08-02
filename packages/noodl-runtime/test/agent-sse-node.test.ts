@@ -192,6 +192,12 @@ describe('net.noodl.SSE — port surface', () => {
 
     expect(Object.keys(metadata.outputs).sort()).toEqual(
       [
+        // ERG-001 §4's outcome contract, pinned beside the rest for the same reason: the
+        // reserved names must be visible here the moment one of them collides with something.
+        'completed',
+        'done',
+        'failure',
+        'unchanged',
         'connected',
         'connectionState',
         'data',
@@ -254,7 +260,8 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     await flush();
     expect(out('connectionState')).toBe('open');
     expect(out('connected')).toBe(true);
-    expect(signals).toEqual(['onOpen']);
+    // ERG-001: the `Connect` port's own outcome, after the lifecycle signal it follows.
+    expect(signals).toEqual(['onOpen', 'done', 'completed']);
 
     stream.push('event: token\nid: 1\ndata: {"text":"hi"}\n\n');
     await flush();
@@ -265,7 +272,7 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     expect(out('lastEventId')).toBe('1');
     expect(out('messageCount')).toBe(1);
     expect(out('deliverySemantics')).toBe('at-least-once-deduped');
-    expect(signals).toEqual(['onOpen', 'onMessage']);
+    expect(signals).toEqual(['onOpen', 'done', 'completed', 'onMessage']);
 
     node._onNodeDeleted();
   });
@@ -406,7 +413,8 @@ describe('net.noodl.SSE — streaming through the graph', () => {
 
     expect(out('connectionState')).toBe('closed');
     expect(out('connected')).toBe(false);
-    expect(signals).toEqual(['onOpen', 'onClose']);
+    // The stream opened before the server ended it, so its `Connect` reported Done then.
+    expect(signals).toEqual(['onOpen', 'done', 'completed', 'onClose']);
     node._onNodeDeleted();
   });
 
@@ -430,7 +438,8 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     expect(out('connectionState')).toBe('reconnecting');
     expect(out('retryCount')).toBe(1);
     expect(out('lastError')).toMatch(/interrupted/);
-    expect(signals).toEqual(['onOpen', 'onError']);
+    // A drop mid-outage does not un-report the Done this Connect already earned.
+    expect(signals).toEqual(['onOpen', 'done', 'completed', 'onError']);
 
     node._onNodeDeleted();
     expect(timers.pending()).toBe(0);
@@ -448,7 +457,8 @@ describe('net.noodl.SSE — streaming through the graph', () => {
     await flush();
 
     expect(out('connectionState')).toBe('error');
-    expect(signals).toEqual(['onError', 'onClose']);
+    // Never opened: the `Connect` ends in Failure, last, after both lifecycle signals.
+    expect(signals).toEqual(['onError', 'onClose', 'failure', 'completed']);
     expect(timers.pending()).toBe(0);
     node._onNodeDeleted();
   });

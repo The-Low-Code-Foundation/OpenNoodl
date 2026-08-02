@@ -744,13 +744,22 @@ export class SseConnection {
     this._openTransport();
   }
 
-  /** Stops the stream and stays stopped. */
-  disconnect(): void {
-    if (this._disposed) return;
+  /**
+   * Stops the stream and stays stopped.
+   *
+   * @returns whether there was a stream (open, opening or waiting to retry) to stop. ERG-001:
+   * this is the difference between the node reporting `Done` and reporting `Unchanged`, and
+   * `Disconnect` with nothing running is the one path on this pair of nodes §0.3 measured. The
+   * `idle -> closed` transition below is bookkeeping, not a stream being torn down, so it does
+   * not count as having closed something.
+   */
+  disconnect(): boolean {
+    if (this._disposed) return false;
     this._clearReconnectTimer();
     const wasActive = this._transport !== null || this.state === 'connecting' || this.state === 'reconnecting';
     this._closeTransport();
     if (wasActive || this.state !== 'closed') this._setState('closed');
+    return wasActive;
   }
 
   /**

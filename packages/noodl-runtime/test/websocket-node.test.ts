@@ -251,9 +251,16 @@ describe('port set', () => {
   });
 
   it('publishes exactly the documented outputs', () => {
+    // ERG-001 §4 added `done` / `unchanged` / `failure` / `completed`. They are pinned here
+    // beside the lifecycle signals on purpose: SR-ix's collision is a *silent* one, so the
+    // moment `Completed` becomes a reserved name this list is where a clash has to surface.
     expect(Object.keys(metadata.outputs).sort()).toEqual(
       [
         'closeCode',
+        'completed',
+        'done',
+        'failure',
+        'unchanged',
         'closeReason',
         'connected',
         'connectionState',

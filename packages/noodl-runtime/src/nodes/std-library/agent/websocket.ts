@@ -35,8 +35,9 @@
  * @since 2.0.0
  */
 
-import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule, OutcomeToken } from '@noodl/types';
 
+import { outcomeOutputs } from '../../../outcome';
 import {
   DEFAULT_MAX_QUEUE_SIZE,
   DEFAULT_MAX_RECONNECT_DELAY,
@@ -50,6 +51,9 @@ import {
 
 import Node = require('../../../node');
 
+/** The failure this node reports when a `Connect` cannot open, or gives up trying. */
+const WS_ERROR_CONNECT_FAILED = 'websocket/connect-failed';
+
 /** The node's slice of `_internal`. */
 interface WebSocketNodeInternal {
   /** Built lazily so a node that never connects never allocates one. */
@@ -60,6 +64,19 @@ interface WebSocketNodeInternal {
   autoConnect: boolean;
   hasScheduledRebuild: boolean;
 
+  /**
+   * The `Connect` invocation still waiting for its handshake, if there is one.
+   *
+   * ERG-001. `Connect` is the async case the contract's token shape was built for: it returns
+   * with the socket still in `connecting`, so "has this invocation reported yet" cannot live on
+   * the node — the same `PendingNavigation` shape `router-navigate.ts` uses.
+   *
+   * ⚠️ **Optional, and that is the load-bearing part.** `rebuild()` and auto-connect also call
+   * `connect()`, and neither is an invocation of the `Connect` port. They mint no token, so they
+   * report nothing — the mount-path rule the navigation slice established for `Router.reset`.
+   */
+  pendingConnect: OutcomeToken | null;
+
   message: unknown;
   received: unknown;
   receivedRaw: string;
@@ -68,6 +85,15 @@ interface WebSocketNodeInternal {
 
 function internalOf(node: NodeInstance): WebSocketNodeInternal {
   return node._internal as unknown as WebSocketNodeInternal;
+}
+
+/** The definition's own `methods`, so a call site inside it is checked rather than cast to `any`. */
+interface WebSocketNodeMethods {
+  getConnection(): WebSocketConnection;
+  applyConfig(config: WebSocketConnectionConfig): void;
+  scheduleRebuild(): void;
+  rebuild(): void;
+  settleConnect(outcome: 'done' | 'unchanged' | 'failure', code?: string, message?: string): void;
 }
 
 /** Status outputs are flagged as a set — see `onStatus` in the connection. */
@@ -139,6 +165,7 @@ const WebSocketNode: NodeDefinitionOptions = {
     internal.connection = null;
     internal.autoConnect = true;
     internal.hasScheduledRebuild = false;
+    internal.pendingConnect = null;
     internal.message = undefined;
     internal.received = undefined;
     internal.receivedRaw = '';
@@ -329,7 +356,16 @@ const WebSocketNode: NodeDefinitionOptions = {
       description: 'Opens the socket, replacing one already open without reporting a close',
       group: 'Actions',
       valueChangedToTrue(this: NodeInstance) {
-        (this as NodeInstance & { getConnection(): WebSocketConnection }).getConnection().connect();
+        const self = this as NodeInstance & WebSocketNodeMethods;
+        // ERG-001. The token is minted here — at the port — and nowhere else, so the
+        // auto-connect and rebuild paths that also call `connect()` stay silent.
+        //
+        // A `Connect` fired while an earlier one is still shaking hands supersedes it: the old
+        // socket is torn down by `connect()` a line later, so that invocation never reaches an
+        // open connection and never will.
+        self.settleConnect('unchanged');
+        internalOf(this).pendingConnect = this.beginOutcome();
+        self.getConnection().connect();
       }
     },
     disconnect: {
@@ -337,8 +373,16 @@ const WebSocketNode: NodeDefinitionOptions = {
       description: 'Closes the socket and cancels any pending reconnect',
       group: 'Actions',
       valueChangedToTrue(this: NodeInstance) {
+        const self = this as NodeInstance & WebSocketNodeMethods;
+        const outcome = this.beginOutcome();
         const connection = internalOf(this).connection;
-        if (connection) connection.disconnect();
+        // A `Connect` still in flight is being cancelled, not failed — the author asked for
+        // this. It is a separate invocation with its own token, so both report.
+        self.settleConnect('unchanged');
+        // §0.3's measured entry: a `Disconnect` with nothing open used to be the silent path
+        // out of this node. It is `Unchanged`, and a Disconnect cannot fail.
+        const closedSomething = connection ? connection.disconnect() : false;
+        this.reportOutcome(outcome, closedSomething ? 'done' : 'unchanged');
       }
     },
     send: {
@@ -346,8 +390,22 @@ const WebSocketNode: NodeDefinitionOptions = {
       description: 'Hands the current Message to the socket, or applies the When Disconnected policy',
       group: 'Actions',
       valueChangedToTrue(this: NodeInstance) {
-        const self = this as NodeInstance & { getConnection(): WebSocketConnection };
-        self.getConnection().send(internalOf(this).message);
+        const self = this as NodeInstance & WebSocketNodeMethods;
+        const outcome = this.beginOutcome();
+        // `send` sets `lastError` and `droppedCount` and fires `On Error` before it returns, so
+        // by the time the outcome goes out every value it is about is already on the wire.
+        const result = self.getConnection().send(internalOf(this).message);
+
+        if (result.kind === 'failed') {
+          this.reportOutcome(outcome, 'failure', { code: result.code, message: result.message });
+          return;
+        }
+        // ⚠️ A queued message is `Done`, a dropped one is `Unchanged`. The postcondition of
+        // `Send` is that the value is owed to the wire: a queued one is owed and will go out on
+        // the next open, whereas the `Drop` policy is the author saying "throw it away", so
+        // neither `Done` (which would be `Insert Object Into Array`'s lie) nor `Failure` (which
+        // fires on a graph working exactly as written) is honest for it.
+        this.reportOutcome(outcome, result.kind === 'dropped' ? 'unchanged' : 'done');
       }
     },
 
@@ -584,7 +642,28 @@ const WebSocketNode: NodeDefinitionOptions = {
       description:
         'Fires on every open after the first; a WebSocket cannot resume, so this is the cue to re-fetch rather than assume continuity',
       group: 'Events'
-    }
+    },
+
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001. Three actions, one port set — an outcome describes an *invocation*, and which
+    // input it came from is already visible on the canvas as the wire that fired.
+    //
+    // ⚠️ These are not the lifecycle signals above and do not replace them. `On Open` says the
+    // socket is up however it got there (auto-connect, a retry, a rebuild); `Done` says *this
+    // Connect* finished. An author sequencing a chain wants the second; an author reacting to
+    // the connection wants the first.
+    ...outcomeOutputs({
+      done:
+        'Fires when the action finished: a Connect whose socket opened, a Send accepted for ' +
+        'delivery (sent, or queued for the next open), or a Disconnect that closed something',
+      unchanged:
+        'Fires when there was nothing to do: a Disconnect with nothing open, a Send discarded ' +
+        'by the Drop policy, or a Connect a later Connect or Disconnect superseded before it opened',
+      failure:
+        'Fires when the action could not be performed — no URL, a URL that is not ws:// or ' +
+        'wss://, a connection that gave up, or a refused Send. Last Error carries the reason'
+    })
   },
 
   methods: {
@@ -603,6 +682,17 @@ const WebSocketNode: NodeDefinitionOptions = {
         ...internal.config,
         onStatus: () => {
           for (const name of STATUS_OUTPUTS) this.flagOutputDirty(name);
+          // ERG-001. `error` is the connection's one terminal failure state — `_fail` for a
+          // connect that cannot even start, and the give-up branch of `_handleSocketDown` when
+          // the retries are spent or turned off. `onError` is *not* the discriminator: it also
+          // fires for a transient drop that is about to be retried, and for a refused send.
+          if (connection.state === 'error') {
+            (this as NodeInstance & WebSocketNodeMethods).settleConnect(
+              'failure',
+              WS_ERROR_CONNECT_FAILED,
+              connection.lastError || 'The connection could not be opened'
+            );
+          }
         },
         onOpen: (isReconnect: boolean) => {
           this.sendSignalOnOutput('onOpen');
@@ -611,6 +701,11 @@ const WebSocketNode: NodeDefinitionOptions = {
           // re-fetch rather than assume the stream was continuous. Same role as
           // the NodeGX backend's SSE `resync` frame (BAK-001).
           if (isReconnect) this.sendSignalOnOutput('onReconnect');
+          // Last, after the lifecycle signal and the status values it is about. ⚠️ A first
+          // attempt that dropped and a retry that then opened is one `Done`, not a `Failure`
+          // followed by a `Done`: the token rides the whole outage, and ending an author's
+          // chain dead on a connection that is in the end open is the class this contract closes.
+          (this as NodeInstance & WebSocketNodeMethods).settleConnect('done');
         },
         onMessage: (value: unknown, raw: string, isBinary: boolean) => {
           internal.received = value;
@@ -638,6 +733,23 @@ const WebSocketNode: NodeDefinitionOptions = {
 
       internal.connection = connection;
       return connection;
+    },
+
+    /**
+     * End the `Connect` invocation that is still waiting, if there is one.
+     *
+     * ERG-001. The one place the pending token is read, so "exactly one outcome per invocation"
+     * is a property of this method rather than of every caller remembering to clear the slot.
+     * Called from four places — the socket opening, the connection reaching `error`, a later
+     * `Connect`, and a `Disconnect` — and a no-op from all four when nothing is pending, which
+     * is what keeps the auto-connect and rebuild paths silent.
+     */
+    settleConnect(this: NodeInstance, outcome: 'done' | 'unchanged' | 'failure', code?: string, message?: string) {
+      const internal = internalOf(this);
+      const token = internal.pendingConnect;
+      if (!token) return;
+      internal.pendingConnect = null;
+      this.reportOutcome(token, outcome, outcome === 'failure' ? { code, message } : undefined);
     },
 
     /**
@@ -701,6 +813,10 @@ const WebSocketNode: NodeDefinitionOptions = {
         // and carrying them onto a different endpoint would be a lie.
         existing.dispose();
         internal.connection = null;
+        // ERG-001. A `Connect` still shaking hands against the *old* endpoint will never open
+        // it — the url moved underneath it. That invocation is superseded, not failed; the
+        // reconnect below is the rebuild's, not the author's, and mints no token of its own.
+        (this as NodeInstance & WebSocketNodeMethods).settleConnect('unchanged');
         for (const name of STATUS_OUTPUTS) this.flagOutputDirty(name);
 
         if (internal.config.url && (internal.autoConnect || wasActive)) {
@@ -731,6 +847,11 @@ const WebSocketNode: NodeDefinitionOptions = {
         internal.connection.dispose();
         internal.connection = null;
       }
+      // ⚠️ A `Connect` still pending here reports nothing, and there is nowhere for it to
+      // report to: the node has been deleted, so its outputs are unreadable and every wire off
+      // it is gone. This is the navigation exception's shape — the graph that would observe the
+      // signal no longer exists — rather than a silent path inside a live graph.
+      if (internal) internal.pendingConnect = null;
     }
   }
 };

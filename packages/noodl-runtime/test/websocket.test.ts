@@ -425,7 +425,9 @@ describe('receiving', () => {
 describe('sending', () => {
   it('sends a string as text and fires On Message Sent', () => {
     const socket = openConnection();
-    expect(connection.send('hello')).toBe(true);
+    // ERG-001 replaced the boolean with a named result, so the *reason* a value did not reach
+    // the socket is legible — the node turns it into Done / Unchanged / Failure.
+    expect(connection.send('hello')).toEqual({ kind: 'sent' });
 
     expect(socket.sent).toEqual(['hello']);
     expect(sent).toEqual(['hello']);
@@ -459,7 +461,11 @@ describe('sending', () => {
 
   it('reports an empty Message input rather than returning silently', () => {
     openConnection();
-    expect(connection.send(undefined)).toBe(false);
+    expect(connection.send(undefined)).toEqual({
+      kind: 'failed',
+      code: 'websocket/nothing-to-send',
+      message: expect.stringMatching(/Message input is empty/)
+    });
     expect(errors[0]).toMatch(/Message input is empty/);
     connection.dispose();
   });
@@ -470,7 +476,11 @@ describe('sending', () => {
       throw new Error('InvalidStateError');
     };
 
-    expect(connection.send('x')).toBe(false);
+    expect(connection.send('x')).toEqual({
+      kind: 'failed',
+      code: 'websocket/send-failed',
+      message: expect.stringMatching(/Send failed/)
+    });
     expect(connection.droppedCount).toBe(1);
     expect(connection.lastError).toMatch(/Send failed/);
     // The close handler owns the connection's fate; a failed send does not
@@ -521,7 +531,11 @@ describe('send while disconnected', () => {
     connection = makeConnection({ maxQueueSize: 2 });
     connection.send('a');
     connection.send('b');
-    expect(connection.send('c')).toBe(false);
+    expect(connection.send('c')).toEqual({
+      kind: 'failed',
+      code: 'websocket/queue-full',
+      message: expect.stringMatching(/queue is full/)
+    });
 
     // Refusing the newest keeps the queue an ordered prefix of intent rather
     // than a sequence with a hole in it.
@@ -551,7 +565,11 @@ describe('send while disconnected', () => {
 
   it('error mode reports and does not queue', () => {
     connection = makeConnection({ sendWhenDisconnected: 'error' });
-    expect(connection.send('a')).toBe(false);
+    expect(connection.send('a')).toEqual({
+      kind: 'failed',
+      code: 'websocket/not-connected',
+      message: expect.stringMatching(/not open/)
+    });
 
     expect(connection.queueSize).toBe(0);
     expect(connection.droppedCount).toBe(1);
@@ -1023,7 +1041,8 @@ describe('node deletion (unmount / navigate away)', () => {
 
     expect(connection.droppedCount).toBe(1);
     expect(connection.queueSize).toBe(0);
-    expect(connection.send('too late')).toBe(false);
+    // Disposed: nothing is owed and nothing is refused, so the value is simply gone.
+    expect(connection.send('too late')).toEqual({ kind: 'dropped' });
   });
 
   it('is idempotent', () => {

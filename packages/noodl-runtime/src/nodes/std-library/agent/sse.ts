@@ -20,13 +20,17 @@
  * @since 2.0.0
  */
 
-import type { NodeDefinitionOptions } from '@noodl/types';
+import type { NodeDefinitionOptions, NodeOutcome, OutcomeToken } from '@noodl/types';
 
+import { outcomeOutputs } from '../../../outcome';
 import type { SseInternal, SseNodeInstance } from './node-instances';
 import { SseConnection, SseConnectionOptions, SseConnectionState } from './sse-connection';
 import { parseJsonOrText, textForPath } from './stream-parsers';
 
 import Node = require('../../../node');
+
+/** The failure this node reports when a `Connect` cannot open the stream, or gives up. */
+const SSE_ERROR_CONNECT_FAILED = 'sse/connect-failed';
 
 function internalOf(node: SseNodeInstance): SseInternal {
   return node._internal;
@@ -92,6 +96,7 @@ const SSENode: NodeDefinitionOptions = {
     internal.raw = '';
     internal.eventType = '';
     internal.autoConnectScheduled = false;
+    internal.pendingConnect = null;
     internal.seams = {};
   },
 
@@ -321,7 +326,10 @@ const SSENode: NodeDefinitionOptions = {
       description: 'Opens the stream, replacing any connection already open and resetting the retry count',
       group: 'Actions',
       valueChangedToTrue(this: SseNodeInstance) {
-        this.doConnect();
+        // ERG-001. Minted at the port and nowhere else, so `scheduleAutoConnect`'s route into
+        // `doConnect` stays silent. A `Connect` fired while an earlier one is still in flight
+        // supersedes it — `doConnect` tears the old request down a line later.
+        this.doConnect(this.beginOutcome());
       }
     },
 
@@ -330,7 +338,13 @@ const SSENode: NodeDefinitionOptions = {
       description: 'Closes the stream and stops retrying',
       group: 'Actions',
       valueChangedToTrue(this: SseNodeInstance) {
-        this.doDisconnect();
+        const outcome = this.beginOutcome();
+        // A `Connect` still in flight is being cancelled, not failed. Separate invocation,
+        // separate token, so both report.
+        this.settleConnect('unchanged');
+        // §0.3's measured entry. A `Disconnect` with no stream running used to be the silent
+        // path out of this node, and a Disconnect cannot fail.
+        this.reportOutcome(outcome, this.doDisconnect() ? 'done' : 'unchanged');
       }
     }
   },
@@ -399,6 +413,23 @@ const SSENode: NodeDefinitionOptions = {
       description: 'Fires when the stream has stopped for good, whether it ended cleanly or gave up',
       group: 'Events'
     },
+
+    // --- the outcome contract ----------------------------------------------
+    //
+    // ERG-001, and the same shape as the WebSocket node's, because the two are meant to read
+    // alike. ⚠️ These do not replace the lifecycle signals above: `On Open` says the stream is
+    // up however it got there, `Done` says *this Connect* finished.
+    //
+    // No `Send` here, so `Unchanged` has fewer ways to happen than on the WebSocket node — but
+    // it has one, and a node that can no-op gets the port.
+    ...outcomeOutputs({
+      done: 'Fires when the action finished: a Connect whose stream opened, or a Disconnect that stopped one',
+      unchanged:
+        'Fires when there was nothing to do: a Disconnect with no stream running, or a Connect ' +
+        'a later Connect or Disconnect superseded before it opened',
+      failure:
+        'Fires when the stream could not be opened, or gave up retrying. Last Error carries the reason'
+    }),
 
     // --- stream data ------------------------------------------------------
     data: {
@@ -540,6 +571,10 @@ const SSENode: NodeDefinitionOptions = {
           // endpoint. `teardownConnection` is silent by design, and `doConnect` immediately
           // moves the state to `connecting`, so the graph sees the transition rather than a
           // gap.
+          //
+          // ERG-001: a `Connect` still in flight against the *old* url is superseded here even
+          // when nothing reopens, so the settle cannot be left to `doConnect` alone.
+          this.settleConnect('unchanged');
           this.teardownConnection();
           if (inner.autoConnect && inner.url) this.doConnect();
           return;
@@ -550,8 +585,30 @@ const SSENode: NodeDefinitionOptions = {
       });
     },
 
-    doConnect(this: SseNodeInstance) {
+    /**
+     * End the `Connect` invocation that is still waiting, if there is one.
+     *
+     * ERG-001. The one place the pending token is read, so "exactly one outcome per invocation"
+     * is a property of this method rather than of every caller remembering to clear the slot —
+     * and a no-op when nothing is pending, which is what keeps the auto-connect path silent.
+     */
+    settleConnect(this: SseNodeInstance, outcome: NodeOutcome, code?: string, message?: string) {
       const internal = internalOf(this);
+      const token = internal.pendingConnect;
+      if (!token) return;
+      internal.pendingConnect = null;
+      this.reportOutcome(token, outcome, outcome === 'failure' ? { code, message } : undefined);
+    },
+
+    doConnect(this: SseNodeInstance, outcome?: OutcomeToken) {
+      const internal = internalOf(this);
+      // A request already in flight is superseded, whether by another `Connect` or by a url
+      // change — `teardownConnection` below aborts it, so it will never reach an open stream.
+      // Settled *before* the new token is installed, or this would report the wrong invocation.
+      this.settleConnect('unchanged');
+      // Present only when an author's `Connect` port started this. `scheduleAutoConnect` and
+      // the url-change rebuild pass nothing, and so report nothing.
+      internal.pendingConnect = outcome || null;
       this.teardownConnection();
 
       // The endpoint this connection was opened against, so a later `URL` change can be told
@@ -589,9 +646,10 @@ const SSENode: NodeDefinitionOptions = {
       connection.connect();
     },
 
-    doDisconnect(this: SseNodeInstance) {
+    /** @returns whether there was a stream to stop — `Done` versus `Unchanged`. */
+    doDisconnect(this: SseNodeInstance): boolean {
       const connection = internalOf(this).connection;
-      if (connection) connection.disconnect();
+      return connection ? connection.disconnect() : false;
     },
 
     /** Releases the connection without emitting anything. Used on delete. */
@@ -613,6 +671,23 @@ const SSENode: NodeDefinitionOptions = {
       // 'error' is terminal, so it closes the stream from the graph's point of view
       // too — a Close handler must run whether the stream stopped cleanly or not.
       if (state === 'closed' || state === 'error') this.sendSignalOnOutput('onClose');
+
+      // ERG-001. The two terminal states of a `Connect`, and the outcome goes last — after the
+      // status values and after the lifecycle signal they belong to.
+      //
+      // ⚠️ `'reconnecting'` is deliberately not one of them: a first attempt that failed and a
+      // retry that then opens is one `Done`, not a `Failure` followed by a `Done`. The token
+      // rides the whole outage. ⚠️ `'closed'` is not one either — a stream the server ended
+      // cleanly opened first, so its `Connect` already reported `Done`.
+      if (state === 'open') this.settleConnect('done');
+      if (state === 'error') {
+        const conn = internalOf(this).connection;
+        this.settleConnect(
+          'failure',
+          SSE_ERROR_CONNECT_FAILED,
+          (conn && conn.lastError) || 'The stream could not be opened'
+        );
+      }
     },
 
     handleFrame(this: SseNodeInstance, frame: { event: string; data: string; id: string }) {
@@ -646,6 +721,11 @@ const SSENode: NodeDefinitionOptions = {
     _onNodeDeleted(this: SseNodeInstance) {
       Node.prototype._onNodeDeleted.call(this);
       this.teardownConnection();
+      // ⚠️ A `Connect` still pending here reports nothing, and there is nowhere for it to
+      // report to: the node is gone and every wire off it with it. The navigation exception's
+      // shape, not a silent path inside a live graph.
+      const internal = internalOf(this);
+      if (internal) internal.pendingConnect = null;
     }
   }
 };
