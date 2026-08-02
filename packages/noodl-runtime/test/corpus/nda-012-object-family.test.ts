@@ -208,7 +208,8 @@ describe('C2 — Set Object Properties, an empty Id', () => {
     await graph.settle(3);
 
     expect(graph.signalsFor('target')).toContain('failure');
-    expect(graph.signalsFor('target')).not.toContain('stored');
+    // ERG-001 §4: `stored` -> `done`. Asserted on the live name so it cannot pass vacuously.
+    expect(graph.signalsFor('target')).not.toContain('done');
     expect(graph.errors.map((error) => error.code)).toContain('set-object-properties/no-object');
     // The half that matters most: no record was invented on the way past.
     expect(Model._models[key]).toBeUndefined();
@@ -228,7 +229,7 @@ describe('C2 — Set Object Properties, an empty Id', () => {
     trigger.go();
     await graph.settle(3);
 
-    expect(graph.signalsFor('target')).toContain('stored');
+    expect(graph.signalsFor('target')).toContain('done');
     expect(graph.signalsFor('target')).not.toContain('failure');
     expect(Model.get('c2-real-id').data).toEqual({ name: 'Ada' });
   });
@@ -329,7 +330,8 @@ describe('Create New Object', () => {
     await graph.settle(3);
     const second = graph.node<ObjectNodeInstance>('target')._internal.model!.getId();
 
-    expect(graph.signalsFor('target').filter((s) => s === 'created')).toHaveLength(2);
+    // ERG-001 §4: `created` -> `done`.
+    expect(graph.signalsFor('target').filter((s) => s === 'done')).toHaveLength(2);
     expect(first).not.toBe(second);
     expect(Model.get(first).data).toEqual({ name: 'Ada' });
     expect(Model.get(second).data).toEqual({ name: 'Ada' });

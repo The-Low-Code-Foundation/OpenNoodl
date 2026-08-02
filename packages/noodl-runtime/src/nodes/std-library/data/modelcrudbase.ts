@@ -9,6 +9,7 @@ import type {
   ModelModule,
   NodeContextLike,
   NodeInstance,
+  OutcomeToken,
   PrototypeExtensions,
   RuntimeDiscoveredPort
 } from '@noodl/types';
@@ -75,7 +76,7 @@ function _addFailure(def: MixinNodeModule, codePrefix: string) {
      * as the contract's examples do (`set-object-properties/no-object`) instead of echoing an
      * internal type name, and so a rename of either cannot silently change the other.
      */
-    _failNoModel: function (this: FailableNodeInstance, action: string) {
+    _failNoModel: function (this: FailableNodeInstance, outcome: OutcomeToken, action: string) {
       const fromRepeater = this._internal.idSource === 'foreach';
       const message = fromRepeater
         ? 'Nothing to ' + action + ' — Id Source is "From repeater" and no item resolved.'
@@ -92,11 +93,15 @@ function _addFailure(def: MixinNodeModule, codePrefix: string) {
       // wordings of one failure" the Failure Contract calls noise. The graph surface still
       // fires in both modes, because branching on "the write did not happen" is a different
       // question from "why did the binding miss" and the author may only have wired one.
-      if (!fromRepeater) {
-        this.raiseRuntimeError(codePrefix + '/no-object', message, { idSource: 'explicit' });
-      }
-
-      this.sendSignalOnOutput('failure');
+      //
+      // ERG-001 §4: that conditional is now expressed as `raise`, so the suppression stays
+      // exactly as narrow as it was and `Completed` fires either way.
+      this.reportOutcome(outcome, 'failure', {
+        code: codePrefix + '/no-object',
+        message,
+        detail: { idSource: 'explicit' },
+        raise: !fromRepeater
+      });
     }
   });
 }
@@ -134,7 +139,7 @@ interface ModelIdNodeInstance extends NodeInstance {
  * is what keeps `Create New Object`, which applies one mixin and not the other, honest.
  */
 interface InputPropertiesNodeInstance extends ModelIdNodeInstance {
-  _failNoModel?(action: string): void;
+  _failNoModel?(outcome: OutcomeToken, action: string): void;
   /** On the instance rather than in `_internal` — guards {@link scheduleStore}. */
   hasScheduledStore?: boolean;
   _pushInputValues(model: ModelLike): void;
@@ -518,9 +523,24 @@ function _addInputProperties(def: MixinNodeModule) {
         model.set(i, value, { resolve: true });
       }
     },
+    /**
+     * ⚠️ **No `Unchanged` here, and it is a decision rather than an omission.**
+     *
+     * `Model.set` per key already no-ops when the value compares equal, so a store where every
+     * property already held its value writes nothing. But this node has *N* properties and no
+     * single post-condition, so "unchanged" would have to mean "all of them", which is a
+     * semantic §0.3 never measured and which the `Object` node's own `changed` notification
+     * does not express either. Recorded as a candidate in `ERG-001-S0-MEASUREMENT.md` rather
+     * than invented here — §0.3's warning is that anyone extending the `Unchanged` set should
+     * re-read the node, not pattern-match on shape.
+     */
     scheduleStore: function (this: InputPropertiesNodeInstance) {
       if (this.hasScheduledStore) return;
       this.hasScheduledStore = true;
+      // After the guard: two `Do` pulses inside one frame coalesce into one store, so they are
+      // one invocation and must produce one outcome. Captured by the closure rather than
+      // parked on the instance, so it cannot outlive the invocation it belongs to.
+      const outcome = this.beginOutcome();
 
       const internal = this._internal;
       this.scheduleAfterInputsHaveUpdated(() => {
@@ -538,14 +558,15 @@ function _addInputProperties(def: MixinNodeModule) {
           // mixins a node composed, so without it a consumer that forgot `addFailure` would
           // get a `TypeError` thrown out of a scheduler — the least legible failure there is,
           // and precisely what this task exists to remove. Named instead.
-          if (this._failNoModel) this._failNoModel('store');
+          if (this._failNoModel) this._failNoModel(outcome, 'store');
           else this.raiseRuntimeError('data/mixin-missing', 'This node cannot report failures: addFailure was not applied');
           return;
         }
 
         this._pushInputValues(internal.model);
 
-        this.sendSignalOnOutput('stored');
+        // Last: `_pushInputValues` has already notified everything watching the object.
+        this.reportOutcome(outcome, 'done');
       });
     },
     registerInputIfNeeded: function (this: InputPropertiesNodeInstance, name: string) {

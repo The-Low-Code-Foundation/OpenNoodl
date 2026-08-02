@@ -6,6 +6,7 @@ import type { MixinNodeModule, ModelIdInstance } from './crud-mixins';
 
 import ModelImport = require('../../../model');
 import ModelCRUDBase = require('./modelcrudbase');
+import { outcomeOutputs } from '../../../outcome';
 
 const Model = ModelImport as unknown as ModelModule;
 
@@ -32,18 +33,26 @@ const NewModelNodeDefinition: MixinNodeModule = {
         }
       }
     },
-    outputs: {
-      created: {
-        type: 'signal',
-        displayName: 'Done',
-        group: 'Events',
-        description: 'Fires once the new object exists, its properties are written and Id names it'
-      }
-    },
+    /**
+     * ERG-001 §4. `created` was one of the four internal names that all displayed as "Done"
+     * (§0.2 Result 2); it is `done` now, and `Completed` joins it.
+     *
+     * No `Failure`: this node builds its own object and has nothing to fail at, which is why
+     * `addFailure` is deliberately not applied below. No `Unchanged`: every `Do` mints a
+     * *distinct* object, so the post-condition can never already hold.
+     */
+    outputs: outcomeOutputs({
+      done: 'Fires once the new object exists, its properties are written and Id names it'
+    }),
     methods: {
       scheduleNew: function (this: NewModelNodeInstance) {
         if (this.hasScheduledNew) return;
         this.hasScheduledNew = true;
+        // Opened after the coalescing guard, so two `Do` pulses inside one frame — which this
+        // node deliberately collapses into one store — produce one invocation and one outcome.
+        // Captured by the closure rather than parked on the instance: a token that cannot
+        // outlive its invocation is what makes NV-iii's latched-result class unrepresentable.
+        const outcome = this.beginOutcome();
 
         this.scheduleAfterInputsHaveUpdated(() => {
           this.hasScheduledNew = false;
@@ -53,7 +62,9 @@ const NewModelNodeDefinition: MixinNodeModule = {
 
           this.setModel(newModel);
 
-          this.sendSignalOnOutput('created');
+          // Last, after `setModel` has flagged `Id` dirty: a graph wired `Done -> Insert` must
+          // already be able to read the id when the pulse lands.
+          this.reportOutcome(outcome, 'done');
         });
       }
     }

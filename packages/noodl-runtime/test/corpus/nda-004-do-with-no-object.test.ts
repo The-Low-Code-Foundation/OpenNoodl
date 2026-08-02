@@ -106,7 +106,9 @@ describe('NDA-004 §2: Set Object Properties with no object bound', () => {
     const graph = await graphWith('SetModelProperties', 'store', { properties: 'name' });
 
     expect(graph.signalsFor('target')).toContain('failure');
-    expect(graph.signalsFor('target')).not.toContain('stored');
+    // ERG-001 §4: the success wire is `done` now. Named explicitly rather than left as
+    // `stored`, which would pass vacuously once the port no longer exists.
+    expect(graph.signalsFor('target')).not.toContain('done');
   });
 
   test('raises a namespaced code an author can match on', async () => {
@@ -129,7 +131,7 @@ describe('NDA-004 §2: Set Object Properties with no object bound', () => {
   test('(pinned control) with an Id set, it stores and stays quiet', async () => {
     const graph = await graphWith('SetModelProperties', 'store', { properties: 'name', modelId: 'an-object' });
 
-    expect(graph.signalsFor('target')).toContain('stored');
+    expect(graph.signalsFor('target')).toContain('done');
     expect(graph.signalsFor('target')).not.toContain('failure');
     expect(graph.errors).toEqual([]);
   });

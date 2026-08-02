@@ -5,6 +5,7 @@ import type { NodeInstance } from '@noodl/types';
 import type { MixinNodeModule } from './crud-mixins';
 
 import ModelCRUDBase = require('./modelcrudbase');
+import { outcomeOutputs } from '../../../outcome';
 
 /** `this` inside Set Object Properties — `scheduleStore` comes from `addInputProperties`. */
 interface SetModelPropertiesInstance extends NodeInstance {
@@ -35,14 +36,18 @@ const SetModelPropertiedNodeDefinition: MixinNodeModule = {
         }
       }
     },
-    outputs: {
-      stored: {
-        type: 'signal',
-        displayName: 'Done',
-        group: 'Events',
-        description: 'Fires once the properties have been written onto the object and anything watching it has been told'
-      }
-    }
+    /**
+     * ERG-001 §4. `stored` was one of the four internal names that all displayed as "Done"
+     * (§0.2 Result 2), and the one `library/prefabs` actually wired — seven shipped
+     * connections across six prefabs, migrated in the same commit.
+     *
+     * `Failure` is declared by `addFailure` below rather than here, because its description
+     * belongs beside the code prefix it raises under. No `Unchanged`: see the note in
+     * `modelcrudbase.scheduleStore`.
+     */
+    outputs: outcomeOutputs({
+      done: 'Fires once the properties have been written onto the object and anything watching it has been told'
+    })
   }
 };
 
