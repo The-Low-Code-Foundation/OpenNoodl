@@ -316,27 +316,6 @@ prompt now also says these types are real and must come back verbatim.
 retyped**, all three `Markdown` and the `module.inlineHtml` intact, with three
 new nodes for the save control.
 
-### 4. Recorded, not fixed: a create session that reads until it cannot build
-
-`plan-docs` run 2's `Pages/Saved` operation went **11 turns, 0 submissions**,
-`exhausted`, at **117,167 of the 120,000-character context budget** — and cost
-most of that run's $1.51. It never submitted anything at all; it spent the
-whole round reading. The same operation in run 1 authored on its first
-submission at 109k chars, so this is the same session shape landing either side
-of a line.
-
-Two things follow, neither of them addressed here:
-
-- A page created inside a plan is the most context-hungry operation there is —
-  it carries the plan block, the catalog, the style vocabulary and several
-  component reads — and the budget refusal (`BUDGET_REFUSAL`) arrives as prose
-  in a tool result rather than as anything that changes the model's strategy.
-- A single operation can therefore cost more than the other five put together
-  while producing nothing. The panel still says nothing about what a plan will
-  cost; the live pass's "a five-operation plan is a ~$0.90 action" is now
-  better read as "$0.8–$1.5, with the variance concentrated in the sessions
-  that fail".
-
 Both accept paths (`AiAuthoringPanel.acceptFiles`, `ProjectAuthoringView`'s
 pre-apply re-validation) pass the same baseline. Without that, a candidate the
 loop accepted would have been refused at apply — the fix would have moved the
@@ -401,14 +380,51 @@ spec-covered (`authoring-doc-session.test.ts`) but has still never fired on
 live output, so "the advisory works in anger" remains unverified — it is now
 unverified for the encouraging reason rather than the alarming one.
 
+### 4. Recorded, not fixed: a create session that reads until it cannot build
+
+`plan-docs` run 2's `Pages/Saved` operation went **11 turns, 0 submissions**,
+`exhausted`, at **117,167 of the 120,000-character context budget** — and cost
+most of that run's $1.51. It never submitted anything at all; it spent the
+whole round reading. The same operation in run 1 authored on its first
+submission at 109k chars, so this is the same session shape landing either side
+of a line.
+
+Two things follow, neither of them addressed here:
+
+- A page created inside a plan is the most context-hungry operation there is —
+  it carries the plan block, the catalog, the style vocabulary and several
+  component reads — and the budget refusal (`BUDGET_REFUSAL`) arrives as prose
+  in a tool result rather than as anything that changes the model's strategy.
+- A single operation can therefore cost more than the other five put together
+  while producing nothing. The panel still says nothing about what a plan will
+  cost; the live pass's "a five-operation plan is a ~$0.90 action" is now
+  better read as "$0.8–$1.5, with the variance concentrated in the sessions
+  that fail".
+
 ### Gates
 
 - `npx tsc --noEmit` in `packages/noodl-editor`: clean.
 - `webpack.test-ci.js`: compiled successfully.
-- Editor Electron suite: see the run recorded with this commit.
+- Editor Electron suite: **2024 specs / 0 failures** (seed 18722), all seven
+  new specs among them.
 - +5 specs `tests/ai/authoring-update-baseline.test.ts` (registered in
   `tests/ai/index.ts` — the spec-barrel trap), +2 in `authoring-plan.test.ts`
   for the planner's docs block.
+
+Two environment traps cost real time and are worth writing down for the next
+worktree agent:
+
+- **`packages/node_modules/dugite` does not exist in a fresh worktree**, so
+  every Git spec dies on "Git could not be found at the expected path". A
+  symlink to the primary checkout's copy fixes it; without it the suite is not
+  a gate, it is a partial.
+- **A sibling session's cleanup can kill your gate.** Another agent was running
+  `pkill -f "webpack-cli --config=webpackconfigs/webpack.test-ci.js"` and
+  `pkill -f run-electron-tests`, which matches *any* worktree's processes, not
+  just its own. Three of my runs died at exit 144 mid-suite and looked like
+  crashes. Invoking the build through a differently-named config, and launching
+  `Electron test.js --ci` directly rather than through `run-electron-tests.js`,
+  dodges both patterns.
 
 ### Spend
 
