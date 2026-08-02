@@ -2,7 +2,7 @@
     "name": "Export",
     "components": [
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/Core/Supabase - Example Request",
+            "name": "/#Supabase Prefab/Core/Supabase - Example Request",
             "id": "7dbe8ec2-55a3-3ff6-89ba-2be52baaf664",
             "graph": {
                 "connections": [
@@ -141,7 +141,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/Core/Supabase - Setup Client",
+            "name": "/#Supabase Prefab/Core/Supabase - Setup Client",
             "id": "d78e9629-0fbb-3e54-ca36-ad4586ddd19a",
             "graph": {
                 "connections": [
@@ -487,7 +487,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/Pages/Email confirmation",
+            "name": "/#Supabase Prefab/Pages/Email confirmation",
             "id": "4d13163b-289b-29ea-4c06-b12428223a4e",
             "graph": {
                 "connections": [
@@ -725,7 +725,7 @@
                     },
                     {
                         "id": "488f4fed-002c-187e-9b8d-23f4d0fe0b9f",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Resend Confirmation",
+                        "type": "/#Supabase Prefab/User/Supabase - Resend Confirmation",
                         "x": 357,
                         "y": 475.0703125,
                         "parameters": {},
@@ -811,7 +811,7 @@
                         "y": -250.22861314687577,
                         "parameters": {
                             "router": "Supabase Not Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/Landing"
+                            "target": "/#Supabase Prefab/Pages/Landing"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -850,13 +850,13 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Landing",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Forgot password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Email confirmation",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in with Magic link",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Reset password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Sign up"
+                                        "/#Supabase Prefab/Pages/Landing",
+                                        "/#Supabase Prefab/Pages/Forgot password",
+                                        "/#Supabase Prefab/Pages/Email confirmation",
+                                        "/#Supabase Prefab/Pages/Log in with Magic link",
+                                        "/#Supabase Prefab/Pages/Log in",
+                                        "/#Supabase Prefab/Pages/Reset password",
+                                        "/#Supabase Prefab/Pages/Sign up"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -1030,7 +1030,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/Pages/Forgot password",
+            "name": "/#Supabase Prefab/Pages/Forgot password",
             "id": "ef3973d1-187c-255f-bb11-fd4e337aca85",
             "graph": {
                 "connections": [
@@ -1151,7 +1151,7 @@
                     },
                     {
                         "id": "7473822a-77c6-40aa-cfb1-2d9175298a97",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Send Password Reset",
+                        "type": "/#Supabase Prefab/User/Supabase - Send Password Reset",
                         "x": 261,
                         "y": 204.03515625,
                         "parameters": {},
@@ -1163,7 +1163,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/Pages/Landing",
+            "name": "/#Supabase Prefab/Pages/Landing",
             "id": "2adcf0df-e549-5781-67e1-5f3b25504a05",
             "graph": {
                 "connections": [],
@@ -1222,7 +1222,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/Pages/Log in",
+            "name": "/#Supabase Prefab/Pages/Log in",
             "id": "c340e551-c4ae-f9e2-69a2-2dff4101c20a",
             "graph": {
                 "connections": [
@@ -1685,7 +1685,7 @@
                         "y": 629.9824082776651,
                         "parameters": {
                             "router": "Supabase Not Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/Sign up"
+                            "target": "/#Supabase Prefab/Pages/Sign up"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -1724,13 +1724,13 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Landing",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Forgot password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Email confirmation",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in with Magic link",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Reset password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Sign up"
+                                        "/#Supabase Prefab/Pages/Landing",
+                                        "/#Supabase Prefab/Pages/Forgot password",
+                                        "/#Supabase Prefab/Pages/Email confirmation",
+                                        "/#Supabase Prefab/Pages/Log in with Magic link",
+                                        "/#Supabase Prefab/Pages/Log in",
+                                        "/#Supabase Prefab/Pages/Reset password",
+                                        "/#Supabase Prefab/Pages/Sign up"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -1744,7 +1744,7 @@
                     },
                     {
                         "id": "9f21e3de-fb82-c935-f54a-947572dc34b1",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Log In",
+                        "type": "/#Supabase Prefab/User/Supabase - Log In",
                         "x": 330.18093458805106,
                         "y": 351.4787473081171,
                         "parameters": {},
@@ -1754,7 +1754,7 @@
                     },
                     {
                         "id": "c35f15e9-eb88-200c-f6d6-d9559b5ab870",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Resend Confirmation",
+                        "type": "/#Supabase Prefab/User/Supabase - Resend Confirmation",
                         "x": 340.33710314159697,
                         "y": 855.4635408107828,
                         "parameters": {},
@@ -1764,7 +1764,7 @@
                     },
                     {
                         "id": "e9175848-7039-a9d1-bfa1-0c9b7a89d0d5",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Fetch Current User Auth",
+                        "type": "/#Supabase Prefab/User/Supabase - Fetch Current User Auth",
                         "x": 708.103625184843,
                         "y": -47.02256395222031,
                         "parameters": {
@@ -2257,7 +2257,7 @@
                     },
                     {
                         "id": "60ebca9b-9e2e-ea2b-f741-b0397773619f",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Fetch Current User Profile Data",
+                        "type": "/#Supabase Prefab/User/Supabase - Fetch Current User Profile Data",
                         "x": 892.0534538583993,
                         "y": -64.05811344529855,
                         "parameters": {},
@@ -2267,7 +2267,7 @@
                     },
                     {
                         "id": "30064f38-51d2-7cf6-a0d1-f5f2aff9b269",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Update Current User Profile Data",
+                        "type": "/#Supabase Prefab/User/Supabase - Update Current User Profile Data",
                         "x": 1276.7827428753112,
                         "y": 45.83038758499612,
                         "parameters": {},
@@ -2318,7 +2318,7 @@
                         "y": -37.2605520016964,
                         "parameters": {
                             "router": "Supabase Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/Logged in"
+                            "target": "/#Supabase Prefab/Pages/Logged in"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -2357,9 +2357,9 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Logged in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/User Profile",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Update password"
+                                        "/#Supabase Prefab/Pages/Logged in",
+                                        "/#Supabase Prefab/Pages/User Profile",
+                                        "/#Supabase Prefab/Pages/Update password"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -2386,7 +2386,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/Pages/Log in with Magic link",
+            "name": "/#Supabase Prefab/Pages/Log in with Magic link",
             "id": "0f115be6-77f0-0c5c-2730-baf7c7239044",
             "graph": {
                 "connections": [
@@ -2571,7 +2571,7 @@
                         "y": 479.2587890625,
                         "parameters": {
                             "router": "Supabase Not Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/Sign up"
+                            "target": "/#Supabase Prefab/Pages/Sign up"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -2610,13 +2610,13 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Landing",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Forgot password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Email confirmation",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in with Magic link",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Reset password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Sign up"
+                                        "/#Supabase Prefab/Pages/Landing",
+                                        "/#Supabase Prefab/Pages/Forgot password",
+                                        "/#Supabase Prefab/Pages/Email confirmation",
+                                        "/#Supabase Prefab/Pages/Log in with Magic link",
+                                        "/#Supabase Prefab/Pages/Log in",
+                                        "/#Supabase Prefab/Pages/Reset password",
+                                        "/#Supabase Prefab/Pages/Sign up"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -2630,7 +2630,7 @@
                     },
                     {
                         "id": "05f52a60-4b0c-1942-768f-c38cd9f6c90b",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Send Magic Link",
+                        "type": "/#Supabase Prefab/User/Supabase - Send Magic Link",
                         "x": 252.875,
                         "y": 221.323486328125,
                         "parameters": {},
@@ -2642,7 +2642,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/Pages/Logged in",
+            "name": "/#Supabase Prefab/Pages/Logged in",
             "id": "08a1141b-a2b4-1ee4-cdb0-4b54c33ea14f",
             "graph": {
                 "connections": [],
@@ -2701,7 +2701,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/Pages/Reset password",
+            "name": "/#Supabase Prefab/Pages/Reset password",
             "id": "63024509-b2f3-5786-414e-87f683e20ddd",
             "graph": {
                 "connections": [
@@ -2813,7 +2813,7 @@
                     },
                     {
                         "id": "868a00dd-7687-c1d3-ac19-ebce6398087d",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Update Current User Auth",
+                        "type": "/#Supabase Prefab/User/Supabase - Update Current User Auth",
                         "x": 379,
                         "y": 160.03515625,
                         "parameters": {},
@@ -2825,7 +2825,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/Pages/Sign up",
+            "name": "/#Supabase Prefab/Pages/Sign up",
             "id": "468807d5-8cd8-dc9a-3785-3d0585e95ab4",
             "graph": {
                 "connections": [
@@ -3087,7 +3087,7 @@
                     },
                     {
                         "id": "b05ae2ee-ebca-90cb-15d3-f311ae6b0565",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Sign Up",
+                        "type": "/#Supabase Prefab/User/Supabase - Sign Up",
                         "x": 298,
                         "y": 387,
                         "parameters": {},
@@ -3103,7 +3103,7 @@
                         "y": 747.03515625,
                         "parameters": {
                             "router": "Supabase Not Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/Log in"
+                            "target": "/#Supabase Prefab/Pages/Log in"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -3142,13 +3142,13 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Landing",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Forgot password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Email confirmation",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in with Magic link",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Reset password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Sign up"
+                                        "/#Supabase Prefab/Pages/Landing",
+                                        "/#Supabase Prefab/Pages/Forgot password",
+                                        "/#Supabase Prefab/Pages/Email confirmation",
+                                        "/#Supabase Prefab/Pages/Log in with Magic link",
+                                        "/#Supabase Prefab/Pages/Log in",
+                                        "/#Supabase Prefab/Pages/Reset password",
+                                        "/#Supabase Prefab/Pages/Sign up"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -3167,7 +3167,7 @@
                         "y": 505.50878906249994,
                         "parameters": {
                             "router": "Supabase Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/User Profile"
+                            "target": "/#Supabase Prefab/Pages/User Profile"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -3206,9 +3206,9 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Logged in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/User Profile",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Update password"
+                                        "/#Supabase Prefab/Pages/Logged in",
+                                        "/#Supabase Prefab/Pages/User Profile",
+                                        "/#Supabase Prefab/Pages/Update password"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -3222,7 +3222,7 @@
                     },
                     {
                         "id": "556de72c-d51e-837b-8690-d1a55b27b620",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Fetch Current User Auth",
+                        "type": "/#Supabase Prefab/User/Supabase - Fetch Current User Auth",
                         "x": 528.3,
                         "y": 388.5087890625,
                         "parameters": {},
@@ -3234,7 +3234,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/Pages/Update password",
+            "name": "/#Supabase Prefab/Pages/Update password",
             "id": "3cf66893-5ef3-5032-cf8c-e6d309028a91",
             "graph": {
                 "connections": [
@@ -3361,7 +3361,7 @@
                     },
                     {
                         "id": "332da1c4-3699-c5c2-1993-6239c8676c16",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Update Current User Auth",
+                        "type": "/#Supabase Prefab/User/Supabase - Update Current User Auth",
                         "x": 234,
                         "y": 162,
                         "parameters": {},
@@ -3459,7 +3459,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/Pages/User Profile",
+            "name": "/#Supabase Prefab/Pages/User Profile",
             "id": "d2503c98-cec6-96dc-72fa-cf180697422f",
             "graph": {
                 "connections": [
@@ -3767,7 +3767,7 @@
                     },
                     {
                         "id": "801bb542-ab31-7650-a76d-0c1617f63a2e",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Update Current User Profile Data",
+                        "type": "/#Supabase Prefab/User/Supabase - Update Current User Profile Data",
                         "x": 708.6333333333334,
                         "y": 316.4296875,
                         "parameters": {},
@@ -3782,7 +3782,7 @@
                         "y": 502.88593749999995,
                         "parameters": {
                             "router": "Supabase Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/Logged in"
+                            "target": "/#Supabase Prefab/Pages/Logged in"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -3821,9 +3821,9 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Logged in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/User Profile",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Update password"
+                                        "/#Supabase Prefab/Pages/Logged in",
+                                        "/#Supabase Prefab/Pages/User Profile",
+                                        "/#Supabase Prefab/Pages/Update password"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -3839,7 +3839,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/UI/Supabase Example App Root",
+            "name": "/#Supabase Prefab/UI/Supabase Example App Root",
             "id": "b24f53b7-25fe-5785-a118-49009b0dcf82",
             "graph": {
                 "connections": [
@@ -3904,7 +3904,7 @@
                         "children": [
                             {
                                 "id": "d80e8e81-c168-6b11-48a4-65092dc5e202",
-                                "type": "/#Supabase Prefab/Supabase Prefab/UI/Supabase Header",
+                                "type": "/#Supabase Prefab/UI/Supabase Header",
                                 "parameters": {},
                                 "ports": [],
                                 "dynamicports": [],
@@ -3936,7 +3936,7 @@
                                 "children": [
                                     {
                                         "id": "3197d4e7-16dd-bad6-fcae-d24b043d5e9f",
-                                        "type": "/#Supabase Prefab/Supabase Prefab/UI/Supabase Full Router",
+                                        "type": "/#Supabase Prefab/UI/Supabase Full Router",
                                         "parameters": {},
                                         "ports": [],
                                         "dynamicports": [],
@@ -3948,7 +3948,7 @@
                     },
                     {
                         "id": "b08f18f6-724a-2c98-c260-e78c1d92b497",
-                        "type": "/#Supabase Prefab/Supabase Prefab/Core/Supabase - Setup Client",
+                        "type": "/#Supabase Prefab/Core/Supabase - Setup Client",
                         "x": 14,
                         "y": 204,
                         "parameters": {
@@ -3961,7 +3961,7 @@
                     },
                     {
                         "id": "9b43b467-2ae9-ddcc-f4c0-fc5c6d2f32b4",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Fetch Current User Auth",
+                        "type": "/#Supabase Prefab/User/Supabase - Fetch Current User Auth",
                         "x": 11,
                         "y": 384.00000000000006,
                         "parameters": {},
@@ -3971,7 +3971,7 @@
                     },
                     {
                         "id": "be41b551-4536-f282-8179-5903a190eabe",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Fetch Current User Profile Data",
+                        "type": "/#Supabase Prefab/User/Supabase - Fetch Current User Profile Data",
                         "x": 11,
                         "y": 650,
                         "parameters": {},
@@ -3986,7 +3986,7 @@
                         "y": 789,
                         "parameters": {
                             "router": "Supabase Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/User Profile"
+                            "target": "/#Supabase Prefab/Pages/User Profile"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -4025,9 +4025,9 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Logged in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/User Profile",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Update password"
+                                        "/#Supabase Prefab/Pages/Logged in",
+                                        "/#Supabase Prefab/Pages/User Profile",
+                                        "/#Supabase Prefab/Pages/Update password"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -4064,7 +4064,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/UI/Supabase Full Router",
+            "name": "/#Supabase Prefab/UI/Supabase Full Router",
             "id": "79d45da0-7e9c-0b21-6605-9f17c0f2d810",
             "graph": {
                 "connections": [
@@ -4105,15 +4105,15 @@
                                     "name": "Supabase Not Logged In Router",
                                     "pages": {
                                         "routes": [
-                                            "/#Supabase Prefab/Supabase Prefab/Pages/Landing",
-                                            "/#Supabase Prefab/Supabase Prefab/Pages/Forgot password",
-                                            "/#Supabase Prefab/Supabase Prefab/Pages/Email confirmation",
-                                            "/#Supabase Prefab/Supabase Prefab/Pages/Log in with Magic link",
-                                            "/#Supabase Prefab/Supabase Prefab/Pages/Log in",
-                                            "/#Supabase Prefab/Supabase Prefab/Pages/Reset password",
-                                            "/#Supabase Prefab/Supabase Prefab/Pages/Sign up"
+                                            "/#Supabase Prefab/Pages/Landing",
+                                            "/#Supabase Prefab/Pages/Forgot password",
+                                            "/#Supabase Prefab/Pages/Email confirmation",
+                                            "/#Supabase Prefab/Pages/Log in with Magic link",
+                                            "/#Supabase Prefab/Pages/Log in",
+                                            "/#Supabase Prefab/Pages/Reset password",
+                                            "/#Supabase Prefab/Pages/Sign up"
                                         ],
-                                        "startPage": "/#Supabase Prefab/Supabase Prefab/Pages/Landing"
+                                        "startPage": "/#Supabase Prefab/Pages/Landing"
                                     },
                                     "mounted": true
                                 },
@@ -4129,11 +4129,11 @@
                                     "name": "Supabase Logged In Router",
                                     "pages": {
                                         "routes": [
-                                            "/#Supabase Prefab/Supabase Prefab/Pages/Logged in",
-                                            "/#Supabase Prefab/Supabase Prefab/Pages/User Profile",
-                                            "/#Supabase Prefab/Supabase Prefab/Pages/Update password"
+                                            "/#Supabase Prefab/Pages/Logged in",
+                                            "/#Supabase Prefab/Pages/User Profile",
+                                            "/#Supabase Prefab/Pages/Update password"
                                         ],
-                                        "startPage": "/#Supabase Prefab/Supabase Prefab/Pages/Logged in"
+                                        "startPage": "/#Supabase Prefab/Pages/Logged in"
                                     },
                                     "mounted": false
                                 },
@@ -4176,7 +4176,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/UI/Supabase Header",
+            "name": "/#Supabase Prefab/UI/Supabase Header",
             "id": "28ac8781-9e90-48ee-1e2d-05cab0b2dadc",
             "graph": {
                 "connections": [
@@ -4587,7 +4587,7 @@
                     },
                     {
                         "id": "6f9b7f3f-6621-e904-1466-06b2033a3582",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Log Out",
+                        "type": "/#Supabase Prefab/User/Supabase - Log Out",
                         "x": 2000,
                         "y": 1288,
                         "parameters": {},
@@ -4602,7 +4602,7 @@
                         "y": 466.902622156509,
                         "parameters": {
                             "router": "Supabase Not Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/Landing"
+                            "target": "/#Supabase Prefab/Pages/Landing"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -4641,13 +4641,13 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Landing",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Forgot password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Email confirmation",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in with Magic link",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Reset password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Sign up"
+                                        "/#Supabase Prefab/Pages/Landing",
+                                        "/#Supabase Prefab/Pages/Forgot password",
+                                        "/#Supabase Prefab/Pages/Email confirmation",
+                                        "/#Supabase Prefab/Pages/Log in with Magic link",
+                                        "/#Supabase Prefab/Pages/Log in",
+                                        "/#Supabase Prefab/Pages/Reset password",
+                                        "/#Supabase Prefab/Pages/Sign up"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -4953,7 +4953,7 @@
                         "y": 851,
                         "parameters": {
                             "router": "Supabase Not Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/Log in"
+                            "target": "/#Supabase Prefab/Pages/Log in"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -4992,13 +4992,13 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Landing",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Forgot password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Email confirmation",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in with Magic link",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Reset password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Sign up"
+                                        "/#Supabase Prefab/Pages/Landing",
+                                        "/#Supabase Prefab/Pages/Forgot password",
+                                        "/#Supabase Prefab/Pages/Email confirmation",
+                                        "/#Supabase Prefab/Pages/Log in with Magic link",
+                                        "/#Supabase Prefab/Pages/Log in",
+                                        "/#Supabase Prefab/Pages/Reset password",
+                                        "/#Supabase Prefab/Pages/Sign up"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -5018,7 +5018,7 @@
                         "y": 947,
                         "parameters": {
                             "router": "Supabase Not Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/Sign up"
+                            "target": "/#Supabase Prefab/Pages/Sign up"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -5057,13 +5057,13 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Landing",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Forgot password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Email confirmation",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in with Magic link",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Reset password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Sign up"
+                                        "/#Supabase Prefab/Pages/Landing",
+                                        "/#Supabase Prefab/Pages/Forgot password",
+                                        "/#Supabase Prefab/Pages/Email confirmation",
+                                        "/#Supabase Prefab/Pages/Log in with Magic link",
+                                        "/#Supabase Prefab/Pages/Log in",
+                                        "/#Supabase Prefab/Pages/Reset password",
+                                        "/#Supabase Prefab/Pages/Sign up"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -5095,7 +5095,7 @@
                         "y": 1088,
                         "parameters": {
                             "router": "Supabase Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/Logged in"
+                            "target": "/#Supabase Prefab/Pages/Logged in"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -5134,9 +5134,9 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Logged in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/User Profile",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Update password"
+                                        "/#Supabase Prefab/Pages/Logged in",
+                                        "/#Supabase Prefab/Pages/User Profile",
+                                        "/#Supabase Prefab/Pages/Update password"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -5155,7 +5155,7 @@
                         "y": 1184,
                         "parameters": {
                             "router": "Supabase Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/User Profile"
+                            "target": "/#Supabase Prefab/Pages/User Profile"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -5194,9 +5194,9 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Logged in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/User Profile",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Update password"
+                                        "/#Supabase Prefab/Pages/Logged in",
+                                        "/#Supabase Prefab/Pages/User Profile",
+                                        "/#Supabase Prefab/Pages/Update password"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -5303,7 +5303,7 @@
                         "y": 1299.7003206035206,
                         "parameters": {
                             "router": "Supabase Not Logged In Router",
-                            "target": "/#Supabase Prefab/Supabase Prefab/Pages/Landing"
+                            "target": "/#Supabase Prefab/Pages/Landing"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -5342,13 +5342,13 @@
                                     "name": "component",
                                     "title": "Choose page component",
                                     "components": [
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Landing",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Forgot password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Email confirmation",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in with Magic link",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Log in",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Reset password",
-                                        "/#Supabase Prefab/Supabase Prefab/Pages/Sign up"
+                                        "/#Supabase Prefab/Pages/Landing",
+                                        "/#Supabase Prefab/Pages/Forgot password",
+                                        "/#Supabase Prefab/Pages/Email confirmation",
+                                        "/#Supabase Prefab/Pages/Log in with Magic link",
+                                        "/#Supabase Prefab/Pages/Log in",
+                                        "/#Supabase Prefab/Pages/Reset password",
+                                        "/#Supabase Prefab/Pages/Sign up"
                                     ],
                                     "allowEditOnly": true
                                 },
@@ -5375,7 +5375,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Fetch Current User Auth",
+            "name": "/#Supabase Prefab/User/Supabase - Fetch Current User Auth",
             "id": "9272b9fd-0939-6d9e-6db2-70b02a67243c",
             "graph": {
                 "connections": [
@@ -5618,7 +5618,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Fetch Current User Profile Data",
+            "name": "/#Supabase Prefab/User/Supabase - Fetch Current User Profile Data",
             "id": "f179be7a-3fbd-7d60-4cfa-7dfdff7453dc",
             "graph": {
                 "connections": [
@@ -5806,7 +5806,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Log In",
+            "name": "/#Supabase Prefab/User/Supabase - Log In",
             "id": "64cc4734-048b-c67e-8cd7-17f584130c85",
             "graph": {
                 "connections": [
@@ -6012,7 +6012,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Log Out",
+            "name": "/#Supabase Prefab/User/Supabase - Log Out",
             "id": "26220217-6550-10a7-30a9-239fde072494",
             "graph": {
                 "connections": [
@@ -6156,7 +6156,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Resend Confirmation",
+            "name": "/#Supabase Prefab/User/Supabase - Resend Confirmation",
             "id": "499969e2-27e1-e27b-34ef-fe0f4c40041f",
             "graph": {
                 "connections": [
@@ -6298,7 +6298,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Send Magic Link",
+            "name": "/#Supabase Prefab/User/Supabase - Send Magic Link",
             "id": "de92869a-a1ed-8273-0f62-81b8f8c6bb68",
             "graph": {
                 "connections": [
@@ -6468,7 +6468,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Send Password Reset",
+            "name": "/#Supabase Prefab/User/Supabase - Send Password Reset",
             "id": "bdd3876b-ee39-584a-586e-ed23d21758fb",
             "graph": {
                 "connections": [
@@ -6665,7 +6665,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Sign Up",
+            "name": "/#Supabase Prefab/User/Supabase - Sign Up",
             "id": "90ab73d5-5b5d-bb17-4eff-e5051d59bee8",
             "graph": {
                 "connections": [
@@ -6895,7 +6895,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Update Current User Auth",
+            "name": "/#Supabase Prefab/User/Supabase - Update Current User Auth",
             "id": "ff9855dd-bb62-e34b-d35b-bf9ebfcba118",
             "graph": {
                 "connections": [
@@ -7087,7 +7087,7 @@
             }
         },
         {
-            "name": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Update Current User Profile Data",
+            "name": "/#Supabase Prefab/User/Supabase - Update Current User Profile Data",
             "id": "d748a6f9-1358-fe50-f20b-e6e1fcb1b1a7",
             "graph": {
                 "connections": [
@@ -7261,7 +7261,7 @@
                     },
                     {
                         "id": "e445e9ef-a065-a85d-a93f-d12c20db5235",
-                        "type": "/#Supabase Prefab/Supabase Prefab/User/Supabase - Fetch Current User Profile Data",
+                        "type": "/#Supabase Prefab/User/Supabase - Fetch Current User Profile Data",
                         "x": 70.25,
                         "y": 120.08333333333331,
                         "parameters": {},

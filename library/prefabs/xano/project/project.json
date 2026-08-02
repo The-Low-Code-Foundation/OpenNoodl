@@ -2,7 +2,7 @@
     "name": "Export",
     "components": [
         {
-            "name": "/#XanoPrefab/Xano/Base/Xano - Request",
+            "name": "/#Xano Prefab/Xano/Base/Xano - Request",
             "id": "6e45da09-43f5-40bf-a8cd-d4b4905c8f1b",
             "graph": {
                 "connections": [
@@ -563,7 +563,7 @@
             }
         },
         {
-            "name": "/#XanoPrefab/Xano/Base/Xano - Setup XanoClient",
+            "name": "/#Xano Prefab/Xano/Base/Xano - Setup XanoClient",
             "id": "e9dd8133-6a5d-36af-4058-4638812ee45c",
             "graph": {
                 "connections": [
@@ -1202,7 +1202,7 @@
             }
         },
         {
-            "name": "/#XanoPrefab/Xano/User/Auth/Xano - authToken - Check ",
+            "name": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Check",
             "id": "c1001b12-a58e-09ff-6f6f-ac04ada90ccf",
             "graph": {
                 "connections": [
@@ -1320,7 +1320,7 @@
             }
         },
         {
-            "name": "/#XanoPrefab/Xano/User/Auth/Xano - authToken - Set",
+            "name": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Set",
             "id": "c2bcfb1a-1a3a-ed37-4ce0-b35e14430cda",
             "graph": {
                 "connections": [
@@ -1496,7 +1496,7 @@
             }
         },
         {
-            "name": "/#XanoPrefab/Xano/User/Xano - authToken - Refresh",
+            "name": "/#Xano Prefab/Xano/User/Xano - authToken - Refresh",
             "id": "682528b4-dba6-5644-5ac7-1e6b3273ef34",
             "graph": {
                 "connections": [
@@ -1623,7 +1623,7 @@
                     },
                     {
                         "id": "846b24d7-af56-3ee9-f386-f3eeba056a7e",
-                        "type": "/#XanoPrefab/Xano/Base/Xano - Request",
+                        "type": "/#Xano Prefab/Xano/Base/Xano - Request",
                         "x": 78.469696969697,
                         "y": -330.818181818182,
                         "parameters": {
@@ -1658,7 +1658,7 @@
                     },
                     {
                         "id": "b8a44e47-1fec-6dbf-f61d-166d5fe5469a",
-                        "type": "/#XanoPrefab/Xano/User/Auth/Xano - authToken - Set",
+                        "type": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Set",
                         "x": 647.0374537097025,
                         "y": -290.0210356451754,
                         "parameters": {},
@@ -1755,7 +1755,7 @@
             }
         },
         {
-            "name": "/#XanoPrefab/Xano/User/Xano - Current User",
+            "name": "/#Xano Prefab/Xano/User/Xano - Current User",
             "id": "56a66f20-9cd0-8136-6264-397a46dcc0e3",
             "graph": {
                 "connections": [
@@ -1952,7 +1952,7 @@
                     },
                     {
                         "id": "03f39566-5f2a-179f-b90b-bca4e15c7fa1",
-                        "type": "/#XanoPrefab/Xano/Base/Xano - Request",
+                        "type": "/#Xano Prefab/Xano/Base/Xano - Request",
                         "x": -189.44489127958764,
                         "y": -151.30236788591878,
                         "parameters": {
@@ -2056,7 +2056,7 @@
                     },
                     {
                         "id": "856db7a2-4497-abd5-1b42-0ed71cf3f199",
-                        "type": "/#XanoPrefab/Xano/User/Auth/Xano - authToken - Check ",
+                        "type": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Check",
                         "x": -450.0857821372873,
                         "y": -37.778224612920894,
                         "parameters": {},
@@ -2250,7 +2250,7 @@
             }
         },
         {
-            "name": "/#XanoPrefab/Xano/User/Xano - Log in",
+            "name": "/#Xano Prefab/Xano/User/Xano - Log in",
             "id": "5ca9a125-1865-3240-5838-8b872883e90b",
             "graph": {
                 "connections": [
@@ -2394,7 +2394,7 @@
                     },
                     {
                         "id": "833c3b58-e453-d714-4174-c089d96a36ad",
-                        "type": "/#XanoPrefab/Xano/Base/Xano - Request",
+                        "type": "/#Xano Prefab/Xano/Base/Xano - Request",
                         "x": 161,
                         "y": -110,
                         "parameters": {
@@ -2459,7 +2459,7 @@
                     },
                     {
                         "id": "60324979-1ef3-6e5e-fb7c-7644cd9bc0ac",
-                        "type": "/#XanoPrefab/Xano/User/Auth/Xano - authToken - Set",
+                        "type": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Set",
                         "x": 621,
                         "y": -183,
                         "parameters": {},
@@ -2564,7 +2564,7 @@
             }
         },
         {
-            "name": "/#XanoPrefab/Xano/User/Xano - Log Out",
+            "name": "/#Xano Prefab/Xano/User/Xano - Log Out",
             "id": "ca0f90da-bab0-3205-193a-ac124f8d183c",
             "graph": {
                 "connections": [
@@ -2642,7 +2642,7 @@
                     },
                     {
                         "id": "e92b4b41-2ea7-2d11-bdb0-12522052d221",
-                        "type": "/#XanoPrefab/Xano/User/Auth/Xano - authToken - Set",
+                        "type": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Set",
                         "x": -33,
                         "y": 27,
                         "parameters": {},
@@ -2747,7 +2747,7 @@
             }
         },
         {
-            "name": "/#XanoPrefab/Xano/User/Xano - Sign up",
+            "name": "/#Xano Prefab/Xano/User/Xano - Sign up",
             "id": "27432120-d01e-84d4-8339-d49190398259",
             "graph": {
                 "connections": [
@@ -2921,7 +2921,7 @@
                     },
                     {
                         "id": "d2ef31ab-afee-9529-1e01-f3d80669c926",
-                        "type": "/#XanoPrefab/Xano/Base/Xano - Request",
+                        "type": "/#Xano Prefab/Xano/Base/Xano - Request",
                         "x": 258,
                         "y": -71,
                         "parameters": {
@@ -3002,7 +3002,7 @@
                     },
                     {
                         "id": "94d7a6a9-0f53-e2d5-5fb4-139478f7f8e7",
-                        "type": "/#XanoPrefab/Xano/User/Auth/Xano - authToken - Set",
+                        "type": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Set",
                         "x": 801,
                         "y": -173,
                         "parameters": {},
@@ -3107,7 +3107,7 @@
             }
         },
         {
-            "name": "/#XanoPrefab/Xano/User/Xano - Update Current User",
+            "name": "/#Xano Prefab/Xano/User/Xano - Update Current User",
             "id": "e3633ed6-4fd9-413f-7e8f-019821affe3b",
             "graph": {
                 "connections": [
@@ -3232,7 +3232,7 @@
                     },
                     {
                         "id": "053161ff-b0ee-fba0-49ae-c3380eb737b6",
-                        "type": "/#XanoPrefab/Xano/Base/Xano - Request",
+                        "type": "/#Xano Prefab/Xano/Base/Xano - Request",
                         "x": -29.5,
                         "y": -50,
                         "parameters": {

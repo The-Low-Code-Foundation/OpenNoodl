@@ -5759,7 +5759,7 @@
                                 "children": [
                                     {
                                         "id": "6cd9e57f-6dbf-5a73-09bf-7d4cd510d0ed",
-                                        "type": "/Tab Bar",
+                                        "type": "/Stripe/Tab Bar",
                                         "parameters": {
                                             "Items": "[\n    {\n        Label:\"Monthly\",\n        Value:\"month\"\n    },\n    {\n        Label:\"Yearly\",\n        Value:\"year\"\n    },\n\n]",
                                             "Selected Tab": "month"
@@ -7246,7 +7246,7 @@
             }
         },
         {
-            "name": "/Tab Bar",
+            "name": "/Stripe/Tab Bar",
             "id": "b081feb9-2548-519d-d681-15e8b10b028c",
             "graph": {
                 "connections": [
@@ -7391,7 +7391,7 @@
                                 "id": "ea3cb6c6-38b1-2999-c425-653644d02c24",
                                 "type": "For Each",
                                 "parameters": {
-                                    "template": "/Tab Bar/Tab Bar Item"
+                                    "template": "/Stripe/Tab Bar/Tab Bar Item"
                                 },
                                 "ports": [],
                                 "dynamicports": [
@@ -7797,7 +7797,7 @@
             }
         },
         {
-            "name": "/Tab Bar/Tab Bar Item",
+            "name": "/Stripe/Tab Bar/Tab Bar Item",
             "id": "f418e021-68e3-4f40-a5cb-45800ba76006",
             "graph": {
                 "connections": [
