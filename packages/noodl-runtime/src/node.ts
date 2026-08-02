@@ -777,9 +777,13 @@ Node.prototype.reportOutcome = function (token, outcome, options) {
   }
   token.reported = outcome;
 
-  if (outcome === 'failure') {
+  if (outcome === 'failure' && !(options && options.raise === false)) {
     // Raised before the signal for the same reason values are flagged before it: a graph wiring
     // `failure -> show` must already be able to read the reason when the pulse lands.
+    //
+    // `raise: false` means the reason is already on the channel from a more precise raise
+    // elsewhere — see `OutcomeFailureOptions.raise`. It suppresses the *duplicate*, never the
+    // only report.
     this.raiseRuntimeError(
       (options && options.code) || 'outcome/unspecified-failure',
       (options && options.message) || 'The action could not be performed',

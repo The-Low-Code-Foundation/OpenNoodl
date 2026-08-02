@@ -257,6 +257,16 @@ export interface OutcomeFailureOptions {
   /** One human-readable sentence, no trailing period. */
   message?: string;
   detail?: unknown;
+  /**
+   * `false` when the reason is **already** on the error channel, raised more precisely elsewhere.
+   *
+   * ⚠️ Not a licence for a silent failure — the contract's "always accompanied by a reason" still
+   * has to hold, and this flag asserts it holds *somewhere else*. The one shipped use is
+   * `modelcrudbase._failNoModel` in `foreach` mode, where `foreachitem.ts` has already raised the
+   * precise binding diagnosis (`repeater-item/no-item-in-scope`); a second, vaguer event about
+   * the same root cause is the "two wordings of one failure" the Failure Contract calls noise.
+   */
+  raise?: boolean;
 }
 
 /**
