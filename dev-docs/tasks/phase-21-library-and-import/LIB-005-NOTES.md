@@ -610,3 +610,79 @@ red gate. Droppable in one hunk if it collides.
   the QA-3/4/6 checklist items from §8 that remain open.
 - That the swept CSS is unreferenced by **uncommitted** work in the primary checkout. The
   evidence covers committed history and the working worktree only.
+
+---
+
+## §10 · QA-3, QA-4 and QA-6 executed — 2026-08-02 (orchestrator, primary checkout)
+
+Ran against a **local docs origin** (`library:verify-dist --port 3000 --serve`), so a single
+setup discharged LIB-001's Criterion 5, QA-3, and a live look at LIB-002/003 content at once.
+Confirmed the editor genuinely adopted it: `getDocsEndpoint()` → `http://localhost:3000`, and
+prefab icons resolved to `http://localhost:3000/library/prefabs/date-picker-1.3.0.png` — the
+versioned filenames LIB-001 introduced.
+
+### The defect this pass existed to find
+
+**Overwriting a component that has no id duplicated it instead of replacing it** — fixed in
+`ebf5f05f`, with a regression spec and a live re-verification.
+
+`applyModelChanges` gated eviction on `existingComponentId(name) !== undefined`, conflating
+*"no component of this name"* with *"a component of this name exists but carries no id"*. In the
+second case removal was skipped and `addComponent` appended a **second** component under the same
+name.
+
+Not a fixture curiosity. Measured across five of Richard's real projects: **76/77, 74/75, 1/2,
+11/12 and 333/334 components carry ids — and the one missing in every single case is the root,
+`/App`.** So importing any project into any other and accepting the default Overwrite on the root
+collision duplicated the target's root component. Live, before the fix: two `/Home` components,
+one id-less with 2 nodes, one imported with 1. After: one.
+
+**Why no spec caught it:** `FakeTarget` keyed `existing` as `Record<string, string>` — name→id — so
+"exists without an id" was *unrepresentable*. The fake could not describe the state, so no
+assertion over it could fail. It now takes `string | undefined` and answers `hasComponent`
+separately. Generalisable: **when a fake's shape cannot express a state, that state is untested
+and the green suite says nothing about it.**
+
+### Results
+
+| Step | Result |
+|---|---|
+| QA-3.1 flow opens on prefab install | ✅ "Install Tags / Prefab", SELECT→REVIEW→DONE, 2 components / 1 file / 3 color styles / 1 text style, closure "Nothing extra. 7 selected, 7 items in total" |
+| QA-3.2 collision pre-set to Keep mine | ✅ **Success Criterion 4.** `Primary · color style · kept yours`, counts card `1 kept as yours` |
+| QA-3.2 applied | ✅ target's `Primary` still `#111111` (mine); `Grey - 500`, `White` arrived; `/Tags`, `/Tags/Tag Item` landed; originals intact |
+| QA-3.2 DONE stage | ✅ `IN YOUR PROJECT` 2 components / 3 styles, `KEPT AS YOURS color style Primary`, `WRITTEN TO DISK 1 file written`, plus the honest "Undo does not remove them" |
+| QA-3.3 non-colliding prefab | ✅ `loading-spinner` — **no dialog at all**, one-click install, both components landed |
+| QA-3.4 colliding module | ✅ flow opens, defaulted to **Overwrite** (`1 overwritten`), with "Your version will be replaced. A node-level diff is not available for this item." (residual 6, surfaced honestly) |
+| QA-3.5 picker stays open after install | ✅ confirmed — **still wants Richard's eye**, it is a deliberate behaviour change |
+| **LIB-001 Criterion 5** | ✅ **MET** — 2 prefabs + 1 module installed from the locally served `library-dist`; `nodegx-confetti` on disk |
+| QA-4.1/4.2 URL import | ✅ opens "Import project / From the downloaded archive"; 4 components + 2 files pre-ticked = 6, `Accent`/`Heading` arrive via closure with "needed by …" |
+| QA-4.3/4.4 Keep mine honoured | ✅ `/Shared/Button` unchanged (2 nodes), `Heading` unchanged (`QATarget.ttf`, `#111111`). **The legacy ignore-the-dialog bug is gone.** Counts recomputed live: components 4→3, text styles 1→0 |
+| QA-6.2 nonsense search | ✅ `Nothing matches “zzzqqqnonsense”.` |
+| QA-6.5 reopen without leaking | ✅ two open/cancel/reopen cycles, exactly **1** modal each, 0 errors, 0 unhandled rejections |
+
+Also live: all three of LIB-003's new modules (`Confetti`, `QR Code`, `Lucide Icons`) appear in the
+Modules tab and fetch from the local dist; Confetti installs to `noodl_modules/nodegx-confetti`.
+
+### Not covered, and why — one is a finding
+
+- **QA-6.1 (nothing importable) and QA-6.3 (corrupt directory) are not reachable from the shipped
+  UI.** There are exactly three import entry points — `modulelibrarymodel` (library install),
+  `projectlibrarymodel` (a project the launcher already knows), and `EditorPage` (URL) — and
+  **none of them uses a directory chooser**; `openDialog` appears nowhere in `views/ImportFlow`,
+  the NodePicker, or the URL path. The checklist assumed a "point it at a folder" affordance that
+  does not exist. Either the steps should be rewritten against a *known* project that is
+  empty/corrupt, or the missing affordance is the real finding.
+- **QA-6.4 (Escape / click-outside)** — a synthetic `KeyboardEvent` is not trusted input and did
+  not dismiss the flow, which proves nothing either way. `cdp.js` has no key-dispatch command.
+  Cancel was exercised instead and is clean.
+- **The LIB-002 visual restyle check** — the two deliberate colour shifts still want an eye on a
+  prefab that uses them; `tags` exercised the install path, not the palette.
+
+### Driving notes worth keeping
+
+- **`views/ImportFlow` still has zero `data-test` hooks**, and CSS-module class names prefix *every*
+  descendant — `[class*=ImportFlow]` matched **85** elements. Select by visible button text instead.
+- The DONE stage is **wider** than SELECT/REVIEW, so a `width === 900` filter silently misses it and
+  reads as "the flow closed". Screenshot before believing a negative.
+- Icons carry no glyph, mask, or text in the DOM; a probe for them returns nothing and looks like a
+  rendering defect. It is not — screenshot confirmed they render. **Do not file that.**
