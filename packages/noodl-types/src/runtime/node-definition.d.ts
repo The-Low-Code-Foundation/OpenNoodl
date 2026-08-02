@@ -133,7 +133,12 @@ export interface NodeInstance {
   registerInputs(inputs: Record<string, InputPortDefinition>): void;
   deregisterInput(name: string): void;
   isInputConnected(inputName: string): boolean;
-  queueInput(inputName: string, value: unknown): void;
+  /**
+   * @param causeSeq Runtime-internal (OBS-001). The trace id of the edge that carried this
+   * value, so the receiving node can attribute what it does next to the right cause. Node
+   * definitions call this with two arguments; only the propagation path passes the third.
+   */
+  queueInput(inputName: string, value: unknown, causeSeq?: number): void;
   setInputValue(name: string, value: unknown): void;
 
   /**

@@ -136,11 +136,35 @@ Object.defineProperties(OutputProperty.prototype, {
         this.owner._cyclicLoopCause = { limit: 'value-sends', count: 500, port: this.name };
       }
 
+      // OBS-001: the trace is emitted **here**, inside the fan-out loop, rather than in
+      // `NodeContext.connectionSentValue` where the old snapshot path lives. Two reasons, both
+      // structural:
+      //   1. This is the only place the individual edge is in hand at the moment it is
+      //      delivered. Fan-out to N inputs is N sibling events sharing a cause, which is
+      //      exactly this loop.
+      //   2. The seq must exist *before* the value is queued, because the receiving node
+      //      carries it as the cause of everything it does when it processes that input.
+      //      `connectionSentValue` runs after `sendValue` has already queued everywhere.
+      const context = this.owner.context;
+      const tracing = context !== undefined && context.traceEnabled === true;
+
       for (var i = 0, len = this.connections.length; i < len; i++) {
         var connection = this.connections[i];
         // The declared type travels with the value: the receiving node needs to know it came
         // from an `object`/`array` port to apply the string typecast (NDA-014).
-        connection.node._setValueFromConnection(connection.inputPortName, value, this.type);
+        if (tracing) {
+          const seq = context.traceEdgeSend(
+            this.owner.id,
+            this.name,
+            connection.node.id,
+            connection.inputPortName,
+            value,
+            'value'
+          );
+          connection.node._setValueFromConnection(connection.inputPortName, value, this.type, seq);
+        } else {
+          connection.node._setValueFromConnection(connection.inputPortName, value, this.type);
+        }
       }
     }
   },
@@ -168,13 +192,23 @@ Object.defineProperties(OutputProperty.prototype, {
         this.owner._cyclicLoop = true;
       }
 
+      // OBS-001: signals and values are one event type, distinguished by `kind`. See the note
+      // in `sendValue` for why the emission sits inside the fan-out loop.
+      const context = this.owner.context;
+      const tracing = context !== undefined && context.traceEnabled === true;
+
       for (var i = 0, len = this.connections.length; i < len; i++) {
         var connection = this.connections[i];
+        const seq = tracing
+          ? context.traceEdgeSend(this.owner.id, this.name, connection.node.id, connection.inputPortName, true, 'signal')
+          : 0;
+
         if (connection.node._setPulseFromConnection) {
-          connection.node._setPulseFromConnection(connection.inputPortName);
+          connection.node._setPulseFromConnection(connection.inputPortName, seq);
         } else {
-          connection.node._setValueFromConnection(connection.inputPortName, true);
-          connection.node._setValueFromConnection(connection.inputPortName, false);
+          // The legacy two-value form. Both halves are one pulse, so they share one event.
+          connection.node._setValueFromConnection(connection.inputPortName, true, undefined, seq);
+          connection.node._setValueFromConnection(connection.inputPortName, false, undefined, seq);
         }
       }
     }

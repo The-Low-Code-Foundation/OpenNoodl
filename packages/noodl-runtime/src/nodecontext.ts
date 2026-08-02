@@ -11,6 +11,8 @@ import {
   setAmbientErrorBus
 } from './runtimeerror';
 import TimerScheduler = require('./timerscheduler');
+import { DEFAULT_VALUE_CAP, TraceBuffer, previewValue, toWireEvent } from './tracebuffer';
+import type { SessionDictionary, TraceEvent } from './tracebuffer';
 import Variants = require('./variants');
 
 /** Set by the viewer before any node runs; carries deploy-time environment values. */
@@ -46,6 +48,19 @@ interface NodeContext extends RuntimeNodeContext {
   timerScheduler: any;
   componentModels: Record<string, any>;
   debugInspectorsEnabled: boolean;
+  /**
+   * OBS-001. Deliberately distinct from `debugInspectorsEnabled`: turning on the trace must
+   * not force canvas inspectors on, and vice versa. Read on the propagation hot path, so it
+   * is a plain boolean and is checked before anything else happens.
+   */
+  traceEnabled: boolean;
+  _traceBuffer: TraceBuffer | undefined;
+  _traceValueCap: number;
+  /**
+   * The `seq` of the edge event whose delivery is being processed right now, or 0 at a root.
+   * Set by `Node.update` as it drains its input queue; read by `traceEdgeSend`.
+   */
+  _currentCause: number;
   connectionsToPulse: Record<string, { timestamp: number; connections: string[] }>;
   connectionsToPulseChanged: boolean;
   debugInspectors: Record<string, DebugInspector>;
@@ -79,6 +94,18 @@ interface NodeContext extends RuntimeNodeContext {
   _getDebugInspectorValueForNode(id: string): { type: 'node'; id: string; value: unknown } | undefined;
   sendDebugInspectorValues(): void;
   setDebugInspectorsEnabled(enabled: boolean): void;
+  setTraceEnabled(enabled: boolean): void;
+  traceEdgeSend(
+    fromNode: string,
+    fromPort: string,
+    toNode: string,
+    toPort: string,
+    value: unknown,
+    kind: 'value' | 'signal'
+  ): number;
+  buildSessionDictionary(): SessionDictionary;
+  getTraceEvents(afterSeq?: number): TraceEvent[];
+  clearTrace(): void;
   sendGlobalEventFromEventSender(channelName: string, inputValues: unknown): void;
   setPopupCallbacks(callbacks: { onShow: (group: any) => void; onClose: (group: any) => void }): void;
   /** Open popups, oldest first. At most one entry unless a node opts into `'stack'`. */
@@ -141,6 +168,12 @@ const NodeContext = function NodeContext(this: NodeContext, args?: NodeContextAr
   /** Open popups, oldest first. See {@link NodeContext.showPopup} and the stack policy. */
   this.popupStack = [];
   this.debugInspectorsEnabled = false;
+  // OBS-001. The buffer is not allocated until tracing is turned on — an app nobody is
+  // debugging holds no trace storage at all, not even an empty ring.
+  this.traceEnabled = false;
+  this._traceBuffer = undefined;
+  this._traceValueCap = DEFAULT_VALUE_CAP;
+  this._currentCause = 0;
   this.connectionsToPulse = {};
   this.connectionsToPulseChanged = false;
 
@@ -208,11 +241,29 @@ const NodeContext = function NodeContext(this: NodeContext, args?: NodeContextAr
       const connection = this._outputHistory[connectionId];
       this.editorConnection.sendConnectionValue(connectionId, connection ? connection.value : undefined);
     });
+
+    // OBS-001. The editor pulls rather than the runtime pushing: the buffer is an index the
+    // walk queries, not a firehose anyone reads front to back, and pushing 250k events at a
+    // renderer is precisely the failure the shelved panel died of.
+    this.editorConnection.on('traceEnabledChanged', (enabled) => {
+      this.setTraceEnabled(enabled);
+    });
+
+    this.editorConnection.on('getTraceEvents', ({ clientId, afterSeq }) => {
+      if (this.editorConnection.clientId !== clientId) return;
+      this.editorConnection.sendTraceEvents(this.getTraceEvents(afterSeq).map(toWireEvent));
+    });
   }
 } as unknown as NodeContextConstructor;
 
 NodeContext.prototype.setRootComponent = function (rootComponent) {
   this.rootComponent = rootComponent;
+
+  // The dictionary is only meaningful once there is a graph to describe. After a reload this
+  // is where the new one becomes available, so it is where the delta is sent.
+  if (this.traceEnabled && this.editorConnection && this.editorConnection.sendTraceDictionary) {
+    this.editorConnection.sendTraceDictionary(this.buildSessionDictionary());
+  }
 };
 
 NodeContext.prototype.getCurrentTime = function () {
@@ -313,6 +364,10 @@ NodeContext.prototype.reset = function () {
   this.rootComponent = undefined;
 
   this.clearDebugInspectors();
+  // OBS-001: a preview reload starts a new session. Events from the graph that just went away
+  // reference node ids the next dictionary may not contain, so keeping them would produce a
+  // walk that silently mixes two graphs.
+  this.clearTrace();
 };
 
 NodeContext.prototype.nodeIsDirty = function (node) {
@@ -583,6 +638,112 @@ NodeContext.prototype.setDebugInspectorsEnabled = function (enabled) {
   if (enabled) {
     this.sendDebugInspectorValues();
   }
+};
+
+/**
+ * Turn the per-edge trace on or off (OBS-001).
+ *
+ * Independent of `setDebugInspectorsEnabled` on purpose — the two answer different questions
+ * and the editor turns them on from different surfaces.
+ */
+NodeContext.prototype.setTraceEnabled = function (enabled) {
+  if (this.traceEnabled === enabled) return;
+
+  this.traceEnabled = enabled;
+
+  if (enabled) {
+    // Starting a trace clears whatever the last one left, so a recording always begins empty.
+    this._traceBuffer = new TraceBuffer();
+    this._currentCause = 0;
+    if (this.editorConnection && this.editorConnection.sendTraceDictionary) {
+      this.editorConnection.sendTraceDictionary(this.buildSessionDictionary());
+    }
+  } else {
+    // Drop the storage rather than merely stopping writes.
+    this._traceBuffer = undefined;
+    this._currentCause = 0;
+  }
+};
+
+/**
+ * Record one value or signal crossing one edge, and return the `seq` assigned to it.
+ *
+ * The caller hands that seq to the receiving node, which carries it until it processes that
+ * input — see `Node.queueInput` / `Node.update`. That is what makes `cause` exact rather than
+ * "whatever fired most recently": delivery in this runtime is **queued, not a call stack**
+ * (`OutputProperty.sendValue` pushes into `_inputValuesQueue` and the target drains it later
+ * in its own update), so a call-stack-based cause would attribute an entire frame's cascade
+ * to whatever happened to be on the stack.
+ */
+NodeContext.prototype.traceEdgeSend = function (fromNode, fromPort, toNode, toPort, value, kind) {
+  if (!this.traceEnabled || !this._traceBuffer) return 0;
+
+  return this._traceBuffer.push(
+    this.getCurrentTime(),
+    this._currentCause,
+    fromNode,
+    fromPort,
+    toNode,
+    toPort,
+    previewValue(value, this._traceValueCap),
+    kind
+  );
+};
+
+/**
+ * Ids to names, types, components, plus the connection topology.
+ *
+ * ⚠️ The edge list is load-bearing, not a nicety. OBS-002's backward walk and OBS-004's agent
+ * both need to know what *should* be connected in order to diff it against what actually
+ * fired — a wire that never fired has no event, so its absence is only meaningful against a
+ * declared topology. Shipping it here is also what lets a consumer render a chain with real
+ * node names and **no project access**.
+ */
+NodeContext.prototype.buildSessionDictionary = function () {
+  const dictionary: SessionDictionary = { nodes: {}, edges: [] };
+  if (!this.rootComponent) return dictionary;
+
+  const nodes = this.rootComponent.nodeScope.getAllNodesRecursive();
+
+  for (const node of nodes) {
+    let component = '';
+    try {
+      component = (node.nodeScope && node.nodeScope.componentOwner && node.nodeScope.componentOwner.name) || '';
+    } catch (e) {
+      /* provenance is best-effort; the entry is still useful with an id and a type */
+    }
+
+    dictionary.nodes[node.id] = {
+      name: node.name || '',
+      type: (node.model && node.model.type) || node.name || '',
+      component
+    };
+
+    // Topology comes off the output ports, which is where the runtime actually holds it —
+    // `_inputConnections` on the receiving side is the same edges seen from the other end.
+    if (node._outputList) {
+      for (const output of node._outputList) {
+        for (const connection of output.connections) {
+          dictionary.edges.push({
+            from: { node: node.id, port: output.name },
+            to: { node: connection.node.id, port: connection.inputPortName }
+          });
+        }
+      }
+    }
+  }
+
+  return dictionary;
+};
+
+NodeContext.prototype.getTraceEvents = function (afterSeq) {
+  if (!this._traceBuffer) return [];
+  return afterSeq === undefined ? this._traceBuffer.toArray() : this._traceBuffer.since(afterSeq);
+};
+
+NodeContext.prototype.clearTrace = function () {
+  if (this._traceBuffer) this._traceBuffer.clear();
+  this._currentCause = 0;
 };
 
 NodeContext.prototype.sendGlobalEventFromEventSender = function (channelName, inputValues) {
