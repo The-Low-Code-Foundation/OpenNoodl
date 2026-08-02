@@ -2,9 +2,14 @@
  * SUB-006 — Semantic Validator: rule registry
  *
  * The canonical, ordered list of rules. Order is "value order" (the order a
- * reader most wants to see problems in): duplicate id → unknown type → missing
- * port → dangling connection → unresolved component ref → orphaned node → type
- * mismatch → mis-sequenced control signal.
+ * reader most wants to see problems in): duplicate id → legacy placeholder →
+ * unknown type → missing port → dangling connection → unresolved component ref
+ * → orphaned node → type mismatch → mis-sequenced control signal.
+ *
+ * `legacyImportPlaceholder` (LIB-006) sits second because it is the most
+ * definite statement in the set — the importer looked at that construct and
+ * could not convert it — and because it *supersedes* the unknown-type warning
+ * on the same node, so a reader should meet it first.
  *
  * `duplicateNodeId` leads because a colliding id undermines every rule after
  * it: the others resolve nodes by id, so if the primary key is not unique their
@@ -15,6 +20,7 @@
 
 import { Rule } from './types';
 import { duplicateNodeId } from './duplicateNodeId';
+import { legacyImportPlaceholder } from './legacyImportPlaceholder';
 import { unknownNodeType } from './unknownNodeType';
 import { nonexistentPort } from './nonexistentPort';
 import { danglingConnection } from './danglingConnection';
@@ -26,6 +32,7 @@ import { unwiredOutcome } from './unwiredOutcome';
 
 export const ALL_RULES: Rule[] = [
   duplicateNodeId,
+  legacyImportPlaceholder,
   unknownNodeType,
   nonexistentPort,
   danglingConnection,
@@ -38,6 +45,7 @@ export const ALL_RULES: Rule[] = [
 
 export {
   duplicateNodeId,
+  legacyImportPlaceholder,
   unknownNodeType,
   nonexistentPort,
   danglingConnection,

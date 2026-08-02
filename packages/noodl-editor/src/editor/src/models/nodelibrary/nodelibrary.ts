@@ -3,66 +3,17 @@ import _ from 'underscore';
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
+// WFA-009: the condition evaluator moved to `dynamicPortRules` so that the
+// `conditionalports/*` filter below and the `namedports/list` generator share
+// exactly one implementation of this small language rather than two dialects
+// of it. Nothing else about the filter changed.
+import { evaluateDynamicPortsCondition } from '@noodl-models/nodelibrary/dynamicPortRules';
 import type { NodeLibraryProjectSettings } from '@noodl-models/nodelibrary/NodeLibraryData';
 import { UnknownNodeType } from '@noodl-models/nodelibrary/UnknownNodeType';
 
 import Model from '../../../../shared/model';
 import { CanvasTheme } from '../../views/nodegrapheditor/canvas/CanvasTheme';
 import { ModelProxy } from '../../views/panels/propertyeditor/models/modelProxy';
-
-const _condFuncCache = {};
-function evaluateDynamicPortsCondition(cond, node) {
-  if (cond.startsWith('#js')) {
-    // This is a JS expression
-    if (_condFuncCache[cond] === undefined)
-      _condFuncCache[cond] = new Function('params', 'return ' + cond.substring('#js'.length));
-
-    return !!_condFuncCache[cond](
-      new Proxy(node.parameters, {
-        get: (target, prop, receiver) => {
-          return node.getParameter(prop);
-        }
-      })
-    );
-  }
-
-  const tokens = cond.match(/(?:[^\s']+|'[^']*')+/g); // Split on whitespace but respect single qoutes
-
-  function evalCond(i) {
-    if (tokens.length < i + 3) return true;
-
-    const paramName = tokens[i + 0].replace(/'/g, ''); // Trim any quotes
-    const op = tokens[i + 1];
-    const value = tokens[i + 2].replace(/'/g, '');
-
-    let res;
-    switch (op) {
-      case '=':
-        res = '' + node.getParameter(paramName) === value;
-        break;
-      case '!=':
-        res = '' + node.getParameter(paramName) !== value;
-        break;
-      case 'NOT':
-        res = node.getParameter(paramName) === undefined;
-        break;
-    }
-
-    if (tokens.length > i + 3) {
-      const logic = tokens[i + 3];
-      switch (logic) {
-        case 'AND':
-          return res && evalCond(i + 4);
-        case 'OR':
-          return res || evalCond(i + 4);
-      }
-    }
-
-    return res;
-  }
-
-  return evalCond(0);
-}
 
 // TODO: Very ugly how we handle nodes in here now
 export type NodeLibraryNodeType = (BasicNodeType | UnknownNodeType) & {

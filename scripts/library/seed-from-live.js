@@ -42,12 +42,27 @@ function slugify(label) {
     .replace(/(^-+|-+$)/g, '');
 }
 
-/** Best-effort semver inference from the trailing version tail of a zip filename. */
+/**
+ * Best-effort semver inference from the trailing version tail of a zip filename.
+ *
+ * Upstream uses both shapes: dash-separated (`chartjs-module-1-4-3`) and
+ * dot-separated (`pdf-viewer-1.0.0`). The original pattern accepted only dashes
+ * *and* did not require a separator before the tail, so it silently mis-read two
+ * whole classes of name (found by the LIB-003 module audit):
+ *
+ *   pdf-viewer-1.0.0     → matched the bare trailing "0"   → 0.0.0  (want 1.0.0)
+ *   shake-detector-1.0.2 → matched the bare trailing "2"   → 2.0.0  (want 1.0.2)
+ *   oauth2-0-2           → matched "2-0-2", eating the "2" → 2.0.2  (want 0.2.0)
+ *                          out of the *slug*
+ *
+ * Requiring a separator before the tail and accepting either separator inside it
+ * fixes all three; every other seeded entry infers exactly as before.
+ */
 function inferVersion(projectUrl) {
   const base = path.basename(projectUrl, '.zip');
-  const m = base.match(/v?(\d+(?:-\d+){0,3})$/i);
+  const m = base.match(/[-._]v?(\d+(?:[-.]\d+){0,3})$/i) || base.match(/^v?(\d+(?:[-.]\d+){0,3})$/i);
   if (!m) return '0.0.0';
-  const parts = m[1].split('-').map((n) => parseInt(n, 10));
+  const parts = m[1].split(/[-.]/).map((n) => parseInt(n, 10));
   while (parts.length < 3) parts.push(0);
   return parts.slice(0, 3).join('.');
 }

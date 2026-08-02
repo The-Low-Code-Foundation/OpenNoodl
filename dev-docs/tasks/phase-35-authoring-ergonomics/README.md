@@ -90,3 +90,55 @@ lives.** See
 The lesson generalises past this phase: **a contract that makes a port universal destroys the
 information value of that port for everything that was reading it as a discriminator.** Worth
 checking before the next library-wide port addition.
+
+🔴 **Every output-port description in the library was being dropped on the way to the editor.**
+Found 2026-08-02 by ERG-004's live QA, measured against the running editor's `NodeLibrary`:
+**1656 of 1809 input ports carried a description and 0 of 1144 outputs did.** `exportOutput` in
+`nodelibraryexport.ts` was a hand-copied near-duplicate of `formatPort` that omitted
+`description`. Fixed by delegating, verified live (**0 → 1031**), and pinned by
+`packages/noodl-runtime/test/nodelibraryexport.port-descriptions.test.ts` — confirmed to fail
+without the fix, 4 of 6 rows.
+
+⚠️ **The lesson is about the gates, not the bug.** The text was in the node definitions and in
+the committed catalog (1045/1144 outputs documented), because the catalog generator builds its
+ports from its own capture of the definitions and borrows only `typecasts` and the picker index
+from that file. So `catalog:check`, `catalog:merge:check` and the 153/153 enrichment sweep were
+all green over a library the editor could not see. **The defect lived in the one hop no fixture
+covered: runtime → editor. A green catalog is not evidence that an author can read anything.**
+
+A second finding from the same pass is **referred, not fixed**, because it changes the port
+contract of two shipped nodes: `Object Changed` has no producer in the library at all, and the
+wiring the Data category teaches (`Object.Id` → its `Object` port) is accepted by the typecast
+table, `eval`'d as a JavaScript literal, and silently replaced with `{}`. Options in
+[`ERG-004-NOTES.md`](./ERG-004-NOTES.md) §7.4.
+
+## Two decisions Richard took, 2026-08-02
+
+Both were open blockers; neither is built. Recorded here because both **overrode the recommendation
+that was put to him**, and in both cases for a reason worth keeping.
+
+| Question | Richard's answer | Where the work lives |
+|---|---|---|
+| How should `Object Changed` become wireable? | **Add an object-valued output to the `Object` node** — not the recommended "resolve an id string on the input" | [`ERG-004-NOTES.md`](./ERG-004-NOTES.md) §7.4. ⚠️ `Array Changed`/`Collection2` needs the same treatment or the pair is fixed apart; and the id-string path still has to stop silently becoming `{}` |
+| Where does the asynchrony marker live? | **Declared in the node definitions**, not the enrichment catalog | [NDA-017](../phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md#-the-asynchrony-proxy-is-dead-2026-08-02). The file's own reasoning for enrichment was wrong on its own terms and has been corrected: a node knows its own asynchrony, so it is not *"what the source cannot know"* |
+
+## ERG-005 §0 is answered (2026-08-02) — and it made §1 bigger
+
+Five questions about how a `Component Input`'s type is inferred, measured against the running editor
+with a purpose-built fixture. Full results in
+[`ERG-005-COMPONENT-INTERFACE.md`](./ERG-005-COMPONENT-INTERFACE.md) §0. The two that change the task:
+
+🔴 **A mixed pair can derive a type neither connection has.** The rule is not "first" and not "most
+recent" — it is recomputed from scratch on every read, and with more than one connection it returns
+the first row of the 16-entry typecast table that casts to all of them. `number` + `boolean` gives
+**`string`**; `signal` + `number` gives **`boolean`**. The type on a component's public interface is
+chosen by the row order of a table in the node library.
+
+🔴 **The derived type never leaves the running editor.** `ProjectModel.toJSON()` writes no `ports`
+key on a component; the only type on disk is the Port Editor's own `{"name": "*"}`. Measured
+consequence: a graph the editor gives **2 errors** for validates **0 errors, 0 warnings** under
+`npm run validate:project`, and the AI authoring loop's context carries port **names with no types**.
+So ERG-005 §1 is not just "add a `description`" — the mechanism has no channel for its *type* either.
+
+The lesson generalises the one above it: **a green catalog was not evidence an author could read a
+port description; a green validator is not evidence a component's interface is checked.**

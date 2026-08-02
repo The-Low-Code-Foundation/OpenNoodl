@@ -357,35 +357,40 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Aborted"
+          "displayName": "Aborted",
+          "description": "Fires when a run ended early, either from Abort or because Stop On Failure caught a failure"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when the run ended having done its work: every task completed without failing, the Items list was empty, or an Abort was honoured — Aborted fires alongside it when the run ended early"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when there was nothing to do: a Do while a run is already in progress, or an Abort with no run in progress"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when at least one task failed, or when the run could not start at all; which item failed is reported on the error channel"
         }
       ]
     },
@@ -552,84 +557,96 @@
           "type": "*",
           "plug": "output",
           "group": "Result",
-          "displayName": "Result"
+          "displayName": "Result",
+          "description": "What the expression evaluated to; null until it has been evaluated at least once"
         },
         {
           "name": "isTrue",
           "type": "boolean",
           "plug": "output",
           "group": "Result",
-          "displayName": "Is True"
+          "displayName": "Is True",
+          "description": "Whether Result is truthy; null until the expression has been evaluated at least once"
         },
         {
           "name": "isFalse",
           "type": "boolean",
           "plug": "output",
           "group": "Result",
-          "displayName": "Is False"
+          "displayName": "Is False",
+          "description": "Whether Result is falsy; null until the expression has been evaluated at least once"
         },
         {
           "name": "isTrueEv",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On True"
+          "displayName": "On True",
+          "description": "Fires after an evaluation whose Result is truthy"
         },
         {
           "name": "isFalseEv",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On False"
+          "displayName": "On False",
+          "description": "Fires after an evaluation whose Result is falsy"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the expression could not be compiled, or threw while being evaluated"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once a Run you triggered has evaluated the expression, after On True or On False"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Events",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "The compile or evaluation error, in JavaScript's own words"
         },
         {
           "name": "asString",
           "type": "string",
           "plug": "output",
           "group": "Typed Results",
-          "displayName": "As String"
+          "displayName": "As String",
+          "description": "Result rendered as text, and blank when it is null or undefined"
         },
         {
           "name": "asNumber",
           "type": "number",
           "plug": "output",
           "group": "Typed Results",
-          "displayName": "As Number"
+          "displayName": "As Number",
+          "description": "Result read as a number, falling back to 0 when it is not one"
         },
         {
           "name": "asBoolean",
           "type": "boolean",
           "plug": "output",
           "group": "Typed Results",
-          "displayName": "As Boolean"
+          "displayName": "As Boolean",
+          "description": "Whether Result is truthy, for wiring straight to a boolean input"
         }
       ]
     },
@@ -696,42 +713,48 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Success"
+          "displayName": "Success",
+          "description": "Fires once the script has finished, waiting for an async script to resolve first"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the script threw while running, or could not be compiled at all"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once a Run you triggered has finished, waiting for an async script to resolve first"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when there is no script to run yet, which is what a freshly dropped Function looks like"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Events",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "What the script went wrong with, in JavaScript's own words"
         }
       ]
     },
@@ -791,42 +814,48 @@
           "type": "signal",
           "plug": "output",
           "group": "Status",
-          "displayName": "Success"
+          "displayName": "Success",
+          "description": "Fires once the block program has run through without throwing and every output it wrote is up to date"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Status",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once a run you triggered has finished, after Success and after every output the program wrote"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Status",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Status",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when there are no blocks to run yet, which is what a freshly dropped Logic Builder looks like"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Status",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the block program threw while running, or could not be compiled at all"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "What the last run went wrong with, in JavaScript's own words; empty once a run succeeds"
         }
       ]
     },
@@ -844,133 +873,152 @@
           "type": "array",
           "plug": "output",
           "group": "General",
-          "displayName": "Items"
+          "displayName": "Items",
+          "description": "Records the query matched, in the order Sort asks for; empty before the first query has run"
         },
         {
           "name": "firstItemId",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "First Record Id"
+          "displayName": "First Record Id",
+          "description": "Id of the first matched record, for feeding a Record node without going through a repeater"
         },
         {
           "name": "isEmpty",
           "type": "boolean",
           "plug": "output",
           "group": "General",
-          "displayName": "Is Empty"
+          "displayName": "Is Empty",
+          "description": "True when the query matched nothing, and also true before the first query has run"
         },
         {
           "name": "count",
           "type": "number",
           "plug": "output",
           "group": "General",
-          "displayName": "Count"
+          "displayName": "Count",
+          "description": "How many records are in Items, which Limit caps — turn on Fetch total count for the uncapped figure"
         },
         {
           "name": "fetched",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Success"
+          "displayName": "Success",
+          "description": "Fires once the query has returned and Items is up to date"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the query could not be run, after the reason has been reported on the error channel"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last query failed; empty until one does"
         },
         {
           "name": "subscribed",
           "type": "boolean",
           "plug": "output",
           "group": "Realtime",
-          "displayName": "Subscribed"
+          "displayName": "Subscribed",
+          "description": "True while the backend has confirmed the subscription and is delivering changes"
         },
         {
           "name": "realtimeStatus",
           "type": "string",
           "plug": "output",
           "group": "Realtime",
-          "displayName": "Realtime Status"
+          "displayName": "Realtime Status",
+          "description": "connecting, subscribed, interrupted or stopped. Four states rather than a boolean, because \"connecting for the first time\" and \"dropped and retrying\" want different things on screen"
         },
         {
           "name": "realtimeError",
           "type": "object",
           "plug": "output",
           "group": "Realtime",
-          "displayName": "Realtime Error"
+          "displayName": "Realtime Error",
+          "description": "The last realtime failure, with a code and whether retrying can help; null until one happens"
         },
         {
           "name": "realtimeFailure",
           "type": "signal",
           "plug": "output",
           "group": "Realtime",
-          "displayName": "Realtime Failure"
+          "displayName": "Realtime Failure",
+          "description": "Fires when a subscription cannot connect, is rejected, or has been given up on"
         },
         {
           "name": "created",
           "type": "signal",
           "plug": "output",
           "group": "Realtime",
-          "displayName": "Record Created"
+          "displayName": "Record Created",
+          "description": "Another client created a record in this collection"
         },
         {
           "name": "updated",
           "type": "signal",
           "plug": "output",
           "group": "Realtime",
-          "displayName": "Record Updated"
+          "displayName": "Record Updated",
+          "description": "Another client updated a record in this collection"
         },
         {
           "name": "deleted",
           "type": "signal",
           "plug": "output",
           "group": "Realtime",
-          "displayName": "Record Deleted"
+          "displayName": "Record Deleted",
+          "description": "Another client deleted a record from this collection"
         },
         {
           "name": "changed",
           "type": "signal",
           "plug": "output",
           "group": "Realtime",
-          "displayName": "Records Changed"
+          "displayName": "Records Changed",
+          "description": "Any of the three, and also the backend saying the view may be stale after a reconnect — the one to react to if you do not care which happened"
         },
         {
           "name": "changedEvent",
           "type": "string",
           "plug": "output",
           "group": "Realtime",
-          "displayName": "Change Type"
+          "displayName": "Change Type",
+          "description": "create, update, delete, init or resync"
         },
         {
           "name": "changedRecord",
           "type": "object",
           "plug": "output",
           "group": "Realtime",
-          "displayName": "Changed Record"
+          "displayName": "Changed Record",
+          "description": "The record the change was about. ⚠️ Null on a delete against Directus, which sends only the key — use Changed Record Id, which every backend fills"
         },
         {
           "name": "changedRecords",
           "type": "array",
           "plug": "output",
           "group": "Realtime",
-          "displayName": "Changed Records"
+          "displayName": "Changed Records",
+          "description": "Every record in the change frame; some backends batch"
         },
         {
           "name": "changedRecordId",
           "type": "string",
           "plug": "output",
           "group": "Realtime",
-          "displayName": "Changed Record Id"
+          "displayName": "Changed Record Id",
+          "description": "The id of the changed record, always a string — even where the backend's primary key is an integer"
         }
       ]
     },
@@ -1097,49 +1145,56 @@
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the record this node is bound to, whether or not it has been read yet"
         },
         {
           "name": "fetched",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Fetched"
+          "displayName": "Fetched",
+          "description": "Fires once the record has been read and the property outputs are up to date"
         },
         {
           "name": "changed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Changed"
+          "displayName": "Changed",
+          "description": "Fires when a property of the bound record changes, including a change another node made"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when a Fetch finished and the property outputs are up to date"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the record could not be read, after the reason has been reported on the error channel"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last read failed; empty until one does"
         }
       ]
     },
@@ -1327,35 +1382,40 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once the record has been updated, waiting for the backend to answer unless Store to is Local only"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the backend refused the operation or the node had nothing valid to send, with the reason on Error"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the most recent attempt failed, kept after a later attempt succeeds"
         },
         {
           "name": "id",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
         }
       ]
     },
@@ -1461,35 +1521,40 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once the backend has deleted the record and everything bound to it has been told that it is gone"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the backend refused the operation or the node had nothing valid to send, with the reason on Error"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the most recent attempt failed, kept after a later attempt succeeds"
         },
         {
           "name": "id",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
         }
       ]
     },
@@ -1542,35 +1607,40 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once the backend has stored the new record and Id carries the Id it was given"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the backend refused the operation or the node had nothing valid to send, with the reason on Error"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the most recent attempt failed, kept after a later attempt succeeds"
         },
         {
           "name": "id",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
         }
       ]
     },
@@ -1687,35 +1757,40 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once the relation has been written and the record has been refreshed from the response"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the backend refused the operation or the node had nothing valid to send, with the reason on Error"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the most recent attempt failed, kept after a later attempt succeeds"
         },
         {
           "name": "id",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
         }
       ]
     },
@@ -1832,35 +1907,40 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once the backend has accepted the removal, which is also what happens when the relation was not there to begin with"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the backend refused the operation or the node had nothing valid to send, with the reason on Error"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the most recent attempt failed, kept after a later attempt succeeds"
         },
         {
           "name": "id",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the record this node last acted on, which on Create Record is the Id the backend assigned"
         }
       ]
     },
@@ -1953,56 +2033,64 @@
           "type": "array",
           "plug": "output",
           "group": "General",
-          "displayName": "Items"
+          "displayName": "Items",
+          "description": "The records that matched, after Sorting, Skip and Limit have been applied"
         },
         {
           "name": "firstItemId",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "First Record Id"
+          "displayName": "First Record Id",
+          "description": "Id of the first record in the result, and nothing at all when the result is empty"
         },
         {
           "name": "count",
           "type": "number",
           "plug": "output",
           "group": "General",
-          "displayName": "Count"
+          "displayName": "Count",
+          "description": "How many records are in the result after Skip and Limit, not how many matched the filter"
         },
         {
           "name": "modified",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Filtered"
+          "displayName": "Filtered",
+          "description": "Fires each time the result has been rebuilt, including when the same records come back and including runs nobody triggered; wire Done for the outcome of a Filter you triggered"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once a Filter you triggered has run and Items is up to date"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the filter could not be applied, or when Filter was triggered with nothing on Items"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Events",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the most recent failed run failed, kept after a later run succeeds"
         }
       ]
     },
@@ -2142,42 +2230,48 @@
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the object this node is bound to, whether that came from the Id input or from a repeater item"
         },
         {
           "name": "changed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Changed"
+          "displayName": "Changed",
+          "description": "Fires whenever any property of the bound object changes, from this node or from anywhere else"
         },
         {
           "name": "fetched",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Fetched"
+          "displayName": "Fetched",
+          "description": "Fires once a new object has been bound and its property outputs are up to date"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when a Fetch finished and the property outputs are up to date"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when Fetch was pressed with no Id to bind to, with the reason on the error channel"
         }
       ]
     },
@@ -2293,35 +2387,40 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once the properties have been written onto the object and anything watching it has been told"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "id",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the object this node acted on, which is how a newly created one is picked up downstream"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when there was no object to act on, so nothing was written, after the reason has been put on Error"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why no object was bound, and what to set so that one is"
         }
       ]
     },
@@ -2360,21 +2459,24 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once the new object exists, its properties are written and Id names it"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "id",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the object this node acted on, which is how a newly created one is picked up downstream"
         }
       ]
     },
@@ -2398,28 +2500,32 @@
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "URL"
+          "displayName": "URL",
+          "description": "Address the file can be fetched from; a private file needs a Sign File URL node before this link works"
         },
         {
           "name": "name",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Name"
+          "displayName": "Name",
+          "description": "Original file name as it was uploaded, without the storage prefix"
         },
         {
           "name": "contentType",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Content Type"
+          "displayName": "Content Type",
+          "description": "MIME type the backend recorded on upload; empty on a backend that does not report one, and on a file read back from a record property"
         },
         {
           "name": "size",
           "type": "number",
           "plug": "output",
           "group": "General",
-          "displayName": "Size"
+          "displayName": "Size",
+          "description": "Size in bytes the backend recorded on upload; empty on a backend that does not report one, and on a file read back from a record property"
         }
       ]
     },
@@ -2454,70 +2560,80 @@
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Signed URL"
+          "displayName": "Signed URL",
+          "description": "Usable link to the file; empty until Sign has succeeded once. Read URL Kind before sharing it — on some backends this link carries your own credential rather than a signature"
         },
         {
           "name": "urlKind",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "URL Kind"
+          "displayName": "URL Kind",
+          "description": "How this link is protected: \"signed\" — it carries its own proof and stops working at Expires At; \"token\" — it carries your own sign-in credential; \"public\" — it needs nothing and never expires"
         },
         {
           "name": "isShareable",
           "type": "boolean",
           "plug": "output",
           "group": "General",
-          "displayName": "Safe To Share"
+          "displayName": "Safe To Share",
+          "description": "False when the link only works because it carries your own credential — sending it to someone else either fails for them or hands them your session. True for a signed or public link"
         },
         {
           "name": "expiresAt",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Expires At"
+          "displayName": "Expires At",
+          "description": "Moment the link stops working, as an ISO 8601 timestamp. Empty for a \"public\" link, which never expires; for a \"token\" link on Directus this is the session's expiry rather than the link's"
         },
         {
           "name": "ttlSeconds",
           "type": "number",
           "plug": "output",
           "group": "General",
-          "displayName": "TTL (Seconds)"
+          "displayName": "TTL (Seconds)",
+          "description": "How long Signed URL stays valid from the moment it was minted, in seconds"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once a link has been minted and Signed URL is up to date"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when no link could be minted — no file was set, or the backend refused the caller access — after the reason has been reported on the error channel"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last signing attempt failed; empty until one does"
         },
         {
           "name": "errorStatus",
           "type": "number",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error Status Code"
+          "displayName": "Error Status Code",
+          "description": "HTTP status the backend refused with, or 0 when the request never left the app"
         }
       ]
     },
@@ -2620,34 +2736,39 @@
           "name": "savedValue",
           "type": "number",
           "plug": "output",
-          "displayName": "Value"
+          "displayName": "Value",
+          "description": "Can be `null` — a cleared Variable (see `value`'s description) stores and emits null by default, not this type's zero value, unless `Treat empty as` says otherwise."
         },
         {
           "name": "changed",
           "type": "signal",
           "plug": "output",
-          "displayName": "Changed"
+          "displayName": "Changed",
+          "description": "Fires whenever the stored value actually changed, however it was reached — including Value writing straight through under Run On Value Change. It is a value-level event, not the outcome of a Set"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when a Set stored a value the Variable was not already holding"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when a Set stored the value it already held, so nothing changed. ⚠️ With Value left ticked under Run On Value Change this is the common case, because Value has already stored by the time Set fires"
         }
       ]
     },
@@ -2742,40 +2863,46 @@
           "name": "savedValue",
           "type": "string",
           "plug": "output",
-          "displayName": "Value"
+          "displayName": "Value",
+          "description": "Can be `null` — a cleared Variable (see `value`'s description) stores and emits null by default, not this type's zero value, unless `Treat empty as` says otherwise."
         },
         {
           "name": "changed",
           "type": "signal",
           "plug": "output",
-          "displayName": "Changed"
+          "displayName": "Changed",
+          "description": "Fires whenever the stored value actually changed, however it was reached — including Value writing straight through under Run On Value Change. It is a value-level event, not the outcome of a Set"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when a Set stored a value the Variable was not already holding"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when a Set stored the value it already held, so nothing changed. ⚠️ With Value left ticked under Run On Value Change this is the common case, because Value has already stored by the time Set fires"
         },
         {
           "name": "length",
           "type": "number",
           "plug": "output",
-          "displayName": "Length"
+          "displayName": "Length",
+          "description": "0 when the Variable is cleared (`savedValue` is `null`) — there is no text to measure, and 0 is what an author reading this as a plain number expects, rather than a thrown error or `null` itself."
         }
       ]
     },
@@ -2865,34 +2992,39 @@
           "name": "savedValue",
           "type": "boolean",
           "plug": "output",
-          "displayName": "Value"
+          "displayName": "Value",
+          "description": "Can be `null` — a cleared Variable (see `value`'s description) stores and emits null by default, not this type's zero value, unless `Treat empty as` says otherwise."
         },
         {
           "name": "changed",
           "type": "signal",
           "plug": "output",
-          "displayName": "Changed"
+          "displayName": "Changed",
+          "description": "Fires whenever the stored value actually changed, however it was reached — including Value writing straight through under Run On Value Change. It is a value-level event, not the outcome of a Set"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when a Set stored a value the Variable was not already holding"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when a Set stored the value it already held, so nothing changed. ⚠️ With Value left ticked under Run On Value Change this is the common case, because Value has already stored by the time Set fires"
         }
       ]
     },
@@ -2938,42 +3070,48 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On True"
+          "displayName": "On True",
+          "description": "Fires each time Condition is tested and found true — exactly one of On True and On False fires per test"
         },
         {
           "name": "onfalse",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On False"
+          "displayName": "On False",
+          "description": "Fires each time Condition is tested and found false, including while Condition has never been set"
         },
         {
           "name": "result",
           "type": "boolean",
           "plug": "output",
           "group": "Booleans",
-          "displayName": "Is True"
+          "displayName": "Is True",
+          "description": "Whether the last test found Condition true, for wiring into a value rather than branching on a signal; null until the first test"
         },
         {
           "name": "isfalse",
           "type": "boolean",
           "plug": "output",
           "group": "Booleans",
-          "displayName": "Is False"
+          "displayName": "Is False",
+          "description": "The opposite of Is True, so a false branch needs no Inverter; null until the first test"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once an Evaluate you triggered has tested Condition, after On True or On False"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         }
       ]
     },
@@ -2987,7 +3125,8 @@
           "name": "result",
           "type": "boolean",
           "plug": "output",
-          "displayName": "Result"
+          "displayName": "Result",
+          "description": "True only while every connected input is true; false when no input is connected at all"
         }
       ]
     },
@@ -3001,7 +3140,8 @@
           "name": "result",
           "type": "boolean",
           "plug": "output",
-          "displayName": "Result"
+          "displayName": "Result",
+          "description": "True while at least one connected input is true; false when no input is connected at all"
         }
       ]
     },
@@ -3039,14 +3179,16 @@
           "type": "string",
           "plug": "output",
           "group": "Value",
-          "displayName": "Current Value"
+          "displayName": "Current Value",
+          "description": "String for true or String for false, whichever Selector currently picks"
         },
         {
           "name": "inputChanged",
           "type": "signal",
           "plug": "output",
           "group": "Signals",
-          "displayName": "Selector Changed"
+          "displayName": "Selector Changed",
+          "description": "Fires when Selector flips, after Current Value has been updated"
         }
       ]
     },
@@ -3078,21 +3220,24 @@
           "type": "string",
           "plug": "output",
           "group": "Value",
-          "displayName": "Date String"
+          "displayName": "Date String",
+          "description": "Date rendered through Format, or blank when the date could not be read"
         },
         {
           "name": "inputChanged",
           "type": "signal",
           "plug": "output",
           "group": "Signals",
-          "displayName": "Date Changed"
+          "displayName": "Date Changed",
+          "description": "Fires whenever a new Date arrives or Format changes, after Date String has been updated"
         },
         {
           "name": "onError",
           "type": "signal",
           "plug": "output",
           "group": "Signals",
-          "displayName": "Invalid Date"
+          "displayName": "Invalid Date",
+          "description": "Fires when the Date could not be read, leaving Date String blank"
         }
       ]
     },
@@ -3126,7 +3271,8 @@
           "type": "string",
           "plug": "output",
           "group": "Value",
-          "displayName": "Mapped String"
+          "displayName": "Mapped String",
+          "description": "The mapping paired with the input that matched, or Default when none did"
         }
       ]
     },
@@ -3149,7 +3295,8 @@
           "name": "result",
           "type": "boolean",
           "plug": "output",
-          "displayName": "Result"
+          "displayName": "Result",
+          "description": "The opposite of Value, and unset rather than true while Value has never been set"
         }
       ]
     },
@@ -3189,7 +3336,8 @@
           "name": "result",
           "type": "string",
           "plug": "output",
-          "displayName": "Result"
+          "displayName": "Result",
+          "description": "The section of String between Start and End"
         }
       ]
     },
@@ -3215,7 +3363,8 @@
           "name": "formatted",
           "type": "string",
           "plug": "output",
-          "displayName": "Formatted"
+          "displayName": "Formatted",
+          "description": "Format with every placeholder substituted, and an unset placeholder replaced by nothing"
         }
       ]
     },
@@ -3303,34 +3452,39 @@
           "name": "currentCount",
           "type": "number",
           "plug": "output",
-          "displayName": "Current Count"
+          "displayName": "Current Count",
+          "description": "The count as it stands"
         },
         {
           "name": "countChanged",
           "type": "signal",
           "plug": "output",
-          "displayName": "Count Changed"
+          "displayName": "Count Changed",
+          "description": "Fires after the count has moved, and also once at page load when Start Value is set"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when the count actually moved"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when Limits Enabled held the count where it was, so nothing moved"
         }
       ]
     },
@@ -3354,21 +3508,24 @@
           "name": "guid",
           "type": "string",
           "plug": "output",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "A globally unique identifier, generated once when the node is created and again on every New"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once a new id is available on Id"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         }
       ]
     },
@@ -3391,49 +3548,56 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Fires when an error passes the Filter, after every value output below has been updated to describe it"
         },
         {
           "name": "message",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Message"
+          "displayName": "Message",
+          "description": "Human-readable account of what went wrong, safe to reword between releases — match on Code instead"
         },
         {
           "name": "code",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Code"
+          "displayName": "Code",
+          "description": "Stable kebab-case identifier for this kind of error, namespaced by node type, as in run-tasks/task-failed"
         },
         {
           "name": "nodeId",
           "type": "string",
           "plug": "output",
           "group": "Source",
-          "displayName": "Node Id"
+          "displayName": "Node Id",
+          "description": "Graph id of the node that raised the error, or <runtime> when it was raised outside any node"
         },
         {
           "name": "componentName",
           "type": "string",
           "plug": "output",
           "group": "Source",
-          "displayName": "Component Name"
+          "displayName": "Component Name",
+          "description": "Component the failing node sits in, or <runtime> when the error was raised outside any node"
         },
         {
           "name": "nodeType",
           "type": "string",
           "plug": "output",
           "group": "Source",
-          "displayName": "Node Type"
+          "displayName": "Node Type",
+          "description": "Kind of node that raised the error, or <runtime> when it was raised outside any node"
         },
         {
           "name": "errorObject",
           "type": "object",
           "plug": "output",
           "group": "General",
-          "displayName": "Error Object"
+          "displayName": "Error Object",
+          "description": "The whole error event as one record, for logging it or sending it to an error-reporting service"
         }
       ]
     },
@@ -3477,28 +3641,32 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once the user record has been written"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the user record could not be written, after the reason has been reported on the error channel"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last write failed; empty until one does"
         }
       ]
     },
@@ -3538,70 +3706,80 @@
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Id"
+          "displayName": "Id",
+          "description": "Id of the signed-in user record; empty while nobody is signed in"
         },
         {
           "name": "fetched",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Fetched"
+          "displayName": "Fetched",
+          "description": "Fires once the user record has been re-read and the outputs below are up to date"
         },
         {
           "name": "changed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Changed"
+          "displayName": "Changed",
+          "description": "Fires when a property of the signed-in user changes, including a change another node made"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when a Fetch finished and the outputs below are up to date"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the user record could not be read, after the reason has been reported on the error channel"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last read failed; empty until one does"
         },
         {
           "name": "username",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Username"
+          "displayName": "Username",
+          "description": "Username of the signed-in user; empty while nobody is signed in"
         },
         {
           "name": "email",
           "type": "string",
           "plug": "output",
           "group": "General",
-          "displayName": "Email"
+          "displayName": "Email",
+          "description": "Email address of the signed-in user; empty while nobody is signed in"
         },
         {
           "name": "authenticated",
           "type": "boolean",
           "plug": "output",
           "group": "General",
-          "displayName": "Authenticated"
+          "displayName": "Authenticated",
+          "description": "True while somebody is signed in on this device; a server render always sees false"
         }
       ]
     },
@@ -3651,42 +3829,48 @@
           "type": "object",
           "plug": "output",
           "group": "Data",
-          "displayName": "State"
+          "displayName": "State",
+          "description": "The whole store as a live object; write through Set Global Store rather than mutating it"
         },
         {
           "name": "changedKeys",
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Changed Keys"
+          "displayName": "Changed Keys",
+          "description": "Comma-separated keys that changed in the notification that fired State Changed"
         },
         {
           "name": "stateChanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "State Changed"
+          "displayName": "State Changed",
+          "description": "Fires once per commit to the store, however many keys that commit touched"
         },
         {
           "name": "ready",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Ready"
+          "displayName": "Ready",
+          "description": "Fires once the store has been created and configured, so a graph can sequence its first read"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Events",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "What the store could not do, prefixed by the phase it happened in: persist, load, clone or subscriber"
         },
         {
           "name": "storeId",
           "type": "string",
           "plug": "output",
           "group": "Info",
-          "displayName": "Store Id"
+          "displayName": "Store Id",
+          "description": "The id of the Model backing this store, so a Function node can reach the same state through Noodl.Object"
         }
       ]
     },
@@ -3756,28 +3940,32 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once the write has been applied and every subscriber has been told"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the write could not be made, most often because Key is empty"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Events",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last write failed; blank once a write succeeds"
         }
       ]
     },
@@ -3811,28 +3999,32 @@
           "type": "*",
           "plug": "output",
           "group": "Data",
-          "displayName": "Value"
+          "displayName": "Value",
+          "description": "The watched value: one key gives that key, several give an object of just those keys, none gives the whole store"
         },
         {
           "name": "previousValue",
           "type": "*",
           "plug": "output",
           "group": "Data",
-          "displayName": "Previous Value"
+          "displayName": "Previous Value",
+          "description": "The same projection as Value, as it was immediately before the change that fired Changed"
         },
         {
           "name": "changedKeys",
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Changed Keys"
+          "displayName": "Changed Keys",
+          "description": "Comma-separated keys that changed in the notification that fired Changed"
         },
         {
           "name": "changed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Changed"
+          "displayName": "Changed",
+          "description": "Fires when one of the watched keys changed, and not for a commit that touched only other keys"
         }
       ]
     },
@@ -3957,112 +4149,128 @@
           "type": "*",
           "plug": "output",
           "group": "Data",
-          "displayName": "Value"
+          "displayName": "Value",
+          "description": "What the key holds right now, following writes made by anything, not only by this node"
         },
         {
           "name": "previousValue",
           "type": "*",
           "plug": "output",
           "group": "Data",
-          "displayName": "Previous Value"
+          "displayName": "Previous Value",
+          "description": "What the key held immediately before the most recent Apply; blank when the key did not exist"
         },
         {
           "name": "isPending",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Is Pending"
+          "displayName": "Is Pending",
+          "description": "True while at least one update is waiting for an answer"
         },
         {
           "name": "pendingCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Pending Count"
+          "displayName": "Pending Count",
+          "description": "How many updates are open at once, which can be more than one when responses come back out of order"
         },
         {
           "name": "isCommitted",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Is Committed"
+          "displayName": "Is Committed",
+          "description": "True when the last update to resolve was confirmed"
         },
         {
           "name": "isRolledBack",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Is Rolled Back"
+          "displayName": "Is Rolled Back",
+          "description": "True when the last update to resolve was undone, whether by Rollback, by the deadline, or by disposal"
         },
         {
           "name": "transactionId",
           "type": "string",
           "plug": "output",
           "group": "Info",
-          "displayName": "Transaction Id"
+          "displayName": "Transaction Id",
+          "description": "Id of the most recent Apply; carry it through the request and hand it back to resolve that update specifically"
         },
         {
           "name": "applied",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Applied"
+          "displayName": "Applied",
+          "description": "Fires once the optimistic value is in the store and the transaction is open"
         },
         {
           "name": "committed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Committed"
+          "displayName": "Committed",
+          "description": "Fires once an update has been confirmed and its value is the truth"
         },
         {
           "name": "rolledBack",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Rolled Back"
+          "displayName": "Rolled Back",
+          "description": "Fires once an update has been undone, including when the value was left alone because something newer had written the key"
         },
         {
           "name": "timedOut",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Timed Out"
+          "displayName": "Timed Out",
+          "description": "Fires alongside Rolled Back when it was the deadline rather than the graph that ended the update"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Events",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last update failed or was undone; blank once an Apply succeeds"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when the action did its work: an Apply that opened a transaction, a Commit that confirmed one, or a Rollback that put the old value back"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when a Rollback resolved its transaction without restoring anything, because something else had already written the key — the value this update wrote was gone already, so there was nothing to undo. Rolled Back fires too, and Error says why"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the node refused to act: no Key, a transaction id already open, or no such update to resolve"
         }
       ]
     },
@@ -4137,77 +4345,88 @@
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "History Size"
+          "displayName": "History Size",
+          "description": "How many entries the history holds, including the baseline it started from"
         },
         {
           "name": "currentIndex",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Current Index"
+          "displayName": "Current Index",
+          "description": "Where in the history the store is sitting; -1 when nothing is being tracked"
         },
         {
           "name": "canUndo",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Can Undo"
+          "displayName": "Can Undo",
+          "description": "True when there is an earlier entry to step back to"
         },
         {
           "name": "canRedo",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Can Redo"
+          "displayName": "Can Redo",
+          "description": "True when an undo has been made and there is a later entry to step forward to"
         },
         {
           "name": "fullyRestorable",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Fully Restorable"
+          "displayName": "Fully Restorable",
+          "description": "False when some entry holds a Collection, a Model or a function, which a snapshot can only keep by reference"
         },
         {
           "name": "byReferenceKeys",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "By-Reference Keys"
+          "displayName": "By-Reference Keys",
+          "description": "Comma-separated keys an undo cannot fully restore because they hold live objects rather than data"
         },
         {
           "name": "history",
           "type": "array",
           "plug": "output",
           "group": "Data",
-          "displayName": "History"
+          "displayName": "History",
+          "description": "One entry per recorded change, each with its index, timestamp, description and changed keys, but not its state"
         },
         {
           "name": "historyChanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "History Changed"
+          "displayName": "History Changed",
+          "description": "Fires whenever an entry is added, the position moves, or the history is cleared"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once the history has been thrown away and re-baselined from the live state"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when there was nothing to throw away, because the history was already just its baseline"
         }
       ]
     },
@@ -4274,70 +4493,80 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Undone"
+          "displayName": "Undone",
+          "description": "Fires when a step back actually happened, and not when the history was already at its beginning"
         },
         {
           "name": "redone",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Redone"
+          "displayName": "Redone",
+          "description": "Fires when a step forward actually happened, and not when the history was already at its end"
         },
         {
           "name": "jumped",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Jumped"
+          "displayName": "Jumped",
+          "description": "Fires once the store holds the entry Target Index named"
         },
         {
           "name": "fullyRestorable",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Fully Restorable"
+          "displayName": "Fully Restorable",
+          "description": "False when the entry just restored held live objects a snapshot could only keep by reference"
         },
         {
           "name": "byReferenceKeys",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "By-Reference Keys"
+          "displayName": "By-Reference Keys",
+          "description": "Comma-separated keys the restored entry put back as the same live object rather than as a copy"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when the step actually moved the store"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when the history had nowhere to go — an Undo at the beginning or a Redo at the end. Not a failure: this is an ordinary end-stop, and it used to be silent"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the step could not be made, because nothing is tracking the store or Target Index is outside the history"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Events",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last step failed; blank once one succeeds"
         }
       ]
     },
@@ -4401,63 +4630,72 @@
           "type": "object",
           "plug": "output",
           "group": "Data",
-          "displayName": "Snapshot"
+          "displayName": "Snapshot",
+          "description": "The checkpoint just saved or restored, as plain data that can be written to a file and fed back into Snapshot Data"
         },
         {
           "name": "fullyRestorable",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Fully Restorable"
+          "displayName": "Fully Restorable",
+          "description": "False when the checkpoint holds a Collection, a Model or a function, which it can only keep by reference"
         },
         {
           "name": "byReferenceKeys",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "By-Reference Keys"
+          "displayName": "By-Reference Keys",
+          "description": "Comma-separated keys the checkpoint holds as live objects, so restoring will not undo changes made to them since"
         },
         {
           "name": "saved",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Saved"
+          "displayName": "Saved",
+          "description": "Fires once the checkpoint has been taken and Snapshot holds it"
         },
         {
           "name": "restored",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Restored"
+          "displayName": "Restored",
+          "description": "Fires once the store holds the checkpoint again"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once a Save or Restore you triggered has finished, whichever of the two it was"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the checkpoint could not be saved or put back, most often an unnamed or unknown checkpoint"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Events",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last save or restore failed; blank once one succeeds"
         }
       ]
     },
@@ -4697,154 +4935,176 @@
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Connection State"
+          "displayName": "Connection State",
+          "description": "Where the connection is: idle, connecting, open, reconnecting, closed or error"
         },
         {
           "name": "connected",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Connected"
+          "displayName": "Connected",
+          "description": "True only while the socket is open and messages can be sent without queueing"
         },
         {
           "name": "retryCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Retry Count"
+          "displayName": "Retry Count",
+          "description": "Attempts made during the current outage; back to zero once the socket opens"
         },
         {
           "name": "lastError",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Last Error"
+          "displayName": "Last Error",
+          "description": "What went wrong most recently, including why a reconnect was scheduled or abandoned"
         },
         {
           "name": "queueSize",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Queue Size"
+          "displayName": "Queue Size",
+          "description": "Messages held because the socket was not open when Send ran"
         },
         {
           "name": "droppedCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Dropped"
+          "displayName": "Dropped",
+          "description": "Messages that will never be sent, whether discarded by policy, by a full queue, or by the node being removed"
         },
         {
           "name": "latency",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Latency (ms)"
+          "displayName": "Latency (ms)",
+          "description": "Round trip of the last heartbeat in milliseconds; 0 until one has been measured"
         },
         {
           "name": "closeCode",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Close Code"
+          "displayName": "Close Code",
+          "description": "WebSocket close code from the last close, or 1006 when the socket died without one"
         },
         {
           "name": "closeReason",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Close Reason"
+          "displayName": "Close Reason",
+          "description": "Reason the server gave for closing, which is often blank"
         },
         {
           "name": "received",
           "type": "*",
           "plug": "output",
           "group": "Data",
-          "displayName": "Received"
+          "displayName": "Received",
+          "description": "The last message, parsed as JSON when it is JSON and handed over as text when it is not"
         },
         {
           "name": "receivedRaw",
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Received Raw"
+          "displayName": "Received Raw",
+          "description": "The last text message exactly as it arrived; blank for a binary frame"
         },
         {
           "name": "receivedIsBinary",
           "type": "boolean",
           "plug": "output",
           "group": "Data",
-          "displayName": "Received Is Binary"
+          "displayName": "Received Is Binary",
+          "description": "True when the last message was a binary frame, in which case Received holds the buffer"
         },
         {
           "name": "onOpen",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On Open"
+          "displayName": "On Open",
+          "description": "Fires every time the socket opens, including after a reconnect"
         },
         {
           "name": "onMessage",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On Message"
+          "displayName": "On Message",
+          "description": "Fires once per message, after Received already holds it; heartbeat replies are not messages"
         },
         {
           "name": "onMessageSent",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On Message Sent"
+          "displayName": "On Message Sent",
+          "description": "Fires when a message has been handed to the socket, including a queued one flushed on reopen; not for heartbeats"
         },
         {
           "name": "onError",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On Error"
+          "displayName": "On Error",
+          "description": "Fires when something went wrong: a failed connect, a refused send, a dead heartbeat, or a give-up"
         },
         {
           "name": "onClose",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On Close"
+          "displayName": "On Close",
+          "description": "Fires whenever the socket goes down, whether or not a reconnect is going to follow"
         },
         {
           "name": "onReconnect",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On Reconnect"
+          "displayName": "On Reconnect",
+          "description": "Fires on every open after the first; a WebSocket cannot resume, so this is the cue to re-fetch rather than assume continuity"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when the action finished: a Connect whose socket opened, a Send accepted for delivery (sent, or queued for the next open), or a Disconnect that closed something"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when there was nothing to do: a Disconnect with nothing open, a Send discarded by the Drop policy, or a Connect a later Connect or Disconnect superseded before it opened"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the action could not be performed — no URL, a URL that is not ws:// or wss://, a connection that gave up, or a refused Send. Last Error carries the reason"
         }
       ]
     },
@@ -5068,147 +5328,168 @@
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Connection State"
+          "displayName": "Connection State",
+          "description": "Where the connection is: idle, connecting, open, reconnecting, closed or error"
         },
         {
           "name": "connected",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Connected"
+          "displayName": "Connected",
+          "description": "True only while the stream is open and frames may arrive"
         },
         {
           "name": "lastError",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Last Error"
+          "displayName": "Last Error",
+          "description": "What went wrong most recently, including the reason a retry was scheduled"
         },
         {
           "name": "retryCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Retry Count"
+          "displayName": "Retry Count",
+          "description": "Consecutive failed attempts in the current outage; back to zero once the stream opens"
         },
         {
           "name": "onOpen",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On Open"
+          "displayName": "On Open",
+          "description": "Fires when the stream has been established"
         },
         {
           "name": "onMessage",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On Message"
+          "displayName": "On Message",
+          "description": "Fires once per event, after Data, Raw and Text already hold it"
         },
         {
           "name": "onError",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On Error"
+          "displayName": "On Error",
+          "description": "Fires when the stream failed or dropped, whether or not a retry is going to follow"
         },
         {
           "name": "onClose",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "On Close"
+          "displayName": "On Close",
+          "description": "Fires when the stream has stopped for good, whether it ended cleanly or gave up"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when the action finished: a Connect whose stream opened, or a Disconnect that stopped one"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when there was nothing to do: a Disconnect with no stream running, or a Connect a later Connect or Disconnect superseded before it opened"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the stream could not be opened, or gave up retrying. Last Error carries the reason"
         },
         {
           "name": "data",
           "type": "*",
           "plug": "output",
           "group": "Data",
-          "displayName": "Data"
+          "displayName": "Data",
+          "description": "The event payload, parsed as JSON when it is JSON and handed over as text when it is not"
         },
         {
           "name": "raw",
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Raw"
+          "displayName": "Raw",
+          "description": "The event payload exactly as it arrived, before any parsing"
         },
         {
           "name": "text",
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Text"
+          "displayName": "Text",
+          "description": "The one data output guaranteed to be a string: Raw when no Text Path is set, the field at that path when one is, blank when it does not resolve"
         },
         {
           "name": "eventType",
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Event Type"
+          "displayName": "Event Type",
+          "description": "The event name the server sent, or message when it sent none"
         },
         {
           "name": "lastEventId",
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Last Event Id"
+          "displayName": "Last Event Id",
+          "description": "The furthest id the server has reported, which is the point a reconnect resumes from"
         },
         {
           "name": "messageCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Message Count"
+          "displayName": "Message Count",
+          "description": "How many events have been delivered on this connection, not counting suppressed duplicates"
         },
         {
           "name": "lastMessageTime",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Last Message Time"
+          "displayName": "Last Message Time",
+          "description": "When the last event arrived, as milliseconds since the epoch; useful for spotting a stalled stream"
         },
         {
           "name": "duplicatesSuppressed",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Duplicates Suppressed"
+          "displayName": "Duplicates Suppressed",
+          "description": "How many replayed events Dedupe By Id has dropped on this connection"
         },
         {
           "name": "deliverySemantics",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Delivery Semantics"
+          "displayName": "Delivery Semantics",
+          "description": "What this stream actually guarantees, derived from whether the server sends ids: at-most-once, at-least-once or at-least-once-deduped"
         }
       ]
     },
@@ -5296,119 +5577,136 @@
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Accumulated"
+          "displayName": "Accumulated",
+          "description": "Everything appended since the last Clear that has not yet been split off as a complete message"
         },
         {
           "name": "messages",
           "type": "array",
           "plug": "output",
           "group": "Data",
-          "displayName": "Messages"
+          "displayName": "Messages",
+          "description": "Complete messages split off the delimiter, oldest first, capped at Max Messages"
         },
         {
           "name": "lastMessage",
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Last Message"
+          "displayName": "Last Message",
+          "description": "The most recent complete message, which is what a chat surface usually wants"
         },
         {
           "name": "messageCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Message Count"
+          "displayName": "Message Count",
+          "description": "How many complete messages are being retained, which is not how many have arrived"
         },
         {
           "name": "characterCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Character Count"
+          "displayName": "Character Count",
+          "description": "Length of Accumulated in characters"
         },
         {
           "name": "byteCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Byte Count (UTF-8)"
+          "displayName": "Byte Count (UTF-8)",
+          "description": "Length of Accumulated in UTF-8 bytes, which differs from Character Count for anything outside ASCII"
         },
         {
           "name": "droppedCharacters",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Dropped Characters"
+          "displayName": "Dropped Characters",
+          "description": "How many characters Max Length has discarded from the front since the last Clear"
         },
         {
           "name": "droppedMessages",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Dropped Messages"
+          "displayName": "Dropped Messages",
+          "description": "How many complete messages Max Messages has discarded since the last Clear"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last chunk was refused; blank once a chunk of text arrives"
         },
         {
           "name": "messageReceived",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Message Received"
+          "displayName": "Message Received",
+          "description": "Fires once per Add that completed at least one message, not once per message"
         },
         {
           "name": "changed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Changed"
+          "displayName": "Changed",
+          "description": "Fires whenever an Add appended something, which is the cue to redraw"
         },
         {
           "name": "cleared",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Cleared"
+          "displayName": "Cleared",
+          "description": "Fires once the buffer and the messages have been emptied"
         },
         {
           "name": "overflowed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Overflowed"
+          "displayName": "Overflowed",
+          "description": "Fires when Max Length or Max Messages has just discarded something"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once an Add or Clear you triggered has changed the buffer"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when an Add had no text to append — an empty chunk, or one already refused — or a Clear found nothing to discard"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when a chunk was not text and nothing was appended, which usually means the wrong stream output is wired"
         }
       ]
     },
@@ -5501,91 +5799,104 @@
           "type": "*",
           "plug": "output",
           "group": "Data",
-          "displayName": "Parsed"
+          "displayName": "Parsed",
+          "description": "The last complete value the most recent Parse produced"
         },
         {
           "name": "values",
           "type": "array",
           "plug": "output",
           "group": "Data",
-          "displayName": "Values"
+          "displayName": "Values",
+          "description": "Every value completed by the most recent Parse, in order"
         },
         {
           "name": "valueCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Value Count"
+          "displayName": "Value Count",
+          "description": "How many values have been parsed since the last Clear, across every Parse"
         },
         {
           "name": "pendingCharacters",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Pending Characters"
+          "displayName": "Pending Characters",
+          "description": "Text held back because a value is not complete yet; persistently non-zero means Format does not match the stream"
         },
         {
           "name": "isComplete",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Is Complete"
+          "displayName": "Is Complete",
+          "description": "True when the last Parse left nothing pending, so every value so far was whole"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last value or line would not parse; kept until the next failure or a Clear"
         },
         {
           "name": "errorCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Error Count"
+          "displayName": "Error Count",
+          "description": "How many values have failed to parse since the last Clear"
         },
         {
           "name": "success",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Success"
+          "displayName": "Success",
+          "description": "Fires when a Parse yielded at least one value, so a chunk that merely advanced an incomplete value stays quiet"
         },
         {
           "name": "cleared",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Cleared"
+          "displayName": "Cleared",
+          "description": "Fires once the pending text and the values have been discarded"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when a Parse consumed text or a Clear discarded something; Success is narrower and fires only when values came out"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when there was nothing pending to parse, or nothing to clear — a valid action with nothing to do"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires once when a Parse could not read part of its input, or when the pending text exceeded Max Pending; Error Count says how many"
         }
       ]
     },
@@ -5659,84 +5970,96 @@
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Match"
+          "displayName": "Match",
+          "description": "The first match, or blank when nothing matched"
         },
         {
           "name": "matches",
           "type": "array",
           "plug": "output",
           "group": "Data",
-          "displayName": "Matches"
+          "displayName": "Matches",
+          "description": "Every match when Extract All is on, otherwise just the first"
         },
         {
           "name": "groups",
           "type": "array",
           "plug": "output",
           "group": "Data",
-          "displayName": "Groups"
+          "displayName": "Groups",
+          "description": "Capture groups of the first match; an optional group that did not participate is a blank string, not a hole"
         },
         {
           "name": "firstGroup",
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "First Group"
+          "displayName": "First Group",
+          "description": "The first capture group of the first match, which is the whole answer for a pattern like (\\d+)%"
         },
         {
           "name": "namedGroups",
           "type": "object",
           "plug": "output",
           "group": "Data",
-          "displayName": "Named Groups"
+          "displayName": "Named Groups",
+          "description": "Named capture groups of the first match, keyed by name"
         },
         {
           "name": "matchCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Match Count"
+          "displayName": "Match Count",
+          "description": "How many matches were found, which is at most one unless Extract All is on"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the pattern could not be used: it is blank, or it is not a valid regular expression"
         },
         {
           "name": "found",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Found"
+          "displayName": "Found",
+          "description": "Fires when the pattern ran and matched at least once"
         },
         {
           "name": "notFound",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Not Found"
+          "displayName": "Not Found",
+          "description": "Fires when the pattern ran and matched nothing, which is an ordinary outcome rather than a mistake"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once the extract has run, whether it matched or not — Found and Not Found say which"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the pattern itself is unusable, which is a bug to fix rather than a result"
         }
       ]
     },
@@ -5835,91 +6158,104 @@
           "type": "array",
           "plug": "output",
           "group": "Data",
-          "displayName": "Buffer"
+          "displayName": "Buffer",
+          "description": "Items waiting to be flushed, oldest first"
         },
         {
           "name": "bufferSize",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Buffer Size"
+          "displayName": "Buffer Size",
+          "description": "How many items are waiting, which is what Flush Size is compared against"
         },
         {
           "name": "flushedData",
           "type": "array",
           "plug": "output",
           "group": "Data",
-          "displayName": "Flushed Data"
+          "displayName": "Flushed Data",
+          "description": "The batch handed over by the most recent flush; a stable array that later Adds do not mutate"
         },
         {
           "name": "flushCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Flush Count"
+          "displayName": "Flush Count",
+          "description": "How many flushes have happened since the last Clear"
         },
         {
           "name": "droppedItems",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Dropped Items"
+          "displayName": "Dropped Items",
+          "description": "How many items Max Size has discarded from the front since the last Clear"
         },
         {
           "name": "flushed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Flushed"
+          "displayName": "Flushed",
+          "description": "Fires once Flushed Data holds a new batch, and not for a flush that found nothing"
         },
         {
           "name": "overflowed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Overflowed"
+          "displayName": "Overflowed",
+          "description": "Fires when Max Size has just discarded something"
         },
         {
           "name": "cleared",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Cleared"
+          "displayName": "Cleared",
+          "description": "Fires once the buffer has been discarded"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once an Add, Flush or Clear you triggered has changed the buffer"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when a Flush found nothing to send, or a Clear found nothing to discard — an idle buffer doing exactly what it should"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when Add ran before any value had arrived on Data, so nothing was buffered"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Events",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last Add was refused; blank until one is"
         }
       ]
     },
@@ -6066,175 +6402,200 @@
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Action Type"
+          "displayName": "Action Type",
+          "description": "Type of the action currently being executed"
         },
         {
           "name": "actionId",
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Action Id"
+          "displayName": "Action Id",
+          "description": "Id of the action currently being executed, taken from the message when it carried one"
         },
         {
           "name": "payload",
           "type": "*",
           "plug": "output",
           "group": "Data",
-          "displayName": "Payload"
+          "displayName": "Payload",
+          "description": "The data the current action carried, taken from its payload or data field, or the whole action when it has neither"
         },
         {
           "name": "result",
           "type": "*",
           "plug": "output",
           "group": "Data",
-          "displayName": "Result"
+          "displayName": "Result",
+          "description": "What the handler or built-in returned for the action that just completed"
         },
         {
           "name": "dispatched",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Dispatched"
+          "displayName": "Dispatched",
+          "description": "Fires when an action has been accepted and is about to run"
         },
         {
           "name": "actionCompleted",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Action Completed"
+          "displayName": "Action Completed",
+          "description": "Fires once *one action* has finished and Result holds its answer — one Dispatch of an array fires this once per member, which is why it is not the node’s Completed"
         },
         {
           "name": "failed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failed"
+          "displayName": "Failed",
+          "description": "Fires when an accepted action ran and did not succeed, whether the handler said so or the deadline passed"
         },
         {
           "name": "idle",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Idle"
+          "displayName": "Idle",
+          "description": "Fires when the queue has drained after doing at least one thing"
         },
         {
           "name": "refused",
           "type": "signal",
           "plug": "output",
           "group": "Refusals",
-          "displayName": "Refused"
+          "displayName": "Refused",
+          "description": "Fires when an action was not run at all, which is the output to watch for anything a server can talk to"
         },
         {
           "name": "refusedType",
           "type": "string",
           "plug": "output",
           "group": "Refusals",
-          "displayName": "Refused Type"
+          "displayName": "Refused Type",
+          "description": "Type of the refused action, or blank when the message was too malformed to have one"
         },
         {
           "name": "refusalReason",
           "type": "string",
           "plug": "output",
           "group": "Refusals",
-          "displayName": "Refusal Reason"
+          "displayName": "Refusal Reason",
+          "description": "Why it was refused, as one of invalid, unknown, not-allowed, rate-limited or queue-full"
         },
         {
           "name": "refusalMessage",
           "type": "string",
           "plug": "output",
           "group": "Refusals",
-          "displayName": "Refusal Message"
+          "displayName": "Refusal Message",
+          "description": "The refusal in a sentence an app author can show or log"
         },
         {
           "name": "lastError",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Last Error"
+          "displayName": "Last Error",
+          "description": "The most recent failure or refusal, whichever happened last"
         },
         {
           "name": "queueSize",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Queue Size"
+          "displayName": "Queue Size",
+          "description": "How many actions are waiting behind the one being executed"
         },
         {
           "name": "isExecuting",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Is Executing"
+          "displayName": "Is Executing",
+          "description": "True while an action is running, which is the cue for a busy indicator"
         },
         {
           "name": "waitingFor",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Waiting For"
+          "displayName": "Waiting For",
+          "description": "Action type holding the head of the queue because its handler has not registered yet; blank when nothing is waiting"
         },
         {
           "name": "completedCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Completed Count"
+          "displayName": "Completed Count",
+          "description": "How many actions have completed since the page loaded"
         },
         {
           "name": "failedCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Failed Count"
+          "displayName": "Failed Count",
+          "description": "How many accepted actions have failed since the page loaded"
         },
         {
           "name": "refusedCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Refused Count"
+          "displayName": "Refused Count",
+          "description": "How many actions have been refused since the page loaded"
         },
         {
           "name": "cancelledCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Cancelled Count"
+          "displayName": "Cancelled Count",
+          "description": "How many actions Cancel All has discarded since the page loaded"
         },
         {
           "name": "cancelled",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Cancelled"
+          "displayName": "Cancelled",
+          "description": "Fires once Cancel All has emptied the queue"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when the invocation did something: Dispatch admitted at least one action, or Cancel All dropped at least one"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "unchanged",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Unchanged"
+          "displayName": "Unchanged",
+          "description": "Fires when there was nothing to do — a Cancel All with an empty queue. Not a failure: the queue is empty, which is what was asked for"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when a Dispatch admitted nothing at all, because every action in it was refused"
         }
       ]
     },
@@ -6339,63 +6700,72 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Trigger"
+          "displayName": "Trigger",
+          "description": "Fires when a dispatcher has an action of this type to run; whatever is wired downstream is the capability this grants"
         },
         {
           "name": "payload",
           "type": "*",
           "plug": "output",
           "group": "Data",
-          "displayName": "Payload"
+          "displayName": "Payload",
+          "description": "The data the action carried, taken from its payload or data field, or the whole action when it has neither"
         },
         {
           "name": "actionId",
           "type": "string",
           "plug": "output",
           "group": "Data",
-          "displayName": "Action Id"
+          "displayName": "Action Id",
+          "description": "Id of the action currently being handled, so a later Complete can be matched to it"
         },
         {
           "name": "registered",
           "type": "boolean",
           "plug": "output",
           "group": "Status",
-          "displayName": "Registered"
+          "displayName": "Registered",
+          "description": "True while this handler is in the allow-list, which needs both an Action Type and Enabled"
         },
         {
           "name": "triggeredCount",
           "type": "number",
           "plug": "output",
           "group": "Status",
-          "displayName": "Triggered Count"
+          "displayName": "Triggered Count",
+          "description": "How many actions this handler has been asked to run since the page loaded"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Status",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the handler could not register, or why the last Complete or Fail had nothing to act on"
         },
         {
           "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires when Complete or Fail acted on the action in flight — including a Fail, which succeeds by reporting the failure"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when Complete or Fail was signalled with no action in flight"
         }
       ]
     },
@@ -6408,6 +6778,19 @@
       "shortDocs": "https://docs.noodl.net/nodes/cloud-functions/request-short.md",
       "category": "Cloud",
       "color": "data",
+      "dynamicports": [
+        {
+          "name": "namedports/list",
+          "parameter": "params",
+          "port": {
+            "name": "pm-{{*}}",
+            "displayName": "{{*}}",
+            "type": "*",
+            "plug": "output",
+            "group": "Parameters"
+          }
+        }
+      ],
       "connectionPanel": {
         "groupPriority": [
           "General",
@@ -6439,21 +6822,24 @@
           "type": "signal",
           "plug": "output",
           "group": "General",
-          "displayName": "Received"
+          "displayName": "Received",
+          "description": "Fires when a request arrives, after every parameter output has been updated"
         },
         {
           "name": "auth",
           "type": "boolean",
           "plug": "output",
           "group": "Request",
-          "displayName": "Authenticated"
+          "displayName": "Authenticated",
+          "description": "Whether the request carried a session token that resolved to a user"
         },
         {
           "name": "userId",
           "type": "boolean",
           "plug": "output",
           "group": "Request",
-          "displayName": "User Id"
+          "displayName": "User Id",
+          "description": "Id of the user the session token resolved to, and blank for an unauthenticated request"
         }
       ]
     },
@@ -6495,6 +6881,18 @@
               "description": "Message returned to the caller; used only when Status is Failure"
             }
           ]
+        },
+        {
+          "name": "namedports/list",
+          "condition": "status = success OR status NOT SET",
+          "parameter": "params",
+          "port": {
+            "name": "pm-{{*}}",
+            "displayName": "{{*}}",
+            "type": "*",
+            "plug": "input",
+            "group": "Parameters"
+          }
         }
       ],
       "connectionPanel": {
@@ -6559,28 +6957,32 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires as the response goes out, and before the request scope is torn down"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the response could not be sent, because there is no request in scope or one was already answered"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Events",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the response could not be sent"
         }
       ]
     },
@@ -6683,28 +7085,32 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Done"
+          "displayName": "Done",
+          "description": "Fires once the mail server has accepted the message for delivery"
         },
         {
           "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the message could not be sent, including when no mail service is configured"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the message could not be sent"
         }
       ]
     },
@@ -6734,21 +7140,24 @@
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Success"
+          "displayName": "Success",
+          "description": "Fires once the aggregation has returned and the aggregate outputs are up to date"
         },
         {
           "name": "failure",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failure"
+          "displayName": "Failure",
+          "description": "Fires when the aggregation could not be run, after the reason has been reported on the error channel"
         },
         {
           "name": "error",
           "type": "string",
           "plug": "output",
           "group": "Error",
-          "displayName": "Error"
+          "displayName": "Error",
+          "description": "Why the last aggregation failed; empty until one does"
         }
       ]
     }

@@ -12,11 +12,16 @@
  * `Butonn` gets an actionable fix from the message alone. `--strict` promotes
  * these to errors for projects authored entirely against the catalog.
  *
+ * Nodes carrying LIB-006's `legacyImport` marker are deferred to
+ * `legacyImportPlaceholder`, which makes the stronger claim ("the importer could
+ * not convert this") at the severity that claim deserves.
+ *
  * @module noodl-editor/validation/rules/unknownNodeType
  */
 
 import { Diagnostic, DiagnosticCode } from '../diagnostics';
 import { isComponentRef } from '../model';
+import { LEGACY_IMPORT_METADATA_KEY } from './legacyImportPlaceholder';
 import { Rule, RuleContext } from './types';
 
 export const unknownNodeType: Rule = {
@@ -31,6 +36,11 @@ export const unknownNodeType: Rule = {
       for (const node of component.nodes) {
         if (isComponentRef(node.type)) continue; // handled elsewhere
         if (ctx.catalog.hasType(node.type)) continue;
+        // A node a legacy import marked as unconvertible is owned by
+        // `legacyImportPlaceholder`, which says the same thing with more
+        // authority and at error severity. Two diagnostics on one node, one of
+        // them the weaker claim, is noise.
+        if (node.metadata?.[LEGACY_IMPORT_METADATA_KEY]) continue;
 
         const suggestion = ctx.catalog.suggestType(node.type);
         let message = `Unknown node type "${node.type}" — not found in the node catalog.`;

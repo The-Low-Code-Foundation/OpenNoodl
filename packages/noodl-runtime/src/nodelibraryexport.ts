@@ -496,25 +496,34 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike) {
       nodeObj.ports.push(formatPort(inputName, port, 'input'));
     });
 
+    /**
+     * ⚠️ This used to be a hand-copied duplicate of `formatPort` that omitted
+     * `description`, and it silently deleted **every output-port description in the
+     * library** on its way to the editor.
+     *
+     * Measured live during ERG-004's QA, against the running editor's `NodeLibrary`:
+     * **1656 of 1809 input ports carried a description and 0 of 1144 outputs did.**
+     * Not one. Every `description` written on an output port — including all of phase
+     * 30's documentation pass — existed in the source, was picked up by the catalog
+     * generator (which reads the node definitions directly, so its own checks stayed
+     * green), and was dropped here, at the one boundary where an author would ever
+     * have read it.
+     *
+     * The asymmetry was never a decision. Inputs went through `formatPort` on the line
+     * above; the *dynamic*-port path calls `formatPort` for outputs too
+     * ({@link formatDynamicPorts}), so a dynamic output would have kept its description
+     * while a static one could not. Only this copy diverged.
+     *
+     * Delegating is the fix, and it is deliberately the whole fix: the duplication is
+     * what allowed one branch to fall behind the other, so leaving two branches and
+     * adding `description` to this one would leave the same trap set for the next
+     * field. `formatPort` copies a few keys that are meaningless on an output port
+     * (`default`, `popout`, `tab`, `allowVisualStates`) — they are copied only when
+     * present, and no output port in the library declares any of them, so nothing new
+     * appears in the payload today.
+     */
     function exportOutput(name: string, output: Record<string, unknown>) {
-      const port: ExportedPort = {
-        name: name,
-        type: output.type,
-        plug: 'output'
-      };
-      if (output.group) {
-        port.group = output.group;
-      }
-      if (output.displayName) {
-        port.displayName = output.displayName;
-      }
-      if (output.editorName) {
-        port.editorName = output.editorName;
-      }
-      if (output.hasOwnProperty('index')) {
-        port.index = output.index;
-      }
-      nodeObj.ports.push(port);
+      nodeObj.ports.push(formatPort(name, output, 'output'));
     }
 
     Object.keys(nodeMetadata.outputs).forEach(function (prop) {

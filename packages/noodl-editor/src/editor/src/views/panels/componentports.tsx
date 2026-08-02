@@ -257,6 +257,9 @@ export class ComponentPorts extends View {
       label: 'New port name',
       okLabel: 'Add',
       cancelLabel: 'Cancel',
+      // `performAdd` splits on commas, so the hint says so — the box is one
+      // line because a list of port names is one line, not eight.
+      placeholder: 'e.g. title, subtitle',
       onOk: function (portName) {
         const result = _this.performAdd(portName);
         if (!result.success) {
@@ -337,6 +340,7 @@ export class ComponentPorts extends View {
       label: 'New group name',
       okLabel: 'Add',
       cancelLabel: 'Cancel',
+      placeholder: 'e.g. Layout',
       onOk: function (groupName) {
         const result = _this.performAddGroup(groupName);
         if (!result.success) {

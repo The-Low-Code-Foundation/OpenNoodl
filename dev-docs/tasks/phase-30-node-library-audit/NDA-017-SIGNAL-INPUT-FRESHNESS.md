@@ -487,10 +487,24 @@ The rule's logic is unchanged and still correct. Only its input predicate is bro
 ### What re-enabling needs
 
 A real asynchrony marker the catalog carries in its own right, rather than one inferred from port
-names. Asynchrony is precisely *"what the source cannot know"* statically, which is the enrichment
-catalog's stated remit; `runtimeBehavior` is the natural home but is prose today and would need a
-structured field. Roughly 150 node types to classify — task-sized, and it wants a decision from
-Richard on where the field lives before anyone starts.
+names. Roughly 150 node types to classify — task-sized.
+
+### ✅ DECIDED by Richard, 2026-08-02 — **the marker is declared in the node definitions**
+
+Not in the enrichment catalog. This overrides the paragraph that stood here, which reasoned that
+asynchrony is *"what the source cannot know"* and pointed at `runtimeBehavior`. **That reasoning was
+wrong on its own terms:** whether a node completes asynchronously is something the node's own
+implementation knows exactly and nothing else knows better. Enrichment's remit is what the source
+cannot know; this is not that.
+
+So: an explicit field on `NodeDefinitionOptions`, carried to the catalog the way `description` is —
+which also means it crosses the runtime → editor hop that ERG-004 §7.3 just found was silently
+lossy for output-port descriptions. ⚠️ **Whoever builds this should pin that hop with a test before
+trusting a green catalog gate**, for exactly the reason recorded there: the catalog generator builds
+its ports from its own capture of the node definitions and never crosses that boundary, so
+`catalog:check` can be green over a field the editor never receives.
+
+The work is unowned and not started. The rule stays `defaultEnabled: false` until it lands.
 
 ### ⚠️ Why a green unit suite did not catch this
 

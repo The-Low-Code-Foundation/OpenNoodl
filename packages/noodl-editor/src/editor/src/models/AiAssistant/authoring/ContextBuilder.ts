@@ -13,18 +13,21 @@
  * @module AiAssistant/authoring/ContextBuilder
  */
 
-import { CatalogIndex, loadDefaultCatalog } from '../../../validation';
-import type { CatalogNode, CatalogPort } from '../../../validation';
-import { enrichedNode, portDescription } from '../../../validation/enrichedCatalog';
 import type { NodeV2 } from '../../../schemas';
-// Pure StyleVocabulary submodule (never the StyleTokensModel barrel — it would
-// pull ProjectModel/Electron into the headless harness bundle).
-import { buildStyleVocabulary, renderStyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
-import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
+import { renderReportForAssistant } from '../../../utils/import-engine/legacy/report';
+import type { ImportReport } from '../../../utils/import-engine/legacy/types';
+import { CatalogIndex, loadDefaultCatalog, type CatalogNode, type CatalogPort } from '../../../validation';
+import { enrichedNode, portDescription } from '../../../validation/enrichedCatalog';
 // Pure ProjectDocs submodule, for the same reason as StyleVocabulary above —
 // the barrel would drag ProjectModel and the platform filesystem in.
-import { KNOWN_DOCS, renderDocForPrompt } from '../../ProjectDocs/docsText';
-import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
+import { KNOWN_DOCS, renderDocForPrompt, type ProjectDocsContent } from '../../ProjectDocs/docsText';
+// Pure StyleVocabulary submodule (never the StyleTokensModel barrel — it would
+// pull ProjectModel/Electron into the headless harness bundle).
+import {
+  buildStyleVocabulary,
+  renderStyleVocabulary,
+  type StyleVocabulary
+} from '../../StyleTokensModel/StyleVocabulary';
 import { assembleContext, ExplainContextError } from '../explain/assemble';
 import { componentPorts, findComponent } from '../explain/graph';
 import { renderContext } from '../explain/render';
@@ -78,13 +81,17 @@ export class AuthoringContextBuilder {
   /** ERG-002: registered `noodl_modules` libraries — see `libraryOverview()`. */
   private readonly libraries: RegisteredLibraryInfo[];
 
+  /** LIB-006: the open project's import report — see `importReport()`. */
+  private readonly report: ImportReport | undefined;
+
   constructor(
     private readonly graph: ExplainGraph,
     budget: Partial<ContextBudget> = {},
     private readonly catalog: CatalogIndex = loadDefaultCatalog(),
     styleVocab?: StyleVocabulary,
     docs: ProjectDocsContent = {},
-    libraries: RegisteredLibraryInfo[] = []
+    libraries: RegisteredLibraryInfo[] = [],
+    report?: ImportReport
   ) {
     this.budget = { ...DEFAULT_BUDGET, ...budget };
     // Defaults-only when no project-aware vocabulary is injected: the token
@@ -93,6 +100,7 @@ export class AuthoringContextBuilder {
     this.styleVocab = styleVocab ?? buildStyleVocabulary();
     this.docs = docs;
     this.libraries = libraries;
+    this.report = report;
   }
 
   get log(): readonly ContextLogEntry[] {
@@ -168,6 +176,27 @@ export class AuthoringContextBuilder {
       lines.push(`- ${lib.name} — global \`${lib.global}\``);
     }
     return this.charge('library-overview', lines.join('\n'));
+  }
+
+  /**
+   * LIB-006: what a legacy import could not convert, addressed to the agent.
+   *
+   * This is the wired half of `COMPATIBILITY-POLICY.md`'s escape hatch. The
+   * policy accepts "the importing user's AI assistant fixes it" as an answer
+   * only because the assistant can actually be told what broke — this is the
+   * telling. Without it the sentence is a way of avoiding work rather than a
+   * mechanism.
+   *
+   * Returns `undefined` (never charged) when the project was not imported or
+   * when everything converted, matching `libraryOverview`'s absent-means-omitted
+   * convention rather than emitting an empty heading. A clean project therefore
+   * pays zero prompt bytes for this.
+   */
+  importReport(): string | undefined {
+    if (!this.report) return undefined;
+    const rendered = renderReportForAssistant(this.report);
+    if (!rendered) return undefined;
+    return this.charge('import-report', rendered);
   }
 
   /**

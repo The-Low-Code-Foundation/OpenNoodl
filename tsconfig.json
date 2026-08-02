@@ -28,7 +28,13 @@
       "@noodl-constants/*": ["./packages/noodl-editor/src/editor/src/constants/*"],
       "@noodl-contexts/*": ["./packages/noodl-editor/src/editor/src/contexts/*"],
       "@noodl-types/*": ["./packages/noodl-editor/src/editor/src/types/*"],
-      "@noodl-store/*": ["./packages/noodl-editor/src/editor/src/store/*"]
+      "@noodl-store/*": ["./packages/noodl-editor/src/editor/src/store/*"],
+      // CAN-002 added `versioning/` with the alias declared only in
+      // packages/noodl-editor/tsconfig.json, so `npm run typecheck` (which runs
+      // this program) could not resolve it: 18 TS2307s in files nobody had
+      // touched. Same two mappings, verbatim.
+      "@noodl-versioning": ["./packages/noodl-editor/src/editor/src/versioning/index.ts"],
+      "@noodl-versioning/*": ["./packages/noodl-editor/src/editor/src/versioning/*"]
     }
   },
   "include": [

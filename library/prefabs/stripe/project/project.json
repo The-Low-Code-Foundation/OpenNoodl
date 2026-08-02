@@ -5759,7 +5759,7 @@
                                 "children": [
                                     {
                                         "id": "6cd9e57f-6dbf-5a73-09bf-7d4cd510d0ed",
-                                        "type": "/Tab Bar",
+                                        "type": "/Stripe/Tab Bar",
                                         "parameters": {
                                             "Items": "[\n    {\n        Label:\"Monthly\",\n        Value:\"month\"\n    },\n    {\n        Label:\"Yearly\",\n        Value:\"year\"\n    },\n\n]",
                                             "Selected Tab": "month"
@@ -6345,11 +6345,11 @@
                                 }
                             ],
                             "intype-SuccessColor": "color",
-                            "in-SuccessColor": "#49AD7F",
+                            "in-SuccessColor": "Success",
                             "intype-FailureColor": "color",
-                            "in-FailureColor": "#F75A4F",
+                            "in-FailureColor": "Danger",
                             "intype-DefaultColor": "color",
-                            "in-DefaultColor": "#000000"
+                            "in-DefaultColor": "Grey - 900"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -7246,7 +7246,7 @@
             }
         },
         {
-            "name": "/Tab Bar",
+            "name": "/Stripe/Tab Bar",
             "id": "b081feb9-2548-519d-d681-15e8b10b028c",
             "graph": {
                 "connections": [
@@ -7391,7 +7391,7 @@
                                 "id": "ea3cb6c6-38b1-2999-c425-653644d02c24",
                                 "type": "For Each",
                                 "parameters": {
-                                    "template": "/Tab Bar/Tab Bar Item"
+                                    "template": "/Stripe/Tab Bar/Tab Bar Item"
                                 },
                                 "ports": [],
                                 "dynamicports": [
@@ -7797,7 +7797,7 @@
             }
         },
         {
-            "name": "/Tab Bar/Tab Bar Item",
+            "name": "/Stripe/Tab Bar/Tab Bar Item",
             "id": "f418e021-68e3-4f40-a5cb-45800ba76006",
             "graph": {
                 "connections": [
@@ -8299,6 +8299,7 @@
                 }
             },
             "colors": {
+                "Danger": "#F75A4F",
                 "Grey - 200": "#F4F4F4",
                 "Grey - 300": "#E9E9E9",
                 "Grey - 400": "#CECECE",
@@ -8306,6 +8307,7 @@
                 "Grey - 900": "#1F1F1F",
                 "Primary": "#5836F5",
                 "Primary Dark": "#3F22B8",
+                "Success": "#49AD7F",
                 "White": "#FFFFFF"
             }
         }

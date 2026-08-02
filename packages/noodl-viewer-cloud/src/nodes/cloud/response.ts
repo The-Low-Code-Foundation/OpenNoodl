@@ -22,6 +22,24 @@ export const node = {
       name:'conditionalports/extended',
       condition:"status = failure",
       inputs:['errorMessage']
+    },
+    // WFA-009 — the same ports `setup()` below pushes, declared so the editor can
+    // mint them with nothing running. The two MUST stay identical: if a cloud
+    // runtime with an editor connection ever returns, both write the same
+    // `setDynamicPorts`, and `portsEqual` makes the second a no-op only while
+    // they agree. `wfa-009-dynamic-port-parity.test.ts` fails naming both files
+    // if one is edited without the other.
+    {
+      name:'namedports/list',
+      condition:"status = success OR status NOT SET",
+      parameter:'params',
+      port:{
+        name:'pm-{{*}}',
+        displayName:'{{*}}',
+        type:'*',
+        plug:'input',
+        group:'Parameters'
+      }
     }
   ],
   initialize:function() {
@@ -216,7 +234,14 @@ export function setup(context, graphModel) {
       if(node.parameters.status === 'success' || node.parameters.status === undefined) {
         var params = node.parameters.params;
         if (params !== undefined) {
-          params = params.split(',');
+          // WFA-009: empty entries dropped (matching `decodeStringList`, ERG-003's
+          // one definition of the `stringlist` format) and repeats collapsed, so
+          // this agrees port for port with the editor-side `namedports/list` rule.
+          // `''.split(',')` is `['']`, which used to mint a `pm-` port with a
+          // blank label the moment an author emptied the list; a name listed
+          // twice used to mint the port twice, though the runtime registers the
+          // input once either way.
+          params = params.split(',').filter((p, i, all) => p && all.indexOf(p) === i);
           for (var i in params) {
             var p = params[i];
 

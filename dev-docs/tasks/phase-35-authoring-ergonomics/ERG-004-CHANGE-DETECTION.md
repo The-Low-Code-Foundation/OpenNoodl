@@ -180,13 +180,37 @@ Requirements:
 
 ## Success criteria
 
-**Build status 2026-08-02 — 6 of 7 met, criterion 7 blocked.** Criteria 1–5 met; criterion 6
-partially (both catalogs regenerated, 153/153 enriched, `catalog:check` and `catalog:merge:check`
-green — `catalog:examples` is red and was already red at the base commit `2a1138a8`, from examples
-left behind by ERG-001's port renames, which is outside this task's territory). Criterion 7 not
-done: the editor's single-instance lock was held by another session throughout. The specific list a
-later session must drive is in [`ERG-004-NOTES.md`](./ERG-004-NOTES.md) §4.1 — it is a **fourth**
-live-QA debt, recorded rather than disguised.
+**Status 2026-08-02 (after live QA) — 7 of 7 met.** Live QA was run in the editor and every row
+of the owed list was driven; the results are in [`ERG-004-NOTES.md`](./ERG-004-NOTES.md) §7.
+
+Both nodes behave correctly under a real frame clock, including each class driven **twice** —
+`Previous Value` lands with the signal it belongs to on the second and later emit, which is the
+one class a corpus that settles between events cannot see. A sort fires no signal and leaves
+`Count` correct. A deleted `Array Changed` stops listening to the array *and* to every member: six
+mutations after deletion threw nothing and moved no counter.
+
+⚠️ **Live QA found two things, and only one of them was in these nodes.**
+
+- 🔴 **Every output-port description in the library was being dropped on the way to the editor**
+  — measured against the running editor's `NodeLibrary`: 1656/1809 input ports documented,
+  **0 of 1144 outputs**. `exportOutput` in `nodelibraryexport.ts` was a hand-copied duplicate of
+  `formatPort` that omitted `description`. Fixed (delegation), verified live (**0 → 1031**), and
+  pinned by `packages/noodl-runtime/test/nodelibraryexport.port-descriptions.test.ts`. Criterion 6
+  was only ever *nominally* met before this: the ports were documented everywhere except the one
+  place an author reads. ⚠️ Note the shape — every catalog gate was green over a library the
+  editor could not see, because the catalog builds its ports from its own capture of the node
+  definitions. **A green catalog is not evidence that an author can read anything.**
+- 🔴 **`Object Changed` has no producer in the node library, and the obvious wiring fails
+  loudly but unhelpfully.** Nothing outputs a live Noodl Object; the whole Data category
+  identifies objects by string id. Wiring `Object.Id → Object Changed.Object` is permitted by the
+  typecast table, gets `eval`'d as a JS literal by `node.ts:360-390`, throws
+  `ReferenceError: qa is not defined`, and substitutes `{}` — so the node watches nothing. Today
+  the only way to feed either node is a `Script` node. **This needs a decision from Richard**; it
+  changes the port contract of two shipped nodes. Options and a recommendation in
+  [`ERG-004-NOTES.md`](./ERG-004-NOTES.md) §7.4.
+
+Both remaining catalog gates are green, and `catalog:examples` is now **50/50** (it was red at the
+base commit from ERG-001's port renames; that was fixed elsewhere).
 
 1. `Object Changed` reports key-added, key-changed and replaced, each with the key and both values,
    and each pinned by a corpus row driven **twice** so the signal-before-value class cannot hide.
@@ -199,3 +223,4 @@ live-QA debt, recorded rather than disguised.
 6. All ports documented; catalog regenerated; all three catalog gates pass.
 7. ⚠️ Live QA — these nodes need a real frame clock, which `renderToStaticMarkup` cannot provide.
    Three Visual fixes are still owed live verification for exactly this reason; do not add a fourth.
+   **Done 2026-08-02** — `ERG-004-NOTES.md` §7. The fourth debt was not added.

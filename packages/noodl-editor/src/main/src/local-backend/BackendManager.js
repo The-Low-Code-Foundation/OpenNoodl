@@ -23,6 +23,7 @@ const path = require('path');
 const os = require('os');
 
 const { ServiceSupervisor } = require('./ServiceSupervisor');
+const workflowProposals = require('./workflow-proposals');
 
 /**
  * Safe console.log wrapper
@@ -142,6 +143,25 @@ class BackendManager {
     ipcMain.handle('backend:save-workflow-def', async (_, id, workflow) => this.saveWorkflowDef(id, workflow));
     ipcMain.handle('backend:delete-workflow-def', async (_, id, workflowId) =>
       this.deleteWorkflowDef(id, workflowId)
+    );
+
+    // WFA-007: the review queue. An agent that staged a workflow instead of
+    // writing it left a file in this backend's own directory; these three
+    // channels are how the Workflows panel finds it, reads it, and drops it.
+    //
+    // Deliberately NOT proxied to the backend: a proposal is not backend state,
+    // the engine never reads it, and it must be reviewable whether or not the
+    // backend is running. (The candidate is still validated against the backend
+    // before it is offered — that part does need it running.)
+    ipcMain.handle('backend:list-workflow-proposals', async () => this.listAllWorkflowProposals());
+    ipcMain.handle('backend:get-workflow-proposal', async (_, id, proposalId) =>
+      workflowProposals.getProposal(id, proposalId, this.backendsPath)
+    );
+    ipcMain.handle('backend:discard-workflow-proposal', async (_, id, proposalId) =>
+      workflowProposals.discardProposal(id, proposalId, this.backendsPath)
+    );
+    ipcMain.handle('backend:validate-workflow-def', async (_, id, workflow) =>
+      this.validateWorkflowDef(id, workflow)
     );
 
     // ==========================================================================
@@ -1086,6 +1106,46 @@ class BackendManager {
   async deleteWorkflowDef(backendId, workflowId) {
     const supervisor = this.requireRunning(backendId, 'delete a workflow');
     return supervisor.request('DELETE', `/admin/workflow-defs/${encodeURIComponent(workflowId)}`);
+  }
+
+  /**
+   * WFA-007 — would this backend accept this definition? (No write either way.)
+   *
+   * Used twice by the review surface, and the second use is the one that
+   * matters: a PARTIAL accept produces a definition neither the agent nor the
+   * user ever saw whole, and the authoritative validator sees it before disk
+   * does. `{valid, errors}` — a rejection is a 200 with reasons, not a throw.
+   *
+   * @param {string} backendId
+   * @param {Object} workflow - A WorkflowInput
+   */
+  async validateWorkflowDef(backendId, workflow) {
+    const supervisor = this.requireRunning(backendId, 'validate a workflow');
+    return supervisor.request('POST', '/admin/workflow-defs/validate', workflow);
+  }
+
+  /**
+   * Every running backend's pending proposals, each stamped with the backend
+   * that owns it.
+   *
+   * Scoped to RUNNING backends on purpose, even though the files are readable
+   * whatever the backend is doing: reviewing a proposal needs the step-kind
+   * catalog (to draw the cards) and the dry run (to know it would save), and
+   * both come from a running backend. Listing a proposal that cannot be opened
+   * would be the half-wired UI this phase keeps refusing to build.
+   */
+  async listAllWorkflowProposals() {
+    const running = this.getRunningEndpoints();
+    return Promise.all(
+      running.map(async ({ id, name }) => {
+        try {
+          const proposals = await workflowProposals.listProposals(id, this.backendsPath);
+          return { backendId: id, backendName: name, proposals };
+        } catch (e) {
+          return { backendId: id, backendName: name, proposals: [], error: e.message };
+        }
+      })
+    );
   }
 }
 

@@ -129,9 +129,18 @@ export class ModuleLibraryModel extends Model {
    * Resolves with items for immidiate use, but
    * also sets them to this.modules for future use.
    *
-   * Throws (rejects) on network failure or a non-ok response — the caller
-   * (loadModules) is responsible for turning that into loud UI state instead
-   * of silently treating it as "zero entries".
+   * Throws (rejects) on network failure, a non-ok response, unparseable JSON,
+   * or JSON that is not an array — the caller (loadModules) is responsible for
+   * turning that into loud UI state instead of silently treating it as "zero
+   * entries".
+   *
+   * The array check is not belt-and-braces. A 200 carrying a JSON *object* —
+   * a CDN/proxy error body, a half-published index — parses fine, so it would
+   * reach `loadModules` as a success and set status `loaded` with a non-array
+   * `modules`. The search view guards every branch on `Array.isArray`, so the
+   * panel would then render no grid, no spinner and no error: the silently
+   * blank library LIB-001 step 0 exists to abolish, with no Retry button to
+   * escape it.
    */
   async fetchModules(type: 'modules' | 'prefabs'): Promise<IModule[]> {
     const endpoint = getDocsEndpoint();
@@ -141,15 +150,15 @@ export class ModuleLibraryModel extends Model {
     if (!response.ok) {
       throw new Error(`Failed to fetch ${type} library index: ${response.status} ${response.statusText}`);
     }
-    return await response.json();
+
+    const parsed = await response.json();
+    if (!Array.isArray(parsed)) {
+      throw new Error(`The ${type} library index is not a list of entries (got ${typeof parsed}).`);
+    }
+    return parsed;
   }
 
-  async installModule(
-    modulePath: string,
-    onBeforePopup?: () => void,
-    onAfterPopup?: () => void,
-    module?: IModule
-  ) {
+  async installModule(modulePath: string, onBeforePopup?: () => void, onAfterPopup?: () => void, module?: IModule) {
     if (module && !isModuleCompatible(module)) {
       throw { message: `This module requires editor version ${module.minEditorVersion} or newer.` };
     }
@@ -162,12 +171,7 @@ export class ModuleLibraryModel extends Model {
     });
   }
 
-  async installPrefab(
-    modulePath: string,
-    onBeforePopup?: () => void,
-    onAfterPopup?: () => void,
-    module?: IModule
-  ) {
+  async installPrefab(modulePath: string, onBeforePopup?: () => void, onAfterPopup?: () => void, module?: IModule) {
     if (module && !isModuleCompatible(module)) {
       throw { message: `This prefab requires editor version ${module.minEditorVersion} or newer.` };
     }

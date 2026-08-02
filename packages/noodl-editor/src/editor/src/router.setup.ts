@@ -1,5 +1,6 @@
 import { AppRegistry } from '@noodl-models/app_registry';
 import { installProjectDocs } from '@noodl-models/ProjectDocs';
+import { installImportReport } from '@noodl-utils/import-engine/legacy/loadReport';
 import { SidebarModel } from '@noodl-models/sidebar';
 import { Keybinding } from '@noodl-utils/keyboard/Keybinding';
 import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
@@ -189,6 +190,11 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   // provider is installed at boot, like the explain-target tracking above, not
   // at panel mount.
   installProjectDocs();
+
+  // LIB-006: same reasoning, same seam. A session authoring against a legacy
+  // import needs to know what the importer could not convert, and it is
+  // constructed long before anyone opens a panel.
+  installImportReport();
 
   SidebarModel.instance.register({
     experimental: true,

@@ -477,3 +477,136 @@ The same trick reaches any `openDialog`/`chooseDirectory` gate in the editor.
 - QA-3 (prefab install — incl. the deliberate "picker no longer closes itself" change that
   wants Richard's eye), QA-4 (import from URL), QA-6 (edges).
 - The `.import-popup-*` dead CSS sweep (residual 2) — `style.css` is still contended.
+
+---
+
+## 9. Residual 2 closed, and LIB-001's artefact graded (2026-08-02)
+
+Two headless residuals, done in one pass from a worktree. Neither could open the editor,
+and neither claims anything that needs one.
+
+### 9.1 The `.import-popup-*` sweep — deleted, with the evidence
+
+The file is `packages/noodl-editor/src/assets/css/style.css`, not
+`src/editor/src/assets/css/style.css` as §8 recorded it. Nine selectors in eight rules, all
+under the `Import popup` banner, all gone:
+
+| Rule | Last referenced by |
+| --- | --- |
+| `.import-popup-text` | `ImportPopupView.tsx:238,253,271` |
+| `.import-popup-item` | `ImportPopupView.tsx:140` |
+| `.import-popup-folder` | `ImportPopupView.tsx:160` |
+| `.import-popup-folder .sidebar-panel-dark-input`, `.import-popup-item .sidebar-panel-dark-input` | both ancestors above |
+| `.import-popup-implicit-check` | `ImportPopupView.tsx:116` |
+| `.import-popup-import-check` | `ImportPopupView.tsx:117` |
+| `.import-popup-button`, `.import-popup-button:hover` | **nothing, ever** — already dead before LIB-005 |
+
+The evidence is not a prefix match. Each fragment (`import-popup`, `popup-button`,
+`popup-text`, `popup-item`, `popup-folder`, `implicit-check`, `import-check`) was grepped
+across the whole repo — every extension, not just `.ts`/`.tsx` — and then across **all of git
+history** with `git log --all -S`, which is what identifies the one caller that mattered.
+
+The concatenation worry turned out to be answerable rather than merely feared. At
+`8eb03597^` the only non-literal use was
+
+```tsx
+(isImplicit ? ' import-popup-implicit-check' : '') +
+(isImport ? ' import-popup-import-check' : '')
+```
+
+— a ternary over two whole literals. The class *name* is never assembled from pieces, so a
+literal grep is complete here, and the repo has no `className={'x-' + y}` construction at
+all (checked). `views/ImportFlow` uses CSS modules and references none of these.
+
+**Left in place, deliberately:** `.show-on-edit`, which sat inside the same banner. It is
+unreferenced repo-wide by the same standard of evidence — but `git log -S` dates it to
+PLAT-002 waves 2e/2g (pickers, colour picker), not to the import popup at all. It is
+somebody else's dead rule and a different owner's story; the banner above it is now
+`Misc` rather than `Import popup` so it no longer reads as import's.
+
+### 9.2 LIB-001 Criterion 5 — the headless half, and **only** the headless half
+
+`npm run library:build` was green (29 prefabs, 29 modules). That proves zips were written.
+It does not prove one could be installed, so there is now
+**`npm run library:verify-dist`** (`scripts/library/verify-dist.ts`) which grades the
+artefact instead of the sources: it serves `library-dist/` over loopback at the exact path
+the editor fetches from, and walks the real install chain against it.
+
+The point of the design is that it does **not** re-implement the contract. It esbuild-bundles
+`modulelibrarymodel.ts` with every import replaced by a recursive no-op proxy except three
+(`@noodl/platform` → a real `getVersion`, `getDocsEndpoint` → the local server,
+`addHashToUrl` → the real one-liner), then calls the editor's own
+`ModuleLibraryModel.prototype.fetchModules` and its own `isModuleCompatible`. Nothing in the
+module body runs at import time, so the proxies are never touched. A twin of a fetch/parse
+contract is exactly the thing this repo has been bitten by before.
+
+Result, for all 58 entries: index fetches and parses to an array; every entry carries
+`label`/`desc`/`project`/`icon`/`docs`/`tags` (so no `ModuleCard` destructure can throw);
+`type` matches the tab **and** agrees with the legacy `project.includes('/prefab')` fallback;
+`version`/`minEditorVersion`/`runtimeVersion` are semver triples and `isModuleCompatible`
+says yes for editor `0.1.0`; every `project` and `icon` URL resolves 200 under `ModuleCard`'s
+own `startsWith('http') ? url : endpoint + '/' + url` rule; and every zip unpacks via JSZip,
+contains a `project.json` where `getModuleTemplateRoot`'s recursive search would find one, and
+loads through the SUB-006 project loader.
+
+The harness was proved able to fail: a mutated `library-dist` (bumped `minEditorVersion`,
+flipped `type`, deleted `icon`, deleted a zip, `"1.2"` as a version, an object where the index
+should be) produced six distinct failures, one per injury.
+
+**This is not Criterion 5.** What it still needs, precisely:
+
+1. A local docs origin on **127.0.0.1:3000** — the editor's `main.js` probes
+   `http://127.0.0.1:3000/<major>.<minor>/version.json` and only switches endpoint when the
+   answer is `{"kind":"noodl-docs"}`. `ts-node scripts/library/verify-dist.ts --serve --port 3000`
+   *is* that stub: it answers the marker and serves `library-dist/` under `/library/`.
+2. A live editor, a project open, the node picker's Prefabs and Modules tabs.
+3. One prefab cloned and one module installed, each landing on disk and in the components /
+   node panels and surviving a reload.
+
+Steps 2–3 need Electron. Nothing here substitutes for them.
+
+### 9.3 One defect found and fixed in the loud-failure path
+
+LIB-001 step 0 replaced the silent `[]` with `loading`/`loaded`/`error` + Retry. Reading the
+path rather than trusting the summary: a 200 carrying **truncated** JSON already rejected
+(`response.json()` throws) and reached `error` correctly. But a 200 carrying a JSON
+**object** — a CDN `NoSuchKey` body, a half-published index — parsed fine, resolved, and set
+`modulesStatus = 'loaded'` with a non-array `modules`. `NodePickerSearchView` guards *every*
+branch on `Array.isArray`, so the panel then rendered no grid, no spinner, **and no error**:
+a silently blank library with no Retry to escape it. The exact failure step 0 exists to
+abolish, reached by a different door.
+
+`fetchModules` now rejects when the parsed body is not an array. The harness carries the
+regression test as a self-check (two fixture routes, `__notarray__` and `__badjson__`), and
+that self-check was verified against the pre-fix code: reverting the guard makes
+`library:verify-dist` report *"fetchModules resolved on 200 with a JSON object instead of an
+array — the library would render silently blank"*. It also refuses to accept a `TypeError` as
+a pass, so a broken stub cannot make the self-test vacuously green.
+
+### 9.4 Two latent mismatches, reported not fixed
+
+- **`build.js` accepts a v2-only entry that `getModuleTemplateRoot` cannot install.** The
+  build permits `project/` with `components/` and no `project.json`; the editor's
+  `findProjectRoot` searches only for `project.json` and rejects `Not a valid component`
+  otherwise. No current entry hits this (all 58 have `project.json`), so it is latent — but
+  the first v2-authored library entry will be uninstallable with a misleading error.
+- **`icon` is optional in `schema.json`/`build.js`, required in `IModule`, and dereferenced
+  unguarded** by `ModuleCard` (`icon.startsWith('http')`). An entry authored without an icon
+  would throw at render. Every current entry has one. `library:verify-dist` fails on a missing
+  `icon` so this cannot ship silently.
+
+### 9.5 Deviation
+
+`tsconfig.json` gained `@noodl-versioning` / `@noodl-versioning/*`. CAN-002 declared those
+aliases only in `packages/noodl-editor/tsconfig.json`, so `npm run typecheck` — which runs the
+*root* program — had **18 pre-existing TS2307s** in eighteen files nobody in phase 21 has
+touched. The two mappings are copied verbatim from the editor's tsconfig and take the root
+typecheck to zero. Out of scope, but the alternative was reporting a green branch against a
+red gate. Droppable in one hunk if it collides.
+
+### 9.6 Could not verify
+
+- Anything requiring Electron: the live install (Criterion 5 proper), the jasmine suite, and
+  the QA-3/4/6 checklist items from §8 that remain open.
+- That the swept CSS is unreferenced by **uncommitted** work in the primary checkout. The
+  evidence covers committed history and the working worktree only.

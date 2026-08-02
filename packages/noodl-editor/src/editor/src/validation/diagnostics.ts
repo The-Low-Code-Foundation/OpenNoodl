@@ -66,7 +66,13 @@ export enum DiagnosticCode {
    */
   UnwiredOutcome = 'unwired-outcome',
   /** Info-level: a port check was skipped because the node determines the port at runtime. */
-  DynamicPortSkipped = 'dynamic-port-skipped'
+  DynamicPortSkipped = 'dynamic-port-skipped',
+  /**
+   * LIB-006: a legacy import could not convert this construct and left it in
+   * place, marked. Always an error — see `rules/legacyImportPlaceholder.ts` for
+   * why this is not folded into `unknown-node-type`.
+   */
+  LegacyImportPlaceholder = 'legacy-import-placeholder'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────

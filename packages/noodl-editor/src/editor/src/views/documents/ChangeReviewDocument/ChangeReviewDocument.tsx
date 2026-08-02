@@ -26,11 +26,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import {
   buildReviewComponent,
-  materializeSelection,
   requiredWith,
   excludedWith,
-  type AuthoringChangeSet,
-  type ComponentFiles
+  type AuthoringChangeSet
 } from '@noodl-models/AiAssistant/authoring';
 import { AppRegistry, IDocumentProvider } from '@noodl-models/app_registry';
 import { ComponentModel } from '@noodl-models/componentmodel';
@@ -59,11 +57,28 @@ import css from './ChangeReviewDocument.module.scss';
 
 export interface ChangeReviewDocumentProps {
   changeSet: AuthoringChangeSet;
-  /** The staged proposal the change set was built from. */
-  files: ComponentFiles;
   title: string;
-  /** Stage the given (possibly partial) files; returns an error message or null. */
-  onAcceptFiles: (files: ComponentFiles, selection?: { rejectedCount: number }) => string | null;
+  /**
+   * Apply the kept subset. Returns an error message to show in the rail, or
+   * null on success.
+   *
+   * **WFA-007 made this the subject seam.** It used to be
+   * `onAcceptFiles(files)`, with the document itself calling
+   * `materializeSelection` — which meant the review surface knew that the thing
+   * being reviewed was three JSON files, and could therefore only ever review a
+   * component. A workflow has no files: it has a definition that goes to a
+   * backend's admin API. So the document hands back the reader's *decision* —
+   * the excluded change ids — and each subject materializes its own artifact.
+   *
+   * Everything above this line stayed subject-agnostic without being asked to:
+   * the diff canvas, the annotated merged graph, the change list, the
+   * walkthrough and the exclusion closures all speak `GraphSnapshot` and
+   * `GraphChange`. This was the only coupling point.
+   *
+   * May be async — a workflow accept is a round trip to a backend, and a
+   * component accept is not.
+   */
+  onAccept: (rejected: ReadonlySet<string>) => string | null | Promise<string | null>;
   onReject: () => void;
   /**
    * AIX-011: label override for the accept button — a plan-operation review
@@ -130,9 +145,8 @@ function componentFromLegacy(legacy: Record<string, unknown>): ComponentModel {
 
 function ChangeReviewDocument({
   changeSet,
-  files,
   title,
-  onAcceptFiles,
+  onAccept,
   onReject,
   acceptLabel,
   contextNote
@@ -147,6 +161,13 @@ function ChangeReviewDocument({
   const [viewMode, setViewMode] = useState<ViewMode>('review');
   const [rejected, setRejected] = useState<ReadonlySet<string>>(new Set());
   const [applyError, setApplyError] = useState<string | null>(null);
+  /**
+   * Accept can be a round trip now (WFA-007), so the button has to say so and
+   * refuse a second press. A double-accept against a backend would be two
+   * writes of the same definition — harmless, but the second one races the
+   * document closing.
+   */
+  const [accepting, setAccepting] = useState(false);
   // Large sets start folded to their group summaries; the reader drills in.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() =>
     changeSet.changes.length > LARGE_CHANGE_SET ? new Set(Object.values(ChangeGroup)) : new Set()
@@ -233,11 +254,22 @@ function ChangeReviewDocument({
     setRejected(new Set([...rejected].filter((id) => !needed.has(id))));
   };
 
-  const acceptSelected = () => {
-    const { files: selectedFiles, rejected: rejectedClosure } = materializeSelection(changeSet, files, rejected);
-    const error = onAcceptFiles(selectedFiles, { rejectedCount: rejectedClosure.size });
-    if (error) setApplyError(error);
-    else exit();
+  const acceptSelected = async () => {
+    if (accepting) return;
+    setAccepting(true);
+    setApplyError(null);
+    try {
+      // The closure, not the raw clicks: excluding a change excludes everything
+      // that needed it, and the subject must apply what the reader actually
+      // ended up with.
+      const error = await onAccept(excludedWith(changeSet, rejected));
+      if (error) setApplyError(error);
+      else exit();
+    } catch (e) {
+      setApplyError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAccepting(false);
+    }
   };
 
   const viewButton = (mode: ViewMode, label: string) => (
@@ -260,15 +292,19 @@ function ChangeReviewDocument({
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <PrimaryButton
             label={
-              rejected.size > 0
-                ? `${acceptLabel ?? 'Accept'} ${keptCount} of ${excludableCount}`
-                : `${acceptLabel ?? 'Accept'} all`
+              accepting
+                ? 'Applying…'
+                : rejected.size > 0
+                  ? `${acceptLabel ?? 'Accept'} ${keptCount} of ${excludableCount}`
+                  : `${acceptLabel ?? 'Accept'} all`
             }
-            onClick={acceptSelected}
+            isDisabled={accepting}
+            onClick={() => void acceptSelected()}
           />
           <PrimaryButton
             label="Reject"
             variant={PrimaryButtonVariant.Danger}
+            isDisabled={accepting}
             onClick={() => {
               onReject();
               exit();

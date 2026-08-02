@@ -119,3 +119,95 @@ That is now much less destructive than it was — `filesystem.writeJson` indents
 its output as of 2026-07-28, so a save no longer collapses the file to one line —
 but key order and derived fields still move. **Check `git status` before every
 commit**, and `git checkout --` this file if a gate run dirtied it.
+
+---
+
+## `generate-erg004.py` — the ERG-004 change-detection project
+
+Written 2026-08-02 for ERG-004's live QA (phase 35). Unlike `nodegx-qa-fixture`
+this one is **not committed as a project directory** — the generator is the
+artefact, and it writes to
+`~/vscode_projects/NodeGX test projects/erg004-qa`, outside the repo. Run it, add
+the directory to `~/Library/Application Support/NodeGX/recently_opened_project.json`
+if it is not already there, and **restart the app** — the launcher reads that
+file only at start.
+
+### What it is for
+
+Driving `Object Changed` and `Array Changed` in a real viewer with a real frame
+clock, which `renderToStaticMarkup` cannot provide. It carries:
+
+| Feature | Serves |
+|---|---|
+| A labelled readout row per value port (`OC key: …`) | Reading a value by DOM position produced one confident wrong conclusion. The label travels with the value |
+| A `Counter` per signal port | The values tell you *what* a signal carried; only a count tells you **which** signal fired, and that a sort fires none |
+| Both nodes wired **twice** — from live values and from `Id` strings | The by-id half is the measurement, and is deliberately mis-wired |
+| A `Script` node publishing `Noodl.Object.get(id)` / `Noodl.Array.get(id)` | Today this is the **only** way to feed either node — see ERG-004-NOTES §7.4 |
+
+Mutations are driven from outside over CDP against the same ids, so nothing
+depends on clicking a button:
+
+```bash
+npm run cdp -- eval "Noodl.Object.get('qa-obj').set('name','alpha')" --target=viewer
+```
+
+### ⚠️ Two nodes in it are wrong on purpose
+
+`OC by id` and `AC by id` raise `invalid-object` / `invalid-array`. **Delete them
+before using this project to judge a clean-Problems-panel criterion** — with them
+gone the panel is empty.
+
+### ⚠️ A hand-authored `Script` node needs its `dynamicports` on disk
+
+The runtime registers a Script node's outputs from `this.model.outputPorts` — what
+the *exported graph* carries — not from the ports its own parser derives from the
+code. With `"dynamicports": []` the node parses fine, runs `setup` fine, and
+throws *"Node Javascript2 doesn't have a port named obj"* the moment `setup`
+touches an output. The generator writes them; the editor writes them back on save.
+
+### ⚠️ Regenerate before every run
+
+The same "opening it rewrites it" hazard as above, and here it bites harder
+because the project is hand-authored: after a live deletion test the autosaved
+file had genuinely lost the deleted node, and the next run measured a dead half
+of the graph that briefly read as a regression. Re-run the generator each time.
+
+---
+
+## `generate-erg005.py` — the ERG-005 §0 component-interface project
+
+Written 2026-08-02 for ERG-005 §0 (phase 35). Like `generate-erg004.py` the
+generator is the artefact; it writes to
+`~/vscode_projects/NodeGX test projects/erg005-qa`, outside the repo.
+
+### What it is for
+
+Measuring how a `Component Input`'s / `Component Output`'s type is **derived**
+from what it connects to inside the component. None of §0's five questions can
+be answered by adding one connection — they need a *sequence* of edits with a
+reading after each. So the project ships the nodes and the ports and
+**deliberately no connections**; the measurement wires and unwires them live over
+CDP and reads `ComponentModel.getPorts()` after every step.
+
+| Feature | Serves |
+|---|---|
+| `/Probe` — a `Component Inputs` node with 6 ports, a `Component Outputs` node with 4, all type `*` | the state the Port Editor leaves a freshly-created port in |
+| Typed sinks: `String`, `Number`, `Boolean`, plus a second `String` | "two connections of the same type" has to be distinguishable from "two of different types" |
+| Typed sources: `String.savedValue`, `Number.savedValue` | the output side of the same rule |
+| A `Text` node with a `font`-typed input | the only easy way to build a pair with **no** common typecast, which is what returns `*` |
+| `/App`, visual, with an instance of `/Probe` | the *outer* contract, read from the instance — a different code path from the model call, and the one an author actually sees |
+
+Results, and the four traps driving it cost, are in
+`dev-docs/tasks/phase-35-authoring-ergonomics/ERG-005-COMPONENT-INTERFACE.md` §0.
+
+### ⚠️ Regenerate before every run
+
+Same hazard as `erg004-qa`, and worse here because the project is mutated live by
+design: after a measurement the file on disk carries whatever the last wiring step
+left behind. Re-run the generator each time.
+
+### ⚠️ A hand-authored component port's `plug` is the direction *inside*
+
+`Component Inputs` ports are `plug: 'output'` and `Component Outputs` ports are
+`plug: 'input'` — the opposite of what they become on the instance. Copy the shape
+`componentports.tsx:286-293` creates: `{name, plug, type: {name:'*'}, group, index}`.

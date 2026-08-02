@@ -70,6 +70,38 @@ editor-local positions would mean every collaborator opened a workflow that had
 never been arranged. A workflow with no positions — one written by an agent, say
 — is laid out deterministically on first open.
 
+### When an AI writes one
+
+An agent can author a workflow through MCP's `create_backend_workflow` /
+`update_backend_workflow`. Both take **`propose: true`**, and that is the mode to
+ask for when you have the editor open:
+
+- the candidate is validated against your backend first, and one that would not
+  save is refused with that backend's own errors instead of becoming a suggestion
+  you cannot take;
+- nothing is written. The proposal waits under **Workflows → Proposed for
+  \<backend\>**, and **Review on the canvas** draws it as a diff — added,
+  removed and changed steps and edges, in place, on the same canvas you author
+  on. Clicking an entry centres it; **Before / Changes / After** switch what the
+  canvas is showing.
+- you can accept the whole thing or exclude individual changes. An exclusion
+  takes what depends on it with it: dropping a step drops the edges into it, and
+  drops any step whose params read `{"$path": "upstream.<that step>…"}`. Whatever
+  you keep is validated again before it is written, so a selection that would not
+  add up to a saveable workflow is refused with the reason and nothing is
+  written.
+- **Discard** throws the proposal away and changes nothing.
+
+A failed run in the **Execution History** panel offers **Copy a fix request** — a
+ready-made request carrying the run, its failing step and the error, asking for
+the answer as a proposal rather than as a write.
+
+**The honest limit:** `propose` is opt-in. An agent that calls these tools
+*without* it still writes straight to a running backend, and the editor learns
+about that the next time the Workflows panel refreshes. This makes a reviewable
+path exist; it does not remove the direct one, and a workflow appearing in your
+list that you did not author is what the direct path looks like.
+
 ---
 
 ## Why these are not in the node catalog
@@ -318,6 +350,33 @@ failure. This is the workhorse — any real work is a cloud-function graph.
 ```jsonc
 { "id": "validate", "kind": "call-function", "ref": "validateOrder", "next": ["charge"] }
 ```
+
+#### How a function returns a value
+
+Everything the rest of this document says about `previous.result.…` depends on
+the called function actually putting something in `result`, and that is done
+entirely on the function's own canvas:
+
+1. On the **Response** node, add each name you want to return to **Parameters**
+   (`total`, `orderId`, …).
+2. Each name immediately becomes an **input port** on that node, labelled with
+   the name. Wire the value into it, or type a literal.
+3. `Send` answers the request with `{"result": { … }}` — one key per parameter,
+   holding whatever reached its port. A step's output is that body, so
+   `{"$path": "previous.result.total"}` reads it.
+
+The **Request** node is the mirror image: names added to its **Parameters**
+become **output ports** carrying the matching keys of the caller's JSON body, so
+`params` sent by a step arrive as ports to wire from.
+
+The ports appear as you type, with no backend running — they are derived from
+the parameter by the editor (WFA-009), not pushed by a runtime. Removing a name
+removes its port, and any connection left behind is flagged *"Target port
+doesn't exist."* rather than being dropped silently.
+
+If the Response node's **Status** is `Failure`, the parameters are not on offer
+at all: it answers `400` with `{"error": <Error Message>}`, and the calling step
+fails.
 
 ---
 

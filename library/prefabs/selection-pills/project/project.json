@@ -117,7 +117,7 @@
                         "x": 741.718506398121,
                         "y": 217.807427081932,
                         "parameters": {
-                            "backgroundColor": "#FFFFFF",
+                            "backgroundColor": "White",
                             "sizeMode": "contentHeight"
                         },
                         "ports": [],
@@ -143,7 +143,7 @@
                                         "id": "a3c039e0-7e92-b03c-348b-a3d331e7ebf5",
                                         "type": "For Each",
                                         "parameters": {
-                                            "template": "/Selection Pills/Pill item"
+                                            "template": "/Selection Pills/Pill Item"
                                         },
                                         "ports": [],
                                         "dynamicports": [
@@ -736,7 +736,7 @@
             }
         },
         {
-            "name": "/Selection Pills/Pill item",
+            "name": "/Selection Pills/Pill Item",
             "id": "8f219b1b-7589-4327-660b-c861b5406306",
             "graph": {
                 "connections": [
@@ -848,7 +848,7 @@
                                 "id": "e51f09c0-9718-b230-b5b0-f63411674c87",
                                 "type": "Text",
                                 "parameters": {
-                                    "color": "#FFFFFF",
+                                    "color": "White",
                                     "textAlignY": "center",
                                     "alignY": "center",
                                     "textAlignX": "center",
@@ -1182,7 +1182,8 @@
             },
             "colors": {
                 "Grey - 500": "#A5A5A5",
-                "Primary": "#5836F5"
+                "Primary": "#5836F5",
+                "White": "#FFFFFF"
             }
         }
     },
