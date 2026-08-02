@@ -98,6 +98,15 @@ function rgbaToHex(rgba: RGBA) {
   return '#' + componentToHex(rgba[0]) + componentToHex(rgba[1]) + componentToHex(rgba[2]) + componentToHex(rgba[3]);
 }
 
+/**
+ * Output names this node owns, which a *value* name therefore cannot take.
+ *
+ * `failure` and `stateChanged` are the node's own; the outcome contract's three are reserved
+ * ahead of ERG-001 §4 adopting them here, so that a project written between now and then cannot
+ * quietly create the collision. See `registerOutputIfNeeded`.
+ */
+const RESERVED_OUTPUTS = ['failure', 'stateChanged', 'done', 'unchanged', 'completed'];
+
 const StatesNode: NodeDefinitionOptions = {
   name: 'States',
   docs: 'https://docs.noodl.net/nodes/utilities/logic/states',
@@ -330,6 +339,29 @@ const StatesNode: NodeDefinitionOptions = {
   prototypeExtensions: {
     registerOutputIfNeeded: function (this: StatesInstance, name: string) {
       const internal = this._internal;
+
+      /**
+       * ERG-001 §0.2 — the one unguarded verbatim-name surface in the library.
+       *
+       * Value names become output ports **as written**, and the `hasOutput` skip below is a
+       * silent one: a value called `done` would resolve to the outcome contract's signal, and
+       * the author's value output would simply not exist, with nothing anywhere saying why.
+       * That is FINDINGS **SR-ix** exactly — on `Logic Builder` the same shape was already live
+       * and silent against the node's own `error` and `run` ports, and the lesson recorded there
+       * is to check whether a stated cost is already being paid.
+       *
+       * Reported rather than dropped quietly, following the `logic-builder/reserved-port-name`
+       * precedent (`logic-builder.ts:79`, `:273-277`), and reported *before* the reserved names
+       * spread through §4 rather than after.
+       */
+      if (RESERVED_OUTPUTS.indexOf(name) !== -1) {
+        this.raiseRuntimeError(
+          'states/reserved-port-name',
+          `"${name}" is one of the node's own output ports and cannot also be a value — rename the value`,
+          { name }
+        );
+        return;
+      }
 
       if (this.hasOutput(name)) return;
 

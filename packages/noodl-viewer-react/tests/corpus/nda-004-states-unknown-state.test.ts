@@ -246,3 +246,51 @@ describe('NDA-004 §2: States asked for a name it does not have', () => {
     expect(graph.errors).toEqual([]);
   });
 });
+
+/**
+ * ERG-001 §0.2 — the collision sweep's one unguarded finding, closed before the reserved names
+ * spread through §4.
+ *
+ * `States` registers value names as output ports **verbatim**, and `registerOutputIfNeeded`
+ * opened with a silent `if (this.hasOutput(name)) return;`. A value named `done` would therefore
+ * resolve to the outcome contract's signal and the author's value output would simply not exist,
+ * with nothing anywhere saying why — FINDINGS **SR-ix**, which on `Logic Builder` was already
+ * live and silent against that node's own `error` and `run` ports.
+ */
+describe('ERG-001 §0.2: States reserves the outcome-contract port names', () => {
+  async function statesWithValues(values: string): Promise<CorpusGraph> {
+    const graph = await createCorpusGraph({
+      modules: [StatesModule as unknown as NodeModule],
+      data: {
+        components: [
+          {
+            name: '/root',
+            nodes: [{ id: 'states', type: 'States', parameters: { states: 'A,B', values } }]
+          }
+        ]
+      } as never
+    });
+    // The `values` setter runs when the parameter is applied on the node's first update, not at
+    // import time — without this the control row reads "no output" and passes for the wrong reason.
+    await graph.settle(4);
+    return graph;
+  }
+
+  test.each(['done', 'unchanged', 'completed', 'failure'])(
+    'a value named "%s" is refused out loud rather than silently dropped',
+    async (name) => {
+      const graph = await statesWithValues(name);
+
+      const raised = graph.errors.filter((e) => e.code === 'states/reserved-port-name');
+      expect(raised.length).toBeGreaterThan(0);
+      expect(raised[0].message).toContain(name);
+    }
+  );
+
+  test('(control) an ordinary value name still becomes an output and raises nothing', async () => {
+    const graph = await statesWithValues('opacity');
+
+    expect(graph.node('states').hasOutput('opacity')).toBe(true);
+    expect(graph.errors.filter((e) => e.code === 'states/reserved-port-name')).toEqual([]);
+  });
+});
