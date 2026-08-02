@@ -11,6 +11,7 @@ import {
   validateExpression
 } from './expression-evaluator';
 import { coerceToType } from './expression-type-coercion';
+import { COMPLETED_PORT } from './outcome';
 import { runOnChangeInput, runOnChangePortName, runOnValueChange } from './run-on-value-change';
 
 /**
@@ -726,6 +727,87 @@ Node.prototype.raiseRuntimeError = function (code: string, message: string, deta
     message,
     detail
   });
+};
+
+/**
+ * Open an invocation of an action, so its outcome can be reported exactly once.
+ *
+ * See `dev-docs/reference/OUTCOME-CONTRACT.md`. Call this where the signal input is handled and
+ * keep the token until the action resolves — the token, not the node, is what carries "has this
+ * invocation reported yet", which is the only shape that survives an async action whose result
+ * arrives several frames later.
+ *
+ * ⚠️ **Per-invocation, deliberately.** `Close Popup` and `Pop Component Stack` latch their first
+ * result on the *node* and report it again on every later use, which is invisible to any test
+ * that exercises the node once (FINDINGS **NV-iii**). A fresh token per invocation is what makes
+ * that class unrepresentable rather than merely fixed.
+ */
+Node.prototype.beginOutcome = function () {
+  return { reported: undefined };
+};
+
+/**
+ * End an invocation with exactly one of `Done` / `Unchanged` / `Failure`, then `Completed`.
+ *
+ * @param token   from {@link beginOutcome}, for this invocation and no other
+ * @param outcome the one thing that happened
+ * @param options `code` and `message` are required for `failure` and ignored otherwise
+ *
+ * Three of the phase's most-repeated defect shapes are closed here rather than per node:
+ *
+ * - ⚠️ **`sendSignalOnOutput`, never `flagOutputDirty`.** On a signal output the latter sends a
+ *   *value* of `undefined` rather than a pulse, which is why `Date To String`'s `Invalid Date`
+ *   had never once fired (FINDINGS **SR-v**).
+ * - ⚠️ **The outcome is the last thing an action does.** A signal sent before the values it
+ *   describes was found in four nodes this phase; a call site that flags its outputs dirty and
+ *   *then* calls this cannot get the order wrong.
+ * - ⚠️ **`Unchanged` does not raise.** It is not an error, and a `Failure` that fires on a graph
+ *   working exactly as written is how authors are trained to ignore the port.
+ */
+Node.prototype.reportOutcome = function (token, outcome, options) {
+  if (token.reported !== undefined) {
+    // "Exactly one" is the load-bearing half of the contract, so a second report is a library
+    // defect and is reported as one rather than quietly winning or quietly losing.
+    this.raiseRuntimeError(
+      'outcome/duplicate',
+      `Reported ${token.reported} and then ${outcome} for one invocation, which the outcome contract forbids`,
+      { first: token.reported, second: outcome }
+    );
+    return;
+  }
+  token.reported = outcome;
+
+  if (outcome === 'failure') {
+    // Raised before the signal for the same reason values are flagged before it: a graph wiring
+    // `failure -> show` must already be able to read the reason when the pulse lands.
+    this.raiseRuntimeError(
+      (options && options.code) || 'outcome/unspecified-failure',
+      (options && options.message) || 'The action could not be performed',
+      options && options.detail
+    );
+  }
+
+  if (this.hasOutput(outcome)) {
+    this.sendSignalOnOutput(outcome);
+  } else {
+    this.raiseRuntimeError(
+      'outcome/missing-port',
+      `Reported ${outcome} but has no ${outcome} output, so the outcome reached no wire`,
+      { outcome }
+    );
+  }
+
+  // Universal, and the one port with no exemption — its whole value is that an author can rely
+  // on it being there.
+  if (this.hasOutput(COMPLETED_PORT)) {
+    this.sendSignalOnOutput(COMPLETED_PORT);
+  } else {
+    this.raiseRuntimeError(
+      'outcome/missing-completed',
+      'Adopted the outcome contract without a Completed output, which every action must have',
+      { outcome }
+    );
+  }
 };
 
 /**

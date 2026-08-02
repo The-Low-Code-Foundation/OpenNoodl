@@ -214,6 +214,49 @@ export interface NodeInstance {
    * on those trains authors to ignore it.
    */
   raiseRuntimeError(code: string, message: string, detail?: unknown): void;
+
+  // --- outcome ------------------------------------------------------------
+  /**
+   * Open an invocation of this action so its outcome can be reported exactly once.
+   * See `dev-docs/reference/OUTCOME-CONTRACT.md`.
+   *
+   * Call it where the signal input is handled, and keep the token until the action resolves.
+   * The token — not the node — carries "has this invocation reported yet", which is the only
+   * shape that survives an action whose result arrives several frames later, and the reason
+   * `Close Popup`'s latched-first-result class (FINDINGS **NV-iii**) cannot recur here.
+   */
+  beginOutcome(): OutcomeToken;
+
+  /**
+   * End an invocation with exactly one of `Done` / `Unchanged` / `Failure`, then `Completed`.
+   *
+   * Call it **last**: flag every output dirty first, so a graph reading a value the outcome
+   * describes already has it when the pulse lands.
+   *
+   * @param token   from {@link beginOutcome}, for this invocation and no other. Reporting twice
+   *                against one token raises `outcome/duplicate` and emits nothing the second time
+   * @param outcome `'done'` changed something · `'unchanged'` the post-condition already held,
+   *                which is **not** an error and raises nothing · `'failure'` could not be done
+   * @param options required for `'failure'`, ignored otherwise
+   */
+  reportOutcome(token: OutcomeToken, outcome: NodeOutcome, options?: OutcomeFailureOptions): void;
+}
+
+/** The three terminal outcomes. Exactly one per invocation. */
+export type NodeOutcome = 'done' | 'unchanged' | 'failure';
+
+/** Opaque per-invocation token from {@link NodeInstance.beginOutcome}. */
+export interface OutcomeToken {
+  reported: NodeOutcome | undefined;
+}
+
+/** The reason half of a `'failure'` outcome, raised on the NDA-004 channel. */
+export interface OutcomeFailureOptions {
+  /** Stable, kebab-case, namespaced by node type — treat as an interface, like `raiseRuntimeError`. */
+  code?: string;
+  /** One human-readable sentence, no trailing period. */
+  message?: string;
+  detail?: unknown;
 }
 
 /**
