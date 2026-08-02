@@ -1604,11 +1604,24 @@ raise a row explicitly asserts, and no existing path's raise count moved.
 | `cloud-library:check` | pass | pass |
 | editor `test:ci` | 2007 specs, 0 failures | **2007 specs, 0 failures** |
 
-⚠️ **Live QA is owed for these two builds and was not run.** Nothing in either build was verified in
-the running editor or preview; the claims above are all corpus-level. The Cloud Services slice's rig
-recipe applies unchanged and the two things it shows that no row can — the real port set off
-`NodeLibraryData`, and `Completed` counting equal to raw clicks — have not been checked for these
-eight nodes.
+⚠️ **Live QA is owed for these two builds and was BLOCKED, not skipped.** An editor was already
+listening on `8574` for the whole session — the concurrent phase-36 (`OBS-00x`) work, whose
+`nodegx-observe` build drives a live agent against the running app. The standing rule is one editor
+at a time, and building a rig means mutating whatever project that editor has open, so neither
+launching a second nor attaching to theirs was available. Nothing in either build has been verified
+in the running editor or preview; every claim above is corpus-level.
+
+**What is still unverified, specifically**, and what the rig would show that no row can:
+
+1. The real port set off `NodeLibraryData` for all eight nodes — the corpus reads the *definition*,
+   the editor reads what the node library actually published.
+2. `Completed` counting equal to raw clicks on a real Button, which is Rule 2 proved live.
+3. **Object's new `Failure`** on a `Fetch` with a blank `Id` reaching the warnings chip. This is the
+   only genuinely *new* failure path in either build and the only one whose editor-side provenance
+   has never been seen.
+
+The Cloud Services slice's rig recipe applies unchanged. ⚠️ Check `lsof -i :8574` before assuming it
+is available.
 
 ### What remains of §0's 82 — measured
 
