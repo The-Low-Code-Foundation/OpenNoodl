@@ -65,12 +65,15 @@ function Segmented({
   onChange: (kind: Resolution['kind']) => void;
 }) {
   return (
-    <div className={css['segmented']}>
+    <div className={css['segmented']} data-test="import-flow-resolutions">
       {options.map((option) => (
         <button
           key={option}
           type="button"
           className={classNames(css['segment'], { [css['segmentActive']]: value === option })}
+          data-test="import-flow-resolution"
+          data-test-kind={option}
+          data-test-active={value === option ? 'true' : 'false'}
           onClick={() => onChange(option)}
         >
           {RESOLUTION_LABEL[option]}
@@ -108,7 +111,14 @@ function CollisionRow({
   const renameEmpty = resolution.kind === 'rename' && renameValue.trim() === '';
 
   return (
-    <div className={classNames(css['collision'], { [css['collisionKept']]: resolution.kind === 'skip' })}>
+    <div
+      className={classNames(css['collision'], { [css['collisionKept']]: resolution.kind === 'skip' })}
+      data-test="import-flow-collision"
+      data-test-key={planned.key}
+      data-test-name={planned.name}
+      data-test-category={planned.category}
+      data-test-resolution={resolution.kind}
+    >
       <div className={css['collisionHead']}>
         <span className={css['collisionName']}>{planned.name}</span>
         <Chip label={CATEGORY_NOUN[planned.category]} variant={ChipVariant.Neutral} />
@@ -128,20 +138,26 @@ function CollisionRow({
         <div className={css['collisionDetail']}>
           {planned.diff ? (
             <>
-              <button type="button" className={css['collisionSummary']} onClick={() => setShowDiff(!showDiff)}>
+              <button
+                type="button"
+                className={css['collisionSummary']}
+                data-test="import-flow-diff-toggle"
+                data-test-open={showDiff ? 'true' : 'false'}
+                onClick={() => setShowDiff(!showDiff)}
+              >
                 <Icon icon={showDiff ? IconName.CaretDown : IconName.CaretRight} size={IconSize.Tiny} />
-                <span>
+                <span data-test="import-flow-diff-summary">
                   Your version changes: {summarizeChanges(planned.diff.changes, 'nothing but node positions')}
                 </span>
               </button>
               {showDiff && (
-                <div className={css['diffHost']}>
+                <div className={css['diffHost']} data-test="import-flow-diff">
                   <ComponentDiffView diff={planned.diff} />
                 </div>
               )}
             </>
           ) : (
-            <div className={css['blockHint']} style={{ margin: 0 }}>
+            <div className={css['blockHint']} style={{ margin: 0 }} data-test="import-flow-diff-unavailable">
               Your version will be replaced. A node-level diff is not available for this item.
             </div>
           )}
@@ -149,14 +165,23 @@ function CollisionRow({
       )}
 
       {resolution.kind === 'rename' && (
-        <div className={css['renameRow']}>
+        <div className={css['renameRow']} data-test="import-flow-rename">
           <TextInput
             value={renameValue}
             label="Import as"
+            testId="import-flow-rename-input"
             onChange={(e) => onResolve(planned.key, { kind: 'rename', newName: e.currentTarget.value })}
           />
-          {renameCollides && <div className={css['renameError']}>That name is already taken.</div>}
-          {renameEmpty && <div className={css['renameError']}>Give the imported copy a name.</div>}
+          {renameCollides && (
+            <div className={css['renameError']} data-test="import-flow-rename-error">
+              That name is already taken.
+            </div>
+          )}
+          {renameEmpty && (
+            <div className={css['renameError']} data-test="import-flow-rename-error">
+              Give the imported copy a name.
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -184,8 +209,8 @@ export function ReviewStage({
   const byKey = new Map(items.map((item) => [item.key, item] as const));
 
   return (
-    <div className={css['reviewScroll']}>
-      <h2 className={css['headline']}>
+    <div className={css['reviewScroll']} data-test="import-flow-review">
+      <h2 className={css['headline']} data-test="import-flow-headline">
         {describeCounts(summary.counts)} into {targetName}
       </h2>
       <p className={css['headlineSub']}>
@@ -195,9 +220,18 @@ export function ReviewStage({
         Everything here is applied as one undo step.
       </p>
 
-      <div className={css['countGrid']}>
+      <div className={css['countGrid']} data-test="import-flow-counts">
         {summary.counts.map((count) => (
-          <div className={css['countCard']} key={count.category}>
+          <div
+            className={css['countCard']}
+            key={count.category}
+            data-test="import-flow-count"
+            data-test-category={count.category}
+            data-test-landing={count.landing}
+            data-test-overwritten={count.overwritten}
+            data-test-renamed={count.renamed}
+            data-test-kept={count.kept}
+          >
             <div className={css['countValue']}>{count.landing}</div>
             <div className={css['countLabel']}>{CATEGORY_LABEL[count.category]}</div>
             {count.overwritten > 0 && <div className={css['countNote']}>{count.overwritten} overwritten</div>}
@@ -209,7 +243,9 @@ export function ReviewStage({
 
       {collisions.length > 0 && (
         <>
-          <h3 className={css['blockTitle']}>{plural(collisions.length, 'collision')}</h3>
+          <h3 className={css['blockTitle']} data-test="import-flow-collisions-title">
+            {plural(collisions.length, 'collision')}
+          </h3>
           <p className={css['blockHint']}>
             Your project already has these. Decide each one — nothing is overwritten until you apply.
           </p>
@@ -232,11 +268,18 @@ export function ReviewStage({
             Arriving new
           </h3>
           <p className={css['blockHint']}>Nothing in your project has these names.</p>
-          <div className={css['landingList']}>
+          <div className={css['landingList']} data-test="import-flow-landing-list">
             {landing.map((planned) => {
               const item = byKey.get(itemKey(planned.category, planned.name, planned.typename));
               return (
-                <div className={css['landingRow']} key={planned.key}>
+                <div
+                  className={css['landingRow']}
+                  key={planned.key}
+                  data-test="import-flow-landing"
+                  data-test-key={planned.key}
+                  data-test-name={planned.name}
+                  data-test-reason={planned.reason}
+                >
                   <span style={{ flex: '1 1 auto', minWidth: 0 }}>{planned.name}</span>
                   {item?.nodeCount ? <span className={css['landingWhy']}>{item.nodeCount} nodes</span> : null}
                   <span className={css['landingWhy']}>
@@ -259,9 +302,15 @@ export function ReviewStage({
           <p className={css['blockHint']}>
             References between the imported components follow the new names automatically.
           </p>
-          <div className={css['landingList']}>
+          <div className={css['landingList']} data-test="import-flow-renames">
             {Object.entries(plan.renames).map(([from, to]) => (
-              <div className={css['landingRow']} key={from}>
+              <div
+                className={css['landingRow']}
+                key={from}
+                data-test="import-flow-rename-row"
+                data-test-from={from}
+                data-test-to={to}
+              >
                 <span>{from}</span>
                 <Icon icon={IconName.ArrowRight} size={IconSize.Tiny} />
                 <span>{to}</span>
@@ -272,7 +321,9 @@ export function ReviewStage({
       )}
 
       {summary.isEmpty && (
-        <div className={css['centered']}>Nothing would be imported. Go back and pick something.</div>
+        <div className={css['centered']} data-test="import-flow-review-empty">
+          Nothing would be imported. Go back and pick something.
+        </div>
       )}
     </div>
   );

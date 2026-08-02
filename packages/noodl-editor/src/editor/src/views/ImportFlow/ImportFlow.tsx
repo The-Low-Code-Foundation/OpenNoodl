@@ -89,7 +89,7 @@ function Stepper({ stage }: { stage: Stage }) {
   const order = ['loading', 'select', 'review', 'applying', 'result'];
   const current = order.indexOf(stage);
   return (
-    <div className={css['steps']}>
+    <div className={css['steps']} data-test="import-flow-steps">
       {STEPS.map((step, i) => {
         const index = order.indexOf(step.stage);
         const isActive = stage === step.stage || (stage === 'applying' && step.stage === 'review');
@@ -101,6 +101,9 @@ function Stepper({ stage }: { stage: Stage }) {
                 [css['stepActive']]: isActive,
                 [css['stepDone']]: !isActive && index < current
               })}
+              data-test="import-flow-step"
+              data-test-stage={step.stage}
+              data-test-state={isActive ? 'active' : index < current ? 'done' : 'pending'}
             >
               {step.label}
             </span>
@@ -287,15 +290,21 @@ export function ImportFlow({
       const total = index.size;
       return (
         <>
-          <span className={css['footerNote']}>
+          <span className={css['footerNote']} data-test="import-flow-footer-note">
             {count === 0
               ? 'Nothing selected yet.'
               : `${count} selected, ${total} item${total === 1 ? '' : 's'} in total once dependencies are included.`}
           </span>
-          <PrimaryButton label="Cancel" variant={PrimaryButtonVariant.Muted} onClick={onCancel} />
+          <PrimaryButton
+            label="Cancel"
+            variant={PrimaryButtonVariant.Muted}
+            testId="import-flow-cancel"
+            onClick={onCancel}
+          />
           <PrimaryButton
             label="Continue"
             isDisabled={total === 0}
+            testId="import-flow-continue"
             onClick={() => {
               setFocusedKey(null);
               setStage('review');
@@ -308,13 +317,19 @@ export function ImportFlow({
     if (stage === 'review') {
       return (
         <>
-          <span className={css['footerNote']}>
+          <span className={css['footerNote']} data-test="import-flow-footer-note">
             {renameProblem ?? (summary?.isEmpty ? 'Nothing to apply.' : 'Applied as one undo step.')}
           </span>
-          <PrimaryButton label="Back" variant={PrimaryButtonVariant.Muted} onClick={() => setStage('select')} />
+          <PrimaryButton
+            label="Back"
+            variant={PrimaryButtonVariant.Muted}
+            testId="import-flow-back"
+            onClick={() => setStage('select')}
+          />
           <PrimaryButton
             label={verb}
             isDisabled={Boolean(renameProblem) || Boolean(summary?.isEmpty)}
+            testId="import-flow-apply"
             onClick={apply}
           />
         </>
@@ -324,8 +339,10 @@ export function ImportFlow({
     if (stage === 'applying') {
       return (
         <>
-          <span className={css['footerNote']}>{verb}ing…</span>
-          <PrimaryButton label={verb} isLoading isDisabled />
+          <span className={css['footerNote']} data-test="import-flow-footer-note">
+            {verb}ing…
+          </span>
+          <PrimaryButton label={verb} isLoading isDisabled testId="import-flow-apply" />
         </>
       );
     }
@@ -333,41 +350,72 @@ export function ImportFlow({
     if (stage === 'result') {
       return (
         <>
-          <span className={css['footerNote']} />
-          <PrimaryButton label="Close" onClick={() => (result ? onDone(result) : onCancel())} />
+          <span className={css['footerNote']} data-test="import-flow-footer-note" />
+          <PrimaryButton
+            label="Close"
+            testId="import-flow-close"
+            onClick={() => (result ? onDone(result) : onCancel())}
+          />
         </>
       );
     }
 
     return (
       <>
-        <span className={css['footerNote']} />
-        <PrimaryButton label="Cancel" variant={PrimaryButtonVariant.Muted} onClick={onCancel} />
+        <span className={css['footerNote']} data-test="import-flow-footer-note" />
+        <PrimaryButton
+          label="Cancel"
+          variant={PrimaryButtonVariant.Muted}
+          testId="import-flow-cancel"
+          onClick={onCancel}
+        />
       </>
     );
   })();
 
   return (
-    <div className={classNames(css['root'], { [css['rootNarrow']]: stage === 'result' })}>
+    /*
+      The stage lives on the root as `data-test-stage` so a headless driver can
+      assert where the flow is without measuring the modal. That is not a
+      convenience: the Done stage renders NARROWER than Select/Review
+      (`rootNarrow`), so a width- or class-based probe reads it as "the flow
+      closed" and reports a false negative.
+    */
+    <div
+      className={classNames(css['root'], { [css['rootNarrow']]: stage === 'result' })}
+      data-test="import-flow"
+      data-test-mode={mode}
+      data-test-stage={loadError ? 'load-error' : stage}
+    >
       <div className={css['header']}>
         <Icon icon={mode === 'export' ? IconName.ImportLeft : IconName.ImportDown} size={IconSize.Small} />
         <div style={{ minWidth: 0 }}>
-          <h1 className={css['title']}>{title}</h1>
-          {subtitle && <p className={css['subtitle']}>{subtitle}</p>}
+          <h1 className={css['title']} data-test="import-flow-title">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className={css['subtitle']} data-test="import-flow-subtitle">
+              {subtitle}
+            </p>
+          )}
         </div>
         <span className={css['headerSpacer']} />
         <Stepper stage={stage} />
       </div>
 
       {loadError && (
-        <div className={css['centered']}>
+        <div className={css['centered']} data-test="import-flow-load-error">
           <Icon icon={IconName.WarningTriangle} size={IconSize.Default} />
           <div>Could not read that project.</div>
-          <div>{loadError}</div>
+          <div data-test="import-flow-load-error-message">{loadError}</div>
         </div>
       )}
 
-      {!loadError && stage === 'loading' && <div className={css['centered']}>Reading the project…</div>}
+      {!loadError && stage === 'loading' && (
+        <div className={css['centered']} data-test="import-flow-loading">
+          Reading the project…
+        </div>
+      )}
 
       {!loadError && stage === 'select' && source && (
         <SelectStage

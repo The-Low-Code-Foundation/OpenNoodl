@@ -73,17 +73,31 @@ function LinkRow({
   onToggleLink: (key: string) => void;
 }) {
   return (
-    <div className={classNames(css['link'], { [css['linkDropped']]: isDropped })}>
+    <div
+      className={classNames(css['link'], { [css['linkDropped']]: isDropped })}
+      data-test="import-flow-link"
+      data-test-key={link.key}
+      data-test-name={link.to.name}
+      data-test-kind={link.kind}
+      data-test-inferred={link.isInferred ? 'true' : 'false'}
+      data-test-dropped={isDropped ? 'true' : 'false'}
+    >
       <div className={css['linkBody']}>
         <div className={css['linkName']}>
           {link.to.typename ? `${link.to.name} · ${link.to.typename}` : link.to.name}
         </div>
-        <div className={css['linkVia']}>{link.via.join(' · ')}</div>
+        <div className={css['linkVia']} data-test="import-flow-link-via">
+          {link.via.join(' · ')}
+        </div>
       </div>
       {link.isInferred && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
           <Chip label="guess" variant={ChipVariant.Warning} />
-          <TextButton label={isDropped ? 'Restore' : 'Drop'} onClick={() => onToggleLink(link.key)} />
+          <TextButton
+            label={isDropped ? 'Restore' : 'Drop'}
+            testId="import-flow-link-toggle"
+            onClick={() => onToggleLink(link.key)}
+          />
         </div>
       )}
     </div>
@@ -118,12 +132,12 @@ export function ClosurePane({
     const planned = index.get(focused.key);
 
     return (
-      <div className={css['rightPane']}>
+      <div className={css['rightPane']} data-test="import-flow-closure" data-test-mode="focused" data-test-focused={focused.key}>
         <div className={css['paneHeader']}>
-          <p className={css['paneTitle']} title={focused.name}>
+          <p className={css['paneTitle']} title={focused.name} data-test="import-flow-closure-title">
             {focused.name}
           </p>
-          <p className={css['paneHint']}>
+          <p className={css['paneHint']} data-test="import-flow-closure-hint">
             {planned?.reason === 'dependency' && planned.requiredBy.length > 0
               ? `Required by ${planned.requiredBy.join(', ')} — it comes along with them.`
               : grouped.length === 0
@@ -131,13 +145,18 @@ export function ClosurePane({
                 : 'Taking this also takes:'}
           </p>
           <div style={{ marginTop: 8 }}>
-            <TextButton label="Show the whole closure" icon={IconName.ArrowLeft} onClick={() => onFocus(null)} />
+            <TextButton
+              label="Show the whole closure"
+              icon={IconName.ArrowLeft}
+              testId="import-flow-closure-back"
+              onClick={() => onFocus(null)}
+            />
           </div>
         </div>
 
         <div className={css['scroll']}>
           {grouped.map((group) => (
-            <div className={css['linkGroup']} key={group.kind}>
+            <div className={css['linkGroup']} key={group.kind} data-test="import-flow-link-group" data-test-kind={group.kind}>
               <div className={css['linkGroupTitle']}>{KIND_LABEL[group.kind]}</div>
               {group.links.map((link) => (
                 <LinkRow
@@ -149,7 +168,11 @@ export function ClosurePane({
               ))}
             </div>
           ))}
-          {grouped.length === 0 && <div className={css['emptyPane']}>This item stands on its own.</div>}
+          {grouped.length === 0 && (
+            <div className={css['emptyPane']} data-test="import-flow-closure-empty">
+              This item stands on its own.
+            </div>
+          )}
         </div>
       </div>
     );
@@ -160,10 +183,12 @@ export function ClosurePane({
   const brought = [...index.values()].filter((planned) => planned.reason === 'dependency');
 
   return (
-    <div className={css['rightPane']}>
+    <div className={css['rightPane']} data-test="import-flow-closure" data-test-mode="all">
       <div className={css['paneHeader']}>
-        <p className={css['paneTitle']}>Coming along</p>
-        <p className={css['paneHint']}>
+        <p className={css['paneTitle']} data-test="import-flow-closure-title">
+          Coming along
+        </p>
+        <p className={css['paneHint']} data-test="import-flow-closure-hint">
           {selection.requested.size === 0
             ? 'Pick something on the left and everything it needs appears here.'
             : brought.length === 0
@@ -178,7 +203,7 @@ export function ClosurePane({
           const rows = brought.filter((planned) => planned.category === category);
           if (rows.length === 0) return null;
           return (
-            <div className={css['linkGroup']} key={kind}>
+            <div className={css['linkGroup']} key={kind} data-test="import-flow-link-group" data-test-kind={kind}>
               <div className={css['linkGroupTitle']}>{KIND_LABEL[kind]}</div>
               {rows.map((planned) => (
                 <div
@@ -187,6 +212,10 @@ export function ClosurePane({
                   role="button"
                   tabIndex={0}
                   style={{ cursor: 'pointer' }}
+                  data-test="import-flow-brought"
+                  data-test-key={planned.key}
+                  data-test-name={planned.name}
+                  data-test-collides={planned.collides ? 'true' : 'false'}
                   onClick={() => onFocus(itemKey(planned.category, planned.name, planned.typename))}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') onFocus(itemKey(planned.category, planned.name, planned.typename));
@@ -206,7 +235,7 @@ export function ClosurePane({
         })}
 
         {brought.length === 0 && selection.requested.size > 0 && (
-          <div className={css['emptyPane']}>
+          <div className={css['emptyPane']} data-test="import-flow-closure-empty">
             <Icon icon={IconName.Check} size={IconSize.Default} />
             <div style={{ marginTop: 8 }}>Nothing extra.</div>
           </div>

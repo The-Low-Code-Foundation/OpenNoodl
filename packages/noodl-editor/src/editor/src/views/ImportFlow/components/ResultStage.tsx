@@ -29,14 +29,18 @@ export interface ResultStageProps {
 export function ResultStage({ summary, failed, failureMessage, verb, isExport = false }: ResultStageProps) {
   if (failed) {
     return (
-      <div className={css['reviewScroll']}>
+      <div className={css['reviewScroll']} data-test="import-flow-result" data-test-outcome="failure">
         <div className={classNames(css['resultIcon'], css['resultIconFail'])}>
           <Icon icon={IconName.WarningTriangle} size={IconSize.Default} />
         </div>
-        <h2 className={css['headline']}>{verb} failed</h2>
-        <p className={css['headlineSub']}>{failureMessage ?? 'Something went wrong.'}</p>
+        <h2 className={css['headline']} data-test="import-flow-result-headline">
+          {verb} failed
+        </h2>
+        <p className={css['headlineSub']} data-test="import-flow-result-message">
+          {failureMessage ?? 'Something went wrong.'}
+        </p>
         {summary.warnings.length > 0 && (
-          <div className={classNames(css['resultNote'], css['warnNote'])}>
+          <div className={classNames(css['resultNote'], css['warnNote'])} data-test="import-flow-result-warnings">
             {summary.warnings.map((warning, i) => (
               <div key={i}>{warning}</div>
             ))}
@@ -47,12 +51,16 @@ export function ResultStage({ summary, failed, failureMessage, verb, isExport = 
   }
 
   return (
-    <div className={css['reviewScroll']}>
+    <div className={css['reviewScroll']} data-test="import-flow-result" data-test-outcome="success">
       <div className={css['resultIcon']}>
         <Icon icon={IconName.Check} size={IconSize.Default} />
       </div>
-      <h2 className={css['headline']}>{verb} complete</h2>
-      <p className={css['headlineSub']}>{summary.undoNote}</p>
+      <h2 className={css['headline']} data-test="import-flow-result-headline">
+        {verb} complete
+      </h2>
+      <p className={css['headlineSub']} data-test="import-flow-result-message">
+        {summary.undoNote}
+      </p>
 
       {/*
         LIB-006. Only shown when there is something to say — a clean import gets
@@ -62,7 +70,13 @@ export function ResultStage({ summary, failed, failureMessage, verb, isExport = 
         not the whole truth.
       */}
       {summary.legacy && summary.legacy.recommendation !== 'proceed' && (
-        <div className={classNames(css['resultNote'], css['warnNote'])} style={{ marginTop: 12 }}>
+        <div
+          className={classNames(css['resultNote'], css['warnNote'])}
+          style={{ marginTop: 12 }}
+          data-test="import-flow-legacy-note"
+          data-test-recommendation={summary.legacy.recommendation}
+          data-test-placeholders={summary.legacy.placeholders}
+        >
           <div>{summary.legacy.line}</div>
           {summary.legacy.placeholders > 0 && (
             <div>
@@ -80,7 +94,7 @@ export function ResultStage({ summary, failed, failureMessage, verb, isExport = 
         <>
           {/* Export packs into an archive; nothing reaches the open project. */}
           <h3 className={css['blockTitle']}>{isExport ? 'Packed' : 'In your project'}</h3>
-          <ul className={css['resultList']}>
+          <ul className={css['resultList']} data-test="import-flow-result-model">
             {summary.modelLines.map((line) => (
               <li key={line}>
                 <Icon icon={IconName.Check} size={IconSize.Tiny} />
@@ -94,9 +108,9 @@ export function ResultStage({ summary, failed, failureMessage, verb, isExport = 
       {summary.renames.length > 0 && (
         <>
           <h3 className={css['blockTitle']}>Renamed on the way in</h3>
-          <ul className={css['resultList']}>
+          <ul className={css['resultList']} data-test="import-flow-result-renames">
             {summary.renames.map((rename) => (
-              <li key={rename.from}>
+              <li key={rename.from} data-test="import-flow-result-rename" data-test-from={rename.from} data-test-to={rename.to}>
                 <span>{rename.from}</span>
                 <Icon icon={IconName.ArrowRight} size={IconSize.Tiny} />
                 <span>{rename.to}</span>
@@ -109,9 +123,9 @@ export function ResultStage({ summary, failed, failureMessage, verb, isExport = 
       {summary.kept.length > 0 && (
         <>
           <h3 className={css['blockTitle']}>Kept as yours</h3>
-          <ul className={css['resultList']}>
+          <ul className={css['resultList']} data-test="import-flow-result-kept">
             {summary.kept.map((kept) => (
-              <li key={kept}>
+              <li key={kept} data-test="import-flow-result-kept-item" data-test-name={kept}>
                 <span>{kept}</span>
               </li>
             ))}
@@ -122,7 +136,7 @@ export function ResultStage({ summary, failed, failureMessage, verb, isExport = 
       {summary.diskLines.length > 0 && (
         <>
           <h3 className={css['blockTitle']}>Written to disk</h3>
-          <ul className={css['resultList']}>
+          <ul className={css['resultList']} data-test="import-flow-result-disk">
             {summary.diskLines.map((line) => (
               <li key={line}>
                 <Icon icon={IconName.File} size={IconSize.Tiny} />
@@ -135,7 +149,11 @@ export function ResultStage({ summary, failed, failureMessage, verb, isExport = 
       )}
 
       {summary.warnings.length > 0 && (
-        <div className={classNames(css['resultNote'], css['warnNote'])} style={{ marginTop: 12 }}>
+        <div
+          className={classNames(css['resultNote'], css['warnNote'])}
+          style={{ marginTop: 12 }}
+          data-test="import-flow-result-warnings"
+        >
           {summary.warnings.map((warning, i) => (
             <div key={i}>{warning}</div>
           ))}

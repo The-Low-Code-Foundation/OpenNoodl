@@ -119,6 +119,11 @@ export function SelectStage({
             [css['rowRequired']]: state === 'required'
           })}
           style={{ paddingLeft: 14 + node.depth * 14 }}
+          data-test="import-flow-row"
+          data-test-key={node.key}
+          data-test-category={item.category}
+          data-test-state={state}
+          data-test-collides={planned?.collides ? 'true' : 'false'}
           onClick={() => onFocus(node.key)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -128,6 +133,7 @@ export function SelectStage({
           }}
         >
           <span
+            data-test="import-flow-row-box"
             onClick={(e) => {
               e.stopPropagation();
               // A `required` row has no off switch — that is what makes an
@@ -169,6 +175,10 @@ export function SelectStage({
           tabIndex={0}
           className={css['row']}
           style={{ paddingLeft: 14 + node.depth * 14 }}
+          data-test="import-flow-folder"
+          data-test-path={node.path}
+          data-test-state={state}
+          data-test-open={open ? 'true' : 'false'}
           onClick={() => onToggleFolderOpen(node.path)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -178,6 +188,7 @@ export function SelectStage({
           }}
         >
           <span
+            data-test="import-flow-folder-box"
             onClick={(e) => {
               e.stopPropagation();
               onSetRequested(keys, state !== 'all');
@@ -202,31 +213,40 @@ export function SelectStage({
   const everythingRequested = allKeys.length > 0 && allKeys.every((key) => selection.requested.has(key));
 
   return (
-    <div className={css['body']}>
+    <div className={css['body']} data-test="import-flow-select">
       <div className={css['leftPane']}>
         <div className={css['searchRow']}>
-          <div className={css['searchBox']}>
+          {/* SearchInput takes no testId, so the hook lives on its wrapper. */}
+          <div className={css['searchBox']} data-test="import-flow-search">
             <SearchInput value={query} placeholder="Search components, files, styles…" onChange={onQueryChange} />
           </div>
           <TextButton
             label={everythingRequested ? 'Select none' : query.trim() ? 'Select matches' : 'Select all'}
+            testId="import-flow-select-all"
             onClick={() => onSetRequested(allKeys, !everythingRequested)}
           />
         </div>
 
         <div className={css['scroll']}>
           {sections.length === 0 && (
-            <div className={css['centered']}>
+            <div className={css['centered']} data-test="import-flow-select-empty">
               {query.trim() === ''
                 ? 'This project has nothing importable in it.'
                 : `Nothing matches “${query}”.`}
             </div>
           )}
           {sections.map((section) => (
-            <div className={css['section']} key={section.category}>
+            <div
+              className={css['section']}
+              key={section.category}
+              data-test="import-flow-section"
+              data-test-category={section.category}
+            >
               <div className={css['sectionHeader']}>
                 <span className={css['sectionTitle']}>{CATEGORY_LABEL[section.category]}</span>
-                <span className={css['sectionCount']}>{section.items.length}</span>
+                <span className={css['sectionCount']} data-test="import-flow-section-count">
+                  {section.items.length}
+                </span>
               </div>
               {buildTree(section.items).map(renderNode)}
             </div>
