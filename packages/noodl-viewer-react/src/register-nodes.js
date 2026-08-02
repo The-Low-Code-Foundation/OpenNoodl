@@ -142,6 +142,7 @@ export default function registerNodes(noodlRuntime) {
     // ERG-004 — change detection inside Objects and Arrays. Separate nodes rather than modes on
     // `Value Changed`, which stays exactly as it was; see the file headers for why.
     require('./nodes/std-library/objectchanged'),
+    require('./nodes/std-library/arraychanged'),
 
     // Deprecated
     require('./nodes/std-library/data/cloudfunction'),
