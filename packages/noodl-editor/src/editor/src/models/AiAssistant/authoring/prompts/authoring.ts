@@ -175,7 +175,7 @@ function docBlocks(docs?: PromptProjectDocs): string[] {
   if (docs?.conventions) {
     lines.push(
       '',
-      "--- PROJECT CONVENTIONS ---",
+      '--- PROJECT CONVENTIONS ---',
       "This project's own rules. They outrank your defaults; report any you cannot satisfy.",
       docs.conventions,
       '--- END PROJECT CONVENTIONS ---'
@@ -194,7 +194,8 @@ function referenceBlocks(
   catalogOverview: string,
   styleVocabulary?: string,
   docs?: PromptProjectDocs,
-  libraryOverview?: string
+  libraryOverview?: string,
+  importReport?: string
 ): string[] {
   return [
     'Reference material for this project. Your task is at the END of this message — read these first,',
@@ -209,8 +210,23 @@ function referenceBlocks(
     '--- END NODE CATALOG ---',
     ...styleBlock(styleVocabulary),
     ...libraryBlock(libraryOverview),
+    ...importReportBlock(importReport),
     ...docBlocks(docs)
   ];
+}
+
+/**
+ * LIB-006: what a legacy import could not convert, or nothing when the project
+ * was not imported or converted cleanly — same absent-means-omitted convention
+ * as the blocks around it, so a project with a clean history pays no bytes.
+ *
+ * It sits in the STABLE half with the other reference blocks, not with the
+ * per-task material: the report describes the project, is byte-identical across
+ * every component authored against it, and changes only when a repair lands.
+ */
+function importReportBlock(importReport?: string): string[] {
+  if (!importReport) return [];
+  return ['', '--- LEGACY IMPORT REPORT ---', importReport, '--- END LEGACY IMPORT REPORT ---'];
 }
 
 /**
@@ -242,18 +258,22 @@ export function initialUserMessage(
   styleVocabulary?: string,
   docs?: PromptProjectDocs,
   planContext?: string,
-  libraryOverview?: string
+  libraryOverview?: string,
+  importReport?: string
 ): OpeningTurn {
-  return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary, docs, libraryOverview), [
-    ...planContextBlock(planContext),
-    '--- YOUR TASK ---',
-    `Build a new component at "${request.componentPath}"${
-      request.componentType ? ` (type: ${request.componentType})` : ''
-    }.`,
-    '',
-    'What it should do:',
-    request.description
-  ]);
+  return openingTurn(
+    referenceBlocks(projectOverview, catalogOverview, styleVocabulary, docs, libraryOverview, importReport),
+    [
+      ...planContextBlock(planContext),
+      '--- YOUR TASK ---',
+      `Build a new component at "${request.componentPath}"${
+        request.componentType ? ` (type: ${request.componentType})` : ''
+      }.`,
+      '',
+      'What it should do:',
+      request.description
+    ]
+  );
 }
 
 /** The STYLE VOCABULARY block, or nothing when no vocabulary was assembled. */
@@ -279,25 +299,29 @@ export function updateUserMessage(
   styleVocabulary?: string,
   docs?: PromptProjectDocs,
   planContext?: string,
-  libraryOverview?: string
+  libraryOverview?: string,
+  importReport?: string
 ): OpeningTurn {
-  return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary, docs, libraryOverview), [
-    ...planContextBlock(planContext),
-    '--- YOUR TASK ---',
-    `Revise the existing component "${request.componentPath}".`,
-    '',
-    'This is the component as it exists today, in the same shape you submit. Start from it: keep every',
-    'node id you keep, change only what the task requires, and resubmit the FULL revised component.',
-    'Nodes may carry hand-tuned visual states and variants that are not shown here — they are preserved',
-    'automatically for any node whose id and type you keep, and lost for nodes you recreate under a new id.',
-    '',
-    '--- CURRENT COMPONENT ---',
-    currentComponentSource,
-    '--- END CURRENT COMPONENT ---',
-    '',
-    'What should change:',
-    request.description
-  ]);
+  return openingTurn(
+    referenceBlocks(projectOverview, catalogOverview, styleVocabulary, docs, libraryOverview, importReport),
+    [
+      ...planContextBlock(planContext),
+      '--- YOUR TASK ---',
+      `Revise the existing component "${request.componentPath}".`,
+      '',
+      'This is the component as it exists today, in the same shape you submit. Start from it: keep every',
+      'node id you keep, change only what the task requires, and resubmit the FULL revised component.',
+      'Nodes may carry hand-tuned visual states and variants that are not shown here — they are preserved',
+      'automatically for any node whose id and type you keep, and lost for nodes you recreate under a new id.',
+      '',
+      '--- CURRENT COMPONENT ---',
+      currentComponentSource,
+      '--- END CURRENT COMPONENT ---',
+      '',
+      'What should change:',
+      request.description
+    ]
+  );
 }
 
 /**

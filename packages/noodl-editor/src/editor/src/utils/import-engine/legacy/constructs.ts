@@ -159,13 +159,16 @@ export const DROPPED_PROJECT_FIELDS: readonly DroppedProjectField[] = [
   {
     field: 'deviceSettings',
     evidence: 'projectmodel.ts:155 (read commented out) and :1356 (write commented out)',
-    message: 'The project carried device settings. NodeGX does not read or write them, so they are lost on the first save.',
-    recommendation: 'Nothing in NodeGX consumes this field. If the settings mattered, re-express them as project settings or a viewport configuration; there is no automatic path.'
+    message:
+      'The project carried device settings. NodeGX does not read or write them, so they are lost on the first save.',
+    recommendation:
+      'Nothing in NodeGX consumes this field. If the settings mattered, re-express them as project settings or a viewport configuration; there is no automatic path.'
   },
   {
     field: 'thumbnailURI',
     evidence: 'projectmodel.ts:151 (read commented out) and :1350 (write commented out)',
-    message: 'The project carried an embedded thumbnail. NodeGX regenerates thumbnails from the running project, so the stored one is not carried.',
+    message:
+      'The project carried an embedded thumbnail. NodeGX regenerates thumbnails from the running project, so the stored one is not carried.',
     recommendation: 'No action needed — the launcher regenerates the thumbnail when the project first renders.'
   }
 ];

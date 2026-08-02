@@ -166,3 +166,11 @@ export type {
   GraphConnection,
   GraphNode
 } from '../../noodl-editor/src/editor/src/models/AiAssistant/explain/types';
+
+// ─── Legacy import report (LIB-006) ──────────────────────────────────────────
+// Pure: `report.ts` builds and renders, `types.ts` is types only. The fs-backed
+// reader (`loadReport.ts`) is deliberately NOT re-exported — it pulls the
+// editor's Electron filesystem wrapper, and this server reads the file itself.
+export { renderReportForAssistant, renderReportMarkdown } from '../../noodl-editor/src/editor/src/utils/import-engine/legacy/report';
+export { IMPORT_REPORT_FORMAT_VERSION, IMPORT_REPORT_JSON_PATH } from '../../noodl-editor/src/editor/src/utils/import-engine/legacy/types';
+export type { ImportReport, LegacyFinding, LegacyOutcome } from '../../noodl-editor/src/editor/src/utils/import-engine/legacy/types';

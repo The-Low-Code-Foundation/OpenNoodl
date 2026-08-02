@@ -99,10 +99,7 @@ export interface WriteReportResult {
  * history is the record of previous imports. A timestamped filename per import
  * would give you an accumulating pile of files and no diff at all.
  */
-export async function writeImportReport(
-  report: ImportReport,
-  targetProject: ProjectModel
-): Promise<WriteReportResult> {
+export async function writeImportReport(report: ImportReport, targetProject: ProjectModel): Promise<WriteReportResult> {
   const dir = (targetProject as unknown as SourceProjectLike)._retainedProjectDirectory;
   const written: string[] = [];
   const warnings: string[] = [];

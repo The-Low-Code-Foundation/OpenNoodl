@@ -80,7 +80,9 @@ export function computeVerdict({ counts, constructsAssessed, nodeCount }: Verdic
   if (counts.placeholder === 0 && counts.dropped === 0) {
     if (counts['converted-with-changes'] > 0) {
       reasons.push(
-        `${counts['converted-with-changes']} construct${counts['converted-with-changes'] === 1 ? ' was' : 's were'} rewritten during the import.`
+        `${counts['converted-with-changes']} construct${
+          counts['converted-with-changes'] === 1 ? ' was' : 's were'
+        } rewritten during the import.`
       );
     }
     reasons.push('Nothing was left unconverted.');
@@ -98,7 +100,9 @@ export function computeVerdict({ counts, constructsAssessed, nodeCount }: Verdic
   }
 
   reasons.push(
-    `${unconvertedCount} of ${constructsAssessed} construct${constructsAssessed === 1 ? '' : 's'} (${Math.round(unconvertedShare * 100)}%) could not be converted.`
+    `${unconvertedCount} of ${constructsAssessed} construct${constructsAssessed === 1 ? '' : 's'} (${Math.round(
+      unconvertedShare * 100
+    )}%) could not be converted.`
   );
   reasons.push(`The imported set is ${nodeCount} node${nodeCount === 1 ? '' : 's'}.`);
 
@@ -107,7 +111,9 @@ export function computeVerdict({ counts, constructsAssessed, nodeCount }: Verdic
 
   if (small && poor) {
     reasons.push(
-      `Both thresholds are met: at or under ${REBUILD_MAX_NODES} nodes, and at or over ${Math.round(REBUILD_UNCONVERTED_SHARE * 100)}% unconverted.`
+      `Both thresholds are met: at or under ${REBUILD_MAX_NODES} nodes, and at or over ${Math.round(
+        REBUILD_UNCONVERTED_SHARE * 100
+      )}% unconverted.`
     );
     return {
       recommendation: 'rebuild',
@@ -115,13 +121,17 @@ export function computeVerdict({ counts, constructsAssessed, nodeCount }: Verdic
       nodeCount,
       unconvertedCount,
       reasons,
-      message: `This project is small (${nodeCount} nodes) and ${Math.round(unconvertedShare * 100)}% of it did not convert. Rebuilding it in NodeGX will almost certainly cost you less than repairing this import. The entries below tell you what the project did, which is the part worth keeping — treat them as a specification to rebuild from rather than a defect list to work through.`
+      message: `This project is small (${nodeCount} nodes) and ${Math.round(
+        unconvertedShare * 100
+      )}% of it did not convert. Rebuilding it in NodeGX will almost certainly cost you less than repairing this import. The entries below tell you what the project did, which is the part worth keeping — treat them as a specification to rebuild from rather than a defect list to work through.`
     };
   }
 
   reasons.push(
     small
-      ? `Under the ${Math.round(REBUILD_UNCONVERTED_SHARE * 100)}% unconverted threshold, so there is more working material than broken.`
+      ? `Under the ${Math.round(
+          REBUILD_UNCONVERTED_SHARE * 100
+        )}% unconverted threshold, so there is more working material than broken.`
       : `Over ${REBUILD_MAX_NODES} nodes, so there is too much working material to discard.`
   );
   return {
@@ -130,6 +140,8 @@ export function computeVerdict({ counts, constructsAssessed, nodeCount }: Verdic
     nodeCount,
     unconvertedCount,
     reasons,
-    message: `${unconvertedCount} construct${unconvertedCount === 1 ? '' : 's'} did not convert, out of ${constructsAssessed}. Repairing is the right call here — the rest of the project came across intact. Each unconverted construct is still on the canvas, marked as an error, with its original type and parameters, so nothing has to be recovered from the source project.`
+    message: `${unconvertedCount} construct${
+      unconvertedCount === 1 ? '' : 's'
+    } did not convert, out of ${constructsAssessed}. Repairing is the right call here — the rest of the project came across intact. Each unconverted construct is still on the canvas, marked as an error, with its original type and parameters, so nothing has to be recovered from the source project.`
   };
 }

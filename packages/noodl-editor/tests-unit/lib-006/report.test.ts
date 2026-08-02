@@ -5,7 +5,12 @@
  * was silently dropped is arithmetic, and this asserts the arithmetic.
  */
 
-import { buildReport, renderReportMarkdown } from '../../src/editor/src/utils/import-engine/legacy/report';
+import {
+  buildReport,
+  renderReportForAssistant,
+  renderReportMarkdown,
+  reportSummaryLine
+} from '../../src/editor/src/utils/import-engine/legacy/report';
 import type { LegacyFinding, LegacyOutcome } from '../../src/editor/src/utils/import-engine/legacy/types';
 import {
   computeVerdict,
@@ -234,5 +239,82 @@ describe('report — renderings', () => {
 
   it('is reproducible for a given clock', () => {
     expect(renderReportMarkdown(report(findings, 20))).toBe(renderReportMarkdown(report(findings, 20)));
+  });
+});
+
+// ─── The assistant rendering ─────────────────────────────────────────────────
+
+describe('renderReportForAssistant', () => {
+  const actionable = finding({
+    id: 'node:/App:n1:noodl.byob.QueryData',
+    outcome: 'placeholder',
+    original: 'noodl.byob.QueryData',
+    message: 'Query Data was removed.',
+    location: { component: '/App', nodeId: 'n1', nodeLabel: 'Fetch users' },
+    equivalents: ['DbCollection2'],
+    portChanges: [{ from: 'records', to: 'items' }],
+    recommendation: 'Replace it.'
+  });
+
+  it('omits the block entirely when nothing is actionable', () => {
+    // Absent-means-omitted, so a clean project pays zero prompt bytes.
+    expect(renderReportForAssistant(report([], 40))).toBeUndefined();
+    expect(
+      renderReportForAssistant(report([finding({ id: 'note', outcome: 'converted', occurrences: 3 })], 40))
+    ).toBeUndefined();
+  });
+
+  it('leads with the verdict and names each actionable entry by id', () => {
+    const rendered = renderReportForAssistant(report([actionable], 40))!;
+    expect(rendered).toContain('node:/App:n1:noodl.byob.QueryData');
+    expect(rendered).toContain('DbCollection2');
+    expect(rendered).toContain('records->items');
+    expect(rendered).toContain('repair');
+  });
+
+  it('leaves out entries that converted — an assistant is not asked to act on a note', () => {
+    const rendered = renderReportForAssistant(
+      report([actionable, finding({ id: 'deprecated-note', outcome: 'converted', original: 'Label' })], 40)
+    )!;
+    expect(rendered).not.toContain('deprecated-note');
+  });
+
+  it('caps the list and says how many it left out', () => {
+    const many = Array.from({ length: 40 }, (_, i) =>
+      finding({ id: `f${i}`, outcome: 'placeholder', equivalents: ['Group'] })
+    );
+    const rendered = renderReportForAssistant(report(many, 100))!;
+    expect(rendered).toContain('15 more entries');
+    expect(rendered).toContain('import-report.json');
+  });
+
+  it('carries the hand-off instructions', () => {
+    const rendered = renderReportForAssistant(report([actionable], 40))!;
+    expect(rendered).toContain('authoring loop');
+  });
+});
+
+// ─── The one-line summary ────────────────────────────────────────────────────
+
+describe('reportSummaryLine', () => {
+  it('is quiet on a clean import', () => {
+    expect(reportSummaryLine(report([], 40))).toBe('Imported. Everything converted.');
+  });
+
+  it('mentions rewrites when everything converted but some changed', () => {
+    expect(reportSummaryLine(report([finding({ id: 'a', outcome: 'converted-with-changes' })], 40))).toContain(
+      'rewritten'
+    );
+  });
+
+  it('says plainly that rebuilding is cheaper when it is', () => {
+    const many = Array.from({ length: 8 }, (_, i) => finding({ id: `f${i}`, outcome: 'placeholder' }));
+    expect(reportSummaryLine(report(many, 20, 20))).toContain('rebuilding');
+  });
+
+  it('points at the canvas when repair is the call', () => {
+    expect(reportSummaryLine(report([finding({ id: 'a', outcome: 'placeholder' })], 100, 100))).toContain(
+      'marked as errors on the canvas'
+    );
   });
 });

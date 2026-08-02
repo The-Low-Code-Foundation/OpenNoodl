@@ -26,20 +26,17 @@
 export * from './types';
 export { assess } from './assess';
 export type { AssessInput, AssessResult, LegacyCodePattern } from './assess';
-export { buildReport, renderReportMarkdown, reportSummaryLine } from './report';
+export { buildReport, renderReportMarkdown, renderReportForAssistant, reportSummaryLine } from './report';
 export type { BuildReportInput } from './report';
-export {
-  computeVerdict,
-  tallyOutcomes,
-  findingWeight,
-  REBUILD_MAX_NODES,
-  REBUILD_UNCONVERTED_SHARE
-} from './verdict';
+export { computeVerdict, tallyOutcomes, findingWeight, REBUILD_MAX_NODES, REBUILD_UNCONVERTED_SHARE } from './verdict';
 export type { VerdictInput } from './verdict';
 export { applyLegacyTransforms } from './transforms';
 export type { TransformResult, LiveNode, LiveComponent, LiveProject } from './transforms';
 export { assessImport, writeImportReport } from './importAssessment';
 export type { WriteReportResult } from './importAssessment';
+export { currentImportReport, setImportReportProvider } from './currentReport';
+export type { ImportReportProvider } from './currentReport';
+export { readImportReport, installImportReport } from './loadReport';
 export { defaultCatalogQuery } from './catalogQuery';
 export { reactRemovalPatterns } from './codePatterns';
 export {

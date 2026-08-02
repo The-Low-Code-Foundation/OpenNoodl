@@ -12,8 +12,7 @@
 import type { ProjectModel } from '@noodl-models/projectmodel';
 
 import { HTTP_TYPE } from './constructs';
-import type { ImportReport, LegacyFinding, LegacyImportMarker } from './types';
-import { LEGACY_IMPORT_METADATA_KEY } from './types';
+import { LEGACY_IMPORT_METADATA_KEY, type ImportReport, type LegacyFinding, type LegacyImportMarker } from './types';
 
 /** The subset of a live node the transforms touch. */
 export interface LiveNode {

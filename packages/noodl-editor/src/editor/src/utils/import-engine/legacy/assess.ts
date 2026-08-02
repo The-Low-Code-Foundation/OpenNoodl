@@ -242,14 +242,18 @@ export function assess(input: AssessInput): AssessResult {
             converted: HTTP_TYPE,
             message:
               uncarried.length > 0
-                ? `Converted from REST to HTTP Request. \`${uncarried.join('`, `')}\` has no HTTP Request equivalent and was not carried — check the request still does what you meant.`
+                ? `Converted from REST to HTTP Request. \`${uncarried.join(
+                    '`, `'
+                  )}\` has no HTTP Request equivalent and was not carried — check the request still does what you meant.`
                 : 'Converted from REST to HTTP Request, which is a superset of what this node was doing declaratively.',
             location: locationOf(component, node),
             equivalents: [HTTP_TYPE],
             portChanges: [...REST_TO_HTTP_PORTS],
             recommendation:
               uncarried.length > 0
-                ? `Set the method on the HTTP Request node, or add a header, to restore the \`${uncarried.join('`/`')}\` behaviour.`
+                ? `Set the method on the HTTP Request node, or add a header, to restore the \`${uncarried.join(
+                    '`/`'
+                  )}\` behaviour.`
                 : undefined
           });
         }
@@ -313,8 +317,12 @@ export function assess(input: AssessInput): AssessResult {
       original: type,
       message:
         equivalents.length > 0
-          ? `\`${type}\` is deprecated but still works, so it was imported unchanged. ${entry.count} instance${entry.count === 1 ? '' : 's'}. A current replacement exists.`
-          : `\`${type}\` is deprecated but still works, so it was imported unchanged. ${entry.count} instance${entry.count === 1 ? '' : 's'}. The catalog knows of no replacement.`,
+          ? `\`${type}\` is deprecated but still works, so it was imported unchanged. ${entry.count} instance${
+              entry.count === 1 ? '' : 's'
+            }. A current replacement exists.`
+          : `\`${type}\` is deprecated but still works, so it was imported unchanged. ${entry.count} instance${
+              entry.count === 1 ? '' : 's'
+            }. The catalog knows of no replacement.`,
       occurrences: entry.count,
       sampleLocations: entry.samples,
       equivalents,
