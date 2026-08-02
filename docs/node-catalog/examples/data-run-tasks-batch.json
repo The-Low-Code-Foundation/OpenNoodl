@@ -1,7 +1,7 @@
 {
   "id": "data-run-tasks-batch",
   "title": "Run Tasks: batch-process an array with a worker component",
-  "description": "Run Tasks executes its `taskTemplate` component once per element of `items`, up to `maxRunningTasks` at a time, and fires `done` when the whole batch has finished. The worker is a plain component: it receives the item's properties through Component Inputs and reports completion through Component Outputs signals (success/failure), which Run Tasks consumes to schedule the next task. Here a fresh array is assembled with New Array and processed on click.",
+  "description": "Run Tasks executes its `taskTemplate` component once per element of `items`, up to `maxRunningTasks` at a time, and fires `completed` when the whole batch has finished, whatever the outcome — `done` is the narrower signal that the run finished having done its work. The worker is a plain component: it receives the item's properties through Component Inputs and reports completion through Component Outputs signals (success/failure), which Run Tasks consumes to schedule the next task. Here a fresh array is assembled with New Array and processed on click.",
   "demonstrates": ["RunTasks", "CollectionNew", "Collection2"],
   "components": [
     {
@@ -39,8 +39,8 @@
         { "fromId": "run_btn", "fromProperty": "onClick", "toId": "make_batch", "toProperty": "new" },
         { "fromId": "make_batch", "fromProperty": "id", "toId": "batch_array", "toProperty": "collectionId" },
         { "fromId": "batch_array", "fromProperty": "items", "toId": "import_tasks", "toProperty": "items" },
-        { "fromId": "make_batch", "fromProperty": "created", "toId": "import_tasks", "toProperty": "run" },
-        { "fromId": "import_tasks", "fromProperty": "done", "toId": "done_gate", "toProperty": "eval" },
+        { "fromId": "make_batch", "fromProperty": "done", "toId": "import_tasks", "toProperty": "run" },
+        { "fromId": "import_tasks", "fromProperty": "completed", "toId": "done_gate", "toProperty": "eval" },
         { "fromId": "done_gate", "fromProperty": "result", "toId": "done_text", "toProperty": "visible" }
       ]
     },

@@ -44,7 +44,7 @@
         { "fromId": "name_input", "fromProperty": "onTextChanged", "toId": "draft", "toProperty": "value" },
         { "fromId": "save_button", "fromProperty": "onClick", "toId": "draft", "toProperty": "saveValue" },
         { "fromId": "draft", "fromProperty": "savedValue", "toId": "store_name", "toProperty": "value" },
-        { "fromId": "draft", "fromProperty": "stored", "toId": "store_name", "toProperty": "do" }
+        { "fromId": "draft", "fromProperty": "done", "toId": "store_name", "toProperty": "do" }
       ]
     },
     {

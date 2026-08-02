@@ -20,6 +20,22 @@
  * The two wedges are the sharper class: an author pressing their own `Abort` button, or ticking
  * the node's own `Stop On Failure` option, is not doing anything wrong — and either one killed
  * the node for the life of the page.
+ *
+ * ---
+ *
+ * ⚠️ **ERG-001 renamed two of this node's ports, and the rows below are the record of it.**
+ * `done` became `completed` and `success` became `done`, in that order — the reverse collides
+ * `success` onto a `done` that still exists. Every `['success', 'done']` here is now
+ * `['done', 'completed']`; every `['failure', 'done']` is `['failure', 'completed']`.
+ *
+ * Three rows changed by more than a rename, and each is a contract repair rather than a
+ * relabelling:
+ *
+ * - **RT-1** — `Abort` with nothing in flight emitted *nothing*. It now reports `Unchanged`,
+ *   and a second row records what an *honoured* abort reports.
+ * - **RT-2** — `aborted` now precedes the outcome, because the outcome is the last thing an
+ *   action does.
+ * - **RT-3's third row** — a `Do` landing mid-run emitted nothing. It now reports `Unchanged`.
  */
 
 /* eslint-env jest */
@@ -143,16 +159,47 @@ describe('RT-1 — Abort with nothing in flight', () => {
     await graph.settle(8);
 
     expect(stateOf(graph)).toBe('idle');
-    // Nothing was running, so nothing ended: an `Aborted` here would report on a run that
-    // never began.
-    expect(graph.signalsFor('runner')).toEqual([]);
+    // Nothing was running, so nothing ended — and still no `Aborted`, which would report on a
+    // run that never began.
+    //
+    // ⚠️ ERG-001 changed this row from `[]`. `Abort` is this node's second action port and it
+    // emitted nothing on this path, which is the contract's headline dead-chain class: an
+    // author who wired "when the Abort has been handled, re-enable the button" got no pulse
+    // precisely when there was nothing to abort. `Unchanged` is what that branch means — the
+    // action was valid and the post-condition already held.
+    expect(graph.signalsFor('runner')).toEqual(['unchanged', 'completed']);
 
     graph.node<StarterInstance>('starter').start();
     await graph.settle(10);
 
-    // Before the fix: `state=aborted`, signals still `[]`. The node was dead for the life of
-    // the page, having reported nothing.
-    expect(graph.signalsFor('runner')).toEqual(['success', 'done']);
+    // Before the NDA-012 fix: `state=aborted`, signals still `[]`. The node was dead for the
+    // life of the page, having reported nothing.
+    expect(graph.signalsFor('runner')).toEqual(['unchanged', 'completed', 'done', 'completed']);
+    expect(stateOf(graph)).toBe('idle');
+  });
+
+  it('and an Abort that is honoured reports Done, for its own invocation', async () => {
+    const graph = await buildGraph({ items: [{ id: 'a' }, { id: 'b' }], parameters: { maxRunningTasks: 1 } });
+    await graph.settle(3);
+
+    // Abort while the run is genuinely under way. The run ends on the next `checkDone`, and
+    // *two* invocations settle at that moment: the `Do` that started the run, and the `Abort`
+    // that stopped it.
+    graph.node<StarterInstance>('starter').start();
+    await graph.settle(1);
+    graph.node<StarterInstance>('starter').abort();
+    await graph.settle(12);
+
+    // ⚠️ The design decision, recorded as a row rather than as prose. An author-requested abort
+    // is **not** a `Failure`: the run did its work and stopped when it was told to, which is the
+    // graph doing exactly what it was asked. Folding it into `Failure` is the collapse Rule 1
+    // exists to stop. `Aborted` is what distinguishes it from an ordinary completion, and it
+    // fires first so a graph reading it has it when the outcome lands.
+    //
+    // ⚠️ `Completed` therefore appears **twice** — once for `Do`'s token, once for `Abort`'s.
+    // Two action ports were invoked, so that is two invocations, and "exactly one outcome" is
+    // per invocation.
+    expect(graph.signalsFor('runner')).toEqual(['aborted', 'done', 'completed', 'done', 'completed']);
     expect(stateOf(graph)).toBe('idle');
   });
 });
@@ -169,9 +216,15 @@ describe('RT-2 — Stop On Failure', () => {
     graph.node<StarterInstance>('starter').start();
     await graph.settle(12);
 
-    // `done` is the addition. `failure` and `aborted` were already sent — but without returning
-    // to idle, so the node's own option disabled it after the first failure.
-    expect(graph.signalsFor('runner')).toEqual(['failure', 'aborted', 'done']);
+    // The completion signal is the NDA-012 addition. `failure` and `aborted` were already sent
+    // — but without returning to idle, so the node's own option disabled it after the first
+    // failure.
+    //
+    // ⚠️ ERG-001 reordered this: `aborted` now comes *first*. The outcome is the last thing an
+    // action does, so that a graph reading "how did it end" already has the answer when the
+    // pulse lands. This is not an author-requested abort — the option caught a failure — so
+    // the outcome stays `Failure`.
+    expect(graph.signalsFor('runner')).toEqual(['aborted', 'failure', 'completed']);
     expect(stateOf(graph)).toBe('idle');
   });
 
@@ -189,7 +242,14 @@ describe('RT-2 — Stop On Failure', () => {
     await graph.settle(12);
 
     // Before the fix the second run produced nothing at all — the whole point of the row.
-    expect(graph.signalsFor('runner')).toEqual(['failure', 'aborted', 'done', 'failure', 'aborted', 'done']);
+    expect(graph.signalsFor('runner')).toEqual([
+      'aborted',
+      'failure',
+      'completed',
+      'aborted',
+      'failure',
+      'completed'
+    ]);
     expect(stateOf(graph)).toBe('idle');
   });
 });
@@ -204,7 +264,7 @@ describe('RT-3 — a run that could never start says so at runtime', () => {
 
     // B2: measured before as `signals=[], errors=[]` — in a deployed app the node did nothing
     // and told nobody, because `editorConnection.sendWarning` was the only report.
-    expect(graph.signalsFor('runner')).toEqual(['failure', 'done']);
+    expect(graph.signalsFor('runner')).toEqual(['failure', 'completed']);
     expect(graph.errors.map((e) => e.code)).toEqual(['run-tasks/no-template']);
   });
 
@@ -222,29 +282,43 @@ describe('RT-3 — a run that could never start says so at runtime', () => {
     // measured `state=running`, no signals, no errors, for ever. The node's own comment on
     // `startTask` names the principle — a hang is the worst available outcome, because it is
     // the only one downstream cannot react to.
-    expect(graph.signalsFor('runner')).toEqual(['failure', 'done']);
+    expect(graph.signalsFor('runner')).toEqual(['failure', 'completed']);
     expect(graph.errors.map((e) => e.code)).toEqual(['run-tasks/invalid-concurrency']);
     expect(stateOf(graph)).toBe('idle');
   });
 
-  it('control: a Do while a run is genuinely in progress is reported but sends no signal', async () => {
+  it('a Do while a run is genuinely in progress reports Unchanged rather than nothing', async () => {
     const graph = await buildGraph({ items: [{ id: 'a' }, { id: 'b' }], parameters: { maxRunningTasks: 1 } });
     await graph.settle(3);
 
     // Two pulses in the same settle window; the second finds the first still running.
+    //
+    // ⚠️ They do **not** coalesce, despite `scheduleRun`'s `hasScheduledRun` guard, because
+    // `sendSignalOnOutput` flushes the scheduled operation before the second pulse is sent.
+    // Measured, after a session predicted the opposite from reading the guard: the received
+    // order is `unchanged` *first*, which is only possible if the second `Do` reached `run()`
+    // as a separate call and found `state === 'running'`.
     graph.node<StarterInstance>('starter').start();
     graph.node<StarterInstance>('starter').start();
     await graph.settle(12);
 
     // ⚠️ Deliberately *not* a `failure`. The first run has not failed and will send its own
     // completion; reporting failure here would describe a run that is fine.
-    expect(graph.signalsFor('runner')).not.toContain('failure');
+    //
+    // ⚠️ ERG-001 — before this pass the branch emitted **nothing at all**: the last silent path
+    // out of an action on this node, and the contract's headline dead-chain class. `Unchanged`
+    // is what it means — the action was valid and the post-condition ("a run is in progress")
+    // already held. The error-bus raise stays alongside it, because a `Do` that starts no run is
+    // still usually a sequencing mistake worth seeing in a deployed app; the difference is that
+    // an author can now see it on the canvas too.
+    expect(graph.signalsFor('runner')).toEqual(['unchanged', 'completed', 'done', 'completed']);
+    expect(graph.errors.map((e) => e.code)).toEqual(['run-tasks/already-running']);
     expect(stateOf(graph)).toBe('idle');
   });
 });
 
 describe('RT-4 — an empty Items list is a completed run', () => {
-  it('sends Done as well as Success', async () => {
+  it('sends the completion signals, and the outcome is Done', async () => {
     const graph = await buildGraph({ items: [] });
     await graph.settle(3);
 
@@ -252,9 +326,15 @@ describe('RT-4 — an empty Items list is a completed run', () => {
     await graph.settle(8);
 
     // The empty list is the *common* case — a query that matched nothing hands this node `[]`.
-    // Before the fix `done` never fired, so a graph wired "when Done, do the next thing"
-    // stopped dead precisely when there was no work to do.
-    expect(graph.signalsFor('runner')).toEqual(['success', 'done']);
+    // Before the NDA-012 fix the completion signal never fired, so a graph wired "when Done, do
+    // the next thing" stopped dead precisely when there was no work to do.
+    //
+    // ⚠️ ERG-001 — **`Done`, never `Unchanged`**, and this row is the guard on that. The
+    // contract's wording ("the post-condition already held") invites the `Unchanged` reading
+    // and it is wrong here: an empty list is a run that completed, not a run that found nothing
+    // to change. `For Each`'s and `Pattern Extractor`'s exemptions are recorded for this exact
+    // shape, and taking the other reading would silently re-open the defect §B3 closed.
+    expect(graph.signalsFor('runner')).toEqual(['done', 'completed']);
     expect(stateOf(graph)).toBe('idle');
   });
 });
@@ -266,7 +346,7 @@ describe('RT-5 — G1, null on Items clears rather than abstaining', () => {
 
     graph.node<StarterInstance>('starter').start();
     await graph.settle(10);
-    expect(graph.signalsFor('runner')).toEqual(['success', 'done']);
+    expect(graph.signalsFor('runner')).toEqual(['done', 'completed']);
 
     // The source clears. `undefined` never crosses a connection (`node.ts:635` drops it in
     // `sendValue`), so `null` is the reachable spelling of "there is nothing to run".
@@ -278,7 +358,7 @@ describe('RT-5 — G1, null on Items clears rather than abstaining', () => {
 
     // Before the fix the setter returned on any falsy value, so `_internal.items` still held
     // the old array and this second Do silently re-ran both tasks.
-    expect(graph.signalsFor('runner')).toEqual(['success', 'done', 'failure', 'done']);
+    expect(graph.signalsFor('runner')).toEqual(['done', 'completed', 'failure', 'completed']);
     expect(graph.errors.map((e) => e.code)).toEqual(['run-tasks/no-items']);
   });
 
@@ -294,7 +374,7 @@ describe('RT-5 — G1, null on Items clears rather than abstaining', () => {
     graph.node<StarterInstance>('starter').start();
     await graph.settle(8);
 
-    expect(graph.signalsFor('runner')).toEqual(['success', 'done']);
+    expect(graph.signalsFor('runner')).toEqual(['done', 'completed']);
     expect(graph.errors).toEqual([]);
   });
 });

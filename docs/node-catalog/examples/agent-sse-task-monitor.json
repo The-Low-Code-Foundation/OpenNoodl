@@ -70,7 +70,7 @@
         { "fromId": "task_stream", "fromProperty": "raw", "toId": "progress_extractor", "toProperty": "text" },
         { "fromId": "task_stream", "fromProperty": "onMessage", "toId": "progress_extractor", "toProperty": "extract" },
         { "fromId": "progress_extractor", "fromProperty": "firstGroup", "toId": "progress_number", "toProperty": "value" },
-        { "fromId": "progress_number", "fromProperty": "stored", "toId": "progress_bar", "toProperty": "width" },
+        { "fromId": "progress_number", "fromProperty": "savedValue", "toId": "progress_bar", "toProperty": "width" },
 
         { "fromId": "task_stream", "fromProperty": "raw", "toId": "log_parser", "toProperty": "chunk" },
         { "fromId": "task_stream", "fromProperty": "onMessage", "toId": "log_parser", "toProperty": "parse" },

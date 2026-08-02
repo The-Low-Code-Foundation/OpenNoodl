@@ -25834,7 +25834,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Stops starting new tasks and ends the run once those already running finish; does nothing when no run is in progress"
+          "description": "Stops starting new tasks and ends the run once those already running finish; reports Unchanged when no run is in progress"
         },
         {
           "name": "items",
@@ -25869,7 +25869,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Starts a run over Items; ignored while a run is already in progress"
+          "description": "Starts a run over Items; a Do while a run is already in progress reports Unchanged rather than queueing"
         },
         {
           "name": "stopOnFailure",
@@ -25960,6 +25960,17 @@
           "description": "Fires when a run ended early, either from Abort or because Stop On Failure caught a failure"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "done",
           "displayName": "Done",
           "group": "Events",
@@ -25968,7 +25979,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when the run has ended, whether it succeeded, failed or was aborted"
+          "description": "Fires when the run ended having done its work: every task completed without failing, the Items list was empty, or an Abort was honoured — Aborted fires alongside it when the run ended early"
         },
         {
           "name": "failure",
@@ -25982,29 +25993,28 @@
           "description": "Fires when at least one task failed, or when the run could not start at all; which item failed is reported on the error channel"
         },
         {
-          "name": "success",
-          "displayName": "Success",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when every task completed without failing, including when Items was empty"
+          "description": "Fires when there was nothing to do: a Do while a run is already in progress, or an Abort with no run in progress"
         }
       ],
       "dynamicPorts": null,
       "parameterEncoding": null,
       "enrichment": {
         "typeName": "RunTasks",
-        "summary": "Run Tasks: executes a worker component once per array element with bounded concurrency, firing done/failure when the batch completes.",
-        "description": "Run Tasks is batch processing without visuals: for each element of `items` it instantiates `taskTemplate` (a component, not rendered), feeds the element's properties to the worker's Component Inputs, and waits for the worker to signal success or failure through its Component Outputs before scheduling the next, keeping at most `maxRunningTasks` in flight. `done` fires when every task finished; `stopOnFailure` aborts the rest after the first failure, and `abort` cancels mid-batch.",
+        "summary": "Run Tasks: runs a worker component once per array element with bounded concurrency, reporting an outcome and completed when the batch ends.",
+        "description": "Run Tasks is batch processing without visuals: for each element of `items` it instantiates `taskTemplate` (a component, not rendered), feeds the element's properties to the worker's Component Inputs, and waits for the worker to signal success or failure through its Component Outputs before scheduling the next, keeping at most `maxRunningTasks` in flight. `stopOnFailure` abandons the rest after the first failure, and `abort` stops the batch mid-run. Both `run` and `abort` are actions and each reports its own outcome: `done` when the run ended having done its work — including an empty `items` list, which is a completed run and not a no-op — `unchanged` for a `run` that arrives while a run is already in progress or an `abort` with nothing to abort, and `failure` when a task failed or the run could not start. `completed` fires after every one of those. `aborted` fires alongside the outcome whenever a run ended early, which is what distinguishes an honoured `abort` (reported `done`, because stopping when told to is the graph working) from an ordinary completion.",
         "whenToUse": "Sequenced bulk work: importing rows, uploading a list of files, migrating records. For rendering a list use the Repeater; for one async action a Function node suffices.",
         "ports": {
           "run": "Signal; starts the batch over the current `items`.",
           "taskTemplate": "The worker component; it must expose success/failure signal Component Outputs for scheduling to advance.",
-          "maxRunningTasks": "Concurrency ceiling; 1 gives strict sequential processing.",
-          "done": "Signal; the whole batch finished (respecting stopOnFailure)."
+          "maxRunningTasks": "Concurrency ceiling; 1 gives strict sequential processing."
         },
         "examples": [
           "data-run-tasks-batch"
@@ -55474,7 +55484,7 @@
             },
             {
               "fromId": "progress_number",
-              "fromProperty": "stored",
+              "fromProperty": "savedValue",
               "toId": "progress_bar",
               "toProperty": "width"
             },
@@ -57828,7 +57838,7 @@
     {
       "id": "data-run-tasks-batch",
       "title": "Run Tasks: batch-process an array with a worker component",
-      "description": "Run Tasks executes its `taskTemplate` component once per element of `items`, up to `maxRunningTasks` at a time, and fires `done` when the whole batch has finished. The worker is a plain component: it receives the item's properties through Component Inputs and reports completion through Component Outputs signals (success/failure), which Run Tasks consumes to schedule the next task. Here a fresh array is assembled with New Array and processed on click.",
+      "description": "Run Tasks executes its `taskTemplate` component once per element of `items`, up to `maxRunningTasks` at a time, and fires `completed` when the whole batch has finished, whatever the outcome — `done` is the narrower signal that the run finished having done its work. The worker is a plain component: it receives the item's properties through Component Inputs and reports completion through Component Outputs signals (success/failure), which Run Tasks consumes to schedule the next task. Here a fresh array is assembled with New Array and processed on click.",
       "demonstrates": [
         "RunTasks",
         "CollectionNew",
@@ -57918,13 +57928,13 @@
             },
             {
               "fromId": "make_batch",
-              "fromProperty": "created",
+              "fromProperty": "done",
               "toId": "import_tasks",
               "toProperty": "run"
             },
             {
               "fromId": "import_tasks",
-              "fromProperty": "done",
+              "fromProperty": "completed",
               "toId": "done_gate",
               "toProperty": "eval"
             },
@@ -60969,7 +60979,7 @@
             },
             {
               "fromId": "draft",
-              "fromProperty": "stored",
+              "fromProperty": "done",
               "toId": "store_name",
               "toProperty": "do"
             }

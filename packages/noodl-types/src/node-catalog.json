@@ -23934,7 +23934,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Stops starting new tasks and ends the run once those already running finish; does nothing when no run is in progress"
+          "description": "Stops starting new tasks and ends the run once those already running finish; reports Unchanged when no run is in progress"
         },
         {
           "name": "items",
@@ -23969,7 +23969,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Starts a run over Items; ignored while a run is already in progress"
+          "description": "Starts a run over Items; a Do while a run is already in progress reports Unchanged rather than queueing"
         },
         {
           "name": "stopOnFailure",
@@ -24060,6 +24060,17 @@
           "description": "Fires when a run ended early, either from Abort or because Stop On Failure caught a failure"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "done",
           "displayName": "Done",
           "group": "Events",
@@ -24068,7 +24079,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when the run has ended, whether it succeeded, failed or was aborted"
+          "description": "Fires when the run ended having done its work: every task completed without failing, the Items list was empty, or an Abort was honoured — Aborted fires alongside it when the run ended early"
         },
         {
           "name": "failure",
@@ -24082,15 +24093,15 @@
           "description": "Fires when at least one task failed, or when the run could not start at all; which item failed is reported on the error channel"
         },
         {
-          "name": "success",
-          "displayName": "Success",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when every task completed without failing, including when Items was empty"
+          "description": "Fires when there was nothing to do: a Do while a run is already in progress, or an Abort with no run in progress"
         }
       ],
       "dynamicPorts": null,

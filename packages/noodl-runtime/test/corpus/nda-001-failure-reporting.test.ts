@@ -112,7 +112,7 @@ describe('NDA-001 F1: Run Tasks and a template that does not spell Success', () 
   test('F1 (pinned control): a template whose output is named Success completes the run', async () => {
     const graph = await runTasksWithTemplateOutput('Success');
 
-    expect(graph.signalsFor('runner')).toEqual(['success', 'done']);
+    expect(graph.signalsFor('runner')).toEqual(['done', 'completed']);
   });
 
   // ✅ Green since NDA-004 §1: `startTask` checks the template for a completion port the
@@ -139,6 +139,6 @@ describe('NDA-001 F1: Run Tasks and a template that does not spell Success', () 
 
     // `failure` then `done`: an author who wired either one gets to react. A hang is the one
     // outcome downstream cannot respond to at all.
-    expect(graph.signalsFor('runner')).toEqual(['failure', 'done']);
+    expect(graph.signalsFor('runner')).toEqual(['failure', 'completed']);
   });
 });

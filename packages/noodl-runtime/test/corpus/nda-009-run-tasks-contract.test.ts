@@ -193,7 +193,7 @@ describe('NDA-009 §2: the template contract is configuration, not three literal
       template: { startPort: 'Begin', completionPort: 'Finished' }
     });
 
-    expect(graph.signalsFor('runner')).toEqual(['success', 'done']);
+    expect(graph.signalsFor('runner')).toEqual(['done', 'completed']);
     expect(graph.errors).toEqual([]);
   });
 
@@ -207,7 +207,14 @@ describe('NDA-009 §2: the template contract is configuration, not three literal
       template: { startPort: 'Begin', completionPort: 'Finished' }
     });
 
-    expect(graph.signalsFor('runner')).not.toContain('success');
+    // ⚠️ This assertion used to read `not.toContain('success')`, and ERG-001's rename would have
+    // left it **vacuously true** — the node has no `success` port any more, so the check would
+    // pass whatever the node did. A control that cannot fail is the "a sweep returning zero
+    // looks the same clean or broken" shape, so it is restated positively as well as negatively:
+    // the run must end in `Failure`, and must not report the successful outcome under its new
+    // name either.
+    expect(graph.signalsFor('runner')).toEqual(['failure', 'completed']);
+    expect(graph.signalsFor('runner')).not.toContain('done');
     expect(graph.errors.map((e) => e.code)).toContain('run-tasks/no-completion-output');
   });
 
@@ -219,7 +226,7 @@ describe('NDA-009 §2: the template contract is configuration, not three literal
   test('K3: an unconfigured node still matches Do/Success/Failure', async () => {
     const graph = await runTasks({ template: { startPort: 'Do', completionPort: 'Success' } });
 
-    expect(graph.signalsFor('runner')).toEqual(['success', 'done']);
+    expect(graph.signalsFor('runner')).toEqual(['done', 'completed']);
   });
 
   /**
@@ -234,7 +241,7 @@ describe('NDA-009 §2: the template contract is configuration, not three literal
       template: { startPort: 'Do', completionPort: 'Success' }
     });
 
-    expect(graph.signalsFor('runner')).toEqual(['success', 'done']);
+    expect(graph.signalsFor('runner')).toEqual(['done', 'completed']);
   });
 
   /**
@@ -251,7 +258,7 @@ describe('NDA-009 §2: the template contract is configuration, not three literal
 
     // One completion for one item — a double-pulse shows up here as `success` twice, or as a
     // count mismatch that leaves the run hung.
-    expect(graph.signalsFor('runner')).toEqual(['success', 'done']);
+    expect(graph.signalsFor('runner')).toEqual(['done', 'completed']);
   });
 
   /**
@@ -372,7 +379,7 @@ describe('NDA-009 §3: which task failed, and why', () => {
       template: { startPort: 'Do', completionPort: 'Success' }
     });
 
-    expect(graph.signalsFor('runner')).toEqual(['success', 'done']);
+    expect(graph.signalsFor('runner')).toEqual(['done', 'completed']);
     expect(graph.errors.map((e) => e.code)).not.toContain('run-tasks/task-failed');
   });
 });

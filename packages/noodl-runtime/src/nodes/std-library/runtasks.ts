@@ -7,7 +7,10 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  NodeOutcome,
+  OutcomeFailureOptions,
+  OutcomeToken
 } from '@noodl/types';
 
 import {
@@ -16,6 +19,8 @@ import {
   resolveTemplateContract,
   type ResolvedTemplateContract
 } from './runtasks-template-contract';
+
+import { outcomeOutputs, reportOutcomes } from '../../outcome';
 
 import type { RuntimeNode } from '../../internal';
 
@@ -81,6 +86,32 @@ interface RunTasksNodeInstance extends NodeInstance {
     runningTasks?: number;
     hasScheduledRun?: boolean;
     hasScheduledAbort?: boolean;
+    /**
+     * ERG-001 — the invocations in flight, in four buckets rather than one.
+     *
+     * The split is what makes Rule 1 hold across a node whose action resolves several frames
+     * later. A `Do` is *pending* until `run()` decides what to do with it, and *owned by the
+     * run* from the moment a run starts until that run ends — so a second `Do` arriving
+     * mid-flight lands in a fresh `pendingRunOutcomes` and is settled `Unchanged` on its own,
+     * rather than being handed the first run's answer several seconds later. That is exactly
+     * the drain-before-the-async-work rule `outcome.ts`'s {@link reportOutcomes} states.
+     *
+     * Arrays, not single tokens, because {@link scheduleRun}'s `hasScheduledRun` guard can drop
+     * a `Do` in an update pass that already has one scheduled — and coalescing the *work* must
+     * never coalesce the *outcomes*: two pulses are two invocations and each is owed a
+     * `Completed`. ⚠️ Measured caveat, so nobody re-derives it from the guard as this session
+     * first did: two pulses sent back to back through `sendSignalOnOutput` do **not** coalesce,
+     * because the send flushes the scheduled operation before the second pulse arrives. The
+     * array is therefore the correct shape for a guard that exists rather than a path any
+     * corpus row currently reaches — see the RT-3 row that measures it.
+     */
+    pendingRunOutcomes: OutcomeToken[];
+    /** `Do` invocations the run currently in flight belongs to. Settled by {@link _endRun}. */
+    runOutcomes: OutcomeToken[];
+    /** `Abort` invocations no `abort()` call has resolved yet. */
+    pendingAbortOutcomes: OutcomeToken[];
+    /** An `Abort` accepted but not yet honoured, waiting for a task in flight to finish. */
+    abortOutcomes: OutcomeToken[];
     /** §2 — the configured port names. See {@link RunTasksNodeInstance._contract}. */
     startInput?: string;
     successOutput?: string;
@@ -100,7 +131,9 @@ interface RunTasksNodeInstance extends NodeInstance {
   /** Ends a run that provably cannot finish, reporting `code` on the runtime error channel. */
   endRunAsFailed(code: string, message: string, detail?: unknown): void;
   /** Reports a `Do` that could not start a run at all — see the method's own note. */
-  _failToStart(code: string, message: string, detail?: unknown): void;
+  _failToStart(tokens: OutcomeToken[], code: string, message: string, detail?: unknown): void;
+  /** ERG-001 — settles every invocation the ending run owns. The one exit from `running`. */
+  _endRun(outcome: NodeOutcome, options?: OutcomeFailureOptions): void;
   run(): Promise<void>;
   abort(): void;
   itemOutputSignalTriggered(name: string, model: ModelLike, itemNode: TaskNode): void;
@@ -125,6 +158,10 @@ const RunTasksDefinition: NodeDefinitionOptions = {
     this._internal.state = 'idle';
     this._internal.maxRunningTasks = 10;
     this._internal.activeTasks = new Map(); //id => ComponentInstanceNode
+    this._internal.pendingRunOutcomes = [];
+    this._internal.runOutcomes = [];
+    this._internal.pendingAbortOutcomes = [];
+    this._internal.abortOutcomes = [];
   },
   inputs: {
     items: {
@@ -244,8 +281,12 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'Do',
       type: 'signal',
-      description: 'Starts a run over Items; ignored while a run is already in progress',
+      description: 'Starts a run over Items; a Do while a run is already in progress reports Unchanged rather than queueing',
       valueChangedToTrue: function (this: RunTasksNodeInstance) {
+        // ERG-001 — the token is minted *here*, at the pulse, not in `run()`. `scheduleRun`
+        // drops every `Do` after the first in one update pass, and that guard must not swallow
+        // an invocation's outcome along with its work.
+        this._internal.pendingRunOutcomes.push(this.beginOutcome());
         this.scheduleRun();
       }
     },
@@ -253,37 +294,53 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       group: 'General',
       displayName: 'Abort',
       type: 'signal',
-      description: 'Stops starting new tasks and ends the run once those already running finish; does nothing when no run is in progress',
+      description: 'Stops starting new tasks and ends the run once those already running finish; reports Unchanged when no run is in progress',
       valueChangedToTrue: function (this: RunTasksNodeInstance) {
+        this._internal.pendingAbortOutcomes.push(this.beginOutcome());
         this.scheduleAbort();
       }
     }
   },
   outputs: {
-    success: {
-      type: 'signal',
-      group: 'Events',
-      displayName: 'Success',
-      description: 'Fires when every task completed without failing, including when Items was empty'
-    },
-    failure: {
-      type: 'signal',
-      group: 'Events',
-      displayName: 'Failure',
-      description: 'Fires when at least one task failed, or when the run could not start at all; which item failed is reported on the error channel'
-    },
-    done: {
-      type: 'signal',
-      group: 'Events',
-      displayName: 'Done',
-      description: 'Fires when the run has ended, whether it succeeded, failed or was aborted'
-    },
+    /**
+     * Kept, and deliberately **not** folded into the outcome ports.
+     *
+     * `Aborted` says *how* a run ended, which is orthogonal to whether the invocation
+     * succeeded: an author-requested abort is `Done` (the run ran, did work, and stopped when
+     * it was told to), and folding it into `Failure` is precisely the collapse Rule 1 exists
+     * to stop. This is the port that tells the two apart, and it fires **before** the outcome
+     * so a graph reading it already has it when the pulse lands.
+     */
     aborted: {
       type: 'signal',
       group: 'Events',
       displayName: 'Aborted',
       description: 'Fires when a run ended early, either from Abort or because Stop On Failure caught a failure'
-    }
+    },
+
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001. Two actions — `Do` and `Abort` — share one port set, because an outcome
+    // describes an *invocation* and which input it came from is already visible on the canvas
+    // as the wire that fired.
+    //
+    // ⚠️ **This is the phase's one two-step rename, and the order was load-bearing**: the old
+    // `done` became `completed` *first*, and only then did `success` become `done`. The other
+    // order collides `success` onto a `done` that still exists. The old `done`'s own
+    // description already read "whether it succeeded, failed or was aborted" — it was
+    // `Completed` under another name, on every one of the node's terminal paths.
+    ...outcomeOutputs({
+      done:
+        'Fires when the run ended having done its work: every task completed without failing, ' +
+        'the Items list was empty, or an Abort was honoured — Aborted fires alongside it when ' +
+        'the run ended early',
+      unchanged:
+        'Fires when there was nothing to do: a Do while a run is already in progress, or an ' +
+        'Abort with no run in progress',
+      failure:
+        'Fires when at least one task failed, or when the run could not start at all; which ' +
+        'item failed is reported on the error channel'
+    })
   },
   methods: {
     scheduleRun(this: RunTasksNodeInstance) {
@@ -444,12 +501,45 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       const internal = this._internal;
       if (internal.state === 'idle') return;
 
+      // ⚠️ Raised here rather than through `reportOutcome`'s `code`/`message`, and the
+      // difference is not stylistic: `_endRun` raises once *per token*, so a run whose token
+      // list is empty for any reason would end with no diagnostic at all. NDA-012 §B2's whole
+      // repair on this node was "a deployed app is told", and that must not become conditional
+      // on how the invocation was wired. `raise: false` below suppresses the duplicate.
       this.raiseRuntimeError(code, message, detail);
 
       internal.queuedTasks = [];
       internal.state = 'idle';
-      this.sendSignalOnOutput('failure');
-      this.sendSignalOnOutput('done');
+      this._endRun('failure', { raise: false });
+    },
+    /**
+     * ERG-001 — settle every invocation the ending run owns, and only here.
+     *
+     * A run has up to two kinds of caller waiting on it: the `Do` pulses that started it, and
+     * an `Abort` that asked it to stop. Both are settled together because both are answered by
+     * the same event — the run ending — and routing them through one method is what stops the
+     * six terminal paths below each remembering the abort case for themselves. (Phase 30's
+     * clearest structural finding is that a rule implemented per call site diverges; this node
+     * has six.)
+     *
+     * ⚠️ **An `Abort` is `Done` however the run ended**, including when it ended by failing.
+     * What `Abort` asked for is "stop running", and that has happened. The run's own failure is
+     * the run's, and it is reported on the run's tokens.
+     *
+     * ⚠️ **`Completed` therefore fires twice for one honoured abort** — once for `Do`'s token,
+     * once for `Abort`'s. That is two invocations of two different action ports, so it is
+     * correct rather than a duplicate; the contract's "exactly one" is per invocation.
+     */
+    _endRun(this: RunTasksNodeInstance, outcome: NodeOutcome, options?: OutcomeFailureOptions) {
+      const internal = this._internal;
+
+      const runTokens = internal.runOutcomes;
+      const abortTokens = internal.abortOutcomes;
+      internal.runOutcomes = [];
+      internal.abortOutcomes = [];
+
+      reportOutcomes(this, runTokens, outcome, options);
+      reportOutcomes(this, abortTokens, 'done');
     },
     /**
      * NDA-012 §B2 — a `Do` that cannot start a run says so **at runtime**, not only in the editor.
@@ -462,13 +552,21 @@ const RunTasksDefinition: NodeDefinitionOptions = {
      * Separate from {@link endRunAsFailed} because that one guards on `state === 'idle'` — it
      * exists to end a run already in progress, and every case here is one that never started.
      */
-    _failToStart(this: RunTasksNodeInstance, code: string, message: string, detail?: unknown) {
+    _failToStart(this: RunTasksNodeInstance, tokens: OutcomeToken[], code: string, message: string, detail?: unknown) {
+      // Raised outside the token loop for the reason `endRunAsFailed` states: the diagnostic is
+      // owed to a deployed app whatever the token count, and `raise: false` drops the duplicate.
       this.raiseRuntimeError(code, message, detail);
-      this.sendSignalOnOutput('failure');
-      this.sendSignalOnOutput('done');
+      reportOutcomes(this, tokens, 'failure', { raise: false });
     },
     async run(this: RunTasksNodeInstance) {
       const internal = this._internal;
+
+      // ERG-001 — drained *before* anything can go asynchronous. A `Do` that arrives while the
+      // run this call is about to start is still in flight must land in a fresh array and get
+      // its own `Unchanged` immediately, not be settled several seconds later by an answer
+      // about a different invocation.
+      const tokens = internal.pendingRunOutcomes;
+      internal.pendingRunOutcomes = [];
 
       if (this.context.editorConnection) {
         if (internal.state !== 'idle') {
@@ -490,26 +588,34 @@ const RunTasksDefinition: NodeDefinitionOptions = {
 
       // NDA-012 §B2. Each of these used to `return` silently after an editor-only warning.
       //
-      // ⚠️ The "already running" case is deliberately **not** a `failure` signal: the first run
-      // is still in flight and will send its own completion, and firing `failure` here would
-      // report on a run that has not failed. It is raised on the error bus so a deployed app
-      // can see it, which is the half that was missing.
+      // ⚠️ The "already running" case is deliberately **not** a `failure`: the first run is
+      // still in flight and will send its own completion, and reporting failure here would
+      // describe a run that is fine.
+      //
+      // ERG-001 closed the other half. This branch used to emit *nothing at all* — the last
+      // silent path out of an action on this node, and the contract's headline dead-chain
+      // class. `Unchanged` is the honest reading: the action was valid and the post-condition
+      // an author asked for ("a run is in progress") already held. The error-bus raise stays
+      // because a `Do` that does not start a run is still usually a sequencing mistake worth
+      // seeing in a deployed app; `Unchanged` makes it visible on the canvas as well.
       if (internal.state !== 'idle') {
         this.raiseRuntimeError(
           'run-tasks/already-running',
           'Do was triggered while a run was still in progress, so it was ignored',
           { template: internal.template }
         );
+        reportOutcomes(this, tokens, 'unchanged');
         return;
       }
 
       if (!internal.template) {
-        this._failToStart('run-tasks/no-template', 'No task template is selected, so there is nothing to run');
+        this._failToStart(tokens, 'run-tasks/no-template', 'No task template is selected, so there is nothing to run');
         return;
       }
 
       if (!internal.items) {
         this._failToStart(
+          tokens,
           'run-tasks/no-items',
           'No Items list was provided, so there is nothing to run — an empty list is a completed run, but an absent one is a wiring mistake'
         );
@@ -521,6 +627,7 @@ const RunTasksDefinition: NodeDefinitionOptions = {
       // available outcome, because it is the only one downstream cannot react to.
       if (!(internal.maxRunningTasks >= 1)) {
         this._failToStart(
+          tokens,
           'run-tasks/invalid-concurrency',
           'Max Running Tasks is ' + internal.maxRunningTasks + ', so no task could ever start',
           { maxRunningTasks: internal.maxRunningTasks }
@@ -528,6 +635,9 @@ const RunTasksDefinition: NodeDefinitionOptions = {
         return;
       }
 
+      // From here the run exists, so its invocations belong to the run rather than to this
+      // call, and every exit below goes through `_endRun`.
+      internal.runOutcomes = tokens;
       internal.state = 'running';
       internal.numTasks = internal.items.length;
       internal.failedTasks = 0;
@@ -541,14 +651,18 @@ const RunTasksDefinition: NodeDefinitionOptions = {
 
       // No tasks
       //
-      // NDA-012 §B3 — `Done` fires here too. It did not, and an empty list is the *common*
-      // case, not an edge one: a query that matched nothing hands this node `[]`. An author
-      // who wired "when the run is Done, do the next thing" had their graph stop dead
+      // NDA-012 §B3 — the completion signals fire here too. They did not, and an empty list is
+      // the *common* case, not an edge one: a query that matched nothing hands this node `[]`.
+      // An author who wired "when the run is Done, do the next thing" had their graph stop dead
       // precisely when there was no work, which is the one time it should sail through.
+      //
+      // ⚠️ ERG-001 — this stays `Done` and must never become `Unchanged`, which is the reading
+      // the contract's wording invites and the one that would re-open the defect §B3 closed.
+      // `For Each`'s and `Pattern Extractor`'s exemptions are recorded for exactly this shape:
+      // an empty list is a run that completed, not a run that found nothing to change.
       if (internal.items.length === 0) {
-        this.sendSignalOnOutput('success');
-        this.sendSignalOnOutput('done');
         internal.state = 'idle';
+        this._endRun('done');
         return;
       }
 
@@ -576,19 +690,36 @@ const RunTasksDefinition: NodeDefinitionOptions = {
      * - **Running, but no task is in flight** (all queued, none started, or the last one just
      *   returned): the abort can be honoured immediately, because no `checkDone` is coming to
      *   honour it later. End the run properly rather than waiting for an event that cannot arrive.
+     *
+     * ERG-001 — `Abort` is this node's *second* action port and owes its own outcome. Both
+     * branches above had one and neither said it: the first is `Unchanged` (nothing to abort,
+     * which is the post-condition already holding), the second `Done` via {@link _endRun}.
      */
     abort: function (this: RunTasksNodeInstance) {
       const internal = this._internal;
 
-      if (internal.state !== 'running') return;
+      const tokens = this._internal.pendingAbortOutcomes;
+      internal.pendingAbortOutcomes = [];
+
+      if (internal.state !== 'running') {
+        // ⚠️ `Unchanged`, and still no `Aborted` signal: the outcome describes *this Abort*,
+        // which was valid and had nothing to do, while `Aborted` would describe a run — and
+        // there is no run to describe.
+        reportOutcomes(this, tokens, 'unchanged');
+        return;
+      }
 
       internal.state = 'aborted';
+      // Pushed rather than assigned: a second `Abort` cannot reach here (it would find
+      // `state === 'aborted'` and settle `Unchanged` above), but losing a token is the one
+      // failure mode of this bookkeeping that would be silent.
+      internal.abortOutcomes.push(...tokens);
 
       if (internal.activeTasks.size === 0) {
         internal.queuedTasks = [];
         internal.state = 'idle';
         this.sendSignalOnOutput('aborted');
-        this.sendSignalOnOutput('done');
+        this._endRun('done');
       }
     },
     itemOutputSignalTriggered: function (
@@ -606,22 +737,30 @@ const RunTasksDefinition: NodeDefinitionOptions = {
 
       const checkDone = () => {
         if (internal.state === 'aborted') {
-          // `done` here for the same reason as every other terminal path: it is the signal
-          // downstream sequencing is wired to, and this is a run ending. Before this pass only
-          // the ordinary-completion path sent it, so whether "then do the next thing" fired
-          // depended on *how* the run finished.
+          // The completion signals fire here for the same reason as on every other terminal
+          // path: they are what downstream sequencing is wired to, and this is a run ending.
+          // Before this pass only the ordinary-completion path sent them, so whether "then do
+          // the next thing" fired depended on *how* the run finished.
+          //
+          // ⚠️ ERG-001 — an author-requested abort is `Done`, not `Failure`. The run happened
+          // and changed things; it stopped early because it was told to, which is the graph
+          // doing what it was asked. `Aborted` above is what distinguishes it, and it is sent
+          // first so a graph reading it already has it when the outcome lands.
           internal.queuedTasks = [];
-          this.sendSignalOnOutput('aborted');
-          this.sendSignalOnOutput('done');
           internal.state = 'idle';
+          this.sendSignalOnOutput('aborted');
+          this._endRun('done');
           return;
         }
 
         if (internal.completedTasks === internal.numTasks) {
-          if (internal.failedTasks === 0) this.sendSignalOnOutput('success');
-          else this.sendSignalOnOutput('failure');
-          this.sendSignalOnOutput('done');
           internal.state = 'idle';
+          // ⚠️ `raise: false`: `reportTaskFailure` has already raised one precise
+          // `run-tasks/task-failed` per failing task, naming the item and the reason. A second,
+          // vaguer "some tasks failed" event about the same root cause is the "two wordings of
+          // one failure" the Failure Contract calls noise.
+          if (internal.failedTasks === 0) this._endRun('done');
+          else this._endRun('failure', { raise: false });
         } else {
           if (internal.stopOnFailure) {
             // Only continue if there are no failed tasks, otherwise aborted
@@ -641,13 +780,17 @@ const RunTasksDefinition: NodeDefinitionOptions = {
               // ticking `Stop On Failure` meant the first failure was also the last thing the
               // node ever did.
               //
-              // `done` joins them for the same reason as the empty-list path: it is what
-              // downstream sequencing is wired to, and the run has ended.
+              // The completion signals join them for the same reason as the empty-list path:
+              // they are what downstream sequencing is wired to, and the run has ended.
+              //
+              // ⚠️ ERG-001 reordered this: `aborted` now precedes `failure`, because the
+              // outcome is the last thing an action does. This is *not* an author-requested
+              // abort — the option caught a failure — so the outcome is `Failure`, and the
+              // reason is already on the channel from `reportTaskFailure`.
               internal.queuedTasks = [];
               internal.state = 'idle';
-              this.sendSignalOnOutput('failure');
               this.sendSignalOnOutput('aborted');
-              this.sendSignalOnOutput('done');
+              this._endRun('failure', { raise: false });
             }
           } else {
             internal.runningTasks++;
