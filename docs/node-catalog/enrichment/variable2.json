@@ -8,7 +8,10 @@
     "value": "As an input: writes — the received value is stored into the named variable. As an output: the variable's current value (untyped).",
     "fetch": "Signal; re-reads the named variable on demand. Connecting it disables automatic updates — external changes then reach the outputs only when Fetch fires.",
     "changed": "Signal; fires when the variable is changed from anywhere in the app (suppressed while `fetch` is connected).",
-    "fetched": "Signal; fires after each read triggered by `fetch` or by a name change."
+    "fetched": "Signal; fires after each read triggered by `fetch` or by a name change.",
+    "done": "Signal; the outcome of a Fetch. A name change fires `fetched` without one, because a value setter is not an invocation.",
+    "completed": "Signal; fires after every Fetch whatever the outcome — wire it to carry on regardless.",
+    "failure": "Signal; a value arrived on the `value` input with no `name` set, so it was refused rather than stored where nothing can read it. ⚠️ This belongs to the `value` input, not to `fetch`: it reports no outcome and does not fire `completed`."
   },
   "examples": ["var-remember-name-across-screens"],
   "patterns": [

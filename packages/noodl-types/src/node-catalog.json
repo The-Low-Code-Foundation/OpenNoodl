@@ -4428,6 +4428,17 @@
           "description": "Fires when the bound array gains or loses items; suppressed while Fetch is connected"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "count",
           "displayName": "Count",
           "group": "General",
@@ -4437,6 +4448,17 @@
           },
           "isSignal": false,
           "description": "How many objects the bound array holds"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Fetch finished and the outputs are up to date"
         },
         {
           "name": "fetched",
@@ -16123,6 +16145,39 @@
           },
           "isSignal": true,
           "description": "Fires whenever any property of the bound object changes, from this node or from anywhere else"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Fetch finished and the property outputs are up to date"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when Fetch was pressed with no Id to bind to, with the reason on the error channel"
         },
         {
           "name": "fetched",
@@ -28911,6 +28966,28 @@
           "description": "Fires when the named variable is written from anywhere in the app"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Fetch finished and Value is up to date"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -28930,7 +29007,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when a value arrived but could not be stored because no Name is set"
+          "description": "Fires when a value arrived but could not be stored because no Name is set. This belongs to the Value input rather than to Fetch, so it reports no outcome and does not fire Completed"
         },
         {
           "name": "fetched",

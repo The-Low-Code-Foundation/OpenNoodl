@@ -7,7 +7,10 @@
     "modelId": "The object's id. Wiring a record id here binds to that record's client-side object.",
     "properties": "The property list declared on the node; each name becomes a value output (and the editor's property inputs).",
     "changed": "Signal; fires whenever any writer mutates this object.",
-    "fetch": "Signal; re-reads the object and re-emits outputs on demand."
+    "fetch": "Signal; re-reads the object and re-emits outputs on demand.",
+    "done": "Signal; a Fetch bound an object and the property outputs are up to date. Distinct from `fetched`, which also fires when the `modelId` input changes — there is no invocation on that path, so it reports no outcome.",
+    "failure": "Signal; Fetch was triggered with no Id to bind to. This used to emit nothing at all, which stopped the chain with no diagnosis anywhere.",
+    "completed": "Signal; fires after every Fetch whatever the outcome — wire it to carry on regardless."
   },
   "runtimeBehavior": "Property ports are generated from the `properties` list on the node instance (and the connected schema where one exists) — they are per-instance, not in the catalog. `idSource` swaps the id between an explicit input and the enclosing repeater item (declared-port-groups). NDA-012: an empty Id (null or an empty string) binds nothing and does not fire `fetched`, rather than minting a throwaway object; a real id still springs into existence on first use. Property values that arrive before the Id are held and written the moment an object is bound.",
   "examples": ["comp-create-object-on-event", "comp-repeater-set-item-object"],

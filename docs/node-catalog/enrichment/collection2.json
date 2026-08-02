@@ -9,6 +9,8 @@
     "fetch": "Signal input; when connected, id changes are deferred until this fires, and the automatic `changed` output is suppressed — use for explicit control over when the node (re)binds.",
     "changed": "Signal; fires after the array's contents change from anywhere in the app (suppressed while `fetch` is connected).",
     "fetched": "Signal; fires after an explicit `fetch` has re-bound the array.",
+    "done": "Signal; the outcome of a Fetch. It always accompanies `fetched` on this node, because Fetch is the only path that announces one — the two come apart on its twins Object and Variable, where a name change announces `fetched` with no invocation behind it.",
+    "completed": "Signal; fires after every Fetch whatever the outcome — wire it to carry on regardless. This node has no Failure, because binding an array cannot fail.",
     "firstItemId": "String value: the id of the array's first object, or empty when the array is empty."
   },
   "examples": ["data-shared-array-add-remove", "data-run-tasks-batch"],

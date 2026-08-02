@@ -4682,6 +4682,17 @@
           "description": "Fires when the bound array gains or loses items; suppressed while Fetch is connected"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "count",
           "displayName": "Count",
           "group": "General",
@@ -4691,6 +4702,17 @@
           },
           "isSignal": false,
           "description": "How many objects the bound array holds"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Fetch finished and the outputs are up to date"
         },
         {
           "name": "fetched",
@@ -4750,6 +4772,8 @@
           "fetch": "Signal input; when connected, id changes are deferred until this fires, and the automatic `changed` output is suppressed — use for explicit control over when the node (re)binds.",
           "changed": "Signal; fires after the array's contents change from anywhere in the app (suppressed while `fetch` is connected).",
           "fetched": "Signal; fires after an explicit `fetch` has re-bound the array.",
+          "done": "Signal; the outcome of a Fetch. It always accompanies `fetched` on this node, because Fetch is the only path that announces one — the two come apart on its twins Object and Variable, where a name change announces `fetched` with no invocation behind it.",
+          "completed": "Signal; fires after every Fetch whatever the outcome — wire it to carry on regardless. This node has no Failure, because binding an array cannot fail.",
           "firstItemId": "String value: the id of the array's first object, or empty when the array is empty."
         },
         "examples": [
@@ -17408,6 +17432,39 @@
           "description": "Fires whenever any property of the bound object changes, from this node or from anywhere else"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Fetch finished and the property outputs are up to date"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when Fetch was pressed with no Id to bind to, with the reason on the error channel"
+        },
+        {
           "name": "fetched",
           "displayName": "Fetched",
           "group": "Events",
@@ -17490,7 +17547,10 @@
           "modelId": "The object's id. Wiring a record id here binds to that record's client-side object.",
           "properties": "The property list declared on the node; each name becomes a value output (and the editor's property inputs).",
           "changed": "Signal; fires whenever any writer mutates this object.",
-          "fetch": "Signal; re-reads the object and re-emits outputs on demand."
+          "fetch": "Signal; re-reads the object and re-emits outputs on demand.",
+          "done": "Signal; a Fetch bound an object and the property outputs are up to date. Distinct from `fetched`, which also fires when the `modelId` input changes — there is no invocation on that path, so it reports no outcome.",
+          "failure": "Signal; Fetch was triggered with no Id to bind to. This used to emit nothing at all, which stopped the chain with no diagnosis anywhere.",
+          "completed": "Signal; fires after every Fetch whatever the outcome — wire it to carry on regardless."
         },
         "runtimeBehavior": "Property ports are generated from the `properties` list on the node instance (and the connected schema where one exists) — they are per-instance, not in the catalog. `idSource` swaps the id between an explicit input and the enclosing repeater item (declared-port-groups). NDA-012: an empty Id (null or an empty string) binds nothing and does not fire `fetched`, rather than minting a throwaway object; a real id still springs into existence on first use. Property values that arrive before the Id are held and written the moment an object is bound.",
         "examples": [
@@ -31388,6 +31448,28 @@
           "description": "Fires when the named variable is written from anywhere in the app"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Fetch finished and Value is up to date"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -31407,7 +31489,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when a value arrived but could not be stored because no Name is set"
+          "description": "Fires when a value arrived but could not be stored because no Name is set. This belongs to the Value input rather than to Fetch, so it reports no outcome and does not fire Completed"
         },
         {
           "name": "fetched",
@@ -31455,7 +31537,10 @@
           "value": "As an input: writes — the received value is stored into the named variable. As an output: the variable's current value (untyped).",
           "fetch": "Signal; re-reads the named variable on demand. Connecting it disables automatic updates — external changes then reach the outputs only when Fetch fires.",
           "changed": "Signal; fires when the variable is changed from anywhere in the app (suppressed while `fetch` is connected).",
-          "fetched": "Signal; fires after each read triggered by `fetch` or by a name change."
+          "fetched": "Signal; fires after each read triggered by `fetch` or by a name change.",
+          "done": "Signal; the outcome of a Fetch. A name change fires `fetched` without one, because a value setter is not an invocation.",
+          "completed": "Signal; fires after every Fetch whatever the outcome — wire it to carry on regardless.",
+          "failure": "Signal; a value arrived on the `value` input with no `name` set, so it was refused rather than stored where nothing can read it. ⚠️ This belongs to the `value` input, not to `fetch`: it reports no outcome and does not fire `completed`."
         },
         "examples": [
           "var-remember-name-across-screens"

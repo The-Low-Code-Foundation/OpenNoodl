@@ -11,6 +11,7 @@ import type {
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule,
+  OutcomeToken,
   RuntimeDiscoveredPort
 } from '@noodl/types';
 
@@ -18,8 +19,18 @@ import Node = require('../../../node');
 import ModelImport = require('../../../model');
 
 import { forgetForEachItem, resolveForEachItem } from '../../../foreachitem';
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 
 const Model = ModelImport as unknown as ModelModule;
+
+/**
+ * ERG-001 §4 / NDA-004 §2 — the code `Fetch` raises when it has nothing to bind to.
+ *
+ * The Object node had no error channel at all before this, so this is a new key rather than one
+ * borrowed from a sibling: the Record family's `record/storage-op-failed` names a *backend*
+ * operation, and this node never talks to one.
+ */
+const OBJECT_FETCH_ERROR_CODE = 'object/fetch-failed';
 
 /**
  * `this` inside the Object node.
@@ -41,6 +52,13 @@ interface ModelNodeInstance extends NodeInstance {
     idSource?: unknown;
     /** The `Repeater Component` input: an item component named explicitly (BINDING-CONTRACT §a). */
     repeaterComponent?: string;
+    /**
+     * ERG-001 §4. Invocations of `Fetch` that have not reported yet.
+     *
+     * An array because `scheduleSetModel` coalesces: two presses in one update pass do one
+     * rebind and must still produce two outcomes. Lazily created in that method, not here.
+     */
+    pendingFetch?: OutcomeToken[];
   };
   /** On the instance rather than in `_internal` — these guard the two schedulers. */
   hasScheduledStore?: boolean;
@@ -127,7 +145,23 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       displayName: 'Fetched',
       group: 'Events',
       description: 'Fires once a new object has been bound and its property outputs are up to date'
-    }
+    },
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4. `Done` is **added**, not renamed from `Fetched`, and that is measured rather
+    // than argued: `setModelID` fires `Fetched` straight from the `Id` **input setter**, where
+    // there is no invocation to have an outcome. Folding it in would report `Done` for a value
+    // binding — the same shape `Record` carries.
+    //
+    // ⚠️ **`Failure` is new**, and it closes a dead end rather than merely adopting a contract.
+    // `setModelID` returns early for a blank `Id` and rightly sends no `Fetched` — but that left
+    // `Fetch` with a blank `Id` emitting *nothing at all*, which is the contract's own opening
+    // sentence about itself. See `scheduleSetModel`.
+    // ⚠️ **No `Unchanged`.** `Fetch` rebinds unconditionally.
+    ...outcomeOutputs({
+      done: 'Fires when a Fetch finished and the property outputs are up to date',
+      failure: 'Fires when Fetch was pressed with no Id to bind to, with the reason on the error channel'
+    })
   },
   inputs: {
     idSource: {
@@ -257,13 +291,46 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
         internal.dirtyValues = {}; // Reset dirty values
       });
     },
+    /**
+     * The `Fetch` port's method, and the only place this node opens an invocation.
+     *
+     * ⚠️ ERG-001 §4: minted **before** the guard, which coalesces the *work* — two presses in
+     * one pass do one rebind — because dropping the second press's outcome with it would be
+     * Rule 1 broken by an optimisation. The array is created lazily here rather than in
+     * `initialize`, for suites that build this node without calling it.
+     *
+     * ⚠️ **The empty-Id branch is where this node's dead end was.** `setModelID` returns early
+     * for `undefined` / `null` / `''` and correctly sends no `Fetched` — nothing was fetched.
+     * With no failure path either, `Fetch` on a blank `Id` emitted *nothing*, so a chain hanging
+     * off this node stopped with no diagnosis anywhere. The check is repeated here rather than
+     * moved into `setModelID`, deliberately: a blank `Id` **arriving on the setter** is not a
+     * failure of anything — nobody asked for anything — while pressing `Fetch` with nothing to
+     * fetch is a request the node cannot honour. Two corpus rows hold that line apart.
+     */
     scheduleSetModel: function (this: ModelNodeInstance) {
+      const pending = this._internal.pendingFetch || (this._internal.pendingFetch = []);
+      pending.push(this.beginOutcome());
+
       if (this.hasScheduledSetModel) return;
       this.hasScheduledSetModel = true;
 
       this.scheduleAfterInputsHaveUpdated(() => {
         this.hasScheduledSetModel = false;
-        this.setModelID(this._internal.modelId);
+        const tokens = this._internal.pendingFetch || [];
+        this._internal.pendingFetch = [];
+
+        const id = this._internal.modelId;
+        if (id === undefined || id === null || id === '') {
+          reportOutcomes(this, tokens, 'failure', {
+            code: OBJECT_FETCH_ERROR_CODE,
+            message: 'Fetch was triggered with no Id, so there is no object to bind to'
+          });
+          return;
+        }
+
+        // `setModelID` flags the values dirty and announces `Fetched`; the outcome goes last.
+        this.setModelID(id);
+        reportOutcomes(this, tokens, 'done');
       });
     },
     /**

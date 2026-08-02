@@ -2,12 +2,14 @@
 
 import { Node } from '@noodl/runtime';
 import Collection from '@noodl/runtime/src/collection';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 import type {
   CollectionLike,
   InspectInfo,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
 
@@ -27,6 +29,14 @@ interface CollectionNodeInstance extends NodeInstance {
     sourceCollection?: CollectionLike | null;
     /** `items` as it arrived, before the scheduled copy runs. */
     pendingSourceCollection?: CollectionLike | null;
+    /**
+     * ERG-001 §4. Invocations of `Fetch` that have not reported yet.
+     *
+     * An array because `scheduleSetCollection` coalesces: two `Fetch` pulses in one update pass
+     * do one rebind and must still produce two outcomes. Lazily created in that method rather
+     * than in `initialize`, for suites that never call it.
+     */
+    pendingFetch?: OutcomeToken[];
     collectionChangedCallback(): void;
     sourceCollectionChangedCallback(): void;
   };
@@ -204,7 +214,26 @@ const CollectionNode: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Fetched',
       description: 'Fires once Fetch has rebound this node and the outputs are up to date'
-    }
+    },
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4. `Done` is **added**, not renamed from `Fetched`, and on this node that is a
+    // decision rather than a measurement: unlike its twins `Object` and `Variable` — where
+    // `Fetched` demonstrably fires from an input setter — `Fetched` here is reached only by the
+    // `Fetch` port, so the two always co-fire.
+    //
+    // ⚠️ Keeping both is still the call, and the cost is recorded rather than hidden. It is the
+    // same cost `User` carries against `Record`: these three are documented twins, and splitting
+    // the family so one says `Fetched` where the others say `Done` for the identical author
+    // gesture is precisely the per-node divergence `outcome.ts`'s docstring exists to prevent.
+    //
+    // ⚠️ **No `Failure`.** `Collection.get` is create-on-read and answers for every spelling of
+    // an id, including none — there is no branch here that could refuse. "A node that cannot
+    // fail gets no `Failure` port."
+    // ⚠️ **No `Unchanged`.** `Fetch` rebinds unconditionally.
+    ...outcomeOutputs({
+      done: 'Fires when a Fetch finished and the outputs are up to date'
+    })
   },
   prototypeExtensions: {
     setCollectionID: function (this: CollectionNodeInstance, id: string) {
@@ -240,13 +269,26 @@ const CollectionNode: NodeDefinitionOptions = {
       this._copySourceItems();
     },
     scheduleSetCollection: function (this: CollectionNodeInstance) {
+      // ⚠️ ERG-001 §4: minted **before** the guard. The guard coalesces the *work* — two
+      // presses in one pass do one rebind — and dropping the second press's outcome with it
+      // would be Rule 1 broken by an optimisation. The array is created lazily here rather
+      // than in `initialize`, because a suite that never calls `initialize` would otherwise
+      // find it `undefined` at the first press.
+      const pending = this._internal.pendingFetch || (this._internal.pendingFetch = []);
+      pending.push(this.beginOutcome());
+
       if (this.hasScheduledSetCollection) return;
       this.hasScheduledSetCollection = true;
 
       this.scheduleAfterInputsHaveUpdated(() => {
         this.hasScheduledSetCollection = false;
+        const tokens = this._internal.pendingFetch || [];
+        this._internal.pendingFetch = [];
+
         this.setCollectionID(this._internal.collectionId);
+        // The value-level announcement first, then the invocation's outcome last.
         this.sendSignalOnOutput('fetched');
+        reportOutcomes(this, tokens, 'done');
       });
     },
     _copySourceItems: function (this: CollectionNodeInstance) {

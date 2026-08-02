@@ -2,6 +2,7 @@
 
 import { Node } from '@noodl/runtime';
 import Model from '@noodl/runtime/src/model';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type {
   InspectInfo,
   ModelChangeEvent,
@@ -101,10 +102,28 @@ const VariableNodeDefinition: NodeDefinitionOptions = {
       description: 'Fires once Fetch has rebound this node and Value is up to date',
       group: 'Events'
     },
+    // ── the outcome contract ────────────────────────────────────────────────
+    //
+    // ERG-001 §4, for the `Fetch` port. `Done` is **added** rather than renamed from `Fetched`:
+    // `setVariableName` fires `Fetched` and is reached from the `Name` **input setter**, where
+    // there is no invocation, so folding it in would report `Done` for a value binding — the
+    // same measurement `Record` and `Object` carry.
+    //
+    // ⚠️ **`Failure` below is not this port's**, and that is the one thing worth reading twice.
+    // It belongs to the `Value` input setter, which NDA-012 made refuse a write with no `Name`.
+    // A setter is not an invocation: it reports no outcome and emits no `Completed`, because a
+    // completion announced for work nobody asked for is the defect Rule 2 would inherit. `Fetch`
+    // itself cannot fail — `setVariableName` has no refusing branch — so it always reports
+    // `Done`.
+    // ⚠️ **No `Unchanged`.** `Fetch` re-reads unconditionally.
+    ...outcomeOutputs({
+      done: 'Fires when a Fetch finished and Value is up to date'
+    }),
     failure: {
       type: 'signal',
       displayName: 'Failure',
-      description: 'Fires when a value arrived but could not be stored because no Name is set',
+      description:
+        'Fires when a value arrived but could not be stored because no Name is set. This belongs to the Value input rather than to Fetch, so it reports no outcome and does not fire Completed',
       group: 'Events'
     },
     error: {
@@ -153,7 +172,12 @@ const VariableNodeDefinition: NodeDefinitionOptions = {
         'Re-reads the variable named by Name and refreshes Value. This is additional to Name rebinding on change and to changes being announced; untick either under Run On Value Change to stop it',
       group: 'Actions',
       valueChangedToTrue: function (this: VariableNodeInstance) {
+        // ERG-001 §4. No coalescing guard on this port and no deferral, so no pending array is
+        // needed: one press, one token, settled in the same call. `setVariableName` flags the
+        // values dirty and announces `Fetched`, and the outcome goes last.
+        const token = this.beginOutcome();
         this.setVariableName(this._internal.name);
+        this.reportOutcome(token, 'done');
       }
     },
     value: {
