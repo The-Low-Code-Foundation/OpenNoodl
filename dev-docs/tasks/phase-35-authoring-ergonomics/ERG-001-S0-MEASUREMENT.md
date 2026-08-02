@@ -1643,3 +1643,250 @@ register lost a node.
 Carried forward unchanged: `GlobalStore.Set`'s unmeasured `Unchanged` candidate; `Counter`'s
 `Reset` guard that has never fired; `Items Rendered` firing with zero item nodes after a `Refresh`
 (the one-character fix is `() => this.refresh()`).
+
+---
+
+## §4, the long tail — two builds, 2026-08-02
+
+Commits `84a4fe9f` (the four single-verb Data nodes) and `d7aed297` (the four small multi-verb
+ones), plus `ade03b83` for the discrimination records. **61 of §0's 82 actions now satisfy the
+contract, up from 53** — measured against `packages/noodl-types/src/node-catalog.json` with the
+script the handover carries, not counted from prose.
+
+### ⚠️ The handover's "rename `modified` → `done`" was wrong, and the source is why
+
+The next-session prompt laid out `Array Filter`, `Array Map` and `Filter Records` as three nodes
+that all rename `modified` to `done`. **Reading them says otherwise.**
+
+`modified` is a *value-level* announcement, not an invocation's outcome. On all three it fires from
+paths nobody invoked — the `items` and `enabled` setters, the panel filter settings, each `fp-`
+parameter, the bound collection's `change` callback, the cloud store's `save` event — each ticked
+by default under Run On Value Change, and **ungated entirely on Array Map**, which has no
+checkboxes at all. Renamed, `Done` would fire on the boot path every time an array binds while
+`Completed`, which only an invocation may emit, stayed silent. `Done` and `Completed` counts
+diverging on a node doing nothing wrong is Rule 2 broken in the one place its whole value lies.
+
+This is `For Each`'s answer, in the same directory and in its own words: *"`Items Rendered` is not
+this invocation's `Done` and could not be made into one … it is a list-level announcement and it is
+the right one; it is simply not tied to any `Refresh`."* It is the `Fetched`-is-not-`Done` question
+for the sixth time, answered the same way. So `done` and `completed` are **added beside**
+`modified`, and the cost — two ports co-firing on the port path — is recorded rather than hidden,
+exactly as it was on `Array`.
+
+`Set Variable` is genuinely different and was correctly described: `scheduleStore` is reached from
+the `Do` port and nothing else, so its `done` already meant what the contract means. It gained
+`Completed` and the routing of both terminal paths through `reportOutcome`.
+
+### Build 1 — the four single-verb Data nodes
+
+| Node | Action ports | Shape |
+|---|---|---|
+| `Filter Collection` — Array Filter | `Filter`, `Refresh` | `done` **added** · `completed`; `failure` kept |
+| `Map Collection` — Array Map | `Refresh` | `done` **added** · `completed`; `failure` kept |
+| `FilterDBModels` — Filter Records | `Filter` | `done` **added** · `completed`; `failure` kept |
+| `Set Variable` — Set Variable | `Do` | `completed` **added** to the `done`/`failure` it had |
+
+Array Filter and Filter Records are NDA-004 §2's documented twins and landed in one commit; doing
+half of a documented pair manufactures the divergence the contract exists to stop.
+
+⚠️ **The pending-token array replaced the `filterRequested`/`mapRequested` boolean rather than
+running beside it.** The handover said "reuse the flag; do not invent a second one", and the honest
+reading of that is one mechanism, not two: `requested` is now `tokens.length > 0`. Behaviour is
+identical and there is nothing left to drift.
+
+⚠️ **`reportFailure`'s message dedup now settles the tokens before it returns.** The dedup exists
+because a wired `regex` produces a run per keystroke, and most intermediate values are malformed —
+that is about the *announcement*. Rule 1 is per invocation, so a second `Filter` with the same
+broken pattern still owes its own `Failure` and `Completed`. Raise counts are unchanged; two rows
+hold the halves apart.
+
+**No `Unchanged` on any of the four.** A filter and a map build a fresh `Collection.create(...)`
+every run — "the same records came back" is a result, not a post-condition that already held, and
+`Filter Records`' own port sentence already said so. `Set Variable` writes with `forceChange: true`
+deliberately, so storing the identical value still notifies every Variable node reading it.
+
+### Build 2 — the four small multi-verb nodes
+
+| Node | Actions | Shape |
+|---|---|---|
+| `net.noodl.ActionHandler` — Action Handler | `Complete`, `Fail` | `done` · `completed`; `failure` kept, meaning untouched |
+| `net.noodl.StateSnapshot` — State Snapshot | `Save`, `Restore` | `done` · `completed`; `failure` kept |
+| `net.noodl.JSONStreamParser` — JSON Stream Parser | `Parse`, `Clear` | `done` · **`unchanged`** · `completed`; ⚠️ `failure` **narrowed** |
+| `net.noodl.PatternExtractor` — Pattern Extractor | `Extract` | `done` · `completed`; `failure` kept |
+
+⚠️ **Action Handler — a `Fail` that succeeds is a `Done`.** `Fail` asks this node to report the
+in-flight action as failed; doing so is the node succeeding at what it was asked. Its existing
+`Failure` keeps the meaning it always had — *"Complete or Fail was signalled with no action in
+flight"* — a genuine refusal, and a different thing. `Trigger` is an **output** the registry fires
+when a dispatcher has work; nothing on this canvas invoked it, and the registration errors stay on
+the error bus because they are reached while the graph is still coming up.
+
+⚠️ **Pattern Extractor's two-result question, decided.** `Not Found` is **not** an `Unchanged`, and
+the post-condition test is why: `Unchanged` means the post-condition already held so nothing needed
+doing, and Extract's post-condition is "the outputs reflect running this pattern over this text" —
+which running it over non-matching text still rewrites (`Match`, `Match Count`, `Groups`,
+`Named Groups`). Nothing was declined. The consequence check agrees: pulling a percentage out of a
+stream misses on most chunks, so `Not Found` is the **common** case, and putting the common case on
+a different wire from the uncommon one is `Run Tasks`' defect with the sign flipped — the same
+reason `For Each` refused an `Unchanged` for an empty list. `done` fires beside both, and §5 must
+not expect an `Unchanged` here.
+
+⚠️ **JSON Stream Parser is the one node whose `Failure` changes meaning.** It fired once per
+unparseable line, so one `Parse` over three bad lines pulsed it three times, and Rule 1's
+load-bearing half is *exactly* one terminal signal per invocation. It is now the invocation's
+outcome; the per-line detail stays on `Error` and `Error Count`, and the reason now reaches the
+NDA-004 bus, which `reportError` never did at all. §0.2 Result 3's call applied deliberately.
+
+It is also the **only node in either build that earns an `Unchanged`**: `doParse` opened with a bare
+`return` when nothing was pending — the contract's headline dead-chain class — and a `Clear` with
+nothing to discard is the same shape. ⚠️ A parse that consumed a chunk *without* completing a value
+is `Done`, not `Unchanged`: the buffer grew and `Pending Characters` changed. `Success` keeps its
+narrower "values came out" meaning, which is why both ports exist.
+
+⚠️ **State Snapshot's `setError(undefined)` is a clear, not a failure**, and that guard is
+preserved. What changed is that it settles the token *outside* its own message dedup, and that its
+queue carries one token per entry rather than a parallel array — so a `Save` and a `Restore` queued
+in the same frame each report their own outcome.
+
+### One defect the build introduced, caught by a pre-existing row
+
+The runaway-buffer branch settled bare and reported **`Done`** for a buffer the parser had just
+given up on, because `settleParse` inferred the outcome from `internal.error` after the branch had
+already reset state. `agent-stream-nodes.test.ts`'s "gives up loudly" row is red for exactly that.
+The lesson is narrow and worth keeping: **an outcome must not be inferred from state the branch has
+already changed** — pass it.
+
+### The discrimination check — twelve reverts, six exact
+
+**Build 1**
+
+| Revert | Predicted | Actual |
+|---|---|---|
+| Array Filter's token minted in `scheduleFilter` rather than at the ports | 5 | **10** |
+| Array Filter's token minted *inside* the coalescing guard | 1 | **1, that row** |
+| Array Map's token minted in `scheduleMap` | 4 | **8** |
+| `reportFailure` settling the tokens after the dedup returns | 1 | **2** |
+| Set Variable's token minted in the `name` setter | 3 | **2** |
+| Set Variable reporting `done` before `variablesModel.set` | **0** | **0** |
+| Filter Records' token minted in `scheduleFilter` | 7 | **9** |
+
+**Build 2**
+
+| Revert | Predicted | Actual |
+|---|---|---|
+| `doFail` reporting `failure` when there *was* an action in flight | 1 | **1, that row** |
+| State Snapshot settling the token inside `setError`'s dedup | 1 | **1, that row** |
+| Pattern Extractor reporting `unchanged` for a no-match | 2 | **1** |
+| `doParse`'s empty-buffer branch returning silently again | 1 | **1, that row** |
+| `reportError` keeping its per-line `failure` pulse | 1 | **1, that row** |
+
+⚠️ **Three of the five misses are the same mistake**, and it is `For Each`'s recorded one twice
+more: moving a mint into the scheduler reddens far more than the rows written to state "only the
+port mints", because *every* row that binds a value and then pulses gets a second outcome it did not
+assert. The claim is load-bearing across a whole fixture, not in the two or three rows about it —
+so the prediction has to be made per-fixture, not per-row.
+
+⚠️ **The dedup revert reddens the *first* pulse's row too.** A value-driven run has already
+announced the same message, so the pulse's failure is a repeat and its outcome is swallowed as
+well. The dedup does not merely lose the second identical failure.
+
+⚠️ **Set Variable's setter mint reddens the two counting rows and *not* the boot control** — the
+opposite of the prediction, and the third measurement of the same lesson: a token minted in a setter
+is never settled, so nothing is reported and a silence row cannot see it. What catches it is the
+next invocation draining the stale token and reporting twice.
+
+⚠️ **Pattern Extractor's port-surface control does not defend the decision.** Routing the *report*
+to `unchanged` without declaring the port leaves `hasOutput('unchanged') === false` green and raises
+`outcome/missing-port`, which no row asserts on. Only the no-match row discriminates.
+
+⚠️ **Filter Records' two extra reds arrive through the error channel**, not the outcome count: with
+the mint in the scheduler, the `visualFilter` parameter's setter schedules a run at boot before any
+records exist, and the rows' exact-array assertion on `graph.errors` catches the resulting
+`filter-records/no-items`. A row can discriminate through a channel the prediction was not
+considering.
+
+### The sweep — nothing renamed, and one stale enrichment entry found by reading
+
+Both builds are **purely additive on the wire** except `JSON Stream Parser`'s narrowing, so there
+was no rename to sweep — the `library/prefabs` and `docs/node-catalog/{acceptance,examples}` corpora
+have nothing to rewrite. What the enrichment pass did find, by reading rather than by any gate:
+
+- ⚠️ **`filter-collection`'s `description` and its `filter` port prose still described the
+  pre-NDA-017 §2 behaviour** — *"when connected, disables automatic re-filtering and runs the filter
+  only on this signal"* — which has been untrue since the Run On Value Change boxes replaced the
+  `isInputConnected` gate. Both rewritten. Every node in build 1 is **dynamic**, which is precisely
+  the case `catalog:merge:check` is blind to; the gate passed before and would have gone on passing.
+- ⚠️ **`net.noodl.jsonstreamparser`'s `failure` entry read "Fires per malformed value"**, which this
+  build makes false. Rewritten in the same commit as the narrowing.
+
+### Noise, measured rather than asserted
+
+| Suite | Before | After | From these builds |
+|---|---|---|---|
+| `noodl-runtime` | 127 | **142** | 15 |
+| `noodl-viewer-react` | 196 | **204** | 8 |
+
+Of the runtime's 15: 4 from build 1's new rows, 7 from build 2's, and **4 in pre-existing suites
+because `Pattern Extractor` and `JSON Stream Parser` now put their reason on the NDA-004 bus, which
+neither node ever did** — a gap closed, not a regression, and each is a failure an existing row
+already asserted the signal for. (A further 196 → 200 shift in `noodl-viewer-react` and a small
+suite-count rise in both packages come from the concurrent phase-36 work on this branch, not from
+here; attributed by running each package with this session's new files excluded.)
+
+### Gates — measured before and after
+
+| Gate | Before | After |
+|---|---|---|
+| `noodl-runtime` jest | 104 suites, 1925 passing, 13 skipped | **107 suites, 2008 passing, 13 skipped** |
+| `noodl-viewer-react` jest | 57 suites, 753 passing | **59 suites, 801 passing** |
+| `typecheck:runtime` | pass | pass |
+| viewer-react `tsc` | pass | pass |
+| `typecheck:cloud` | pass | pass |
+| `catalog:check` | pass | pass |
+| `catalog:merge:check` | pass | pass |
+| `cloud-library:check` | pass | pass |
+| editor `test:ci` | 2007 specs, 0 failures | **2007 specs, 0 failures** |
+
+### ✅ Live QA — done, and it settles last session's debt as well as this one's
+
+`8574` was free for the first time in two sessions and the window was taken. The rig was built
+programmatically in `/erg-rig` against the running editor, with a raw click counter wired straight
+off the trigger so "the node is silent" could be told from "the wires go nowhere".
+
+1. **The real port set off `NodeLibraryData`**, for all four of this session's build-1 nodes *and*
+   all eight of last session's, which had never been seen in the editor:
+   - `Filter Collection` / `Map Collection` / `FilterDBModels`: `modified done completed failure`
+   - `Set Variable`: `done completed failure`
+   - the five Record CRUD nodes: `done completed failure` — the old `created`/`stored`/`deleted`/
+     `relationAdded`/`relationRemoved` spellings are gone from the published library
+   - `Collection2` / `Model2` / `Variable2`: `changed fetched done completed [failure]`
+2. **Rule 2 proved live.** Five clicks on a real element produced **5** `Completed` on `Object` and
+   **5** on `Array Filter`, against a raw click counter reading 5 — `Completed` counts equal to
+   invocations, not to successes.
+3. **⚠️ `Object`'s new `Failure` reaches the warnings panel**, which was the one genuinely new
+   failure path from last session and the only one whose editor-side provenance had never been seen:
+   *"Fetch was triggered with no Id, so there is no object to bind to — At node Object in component
+   /erg-rig"*. `Array Filter`'s new outcome is there beside it: *"Nothing to filter — no array is
+   connected to the Items input — At node Array Filter"*.
+
+Nothing was left behind: the editor was stopped with `npm run dev:stop`, and `git status` was clean
+of everything but the concurrent session's files.
+
+### What remains of §0's 82 — measured
+
+**61 done. 21 remain.** Generated from the catalog by the handover's script, one category at a time.
+
+| Remaining | Count | Note |
+|---|---|---|
+| **Data** | 5 | `net.noodl.HTTP`, `net.noodl.OptimisticUpdate`, `RunTasks`, `net.noodl.StreamBuffer`, `net.noodl.TextAccumulator` — the five big ones, all that is left of a category that started at 34. ⚠️ `Run Tasks` is the node the contract's own problem statement is about; its empty-list case is **not** an `Unchanged`, and `For Each`'s exemption is recorded for exactly that reason. |
+| **CustomCode** | 3 | ⚠️ `Logic Builder` registers block names verbatim — FINDINGS **SR-ix**; read NDA-004 §3 first. |
+| **Navigation** | 4 | ⚠️ `Close Popup` is NV-iii's original latch. |
+| **Component Utilities** | 2 | ⚠️ the `Fetched`-is-not-`Done` question, now answered **six** times the same way. Do not re-derive it. |
+| **Cloud** | 2 | `Response`, `Send Email`. |
+| **Animation / Events / Logic / String / Utilities** | 5 | `States`, `Send Event`, `Condition`, `Unique Id`, `Open File Picker`. ⚠️ `Condition` has no completion path at all today; `Open File Picker`'s `success` is referenced by `upload-file`'s enrichment prose and by two `examples` graphs. ⚠️ `States` has **unguarded verbatim output names** (§0.2 Result 4) and needs the `Logic Builder` treatment before the reserved names land — and the concurrent phase-36 session has been editing `states.ts`, so read it fresh. |
+| **§3** `Treat Unchanged as` | — | Not started. ⚠️ A declared `default` does not run its setter — FINDINGS **A-D1**. |
+| **§5** the validator's dead-end check | — | Not started. Absent-`Unchanged` now also covers: `Filter Collection`, `Map Collection`, `FilterDBModels`, `Set Variable`, `net.noodl.ActionHandler`, `net.noodl.StateSnapshot`, `net.noodl.PatternExtractor`. `net.noodl.JSONStreamParser` **has** one and it must not be flagged. |
+
+Carried forward unchanged: `GlobalStore.Set`'s and `Update Record`'s unmeasured `Unchanged`
+candidates; `Counter`'s `Reset` guard that has never fired; `Items Rendered` firing with zero item
+nodes after a `Refresh` (the one-character fix is `() => this.refresh()`).
