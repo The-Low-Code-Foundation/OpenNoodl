@@ -139,6 +139,10 @@ export default function registerNodes(noodlRuntime) {
     require('./nodes/std-library/user/signinwith'),
     require('./nodes/std-library/user/requestmagiclink'),
 
+    // ERG-004 — change detection inside Objects and Arrays. Separate nodes rather than modes on
+    // `Value Changed`, which stays exactly as it was; see the file headers for why.
+    require('./nodes/std-library/objectchanged'),
+
     // Deprecated
     require('./nodes/std-library/data/cloudfunction'),
     require('./nodes-deprecated/std-library/componentstate'),
