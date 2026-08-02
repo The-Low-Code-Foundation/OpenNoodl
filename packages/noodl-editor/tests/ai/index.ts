@@ -73,6 +73,11 @@ export * from './project-review.test';
 export * from './project-review-backend.test';
 export * from './project-review-banner.test';
 
+// The other consumer of the same schema read: the Read/Write Database
+// templates. "No collections" and "could not read the collections" must not
+// render alike — a model told the first invents names.
+export * from './database-schema.test';
+
 // AIX-012: AI project creation. The scoping conversation (scripted chat), the
 // plan it derives from the agreed pages, the four documents it renders, and
 // the write path on real files — including criterion 5's mechanical half:
