@@ -353,3 +353,92 @@ describe('OBS-003: did you mean', () => {
     expect(graph.errors[0].message).not.toContain('Did you mean');
   });
 });
+
+/**
+ * OBS-003 — the standing accusation is withdrawn when the author fixes it.
+ *
+ * ⚠️ **Found by a live run, not by a test.** A failure raised on the error bus has no path back
+ * to the editor: `createEditorWarningSubscriber` only ever calls `sendWarning`. So correcting a
+ * misspelt state name left the danger ring and the Problems entry in place for the rest of the
+ * session — the "panel becomes noise and gets ignored" failure `DIAGNOSTICS-CONTRACT.md` exists
+ * to prevent, arriving through the one channel that contract does not own.
+ *
+ * The *event* is untouched, and the second row is what says so: the failure did happen, it
+ * reached `On App Error` and a deployed console when it happened, and nothing rewrites that. Only
+ * the editor's standing claim about the node's *current* state is withdrawn.
+ */
+describe('OBS-003: a corrected state name un-rings the node', () => {
+  test('reaching a real state clears the editor warning', async () => {
+    const graph = await statesGraph('clicked,hover');
+
+    requestState(graph, 'Clicked');
+    expect(graph.editorConnection.warnings.map((w) => w.key)).toContain('states/unknown-state');
+
+    requestState(graph, 'hover');
+
+    expect(graph.editorConnection.warnings.map((w) => w.key)).not.toContain('states/unknown-state');
+    expect(graph.editorConnection.cleared).toContainEqual({ nodeId: 'states', key: 'states/unknown-state' });
+  });
+
+  /**
+   * ⚠️ **The row a live run had to find.** The first fix cleared inside `goToState`, after the
+   * unknown-state guard — which never runs for this case, because the author's correction is
+   * usually to the state the node is *already in*: they typed `"Clicked"` meaning `"clicked"`,
+   * and `"clicked"` is where the node has been sitting the whole time. Both
+   * `scheduleGoToState`'s `pendingTarget === state` return and `goToState`'s
+   * `internal.state === state` return skip it, so the node stayed red after the typo was fixed.
+   *
+   * The corpus had a clearing row and it passed, because it corrected to a *different* state.
+   * That is the difference between testing the mechanism and testing the case.
+   */
+  test('correcting to the state the node is already in also clears', async () => {
+    const graph = await statesGraph('clicked,hover');
+    // The node boots into its first state, `clicked`.
+
+    requestState(graph, 'Clicked');
+    expect(graph.editorConnection.warnings.map((w) => w.key)).toContain('states/unknown-state');
+
+    requestState(graph, 'clicked');
+
+    expect(graph.editorConnection.warnings.map((w) => w.key)).not.toContain('states/unknown-state');
+  });
+
+  test('the failure event itself is not retracted — it happened', async () => {
+    const graph = await statesGraph('clicked,hover');
+
+    requestState(graph, 'Clicked');
+    requestState(graph, 'hover');
+
+    // Still exactly one raise on the bus. Clearing a warning is an editor concern; the event is
+    // history, and `On App Error` already saw it.
+    expect(graph.errors.filter((e) => e.code === 'states/unknown-state')).toHaveLength(1);
+  });
+
+  /**
+   * ⚠️ The row that says where the de-duplication actually lives.
+   *
+   * A successful transition calls `setDiagnostic(code, null)` unconditionally, so the recording
+   * harness — which logs every call — sees a clear even on a node that never failed. **The real
+   * channel does not send one:** `ActiveWarnings.clearWarning` returns `false` for a key it never
+   * held, and `EditorConnection.clearWarning` sends nothing on `false`
+   * (`editorconnection.ts:658-673`). Guarding again inside the node would duplicate the one
+   * component whose whole job this is.
+   *
+   * Asserted against a real `ActiveWarnings`, because asserting against the harness here would
+   * only be asserting that the harness logs calls.
+   */
+  test('(control) a node that never failed sends no clear down the wire', async () => {
+    const graph = await statesGraph('clicked,hover');
+
+    requestState(graph, 'hover');
+
+    // Nothing was ever raised on this node…
+    expect(graph.editorConnection.warnings).toEqual([]);
+
+    // …and the channel's own gate is what stops the clear becoming a message.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const ActiveWarnings = require('../../../noodl-runtime/src/editorconnection.activewarnings');
+    const active = new ActiveWarnings();
+    expect(active.clearWarning('states', 'states/unknown-state')).toBe(false);
+  });
+});

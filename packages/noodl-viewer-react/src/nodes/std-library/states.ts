@@ -108,6 +108,9 @@ function rgbaToHex(rgba: RGBA) {
  */
 const RESERVED_OUTPUTS = ['failure', 'stateChanged', 'done', 'unchanged', 'completed'];
 
+/** Raised on the error bus and cleared as a diagnostic. One name, so the two cannot drift. */
+const UNKNOWN_STATE_CODE = 'states/unknown-state';
+
 const StatesNode: NodeDefinitionOptions = {
   name: 'States',
   docs: 'https://docs.noodl.net/nodes/utilities/logic/states',
@@ -533,6 +536,31 @@ const StatesNode: NodeDefinitionOptions = {
       const _this = this;
       const internal = this._internal;
 
+      // OBS-003 — withdraw the standing accusation, and do it *here*.
+      //
+      // ⚠️ **A failure raised on the error bus has no path back to the editor.**
+      // `createEditorWarningSubscriber` only ever calls `sendWarning`, so the danger ring and the
+      // Problems entry raised by `_failUnknownState` outlived the fix: an author who corrected the
+      // state name watched the node stay red for the rest of the session. That is the "panel
+      // becomes noise and gets ignored" failure `DIAGNOSTICS-CONTRACT.md` exists to prevent,
+      // arriving through the one channel that contract does not own.
+      //
+      // ⚠️ **The first attempt put this in `goToState`, after the unknown-state guard, and a live
+      // run caught it doing nothing in the commonest case.** The likeliest correction of
+      // `"Clicked"` is `"clicked"` — the state the node is *already in*, because that is what the
+      // author meant all along — and both the `pendingTarget === state` return below and
+      // `goToState`'s `internal.state === state` return skip it. The predicate is about the name
+      // on the input, not about whether a transition results, so it is evaluated where every
+      // request arrives.
+      //
+      // Only the editor's standing claim is withdrawn. The failure *event* is untouched: it
+      // happened, it reached `On App Error` and a deployed console when it happened, and nothing
+      // rewrites that. The `states` guard is the same one `_failUnknownState` needs — this runs
+      // before `states` has necessarily been set.
+      if (state && internal.states && internal.states.indexOf(state) !== -1) {
+        this.setDiagnostic(UNKNOWN_STATE_CODE, null);
+      }
+
       if (!internal.goToStateQueue) internal.goToStateQueue = [];
       const queue = internal.goToStateQueue;
 
@@ -588,7 +616,7 @@ const StatesNode: NodeDefinitionOptions = {
 
       this._internal.error = message;
       this.flagOutputDirty('error');
-      this.raiseRuntimeError('states/unknown-state', message, { requested: state, states: states.slice() });
+      this.raiseRuntimeError(UNKNOWN_STATE_CODE, message, { requested: state, states: states.slice() });
       this.sendSignalOnOutput('failure');
     },
     goToState: function (this: StatesInstance, state?: string, settleImmediately?: boolean) {
