@@ -6,8 +6,8 @@
 (agent access) are built. **OBS-003 — node-local diagnostics — is the only task left in the phase.**
 
 Commits `5b423340`, `03a06d41`, `38f75a0f`, `546c9cc4` (OBS-001/002) and `75c10708`, `bc0ed19c`,
-`0d9e4a05`, `039817de` (OBS-004), plus [OBS-002-NOTES.md](./OBS-002-NOTES.md) and
-[OBS-004-NOTES.md](./OBS-004-NOTES.md).
+`0d9e4a05`, `039817de`, `a035982a`, `9e771688` (OBS-004), plus
+[OBS-002-NOTES.md](./OBS-002-NOTES.md) and [OBS-004-NOTES.md](./OBS-004-NOTES.md).
 
 Paste the block under the rule. Everything above it is context for choosing.
 
@@ -17,13 +17,27 @@ It is the only task left, it has **no dependencies**, and it delivers from the f
 also what makes OBS-004 good: `get_warnings` currently returns whatever the existing `sendWarning`
 call sites happen to emit, which is thin.
 
-⚠️ **OBS-003's first batch collides with phase 35.** Its checks target `states.ts`, the Repeater
-family, `Set Variable`, `Array`, `Object` and generic checks in `node.ts` — and ERG-001 has been
-rewriting exactly those files' failure reporting. As of `ba2a815f` it had reached Array, Object and
-Variable. **Read [ERG-001's outcome-contract work](../phase-35-authoring-ergonomics/) first: a
-diagnostic check that duplicates a `reportOutcome` call is noise rather than signal.** If phase 35
-is still live, either take the nodes it has already finished, or start with the convention (scope
-item 1), which touches nothing.
+⚠️ **OBS-003's proposed first batch collides with phase 35 — but only half of it now.** ERG-001 is
+at **53 of 82** as of `7a78fca6` (2026-08-02 13:00), and its own register in
+[ERG-001-S0-MEASUREMENT.md](../phase-35-authoring-ergonomics/ERG-001-S0-MEASUREMENT.md) §"53 done,
+29 remain" is the authoritative list. Against OBS-003's batch:
+
+| OBS-003 wants a check on | ERG-001 state | Verdict |
+|---|---|---|
+| **Repeater** (`Items` not an array, etc.) | ✅ done (`f3a4a1a9`) | **safe — start here** |
+| **Array / Object / Variable** | ✅ done (`ba2a815f`) | **safe** |
+| **`States`** — *the worked example* | ❌ **still in their queue** | ⚠️ collides |
+| **`Set Variable`** | ❌ **still in their queue** | ⚠️ collides |
+| generic checks in `node.ts` | shared implementation of `beginOutcome`/`reportOutcome` | ⚠️ shared file, coordinate |
+
+**So the headline check — the States case-mismatch — is the one still contested.** Re-derive the
+list before starting rather than trusting this table; the phase has already had one arithmetic slip
+in a handover, and ERG-001 commits several times a session.
+
+**Read [ERG-001's outcome-contract work](../phase-35-authoring-ergonomics/) either way: a diagnostic
+check that duplicates a `reportOutcome` call is noise rather than signal.** If phase 35 is still
+live, take Repeater and the Array/Object/Variable family first, or start with the convention (scope
+item 1), which touches no node file at all.
 
 ## What OBS-004 gives you
 
@@ -91,8 +105,11 @@ Commit with explicit pathspecs.
 3. `dev-docs/tasks/phase-36-runtime-observability/OBS-004-NOTES.md` — what consumes your output,
    and the recurring defect class this phase keeps finding: **a surface stating more than it knows.**
    Three of OBS-002's defects and two of OBS-004's were that, and nothing else.
-4. `dev-docs/tasks/phase-35-authoring-ergonomics/ERG-001-OUTCOME-CONTRACT.md` and its S0 measurement
-   — so a check does not duplicate a `reportOutcome` call that already reports the same thing.
+4. `dev-docs/tasks/phase-35-authoring-ergonomics/ERG-001-S0-MEASUREMENT.md` — go to the
+   **"53 done, 29 remain"** register at the bottom, which is derived from the catalog rather than
+   from prose. It tells you which nodes ERG-001 has finished (safe to add checks to, as long as you
+   do not duplicate a `reportOutcome` that already says the same thing) and which are still theirs.
+   `States` and `Set Variable` — two of OBS-003's proposed checks — were still theirs at handover.
 5. `packages/noodl-runtime/src/editorconnection.ts` around `sendWarning`/`clearWarnings` — the
    channel. It has been shipped and in use for years; nothing needs building.
 
