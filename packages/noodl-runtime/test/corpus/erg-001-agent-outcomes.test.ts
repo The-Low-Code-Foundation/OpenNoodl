@@ -71,9 +71,16 @@
  * |---|---|---|
  * | `doFail` reporting `failure` rather than `done` when there *was* an action in flight | 1 | **1, that row** |
  * | State Snapshot settling the token inside `setError`'s dedup | 1 | **1, that row** |
- * | Pattern Extractor reporting `unchanged` for a no-match | 2 | **2, those two** |
+ * | Pattern Extractor reporting `unchanged` for a no-match | 2 | **1 — wrong, see below** |
  * | `doParse`'s empty-buffer branch returning silently again | 1 | **1, that row** |
  * | `reportError` keeping its per-line `failure` pulse | 1 | **1, that row** |
+ *
+ * ⚠️ **The Pattern Extractor miss is worth keeping.** The prediction counted the port-surface
+ * row, which asserts `hasOutput('unchanged') === false` — and that row stays **green**, because
+ * routing the *report* to `unchanged` does not declare the port. What actually happens is an
+ * `outcome/missing-port` raise, which no row here asserts on. So the port-surface control does
+ * not defend the decision; only the no-match row does, and a future edit that added the port at
+ * the same time would be caught by two rows rather than one. Recorded rather than tidied away.
  */
 
 /* eslint-env jest */

@@ -55,14 +55,31 @@
  *
  * | Revert | Predicted | Actual |
  * |---|---|---|
- * | the `Filter`/`Refresh` token minted in `scheduleFilter` rather than at the ports | the three Array Filter "reports nothing" rows | **3, those rows** |
- * | Array Filter's token minted *inside* the `collectionChangedScheduled` guard | the two-pulses row only | **1, that row** |
- * | Array Map's token minted in `scheduleMap` rather than at `Refresh` | the two Array Map "reports nothing" rows | **2, those rows** |
- * | `reportFailure` settling the tokens *after* its message dedup returns | the repeated-failure row only | **1, that row** |
- * | Set Variable's token minted in the `name` setter | the pinned boot control only | **1, that row** |
+ * | the `Filter`/`Refresh` token minted in `scheduleFilter` rather than at the ports | 5 | **10 — wrong** |
+ * | Array Filter's token minted *inside* the `collectionChangedScheduled` guard | 1 | **1, that row** |
+ * | Array Map's token minted in `scheduleMap` rather than at `Refresh` | 4 | **8 — wrong, same cause** |
+ * | `reportFailure` settling the tokens *after* its message dedup returns | 1 | **2 — wrong, and sharper** |
+ * | Set Variable's token minted in the `name` setter | 3 | **2 — wrong, and instructively** |
  * | Set Variable reporting `done` before `variablesModel.set` | **0** — no row can see it | **0** |
  *
- * The last is recorded as an honest non-discrimination rather than quietly dropped: nothing here
+ * ⚠️ **Four of the six predictions were wrong, and three of them the same way.** Moving a mint into
+ * the scheduler reddens far more than the rows written to state "only the port mints", because
+ * *every* row that binds `Items` and then pulses gets a second outcome it did not assert. That is
+ * `For Each`'s recorded miss, twice more: the claim is load-bearing across the whole file rather
+ * than in the two or three rows about it. The prediction was made per-row when it should have been
+ * made per-fixture.
+ *
+ * ⚠️ **The dedup revert reddens two, not one.** The extra is the *first* pulse's row: the boot
+ * binding has already announced the same message, so the pulse's failure is a repeat and its
+ * outcome is swallowed too. The dedup does not merely lose the second identical failure — it loses
+ * the first one that follows any value-driven run with the same message.
+ *
+ * ⚠️ **The Set Variable mint reddens the two counting rows and NOT the boot control**, which is the
+ * opposite of what was predicted. A token minted in a setter is never settled, so nothing is
+ * reported and a silence row cannot see it; what catches it is the next invocation draining the
+ * stale token and reporting twice. Third measurement of that lesson in this phase.
+ *
+ * The last row is an honest non-discrimination rather than a quietly dropped one: nothing here
  * observes the write and the signal in the same frame, so "the outcome is the last thing an action
  * does" is correctness-by-construction on this node.
  */

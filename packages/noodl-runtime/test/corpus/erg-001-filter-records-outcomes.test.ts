@@ -29,9 +29,14 @@
  *
  * | Revert | Predicted | Actual |
  * |---|---|---|
- * | the token minted in `scheduleFilter` rather than at the `Filter` port | the three "reports nothing" rows | **3, those rows** |
- * | the token minted *inside* the `collectionChangedScheduled` guard | the two-pulses row only | **1, that row** |
- * | `reportFailure` settling the tokens after its message dedup returns | the repeated-failure row only | **1, that row** |
+ * | the token minted in `scheduleFilter` rather than at the `Filter` port | 7 | **9 — wrong** |
+ *
+ * ⚠️ The prediction was revised upward from 5 to 7 after the same revert on the twin reddened ten
+ * rows, and it was *still* two short. The two it missed are the broken-filter rows, and they fail
+ * on the **error channel** rather than the outcome count: with the mint in the scheduler, the
+ * `visualFilter` parameter's setter schedules a run at boot before any records exist, so an
+ * `filter-records/no-items` raise appears that the row's exact-array assertion on `graph.errors`
+ * catches. A row can discriminate through a channel the prediction was not thinking about.
  */
 
 /* eslint-env jest */
