@@ -33,6 +33,7 @@ import { NodeReferencesPanel } from './views/panels/NodeReferencesPanel/NodeRefe
 import { ProblemsPanel_ID } from './views/panels/ProblemsPanel';
 import { ProblemsPanel } from './views/panels/ProblemsPanel/ProblemsPanel';
 import { PropertyEditor } from './views/panels/propertyeditor';
+import { ProvenancePanel } from './views/panels/ProvenancePanel';
 import { SearchPanel } from './views/panels/search-panel/search-panel';
 import { SETTINGS_PANEL_ID, SettingsPanel } from './views/panels/SettingsPanel';
 // import { TopologyMapPanel } from './views/panels/TopologyMapPanel'; // Disabled - shelved feature
@@ -293,6 +294,22 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     panel: WorkflowsPanel
   });
 
+  // OBS-002. Not `experimental`: it answers a question on a cold editor with nothing recorded,
+  // and it is the surface the Trigger Chain Debugger below was reaching for.
+  SidebarModel.instance.register({
+    id: 'provenance',
+    name: 'Provenance',
+    description: 'Walks backwards from a port to show where its value came from, and where it stopped.',
+    order: 9.5,
+    icon: IconName.Search,
+    panel: ProvenancePanel
+  });
+
+  // ⚠️ Still registered, still `experimental`, and still reading the old snapshot recorder.
+  // OBS-002 replaces what it was for — but whether it is rebuilt on the trace substrate or
+  // retired outright is open question 3 in the phase-36 README and is not this task's call.
+  // Its forward-chain view is a genuine companion surface to the backward walk, and the
+  // Provenance panel's own root-event list is a first pass at the same idea.
   SidebarModel.instance.register({
     experimental: true,
     id: 'trigger-chain-debugger',

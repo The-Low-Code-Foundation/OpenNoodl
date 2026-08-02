@@ -161,6 +161,22 @@ export class ViewerConnection extends Model {
       DebugInspector.instance.setInspectorValues(request.content.inspectors);
     } else if (request.cmd === 'connectionValue' && request.type === 'viewer') {
       EventDispatcher.instance.emit('ConnectionInspector', request.content);
+    }
+    // OBS-002 — the three inbound halves of the trace channel. Each is re-emitted on the
+    // EventDispatcher rather than handled here: `TraceSession` owns the state, and
+    // ViewerConnection is deliberately kept as transport so a second consumer (OBS-004's
+    // agent access) can subscribe to exactly the same events without going through the panel.
+    else if (request.cmd === 'traceDictionary' && request.type === 'viewer') {
+      EventDispatcher.instance.emit('TraceDictionary', {
+        clientId: request.clientId,
+        dictionary: JSON.parse(request.content)
+      });
+    } else if (request.cmd === 'traceEvents' && request.type === 'viewer') {
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('TraceEvents', { clientId: request.clientId, events: content.events });
+    } else if (request.cmd === 'portValues' && request.type === 'viewer') {
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('TracePortValues', { clientId: request.clientId, values: content.values });
     } else if (request.cmd === 'showwarning' && request.type === 'viewer') {
       const content = JSON.parse(request.content);
       if (ProjectModel.instance !== undefined) {
@@ -396,6 +412,46 @@ export class ViewerConnection extends Model {
     this.send({
       cmd: 'getConnectionValue',
       content: JSON.stringify({ clientId, connectionId })
+    });
+  }
+
+  /**
+   * OBS-002 — the outbound half of the trace channel.
+   *
+   * ⚠️ **The editor pulls; the runtime never pushes.** There is deliberately no "stream me the
+   * events" command: shipping 250k events at a renderer is precisely what killed the shelved
+   * Trigger Chain Debugger. The buffer is an index the walk queries.
+   *
+   * Each of these is broadcast to every viewer and carries a `clientId` the runtime matches
+   * against its own before answering — the same self-filtering `getConnectionValue` uses, so
+   * a project with a preview and a cloud runtime attached does not get two replies.
+   */
+  sendTraceEnabled(enabled: boolean) {
+    this.send({
+      cmd: 'traceEnabled',
+      content: JSON.stringify({ enabled })
+    });
+  }
+
+  sendGetTraceDictionary(clientId: string) {
+    this.send({
+      cmd: 'getTraceDictionary',
+      content: JSON.stringify({ clientId })
+    });
+  }
+
+  /** `afterSeq` is the tail read: omit it for the whole buffer. */
+  sendGetTraceEvents(clientId: string, afterSeq?: number) {
+    this.send({
+      cmd: 'getTraceEvents',
+      content: JSON.stringify({ clientId, afterSeq })
+    });
+  }
+
+  sendGetPortValues(clientId: string, ports: Array<{ node: string; port: string; direction: 'input' | 'output' }>) {
+    this.send({
+      cmd: 'getPortValues',
+      content: JSON.stringify({ clientId, ports })
     });
   }
 

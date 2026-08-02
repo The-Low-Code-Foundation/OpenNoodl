@@ -9,6 +9,7 @@ import { PopupToolbar, PopupToolbarProps } from '@noodl-core-ui/components/popup
 
 import { SidebarModel } from '@noodl-models/sidebar';
 
+import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { CreateNewNodePanel } from '../createnewnodepanel';
 import { ExplainPanel_ID } from '../panels/ExplainPanel';
 import { rememberTarget } from '../panels/ExplainPanel/explainTarget';
@@ -192,30 +193,18 @@ export class NodeContextMenu {
       items.push('divider');
     }
 
-    // Data Lineage - RETIRED FROM REACH (DEBT-012, 2026-07-25).
-    // Decision is NOT to revive this panel: its tracing algorithm enumerates
-    // ports instead of following wires and five fix attempts failed. The sidebar
-    // registration is also commented out (router.setup.ts). Do not re-enable;
-    // a deterministic rebuild belongs on the catalog/v2 substrate — see
-    // dev-docs/future-projects/DETERMINISTIC-LINEAGE-SUBSTRATE.md.
-    // items.push({
-    //   label: 'Show Data Lineage',
-    //   icon: IconName.Link,
-    //   onClick: () => {
-    //     const selectedNode = editor.selector.nodes[0];
-    //     if (selectedNode) {
-    //       EventDispatcher.instance.emit('DataLineage.ShowForNode', {
-    //         nodeId: selectedNode.model.id,
-    //         componentName: editor.activeComponent?.fullName
-    //       });
-    //       SidebarModel.instance.switch('data-lineage');
-    //     }
-    //   },
-    //   isDisabled: selectedNodes.length !== 1,
-    //   tooltip: selectedNodes.length !== 1 ? 'Select a single node to trace its data lineage' : undefined,
-    //   tooltipShowAfterMs: 300
-    // });
-    // items.push('divider');
+    // OBS-002 — the provenance walk, which is what replaces the Data Lineage
+    // panel retired from reach here in DEBT-012.
+    //
+    // ⚠️ The old entry asked for a *node* and let the panel work out what to
+    // trace, which is how it ended up enumerating every port. This asks for a
+    // **port**, one menu item per connected input, so the thing being walked is
+    // named by the user rather than guessed. A node with no incoming wires
+    // contributes no items at all — there is nothing upstream to walk.
+    if (selectedNodes.length === 1) {
+      const walkItems = this.getProvenanceMenuActions(selectedNodes[0]);
+      if (walkItems.length) items.push(...walkItems, 'divider');
+    }
 
     if (
       selectedNodes.length === 1 &&
@@ -280,6 +269,35 @@ export class NodeContextMenu {
   }
 
   /**
+   * OBS-002 — "Why is this empty?", one item per connected input port.
+   *
+   * The spec's primary surface, and the reason it is primary: **the user can always point at
+   * the symptom.** They can always say "this repeater is empty"; they cannot always say which
+   * of six buttons was the relevant cause. So the entry point is the port they are complaining
+   * about, not an interaction they have to remember.
+   *
+   * Capped at eight because this is a context menu, not the walk. A node with more inbound
+   * wires than that is reachable through any one of them — the walk crosses the node anyway.
+   */
+  getProvenanceMenuActions(node: NodeGraphEditorNode): MenuDialogItem[] {
+    const ports: string[] = [];
+    for (const connection of node.model.getConnectionsOnThisNode()) {
+      if (connection.toId !== node.model.id) continue;
+      if (ports.indexOf(connection.toProperty) === -1) ports.push(connection.toProperty);
+    }
+    if (!ports.length) return [];
+
+    return ports.slice(0, 8).map((port) => ({
+      label: `Why is "${port}" empty?`,
+      icon: IconName.Search,
+      onClick: () => {
+        EventDispatcher.instance.emit('provenance:walk', { node: node.model.id, port });
+        SidebarModel.instance.switch('provenance');
+      }
+    }));
+  }
+
+  /**
    * Right-click on a wire (CAN-003 / F54). Wires had no menu at all — deleting
    * one meant discovering an undocumented two-click gesture.
    */
@@ -287,6 +305,20 @@ export class NodeContextMenu {
     const editor = this.editor;
 
     return [
+      {
+        // The most direct entry the canvas has: a wire already names both a node and a port,
+        // so nothing has to be inferred.
+        label: 'Where does this come from?',
+        icon: IconName.Search,
+        onClick: () => {
+          EventDispatcher.instance.emit('provenance:walk', {
+            node: connection.model.toId,
+            port: connection.model.toProperty
+          });
+          SidebarModel.instance.switch('provenance');
+        }
+      },
+      'divider',
       {
         label: connection.model.label ? 'Edit label' : 'Add label',
         icon: IconName.NotePencil,
