@@ -2,6 +2,8 @@
 
 import type { InspectInfo, NodeDefinitionOptions, NodeInstance, PortTypeSpec } from '@noodl/types';
 
+import { outcomeOutputs } from '../../../outcome';
+
 /**
  * What a Variable node's `this` carries.
  *
@@ -27,7 +29,14 @@ export interface VariableNodeInstance extends NodeInstance {
      */
     treatEmptyAs: string;
   };
-  setValueTo(value: unknown): void;
+  /**
+   * @returns whether the stored value actually changed — `Done` versus `Unchanged`.
+   *
+   * ⚠️ It was `void`, and the answer was computed and discarded. ERG-001: §0.3 names this
+   * family as the canonical `Unchanged`, and NDA-002 §3's `changed` guard has known the answer
+   * since it was written. Returning it is what lets `Set` report it.
+   */
+  setValueTo(value: unknown): boolean;
 }
 
 /**
@@ -156,9 +165,15 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
         description:
           'Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that',
         valueChangedToTrue: function (this: VariableNodeInstance) {
+          // ERG-001 §4. Minted at the port and carried through the deferral, so only an
+          // author's `Set` reports — `Value` writing straight through under Run On Value
+          // Change reaches `setValueTo` too, and that is not an invocation of this port.
+          const outcome = this.beginOutcome();
           this.scheduleAfterInputsHaveUpdated(function (this: VariableNodeInstance) {
-            this.setValueTo(this._internal.latestValue);
-            this.sendSignalOnOutput('stored');
+            // `setValueTo` flags `savedValue` dirty and fires `Changed` before returning, so
+            // every value the outcome is about is already on the wire when it goes out.
+            const changed = this.setValueTo(this._internal.latestValue);
+            this.reportOutcome(outcome, changed ? 'done' : 'unchanged');
           });
         }
       }
@@ -176,22 +191,38 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
       },
       changed: {
         type: 'signal',
-        displayName: 'Changed'
+        displayName: 'Changed',
+        description:
+          'Fires whenever the stored value actually changed, however it was reached — including ' +
+          'Value writing straight through under Run On Value Change. It is a value-level event, ' +
+          'not the outcome of a Set'
       },
-      stored: {
-        type: 'signal',
-        displayName: 'Stored'
-      }
+
+      // ERG-001 §4. ⚠️ `Stored` is *removed* rather than renamed, and it is the one port in
+      // the library whose meaning was already exactly `Completed`: it fired after every `Set`
+      // whatever happened. §0.2 Result 3 found the mirror image twice — a `Completed` that
+      // meant "succeeded" — and had to rename those; here the reserved name fits, so keeping
+      // both would have shipped two ports that always fire together.
+      //
+      // No `Failure`: `setValueTo` casts or substitutes the `Treat empty as` value, and never
+      // refuses. A node that cannot fail gets no `Failure` port.
+      ...outcomeOutputs({
+        done: 'Fires when a Set stored a value the Variable was not already holding',
+        unchanged:
+          'Fires when a Set stored the value it already held, so nothing changed. ⚠️ With Value ' +
+          'left ticked under Run On Value Change this is the common case, because Value has ' +
+          'already stored by the time Set fires'
+      })
     },
     prototypeExtensions: {
-      setValueTo: function (this: VariableNodeInstance, value: unknown) {
+      setValueTo: function (this: VariableNodeInstance, value: unknown): boolean {
         // `undefined` abstains (EMPTY-VALUE-CONTRACT.md corollary 4). The `value` input
         // already filters it before calling in, but `saveValue` can also reach here with a
         // pending `latestValue` that was never given an opinion (`initialize` seeds it `0`,
         // which is a real value, not `undefined` — this guard is for completeness per "cast:
         // not reached — if reached, abstain" in the contract's table, not a load-bearing path
         // today).
-        if (value === undefined) return;
+        if (value === undefined) return false;
 
         // `null` maps to the type's empty value (contract corollary 2) rather than through
         // `args.cast`, which never has to think about it. The empty value defaults to `null`
@@ -230,6 +261,8 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
           this.sendSignalOnOutput('changed');
           args.onChanged && args.onChanged.call(this);
         }
+
+        return changed;
       }
     }
   };

@@ -763,7 +763,30 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires whenever the stored value actually changed, however it was reached — including Value writing straight through under Run On Value Change. It is a value-level event, not the outcome of a Set"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Set stored a value the Variable was not already holding"
         },
         {
           "name": "savedValue",
@@ -776,13 +799,15 @@
           "description": "Can be `null` — a cleared Variable (see `value`'s description) stores and emits null by default, not this type's zero value, unless `Treat empty as` says otherwise."
         },
         {
-          "name": "stored",
-          "displayName": "Stored",
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a Set stored the value it already held, so nothing changed. ⚠️ With Value left ticked under Run On Value Change this is the common case, because Value has already stored by the time Set fires"
         }
       ],
       "dynamicPorts": null,
@@ -4930,7 +4955,30 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires whenever the stored value actually changed, however it was reached — including Value writing straight through under Run On Value Change. It is a value-level event, not the outcome of a Set"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Set stored a value the Variable was not already holding"
         },
         {
           "name": "savedValue",
@@ -4943,13 +4991,15 @@
           "description": "Can be `null` — a cleared Variable (see `value`'s description) stores and emits null by default, not this type's zero value, unless `Treat empty as` says otherwise."
         },
         {
-          "name": "stored",
-          "displayName": "Stored",
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a Set stored the value it already held, so nothing changed. ⚠️ With Value left ticked under Run On Value Change this is the common case, because Value has already stored by the time Set fires"
         }
       ],
       "dynamicPorts": null,
@@ -16722,7 +16772,30 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires whenever the stored value actually changed, however it was reached — including Value writing straight through under Run On Value Change. It is a value-level event, not the outcome of a Set"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Set stored a value the Variable was not already holding"
         },
         {
           "name": "savedValue",
@@ -16735,13 +16808,15 @@
           "description": "Can be `null` — a cleared Variable (see `value`'s description) stores and emits null by default, not this type's zero value, unless `Treat empty as` says otherwise."
         },
         {
-          "name": "stored",
-          "displayName": "Stored",
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a Set stored the value it already held, so nothing changed. ⚠️ With Value left ticked under Run On Value Change this is the common case, because Value has already stored by the time Set fires"
         }
       ],
       "dynamicPorts": null,
@@ -25041,7 +25116,30 @@
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires whenever the stored value actually changed, however it was reached — including Value writing straight through under Run On Value Change. It is a value-level event, not the outcome of a Set"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Set stored a value the Variable was not already holding"
         },
         {
           "name": "length",
@@ -25064,13 +25162,15 @@
           "description": "Can be `null` — a cleared Variable (see `value`'s description) stores and emits null by default, not this type's zero value, unless `Treat empty as` says otherwise."
         },
         {
-          "name": "stored",
-          "displayName": "Stored",
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
-          "isSignal": true
+          "isSignal": true,
+          "description": "Fires when a Set stored the value it already held, so nothing changed. ⚠️ With Value left ticked under Run On Value Change this is the common case, because Value has already stored by the time Set fires"
         }
       ],
       "dynamicPorts": null,

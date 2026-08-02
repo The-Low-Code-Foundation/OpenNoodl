@@ -2453,10 +2453,25 @@
           "displayName": "Changed"
         },
         {
-          "name": "stored",
+          "name": "done",
           "type": "signal",
           "plug": "output",
-          "displayName": "Stored"
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged"
         }
       ]
     },
@@ -2538,10 +2553,25 @@
           "displayName": "Changed"
         },
         {
-          "name": "stored",
+          "name": "done",
           "type": "signal",
           "plug": "output",
-          "displayName": "Stored"
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged"
         },
         {
           "name": "length",
@@ -2624,10 +2654,25 @@
           "displayName": "Changed"
         },
         {
-          "name": "stored",
+          "name": "done",
           "type": "signal",
           "plug": "output",
-          "displayName": "Stored"
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged"
         }
       ]
     },
