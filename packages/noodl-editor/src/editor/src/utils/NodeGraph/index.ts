@@ -1,15 +1,17 @@
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { RuntimeType } from '@noodl-models/nodelibrary/NodeLibraryData';
+import { WORKFLOW_NAME_PREFIX } from '@noodl-models/workflow/workflowPorts';
 
 /**
- * WFA-004: the prefix a workflow's canvas adapter is named with.
+ * WFA-004's workflow adapter name prefix, re-exported.
  *
- * It echoes the `/#__cloud__/` sheet prefix so the runtime type still resolves
- * from the name, but it is NOT a project sheet — nothing named with it is in
- * `ProjectModel`. See WFA-004-ASSESSMENT §1b.
+ * It moved to `models/workflow/workflowPorts` in WFA-007 (a module with no
+ * imports at all) because the proposal diff needs it without dragging the
+ * editor in, and a review graph that lost the prefix would leak its model
+ * events to the viewer.
  */
-export const WORKFLOW_NAME_PREFIX = '/#__workflow__/';
+export { WORKFLOW_NAME_PREFIX };
 
 export function getComponentModelRuntimeType(node: ComponentModel) {
   // Guard against undefined node (happens on empty projects)

@@ -33,6 +33,16 @@ module.exports = {
   ],
   testPathIgnorePatterns: ['/node_modules/'],
   moduleNameMapper: {
-    '^@noodl-viewer-cloud/execution-history$': '<rootDir>/../noodl-viewer-cloud/src/execution-history/index.ts'
+    '^@noodl-viewer-cloud/execution-history$': '<rootDir>/../noodl-viewer-cloud/src/execution-history/index.ts',
+    // WFA-007: the workflow proposal diff. `@noodl-versioning` (SUB-007) is
+    // self-contained — its only imports are its own files — and the workflow
+    // change-set modules under `@noodl-models/workflow` were written to import
+    // nothing else from the editor, which is what makes them reachable from a
+    // plain-Node runner. Mapping the alias does NOT make the renderer
+    // importable: a module that reaches React or an editor singleton still
+    // fails here, loudly, which is the boundary being enforced.
+    '^@noodl-versioning$': '<rootDir>/src/editor/src/versioning/index.ts',
+    '^@noodl-versioning/(.*)$': '<rootDir>/src/editor/src/versioning/$1',
+    '^@noodl-models/(.*)$': '<rootDir>/src/editor/src/models/$1'
   }
 };
