@@ -24,6 +24,7 @@
     "tests-main",
     "tests-unit",
     "src/editor/src/utils/provenance",
-    "src/editor/src/utils/import-engine/legacy"
+    "src/editor/src/utils/import-engine/legacy",
+    "src/editor/src/validation"
   ]
 }

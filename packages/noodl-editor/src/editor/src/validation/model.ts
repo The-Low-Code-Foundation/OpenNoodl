@@ -25,6 +25,21 @@ export interface NormNode {
    * nodes serialise their live ports here.
    */
   instancePorts: string[];
+  /**
+   * Node metadata, carried verbatim from the source.
+   *
+   * Added by LIB-006, and deliberately narrow in purpose: a legacy import writes
+   * `metadata.legacyImport` onto every construct it could not convert, and the
+   * `legacy-import-placeholder` rule keys off it. Without this field, that rule
+   * cannot distinguish "the importer knows this could not be converted" (an
+   * error the user must resolve) from "this type is not in the catalog right
+   * now" (a warning, because a module may yet provide it) — and the two deserve
+   * different severities.
+   *
+   * Rules should read specific keys, never enumerate it. Absent when the node
+   * carries no metadata.
+   */
+  metadata?: Record<string, unknown>;
 }
 
 export interface NormConnection {
