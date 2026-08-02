@@ -58,6 +58,15 @@ export * from './authoring-plan-staging.test';
 // graph-restatement lint that keeps AIX-009's design line mechanical, and the
 // plan doc write path on real files.
 export * from './authoring-doc-session.test';
+
+// AIX-011 live-provider residuals: an update session must be judged against the
+// component it revises — the missing-component-id structural dead end, and the
+// pre-existing unknown-type errors that made an agent retype module nodes.
+export * from './authoring-update-baseline.test';
+
+// …and the write-path half of the same fix: the backfilled component id, saved
+// through `project.toDirectory` and compared as bytes after one undo.
+export * from './authoring-update-idless.test';
 export * from './plan-doc-writer.test';
 
 // AIX-010: project review & docs retrofit. The page map (from Router/Page node
@@ -65,6 +74,18 @@ export * from './plan-doc-writer.test';
 // prompt and the panel share, the drafting turn's two advisory passes, and
 // criterion 7's byte-for-byte real-file comparison after rejecting everything.
 export * from './project-review.test';
+
+// AIX-010 residuals: what the backend summary reports when a backend really
+// exists (verified against a live nodegx-backend, and against credential
+// disclosure), and the banner's per-instance listener context — it is mounted
+// twice and the two mounts used to unsubscribe each other.
+export * from './project-review-backend.test';
+export * from './project-review-banner.test';
+
+// The other consumer of the same schema read: the Read/Write Database
+// templates. "No collections" and "could not read the collections" must not
+// render alike — a model told the first invents names.
+export * from './database-schema.test';
 
 // AIX-012: AI project creation. The scoping conversation (scripted chat), the
 // plan it derives from the agreed pages, the four documents it renders, and

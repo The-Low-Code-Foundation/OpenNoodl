@@ -70,14 +70,53 @@ function toNormComponent(component: GraphComponent): NormComponent {
 }
 
 /**
+ * A diagnostic's identity for baseline comparison: the rule, what it is about,
+ * and the message. The message is in the key on purpose — "unknown node type
+ * Markdown" and "unknown node type Foo" are different problems on the same
+ * node, and only the first can be pre-existing.
+ *
+ * Byte-for-byte the same key the MCP write-gate uses
+ * (`noodl-mcp/src/tools/planTools.ts`), which has had this exemption since
+ * AIX-011 landed. Keeping the two identical is deliberate: they are twins of
+ * one policy, and this is the cheap half of not letting them drift.
+ */
+function diagnosticKey(d: Diagnostic): string {
+  const l = d.location;
+  return JSON.stringify([d.code, l.nodeId, l.port, l.plug, l.connection, d.message]);
+}
+
+export interface ValidateCandidateOptions {
+  /**
+   * Update mode: the component as it exists today. Errors the base ALREADY has
+   * are not charged to the agent's candidate.
+   *
+   * Without this, an update session is judged against a standard its own
+   * subject does not meet, and the agent — correctly told to take diagnostics
+   * literally and never argue with one — repairs a defect it did not cause, in
+   * the only way it can. Measured on a real project: a component holding three
+   * `Markdown` nodes and one `module.inlineHtml` (module-provided types the
+   * catalog does not carry) came back with all four RETYPED to `Text` under the
+   * same node ids, in both live plan runs. That reads as a modification in the
+   * diff, not a removal, so "100% of node ids kept" scored it as a clean
+   * revision while the content model had been quietly destroyed.
+   *
+   * A pre-existing error is still reported — in `preExisting` and in
+   * `diagnostics` — it just does not reject the submission.
+   */
+  baseline?: ComponentFiles;
+}
+
+/**
  * Validate a candidate component against the project it would join. Strict:
  * unknown node types are errors (with suggestions), because the agent chose
- * every type from the catalog it was shown.
+ * every type from the catalog it was shown — except for the ones it did not
+ * choose, which is what `options.baseline` is for.
  */
 export function validateCandidateComponent(
   graph: ExplainGraph,
   legacyName: string,
-  files: ComponentFiles
+  files: ComponentFiles,
+  options: ValidateCandidateOptions = {}
 ): CandidateValidation {
   const structural = structuralCheck(files);
   if (structural.length > 0) {
@@ -100,16 +139,55 @@ export function validateCandidateComponent(
   };
 
   const report: ValidationReport = validator().validateComponent(project, legacyName, { strict: true });
-  const errors: Diagnostic[] = report.diagnostics.filter((d) => d.severity === 'error');
+  const allErrors: Diagnostic[] = report.diagnostics.filter((d) => d.severity === 'error');
+
+  const inherited = options.baseline ? baselineErrorKeys(graph, legacyName, options.baseline) : undefined;
+  const preExisting = inherited ? allErrors.filter((d) => inherited.has(diagnosticKey(d))) : [];
+  const errors = inherited ? allErrors.filter((d) => !inherited.has(diagnosticKey(d))) : allErrors;
 
   return {
     ok: errors.length === 0,
     diagnostics: sortDiagnostics(report.diagnostics),
     errors,
+    ...(preExisting.length > 0 ? { preExisting } : {}),
     summary: {
       errors: report.summary.errors,
       warnings: report.summary.warnings,
       infos: report.summary.infos
     }
   };
+}
+
+/**
+ * The error keys the component ALREADY has, validated the same way and in the
+ * same project context as the candidate.
+ *
+ * The base is normalised first, and only for the *identity* fields the agent
+ * cannot express — the same backfill `buildCandidate` performs. A legacy
+ * component with no `id` would otherwise fail this structural check and yield
+ * an empty key set, which reads as "nothing is pre-existing" rather than as
+ * "we could not tell", and would silently reinstate the retype pressure on
+ * exactly the components most likely to carry module nodes.
+ *
+ * A base that is broken for any *other* reason yields no keys, deliberately:
+ * that is a judgement we genuinely cannot make.
+ */
+function baselineErrorKeys(graph: ExplainGraph, legacyName: string, base: ComponentFiles): Set<string> {
+  const id = base.component.id ?? base.nodes.componentId ?? 'baseline-identity';
+  const normalised: ComponentFiles = {
+    component: { ...base.component, id },
+    nodes: { ...base.nodes, componentId: base.nodes.componentId ?? id },
+    connections: { ...base.connections, componentId: base.connections.componentId ?? id }
+  };
+  if (structuralCheck(normalised).length > 0) return new Set();
+  const components: NormComponent[] = [
+    ...graph.components.filter((c) => c.name !== legacyName).map(toNormComponent),
+    normalizeV2Component(legacyName, base.nodes, base.connections)
+  ];
+  const project: NormProject = {
+    components,
+    componentRefs: buildComponentRefs(components.map((c) => c.name))
+  };
+  const report = validator().validateComponent(project, legacyName, { strict: true });
+  return new Set(report.diagnostics.filter((d) => d.severity === 'error').map(diagnosticKey));
 }

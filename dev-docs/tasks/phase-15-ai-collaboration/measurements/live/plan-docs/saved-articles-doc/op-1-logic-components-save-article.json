@@ -1,0 +1,190 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "e6cebe14-5cfb-4e57-912a-c1b7e7666375",
+    "name": "Save Article",
+    "path": "/Logic Components/Save Article",
+    "type": "visual",
+    "created": "2026-08-02T17:13:31.572Z",
+    "modified": "2026-08-02T17:13:31.572Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Toggles a SavedArticle record for a user: queries for an existing record matching userId+articleId, deletes it if found (unsave) or creates it if not (save), keyed by the canonical Contentful articleId."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "e6cebe14-5cfb-4e57-912a-c1b7e7666375",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "in",
+        "type": "Component Inputs",
+        "label": "Inputs",
+        "x": 0,
+        "y": 200,
+        "ports": [
+          {
+            "name": "Do",
+            "plug": "output",
+            "type": "signal"
+          },
+          {
+            "name": "articleId",
+            "plug": "output",
+            "type": "string"
+          },
+          {
+            "name": "userId",
+            "plug": "output",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "id": "out",
+        "type": "Component Outputs",
+        "label": "Outputs",
+        "x": 900,
+        "y": 200,
+        "ports": [
+          {
+            "name": "Failure",
+            "plug": "input",
+            "type": "signal"
+          },
+          {
+            "name": "Success",
+            "plug": "input",
+            "type": "signal"
+          }
+        ]
+      },
+      {
+        "id": "query",
+        "type": "DbCollection2",
+        "label": "Query existing SavedArticle for user+article",
+        "x": 200,
+        "y": 50,
+        "parameters": {
+          "collectionName": "SavedArticle",
+          "filterFilter": [
+            "userId",
+            "articleId"
+          ],
+          "filterFilterType-userId": "string",
+          "filterFilterOp-userId": "eq",
+          "filterFilterType-articleId": "string",
+          "filterFilterOp-articleId": "eq"
+        }
+      },
+      {
+        "id": "cond",
+        "type": "Condition",
+        "label": "Already saved?",
+        "x": 450,
+        "y": 200
+      },
+      {
+        "id": "create",
+        "type": "NewDbModelProperties",
+        "label": "Create SavedArticle",
+        "x": 650,
+        "y": 80,
+        "parameters": {
+          "collectionName": "SavedArticle"
+        }
+      },
+      {
+        "id": "delete",
+        "type": "DeleteDbModelProperties",
+        "label": "Delete SavedArticle",
+        "x": 650,
+        "y": 320
+      }
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "e6cebe14-5cfb-4e57-912a-c1b7e7666375",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "in",
+        "fromProperty": "articleId",
+        "toId": "query",
+        "toProperty": "filterFilterValue-articleId"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "userId",
+        "toId": "query",
+        "toProperty": "filterFilterValue-userId"
+      },
+      {
+        "fromId": "query",
+        "fromProperty": "isEmpty",
+        "toId": "cond",
+        "toProperty": "condition"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "Do",
+        "toId": "cond",
+        "toProperty": "eval"
+      },
+      {
+        "fromId": "cond",
+        "fromProperty": "ontrue",
+        "toId": "create",
+        "toProperty": "store"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "articleId",
+        "toId": "create",
+        "toProperty": "prop-articleId"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "userId",
+        "toId": "create",
+        "toProperty": "prop-userId"
+      },
+      {
+        "fromId": "create",
+        "fromProperty": "done",
+        "toId": "out",
+        "toProperty": "Success"
+      },
+      {
+        "fromId": "create",
+        "fromProperty": "failure",
+        "toId": "out",
+        "toProperty": "Failure"
+      },
+      {
+        "fromId": "cond",
+        "fromProperty": "onfalse",
+        "toId": "delete",
+        "toProperty": "store"
+      },
+      {
+        "fromId": "query",
+        "fromProperty": "firstItemId",
+        "toId": "delete",
+        "toProperty": "modelId"
+      },
+      {
+        "fromId": "delete",
+        "fromProperty": "done",
+        "toId": "out",
+        "toProperty": "Success"
+      },
+      {
+        "fromId": "delete",
+        "fromProperty": "failure",
+        "toId": "out",
+        "toProperty": "Failure"
+      }
+    ]
+  }
+}

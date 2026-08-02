@@ -10,6 +10,52 @@ import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 import { Property, PropertyProps } from './Property';
 
+/** The `codeeditor` values a port may declare, and what each one is. */
+const LANGUAGE_MODES: Record<string, ValidationType> = {
+  json: 'json',
+  css: 'css',
+  html: 'html',
+  text: 'text'
+};
+
+/**
+ * Which editor mode a `codeeditor` port opens in.
+ *
+ * The port's own `codeeditor` value is the language. It has never all been
+ * JavaScript — `css-definition`'s `style` is CSS, every visual node's
+ * `styleCss` and Static Data's `csv` are plain text, project settings'
+ * `headCode` is HTML — but everything that was not `json` used to be validated
+ * as a JavaScript expression and titled **EXPRESSION** in the popout's toolbar.
+ * A stylesheet was therefore presented as an expression and then reported as a
+ * syntax error, on a node whose whole purpose is to hold a stylesheet.
+ *
+ * `javascript`/`typescript` keep the name-based guess they always had: the
+ * three JS modes differ only in what wrapping the validator accepts, and the
+ * port name is the only signal available for that.
+ *
+ * Anything unrecognised stays `expression`, which is the safest JS reading. It
+ * is no longer the array/object case, though — since ERG-003 those ports route
+ * to `ListValueType`'s JSON editor and never reach this view.
+ *
+ * Exported for the spec; `getValidationType` is the only caller in the product.
+ */
+export function validationTypeForEditType(type: { name?: string; codeeditor?: string } | undefined): ValidationType {
+  const language = type?.codeeditor;
+
+  if (language && LANGUAGE_MODES[language]) {
+    return LANGUAGE_MODES[language];
+  }
+
+  if (language === 'javascript' || language === 'typescript') {
+    const typeName = (type?.name || '').toLowerCase();
+    if (typeName.includes('expression')) return 'expression';
+    if (typeName.includes('script')) return 'script';
+    return 'function';
+  }
+
+  return 'expression';
+}
+
 export class CodeEditorType extends TypeView {
   el: TSFixme;
   propertyName: string;
@@ -89,35 +135,8 @@ export class CodeEditorType extends TypeView {
     return this.propertyDiv;
   }
 
-  /**
-   * Determine which CodeMirror validation/language mode to use for this port.
-   *
-   * - `codeeditor: 'json'` ports get real JSON highlighting/validation.
-   * - `codeeditor: 'javascript' | 'typescript'` ports use the JS heuristics that were
-   *   already in place (name-based expression/script/function guess).
-   * - Anything else reaching this view is an array- or object-typed port edited as a JS
-   *   literal (see DataTypes/Ports.ts `isOfArrayType` / `isOfObjectType`) - treat it as an
-   *   expression. Not `json`, deliberately: `{ Authorization: 'Bearer x' }` is a perfectly
-   *   good object literal and JSON validation would mark the unquoted key as an error.
-   */
   private getValidationType(): ValidationType {
-    if (this.type.codeeditor === 'json') {
-      return 'json';
-    }
-
-    if (this.type.codeeditor === 'javascript' || this.type.codeeditor === 'typescript') {
-      const typeName = (this.type.name || '').toLowerCase();
-      if (typeName.includes('expression')) {
-        return 'expression';
-      } else if (typeName.includes('script')) {
-        return 'script';
-      }
-      return 'function';
-    }
-
-    // Array- or object-typed port edited as a JS literal (the Options node's "Items", a
-    // Global Store's "Initial State", an SSE call's "Headers")
-    return 'expression';
+    return validationTypeForEditType(this.type);
   }
 
   /** HTML Binding */
@@ -195,7 +214,7 @@ export class CodeEditorType extends TypeView {
         },
         onClose: closeHandler,
         validationType,
-        placeholder: validationType === 'json' ? '{}' : undefined,
+        // No placeholder: the mode supplies its own (core-ui `utils/modes.ts`).
         disabled: this.readOnly, // Enable read-only mode if port is marked readOnly
         width: initialSize?.x || 800,
         height: initialSize?.y || 500,

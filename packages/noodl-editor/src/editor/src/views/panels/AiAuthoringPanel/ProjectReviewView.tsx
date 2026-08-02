@@ -45,7 +45,12 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import css from './ProjectReviewBanner.module.scss';
 
-const EVENT_GROUP = 'project-review-view';
+// No module-level group constant here: a shared string is the bug
+// `ProjectReviewBanner.subscribeReviewVisibility` documents — `Model.off(group)`
+// splices every listener with that group out of one registry, so two mounts of
+// the same component unsubscribe each other. This view has one mount site
+// today, which makes a second one a silent regression rather than a loud one.
+// Each subscription binds with its own context token instead.
 
 /**
  * What the review read and what it did not — criterion 4's user-facing half.
@@ -152,9 +157,10 @@ export function ProjectReviewView({ isConfigured, hasProject, startImmediately }
 
   useEffect(() => {
     const store = ProjectReviewStore.instance;
-    store.on(PROJECT_REVIEW_CHANGED, () => setState(store.getState()), EVENT_GROUP);
+    const context = {};
+    store.on(PROJECT_REVIEW_CHANGED, () => setState(store.getState()), context);
     return () => {
-      store.off(EVENT_GROUP);
+      store.off(context);
     };
   }, []);
 

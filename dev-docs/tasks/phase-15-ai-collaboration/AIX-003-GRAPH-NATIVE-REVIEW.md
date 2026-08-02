@@ -133,7 +133,12 @@ Do not rely on colour alone. Use shape, badges, or line treatment as well — bo
 - [x] Change list + navigation + parameter detail (`ChangeReviewDocument`, not a sidebar panel — the list lives beside its own canvas)
 - [x] Before/after toggle; granular accept/reject with dependency rules
 - [x] Large-change-set grouping and walkthrough
-- [ ] Fresh-reviewer test with a 40+ node proposal (needs a human + live provider)
+- [ ] Fresh-reviewer test with a 40+ node proposal — the proposal and its rendered
+      review now exist (`measurements/live/changeset/settings-page.review.md`,
+      request held separately); only the human half is outstanding
+- [x] Round trip with a live provider: propose → review → partially accept, with
+      the accepted subset verified through the diff engine and the SUB-006 gate
+      (`AIX-003-LIVE-ROUND-TRIP.md`)
 - [x] Accessibility: badges, dashed borders/routing, stroke weight — change types carry shape, not colour alone
 - [x] CHANGELOG (below); no PR — direct commits to `cline-dev`
 

@@ -74,6 +74,7 @@ function rawChangeId(change: GraphChange): string {
       return `${change.kind}:${change.node.id}`;
     case 'connection-added':
     case 'connection-removed':
+    case 'connection-relabelled':
       return `${change.kind}:${connectionKey(change.connection)}`;
     case 'connection-rewired':
       return `${change.kind}:${connectionKey(change.before)}->${connectionKey(change.after)}`;

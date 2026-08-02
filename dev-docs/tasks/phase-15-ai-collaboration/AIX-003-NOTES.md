@@ -83,9 +83,19 @@ in `tests/versioning/graphdiff.test.ts`.
    (`ProjectScanner.ts`, RUN-001 work). Logic is spec-covered; the UI needs
    one clean-session smoke.
 2. **The 40+ node fresh-reviewer test** (success criterion: a human who
-   hasn't seen the change can say what happened). Needs a human and a real
-   large proposal — pair it with AIX-002's pending live-provider runs.
+   hasn't seen the change can say what happened). Still needs a human — but the
+   artifact it needs now exists:
+   `measurements/live/changeset/settings-page.review.md` (a real 38-node,
+   40-change proposal rendered through the change rail's own presentation) with
+   the request held separately in `settings-page.request.md`. Same pair for
+   `share-popup`.
 3. **Comment annotations on canvas** ride through `rest.annotation` in the
    review component but the comment layer's rendering of them is unverified.
-4. Real end-to-end: author with a live provider → review → partially accept.
-   Depends on AIX-002 step 2 (provider keys).
+4. ~~Real end-to-end: author with a live provider → review → partially accept.~~
+   **Done, 2026-08-02** — see `AIX-003-LIVE-ROUND-TRIP.md`. Thirteen live
+   `claude-sonnet-5` sessions through `--mode=changeset`, $2.39. It found that a
+   fully accepted proposal could land its inserted rows in the wrong sibling slot
+   (fixed), that `connection-relabelled` was unhandled in three places and that
+   wire labels never survived the v2 export/import at all (fixed), and — filed,
+   not fixed — that a gate-forced repair is structurally independent and
+   semantically not, so the rail offers a rejection the Build panel then refuses.

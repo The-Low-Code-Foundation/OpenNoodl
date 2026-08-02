@@ -1,0 +1,31 @@
+{
+  "Event": [
+    {
+      "objectId": "ev1",
+      "name": "Neon Nights Festival",
+      "startDate": "2024-07-12T20:00:00Z",
+      "city": "Berlin",
+      "venue": "Arena Berlin",
+      "price": "€45",
+      "photo": "https://picsum.photos/seed/neon/400/300"
+    },
+    {
+      "objectId": "ev2",
+      "name": "Jazz on the Rooftop",
+      "startDate": "2024-08-03T18:30:00Z",
+      "city": "Lisbon",
+      "venue": "Terraço Lounge",
+      "price": "€30",
+      "photo": "https://picsum.photos/seed/jazz/400/300"
+    },
+    {
+      "objectId": "ev3",
+      "name": "Indie Summer Fest",
+      "startDate": "2024-09-01T15:00:00Z",
+      "city": "Amsterdam",
+      "venue": "Westerpark",
+      "price": "€60",
+      "photo": "https://picsum.photos/seed/indie/400/300"
+    }
+  ]
+}

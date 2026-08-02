@@ -48,6 +48,7 @@ export { dismissReviewBanner, isReviewBannerDismissed, REVIEW_BANNER_DISMISSED_K
 
 // Electron-side only — see the note above.
 export { collectBackendSummary, collectProjectReviewSources, readDeclaredRoutes } from './collectSources';
+export { buildBackendSummary, collectionsFromCachedSchema } from './backendSummary';
 export { ProjectReviewSetupError, stageReviewDrafts, startProjectReview } from './startProjectReview';
 export type { StagedReviewDraft, StartProjectReviewOptions } from './startProjectReview';
 

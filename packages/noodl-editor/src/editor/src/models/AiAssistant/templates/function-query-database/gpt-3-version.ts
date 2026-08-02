@@ -439,7 +439,7 @@ Outputs.error = error
 ${FUNCTION_QUERY_DATABASE_CONTEXT_GPT3_GENERAL_BACKGROUND}
 
 ###schema###
-Here is the schema of the database:
+What is known about the project database:
 %{database-schema}%
 
 ##Task###
@@ -450,7 +450,7 @@ const FUNCTION_QUERY_DATABASE_CONTEXT_EDIT_GPT3 = `${FUNCTION_QUERY_DATABASE_CON
 ${FUNCTION_QUERY_DATABASE_CONTEXT_GPT3_GENERAL_BACKGROUND}
 
 ###schema###
-Here is the schema of the database:
+What is known about the project database:
 %{database-schema}%
 
 We are starting from this code and will only modify it:

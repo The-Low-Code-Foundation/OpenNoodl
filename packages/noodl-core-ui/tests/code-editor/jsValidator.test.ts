@@ -3,7 +3,12 @@
  * coverage at all, including the position parsing that A3 rewrote.
  */
 
-import { isSameValidation, validateJavaScript } from '@noodl-core-ui/components/code-editor/utils/jsValidator';
+import {
+  isSameValidation,
+  isValidatedType,
+  validateJavaScript
+} from '@noodl-core-ui/components/code-editor/utils/jsValidator';
+import { defaultPlaceholder, modeLabel } from '@noodl-core-ui/components/code-editor/utils/modes';
 
 describe('validateJavaScript', () => {
   describe('expression', () => {
@@ -78,6 +83,56 @@ describe('validateJavaScript', () => {
 
   it('rejects an unknown validation type', () => {
     expect(validateJavaScript('1', 'nonsense' as never).valid).toBe(false);
+  });
+
+  /**
+   * AIX-005 residual. Every `codeeditor` port that was not `json` used to be
+   * validated as a JavaScript expression, so the CSS Definition node's `style`
+   * — a port that exists to hold a stylesheet — reported a syntax error on the
+   * first declaration typed into it.
+   */
+  describe('the modes with no validator', () => {
+    it('does not fail CSS, HTML or CSV as JavaScript', () => {
+      expect(validateJavaScript('background-color: red;', 'css').valid).toBe(true);
+      expect(validateJavaScript('.card { padding: 8px }', 'css').valid).toBe(true);
+      expect(validateJavaScript('<meta name="x" content="y">', 'html').valid).toBe(true);
+      expect(validateJavaScript('name,age\nAda,36', 'text').valid).toBe(true);
+    });
+
+    it('every one of them is the same JavaScript the expression validator refuses', () => {
+      expect(validateJavaScript('background-color: red;', 'expression').valid).toBe(false);
+      expect(validateJavaScript('name,age\nAda,36', 'expression').valid).toBe(false);
+    });
+
+    it('says it has no verdict, so nothing claims the text was checked', () => {
+      expect(isValidatedType('css')).toBe(false);
+      expect(isValidatedType('html')).toBe(false);
+      expect(isValidatedType('text')).toBe(false);
+
+      expect(isValidatedType('expression')).toBe(true);
+      expect(isValidatedType('function')).toBe(true);
+      expect(isValidatedType('script')).toBe(true);
+      expect(isValidatedType('json')).toBe(true);
+    });
+  });
+});
+
+describe('editor modes', () => {
+  it('names every mode after what it holds, never "Expression" by default', () => {
+    expect(modeLabel('expression')).toBe('Expression');
+    expect(modeLabel('function')).toBe('Function');
+    expect(modeLabel('script')).toBe('Script');
+    expect(modeLabel('json')).toBe('JSON');
+    expect(modeLabel('css')).toBe('CSS');
+    expect(modeLabel('html')).toBe('HTML');
+    expect(modeLabel('text')).toBe('Text');
+  });
+
+  it('does not invite JavaScript into a port that cannot hold any', () => {
+    expect(defaultPlaceholder('css').indexOf('JavaScript')).toBe(-1);
+    expect(defaultPlaceholder('html').indexOf('JavaScript')).toBe(-1);
+    expect(defaultPlaceholder('text')).toBe('');
+    expect(defaultPlaceholder('json')).toBe('{}');
   });
 });
 

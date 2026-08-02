@@ -1,0 +1,49 @@
+{
+  "Event": [
+    {
+      "objectId": "ev1",
+      "name": "Sunset Jazz Night",
+      "startDate": "2024-07-12T19:00:00Z",
+      "city": "Austin",
+      "venue": "Blue Note Hall",
+      "price": "35",
+      "photo": "https://picsum.photos/seed/jazz1/400/300"
+    },
+    {
+      "objectId": "ev2",
+      "name": "Indie Rock Fest",
+      "startDate": "2024-08-03T18:00:00Z",
+      "city": "Portland",
+      "venue": "Riverside Park",
+      "price": "50",
+      "photo": "https://picsum.photos/seed/rock2/400/300"
+    },
+    {
+      "objectId": "ev3",
+      "name": "Downtown Food & Music",
+      "startDate": "2024-09-21T12:00:00Z",
+      "city": "Denver",
+      "venue": "Union Square",
+      "price": "20",
+      "photo": "https://picsum.photos/seed/food3/400/300"
+    },
+    {
+      "objectId": "ev4",
+      "name": "Electronic Nights",
+      "startDate": "2024-10-05T21:00:00Z",
+      "city": "Miami",
+      "venue": "Skyline Club",
+      "price": "60",
+      "photo": "https://picsum.photos/seed/elec4/400/300"
+    },
+    {
+      "objectId": "ev5",
+      "name": "Acoustic Sessions",
+      "startDate": "2024-11-14T19:30:00Z",
+      "city": "Seattle",
+      "venue": "The Loft",
+      "price": "25",
+      "photo": "https://picsum.photos/seed/aco5/400/300"
+    }
+  ]
+}

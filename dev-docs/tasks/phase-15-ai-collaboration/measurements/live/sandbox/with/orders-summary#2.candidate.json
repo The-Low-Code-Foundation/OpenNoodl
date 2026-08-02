@@ -1,0 +1,246 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "26645ca8-5c4a-4991-9079-89ee77a10ee3",
+    "name": "AIX Orders",
+    "path": "/Pages/AIX Orders",
+    "type": "page",
+    "created": "2026-08-02T17:29:56.083Z",
+    "modified": "2026-08-02T17:29:56.083Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Orders page: shows a summary line (order count and total value) followed by a list of orders from the Orders collection, sorted most-recent-first, with order number, customer name, total, status and date placed."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "26645ca8-5c4a-4991-9079-89ee77a10ee3",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Page root",
+        "x": 0,
+        "y": 0,
+        "children": [
+          "summaryText",
+          "headerRow",
+          "divider",
+          "rowsText"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "paddingTop": "var(--space-8)",
+          "paddingBottom": "var(--space-8)",
+          "paddingLeft": "var(--space-8)",
+          "paddingRight": "var(--space-8)",
+          "gap": "var(--space-4)",
+          "backgroundColor": "var(--background)",
+          "widthUnit": "%",
+          "width": 100,
+          "heightUnit": "%",
+          "height": 100
+        }
+      },
+      {
+        "id": "ordersQuery",
+        "type": "DbCollection2",
+        "label": "Query all Orders",
+        "x": 0,
+        "y": 300,
+        "parameters": {
+          "collectionName": "Orders"
+        }
+      },
+      {
+        "id": "sortExpr",
+        "type": "Expression",
+        "label": "Sort orders by date, newest first",
+        "x": 300,
+        "y": 300,
+        "parameters": {
+          "expression": "[...items].sort((a,b)=> new Date(b.datePlaced) - new Date(a.datePlaced))"
+        }
+      },
+      {
+        "id": "summaryExpr",
+        "type": "Expression",
+        "label": "Summary line (count + total)",
+        "x": 600,
+        "y": 200,
+        "parameters": {
+          "expression": "items.length + ' orders · $' + items.reduce((s,o)=>s+o.total,0).toFixed(2) + ' total'"
+        }
+      },
+      {
+        "id": "rowsExpr",
+        "type": "Expression",
+        "label": "Format order rows as text",
+        "x": 600,
+        "y": 400,
+        "parameters": {
+          "expression": "items.map(o => o.orderNumber + '   |   ' + o.customerName + '   |   $' + o.total.toFixed(2) + '   |   ' + o.status + '   |   ' + new Date(o.datePlaced).toLocaleDateString()).join('\\n')"
+        }
+      },
+      {
+        "id": "summaryText",
+        "type": "Text",
+        "label": "Summary text",
+        "x": 900,
+        "y": 0,
+        "parent": "root",
+        "parameters": {
+          "variant": "heading-4",
+          "text": "Loading orders…"
+        }
+      },
+      {
+        "id": "headerRow",
+        "type": "net.noodl.visual.columns",
+        "label": "Column headers",
+        "x": 900,
+        "y": 150,
+        "parent": "root",
+        "children": [
+          "hOrderNo",
+          "hCustomer",
+          "hTotal",
+          "hStatus",
+          "hDate"
+        ],
+        "parameters": {
+          "layoutString": "1 2 1 1 1",
+          "marginX": "16",
+          "marginY": "0"
+        }
+      },
+      {
+        "id": "hOrderNo",
+        "type": "Text",
+        "label": "Order # header",
+        "x": 900,
+        "y": 160,
+        "parent": "headerRow",
+        "parameters": {
+          "variant": "label",
+          "text": "Order #"
+        }
+      },
+      {
+        "id": "hCustomer",
+        "type": "Text",
+        "label": "Customer header",
+        "x": 900,
+        "y": 170,
+        "parent": "headerRow",
+        "parameters": {
+          "variant": "label",
+          "text": "Customer"
+        }
+      },
+      {
+        "id": "hTotal",
+        "type": "Text",
+        "label": "Total header",
+        "x": 900,
+        "y": 180,
+        "parent": "headerRow",
+        "parameters": {
+          "variant": "label",
+          "text": "Total"
+        }
+      },
+      {
+        "id": "hStatus",
+        "type": "Text",
+        "label": "Status header",
+        "x": 900,
+        "y": 190,
+        "parent": "headerRow",
+        "parameters": {
+          "variant": "label",
+          "text": "Status"
+        }
+      },
+      {
+        "id": "hDate",
+        "type": "Text",
+        "label": "Date header",
+        "x": 900,
+        "y": 200,
+        "parent": "headerRow",
+        "parameters": {
+          "variant": "label",
+          "text": "Date Placed"
+        }
+      },
+      {
+        "id": "divider",
+        "type": "Group",
+        "label": "Divider under header",
+        "x": 900,
+        "y": 250,
+        "parent": "root",
+        "parameters": {
+          "heightUnit": "px",
+          "height": 1,
+          "widthUnit": "%",
+          "width": 100,
+          "backgroundColor": "var(--border)"
+        }
+      },
+      {
+        "id": "rowsText",
+        "type": "Text",
+        "label": "Order rows",
+        "x": 900,
+        "y": 400,
+        "parent": "root",
+        "parameters": {
+          "variant": "body",
+          "text": "",
+          "styleCss": "white-space: pre-line;"
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "26645ca8-5c4a-4991-9079-89ee77a10ee3",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "ordersQuery",
+        "fromProperty": "items",
+        "toId": "sortExpr",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "sortExpr",
+        "fromProperty": "result",
+        "toId": "summaryExpr",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "sortExpr",
+        "fromProperty": "result",
+        "toId": "rowsExpr",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "summaryExpr",
+        "fromProperty": "asString",
+        "toId": "summaryText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "rowsExpr",
+        "fromProperty": "asString",
+        "toId": "rowsText",
+        "toProperty": "text"
+      }
+    ]
+  }
+}

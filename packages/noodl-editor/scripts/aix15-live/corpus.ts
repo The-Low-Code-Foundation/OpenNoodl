@@ -33,6 +33,19 @@ export const UPDATE_PROMPTS: UpdatePrompt[] = [
     description:
       "Give this section a component input called 'Disabled'. When it is true the buttons inside " +
       'should be dimmed and stop responding to clicks.'
+  },
+  {
+    // The live-provider pass left `update /App` as an unexplained repeated
+    // failure. `/App` is the router host, so the task is deliberately a routing
+    // change and nothing else: the candidate has to rewrite the Router's nested
+    // `pages` object, and the run answers both "does the session complete" and
+    // "did the other route survive".
+    slug: 'app-start-page',
+    legacyName: '/App',
+    componentPath: 'App',
+    description:
+      'The app should open on the Profile page instead of the Article page. Leave everything else ' +
+      'exactly as it is — both pages must stay reachable.'
   }
 ];
 
@@ -199,5 +212,229 @@ export const EXPLAIN_PROMPTS: ExplainPrompt[] = [
     slug: 'state-page',
     componentName: '/#__page__/State',
     wants: ['store', 'undo', 'redo', 'history']
+  }
+];
+
+/**
+ * AIX-011 criterion 7 — a plan that actually contains a `doc` operation.
+ *
+ * The first live pass produced none, and the reason turned out to be
+ * mechanical rather than editorial: the planning prompt only allows a doc
+ * operation "when the project's docs are listed in the overview material", and
+ * nothing ever listed them. So a doc run needs two things a `PLAN_PROMPTS`
+ * entry cannot carry — a project that HAS docs, and a request whose answer is
+ * partly a written decision rather than a graph.
+ */
+export interface PlanDocPrompt {
+  slug: string;
+  request: string;
+  minOperations: number;
+  /**
+   * The `docs/` bodies the project is treated as having: handed to the planner
+   * (so a doc operation is plannable), to the authoring sessions (so
+   * `get_project_doc` answers), and to the doc turn as its baseline (so it is
+   * revising a real file with a human's prose in it, which is the case that
+   * actually tests whether it restates the graph).
+   */
+  docs: { architecture?: string; conventions?: string; brief?: string };
+}
+
+/**
+ * A deliberately human ARCHITECTURE.md: it records decisions and one rejected
+ * alternative, and it is written in the register the whole AIX-009…012 group
+ * says these files are for. If the doc turn's revision reads like a different
+ * document, that is the finding.
+ */
+const ARTICLE_ARCHITECTURE = `# Architecture
+
+## What this app is
+
+A reader for the articles we publish through Contentful. Everything a reader
+sees comes from Contentful; everything a reader *does* — ratings, comments —
+lives in the Noodl database, keyed by the Contentful article id.
+
+## Pages
+
+- **Article** — the reader's whole world. Deep-linked by \`pm-slug\`.
+- **Profile** — account settings and the reader's own comments.
+
+The App shell owns the only Router. Pages are registered there and nowhere
+else; if a page is not in that list it is unreachable, and we have shipped that
+bug twice.
+
+## Data
+
+We do not mirror Contentful into the database. An article's *content* is always
+fetched live; only reader-generated records are stored, and each one carries the
+Contentful \`article_id\` rather than a copy of the article.
+
+We considered caching articles in the Noodl database so the app could open
+offline. Rejected: the editorial team corrects live articles several times a
+week, and a cache that serves a corrected article's old text is worse than a
+spinner.
+
+## Auth
+
+Email/password through the backend's user records. Anything that writes a
+reader-generated record must go through \`Is user logged in?\` first.
+`;
+
+export const PLAN_DOC_PROMPTS: PlanDocPrompt[] = [
+  {
+    slug: 'saved-articles-doc',
+    // Phrased the way the residual asks for: work that establishes a convention
+    // and an external contract, so a doc operation is the honest answer rather
+    // than filler. The request never says "write a doc" in those words.
+    request:
+      'Let readers save articles to read later — a "Saved" page listing what they saved, and a save/unsave ' +
+      'control that can go on an article. Store each save as a SavedArticle record with userId and ' +
+      'articleId (the Contentful id, same as we do for ratings) — I do not want a second way of ' +
+      'identifying an article appearing later, so make sure that decision is written down where the ' +
+      'next person will find it.',
+    minOperations: 3,
+    docs: { architecture: ARTICLE_ARCHITECTURE }
+  }
+];
+/**
+ * AIX-003 — the author → review → partially-accept round trip, live.
+ *
+ * Every AIX-003 property is already asserted in specs: all-accepted reproduces
+ * the proposal, rejection closes over the dependency edges, a partial result
+ * passes the SUB-006 gate. What those specs cannot say is whether any of it
+ * holds on a diff *nobody authored to be reviewable* — the fixture proposals
+ * were written by the same hand as the assertions, with explicit ids, tidy
+ * positions and one change per intent. A model handed a real component
+ * produces neither.
+ *
+ * `legacyName` present ⇒ update mode against that component of the corpus
+ * project, which is where removals, rewires and parameter changes come from.
+ * Absent ⇒ a fresh component, which is where the all-`Created` closure lives
+ * (every wire requiring both of its endpoints, every child its new parent).
+ */
+export interface ChangeSetPrompt {
+  slug: string;
+  /** Legacy name as the corpus project holds it; omit to author a new component. */
+  legacyName?: string;
+  componentPath: string;
+  description: string;
+  /**
+   * Keep this run's rendered review as the artifact for the 40+ node
+   * fresh-reviewer test (AIX-003 residual 2), which needs a human.
+   */
+  freshReviewer?: boolean;
+}
+
+export const CHANGESET_PROMPTS: ChangeSetPrompt[] = [
+  {
+    slug: 'account-card',
+    legacyName: '/Visual Components/Profile/Account Info Card',
+    componentPath: 'Visual Components/Profile/Account Info Card',
+    description:
+      "Show the member's join date underneath their name on the account card, put a 'Sign out' link " +
+      "next to 'Change Password' rather than under it, and hide the date-of-birth row entirely when " +
+      'the profile has no date of birth.'
+  },
+  {
+    slug: 'notification-prefs',
+    componentPath: 'Visual Components/Profile/Notification Preferences',
+    description:
+      'A notification preferences card: a heading, three labelled on/off switches for email, push and ' +
+      'the weekly digest, and a Save button that stays disabled until one of them has been touched. ' +
+      'Take the current settings in as a component input and send the new ones out when Save is pressed.'
+  },
+  {
+    slug: 'share-popup',
+    legacyName: '/Pop-ups/Share/Share Popup',
+    componentPath: 'Pop-ups/Share/Share Popup',
+    description:
+      "Add a 'Copy link' option to the share sheet alongside the ones already there, show a short " +
+      'confirmation message when it is used, and let people dismiss the whole sheet by tapping the ' +
+      'dimmed background behind it.',
+    freshReviewer: true
+  },
+  {
+    // The spec's own risk row: "large change sets are unreadable, so users
+    // blind-accept". A new component of this size is the worst case for the
+    // rail — every node and every wire is its own `Created` row, with nothing
+    // modified to break the monotony.
+    slug: 'settings-page',
+    componentPath: 'Pages/Account Settings',
+    description:
+      "An account settings page. A header with the member's name and avatar; a Profile section with " +
+      'their name, email and phone; a Notifications section with switches for email, push and the ' +
+      'weekly digest; a Privacy section with a switch for a public profile and a link to the privacy ' +
+      'policy; and at the bottom a danger zone with a Delete account button. Each section wants a ' +
+      'heading and a divider above it, and there should be Save and Cancel buttons at the end.',
+    freshReviewer: true
+  }
+];
+/**
+ * AIX-008 — the sandbox preview, against a real provider.
+ *
+ * AIX-008 was built and live-verified by driving a *scripted*, no-provider
+ * session, which means everything downstream of the model — the spliced export,
+ * the network shim, the dataset — had only ever seen candidates written by a
+ * script. The one thing a real model changes is `sample_data`: the optional
+ * `submit_component` field whose records take precedence over the editor's
+ * heuristic synthesis. Nobody had ever seen a model fill it in.
+ *
+ * So every prompt here reads a backend, because a component that reads nothing
+ * is a component the field is explicitly told to omit. The spread is the one
+ * the success criteria name: a list, a card bound to one record, an aggregate,
+ * and an auth-gated page that must render its signed-in state.
+ *
+ * `namedClasses` is what the request itself names. A collection the *user*
+ * named is the strict case — `sample_data` keyed anything else is data the
+ * graph will never read — while `account` deliberately names none, so the model
+ * has to agree with itself between the graph it wrote and the data it supplied.
+ */
+export interface SandboxPrompt {
+  slug: string;
+  componentPath: string;
+  description: string;
+  /** Collection names the request states outright (may be empty). */
+  namedClasses: string[];
+  /** The component must render a signed-in state, not a login wall. */
+  authGated?: boolean;
+}
+
+export const SANDBOX_PROMPTS: SandboxPrompt[] = [
+  {
+    slug: 'book-list',
+    componentPath: 'Pages/AIX Book List',
+    description:
+      'A page that lists the books in my Books collection, newest first, as a vertical scrolling list. ' +
+      "Each row shows the book's cover image on the left, and on the right its title in bold, the " +
+      'author underneath, and the rating out of five.',
+    namedClasses: ['Books']
+  },
+  {
+    slug: 'event-card',
+    componentPath: 'Visual Components/AIX Event Card',
+    description:
+      'A reusable card for a single event from my Events collection. It shows the event photo, the ' +
+      'event name, the date it starts, the city and venue, and the ticket price. Take the event id as ' +
+      'a component input and look the event up from it.',
+    namedClasses: ['Events']
+  },
+  {
+    slug: 'orders-summary',
+    componentPath: 'Pages/AIX Orders',
+    description:
+      'An orders page. At the top a line saying how many orders there are and what they add up to in ' +
+      'total, and under it the rows of my Orders collection — order number, customer name, total, ' +
+      'status and the date it was placed — most recent first.',
+    namedClasses: ['Orders']
+  },
+  {
+    slug: 'account',
+    componentPath: 'Pages/AIX Account',
+    description:
+      'An account page for whoever is signed in: their avatar, their display name and their email ' +
+      'address at the top, and underneath, a list of the articles they have saved to read later with ' +
+      'the title and the date they saved it. If nobody is signed in, show a short "Sign in to see ' +
+      'your account" message instead of the page.',
+    namedClasses: [],
+    authGated: true
   }
 ];

@@ -36,7 +36,43 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import css from './ProjectReviewBanner.module.scss';
 
-const EVENT_GROUP = 'project-review-banner';
+/**
+ * Subscribe one banner to everything that can change its answer.
+ *
+ * ## Why this is a function and not four lines inside the effect
+ *
+ * It used to be, with a module-level `const EVENT_GROUP = 'project-review-banner'`
+ * as the listener group — and both `EventDispatcher.off(group)` and
+ * `Model.off(group)` splice **every** listener whose group is `===` that value,
+ * out of one global registry. The banner is mounted twice (the Build panel and
+ * the Docs panel) and this editor's sidebar panels are hidden rather than
+ * unmounted, so both instances are live at once. Whichever unmounted first took
+ * the other's subscriptions with it, and the survivor then never heard
+ * `DOCS_CHANGED` or `ProjectModel.instanceHasChanged` again — meaning it went on
+ * offering to draft docs for a project that had just accepted them, which is
+ * precisely the claim in this module's header ("retires the banner on its own,
+ * with nothing having to remember to").
+ *
+ * The group is now a per-subscription token: the PLAT-001 listener-context rule,
+ * the same `const context = {}` idiom `useCanvasThemeGeneration` uses. Two
+ * subscribers can no longer see each other.
+ *
+ * Exported so that rule is specable without mounting React — see
+ * `tests/ai/project-review-banner.test.ts`.
+ */
+export function subscribeReviewVisibility(evaluate: () => void): () => void {
+  const context = {};
+
+  EventDispatcher.instance.on(['ProjectModel.instanceHasChanged', 'ProjectModel.importComplete'], evaluate, context);
+
+  const docs = currentProjectDocsModel();
+  docs?.on(DOCS_CHANGED, evaluate, context);
+
+  return () => {
+    EventDispatcher.instance.off(context);
+    docs?.off(context);
+  };
+}
 
 /**
  * Whether the offer should be shown at all.
@@ -66,17 +102,7 @@ export function useShouldOfferReview(): boolean {
 
   useEffect(() => {
     evaluate();
-    EventDispatcher.instance.on(
-      ['ProjectModel.instanceHasChanged', 'ProjectModel.importComplete'],
-      evaluate,
-      EVENT_GROUP
-    );
-    const docs = currentProjectDocsModel();
-    docs?.on(DOCS_CHANGED, evaluate, EVENT_GROUP);
-    return () => {
-      EventDispatcher.instance.off(EVENT_GROUP);
-      docs?.off(EVENT_GROUP);
-    };
+    return subscribeReviewVisibility(evaluate);
   }, [evaluate]);
 
   return visible;

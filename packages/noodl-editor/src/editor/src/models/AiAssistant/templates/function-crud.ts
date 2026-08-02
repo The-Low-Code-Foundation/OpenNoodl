@@ -332,7 +332,7 @@ await Records.removeRelation({
 });
 \`\`\`
 
-Here is the schema of the database:
+What is known about the project database:
 %{database-schema}%
 
 Respond only with this specific format, and nothing else:
@@ -499,7 +499,7 @@ await Records.removeRelation({
 });
 \`\`\`
 
-Here is the schema of the database:
+What is known about the project database:
 %{database-schema}%
 
 We are starting from this code and will only modify it:

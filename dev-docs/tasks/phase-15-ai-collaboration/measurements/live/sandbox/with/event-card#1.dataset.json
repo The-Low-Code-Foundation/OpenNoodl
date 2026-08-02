@@ -1,0 +1,97 @@
+{
+  "classes": {
+    "Events": {
+      "fields": [
+        "photo",
+        "name",
+        "startDate",
+        "city",
+        "price",
+        "venue"
+      ],
+      "records": [
+        {
+          "objectId": "ev1",
+          "id": "ev1",
+          "createdAt": "2025-12-16T09:30:00.000Z",
+          "updatedAt": "2026-01-15T09:30:00.000Z",
+          "__sandbox": true,
+          "photo": "https://picsum.photos/seed/neon/640/360",
+          "name": "Neon Nights Festival",
+          "startDate": "2024-07-12",
+          "city": "Berlin",
+          "price": "€49",
+          "venue": "Kraftwerk Arena"
+        },
+        {
+          "objectId": "ev2",
+          "id": "ev2",
+          "createdAt": "2025-12-15T09:30:00.000Z",
+          "updatedAt": "2026-01-14T09:30:00.000Z",
+          "__sandbox": true,
+          "photo": "https://picsum.photos/seed/jazz/640/360",
+          "name": "Jazz Under the Stars",
+          "startDate": "2024-08-03",
+          "city": "Lisbon",
+          "price": "€35",
+          "venue": "Castelo Gardens"
+        },
+        {
+          "objectId": "ev3",
+          "id": "ev3",
+          "createdAt": "2025-12-14T09:30:00.000Z",
+          "updatedAt": "2026-01-13T09:30:00.000Z",
+          "__sandbox": true,
+          "photo": "https://picsum.photos/seed/indie/640/360",
+          "name": "Indie Rock Showcase",
+          "startDate": "2024-09-21",
+          "city": "Manchester",
+          "price": "£22",
+          "venue": "The Warehouse"
+        },
+        {
+          "objectId": "ev4",
+          "id": "ev4",
+          "createdAt": "2025-12-13T09:30:00.000Z",
+          "updatedAt": "2026-01-12T09:30:00.000Z",
+          "__sandbox": true,
+          "photo": "https://picsum.photos/seed/sunrise/640/360",
+          "name": "Electronic Sunrise",
+          "startDate": "2024-06-15",
+          "city": "Ibiza",
+          "price": "€60",
+          "venue": "Beach Club Sol"
+        },
+        {
+          "objectId": "ev5",
+          "id": "ev5",
+          "createdAt": "2025-12-12T09:30:00.000Z",
+          "updatedAt": "2026-01-11T09:30:00.000Z",
+          "__sandbox": true,
+          "photo": "https://picsum.photos/seed/classic/640/360",
+          "name": "Classical Evenings",
+          "startDate": "2024-10-05",
+          "city": "Vienna",
+          "price": "€40",
+          "venue": "Concert Hall"
+        }
+      ]
+    }
+  },
+  "user": {
+    "objectId": "sandbox-user",
+    "id": "sandbox-user",
+    "createdAt": "2025-12-16T09:30:00.000Z",
+    "updatedAt": "2026-01-15T09:30:00.000Z",
+    "__sandbox": true,
+    "username": "sample.user@example.com",
+    "email": "sample.user@example.com",
+    "emailVerified": true,
+    "name": "Sample User",
+    "firstName": "Sample",
+    "lastName": "User",
+    "sessionToken": "r:sandbox-session",
+    "profileImage": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22480%22%20height%3D%22360%22%20viewBox%3D%220%200%20480%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22hsl(160%2062%25%2072%25)%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22hsl(200%2058%25%2052%25)%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22480%22%20height%3D%22360%22%20fill%3D%22url(%23g)%22%2F%3E%3Ctext%20x%3D%22240%22%20y%3D%22192%22%20text-anchor%3D%22middle%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22rgba(255%2C255%2C255%2C0.92)%22%3ESample%20User%3C%2Ftext%3E%3C%2Fsvg%3E"
+  },
+  "summary": "Sample data — 5 Events"
+}

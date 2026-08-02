@@ -451,7 +451,7 @@ try {
 ${QUERY_CONTEXT_GENERAL_BACKGROUND}
 
 ###schema###
-Here is the schema of the database:
+What is known about the project database:
 %{database-schema}%
 
 ##Task###
@@ -460,7 +460,7 @@ Make a query from the given task and return only code.`;
 const QUERY_CONTEXT_EDIT = `${QUERY_CONTEXT_GENERAL_RULES}
 ${QUERY_CONTEXT_GENERAL_BACKGROUND}
 
-Here is the schema of the database:
+What is known about the project database:
 %{database-schema}%
 
 We are starting from this code and will only modify it:

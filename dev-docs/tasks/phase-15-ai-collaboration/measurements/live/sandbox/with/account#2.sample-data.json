@@ -1,0 +1,28 @@
+{
+  "SavedArticle": [
+    {
+      "id": "sa1",
+      "userId": "user_1",
+      "title": "Understanding Your Migraine Triggers",
+      "savedAt": "2024-05-02T10:00:00Z"
+    },
+    {
+      "id": "sa2",
+      "userId": "user_1",
+      "title": "Five Ways to Improve Sleep Quality",
+      "savedAt": "2024-05-10T14:30:00Z"
+    },
+    {
+      "id": "sa3",
+      "userId": "user_1",
+      "title": "A Guide to Managing Chronic Pain",
+      "savedAt": "2024-04-21T09:15:00Z"
+    },
+    {
+      "id": "sa4",
+      "userId": "user_1",
+      "title": "Nutrition Tips for Better Energy",
+      "savedAt": "2024-03-30T18:45:00Z"
+    }
+  ]
+}

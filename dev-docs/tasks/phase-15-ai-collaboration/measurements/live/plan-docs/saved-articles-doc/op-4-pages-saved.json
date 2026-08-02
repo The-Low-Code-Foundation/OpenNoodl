@@ -1,0 +1,199 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "632e307a-b280-4a49-a921-49c9978a4d8e",
+    "name": "Saved",
+    "path": "/Pages/Saved",
+    "type": "page",
+    "created": "2026-08-02T17:19:23.182Z",
+    "modified": "2026-08-02T17:19:23.182Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Saved page: on mount fetches the current user's saved articles (Get Saved Articles) and lists each as a row using the Save Button component (isSaved=true) so a reader can unsave it; unsaving refreshes the list. Shows an empty-state message when there are no saved articles."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "632e307a-b280-4a49-a921-49c9978a4d8e",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "page",
+        "type": "Page",
+        "label": "Saved page root",
+        "x": 0,
+        "y": 0,
+        "children": [
+          "root"
+        ],
+        "parameters": {
+          "paddingTop": "var(--space-6)",
+          "paddingBottom": "var(--space-6)",
+          "paddingLeft": "var(--space-6)",
+          "paddingRight": "var(--space-6)"
+        }
+      },
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Page content container",
+        "x": 0,
+        "y": 150,
+        "parent": "page",
+        "children": [
+          "heading",
+          "emptyText",
+          "listContainer"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "alignItems": "stretch",
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "heading",
+        "type": "Text",
+        "label": "Page heading",
+        "x": 0,
+        "y": 300,
+        "parent": "root",
+        "parameters": {
+          "text": "Saved Articles",
+          "variant": "heading-2",
+          "marginBottom": "var(--space-4)"
+        }
+      },
+      {
+        "id": "emptyText",
+        "type": "Text",
+        "label": "Empty state message",
+        "x": 0,
+        "y": 450,
+        "parent": "root",
+        "parameters": {
+          "text": "You haven't saved any articles yet.",
+          "variant": "muted",
+          "visible": false
+        }
+      },
+      {
+        "id": "listContainer",
+        "type": "Group",
+        "label": "Saved article list",
+        "x": 0,
+        "y": 600,
+        "parent": "root",
+        "children": [
+          "forEach"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "alignItems": "stretch",
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "forEach",
+        "type": "For Each",
+        "label": "Repeats one Save Button row per saved article",
+        "x": 0,
+        "y": 750,
+        "parent": "listContainer",
+        "parameters": {
+          "template": "/Visual Components/Article/Save Button"
+        }
+      },
+      {
+        "id": "user",
+        "type": "net.noodl.user.User",
+        "label": "Current signed-in user",
+        "x": -300,
+        "y": 0
+      },
+      {
+        "id": "getSaved",
+        "type": "/Logic Components/Get Saved Articles",
+        "label": "Fetch saved articles for user",
+        "x": -100,
+        "y": 150
+      },
+      {
+        "id": "isSavedConst",
+        "type": "Boolean",
+        "label": "Constant true for isSaved",
+        "x": -300,
+        "y": 750,
+        "parameters": {
+          "value": true
+        }
+      },
+      {
+        "id": "emptyExpr",
+        "type": "Expression",
+        "label": "True when saved list is empty",
+        "x": -100,
+        "y": 450,
+        "parameters": {
+          "expression": "!articles || articles.length===0"
+        }
+      }
+    ],
+    "visualRoots": [
+      "page"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "632e307a-b280-4a49-a921-49c9978a4d8e",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "page",
+        "fromProperty": "didMount",
+        "toId": "getSaved",
+        "toProperty": "Do"
+      },
+      {
+        "fromId": "user",
+        "fromProperty": "id",
+        "toId": "getSaved",
+        "toProperty": "userId"
+      },
+      {
+        "fromId": "getSaved",
+        "fromProperty": "savedArticles",
+        "toId": "forEach",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "getSaved",
+        "fromProperty": "savedArticles",
+        "toId": "emptyExpr",
+        "toProperty": "articles"
+      },
+      {
+        "fromId": "emptyExpr",
+        "fromProperty": "isTrue",
+        "toId": "emptyText",
+        "toProperty": "visible"
+      },
+      {
+        "fromId": "user",
+        "fromProperty": "id",
+        "toId": "forEach",
+        "toProperty": "userId"
+      },
+      {
+        "fromId": "isSavedConst",
+        "fromProperty": "savedValue",
+        "toId": "forEach",
+        "toProperty": "isSaved"
+      },
+      {
+        "fromId": "forEach",
+        "fromProperty": "Toggled",
+        "toId": "getSaved",
+        "toProperty": "Do"
+      }
+    ]
+  }
+}

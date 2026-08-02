@@ -51,6 +51,14 @@
           "minLength": 1,
           "description": "Input port name on the target node"
         },
+        "label": {
+          "type": "string",
+          "description": "Author-written text shown on the wire (CAN-002)"
+        },
+        "labelT": {
+          "type": "number",
+          "description": "Where the label sits along the wire, 0..1 (CAN-001)"
+        },
         "annotation": {
           "type": "string",
           "enum": ["Deleted", "Changed", "Created"],

@@ -31,6 +31,13 @@ export interface SandboxDataset {
   user: SandboxRecord;
   /** Shown in the preview toolbar, e.g. "5 sample Books". Purely informational. */
   summary?: string;
+  /**
+   * Classes whose field shape the editor could not work out — the records are
+   * served, but they carry nothing beyond an id. The preview says so rather
+   * than rendering blanks that look like a broken component; see
+   * `unknownShapeNotice` in the editor's `sandboxData`.
+   */
+  unknownShape?: string[];
 }
 
 export const SANDBOX_METADATA_KEY = 'sandbox';

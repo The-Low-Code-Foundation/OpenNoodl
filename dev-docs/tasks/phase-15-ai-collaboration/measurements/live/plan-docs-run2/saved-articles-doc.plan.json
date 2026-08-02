@@ -1,0 +1,41 @@
+{
+  "request": "Let readers save articles to read later — a \"Saved\" page listing what they saved, and a save/unsave control that can go on an article. Store each save as a SavedArticle record with userId and articleId (the Contentful id, same as we do for ratings) — I do not want a second way of identifying an article appearing later, so make sure that decision is written down where the next person will find it.",
+  "operations": [
+    {
+      "id": "op-1",
+      "kind": "create",
+      "target": "Logic Components/Save Article Toggle",
+      "intent": "Logic component that reads/writes SavedArticle records keyed by userId and articleId (Contentful id, same identifier used for ratings). Inputs: Do, articleId; outputs: Success, Failure, isSaved — toggles save/unsave state and reports current saved status."
+    },
+    {
+      "id": "op-2",
+      "kind": "create",
+      "target": "Visual Components/Article/Save Button",
+      "intent": "Small toggle control (in: articleId, isSaved; out: Click) showing a saved/not-saved icon state, meant to be dropped onto the Article component and wired to Logic Components/Save Article Toggle."
+    },
+    {
+      "id": "op-4",
+      "kind": "create",
+      "target": "Pages/Saved",
+      "intent": "New page listing the current user's saved articles by querying SavedArticle records for the logged-in userId, then resolving each articleId via Get Article From Slug/Contentful GraphQL to render article summaries linking to /Pages/Article."
+    },
+    {
+      "id": "op-3",
+      "kind": "update",
+      "target": "Visual Components/Article/Article",
+      "intent": "Add an instance of the new Save Button component (passing articleId) wired to Logic Components/Save Article Toggle so readers can save/unsave the article they are viewing."
+    },
+    {
+      "id": "op-5",
+      "kind": "update",
+      "target": "App",
+      "intent": "Add a route/navigation entry to Pages/Saved (e.g. a 'Saved' link in the main nav, gated by Logic Components/Is user logged in?) so readers can reach their saved articles list."
+    },
+    {
+      "id": "op-6",
+      "kind": "doc",
+      "target": "docs/ARCHITECTURE.md",
+      "intent": "Document the new SavedArticle record shape (userId + articleId using the Contentful id, the same identifier already used for ratings) and the new /Pages/Saved route, explicitly noting articleId is the single canonical article identifier to prevent a second identification scheme from emerging."
+    }
+  ]
+}

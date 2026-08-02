@@ -384,4 +384,33 @@ export class AuthoringContextBuilder {
   reviewSource(source: string, text: string): string {
     return this.charge(`review:${source}`, text);
   }
+
+  /**
+   * AIX-011 criterion 7 — which project documents exist, for the PLAN step.
+   *
+   * The planning prompt gates a `doc` operation on the project's docs being
+   * "listed in the overview material" — and until this method existed, nothing
+   * listed them: `PlanningSession` built a context builder with no docs at all
+   * and `projectOverview()` names only components. So the condition for
+   * planning a doc operation was one the product could never satisfy, which is
+   * why both live plan runs contained zero doc operations and criterion 7's
+   * authoring turn had never once been seen against a real model.
+   *
+   * Paths and purposes only, never bodies: the plan step decides *whether* a
+   * document should change, and the `DocSession` that follows is the turn that
+   * reads it. Returns `undefined` when the project has no docs, so a project
+   * without them sends a byte-identical planning turn to before.
+   */
+  docsOverview(): string | undefined {
+    const present = KNOWN_DOCS.filter((doc) => {
+      const body = this.docs[doc.kind];
+      return body !== undefined && body.trim().length > 0;
+    });
+    if (present.length === 0) return undefined;
+    const lines = ['This project keeps written documents. A doc operation may update one of these:'];
+    for (const doc of present) {
+      lines.push(`- ${doc.path} — ${doc.purpose} (${this.docs[doc.kind]!.length} chars today)`);
+    }
+    return this.charge('docs-overview', lines.join('\n'));
+  }
 }

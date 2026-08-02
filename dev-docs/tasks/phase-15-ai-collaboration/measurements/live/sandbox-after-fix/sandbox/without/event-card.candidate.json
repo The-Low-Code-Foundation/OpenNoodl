@@ -1,0 +1,255 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "487f58e5-1fa7-4fa5-b2ff-3919467fb7a5",
+    "name": "AIX Event Card",
+    "path": "/Visual Components/AIX Event Card",
+    "type": "visual",
+    "created": "2026-08-02T17:52:35.657Z",
+    "modified": "2026-08-02T17:52:35.657Z",
+    "modifiedBy": "ai-authoring",
+    "description": "A reusable card that displays a single event from the Events collection: given an event id it looks up the record and shows the event's photo, name, start date, city/venue, and ticket price."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "487f58e5-1fa7-4fa5-b2ff-3919467fb7a5",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "inputs",
+        "type": "Component Inputs",
+        "label": "Component Inputs",
+        "x": 0,
+        "y": 0,
+        "ports": [
+          {
+            "name": "eventId",
+            "plug": "output",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "id": "model",
+        "type": "DbModel2",
+        "label": "Event record",
+        "x": 250,
+        "y": 0,
+        "parameters": {
+          "collectionName": "Event",
+          "idSource": "explicit"
+        }
+      },
+      {
+        "id": "dateFmt",
+        "type": "Date To String",
+        "label": "Format start date",
+        "x": 250,
+        "y": 150,
+        "parameters": {
+          "formatString": "{monthShort} {date}, {year}"
+        }
+      },
+      {
+        "id": "locFmt",
+        "type": "String Format",
+        "label": "City, Venue",
+        "x": 250,
+        "y": 300,
+        "parameters": {
+          "format": "{city} · {venue}"
+        }
+      },
+      {
+        "id": "priceFmt",
+        "type": "String Format",
+        "label": "Price",
+        "x": 250,
+        "y": 450,
+        "parameters": {
+          "format": "$ {price}"
+        }
+      },
+      {
+        "id": "card",
+        "type": "Group",
+        "label": "Event Card",
+        "x": 550,
+        "y": 0,
+        "children": [
+          "photo",
+          "info"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "backgroundColor": "var(--surface)",
+          "borderRadius": "var(--radius-lg)",
+          "boxShadowEnabled": true,
+          "boxShadowColor": "var(--shadow-md)",
+          "borderWidth": 0,
+          "clip": true
+        }
+      },
+      {
+        "id": "photo",
+        "type": "Image",
+        "label": "Event Photo",
+        "x": 600,
+        "y": 50,
+        "parent": "card",
+        "parameters": {
+          "sizeMode": "explicit",
+          "width": 320,
+          "height": 180,
+          "objectFit": "cover"
+        }
+      },
+      {
+        "id": "info",
+        "type": "Group",
+        "label": "Info",
+        "x": 600,
+        "y": 250,
+        "parent": "card",
+        "children": [
+          "nameText",
+          "dateText",
+          "locText",
+          "priceText"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "paddingTop": "var(--space-4)",
+          "paddingBottom": "var(--space-4)",
+          "paddingLeft": "var(--space-4)",
+          "paddingRight": "var(--space-4)",
+          "rowGap": "var(--space-2)"
+        }
+      },
+      {
+        "id": "nameText",
+        "type": "Text",
+        "label": "Event Name",
+        "x": 650,
+        "y": 300,
+        "parent": "info",
+        "parameters": {
+          "variant": "heading-4",
+          "fontSize": "var(--text-xl)",
+          "fontWeight": "var(--font-semibold)",
+          "color": "var(--foreground)"
+        }
+      },
+      {
+        "id": "dateText",
+        "type": "Text",
+        "label": "Start Date",
+        "x": 650,
+        "y": 350,
+        "parent": "info",
+        "parameters": {
+          "variant": "small",
+          "fontSize": "var(--text-xs)",
+          "color": "var(--muted-foreground)"
+        }
+      },
+      {
+        "id": "locText",
+        "type": "Text",
+        "label": "City / Venue",
+        "x": 650,
+        "y": 400,
+        "parent": "info",
+        "parameters": {
+          "variant": "muted",
+          "fontSize": "var(--text-sm)",
+          "color": "var(--muted-foreground)"
+        }
+      },
+      {
+        "id": "priceText",
+        "type": "Text",
+        "label": "Price",
+        "x": 650,
+        "y": 450,
+        "parent": "info",
+        "parameters": {
+          "variant": "label",
+          "fontSize": "var(--text-sm)",
+          "fontWeight": "var(--font-medium)",
+          "color": "var(--foreground)"
+        }
+      }
+    ],
+    "visualRoots": [
+      "card"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "487f58e5-1fa7-4fa5-b2ff-3919467fb7a5",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "inputs",
+        "fromProperty": "eventId",
+        "toId": "model",
+        "toProperty": "modelId"
+      },
+      {
+        "fromId": "model",
+        "fromProperty": "prop-photo",
+        "toId": "photo",
+        "toProperty": "src"
+      },
+      {
+        "fromId": "model",
+        "fromProperty": "prop-name",
+        "toId": "nameText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "model",
+        "fromProperty": "prop-startDate",
+        "toId": "dateFmt",
+        "toProperty": "input"
+      },
+      {
+        "fromId": "dateFmt",
+        "fromProperty": "currentValue",
+        "toId": "dateText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "model",
+        "fromProperty": "prop-city",
+        "toId": "locFmt",
+        "toProperty": "city"
+      },
+      {
+        "fromId": "model",
+        "fromProperty": "prop-venue",
+        "toId": "locFmt",
+        "toProperty": "venue"
+      },
+      {
+        "fromId": "locFmt",
+        "fromProperty": "formatted",
+        "toId": "locText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "model",
+        "fromProperty": "prop-price",
+        "toId": "priceFmt",
+        "toProperty": "price"
+      },
+      {
+        "fromId": "priceFmt",
+        "fromProperty": "formatted",
+        "toId": "priceText",
+        "toProperty": "text"
+      }
+    ]
+  }
+}
