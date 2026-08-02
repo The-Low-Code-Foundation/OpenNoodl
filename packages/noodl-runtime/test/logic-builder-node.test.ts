@@ -40,15 +40,19 @@ function createNode(opts: { workspace?: string; generatedCode?: string } = {}) {
 describe('Logic Builder execution', () => {
   it('calls sendSignalOnOutput as a bare function, the way the runtime passes it in', () => {
     const node = createNode({
-      workspace: workspace(block('noodl_send_signal', { NAME: 'done' })),
-      generatedCode: 'sendSignalOnOutput("done");\n'
+      // ⚠️ `finished`, not `done`. ERG-001 §4 reserved `done`/`unchanged`/`completed` on this
+      // node, so a program sending `done` is now refused — see the row for that below. Left as
+      // `done` this test passed *vacuously*: `hasOutput('done')` is true because the contract
+      // declares it, whatever the program did.
+      workspace: workspace(block('noodl_send_signal', { NAME: 'finished' })),
+      generatedCode: 'sendSignalOnOutput("finished");\n'
     });
 
     node.setInputValue('run', true);
 
     expect(node.getOutput('error').value).toBe('');
     // The signal port was created on demand by the send itself.
-    expect(node.hasOutput('done')).toBe(true);
+    expect(node.hasOutput('finished')).toBe(true);
   });
 
   it('rejects the `this.`-qualified form — the convention this node compiles against', () => {
@@ -56,8 +60,8 @@ describe('Logic Builder execution', () => {
     // is the global object. This is not a style preference: emitting `this.sendSignalOnOutput`
     // is what made every "send signal" block throw, and this test is what stops it coming back.
     const node = createNode({
-      workspace: workspace(block('noodl_send_signal', { NAME: 'done' })),
-      generatedCode: 'this.sendSignalOnOutput("done");\n'
+      workspace: workspace(block('noodl_send_signal', { NAME: 'finished' })),
+      generatedCode: 'this.sendSignalOnOutput("finished");\n'
     });
 
     node.setInputValue('run', true);

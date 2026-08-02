@@ -8,10 +8,12 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
 import Node = require('../../node');
+import { outcomeOutputs, reportOutcomes } from '../../outcome';
 import { runOnChangeDynamicPorts } from '../../run-on-value-change';
 
 const difference = require('lodash.difference');
@@ -93,17 +95,23 @@ interface ExpressionNodeInstance extends NodeInstance {
     lastError?: string;
     /** The last failure already reported, so a re-evaluation does not repeat it. */
     lastReportedError?: string;
+    /**
+     * One token per `Run` pulse waiting on the coalescing guard — ERG-001 §4.
+     *
+     * ⚠️ Created lazily in `_scheduleEvaluateExpression`, not in `initialize`.
+     */
+    pendingRunOutcomes?: OutcomeToken[];
   };
   /** Mutable here: `registerInputIfNeeded` seeds a value before the port exists. */
   _inputValues: Record<string, unknown>;
-  _scheduleEvaluateExpression(): void;
+  _scheduleEvaluateExpression(token?: OutcomeToken): void;
   /** Schedule an evaluation nobody explicitly asked for. See `anyInputArrived`. */
   _scheduleAutomaticEvaluation(): void;
   /** Record a value arrival and re-run if this input is ticked. */
   _onInputValueArrived(name: string, value: unknown): void;
-  _calculateExpression(): unknown;
+  _calculateExpression(tokens?: OutcomeToken[]): unknown;
   _compileFunction(): (...args: unknown[]) => unknown | undefined;
-  _reportFailure(code: string, message: string, detail?: unknown): void;
+  _reportFailure(code: string, message: string, detail?: unknown, tokens?: OutcomeToken[]): void;
 }
 
 const ExpressionNode: NodeDefinitionOptions = {
@@ -188,8 +196,12 @@ const ExpressionNode: NodeDefinitionOptions = {
       if (internal.referencedPorts.length > 0 && !internal.anyInputArrived) return;
       this._scheduleEvaluateExpression();
     },
-    _scheduleEvaluateExpression: function (this: ExpressionNodeInstance) {
+    _scheduleEvaluateExpression: function (this: ExpressionNodeInstance, token?: OutcomeToken) {
       const internal = this._internal;
+      if (token) {
+        if (!internal.pendingRunOutcomes) internal.pendingRunOutcomes = [];
+        internal.pendingRunOutcomes.push(token);
+      }
       // The coalescing constraint (NDA-017 §2 constraint 3) is this flag, and it predates the
       // task: three ticked inputs moving in one frame all land here, the first arms the
       // callback and the other two find it armed. Which is why the checkbox has to gate the
@@ -200,7 +212,10 @@ const ExpressionNode: NodeDefinitionOptions = {
         this.scheduleAfterInputsHaveUpdated(function (this: ExpressionNodeInstance) {
           const lastValue = internal.cachedValue;
           const hadEvaluated = internal.hasEvaluated;
-          internal.cachedValue = this._calculateExpression();
+          // Drained before the evaluation, so a `Run` arriving during it owns its own batch.
+          const tokens = internal.pendingRunOutcomes || [];
+          internal.pendingRunOutcomes = undefined;
+          internal.cachedValue = this._calculateExpression(tokens);
           internal.hasEvaluated = true;
           // `!hadEvaluated` is load-bearing: the very first evaluation moves the outputs off
           // `null` even when it happens to land on the same value the getters were reporting,
@@ -213,6 +228,17 @@ const ExpressionNode: NodeDefinitionOptions = {
           if (internal.cachedValue) this.sendSignalOnOutput('isTrueEv');
           else this.sendSignalOnOutput('isFalseEv');
           internal.hasScheduledEvaluation = false;
+
+          // ⚠️ Read off the tokens themselves rather than off any flag `_calculateExpression`
+          // left behind: a token that has already been settled as `failure` records that on
+          // itself, so this cannot report an outcome the failing branch has already reported.
+          // An outcome inferred from state a branch had already changed is the defect the JSON
+          // parser's runaway-buffer branch introduced, and this is the shape that cannot have it.
+          reportOutcomes(
+            this,
+            tokens.filter((t) => t.reported === undefined),
+            'done'
+          );
         });
       }
     },
@@ -239,18 +265,40 @@ const ExpressionNode: NodeDefinitionOptions = {
      * `undefined` inputs produces `NaN` and reports nothing, which is the Empty-Value
      * Contract's abstain, not a failure.
      */
-    _reportFailure: function (this: ExpressionNodeInstance, code: string, message: string, detail?: unknown) {
+    _reportFailure: function (
+      this: ExpressionNodeInstance,
+      code: string,
+      message: string,
+      detail?: unknown,
+      tokens?: OutcomeToken[]
+    ) {
       const internal = this._internal;
       internal.lastError = message;
       this.flagOutputDirty('error');
 
-      if (internal.lastReportedError === message) return;
-      internal.lastReportedError = message;
+      const isRepeat = internal.lastReportedError === message;
+      if (!isRepeat) {
+        internal.lastReportedError = message;
+        this.raiseRuntimeError(code, message, detail);
+      }
 
-      this.raiseRuntimeError(code, message, detail);
-      this.sendSignalOnOutput('failure');
+      // ⚠️ ERG-001 §4. The tokens settle **outside** the dedup. The dedup is about the
+      // *announcement* — a wired input produces a run per keystroke and most intermediate
+      // values are broken — while Rule 1 is about the invocation: a second `Run` over the same
+      // broken expression still owes its own `Failure` and `Completed`. `raise: false` because
+      // the reason is already on the channel from the raise above, or deliberately suppressed
+      // as a repeat.
+      //
+      // `failure` is one port doing two jobs on this node, so it is not pulsed twice: where
+      // there are tokens `reportOutcome` owns the pulse, where there are none the value-driven
+      // announcement stands.
+      if (tokens && tokens.length > 0) {
+        reportOutcomes(this, tokens, 'failure', { code, message, detail, raise: false });
+      } else if (!isRepeat) {
+        this.sendSignalOnOutput('failure');
+      }
     },
-    _calculateExpression: function (this: ExpressionNodeInstance) {
+    _calculateExpression: function (this: ExpressionNodeInstance, tokens?: OutcomeToken[]) {
       const internal = this._internal;
 
       if (!internal.compiledFunction) {
@@ -272,7 +320,8 @@ const ExpressionNode: NodeDefinitionOptions = {
         this._reportFailure(
           'expression/compile-failed',
           'The expression could not be compiled: ' + (internal.compileError || 'syntax error'),
-          { expression: this.model && this.model.parameters ? this.model.parameters.expression : undefined }
+          { expression: this.model && this.model.parameters ? this.model.parameters.expression : undefined },
+          tokens
         );
         return 0;
       }
@@ -299,7 +348,7 @@ const ExpressionNode: NodeDefinitionOptions = {
         // the value would move behaviour in existing projects, which is not this contract's
         // business — but it is no longer indistinguishable from an expression that genuinely
         // evaluated to zero.
-        this._reportFailure('expression/threw', 'The expression threw: ' + e.message, { message: e.message });
+        this._reportFailure('expression/threw', 'The expression threw: ' + e.message, { message: e.message }, tokens);
       }
       return 0;
     },
@@ -439,7 +488,9 @@ const ExpressionNode: NodeDefinitionOptions = {
       description:
         'Evaluates the expression now. This is additional to the inputs that re-run it; untick an input under Run On Value Change to stop that one triggering a run',
       valueChangedToTrue: function (this: ExpressionNodeInstance) {
-        this._scheduleEvaluateExpression();
+        // ERG-001 §4. Only the port mints; every value setter and the `expression` setter reach
+        // the same scheduler and report nothing.
+        this._scheduleEvaluateExpression(this.beginOutcome());
       }
     }
   },
@@ -524,6 +575,13 @@ const ExpressionNode: NodeDefinitionOptions = {
       displayName: 'Failure',
       description: 'Fires when the expression could not be compiled, or threw while being evaluated'
     },
+    /**
+     * ERG-001 §4 — `Done` is **added**, and neither `On True` nor `On False` became it.
+     *
+     * Both fire from the `expression` setter at load and from every ticked value input, which
+     * are paths no author invoked. No `Unchanged`: an evaluation always evaluates.
+     */
+    ...outcomeOutputs({ done: 'Fires once a Run you triggered has evaluated the expression, after On True or On False' }),
     error: {
       group: 'Events',
       type: 'string',

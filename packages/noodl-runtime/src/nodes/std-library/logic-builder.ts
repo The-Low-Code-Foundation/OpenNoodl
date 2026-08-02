@@ -8,11 +8,13 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
 import { DetectedIO, detectIO, typeOfPort } from './logic-builder-io';
 
+import { outcomeOutputs } from '../../outcome';
 import EdgeTriggeredInput = require('../../edgetriggeredinput');
 
 /**
@@ -39,10 +41,10 @@ interface LogicBuilderNodeInstance extends NodeInstance {
     ioSource?: string;
     io?: DetectedIO;
   };
-  _executeLogic(triggerSignal: string): void;
+  _executeLogic(triggerSignal: string, token?: OutcomeToken): void;
   _createExecutionContext(triggerSignal: string): LogicBuilderExecutionContext;
   _compileFunction(): ((...args: unknown[]) => unknown) | null;
-  _fail(code: string, message: string): void;
+  _fail(code: string, message: string, token?: OutcomeToken): void;
   _io(): DetectedIO;
 }
 
@@ -76,7 +78,16 @@ interface LogicBuilderExecutionContext {
  * existing project — so the names are reserved and the collision is reported instead.
  */
 const RESERVED_INPUTS = ['workspace', 'generatedCode', 'run'];
-const RESERVED_OUTPUTS = ['error', 'success', 'failure'];
+/**
+ * ⚠️ ERG-001 §4 added `done`, `unchanged` and `completed`.
+ *
+ * FINDINGS **SR-ix** predicted the reserved-name cost of giving completion signals to a node
+ * whose ports are author-declared, and this is where it is paid. `registerOutputIfNeeded`
+ * early-returns on a port that already exists, so without this list a block program writing
+ * `Outputs.done` would flag the contract's built-in signal and its own value would vanish with
+ * nothing anywhere saying why. Reserved *before* the ports landed, not after.
+ */
+const RESERVED_OUTPUTS = ['error', 'success', 'failure', 'done', 'unchanged', 'completed'];
 
 const LogicBuilderNode: NodeDefinitionOptions = {
   name: 'Logic Builder',
@@ -146,7 +157,9 @@ const LogicBuilderNode: NodeDefinitionOptions = {
           type: 'signal',
           set: EdgeTriggeredInput.createSetter({
             valueChangedToTrue: function (this: LogicBuilderNodeInstance) {
-              this._executeLogic(name);
+              // ERG-001 §4. A block-declared signal input is an action port like `Run`, so it
+              // mints too.
+              this._executeLogic(name, this.beginOutcome());
             }
           })
         });
@@ -189,7 +202,7 @@ const LogicBuilderNode: NodeDefinitionOptions = {
      * message the way `expression.ts:160-170` and `simplejavascript.ts:255-263` are, and for
      * the same reason: an author editing blocks re-runs the node constantly.
      */
-    _fail: function (this: LogicBuilderNodeInstance, code: string, message: string) {
+    _fail: function (this: LogicBuilderNodeInstance, code: string, message: string, token?: OutcomeToken) {
       const internal = this._internal;
 
       internal.executionError = message;
@@ -200,10 +213,19 @@ const LogicBuilderNode: NodeDefinitionOptions = {
         this.raiseRuntimeError(code, message, { error: message });
       }
 
-      this.sendSignalOnOutput('failure');
+      // ⚠️ ERG-001 §4. The token settles **outside** the dedup above: the dedup is about the
+      // announcement — an author editing blocks re-runs the node constantly — while Rule 1 is
+      // about the invocation, so a second `Run` over the same broken program still owes its own
+      // `Failure` and `Completed`. `failure` is one port doing two jobs here, so it is not
+      // pulsed twice: where there is a token `reportOutcome` owns the pulse.
+      if (token) {
+        this.reportOutcome(token, 'failure', { code, message, raise: false });
+      } else {
+        this.sendSignalOnOutput('failure');
+      }
     },
 
-    _executeLogic: function (this: LogicBuilderNodeInstance, triggerSignal: string) {
+    _executeLogic: function (this: LogicBuilderNodeInstance, triggerSignal: string, token?: OutcomeToken) {
       const internal = this._internal;
 
       // Compile function if needed
@@ -229,8 +251,19 @@ const LogicBuilderNode: NodeDefinitionOptions = {
          * code. `Script` is the fourth and its run path is still open.
          */
         if (internal.compileError) {
-          this._fail('logic-builder/code-not-compiled', 'The blocks could not be compiled: ' + internal.compileError);
+          this._fail(
+            'logic-builder/code-not-compiled',
+            'The blocks could not be compiled: ' + internal.compileError,
+            token
+          );
+          return;
         }
+
+        // ERG-001 §4. The other half of that pair — a node with no blocks yet — was the silent
+        // one, and the source above says so in as many words. It is `Unchanged`: being asked to
+        // run a program the node does not have is not a failure of anything and must not raise,
+        // but the bare `return` was the dead chain this contract exists to close.
+        if (token) this.reportOutcome(token, 'unchanged');
         return;
       }
 
@@ -273,7 +306,8 @@ const LogicBuilderNode: NodeDefinitionOptions = {
         if (reservedName !== null) {
           this._fail(
             'logic-builder/reserved-port-name',
-            '"' + reservedName + '" is one of the node\'s own output ports and cannot be set from the blocks'
+            '"' + reservedName + '" is one of the node\'s own output ports and cannot be set from the blocks',
+            token
           );
           return;
         }
@@ -284,13 +318,16 @@ const LogicBuilderNode: NodeDefinitionOptions = {
         // last, after every output the program wrote has been flagged, so a graph sequenced
         // on `Success` reads values that are already up to date.
         this.sendSignalOnOutput('success');
+        // Last, after every output the program wrote has been flagged and after `Success`.
+        if (token) this.reportOutcome(token, 'done');
       } catch (error) {
         console.error('[Logic Builder] Execution error:', error);
         // `error.message` alone left a `throw "some string"` reporting the empty string —
         // the node's only failure surface, blank, for a failure that did happen.
         this._fail(
           'logic-builder/blocks-threw',
-          error && error.message ? String(error.message) : String(error)
+          error && error.message ? String(error.message) : String(error),
+          token
         );
       }
     },
@@ -323,7 +360,24 @@ const LogicBuilderNode: NodeDefinitionOptions = {
 
         // Signal sending. Registers on demand so a `send signal` block whose output is not
         // wired up is a no-op rather than a console error.
+        //
+        // ⚠️ ERG-001 §4. The reserved-name check has to be here as well as on the value side,
+        // and finding that out is the whole of FINDINGS **SR-ix** repeating itself: the value
+        // loop below guards `context.Outputs`, but a `send signal` block reaches
+        // `registerOutputIfNeeded` through a different door. Unguarded, a block program sending
+        // `done` would pulse the *contract's* completion signal — a graph told an action
+        // finished when the only thing that happened is that a block fired — and
+        // `registerOutputIfNeeded`'s early return would make it look like the port had been
+        // created for the program. The editor already refuses to publish such a port
+        // (`updatePorts` filters `io.signalOutputs`), so this closes the runtime half.
         sendSignalOnOutput: function (name: string) {
+          if (RESERVED_OUTPUTS.indexOf(name) !== -1) {
+            self._fail(
+              'logic-builder/reserved-port-name',
+              '"' + name + '" is one of the node\'s own output signals and cannot be sent from the blocks'
+            );
+            return;
+          }
           self.registerOutputIfNeeded(name);
           self.sendSignalOnOutput(name);
         },
@@ -434,7 +488,14 @@ const LogicBuilderNode: NodeDefinitionOptions = {
       description:
         'Runs the block program once; the blocks never run on their own, so a value arriving at an input changes nothing until this fires',
       valueChangedToTrue: function (this: LogicBuilderNodeInstance) {
-        this._executeLogic('run');
+        // ERG-001 §4. Every route into `_executeLogic` is a signal input port, so the grep that
+        // decides a rename comes out clean here — and `Success` is kept anyway. The four script
+        // hosts are a documented family and `Function` and `Expression` *must* keep theirs,
+        // because on them the same work is reachable from a value setter. Splitting the family
+        // so one of the four says only `Done` is the per-node divergence `outcome.ts`'s docstring
+        // exists to prevent. The cost is recorded rather than hidden: on this node the two
+        // co-fire on every successful run.
+        this._executeLogic('run', this.beginOutcome());
       }
     }
   },
@@ -449,12 +510,12 @@ const LogicBuilderNode: NodeDefinitionOptions = {
       displayName: 'Success',
       description: 'Fires once the block program has run through without throwing and every output it wrote is up to date'
     },
-    failure: {
+    ...outcomeOutputs({
       group: 'Status',
-      type: 'signal',
-      displayName: 'Failure',
-      description: 'Fires when the block program threw while running, or could not be compiled at all'
-    },
+      done: 'Fires once a run you triggered has finished, after Success and after every output the program wrote',
+      unchanged: 'Fires when there are no blocks to run yet, which is what a freshly dropped Logic Builder looks like',
+      failure: 'Fires when the block program threw while running, or could not be compiled at all'
+    }),
     error: {
       group: 'Status',
       type: 'string',

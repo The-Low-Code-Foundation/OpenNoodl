@@ -5901,6 +5901,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once an Evaluate you triggered has tested Condition, after On True or On False"
+        },
+        {
           "name": "isfalse",
           "displayName": "Is False",
           "group": "Booleans",
@@ -8491,6 +8513,28 @@
           "description": "Result rendered as text, and blank when it is null or undefined"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Run you triggered has evaluated the expression, after On True or On False"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -8605,7 +8649,7 @@
       "enrichment": {
         "typeName": "Expression",
         "summary": "Evaluates a one-line JavaScript expression whose free variables become input ports; outputs the result as value, boolean, string and events.",
-        "description": "Expression compiles the JavaScript expression in its `expression` parameter and re-evaluates it whenever any referenced input changes (or only on the `run` signal, if `run` is connected). Every free variable name in the expression text becomes an input port of that name — write `price * quantity` and the node grows `price` and `quantity` inputs. The result is exposed simultaneously as `result` (untyped), `asNumber`, `asString`, `asBoolean`, plus level booleans `isTrue`/`isFalse` and edge signals `isTrueEv`/`isFalseEv` that fire when the truthiness changes.",
+        "description": "Expression compiles the JavaScript expression in its `expression` parameter and re-evaluates it whenever any referenced input changes. The `run` signal is additive — it evaluates the expression now and reports `done`, or `failure` if the expression will not compile or throws; untick an input under Run On Value Change to stop that one triggering a run. Every free variable name in the expression text becomes an input port of that name — write `price * quantity` and the node grows `price` and `quantity` inputs. The result is exposed simultaneously as `result` (untyped), `asNumber`, `asString`, `asBoolean`, plus level booleans `isTrue`/`isFalse` and edge signals `isTrueEv`/`isFalseEv` that fire when the truthiness changes.",
         "whenToUse": "Small computations and predicates inline in a graph: arithmetic, comparisons, string interpolation via template syntax, ternaries. For multi-statement logic, side effects, or async work use the Function node; for combining two booleans And/Or are clearer.",
         "ports": {
           "expression": "The expression source text. Its identifiers define the node's data inputs; standard Math functions are available (e.g. round(), abs()).",
@@ -15187,6 +15231,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Run you triggered has finished, waiting for an async script to resolve first"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -15218,6 +15284,17 @@
           },
           "isSignal": true,
           "description": "Fires once the script has finished, waiting for an async script to resolve first"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there is no script to run yet, which is what a freshly dropped Function looks like"
         }
       ],
       "dynamicPorts": {
@@ -15298,7 +15375,7 @@
       "enrichment": {
         "typeName": "JavaScriptFunction",
         "summary": "Function: runs multi-line JavaScript; Inputs.* reads create input ports, Outputs.* writes create output ports, Outputs.fn() fires signals.",
-        "description": "The Function node executes the JavaScript in `functionScript`. The script's surface *is* its port list: reading `Inputs.name` creates an input port `name`, assigning `Outputs.name = value` creates a value output, and calling `Outputs.name()` creates and fires a signal output (conventionally `Outputs.Success()` / `Outputs.Failure()`). The script runs when the `run` signal fires; if `run` is unconnected it runs whenever a connected input changes. Scripts may be async and use `await` — fire a signal output when done to sequence downstream work.",
+        "description": "The Function node executes the JavaScript in `functionScript`. The script's surface *is* its port list: reading `Inputs.name` creates an input port `name`, assigning `Outputs.name = value` creates a value output, and calling `Outputs.name()` creates and fires a signal output (conventionally `Outputs.Success()` / `Outputs.Failure()`). The script runs whenever a ticked input changes, and additionally when the `run` signal fires — connecting `run` takes nothing away; untick an input under Run On Value Change to stop that one triggering a run. A `run` you triggered reports `done` once the script has finished (awaiting an async body first), `failure` if it threw or would not compile, and `unchanged` when there is no script written yet. Scripts may be async and use `await` — fire a signal output when done to sequence downstream work.",
         "whenToUse": "Anything beyond a one-liner: data transformation, calling browser APIs or fetch, orchestrating async steps. Prefer Expression for simple pure computations and dedicated nodes (Query Records, REST2) where they exist — graphs stay more inspectable than scripts.",
         "ports": {
           "functionScript": "The JavaScript source. Its Inputs./Outputs. references define the node's data and signal ports.",
@@ -16963,6 +17040,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a run you triggered has finished, after Success and after every output the program wrote"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Status",
@@ -16994,6 +17093,17 @@
           },
           "isSignal": true,
           "description": "Fires once the block program has run through without throwing and every output it wrote is up to date"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there are no blocks to run yet, which is what a freshly dropped Logic Builder looks like"
         }
       ],
       "dynamicPorts": {
@@ -17009,7 +17119,7 @@
       "enrichment": {
         "typeName": "Logic Builder",
         "summary": "Block-based (Blockly) logic: blocks compile to JavaScript that runs when a signal fires and writes the node's output ports.",
-        "description": "Logic Builder stores a visual block program (Google Blockly) in its `workspace` parameter; the editor generates plain JavaScript from the blocks into the `generatedCode` parameter, and the runtime compiles and executes that code. Execution is strictly signal-driven: the logic runs when the `run` signal input (or a block-defined signal input) fires — changing an input value alone never executes it. The generated code runs with `Inputs`, `Outputs`, `Noodl`, `Variables`, `Objects`, `Arrays`, `sendSignalOnOutput` and `__triggerSignal__` in scope, so blocks can read and write global Noodl Variables/Objects/Arrays as well as the node's own ports, and a program with several signal inputs can branch on which one started the run. Every run ends on a signal: `success` when the program ran through, `failure` when it threw or would not compile, with the message on the `error` string output — which clears on the next successful run. The block set covers the Noodl seam (ports, signals, Variables/Objects/Arrays) plus stock Blockly logic, loops, math, text, lists, workspace variables and user-defined functions.",
+        "description": "Logic Builder stores a visual block program (Google Blockly) in its `workspace` parameter; the editor generates plain JavaScript from the blocks into the `generatedCode` parameter, and the runtime compiles and executes that code. Execution is strictly signal-driven: the logic runs when the `run` signal input (or a block-defined signal input) fires — changing an input value alone never executes it. The generated code runs with `Inputs`, `Outputs`, `Noodl`, `Variables`, `Objects`, `Arrays`, `sendSignalOnOutput` and `__triggerSignal__` in scope, so blocks can read and write global Noodl Variables/Objects/Arrays as well as the node's own ports, and a program with several signal inputs can branch on which one started the run. Every run ends on a signal: `success` and `done` when the program ran through, `unchanged` when there are no blocks yet, `failure` when it threw or would not compile, with the message on the `error` string output — which clears on the next successful run. The block set covers the Noodl seam (ports, signals, Variables/Objects/Arrays) plus stock Blockly logic, loops, math, text, lists, workspace variables and user-defined functions.",
         "whenToUse": "Reach for it when logic must be authorable without writing JavaScript, or when the imperative shape of the logic — a sequence, a loop, a local variable — is the point. For anything beyond what the block set expresses — async work, API calls, library use — use JavaScriptFunction (Function); for a one-line computation use Expression.",
         "ports": {
           "run": "Signal input (connections only); fires one execution of the block program.",
@@ -27126,6 +27236,17 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "currentState",
           "displayName": "State",
           "group": "Current State",
@@ -27135,6 +27256,17 @@
           },
           "isSignal": false,
           "description": "Which state the node is in now"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Toggle or To <state> you triggered has moved the node, after State Changed"
         },
         {
           "name": "error",
@@ -27168,6 +27300,17 @@
           },
           "isSignal": true,
           "description": "Fires on every state change except entering the first, which is where the node starts"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the node is already in the state you asked for, or already heading there in this pass"
         }
       ],
       "dynamicPorts": {

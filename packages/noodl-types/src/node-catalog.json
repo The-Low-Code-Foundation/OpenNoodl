@@ -5369,6 +5369,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once an Evaluate you triggered has tested Condition, after On True or On False"
+        },
+        {
           "name": "isfalse",
           "displayName": "Is False",
           "group": "Booleans",
@@ -7626,6 +7648,28 @@
           },
           "isSignal": false,
           "description": "Result rendered as text, and blank when it is null or undefined"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Run you triggered has evaluated the expression, after On True or On False"
         },
         {
           "name": "error",
@@ -14040,6 +14084,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Run you triggered has finished, waiting for an async script to resolve first"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -14071,6 +14137,17 @@
           },
           "isSignal": true,
           "description": "Fires once the script has finished, waiting for an async script to resolve first"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there is no script to run yet, which is what a freshly dropped Function looks like"
         }
       ],
       "dynamicPorts": {
@@ -15746,6 +15823,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a run you triggered has finished, after Success and after every output the program wrote"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Status",
@@ -15777,6 +15876,17 @@
           },
           "isSignal": true,
           "description": "Fires once the block program has run through without throwing and every output it wrote is up to date"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Status",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there are no blocks to run yet, which is what a freshly dropped Logic Builder looks like"
         }
       ],
       "dynamicPorts": {
@@ -25029,6 +25139,17 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "currentState",
           "displayName": "State",
           "group": "Current State",
@@ -25038,6 +25159,17 @@
           },
           "isSignal": false,
           "description": "Which state the node is in now"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Toggle or To <state> you triggered has moved the node, after State Changed"
         },
         {
           "name": "error",
@@ -25071,6 +25203,17 @@
           },
           "isSignal": true,
           "description": "Fires on every state change except entering the first, which is where the node starts"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the node is already in the state you asked for, or already heading there in this pass"
         }
       ],
       "dynamicPorts": {

@@ -167,7 +167,11 @@ describe('NDA-001 R8–R9: States driven A → B → A inside one update pass', 
     runFrames(graph);
 
     expect(currentState(graph)).toBe('B');
-    expect(graph.signalsFor('states')).toEqual(['stateChanged', 'reached-B']);
+    // ⚠️ ERG-001 §4: `done`/`completed` land between `stateChanged` and `reached-B`, and that
+    // ordering is the design. `Done` says the node moved — `State` already reads 'B' and
+    // `stateChanged` has fired — while `Has Reached B` says the *animation* finished, which is
+    // a later moment and the port that exists to name it.
+    expect(graph.signalsFor('states')).toEqual(['stateChanged', 'done', 'completed', 'reached-B']);
     expect((graph.node('changedCounter') as unknown as CounterInstance).hits).toBe(1);
     expect((graph.node('reachedBCounter') as unknown as CounterInstance).hits).toBe(1);
   });

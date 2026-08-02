@@ -7,9 +7,11 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
+import { outcomeOutputs, reportOutcomes } from '../../outcome';
 import { runOnChangeDynamicPorts } from '../../run-on-value-change';
 
 const JavascriptNodeParser = require('../../javascriptnodeparser');
@@ -52,6 +54,12 @@ interface SimpleJavascriptNodeInstance extends NodeInstance {
     parseError?: string;
     /** The last compile failure already raised, so an edit-by-edit retype reports once. */
     lastReportedError?: string;
+    /**
+     * One token per `Run` pulse waiting on the coalescing guard — ERG-001 §4.
+     *
+     * ⚠️ Created lazily in `scheduleRun`, not in `initialize`.
+     */
+    pendingRunOutcomes?: OutcomeToken[];
   };
   /** On the instance rather than in `_internal`. */
   runScheduled?: boolean;
@@ -61,7 +69,7 @@ interface SimpleJavascriptNodeInstance extends NodeInstance {
    * `setTimeout` or an un-removed event listener keeps running after deletion.
    */
   _deleted: boolean;
-  scheduleRun(): void;
+  scheduleRun(token?: OutcomeToken): void;
   runScript(): Promise<void>;
   setScriptInputValue(name: string, value: unknown): void;
   getScriptOutputValue(name: string): unknown;
@@ -190,7 +198,10 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
       description:
         'Runs the script now. This is additional to the inputs that re-run it; untick an input under Run On Value Change to stop that one triggering a run',
       valueChangedToTrue: function (this: SimpleJavascriptNodeInstance) {
-        this.scheduleRun();
+        // ERG-001 §4. Only the port mints. `scheduleRun` is also reached from the
+        // `functionScript` setter at load and from every ticked `in-…` value setter, and
+        // neither is an invocation.
+        this.scheduleRun(this.beginOutcome());
       }
     }
   },
@@ -216,6 +227,23 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
       group: 'Events',
       description: 'Fires when the script threw while running, or could not be compiled at all'
     },
+    /**
+     * ERG-001 §4 — `Done` is **added** and `Success` keeps its name.
+     *
+     * `runScript` is reached from the `Run` port, from the `functionScript` setter at load and
+     * from every ticked value input; two of those three are not invocations. Renaming `Success`
+     * would fire `Done` at load in every project that already exists, while `Completed` — which
+     * only an invocation may emit — stayed silent. The cost, recorded rather than hidden: on the
+     * port path the two co-fire.
+     *
+     * `Unchanged` is new and closes a dead chain: `Run` on a Function with no script yet
+     * returned bare. Being asked to run a program the node does not have is not a failure of
+     * anything, so it does not raise — but it is not silence either.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once a Run you triggered has finished, waiting for an async script to resolve first',
+      unchanged: 'Fires when there is no script to run yet, which is what a freshly dropped Function looks like'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -229,7 +257,14 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
     }
   },
   methods: {
-    scheduleRun: function (this: SimpleJavascriptNodeInstance) {
+    scheduleRun: function (this: SimpleJavascriptNodeInstance, token?: OutcomeToken) {
+      if (token) {
+        if (!this._internal.pendingRunOutcomes) this._internal.pendingRunOutcomes = [];
+        this._internal.pendingRunOutcomes.push(token);
+      }
+
+      // The guard drops the second pulse's *run* deliberately; Rule 1 is per invocation, so the
+      // second pulse's outcome is already queued above.
       if (this.runScheduled) return;
       this.runScheduled = true;
 
@@ -243,6 +278,10 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
     },
     runScript: async function (this: SimpleJavascriptNodeInstance) {
       const func = this._internal.func;
+      // Taken into a local before the `await`, so a second `Run` arriving mid-flight owns its
+      // own batch rather than being settled by this script's answer.
+      const tokens = this._internal.pendingRunOutcomes || [];
+      this._internal.pendingRunOutcomes = undefined;
 
       /**
        * NDA-012 (CustomCode). NDA-004 §3 gave this node `Success`/`Failure`/`Error` for the
@@ -264,8 +303,8 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
         if (parseError !== undefined) {
           this._internal.lastError = parseError;
           this.flagOutputDirty('error');
-          // Deduplicated by message, exactly as `expression.ts:160-170` does and for the same
-          // reason: with `Run` unconnected the node re-runs on every script edit, so an author
+          // Deduplicated by message, exactly as `expression.ts` does and for the same reason:
+          // with `Run` unconnected the node re-runs on every script edit, so an author
           // mid-keystroke would otherwise raise one event per character typed.
           if (this._internal.lastReportedError !== parseError) {
             this._internal.lastReportedError = parseError;
@@ -273,8 +312,25 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
               error: parseError
             });
           }
-          this.sendSignalOnOutput('failure');
+          // ⚠️ Settled outside the dedup, and `failure` is not pulsed twice: where there are
+          // tokens `reportOutcome` owns the pulse, where there are none the value-driven
+          // announcement stands.
+          if (tokens.length > 0) {
+            reportOutcomes(this, tokens, 'failure', {
+              code: 'function/script-not-compiled',
+              message: 'The script could not be compiled: ' + parseError,
+              raise: false
+            });
+          } else {
+            this.sendSignalOnOutput('failure');
+          }
+          return;
         }
+
+        // ERG-001 §4. Was a bare `return`: a freshly dropped Function has no script, and `Run`
+        // on it emitted nothing at all — the contract's headline dead chain. Being asked to run
+        // a program the node does not have is not a failure of anything, so it does not raise.
+        reportOutcomes(this, tokens, 'unchanged');
         return;
       }
 
@@ -314,7 +370,10 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
         // `await`ed, so an `async` script signals when it has actually finished rather than
         // when it was started. That is the whole point of the port: sequencing after an
         // async Function used to require guessing a delay.
-        if (!this._deleted) this.sendSignalOnOutput('success');
+        if (!this._deleted) {
+          this.sendSignalOnOutput('success');
+          reportOutcomes(this, tokens, 'done');
+        }
       } catch (e) {
         logJavaScriptNodeError(e);
 
@@ -337,12 +396,19 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
         if (this._deleted) return;
 
         this._internal.lastError = e && e.message ? String(e.message) : String(e);
-        this.raiseRuntimeError('function/script-threw', 'The script threw: ' + this._internal.lastError, {
-          error: this._internal.lastError
-        });
-
         this.flagOutputDirty('error');
-        this.sendSignalOnOutput('failure');
+
+        const message = 'The script threw: ' + this._internal.lastError;
+        if (tokens.length > 0) {
+          reportOutcomes(this, tokens, 'failure', {
+            code: 'function/script-threw',
+            message,
+            detail: { error: this._internal.lastError }
+          });
+        } else {
+          this.raiseRuntimeError('function/script-threw', message, { error: this._internal.lastError });
+          this.sendSignalOnOutput('failure');
+        }
       }
     },
     setScriptInputValue: function (this: SimpleJavascriptNodeInstance, name: string, value: unknown) {

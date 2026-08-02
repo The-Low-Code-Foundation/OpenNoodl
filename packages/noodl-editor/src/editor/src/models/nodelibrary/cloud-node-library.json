@@ -583,6 +583,20 @@
           "displayName": "Failure"
         },
         {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
           "name": "error",
           "type": "string",
           "plug": "output",
@@ -685,6 +699,27 @@
           "displayName": "Failure"
         },
         {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged"
+        },
+        {
           "name": "error",
           "type": "string",
           "plug": "output",
@@ -750,6 +785,27 @@
           "plug": "output",
           "group": "Status",
           "displayName": "Success"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Completed"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Status",
+          "displayName": "Unchanged"
         },
         {
           "name": "failure",
@@ -2831,6 +2887,20 @@
           "plug": "output",
           "group": "Booleans",
           "displayName": "Is False"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         }
       ]
     },

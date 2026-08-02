@@ -1,6 +1,7 @@
 import BezierEasing from 'bezier-easing';
 import { EdgeTriggeredInput } from '@noodl/runtime';
 import { nearestName } from '@noodl/runtime/src/diagnostics';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type {
   EditorConnectionLike,
   GraphNodeModel,
@@ -8,6 +9,7 @@ import type {
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule,
+  OutcomeToken,
   StateTransition,
   Timer
 } from '@noodl/types';
@@ -55,7 +57,14 @@ interface StatesInstance extends NodeInstance {
      * for. NDA-002 §4: the node used to keep only the last one, so A → B → A inside one pass
      * cancelled itself out and nothing fired at all.
      */
-    goToStateQueue?: string[];
+    /**
+     * ⚠️ ERG-001 §4 made each entry carry its own token rather than adding a parallel array: a
+     * `To A` and a `To B` queued in the same frame are two invocations and each is owed its own
+     * outcome, which is the shape `statesnapshotnode.ts` established. The token is absent on the
+     * setter-driven routes (`currentState`, `startState`, the `states` list arriving), because
+     * nobody invoked those.
+     */
+    goToStateQueue?: Array<{ state: string; token?: OutcomeToken }>;
     /** Latest failure message, for the `Error` output (NDA-004 §2). */
     error?: string;
   };
@@ -64,12 +73,13 @@ interface StatesInstance extends NodeInstance {
    * it is load-bearing, so it is declared rather than moved.
    */
   hasScheduledGoToState?: boolean;
-  scheduleGoToState(state: string): void;
+  scheduleGoToState(state: string, token?: OutcomeToken): void;
+  _failNoStates(token: OutcomeToken): void;
   /** `settleImmediately` skips the animation, so a state passed *through* still reports. */
-  goToState(state?: string, settleImmediately?: boolean): void;
+  goToState(state?: string, settleImmediately?: boolean, token?: OutcomeToken): void;
   jumpToState(state?: string): void;
   updateAtStatePorts(): void;
-  _failUnknownState(state: string): void;
+  _failUnknownState(state: string, token?: OutcomeToken): void;
 }
 
 const defaultDuration = 300;
@@ -263,8 +273,17 @@ const StatesNode: NodeDefinitionOptions = {
       description: 'Moves to the next state in the list, wrapping round after the last',
       valueChangedToTrue: function (this: StatesInstance) {
         const internal = this._internal;
+        // ERG-001 §4. `Toggle` and every `To <state>` are this node's action ports; the
+        // `currentState`/`startState` setters and the `states` list arriving are not.
+        const token = this.beginOutcome();
 
-        if (!internal.states) return;
+        if (!internal.states || internal.states.length === 0) {
+          // Was a bare `return`. A Toggle on a node with no States list is a configuration
+          // mistake an author can only find by staring at the panel, and the graph behind it
+          // stopped dead with no diagnosis anywhere.
+          this._failNoStates(token);
+          return;
+        }
 
         // Figure out which state to toggle to
         const idx = internal.states.indexOf(internal.state);
@@ -272,7 +291,7 @@ const StatesNode: NodeDefinitionOptions = {
 
         // Go to state when all updates have updated
         //this._internal.scheduledToGoToState = internal.states[nextIdx];
-        this.scheduleGoToState(internal.states[nextIdx]);
+        this.scheduleGoToState(internal.states[nextIdx], token);
         /*  this.scheduleAfterInputsHaveUpdated(function () {
                     _this.goToState(internal.states[nextIdx]);
                 });*/
@@ -324,12 +343,6 @@ const StatesNode: NodeDefinitionOptions = {
      * `currentState` port's default is `startState || states[0]`, so a node nobody has wired
      * never reaches this branch.
      */
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description: 'Fires when a state was asked for that this node does not have, leaving it where it was'
-    },
     error: {
       type: 'string',
       displayName: 'Error',
@@ -338,7 +351,23 @@ const StatesNode: NodeDefinitionOptions = {
       getter: function (this: StatesInstance) {
         return this._internal.error;
       }
-    }
+    },
+    /**
+     * ERG-001 §4. `State Changed` is **not** this invocation's outcome and could not be made
+     * into one: it fires from the `currentState` and `startState` setters and from the `states`
+     * list arriving, none of which anybody invoked, and it deliberately does not fire when the
+     * node enters its very first state. `Done` goes beside it.
+     *
+     * `Unchanged` is earned twice over — asking for the state the node is already in, and asking
+     * again for the state this pass is already heading to. Both are a graph working exactly as
+     * written, so neither raises. The three names were already reserved against verbatim value
+     * names by the OBS-003 pass; see `RESERVED_OUTPUTS` above.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once a Toggle or To <state> you triggered has moved the node, after State Changed',
+      unchanged: 'Fires when the node is already in the state you asked for, or already heading there in this pass',
+      failure: 'Fires when a state was asked for that this node does not have, leaving it where it was'
+    })
   },
   prototypeExtensions: {
     registerOutputIfNeeded: function (this: StatesInstance, name: string) {
@@ -391,7 +420,7 @@ const StatesNode: NodeDefinitionOptions = {
           set: EdgeTriggeredInput.createSetter({
             valueChangedToTrue: function (this: StatesInstance) {
               //this._internal.scheduledToGoToState = state;
-              this.scheduleGoToState(toState);
+              this.scheduleGoToState(toState, this.beginOutcome());
               //this.scheduleAfterInputsHaveUpdated(function () { _this.goToState(state) });
             }
           })
@@ -532,7 +561,14 @@ const StatesNode: NodeDefinitionOptions = {
      * state the pass passes *through* is settled immediately, reporting `stateChanged` and
      * its `reached-<state>`, and only the state the pass ends in animates.
      */
-    scheduleGoToState: function (this: StatesInstance, state: string) {
+    /** Report a request made against a node with no States list at all — ERG-001 §4. */
+    _failNoStates: function (this: StatesInstance, token: OutcomeToken) {
+      const message = 'This States node has no states defined, so there is nowhere to go';
+      this._internal.error = message;
+      this.flagOutputDirty('error');
+      this.reportOutcome(token, 'failure', { code: 'states/no-states', message });
+    },
+    scheduleGoToState: function (this: StatesInstance, state: string, token?: OutcomeToken) {
       const _this = this;
       const internal = this._internal;
 
@@ -566,10 +602,15 @@ const StatesNode: NodeDefinitionOptions = {
 
       // Asking again for where the pass is already heading is not a transition. A falsy
       // state is left to `goToState`, which resolves it to the first state.
-      const pendingTarget = queue.length > 0 ? queue[queue.length - 1] : internal.state;
-      if (state && pendingTarget === state) return;
+      const pendingTarget = queue.length > 0 ? queue[queue.length - 1].state : internal.state;
+      if (state && pendingTarget === state) {
+        // ERG-001 §4: the author asked for something already happening, which is a no-op and
+        // not a failure. Reported rather than dropped — the bare `return` was the dead chain.
+        if (token) this.reportOutcome(token, 'unchanged');
+        return;
+      }
 
-      queue.push(state);
+      queue.push({ state, token });
       this._internal.goToState = state;
 
       //console.log('set go to state: ' + state)
@@ -583,7 +624,7 @@ const StatesNode: NodeDefinitionOptions = {
         // starts a fresh queue and a fresh pass rather than extending this one.
         const requested = queue.splice(0, queue.length);
         for (let i = 0; i < requested.length; i++) {
-          _this.goToState(requested[i], i < requested.length - 1);
+          _this.goToState(requested[i].state, i < requested.length - 1, requested[i].token);
         }
       });
     },
@@ -595,7 +636,7 @@ const StatesNode: NodeDefinitionOptions = {
      * has necessarily been set. Guarding here also means the queue is unaffected — a rejected
      * state leaves `internal.state` alone, so a later request for a real state still works.
      */
-    _failUnknownState: function (this: StatesInstance, state: string) {
+    _failUnknownState: function (this: StatesInstance, state: string, token?: OutcomeToken) {
       const states = this._internal.states || [];
       // Name the alternatives. "Unknown state" is not actionable; "you have A, B, C" is, and a
       // wired `State` input misspelt or left behind by a rename is the common cause.
@@ -617,19 +658,37 @@ const StatesNode: NodeDefinitionOptions = {
       this._internal.error = message;
       this.flagOutputDirty('error');
       this.raiseRuntimeError(UNKNOWN_STATE_CODE, message, { requested: state, states: states.slice() });
-      this.sendSignalOnOutput('failure');
+
+      // ⚠️ ERG-001 §4. `failure` is one port doing two jobs on this node — the invocation's
+      // outcome, and the announcement this method has always made from setter-driven routes
+      // that nobody invoked. So it is not pulsed twice: where there is a token `reportOutcome`
+      // owns the pulse, with `raise: false` because the reason is already on the channel from
+      // the line above.
+      if (token) {
+        this.reportOutcome(token, 'failure', { code: UNKNOWN_STATE_CODE, message, raise: false });
+      } else {
+        this.sendSignalOnOutput('failure');
+      }
     },
-    goToState: function (this: StatesInstance, state?: string, settleImmediately?: boolean) {
+    goToState: function (this: StatesInstance, state?: string, settleImmediately?: boolean, token?: OutcomeToken) {
       const internal = this._internal;
-      if (!internal.states) return;
+      if (!internal.states) {
+        if (token) this._failNoStates(token);
+        return;
+      }
       if (!state) state = internal.states[0];
-      if (internal.state === state) return;
+      if (internal.state === state) {
+        // Already where it was asked to go. `Unchanged`, and it does not raise: a `Failure`
+        // firing on a graph working exactly as written is how authors learn to ignore the port.
+        if (token) this.reportOutcome(token, 'unchanged');
+        return;
+      }
 
       if (internal.states.indexOf(state) === -1) {
         // Refusing to move is the point, not just the report. Transitioning to a state whose
         // values do not exist is what produced the animate-everything-to-zero behaviour; staying
         // put leaves the node in a state it actually has.
-        this._failUnknownState(state);
+        this._failUnknownState(state, token);
         return;
       }
 
@@ -637,6 +696,7 @@ const StatesNode: NodeDefinitionOptions = {
       if (!internal.valuesAreInitialised) {
         // First time go to state is called, jump to the state
         this.jumpToState(state);
+        if (token) this.reportOutcome(token, 'done');
       } else {
         // Copy current values as start values
         let delay = 0;
@@ -712,6 +772,12 @@ const StatesNode: NodeDefinitionOptions = {
           const port = 'reached-' + internal.state;
           if (this.hasOutput(port)) this.sendSignalOnOutput(port);
         }
+
+        // Last, after `State Changed`, the At-state ports and any `Has Reached`. A transition
+        // that is still animating has already *moved* the node — `State` reads the new name and
+        // `stateChanged` has fired — so `Done` is honest here rather than at `onFinish`, which
+        // is what `Has Reached <state>` exists to say.
+        if (token) this.reportOutcome(token, 'done');
       }
     },
     updateAtStatePorts: function (this: StatesInstance) {

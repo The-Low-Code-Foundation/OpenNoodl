@@ -1,6 +1,8 @@
 'use strict';
 
-import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule, OutcomeToken } from '@noodl/types';
+
+import { outcomeOutputs, reportOutcomes } from '../../outcome';
 
 /**
  * `this` inside the Condition node.
@@ -15,8 +17,16 @@ interface ConditionNodeInstance extends NodeInstance {
     hasScheduledEvaluation: boolean;
     /** NDA-017 §2 constraint 4 — false until the node has actually tested something. */
     hasEvaluated: boolean;
+    /**
+     * One token per `Evaluate` pulse waiting on the coalescing guard — ERG-001 §4.
+     *
+     * ⚠️ Created lazily in `scheduleEvaluate` rather than in `initialize`, for the reason the
+     * Cloud Services slice recorded: a suite that never calls `initialize` finds `undefined`
+     * exactly where the first invocation reads it.
+     */
+    pendingEvalOutcomes?: OutcomeToken[];
   };
-  scheduleEvaluate(): void;
+  scheduleEvaluate(token?: OutcomeToken): void;
 }
 
 const ConditionNode: NodeDefinitionOptions = {
@@ -74,7 +84,9 @@ const ConditionNode: NodeDefinitionOptions = {
       description:
         'Tests Condition now. This is additional to Condition re-testing on change; untick it under Run On Value Change to stop that',
       valueChangedToTrue(this: ConditionNodeInstance) {
-        this.scheduleEvaluate();
+        // ERG-001 §4. Only the port mints — the `condition` setter reaches the same scheduler
+        // and reports nothing, because a value arriving is not an invocation.
+        this.scheduleEvaluate(this.beginOutcome());
       }
     }
   },
@@ -119,10 +131,26 @@ const ConditionNode: NodeDefinitionOptions = {
         if (!this._internal.hasEvaluated) return null;
         return !this.getInputValue('condition');
       }
-    }
+    },
+    /**
+     * ERG-001 §4 — `Done` is **added**, and `On True`/`On False` are not it.
+     *
+     * Those two are the *result* of the test and they fire from the `condition` setter as well,
+     * which is a path nobody invoked. Renaming one of them would fire `Done` on the boot path
+     * while `Completed` stayed silent. No `Failure` — this node cannot fail; a condition that is
+     * `undefined` is tested and found false, which is the answer and not an error. No
+     * `Unchanged` — the post-condition of `Evaluate` is "the condition has been tested", which
+     * always needs doing. §5 must not expect either.
+     */
+    ...outcomeOutputs({ done: 'Fires once an Evaluate you triggered has tested Condition, after On True or On False' })
   },
   methods: {
-    scheduleEvaluate(this: ConditionNodeInstance) {
+    scheduleEvaluate(this: ConditionNodeInstance, token?: OutcomeToken) {
+      if (token) {
+        if (!this._internal.pendingEvalOutcomes) this._internal.pendingEvalOutcomes = [];
+        this._internal.pendingEvalOutcomes.push(token);
+      }
+
       // NDA-017 §2 constraint 3. This node had no coalescing at all, which cost nothing while
       // wiring `Evaluate` silenced the value setter — only one of the two could ever fire in a
       // frame. Now that `Evaluate` is additive both can, and without this flag a graph that
@@ -140,6 +168,13 @@ const ConditionNode: NodeDefinitionOptions = {
 
         const condition = this.getInputValue('condition');
         this.sendSignalOnOutput(condition ? 'ontrue' : 'onfalse');
+
+        // Last, after the values and after the branch signal. The guard above coalesces two
+        // triggers in a frame into one *test* deliberately; it must not coalesce two
+        // invocations into one outcome, which is what the array is for.
+        const tokens = this._internal.pendingEvalOutcomes;
+        this._internal.pendingEvalOutcomes = undefined;
+        if (tokens) reportOutcomes(this, tokens, 'done');
       });
     }
   }
