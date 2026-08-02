@@ -104,6 +104,32 @@ probe_roots = [
     {"id": nid(30), "type": "Text", "label": "probe text",
      "x": 0, "y": 400, "parameters": {"text": "probe", "fontSize": 16},
      "ports": [], "dynamicports": []},
+
+    # ── The case Richard's §0 quote actually named ────────────────────────────
+    # "…or a Function or Script number input". A Function's typed ports are
+    # DYNAMIC: `javascript.ts:799-823` derives an input port named after the
+    # label, typed from `intype-<label>`, and announces it with
+    # `sendDynamicPorts`.
+    #
+    # ⚠️ `sendDynamicPorts` only runs when a viewer is attached —
+    # `JavascriptModule.setup()` returns immediately unless
+    # `editorConnection.isRunningLocally()`. So these ports DO NOT EXIST until
+    # the preview has run at least once, and a project with no home component
+    # never mounts one. /App is the home component here for exactly that reason.
+    #
+    # The types are deliberately NOT the declared default (`string`) on either
+    # side, so a reading of `string` cannot be mistaken for a correct answer.
+    {"id": nid(40), "type": "JavaScriptFunction", "label": "Fn",
+     "x": -200, "y": 550,
+     "parameters": {
+         "functionScript": "// ERG-005 §0: the ports come from scriptInputs/scriptOutputs,\n"
+                           "// not from this body.\nOutputs.tag = String(Inputs.qty);\n",
+         "scriptInputs": [{"id": "q1", "label": "qty"}],
+         "intype-qty": "number",
+         "scriptOutputs": [{"id": "o1", "label": "tag"}],
+         "outtype-tag": "boolean",
+     },
+     "ports": [], "dynamicports": []},
 ]
 
 # The project ships with *no* connections into or out of the two interface

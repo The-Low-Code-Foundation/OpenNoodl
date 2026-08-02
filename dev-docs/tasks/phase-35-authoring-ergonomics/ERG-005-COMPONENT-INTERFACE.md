@@ -185,14 +185,39 @@ document an interface the reader still cannot type-check.
    test run — and a worktree's `dev:stop` reaps yours. Re-check CDP is alive before trusting a
    silent result.
 
-### Not measured
+### ✅ Richard's named case — a `Function` node's dynamic port — measured
 
-**Richard's named case of a `Function`/`Script` node input** was set up but not run — the stack was
-killed at that moment (trap 4). The derivation reads `NodeGraphNode.getPorts()`, which concatenates
-`type.ports + node.ports + node.dynamicports` with no regard for provenance, and the `Component
-Outputs` node's own `node.ports` did participate fully in every reading above, so dynamic ports
-almost certainly behave identically. **That is an argument, not a measurement**, and it is the one
-row of §0 still owed a reading.
+The one row §0 was still owed. Driven 2026-08-02 in the same fixture, against a `JavaScriptFunction`
+carrying `scriptInputs: [{id:'q1', label:'qty'}]` with `intype-qty: 'number'` and
+`scriptOutputs: [{id:'o1', label:'tag'}]` with `outtype-tag: 'boolean'` — **neither of which is the
+declared default (`string`)**, so a reading of `string` could not be mistaken for a correct answer.
+
+| Wiring | Derived |
+|---|---|
+| `pClash` → `Fn.in-qty` (dynamic, `number`) | **`number`** |
+| `Fn.out-tag` (dynamic, `boolean`) → `oNone` | **`boolean`** |
+| `pClash` → `Fn.in-qty` (dynamic `number`) **+** `Boolean.value` (declared `boolean`) | **`string`** |
+| delete the dynamic connection, then the declared one | `boolean`, then `*` |
+
+**Provenance is irrelevant.** A dynamic port supplies a type exactly as a declared one does, mixes
+with a declared port through the same table (row 3 is the `number`+`boolean` → `string` case again,
+now with one side dynamic), and reverts identically. `getPorts()` concatenates
+`type.ports + node.ports + node.dynamicports` and the derivation never asks where a port came from.
+So Richard's *"a Function or Script number input"* is confirmed, and it is not a special case.
+
+⚠️ **Two traps this row cost, both worth having.**
+
+- **The value port is `in-qty`, not `qty`.** `JavaScriptFunction` is `simplejavascript.ts`, which
+  declares `inputPrefix: 'in-'` (`:569`, `:676`). The unprefixed `name: p.label` at
+  `noodl-viewer-react/src/nodes/std-library/javascript.ts:799-823` belongs to the **`Script`**
+  (`Javascript2`) node, which is a different node. Reading the wrong one of the two produced a port
+  name that does not exist — the live port list is the authority.
+- **A hand-authored Function's dynamic ports appeared without the preview being started by hand.**
+  The fixture ships `"dynamicports": []` and the node had five by the time it was read. Do not take
+  that as "the viewer is not needed" — `sendDynamicPorts` still only runs under
+  `isRunningLocally()`, and the fixture sets `/App` as home precisely so a viewer can mount.
+  **Read the port list before wiring, every time**; a missing dynamic port is a missing viewer, and
+  the failure looks identical to a defect.
 
 ## §1 — Give the mechanism a documentation channel
 
@@ -264,9 +289,8 @@ cannot be described either.
 
 1. §0's five questions are answered by driving the running editor, and the answers are in this file.
    Where they contradict the remembered rule, the measurement is recorded as the correction.
-   **Met, 2026-08-02.** All five answered live; the one refinement still owed (a `Function` node's
-   dynamic port as the type source) is named under *Not measured*. The fixture is
-   `dev-docs/qa-fixtures/generate-erg005.py`.
+   **Met, 2026-08-02.** All five answered live, including Richard's named `Function`-node case —
+   nothing is owed. The fixture is `dev-docs/qa-fixtures/generate-erg005.py`.
 2. The Port Editor mechanism carries a `description` through to the catalog.
 3. `Component Inputs` and `Component Outputs` have real prose, including the typing rule, reachable by
    an author in the editor and by the AI loop in its context.
