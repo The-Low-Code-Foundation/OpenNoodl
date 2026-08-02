@@ -179,6 +179,88 @@ describe('proplist — encode', () => {
   });
 });
 
+/**
+ * An incoming id is a hint, not an authority.
+ *
+ * The rule matters because the two classes of `proplist` consumer disagree about
+ * what an id is for. `Function`/`Script`/`REST` key each row's child ports by
+ * *label* (`intype-<label>`), so the id only groups rows in the property panel
+ * and a foreign one is harmless. `Navigation Stack` keys them by *id*
+ * (`pageComp-<id>`, `pagePath-<id>`), as does `Create`/`Update Record`
+ * (`acl-<id>-role`, `acl-<id>-userid`, …) — and `acl-<id>-userid` is
+ * `allowConnectionsOnly`, so it is a live connection endpoint.
+ *
+ * For that second class, honouring a pasted id renames the row's identity out
+ * from under parameters that are still stored against the old one. The page
+ * keeps its label and loses the component it renders. Nothing reports it.
+ */
+describe('proplist — a pasted id never repoints an existing entry', () => {
+  // A Navigation Stack whose two pages each have a `pageComp-<id>` parameter
+  // holding the component they render.
+  const navStackPages = [
+    { id: 'zz99', label: 'Home' },
+    { id: 'yy88', label: 'Settings' }
+  ];
+
+  it('ignores ids copied from another node and re-attaches by label', () => {
+    // The reported case: copy the JSON out of one Navigation Stack, paste it
+    // into another with the same page names. Before this rule, `pageComp-zz99`
+    // was orphaned and Home rendered nothing.
+    const pastedFromAnotherNode = [
+      { id: 'ab12', label: 'Home' },
+      { id: 'cd34', label: 'Settings' }
+    ];
+    expect(encodePropList(pastedFromAnotherNode, navStackPages)).toEqual({ ok: true, value: navStackPages });
+  });
+
+  it('mints for a pasted entry whose label is new here, rather than trusting its id', () => {
+    const result = encodePropList([{ id: 'ab12', label: 'Home' }, { id: 'cd34', label: 'Checkout' }], navStackPages);
+    expect(result.ok).toBe(true);
+    const value = result.ok === true ? result.value! : [];
+    expect(value[0]).toEqual({ id: 'zz99', label: 'Home' });
+    expect(value[1].label).toBe('Checkout');
+    expect(value[1].id).not.toBe('cd34');
+    expect(value[1].id).toMatch(/^[0-9a-z]{4}$/);
+  });
+
+  it('still honours an id this port already owns — reorder keeps child ports attached', () => {
+    // Regression guard for the behaviour the rule must not cost: every id here
+    // IS ours, so all are accepted and no port is orphaned.
+    const reordered = [
+      { id: 'yy88', label: 'Settings' },
+      { id: 'zz99', label: 'Home' }
+    ];
+    expect(encodePropList(reordered, navStackPages)).toEqual({ ok: true, value: reordered });
+  });
+
+  it('still honours an owned id across a rename, so child ports follow the new label', () => {
+    const renamed = [
+      { id: 'zz99', label: 'Homepage' },
+      { id: 'yy88', label: 'Settings' }
+    ];
+    expect(encodePropList(renamed, navStackPages)).toEqual({ ok: true, value: renamed });
+  });
+
+  it('mints for a hand-invented id on a brand new list', () => {
+    const result = encodePropList([{ id: 'ab12', label: 'One' }], undefined);
+    expect(result.ok).toBe(true);
+    const value = result.ok === true ? result.value! : [];
+    expect(value[0].label).toBe('One');
+    expect(value[0].id).not.toBe('ab12');
+  });
+
+  it('does not let an id minted during this pass validate a later foreign id', () => {
+    // `taken` grows as ids are minted; `priorIds` must not. Otherwise a foreign
+    // id could be accepted merely because an earlier row happened to mint it.
+    const result = encodePropList([{ id: 'ab12', label: 'New A' }, { id: 'ab12', label: 'New B' }], navStackPages);
+    expect(result.ok).toBe(true);
+    const value = result.ok === true ? result.value! : [];
+    expect(value[0].id).not.toBe('ab12');
+    expect(value[1].id).not.toBe('ab12');
+    expect(value[0].id).not.toBe(value[1].id);
+  });
+});
+
 describe('array / object — decode (measured: 0 stored values; behaviour taken from the code path)', () => {
   it('gives an empty port the right empty literal', () => {
     expect(decodeForEditor('array', undefined).json).toBe('[]');

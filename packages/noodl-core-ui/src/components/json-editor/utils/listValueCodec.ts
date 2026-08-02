@@ -240,9 +240,26 @@ function mintId(taken: Set<string>): string {
 /**
  * Editor array -> `[{id,label}]`.
  *
- * An entry that arrives without a usable `id` inherits the id of the previous
- * entry with the same label, so renaming nothing and reordering everything keeps
- * every child port attached. Only a genuinely new label mints a new id.
+ * An incoming `id` is a **hint, not an authority**: it is honoured only when it
+ * already belongs to this port. Anything else falls through to the id of the
+ * previous entry with the same label, and only a genuinely new label mints one.
+ *
+ * That ordering is what makes the three code-mode edits all do the right thing:
+ *
+ * - *Reorder* — every id is one of ours, so all are honoured and every child
+ *   port stays attached. This is the case the id stability exists for.
+ * - *Rename, id kept* — the id is ours, so the child ports follow the new label.
+ * - *Paste a list copied from another node* — the ids are foreign, so they are
+ *   ignored and matching labels re-attach to **this** node's ids.
+ *
+ * Honouring a foreign id looks harmless, and for label-keyed consumers
+ * (`Function`/`Script`/`REST` name their child ports `intype-<label>`) it is.
+ * But `Navigation Stack` names them `pageComp-<id>`/`pagePath-<id>` and
+ * `Create`/`Update Record` names them `acl-<id>-role` and friends — there the id
+ * is part of a stored parameter key and a connection endpoint. Letting a pasted
+ * id win there silently orphans the sibling parameters: the page keeps its name
+ * and loses the component it renders, with nothing said. The rule below costs
+ * nothing in the cases that were already correct and closes that one.
  */
 export function encodePropList(entries: unknown, previous: unknown): EncodeResult<PropListEntry[] | undefined> {
   if (!Array.isArray(entries)) {
@@ -252,9 +269,14 @@ export function encodePropList(entries: unknown, previous: unknown): EncodeResul
   const prior = decodePropList(previous);
   const idByLabel = new Map<string, string>();
   const taken = new Set<string>();
+  // Snapshot of the ids this port already owns. Kept separate from `taken`,
+  // which grows as ids are minted below — an id minted during this same pass
+  // must not retroactively make a foreign id look like one of ours.
+  const priorIds = new Set<string>();
   for (const p of prior) {
     if (p.id) {
       taken.add(p.id);
+      priorIds.add(p.id);
       if (!idByLabel.has(p.label)) idByLabel.set(p.label, p.id);
     }
   }
@@ -286,7 +308,8 @@ export function encodePropList(entries: unknown, previous: unknown): EncodeResul
     }
     seenLabels.add(name);
 
-    let finalId = typeof id === 'string' && id !== '' ? id : idByLabel.get(name) || '';
+    const claimed = typeof id === 'string' && id !== '' && priorIds.has(id) ? id : '';
+    let finalId = claimed || idByLabel.get(name) || '';
     // Two rows must never share an id: the child ports of one would attach to both.
     if (finalId === '' || usedIds.has(finalId)) finalId = mintId(new Set([...taken, ...usedIds]));
     usedIds.add(finalId);
