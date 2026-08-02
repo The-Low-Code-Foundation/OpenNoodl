@@ -143,6 +143,7 @@ describe('NDA-004 §3: Unique Id completion signal', () => {
     await graph.settle(2);
 
     expect(graph.node('uid').getOutput('guid').value).not.toBe(before);
-    expect(graph.signalsFor('uid')).toEqual(['generated']);
+    // ERG-001 §4 renamed `generated` to `done` and added `Completed` beside it.
+    expect(graph.signalsFor('uid')).toEqual(['done', 'completed']);
   });
 });

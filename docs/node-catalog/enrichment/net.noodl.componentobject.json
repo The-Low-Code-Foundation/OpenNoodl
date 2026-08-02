@@ -1,16 +1,18 @@
 {
   "typeName": "net.noodl.ComponentObject",
   "summary": "Component Object: per-component-instance shared state — every node in the same instance reads and writes the same object, no wires needed.",
-  "description": "Component Object exposes an object that belongs to the component *instance* it sits in: each instance of the component gets its own backing object, created on first use, and all Component Object nodes inside that instance — plus Parent Component Object nodes in child components — see the same data. Property names are declared in the `properties` parameter; each becomes a connection-only port that is both readable and writable, together with a per-property changed signal. By default outputs are push-style: whenever the object changes (from this node, another Component Object node, a Set Component Object Properties node, or a child's Parent Component Object), the value outputs update and the changed signals fire. Connecting the `fetch` input switches the node to pull mode: outputs then refresh only when `fetch` fires, followed by `fetched`.",
+  "description": "Component Object exposes an object that belongs to the component *instance* it sits in: each instance of the component gets its own backing object, created on first use, and all Component Object nodes inside that instance — plus Parent Component Object nodes in child components — see the same data. Property names are declared in the `properties` parameter; each becomes a connection-only port that is both readable and writable, together with a per-property changed signal. Outputs are push-style: whenever the object changes (from this node, another Component Object node, a Set Component Object Properties node, or a child's Parent Component Object), the value outputs update and the changed signals fire. `fetch` is additive — it republishes every property now, then fires `fetched` and `done` — and untick Object properties under Run On Value Change to stop the push half.",
   "whenToUse": "Use it for state shared across nodes within one component — form drafts, wizard step, selection — especially state a child component must also see via Parent Component Object. It is per-instance by design: two instances of the component never share data. For app-global state use a Variable (Variable2) or Object (Model2); for a fixed set of visual modes prefer States.",
   "ports": {
-    "fetch": "Signal input; when connected, the node stops pushing on every change and instead refreshes all property outputs (and fires the changed signals and `fetched`) only when this fires.",
+    "fetch": "Signal input; republishes every property output now, firing the per-property changed signals, `fetched` and then `done`. Additive: it does not stop the node pushing on change — untick Object properties under Run On Value Change for that.",
     "changed": "Signal; fires whenever any property of the instance's object changes (push mode).",
-    "fetched": "Signal; fires after a `fetch` completes.",
+    "fetched": "Signal; fires whenever every property is republished, whether by `fetch` or by the node re-binding.",
     "properties": "Edit-only stringlist declaring the object's property names; each becomes a `value-<name>` port and a `changed-<name>` signal."
   },
   "runtimeBehavior": "Ports are runtime-discovered from the `properties` parameter: each declared name p produces `value-<p>` — a connection-only, any-type port usable both as input (writing stores the value into the instance's object) and as output (reading the current value) — and a `changed-<p>` signal output that fires when that property changes. The ports do not exist until `properties` is set; an authoring tool must write the `properties` stringlist and may then connect `value-<p>`/`changed-<p>` by those exact names.",
-  "examples": ["comp-wizard-component-object"],
+  "examples": [
+    "comp-wizard-component-object"
+  ],
   "patterns": [
     "Component Object in the parent + Parent Component Object in children: parent↔child shared state without threading Component Inputs/Outputs through every level.",
     "Inside a Repeater item component: per-row UI state (expanded, editing) — each item instance automatically gets its own object."

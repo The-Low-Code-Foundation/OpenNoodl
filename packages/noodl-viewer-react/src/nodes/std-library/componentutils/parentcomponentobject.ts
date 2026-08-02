@@ -9,6 +9,7 @@ import {
   findAncestorWithName
 } from '@noodl/runtime/src/componentwalk';
 import Model from '@noodl/runtime/src/model';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import { ResolvedTargetReporter } from '@noodl/runtime/src/resolvedtarget';
 import type {
   ComponentInstanceLike,
@@ -20,7 +21,8 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
 const graphEventEmitter = new EventEmitter();
@@ -68,7 +70,7 @@ interface ParentComponentObjectInstance extends NodeInstance {
   onComponentStateNodesChanged(): void;
   updateComponentState(): void;
   findParentComponentStateModelId(): string | undefined;
-  setModelId(id: string | undefined): void;
+  setModelId(id: string | undefined, token?: OutcomeToken): void;
   scheduleStore(): void;
   reportMiss(code: string, message: string, detail?: unknown): void;
 }
@@ -217,7 +219,10 @@ const ParentComponentObject: NodeDefinitionOptions = {
       description:
         'Republishes every property from the parent now. This is additional to the outputs updating on their own; untick Parent object under Run On Value Change to stop that',
       valueChangedToTrue: function (this: ParentComponentObjectInstance) {
-        this.setModelId(this._internal.modelId);
+        // ERG-001 §4. Only the port mints: `setModelId` is also reached from `initialize`, the
+        // `targetComponent` setter, the deferred `nodeScopeDidInitialize` resolution and the
+        // `componentStateNodesChanged` subscription, and none of those is an invocation.
+        this.setModelId(this._internal.modelId, this.beginOutcome());
       }
     }
   },
@@ -228,25 +233,40 @@ const ParentComponentObject: NodeDefinitionOptions = {
       group: 'Events',
       description: 'Fires when a property on the resolved parent is written, unless Fetch is connected'
     },
+    /**
+     * ERG-001 §4 — `Fetched` stays where it is, and `Done` goes beside it.
+     *
+     * This is the node the `Fetched`-is-not-`Done` question is *measurably* settled on: three
+     * of `setModelId`'s five callers are not invocations, so a rename would fire `Done` on the
+     * boot path and on every ancestor rebuild while `Completed` — which only an invocation may
+     * emit — stayed silent. `Done` and `Completed` diverging on a node doing nothing wrong is
+     * Rule 2 broken in the one place its whole value lies.
+     */
     fetched: {
       type: 'signal',
       displayName: 'Fetched',
       group: 'Events',
-      description: 'Fires once Fetch has republished every property'
+      description: 'Fires whenever every property is republished, whether by Fetch or by the parent being re-resolved'
     },
     /**
      * NDA-004 §2. NDA-015 gave this node *raising* — the runtime error channel — but nothing an
-     * author could wire, so a graph could not branch on "my parent state never resolved". These
-     * fire from `reportMiss`, which is to say under exactly the two guards the raise already
-     * respects: never before the deferred first resolution (a miss during `initialize` is normal
-     * on a healthy graph), and never twice for one distinct miss.
+     * author could wire, so a graph could not branch on "my parent state never resolved".
+     * `Failure` fires from `reportMiss`, which is to say under exactly the two guards the raise
+     * already respects: never before the deferred first resolution (a miss during `initialize`
+     * is normal on a healthy graph), and never twice for one distinct miss.
+     *
+     * ⚠️ ERG-001 §4 adds a **second** route to it, deliberately outside those guards: a `Fetch`
+     * with nothing resolved. Rule 1 is per invocation, so an author who presses `Fetch` twice on
+     * an unresolvable node is owed two answers, where `reportMiss`'s dedup — which exists to
+     * stop a *repeated resolution* drowning the channel — would give one.
+     *
+     * No `Unchanged`: `Fetch` republishes unconditionally when there is a parent, and reports
+     * the miss when there is not. §5 must not expect one.
      */
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description: 'Fires when no parent Component Object could be found, so there is nothing to read'
-    },
+    ...outcomeOutputs({
+      done: 'Fires once a Fetch you triggered has republished every property, after Fetched',
+      failure: 'Fires when no parent Component Object could be found, so there is nothing to read'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -359,11 +379,29 @@ const ParentComponentObject: NodeDefinitionOptions = {
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
     },
-    setModelId(this: ParentComponentObjectInstance, id: string | undefined) {
+    setModelId(this: ParentComponentObjectInstance, id: string | undefined, token?: OutcomeToken) {
       this._internal.model && this._internal.model.off('change', this._internal.onModelChangedCallback);
       this._internal.model = undefined;
 
-      if (!id) return;
+      if (!id) {
+        // ERG-001 §4. Was a bare `return`, and it is the contract's headline class: `Fetch`
+        // pressed on a node whose walk found nothing cleared the binding, emitted no `fetched`,
+        // no `changed` and no diagnosis, and the graph behind it stopped dead. The setter and
+        // subscription routes into here still return silently — they carry no token, because
+        // nobody invoked them.
+        if (token) {
+          const message =
+            'Fetch was triggered but no parent Component Object is bound, so there is nothing to republish';
+          this._internal.lastError = message;
+          this.flagOutputDirty('error');
+          this.reportOutcome(token, 'failure', {
+            code: 'parent-component-object/fetch-no-parent',
+            message,
+            detail: { target: this._internal.targetComponent }
+          });
+        }
+        return;
+      }
 
       const model: ModelLike = Model.get(id);
       this._internal.model = model;
@@ -381,6 +419,9 @@ const ParentComponentObject: NodeDefinitionOptions = {
 
       this.sendSignalOnOutput('changed');
       this.sendSignalOnOutput('fetched');
+
+      // Last, after every value and every value-level announcement.
+      if (token) this.reportOutcome(token, 'done');
     },
     scheduleStore(this: ParentComponentObjectInstance) {
       if (this.hasScheduledStore) return;

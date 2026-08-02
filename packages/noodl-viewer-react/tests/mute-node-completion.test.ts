@@ -85,7 +85,8 @@ describe('NDA-004: Send Event', () => {
     graph.node('node').setInputValue('sendEvent', true);
     await graph.settle(3);
 
-    expect(graph.signalsFor('node')).toEqual(['failure']);
+    // ERG-001 §4 added `Completed` after every outcome, whatever it was.
+    expect(graph.signalsFor('node')).toEqual(['failure', 'completed']);
     expect(codesRaised(graph)).toContain('event-sender/no-channel');
   });
 
@@ -99,7 +100,7 @@ describe('NDA-004: Send Event', () => {
     expect(graph.node('node').getOutput('error').value).toBe('No channel name, so the event was not sent');
   });
 
-  test('with a channel name, sends and signals Sent', async () => {
+  test('with a channel name, sends and reports Done', async () => {
     const graph = await graphWith(EventSenderModule, 'Event Sender', { channelName: 'ping' });
 
     const received: unknown[] = [];
@@ -109,7 +110,8 @@ describe('NDA-004: Send Event', () => {
     await graph.settle(3);
 
     expect(received).toHaveLength(1);
-    expect(graph.signalsFor('node')).toEqual(['sent']);
+    // ERG-001 §4 renamed `sent` to `done` and added `Completed` beside it.
+    expect(graph.signalsFor('node')).toEqual(['done', 'completed']);
   });
 });
 
@@ -269,11 +271,11 @@ describe('NDA-004 / NDA-008 §3: Pop Component Stack', () => {
 describe('NDA-004 §2/§3: the ports exist', () => {
   const CASES = [
     { label: 'Close Popup', module: ClosePopupModule, type: 'NavigationClosePopup', done: 'success' },
-    { label: 'Send Event', module: EventSenderModule, type: 'Event Sender', done: 'sent' },
+    { label: 'Send Event', module: EventSenderModule, type: 'Event Sender', done: 'done' },
     { label: 'External Link', module: ExternalLinkModule, type: 'net.noodl.externallink', done: 'success' },
-    // ERG-001 §4 renamed this one's `success` to `done`. The other three keep their names until
-    // their own slice of §4 reaches them — recorded here rather than left to look like an
-    // inconsistency someone should quietly "fix".
+    // ERG-001 §4 renamed these to `done` as its slices reached them. The two still reading
+    // `success` are waiting on the Navigation slice of §4 — recorded here rather than left to
+    // look like an inconsistency someone should quietly "fix".
     { label: 'Pop Component Stack', module: NavigateBackModule, type: 'PageStackNavigateBack', done: 'done' }
   ];
 

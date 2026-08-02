@@ -14,6 +14,10 @@
 
 import { node as ResponseNode } from '../src/nodes/cloud/response';
 
+/* eslint-disable @typescript-eslint/no-var-requires */
+const RuntimeNode = require('@noodl/runtime/src/node');
+/* eslint-enable @typescript-eslint/no-var-requires */
+
 interface RaisedError {
   code: string;
   message: string;
@@ -32,12 +36,22 @@ function makeResponse(overrides: Record<string, unknown> = {}) {
   const dirtied: string[] = [];
   const raised: RaisedError[] = [];
 
+  // ⚠️ ERG-001 §4. A bag of bound methods does not inherit `Node.prototype`, and stubbing the
+  // outcome pair would test the harness rather than the contract — "exactly one per invocation"
+  // is the load-bearing half and it lives in `reportOutcome`. `hasOutput` is backed by the
+  // definition's own declared outputs: a blanket `false` turns every outcome into a spurious
+  // `outcome/missing-port`, and a blanket `true` hides a genuinely missing port.
+  const declared = Object.keys((ResponseNode as unknown as { outputs: Record<string, unknown> }).outputs);
+
   const instance: Record<string, unknown> = {
     _internal: {} as Record<string, unknown>,
+    hasOutput: (name: string) => declared.indexOf(name) !== -1,
     sendSignalOnOutput: (name: string) => signals.push(name),
     flagOutputDirty: (name: string) => dirtied.push(name),
     raiseRuntimeError: (code: string, message: string, detail?: unknown) => raised.push({ code, message, detail })
   };
+  instance.beginOutcome = RuntimeNode.prototype.beginOutcome.bind(instance);
+  instance.reportOutcome = RuntimeNode.prototype.reportOutcome.bind(instance);
 
   const methods = (ResponseNode as unknown as { methods: Record<string, (...args: unknown[]) => unknown> }).methods;
   for (const name of Object.keys(methods)) {
@@ -70,16 +84,23 @@ function makeRequestSeam() {
   };
 }
 
+/** `Send`'s own handler mints the token; these rows drive `sendResponse` directly. */
+function send(instance: Record<string, unknown>): void {
+  (instance as { sendResponse: (t: unknown) => void }).sendResponse(
+    (instance as { beginOutcome: () => unknown }).beginOutcome()
+  );
+}
+
 describe('Response node — completion', () => {
   it('sends a success payload and reports that it went out', () => {
     const seam = makeRequestSeam();
     const { instance, signals, raised, internal } = makeResponse(seam);
     (internal as { responseParameters: Record<string, unknown> }).responseParameters = { greeting: 'hi' };
 
-    (instance as { sendResponse: () => void }).sendResponse();
+    send(instance);
 
     expect(seam.delivered).toEqual([{ statusCode: 200, body: JSON.stringify({ result: { greeting: 'hi' } }) }]);
-    expect(signals).toEqual(['sent']);
+    expect(signals).toEqual(['done', 'completed']);
     expect(raised).toEqual([]);
   });
 
@@ -87,10 +108,10 @@ describe('Response node — completion', () => {
     const seam = makeRequestSeam();
     const { instance, signals } = makeResponse({ ...seam, status: 'failure', errorMessage: 'nope' });
 
-    (instance as { sendResponse: () => void }).sendResponse();
+    send(instance);
 
     expect(seam.delivered).toEqual([{ statusCode: 400, body: JSON.stringify({ error: 'nope' }) }]);
-    expect(signals).toEqual(['sent']);
+    expect(signals).toEqual(['done', 'completed']);
   });
 
   /**
@@ -98,7 +119,7 @@ describe('Response node — completion', () => {
    * synchronously before it returns, so a `Sent` signal emitted afterwards would fire into a
    * deleted graph. This row fails if anyone "tidies" the signal to after the delivery.
    */
-  it('fires Sent before delivering, because delivering destroys the graph', () => {
+  it('fires Done before delivering, because delivering destroys the graph', () => {
     const order: string[] = [];
     const { instance } = makeResponse({
       _requestIsOpen: () => true,
@@ -111,9 +132,9 @@ describe('Response node — completion', () => {
       order.push('signal:' + name);
     };
 
-    (instance as { sendResponse: () => void }).sendResponse();
+    send(instance);
 
-    expect(order).toEqual(['signal:sent', 'delivered']);
+    expect(order).toEqual(['signal:done', 'signal:completed', 'delivered']);
   });
 });
 
@@ -123,14 +144,14 @@ describe('Response node — failure', () => {
     const first = makeResponse(seam);
     const second = makeResponse(seam);
 
-    (first.instance as { sendResponse: () => void }).sendResponse();
-    (second.instance as { sendResponse: () => void }).sendResponse();
+    send(first.instance);
+    send(second.instance);
 
     // Only one payload ever reaches the client — that part was always true.
     expect(seam.delivered).toHaveLength(1);
 
     // What is new: the node that lost says so, on both channels.
-    expect(second.signals).toEqual(['failure']);
+    expect(second.signals).toEqual(['failure', 'completed']);
     expect(second.dirtied).toContain('error');
     expect(second.raised).toHaveLength(1);
     expect(second.raised[0].code).toBe('response/already-sent');
@@ -146,9 +167,9 @@ describe('Response node — failure', () => {
   it('reports a Response node that has no request to answer, rather than throwing', () => {
     const { instance, signals, raised, internal } = makeResponse();
 
-    expect(() => (instance as { sendResponse: () => void }).sendResponse()).not.toThrow();
+    expect(() => send(instance)).not.toThrow();
 
-    expect(signals).toEqual(['failure']);
+    expect(signals).toEqual(['failure', 'completed']);
     expect(raised).toHaveLength(1);
     expect(raised[0].code).toBe('response/no-request-in-scope');
     expect(internal.lastError).toBe(raised[0].message);
@@ -160,11 +181,14 @@ describe('Response node — failure', () => {
       _sendResponseCallback: () => false
     });
 
-    (instance as { sendResponse: () => void }).sendResponse();
+    send(instance);
 
-    // `Sent` still fired first — the node had no way to know before calling — and the failure
-    // follows it. Both are reported, which is the honest account of what happened.
-    expect(signals).toEqual(['sent', 'failure']);
+    // ⚠️ ERG-001 §4 changed what "both are reported" means here. `Done` still fires first — the
+    // node had no way to know before calling — and it spends the invocation's token, so the
+    // refusal that follows reaches the NDA-004 channel and the `Error` output but does **not**
+    // pulse a second outcome. "Exactly one" is the load-bearing half of Rule 1, and a second
+    // report would raise `outcome/duplicate` rather than diagnose the host bug.
+    expect(signals).toEqual(['done', 'completed']);
     expect(raised[0].code).toBe('response/already-sent');
   });
 });

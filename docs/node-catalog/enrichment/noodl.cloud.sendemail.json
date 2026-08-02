@@ -1,18 +1,18 @@
 {
   "typeName": "noodl.cloud.sendemail",
   "summary": "Sends an email through the backend's configured SMTP server from inside a cloud function or workflow.",
-  "description": "Send Email is a server-side-only action node (it only runs inside a cloud function, never in a browser component). Wire `send` to fire it: it either renders one of the backend's built-in templates (Password Reset, Verify Email) against the `variables` object, or sends the raw `subject`/`text`/`html` inputs directly. The send is synchronous from the graph's point of view — `sent` or `failed` fires once the attempt (plus one automatic retry on transient failure) has finished. If the backend has no SMTP configured, or this component is somehow evaluated outside a nodegx-backend process, it fails loudly on `failed`/`error` — it never drops a send silently or queues it for later.",
+  "description": "Send Email is a server-side-only action node (it only runs inside a cloud function, never in a browser component). Wire `send` to fire it: it either renders one of the backend's built-in templates (Password Reset, Verify Email) against the `variables` object, or sends the raw `subject`/`text`/`html` inputs directly. The send is synchronous from the graph's point of view — `done` or `failure` fires once the attempt (plus one automatic retry on transient failure) has finished. If the backend has no SMTP configured, or this component is somehow evaluated outside a nodegx-backend process, it fails loudly on `failure`/`error` — it never drops a send silently or queues it for later.",
   "whenToUse": "Use it wherever a workflow needs to notify someone by email — a signup confirmation, an order receipt, an internal alert. Do not use it for the account password-reset/verify-email flows the backend already runs (BAK-002) — those are automatic; wire this node only for YOUR OWN application notifications.",
   "ports": {
     "to": "The recipient address.",
     "template": "'none' sends the Subject/Text/HTML inputs as-is; 'passwordReset'/'verifyEmail' render the backend's built-in templates instead and ignore Subject/Text/HTML.",
     "variables": "An object of `{{name}}` values for template interpolation; only read when Template is not 'none'.",
     "send": "Signal; fires the send attempt (with its one documented retry on failure).",
-    "sent": "Signal; fires once the send succeeded.",
-    "failed": "Signal; fires once the send failed (or immediately if email isn't available at all) — read `error` for why.",
     "error": "The failure message, e.g. \"Email is not configured for this backend...\" — always a specific, actionable string, never a generic failure."
   },
-  "examples": ["fn-send-notification-email"],
+  "examples": [
+    "fn-send-notification-email"
+  ],
   "patterns": [
     "Request `receive` → Send Email `send` → Response `send`: a fire-and-notify cloud function, the same shape as the Request/Response round trip but with a side effect instead of (or in addition to) a computed value."
   ],
@@ -20,5 +20,8 @@
     "Wiring this into a browser component — it has no effect there (no `_noodl_send_email` exists outside nodegx-backend) and the failure is confusing without knowing this node is cloud-only.",
     "Assuming a fired `sent` means the recipient's inbox will show it soon — deliverability (SPF/DKIM/provider reputation) is the operator's SMTP provider's job, not this node's."
   ],
-  "relatedNodes": ["noodl.cloud.request", "noodl.cloud.response"]
+  "relatedNodes": [
+    "noodl.cloud.request",
+    "noodl.cloud.response"
+  ]
 }

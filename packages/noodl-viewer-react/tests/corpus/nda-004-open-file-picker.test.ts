@@ -151,16 +151,18 @@ function internals(graph: CorpusGraph): PickerInternals['_internal'] {
 }
 
 describe('NDA-004 §2: Open File Picker — the dialog the user closed', () => {
-  test('a cancelled dialog reports Cancelled, where it used to report nothing at all', async () => {
+  test('a cancelled dialog reports Unchanged, where it used to report nothing at all', async () => {
     const graph = await pickerGraph();
     await pressOpen(graph);
 
     stubInput.oncancel();
 
-    expect(graph.signalsFor('picker')).toEqual(['cancelled']);
+    // ERG-001 §4 renamed `cancelled` to the contract's `unchanged`, and `Completed` follows
+    // every outcome.
+    expect(graph.signalsFor('picker')).toEqual(['unchanged', 'completed']);
   });
 
-  test('Cancelled is not a failure: nothing reaches the error channel and Failure stays quiet', async () => {
+  test('Unchanged is not a failure: nothing reaches the error channel and Failure stays quiet', async () => {
     const graph = await pickerGraph();
     await pressOpen(graph);
 
@@ -173,14 +175,14 @@ describe('NDA-004 §2: Open File Picker — the dialog the user closed', () => {
     expect(graph.signalsFor('picker')).not.toContain('failure');
   });
 
-  test('a change with an empty FileList reports Cancelled, not Success', async () => {
+  test('a change with an empty FileList reports Unchanged, not Done', async () => {
     const graph = await pickerGraph();
     await pressOpen(graph);
 
     stubInput.onchange({ target: { files: [] } });
 
     // `Success` used to fire here with all five outputs reading `undefined`.
-    expect(graph.signalsFor('picker')).toEqual(['cancelled']);
+    expect(graph.signalsFor('picker')).toEqual(['unchanged', 'completed']);
   });
 
   test('a cancelled pick does not discard the file already picked', async () => {
@@ -254,30 +256,35 @@ describe('NDA-004 §2: Open File Picker — the dialog that would not open', () 
     expect(stubInput.oncancel).toBeNull();
   });
 
-  test('the three outcome ports and the Error output all exist', async () => {
+  test('the three outcome ports, Completed and the Error output all exist', async () => {
     const graph = await pickerGraph();
     const picker = graph.node('picker');
 
     // Asserted directly, because `signalsFor` records a port name before delegating and
     // `sendSignalOnOutput` on a port the node lacks only logs — see the corpus README.
-    expect(picker.hasOutput('success')).toBe(true);
-    expect(picker.hasOutput('cancelled')).toBe(true);
+    // ERG-001 §4: `success` -> `done`, `cancelled` -> `unchanged`, plus the universal
+    // `completed`.
+    expect(picker.hasOutput('done')).toBe(true);
+    expect(picker.hasOutput('unchanged')).toBe(true);
     expect(picker.hasOutput('failure')).toBe(true);
+    expect(picker.hasOutput('completed')).toBe(true);
     expect(picker.hasOutput('error')).toBe(true);
+    expect(picker.hasOutput('success')).toBe(false);
+    expect(picker.hasOutput('cancelled')).toBe(false);
   });
 });
 
 describe('NDA-004 §2: Open File Picker — the happy path is untouched', () => {
   // ✅ Pinned control. Without this every row above is equally consistent with a node that has
   // stopped picking files.
-  test('(pinned control) a picked file reports Success and publishes all five outputs', async () => {
+  test('(pinned control) a picked file reports Done and publishes all five outputs', async () => {
     const graph = await pickerGraph();
     await pressOpen(graph);
 
     expect(stubInput.clicks).toBe(1);
     stubInput.onchange({ target: { files: [stubFile('report.pdf')] } });
 
-    expect(graph.signalsFor('picker')).toEqual(['success']);
+    expect(graph.signalsFor('picker')).toEqual(['done', 'completed']);
     expect(graph.errors).toEqual([]);
 
     const picker = graph.node('picker');
@@ -311,7 +318,7 @@ describe('NDA-004 §2: Open File Picker — the happy path is untouched', () => 
     await pressOpen(graph);
     stubInput.onchange({ target: { files: [stubFile('second.txt')] } });
 
-    expect(graph.signalsFor('picker')).toEqual(['cancelled', 'success']);
+    expect(graph.signalsFor('picker')).toEqual(['unchanged', 'completed', 'done', 'completed']);
     expect(internals(graph).file.name).toBe('second.txt');
   });
 });

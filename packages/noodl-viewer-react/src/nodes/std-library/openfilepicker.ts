@@ -1,4 +1,5 @@
-import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
+import type { NodeDefinitionOptions, NodeInstance, OutcomeToken } from '@noodl/types';
 
 /**
  * `path` is not a standard `File` member — it is Electron's addition, and the `path`
@@ -14,6 +15,15 @@ interface OpenFilePickerInstance extends NodeInstance {
     capture?: string;
     /** Latest failure message, for the `Error` output (NDA-004 §2). */
     error?: string;
+    /**
+     * The `Open` still waiting for the dialog to answer, if any — ERG-001 §4.
+     *
+     * One element is reused for every `Open`, so a second `Open` reassigns `onchange` and
+     * `oncancel` and the first attempt can never answer. Held here so the superseded
+     * invocation can be settled rather than left as a token that is minted and never
+     * reported, which is the dead chain this contract exists to close.
+     */
+    pendingOpen?: OutcomeToken;
   };
   _detachHandlers(): void;
 }
@@ -48,6 +58,26 @@ const OpenFilePicker: NodeDefinitionOptions = {
       valueChangedToTrue(this: OpenFilePickerInstance) {
         const input = this._internal.inputElement;
 
+        // ERG-001 §4. A second `Open` before the first has answered supersedes it, and the
+        // superseded invocation is `Unchanged` rather than a `Failure` — `WebSocket`'s
+        // recorded answer for a `Connect` superseded by a later `Connect`. The author asked
+        // for it, and a `Failure` firing on a graph working exactly as written is how authors
+        // are trained to ignore the port.
+        const superseded = this._internal.pendingOpen;
+        if (superseded) {
+          this._internal.pendingOpen = undefined;
+          this.reportOutcome(superseded, 'unchanged');
+        }
+
+        const token = this.beginOutcome();
+        this._internal.pendingOpen = token;
+
+        /** The dialog has answered — whichever way — so this invocation owns no more of it. */
+        const settle = (outcome: 'done' | 'unchanged' | 'failure', options?: { code: string; message: string }) => {
+          this._internal.pendingOpen = undefined;
+          this.reportOutcome(token, outcome, options);
+        };
+
         const onChange = (e: Event) => {
           this._detachHandlers();
 
@@ -64,7 +94,7 @@ const OpenFilePicker: NodeDefinitionOptions = {
           // Failure Contract says must not happen, and `undefined` on `Name`/`Type` is
           // indistinguishable from a file with no name.
           if (!file) {
-            this.sendSignalOnOutput('cancelled');
+            settle('unchanged');
             return;
           }
 
@@ -76,7 +106,7 @@ const OpenFilePicker: NodeDefinitionOptions = {
           this.flagOutputDirty('sizeInBytes');
           this.flagOutputDirty('type');
 
-          this.sendSignalOnOutput('success');
+          settle('done');
         };
 
         /**
@@ -94,12 +124,18 @@ const OpenFilePicker: NodeDefinitionOptions = {
          * written. It is a *completion* signal — the contract's other clause, that an action
          * node must let downstream sequencing proceed without timing hacks.
          *
+         * ERG-001 §4 gave that reasoning its name: this is the contract's `Unchanged`, and the
+         * port was renamed rather than joined by one, because a `Cancelled` and an `Unchanged`
+         * that always fire together are the two-ports-for-one-event shape the Variables slice
+         * removed `Stored` to avoid. Every output is exactly as it was, which is `Unchanged`'s
+         * definition; the "the user declined" meaning lives in the port's description.
+         *
          * Older browsers simply never call it, which costs nothing: the node is no worse off
          * than it was, and the empty-`FileList` branch above catches the flow they do report.
          */
         const onCancel = () => {
           this._detachHandlers();
-          this.sendSignalOnOutput('cancelled');
+          settle('unchanged');
         };
 
         input.accept = this._internal.acceptedFileTypes;
@@ -133,8 +169,7 @@ const OpenFilePicker: NodeDefinitionOptions = {
             'Could not open the file picker: ' + ((e as Error) && (e as Error).message ? (e as Error).message : e);
           this._internal.error = message;
           this.flagOutputDirty('error');
-          this.raiseRuntimeError('open-file-picker/open-failed', message);
-          this.sendSignalOnOutput('failure');
+          settle('failure', { code: 'open-file-picker/open-failed', message });
         }
       }
     },
@@ -205,24 +240,14 @@ const OpenFilePicker: NodeDefinitionOptions = {
         return this._internal.file && this._internal.file.type;
       }
     },
-    success: {
-      type: 'signal',
-      group: 'Events',
-      displayName: 'Success',
-      description: 'Fires once a file has been chosen and every metadata output is up to date'
-    },
-    cancelled: {
-      type: 'signal',
-      group: 'Events',
-      displayName: 'Cancelled',
-      description: 'Fires when the dialog closed with nothing chosen, which is a legitimate outcome rather than a failure'
-    },
-    failure: {
-      type: 'signal',
-      group: 'Events',
-      displayName: 'Failure',
-      description: 'Fires when the dialog could not be opened at all, for example inside a sandboxed frame'
-    },
+    // ERG-001 §4. `Success` became `Done` and `Cancelled` became `Unchanged` — see the note on
+    // `onCancel` for why the second is a rename and not a new port beside the old one.
+    ...outcomeOutputs({
+      done: 'Fires once a file has been chosen and every metadata output is up to date',
+      unchanged:
+        'Fires when the dialog closed with nothing chosen, or when a later Open superseded this one — a legitimate outcome rather than a failure',
+      failure: 'Fires when the dialog could not be opened at all, for example inside a sandboxed frame'
+    }),
     error: {
       type: 'string',
       group: 'Events',

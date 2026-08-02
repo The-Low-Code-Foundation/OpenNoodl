@@ -8311,6 +8311,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the event has been dispatched to every matching receiver"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -8331,17 +8353,6 @@
           },
           "isSignal": true,
           "description": "Fires when the event could not be sent, which today means Channel Name was left empty"
-        },
-        {
-          "name": "sent",
-          "displayName": "Sent",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the event has been dispatched to every matching receiver"
         }
       ],
       "dynamicPorts": {
@@ -18870,15 +18881,26 @@
       ],
       "outputs": [
         {
-          "name": "cancelled",
-          "displayName": "Cancelled",
+          "name": "completed",
+          "displayName": "Completed",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when the dialog closed with nothing chosen, which is a legitimate outcome rather than a failure"
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a file has been chosen and every metadata output is up to date"
         },
         {
           "name": "error",
@@ -18947,17 +18969,6 @@
           "description": "Size of the chosen file, in bytes"
         },
         {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once a file has been chosen and every metadata output is up to date"
-        },
-        {
           "name": "type",
           "displayName": "Type",
           "group": "Metadata",
@@ -18967,6 +18978,17 @@
           },
           "isSignal": false,
           "description": "MIME type the browser reports, which is blank for an extension it does not recognise"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the dialog closed with nothing chosen, or when a later Open superseded this one — a legitimate outcome rather than a failure"
         }
       ],
       "dynamicPorts": null,
@@ -18974,7 +18996,7 @@
       "enrichment": {
         "typeName": "Open File Picker",
         "summary": "Opens the browser's native file dialog on a signal and outputs the picked file plus its name, size and MIME type.",
-        "description": "When the `open` (Open) signal fires, the node clicks a hidden HTML file input, showing the browser's native file dialog. When the user picks a file, the `file` output delivers the browser File object (the value upload nodes expect), the Metadata outputs update, and `success` fires. If the user cancels the dialog, nothing fires — there is no cancel event. The selection is reset after each pick, so choosing the same file again still triggers `success`. `acceptedFileTypes` maps to the file input's accept attribute; `capture` maps to the capture attribute, which on mobile devices requests a camera or microphone as the source.",
+        "description": "When the `open` (Open) signal fires, the node clicks a hidden HTML file input, showing the browser's native file dialog. When the user picks a file, the `file` output delivers the browser File object (the value upload nodes expect), the Metadata outputs update, and `done` fires. If the user closes the dialog with nothing chosen — or a later `open` supersedes this one — `unchanged` fires instead, which is a legitimate empty result and not a failure. The selection is reset after each pick, so choosing the same file again still reports `done`. `acceptedFileTypes` maps to the file input's accept attribute; `capture` maps to the capture attribute, which on mobile devices requests a camera or microphone as the source.",
         "whenToUse": "Use it whenever the user must supply a file from their device — avatar upload, CSV import — typically firing `open` from a Button's `onClick` and passing `file` to an Upload File node. It is browser-only; there is no folder or multi-file selection.",
         "ports": {
           "open": "Signal; opens the file dialog. Must come from a user-initiated signal such as a click — browsers block programmatic file dialogs outside user gestures.",
@@ -18984,15 +19006,14 @@
           "name": "String value; the picked file's filename.",
           "sizeInBytes": "Number value; the picked file's size in bytes.",
           "type": "String value; the picked file's MIME type, e.g. 'image/png'.",
-          "path": "String value; read from the File object's path property, which standard browsers do not provide — usually undefined. Use `name` instead.",
-          "success": "Signal; fires after a file has been picked and all outputs are updated. Never fires on cancel."
+          "path": "String value; read from the File object's path property, which standard browsers do not provide — usually undefined. Use `name` instead."
         },
         "examples": [
           "var-avatar-picker-responsive"
         ],
         "patterns": [
-          "Button `onClick` → `open`, then `file` → Upload File and `success` → the upload's trigger: the standard upload flow.",
-          "Latch `success` into a Boolean (value pinned true, `success` → Set) to reveal post-pick UI as a level."
+          "Button `onClick` → `open`, then `file` → Upload File and `done` → the upload's trigger: the standard upload flow.",
+          "Latch `done` into a Boolean (value pinned true, `done` → Set) to reveal post-pick UI as a level."
         ],
         "antiPatterns": [
           "Treating `acceptedFileTypes` as a guarantee — users can often override the filter; check `type`/`sizeInBytes` before acting on the file."
@@ -30935,8 +30956,19 @@
       ],
       "outputs": [
         {
-          "name": "generated",
-          "displayName": "Generated",
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
           "group": "Events",
           "plug": "output",
           "type": {
@@ -31232,7 +31264,7 @@
           "cloud-sign-private-file-url"
         ],
         "patterns": [
-          "Picker `success` → `upload`, upload `done` → record write: three nodes, each owning one step.",
+          "Picker `done` → `upload`, upload `done` → record write: three nodes, each owning one step.",
           "`private: true` uploads pair with Sign File URL: wire the same `done` signal to both the record write and the signer."
         ],
         "antiPatterns": [
@@ -34175,6 +34207,28 @@
           "description": "Fires when any property is written, unless Object properties is unticked under Run On Value Change"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once Fetch has republished every property, after Fetched"
+        },
+        {
           "name": "fetched",
           "displayName": "Fetched",
           "group": "Events",
@@ -34223,12 +34277,12 @@
       "enrichment": {
         "typeName": "net.noodl.ComponentObject",
         "summary": "Component Object: per-component-instance shared state — every node in the same instance reads and writes the same object, no wires needed.",
-        "description": "Component Object exposes an object that belongs to the component *instance* it sits in: each instance of the component gets its own backing object, created on first use, and all Component Object nodes inside that instance — plus Parent Component Object nodes in child components — see the same data. Property names are declared in the `properties` parameter; each becomes a connection-only port that is both readable and writable, together with a per-property changed signal. By default outputs are push-style: whenever the object changes (from this node, another Component Object node, a Set Component Object Properties node, or a child's Parent Component Object), the value outputs update and the changed signals fire. Connecting the `fetch` input switches the node to pull mode: outputs then refresh only when `fetch` fires, followed by `fetched`.",
+        "description": "Component Object exposes an object that belongs to the component *instance* it sits in: each instance of the component gets its own backing object, created on first use, and all Component Object nodes inside that instance — plus Parent Component Object nodes in child components — see the same data. Property names are declared in the `properties` parameter; each becomes a connection-only port that is both readable and writable, together with a per-property changed signal. Outputs are push-style: whenever the object changes (from this node, another Component Object node, a Set Component Object Properties node, or a child's Parent Component Object), the value outputs update and the changed signals fire. `fetch` is additive — it republishes every property now, then fires `fetched` and `done` — and untick Object properties under Run On Value Change to stop the push half.",
         "whenToUse": "Use it for state shared across nodes within one component — form drafts, wizard step, selection — especially state a child component must also see via Parent Component Object. It is per-instance by design: two instances of the component never share data. For app-global state use a Variable (Variable2) or Object (Model2); for a fixed set of visual modes prefer States.",
         "ports": {
-          "fetch": "Signal input; when connected, the node stops pushing on every change and instead refreshes all property outputs (and fires the changed signals and `fetched`) only when this fires.",
+          "fetch": "Signal input; republishes every property output now, firing the per-property changed signals, `fetched` and then `done`. Additive: it does not stop the node pushing on change — untick Object properties under Run On Value Change for that.",
           "changed": "Signal; fires whenever any property of the instance's object changes (push mode).",
-          "fetched": "Signal; fires after a `fetch` completes.",
+          "fetched": "Signal; fires whenever every property is republished, whether by `fetch` or by the node re-binding.",
           "properties": "Edit-only stringlist declaring the object's property names; each becomes a `value-<name>` port and a `changed-<name>` signal."
         },
         "runtimeBehavior": "Ports are runtime-discovered from the `properties` parameter: each declared name p produces `value-<p>` — a connection-only, any-type port usable both as input (writing stores the value into the instance's object) and as output (reading the current value) — and a `changed-<p>` signal output that fires when that property changes. The ports do not exist until `properties` is set; an authoring tool must write the `properties` stringlist and may then connect `value-<p>`/`changed-<p>` by those exact names.",
@@ -35597,6 +35651,28 @@
           "description": "Fires when a property on the resolved parent is written, unless Fetch is connected"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Fetch you triggered has republished every property, after Fetched"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -35627,7 +35703,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once Fetch has republished every property"
+          "description": "Fires whenever every property is republished, whether by Fetch or by the parent being re-resolved"
         }
       ],
       "dynamicPorts": {
@@ -35672,7 +35748,7 @@
         "ports": {
           "properties": "Declared property names; each becomes a reactive value output.",
           "changed": "Signal; the parent's object was written by anyone.",
-          "fetch": "Signal; re-emit current values on demand."
+          "fetch": "Signal input; republishes every property from the resolved parent now, firing `fetched` and then `done` — or `failure` when no parent Component Object is bound. Additive: untick Parent object under Run On Value Change to stop the node also republishing on change."
         },
         "runtimeBehavior": "Property ports are generated from the per-instance `properties` list (runtime-discovered). Resolution walks up to the nearest ancestor component instance — the node is inert at the app root.",
         "examples": [
@@ -54088,6 +54164,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires as the response goes out, and before the request scope is torn down"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -54108,17 +54206,6 @@
           },
           "isSignal": true,
           "description": "Fires when the response could not be sent, because there is no request in scope or one was already answered"
-        },
-        {
-          "name": "sent",
-          "displayName": "Sent",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires as the response goes out, and before the request scope is torn down"
         }
       ],
       "dynamicPorts": {
@@ -54302,6 +54389,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the mail server has accepted the message for delivery"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -54313,8 +54422,8 @@
           "description": "Why the message could not be sent"
         },
         {
-          "name": "failed",
-          "displayName": "Failed",
+          "name": "failure",
+          "displayName": "Failure",
           "group": "Events",
           "plug": "output",
           "type": {
@@ -54322,17 +54431,6 @@
           },
           "isSignal": true,
           "description": "Fires when the message could not be sent, including when no mail service is configured"
-        },
-        {
-          "name": "sent",
-          "displayName": "Sent",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the mail server has accepted the message for delivery"
         }
       ],
       "dynamicPorts": null,
@@ -54340,15 +54438,13 @@
       "enrichment": {
         "typeName": "noodl.cloud.sendemail",
         "summary": "Sends an email through the backend's configured SMTP server from inside a cloud function or workflow.",
-        "description": "Send Email is a server-side-only action node (it only runs inside a cloud function, never in a browser component). Wire `send` to fire it: it either renders one of the backend's built-in templates (Password Reset, Verify Email) against the `variables` object, or sends the raw `subject`/`text`/`html` inputs directly. The send is synchronous from the graph's point of view — `sent` or `failed` fires once the attempt (plus one automatic retry on transient failure) has finished. If the backend has no SMTP configured, or this component is somehow evaluated outside a nodegx-backend process, it fails loudly on `failed`/`error` — it never drops a send silently or queues it for later.",
+        "description": "Send Email is a server-side-only action node (it only runs inside a cloud function, never in a browser component). Wire `send` to fire it: it either renders one of the backend's built-in templates (Password Reset, Verify Email) against the `variables` object, or sends the raw `subject`/`text`/`html` inputs directly. The send is synchronous from the graph's point of view — `done` or `failure` fires once the attempt (plus one automatic retry on transient failure) has finished. If the backend has no SMTP configured, or this component is somehow evaluated outside a nodegx-backend process, it fails loudly on `failure`/`error` — it never drops a send silently or queues it for later.",
         "whenToUse": "Use it wherever a workflow needs to notify someone by email — a signup confirmation, an order receipt, an internal alert. Do not use it for the account password-reset/verify-email flows the backend already runs (BAK-002) — those are automatic; wire this node only for YOUR OWN application notifications.",
         "ports": {
           "to": "The recipient address.",
           "template": "'none' sends the Subject/Text/HTML inputs as-is; 'passwordReset'/'verifyEmail' render the backend's built-in templates instead and ignore Subject/Text/HTML.",
           "variables": "An object of `{{name}}` values for template interpolation; only read when Template is not 'none'.",
           "send": "Signal; fires the send attempt (with its one documented retry on failure).",
-          "sent": "Signal; fires once the send succeeded.",
-          "failed": "Signal; fires once the send failed (or immediately if email isn't available at all) — read `error` for why.",
           "error": "The failure message, e.g. \"Email is not configured for this backend...\" — always a specific, actionable string, never a generic failure."
         },
         "examples": [
@@ -55771,7 +55867,7 @@
             },
             {
               "fromId": "file_picker",
-              "fromProperty": "success",
+              "fromProperty": "done",
               "toId": "upload",
               "toProperty": "upload"
             },
@@ -56494,7 +56590,7 @@
     {
       "id": "cloud-sign-private-file-url",
       "title": "Upload a private file and preview it with a signed URL",
-      "description": "Open File Picker hands the picked file to Upload File with its `private` input set, so the backend ACLs the upload to its uploader instead of leaving it public. A private file's plain URL is not directly usable in an `<img>` — it 403s for anyone else, including an unauthenticated preview — so on `success` the resulting `cloudFile` is wired into Sign File URL, whose `sign` signal is fired from the same `success`. Sign File URL mints a short-TTL signed URL (the row-ACL check that gates it is the same one the file's own GET route uses), and THAT url — not the cloudFile's own plain url — feeds the Image's `src`. Re-signing before every render (rather than persisting the signed URL) is the idiomatic use: a stored, expired signature just 403s later.",
+      "description": "Open File Picker hands the picked file to Upload File with its `private` input set, so the backend ACLs the upload to its uploader instead of leaving it public. A private file's plain URL is not directly usable in an `<img>` — it 403s for anyone else, including an unauthenticated preview — so on the picker's `done` the resulting `cloudFile` is wired into Sign File URL, whose `sign` signal is fired from the same `done`. Sign File URL mints a short-TTL signed URL (the row-ACL check that gates it is the same one the file's own GET route uses), and THAT url — not the cloudFile's own plain url — feeds the Image's `src`. Re-signing before every render (rather than persisting the signed URL) is the idiomatic use: a stored, expired signature just 403s later.",
       "demonstrates": [
         "Upload File",
         "Sign File URL",
@@ -56565,7 +56661,7 @@
             },
             {
               "fromId": "file_picker",
-              "fromProperty": "success",
+              "fromProperty": "done",
               "toId": "upload",
               "toProperty": "upload"
             },
@@ -58339,13 +58435,13 @@
             },
             {
               "fromId": "fn_send_email",
-              "fromProperty": "sent",
+              "fromProperty": "done",
               "toId": "fn_response",
               "toProperty": "send"
             },
             {
               "fromId": "fn_send_email",
-              "fromProperty": "failed",
+              "fromProperty": "failure",
               "toId": "fn_response_failed",
               "toProperty": "send"
             },
@@ -60240,7 +60336,7 @@
     {
       "id": "var-avatar-picker-responsive",
       "title": "File picker with a shared accent color and a viewport-aware hint",
-      "description": "Three utility shapes in one small screen. A Color node is the single source of truth for the accent: its savedValue fans out to the title's text color and the button's background, so one edit restyles both. The Button's onClick fires Open File Picker's open — the dialog must come from a user gesture — and after a pick the file's name flows into a Text while success latches a Boolean (value pinned true) that reveals the result row as a level; cancelling the dialog fires nothing. Screen Resolution's width feeds an Expression (width < 600) whose boolean drives the compact hint's visibility, updating live as the window resizes.",
+      "description": "Three utility shapes in one small screen. A Color node is the single source of truth for the accent: its savedValue fans out to the title's text color and the button's background, so one edit restyles both. The Button's onClick fires Open File Picker's open — the dialog must come from a user gesture — and after a pick the file's name flows into a Text while `done` latches a Boolean (value pinned true) that reveals the result row as a level; closing the dialog with nothing chosen reports `unchanged` instead. Screen Resolution's width feeds an Expression (width < 600) whose boolean drives the compact hint's visibility, updating live as the window resizes.",
       "demonstrates": [
         "Open File Picker",
         "Color",
@@ -60365,7 +60461,7 @@
             },
             {
               "fromId": "picker",
-              "fromProperty": "success",
+              "fromProperty": "done",
               "toId": "has_picked",
               "toProperty": "saveValue"
             },

@@ -20,7 +20,7 @@
     "cloud-sign-private-file-url"
   ],
   "patterns": [
-    "Picker `success` → `upload`, upload `done` → record write: three nodes, each owning one step.",
+    "Picker `done` → `upload`, upload `done` → record write: three nodes, each owning one step.",
     "`private: true` uploads pair with Sign File URL: wire the same `done` signal to both the record write and the signer."
   ],
   "antiPatterns": [

@@ -1,7 +1,7 @@
 {
   "id": "cloud-sign-private-file-url",
   "title": "Upload a private file and preview it with a signed URL",
-  "description": "Open File Picker hands the picked file to Upload File with its `private` input set, so the backend ACLs the upload to its uploader instead of leaving it public. A private file's plain URL is not directly usable in an `<img>` — it 403s for anyone else, including an unauthenticated preview — so on `success` the resulting `cloudFile` is wired into Sign File URL, whose `sign` signal is fired from the same `success`. Sign File URL mints a short-TTL signed URL (the row-ACL check that gates it is the same one the file's own GET route uses), and THAT url — not the cloudFile's own plain url — feeds the Image's `src`. Re-signing before every render (rather than persisting the signed URL) is the idiomatic use: a stored, expired signature just 403s later.",
+  "description": "Open File Picker hands the picked file to Upload File with its `private` input set, so the backend ACLs the upload to its uploader instead of leaving it public. A private file's plain URL is not directly usable in an `<img>` — it 403s for anyone else, including an unauthenticated preview — so on the picker's `done` the resulting `cloudFile` is wired into Sign File URL, whose `sign` signal is fired from the same `done`. Sign File URL mints a short-TTL signed URL (the row-ACL check that gates it is the same one the file's own GET route uses), and THAT url — not the cloudFile's own plain url — feeds the Image's `src`. Re-signing before every render (rather than persisting the signed URL) is the idiomatic use: a stored, expired signature just 403s later.",
   "demonstrates": [
     "Upload File",
     "Sign File URL",
@@ -72,7 +72,7 @@
         },
         {
           "fromId": "file_picker",
-          "fromProperty": "success",
+          "fromProperty": "done",
           "toId": "upload",
           "toProperty": "upload"
         },

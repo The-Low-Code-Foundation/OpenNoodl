@@ -7478,6 +7478,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the event has been dispatched to every matching receiver"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -7498,17 +7520,6 @@
           },
           "isSignal": true,
           "description": "Fires when the event could not be sent, which today means Channel Name was left empty"
-        },
-        {
-          "name": "sent",
-          "displayName": "Sent",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the event has been dispatched to every matching receiver"
         }
       ],
       "dynamicPorts": {
@@ -17341,15 +17352,26 @@
       ],
       "outputs": [
         {
-          "name": "cancelled",
-          "displayName": "Cancelled",
+          "name": "completed",
+          "displayName": "Completed",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when the dialog closed with nothing chosen, which is a legitimate outcome rather than a failure"
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a file has been chosen and every metadata output is up to date"
         },
         {
           "name": "error",
@@ -17418,17 +17440,6 @@
           "description": "Size of the chosen file, in bytes"
         },
         {
-          "name": "success",
-          "displayName": "Success",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once a file has been chosen and every metadata output is up to date"
-        },
-        {
           "name": "type",
           "displayName": "Type",
           "group": "Metadata",
@@ -17438,6 +17449,17 @@
           },
           "isSignal": false,
           "description": "MIME type the browser reports, which is blank for an extension it does not recognise"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the dialog closed with nothing chosen, or when a later Open superseded this one — a legitimate outcome rather than a failure"
         }
       ],
       "dynamicPorts": null,
@@ -28539,8 +28561,19 @@
       ],
       "outputs": [
         {
-          "name": "generated",
-          "displayName": "Generated",
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
           "group": "Events",
           "plug": "output",
           "type": {
@@ -31506,6 +31539,28 @@
           "description": "Fires when any property is written, unless Object properties is unticked under Run On Value Change"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once Fetch has republished every property, after Fetched"
+        },
+        {
           "name": "fetched",
           "displayName": "Fetched",
           "group": "Events",
@@ -32682,6 +32737,28 @@
           "description": "Fires when a property on the resolved parent is written, unless Fetch is connected"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Fetch you triggered has republished every property, after Fetched"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -32712,7 +32789,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once Fetch has republished every property"
+          "description": "Fires whenever every property is republished, whether by Fetch or by the parent being re-resolved"
         }
       ],
       "dynamicPorts": {
@@ -50235,6 +50312,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires as the response goes out, and before the request scope is torn down"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -50255,17 +50354,6 @@
           },
           "isSignal": true,
           "description": "Fires when the response could not be sent, because there is no request in scope or one was already answered"
-        },
-        {
-          "name": "sent",
-          "displayName": "Sent",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires as the response goes out, and before the request scope is torn down"
         }
       ],
       "dynamicPorts": {
@@ -50420,6 +50508,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the mail server has accepted the message for delivery"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -50431,8 +50541,8 @@
           "description": "Why the message could not be sent"
         },
         {
-          "name": "failed",
-          "displayName": "Failed",
+          "name": "failure",
+          "displayName": "Failure",
           "group": "Events",
           "plug": "output",
           "type": {
@@ -50440,17 +50550,6 @@
           },
           "isSignal": true,
           "description": "Fires when the message could not be sent, including when no mail service is configured"
-        },
-        {
-          "name": "sent",
-          "displayName": "Sent",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the mail server has accepted the message for delivery"
         }
       ],
       "dynamicPorts": null,

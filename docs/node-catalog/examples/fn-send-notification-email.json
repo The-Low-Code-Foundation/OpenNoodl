@@ -37,8 +37,8 @@
         { "fromId": "fn_request", "fromProperty": "subject", "toId": "fn_send_email", "toProperty": "subject" },
         { "fromId": "fn_request", "fromProperty": "message", "toId": "fn_send_email", "toProperty": "text" },
         { "fromId": "fn_request", "fromProperty": "receive", "toId": "fn_send_email", "toProperty": "send" },
-        { "fromId": "fn_send_email", "fromProperty": "sent", "toId": "fn_response", "toProperty": "send" },
-        { "fromId": "fn_send_email", "fromProperty": "failed", "toId": "fn_response_failed", "toProperty": "send" },
+        { "fromId": "fn_send_email", "fromProperty": "done", "toId": "fn_response", "toProperty": "send" },
+        { "fromId": "fn_send_email", "fromProperty": "failure", "toId": "fn_response_failed", "toProperty": "send" },
         { "fromId": "fn_send_email", "fromProperty": "error", "toId": "fn_response_failed", "toProperty": "errorMessage" }
       ]
     }

@@ -1,3 +1,5 @@
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
+
 export const node = {
   name: 'noodl.cloud.response',
   displayNodeName: 'Response',
@@ -49,7 +51,9 @@ export const node = {
       group: 'General',
       description: 'Sends the response and ends the request, which can only happen once',
       valueChangedToTrue: function () {
-        this.sendResponse();
+        // ERG-001 §4. Only the port mints, and there is nothing else here that could: this
+        // node has no value-driven route into `sendResponse`.
+        this.sendResponse(this.beginOutcome());
       }
     },
     status: {
@@ -83,18 +87,14 @@ export const node = {
   // swallowed in `noodl-viewer-cloud/src/index.ts` with no trace. Both now report, and a
   // response that *did* go out says so, so downstream logging and cleanup can be sequenced.
   outputs: {
-    sent: {
-      type: 'signal',
-      displayName: 'Sent',
-      group: 'Events',
-      description: 'Fires as the response goes out, and before the request scope is torn down'
-    },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description: 'Fires when the response could not be sent, because there is no request in scope or one was already answered'
-    },
+    // ERG-001 §4. `Sent` became `Done`; the grep is clean, because `sendResponse` is reached
+    // from the `Send` port and from nothing else. No `Unchanged` — a Response either answers
+    // the request or fails to, and there is no branch where the post-condition already held.
+    ...outcomeOutputs({
+      done: 'Fires as the response goes out, and before the request scope is torn down',
+      failure:
+        'Fires when the response could not be sent, because there is no request in scope or one was already answered'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -109,14 +109,25 @@ export const node = {
     setResponseParameter:function(name,value) {
       this._internal.responseParameters[name] = value
     },
-    /** Raise, publish on `Error`, and fire `Failure`. One place, so the two codes cannot drift. */
-    _failResponse: function (code, message, detail) {
+    /**
+     * Publish on `Error` and report the failure. One place, so the two codes cannot drift.
+     *
+     * ⚠️ ERG-001 §4: `token` is optional, and its absence is not an oversight. The one caller
+     * that omits it is the belt-and-braces branch *after* the response has gone out, where the
+     * invocation's token is already spent — see the note in `sendResponse`. There the reason
+     * still has to reach the NDA-004 channel and the `Error` output; what it must not do is
+     * report a second outcome, because "exactly one" is the load-bearing half of Rule 1.
+     */
+    _failResponse: function (code, message, detail, token) {
       this._internal.lastError = message;
-      this.raiseRuntimeError(code, message, detail);
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
+      if (token) {
+        this.reportOutcome(token, 'failure', { code, message, detail });
+      } else {
+        this.raiseRuntimeError(code, message, detail);
+      }
     },
-    sendResponse: function () {
+    sendResponse: function (token) {
       const isSuccess = this._internal.status === undefined || this._internal.status === 'success';
 
       // `_sendResponseCallback` is installed per request, by `NoodlCloudRuntime.run`, over the
@@ -129,7 +140,8 @@ export const node = {
         return this._failResponse(
           'response/no-request-in-scope',
           'This Response node has no request to answer — it was not part of the cloud function when the request arrived',
-          { status: isSuccess ? 'success' : 'failure' }
+          { status: isSuccess ? 'success' : 'failure' },
+          token
         );
       }
 
@@ -140,14 +152,23 @@ export const node = {
       // graph is exactly how an author reaches the second call. Asked *before* delivering, so
       // the failure is reported while this node still exists to report it.
       if (this._internal._requestIsOpen && !this._internal._requestIsOpen()) {
-        return this._failResponse('response/already-sent', alreadySent, { status: isSuccess ? 'success' : 'failure' });
+        return this._failResponse(
+          'response/already-sent',
+          alreadySent,
+          { status: isSuccess ? 'success' : 'failure' },
+          token
+        );
       }
 
       const payload = isSuccess
         ? { statusCode: 200, body: JSON.stringify({ result: this._internal.responseParameters }) }
         : { statusCode: 400, body: JSON.stringify({ error: this._internal.errorMessage }) };
 
-      // `Sent` fires BEFORE the callback, and that ordering is forced rather than chosen.
+      // ERG-001 §4: `Done` (and, with it, `Completed`) fires BEFORE the callback, and that
+      // ordering is forced rather than chosen — it is the contract's navigation exception in a
+      // second family. The note below is the whole of the reason and predates the rename.
+      //
+      // `Sent` fired BEFORE the callback, and that ordering is forced rather than chosen.
       // Delivering the response tears the request down synchronously — `NoodlCloudRuntime.run`
       // calls `functionComponent._onNodeDeleted()` and `requestScope.reset()` inside the
       // callback, *before* resolving — so by the time it returns, this node and everything
@@ -156,11 +177,16 @@ export const node = {
       //
       // Firing first is safe because nothing can intervene: the check above has established
       // the request is open, and the call below is the next statement on the same tick.
-      this.sendSignalOnOutput('sent');
+      this.reportOutcome(token, 'done');
 
       // Belt and braces for a host that installs the callback without `_requestIsOpen` (the
       // return value is the older, coarser answer). Reached only if something downstream of
-      // `Sent` answered the request first, which is pathological but not impossible.
+      // `Done` answered the request first, which is pathological but not impossible.
+      //
+      // ⚠️ No token: this invocation has already reported, and a second report would raise
+      // `outcome/duplicate` instead of diagnosing anything. The reason still reaches the
+      // NDA-004 channel and the `Error` output, which is where a host bug of this shape is
+      // actually read.
       if (this._internal._sendResponseCallback(payload) === false) {
         this._failResponse('response/already-sent', alreadySent, { status: isSuccess ? 'success' : 'failure' });
       }

@@ -1,3 +1,4 @@
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type {
   EditorConnectionLike,
   GraphNodeModel,
@@ -39,6 +40,10 @@ const EventSender: NodeDefinitionOptions = {
       description: 'Sends one event on Channel Name, after every payload input has settled',
       valueChangedToTrue: function (this: EventSenderInstance) {
         const self = this;
+        // ERG-001 §4. One token per pulse, minted here and carried into the deferred send.
+        // There is no coalescing guard on this node — every `Send` queues its own callback —
+        // so a token array would be a second mechanism with nothing to synchronise.
+        const token = this.beginOutcome();
 
         //wait for all other inputs to update before sending
         this.scheduleAfterInputsHaveUpdated(function () {
@@ -48,9 +53,8 @@ const EventSender: NodeDefinitionOptions = {
           if (!self._internal.channelName) {
             const message = 'No channel name, so the event was not sent';
             self._internal.lastError = message;
-            self.raiseRuntimeError('event-sender/no-channel', message);
             self.flagOutputDirty('error');
-            self.sendSignalOnOutput('failure');
+            self.reportOutcome(token, 'failure', { code: 'event-sender/no-channel', message });
             return;
           }
 
@@ -64,10 +68,13 @@ const EventSender: NodeDefinitionOptions = {
             );
           }
 
-          // NDA-004 §3: `Sent` fires after the event has been dispatched, which — because
-          // dispatch is deferred to after every input has settled — is a moment the author
-          // previously had no way to observe at all.
-          self.sendSignalOnOutput('sent');
+          // ERG-001 §4. This was `Sent` — NDA-004 §3's addition, and the one signal this node
+          // had. §0.2 Result 2 found eight ports displaying "Done" under four wire names, and
+          // this was a fifth; the grep that decides a rename comes out clean here, because the
+          // only caller of the send is this port's own handler. `Done` fires after the event
+          // has been dispatched, which — dispatch being deferred until every input has settled
+          // — is a moment the author previously had no way to observe at all.
+          self.reportOutcome(token, 'done');
         });
       }
     },
@@ -115,18 +122,12 @@ const EventSender: NodeDefinitionOptions = {
     }
   },
   outputs: {
-    sent: {
-      type: 'signal',
-      displayName: 'Sent',
-      group: 'Events',
-      description: 'Fires once the event has been dispatched to every matching receiver'
-    },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description: 'Fires when the event could not be sent, which today means Channel Name was left empty'
-    },
+    // ERG-001 §4. `Sent` became `Done`; the node cannot no-op — every Send with a channel
+    // name dispatches — so there is no `Unchanged` and §5 must not expect one.
+    ...outcomeOutputs({
+      done: 'Fires once the event has been dispatched to every matching receiver',
+      failure: 'Fires when the event could not be sent, which today means Channel Name was left empty'
+    }),
     /**
      * NDA-004 §2 — added 2026-07-30, and found by a `hasOutput` top-up rather than by a failing
      * row.

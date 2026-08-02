@@ -3214,11 +3214,18 @@
           "displayName": "Id"
         },
         {
-          "name": "generated",
+          "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Generated"
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         }
       ]
     },
@@ -6342,11 +6349,18 @@
           "default": "success"
         },
         {
-          "name": "sent",
+          "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Sent"
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         },
         {
           "name": "failure",
@@ -6459,18 +6473,25 @@
           "description": "Sends the message"
         },
         {
-          "name": "sent",
+          "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Sent"
+          "displayName": "Done"
         },
         {
-          "name": "failed",
+          "name": "completed",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Failed"
+          "displayName": "Completed"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
         },
         {
           "name": "error",

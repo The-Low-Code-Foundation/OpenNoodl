@@ -99,7 +99,7 @@
         },
         {
           "fromId": "file_picker",
-          "fromProperty": "success",
+          "fromProperty": "done",
           "toId": "upload",
           "toProperty": "upload"
         },

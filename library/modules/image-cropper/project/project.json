@@ -25,7 +25,7 @@
                     },
                     {
                         "fromId": "e039ab52-ddf8-2f55-371a-c3f9c051c9e8",
-                        "fromProperty": "success",
+                        "fromProperty": "done",
                         "toId": "48096893-f7f4-537b-dd19-0e5587a20e4a",
                         "toProperty": "show"
                     },

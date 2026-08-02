@@ -19,6 +19,8 @@
  * Either way this node NEVER silently drops a send or fakes success.
  */
 
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
+
 export const node = {
   name: 'noodl.cloud.sendemail',
   displayNodeName: 'Send Email',
@@ -100,23 +102,21 @@ export const node = {
       type: 'signal',
       description: 'Sends the message',
       valueChangedToTrue: function () {
-        this.scheduleSend();
+        // ERG-001 §4. Only the port mints; `scheduleSend` has no other caller and no value
+        // setter on this node runs the send.
+        this.scheduleSend(this.beginOutcome());
       }
     }
   },
   outputs: {
-    sent: {
-      displayName: 'Sent',
-      type: 'signal',
-      group: 'Events',
-      description: 'Fires once the mail server has accepted the message for delivery'
-    },
-    failed: {
-      displayName: 'Failed',
-      type: 'signal',
-      group: 'Events',
-      description: 'Fires when the message could not be sent, including when no mail service is configured'
-    },
+    // ERG-001 §4. `Sent` became `Done` and `Failed` became `Failure` — §0.2 Result 2's "eight
+    // ports displaying Done under four wire names" loses another one. No `Unchanged`: the
+    // message is either handed to the mailer or refused, and there is no branch where the
+    // post-condition already held. §5 must not expect one.
+    ...outcomeOutputs({
+      done: 'Fires once the mail server has accepted the message for delivery',
+      failure: 'Fires when the message could not be sent, including when no mail service is configured'
+    }),
     error: {
       displayName: 'Error',
       type: 'string',
@@ -128,12 +128,31 @@ export const node = {
     }
   },
   methods: {
-    setError: function (err) {
+    /**
+     * Publish on `Error` and report the failure for every invocation in this batch.
+     *
+     * ERG-001 §4: `tokens` is the batch drained in `doSend`, not a field read back — an outcome
+     * must not be inferred from state a branch has already changed, so it is passed.
+     */
+    setError: function (err, tokens) {
       this._internal.error = err;
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failed');
+      reportOutcomes(this, tokens || [], 'failure', { code: 'send-email/failed', message: err });
     },
-    scheduleSend: function () {
+    /**
+     * ⚠️ The pending array is created lazily here rather than in `initialize`: several suites
+     * build this node as a bag of bound methods and never call `initialize`, and an eager field
+     * is `undefined` exactly where the first invocation reads it.
+     */
+    scheduleSend: function (token) {
+      if (token) {
+        if (!this._internal.pendingSendOutcomes) this._internal.pendingSendOutcomes = [];
+        this._internal.pendingSendOutcomes.push(token);
+      }
+
+      // The guard drops the second pulse's *send* deliberately — that is how "set the fields,
+      // then press Do" batches — but Rule 1 is per invocation, so the second pulse's outcome is
+      // already queued above.
       if (this._internal.sendScheduled) return;
       this._internal.sendScheduled = true;
       this.scheduleAfterInputsHaveUpdated(() => {
@@ -142,8 +161,13 @@ export const node = {
       });
     },
     doSend: function () {
+      // Taken into a local *before* the request starts, so a second `Do` arriving mid-flight
+      // owns its own batch rather than being settled by this request's answer.
+      const tokens = this._internal.pendingSendOutcomes || [];
+      this._internal.pendingSendOutcomes = undefined;
+
       if (!this._internal.to) {
-        this.setError('Send Email: "To" is required.');
+        this.setError('Send Email: "To" is required.', tokens);
         return;
       }
 
@@ -152,7 +176,8 @@ export const node = {
       if (typeof sendEmail === 'undefined') {
         this.setError(
           'Send Email: no email service is available. This node only works inside a nodegx-backend cloud ' +
-            'function/workflow (BAK-002) — it is not usable in the browser viewer.'
+            'function/workflow (BAK-002) — it is not usable in the browser viewer.',
+          tokens
         );
         return;
       }
@@ -170,13 +195,13 @@ export const node = {
       Promise.resolve(sendEmail(request))
         .then((result) => {
           if (result && result.success) {
-            this.sendSignalOnOutput('sent');
+            reportOutcomes(this, tokens, 'done');
           } else {
-            this.setError((result && result.error) || 'Send Email: failed to send.');
+            this.setError((result && result.error) || 'Send Email: failed to send.', tokens);
           }
         })
         .catch((e) => {
-          this.setError(e instanceof Error ? e.message : String(e));
+          this.setError(e instanceof Error ? e.message : String(e), tokens);
         });
     }
   }

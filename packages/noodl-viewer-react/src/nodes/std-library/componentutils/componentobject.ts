@@ -2,6 +2,7 @@
 
 import { Node } from '@noodl/runtime';
 import Model from '@noodl/runtime/src/model';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 import type {
   EditorConnectionLike,
   GraphNodeModel,
@@ -11,7 +12,8 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
 /** `this` inside the Component Object node. */
@@ -24,11 +26,19 @@ interface ComponentObjectInstance extends NodeInstance {
     /** The component-scoped record, keyed on this component *instance*. */
     model: ModelLike;
     onModelChangedCallback(args: ModelChangeEvent): void;
+    /**
+     * One token per `Fetch` pulse waiting on the coalescing guard — ERG-001 §4.
+     *
+     * ⚠️ Created lazily in `scheduleFetch`, not in `initialize`: several suites build these
+     * nodes as a bag of bound methods and never call `initialize`, and an eager field is
+     * `undefined` exactly where the first invocation reads it.
+     */
+    pendingFetchOutcomes?: OutcomeToken[];
   };
   hasScheduledStore?: boolean;
   hasScheduledFetch?: boolean;
   scheduleStore(): void;
-  scheduleFetch(): void;
+  scheduleFetch(token?: OutcomeToken): void;
   fetch(): void;
 }
 
@@ -92,7 +102,9 @@ const ComponentObject: NodeDefinitionOptions = {
       description:
         'Republishes every property now. This is additional to the outputs updating on their own; untick Object properties under Run On Value Change to stop that',
       valueChangedToTrue(this: ComponentObjectInstance) {
-        this.scheduleFetch();
+        // ERG-001 §4. Only the port mints — `scheduleFetch` is reached from here and nowhere
+        // else today, and minting inside it would still be wrong the moment that changes.
+        this.scheduleFetch(this.beginOutcome());
       }
     }
   },
@@ -103,12 +115,29 @@ const ComponentObject: NodeDefinitionOptions = {
       group: 'Events',
       description: 'Fires when any property is written, unless Object properties is unticked under Run On Value Change'
     },
+    /**
+     * ERG-001 §4 — `Fetched` is kept and `Done` goes beside it.
+     *
+     * Measured rather than assumed: on *this* node the grep comes out clean — `fetch()` is
+     * reached from `scheduleFetch` and from nothing else — so `Fetched` could honestly have
+     * been the rename. It is not, because `parentcomponentobject.ts` is its documented twin and
+     * there `fetched` is sent from an input setter and a subscription callback, so it must stay.
+     * Splitting the family so one twin says `Fetched` and the other `Done` for the same author
+     * gesture is the per-node divergence `outcome.ts`'s docstring exists to prevent — the call
+     * the Cloud Services slice made for `Record`/`User`, for the same reason.
+     *
+     * The cost, recorded rather than hidden: on the port path the two co-fire.
+     */
     fetched: {
       type: 'signal',
       displayName: 'Fetched',
       group: 'Events',
       description: 'Fires once Fetch has republished every property'
-    }
+    },
+    // No `Failure`: see the note on `scheduleStore` — this node cannot be asked to write and
+    // find nothing to write to. No `Unchanged`: `Fetch` republishes unconditionally and has no
+    // branch that could decline. §5 must not expect either.
+    ...outcomeOutputs({ done: 'Fires once Fetch has republished every property, after Fetched' })
   },
   methods: {
     /**
@@ -137,13 +166,28 @@ const ComponentObject: NodeDefinitionOptions = {
         internal.dirtyValues = {};
       });
     },
-    scheduleFetch(this: ComponentObjectInstance) {
+    scheduleFetch(this: ComponentObjectInstance, token?: OutcomeToken) {
+      const internal = this._internal;
+      if (token) {
+        if (!internal.pendingFetchOutcomes) internal.pendingFetchOutcomes = [];
+        internal.pendingFetchOutcomes.push(token);
+      }
+
+      // The guard drops the second pulse's *work* on purpose — that is how "set the fields,
+      // then press Fetch" batches — but ERG-001 Rule 1 is per invocation, so the second
+      // pulse's outcome is queued above before this returns.
       if (this.hasScheduledFetch) return;
       this.hasScheduledFetch = true;
 
       this.scheduleAfterInputsHaveUpdated(() => {
         this.hasScheduledFetch = false;
         this.fetch();
+
+        // Drained *after* `fetch()`, so the outcome is the last thing this action does and a
+        // graph wired to `Done` reads values that are already up to date.
+        const tokens = internal.pendingFetchOutcomes;
+        internal.pendingFetchOutcomes = undefined;
+        if (tokens) reportOutcomes(this, tokens, 'done');
       });
     },
     fetch(this: ComponentObjectInstance) {
