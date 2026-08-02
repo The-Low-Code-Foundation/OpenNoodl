@@ -18238,7 +18238,7 @@
                     },
                     {
                         "fromId": "5e4a6066-3375-58a8-6eb8-94a3c1db2731",
-                        "fromProperty": "modified",
+                        "fromProperty": "done",
                         "toId": "a99fdf9b-9c73-0bd6-6919-5ff026294fd7",
                         "toProperty": "close"
                     },
@@ -18304,13 +18304,13 @@
                     },
                     {
                         "fromId": "bb966ea1-8ac2-a014-be1b-482bf4218909",
-                        "fromProperty": "modified",
+                        "fromProperty": "done",
                         "toId": "a99fdf9b-9c73-0bd6-6919-5ff026294fd7",
                         "toProperty": "close"
                     },
                     {
                         "fromId": "5e4a6066-3375-58a8-6eb8-94a3c1db2731",
-                        "fromProperty": "modified",
+                        "fromProperty": "done",
                         "toId": "c79bd404-dc41-79d1-5f7a-0f9d450eaf9b",
                         "toProperty": "do"
                     },
@@ -20991,7 +20991,7 @@
                     },
                     {
                         "fromId": "8b6252cf-78ac-b586-3a28-38861f069f52",
-                        "fromProperty": "modified",
+                        "fromProperty": "done",
                         "toId": "32eb4461-51c2-fc0a-b7ef-65867e825a13",
                         "toProperty": "remove"
                     },
@@ -21237,7 +21237,7 @@
                     },
                     {
                         "fromId": "95ab9ff7-77db-3412-3b92-535837fe7dbd",
-                        "fromProperty": "modified",
+                        "fromProperty": "done",
                         "toId": "5f342b3a-4dd4-9e7c-a738-1efc6238d3dd",
                         "toProperty": "remove"
                     },
