@@ -191,6 +191,10 @@ export function reconstructLegacyComponent(
       toId: c.toId,
       toProperty: c.toProperty
     };
+    // The other half of the export's label carry — an import that dropped it
+    // would still lose every wire label on the round trip (CAN-002/CAN-001).
+    if (typeof c.label === 'string') conn.label = c.label;
+    if (typeof c.labelT === 'number') conn.labelT = c.labelT;
     if (c.annotation) conn.annotation = c.annotation;
     return conn;
   });

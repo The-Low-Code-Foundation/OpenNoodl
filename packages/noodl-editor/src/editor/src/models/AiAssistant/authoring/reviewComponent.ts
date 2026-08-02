@@ -44,6 +44,8 @@ function deepClone<T>(value: T): T {
  *   (the base node), which the diff canvas offers as parameter detail
  * - A rewired connection appears as its old routing (`Deleted`) plus its new
  *   routing (`Created`), so both are visible at once
+ * - A relabelled connection is annotated `Changed` — the wire stays where it
+ *   is and only its text moves (CAN-002)
  * - Purely cosmetic changes (canvas moves) are not annotated
  */
 export function buildReviewComponent(changeSet: AuthoringChangeSet): Record<string, unknown> {
@@ -53,6 +55,7 @@ export function buildReviewComponent(changeSet: AuthoringChangeSet): Record<stri
   const removedNodeIds: string[] = [];
   const deletedConnectionKeys = new Set<string>();
   const createdConnectionKeys = new Set<string>();
+  const changedConnectionKeys = new Set<string>();
   const removedCommentKeys = new Set<string>();
   const commentAnnotations = new Map<string, string>();
 
@@ -89,6 +92,12 @@ export function buildReviewComponent(changeSet: AuthoringChangeSet): Record<stri
       case 'connection-rewired':
         deletedConnectionKeys.add(connectionKey(change.before));
         createdConnectionKeys.add(connectionKey(change.after));
+        break;
+      case 'connection-relabelled':
+        // Same wire, different words on it (CAN-002). The diff calls a label
+        // semantic, so the canvas has to say so too — otherwise the one row in
+        // the rail with no counterpart on the canvas is the one about meaning.
+        changedConnectionKeys.add(connectionKey(change.connection));
         break;
       case 'comment-added':
         commentAnnotations.set(change.commentKey, 'created');
@@ -167,6 +176,7 @@ export function buildReviewComponent(changeSet: AuthoringChangeSet): Record<stri
     const key = connectionKey(connection as unknown as SnapshotConnection);
     if (createdConnectionKeys.has(key)) connection.annotation = 'Created';
     else if (deletedConnectionKeys.has(key)) connection.annotation = 'Deleted';
+    else if (changedConnectionKeys.has(key)) connection.annotation = 'Changed';
   }
 
   return legacy;

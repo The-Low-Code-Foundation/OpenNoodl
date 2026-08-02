@@ -42,6 +42,10 @@ export interface LegacyConnection {
   fromProperty: string;
   toId: string;
   toProperty: string;
+  /** CAN-002: author-written text on the wire. */
+  label?: string;
+  /** CAN-001: where that text sits along the wire. */
+  labelT?: number;
   annotation?: 'Deleted' | 'Changed' | 'Created';
 }
 
@@ -340,6 +344,11 @@ export function buildComponentV2Files(component: LegacyComponent, now: string): 
         toId: c.toId,
         toProperty: c.toProperty
       };
+      // A wire label is authored content (CAN-002), not decoration: dropping it
+      // here loses it on every export, and — because both sides of the AI review
+      // diff come through this serializer — made a relabel invisible to review.
+      if (c.label !== undefined) conn.label = c.label;
+      if (c.labelT !== undefined) conn.labelT = c.labelT;
       if (c.annotation) conn.annotation = c.annotation;
       return conn;
     })

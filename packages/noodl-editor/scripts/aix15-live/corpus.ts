@@ -201,3 +201,77 @@ export const EXPLAIN_PROMPTS: ExplainPrompt[] = [
     wants: ['store', 'undo', 'redo', 'history']
   }
 ];
+
+/**
+ * AIX-003 — the author → review → partially-accept round trip, live.
+ *
+ * Every AIX-003 property is already asserted in specs: all-accepted reproduces
+ * the proposal, rejection closes over the dependency edges, a partial result
+ * passes the SUB-006 gate. What those specs cannot say is whether any of it
+ * holds on a diff *nobody authored to be reviewable* — the fixture proposals
+ * were written by the same hand as the assertions, with explicit ids, tidy
+ * positions and one change per intent. A model handed a real component
+ * produces neither.
+ *
+ * `legacyName` present ⇒ update mode against that component of the corpus
+ * project, which is where removals, rewires and parameter changes come from.
+ * Absent ⇒ a fresh component, which is where the all-`Created` closure lives
+ * (every wire requiring both of its endpoints, every child its new parent).
+ */
+export interface ChangeSetPrompt {
+  slug: string;
+  /** Legacy name as the corpus project holds it; omit to author a new component. */
+  legacyName?: string;
+  componentPath: string;
+  description: string;
+  /**
+   * Keep this run's rendered review as the artifact for the 40+ node
+   * fresh-reviewer test (AIX-003 residual 2), which needs a human.
+   */
+  freshReviewer?: boolean;
+}
+
+export const CHANGESET_PROMPTS: ChangeSetPrompt[] = [
+  {
+    slug: 'account-card',
+    legacyName: '/Visual Components/Profile/Account Info Card',
+    componentPath: 'Visual Components/Profile/Account Info Card',
+    description:
+      "Show the member's join date underneath their name on the account card, put a 'Sign out' link " +
+      "next to 'Change Password' rather than under it, and hide the date-of-birth row entirely when " +
+      'the profile has no date of birth.'
+  },
+  {
+    slug: 'notification-prefs',
+    componentPath: 'Visual Components/Profile/Notification Preferences',
+    description:
+      'A notification preferences card: a heading, three labelled on/off switches for email, push and ' +
+      'the weekly digest, and a Save button that stays disabled until one of them has been touched. ' +
+      'Take the current settings in as a component input and send the new ones out when Save is pressed.'
+  },
+  {
+    slug: 'share-popup',
+    legacyName: '/Pop-ups/Share/Share Popup',
+    componentPath: 'Pop-ups/Share/Share Popup',
+    description:
+      "Add a 'Copy link' option to the share sheet alongside the ones already there, show a short " +
+      'confirmation message when it is used, and let people dismiss the whole sheet by tapping the ' +
+      'dimmed background behind it.',
+    freshReviewer: true
+  },
+  {
+    // The spec's own risk row: "large change sets are unreadable, so users
+    // blind-accept". A new component of this size is the worst case for the
+    // rail — every node and every wire is its own `Created` row, with nothing
+    // modified to break the monotony.
+    slug: 'settings-page',
+    componentPath: 'Pages/Account Settings',
+    description:
+      "An account settings page. A header with the member's name and avatar; a Profile section with " +
+      'their name, email and phone; a Notifications section with switches for email, push and the ' +
+      'weekly digest; a Privacy section with a switch for a public profile and a link to the privacy ' +
+      'policy; and at the bottom a danger zone with a Delete account button. Each section wants a ' +
+      'heading and a divider above it, and there should be Save and Cancel buttons at the end.',
+    freshReviewer: true
+  }
+];
