@@ -1423,3 +1423,210 @@ and worth separating from them.
 
 ⚠️ **`Items Rendered` fires with zero item nodes existing after a `Refresh`** — filed, not fixed,
 last session. Still live. The one-character fix is `() => this.refresh()`.
+
+---
+
+## §4, Data — two builds, 2026-08-02
+
+Commits `67d2c339` (+ `3ba66cf9`) and `ba2a815f`. **53 of §0's 82 actions now satisfy the
+contract, up from 45** — measured with the script at the bottom of the next-session prompt against
+`packages/noodl-types/src/node-catalog.json`, not counted from prose.
+
+### ⚠️ A correction to the previous register's arithmetic
+
+The Cloud Services register said **Data 20** and put six nodes in an
+"Animation / Events / Logic / String / Utilities" bucket while naming only five. Measured: **Data
+was 21** and that bucket is **5**. The node the register dropped is **`Variable2` — Variable**,
+which appeared in neither of the two Data builds the prompt laid out. It is done now, in build 1b,
+because it is one of the three `Fetch` twins; but the class of mistake is the one this phase keeps
+finding, and it is why the register is generated from the catalog rather than maintained by hand.
+
+### Build 1a — the Record CRUD family, five nodes and **one** funnel
+
+| Node | Action | Old wire | Shape |
+|---|---|---|---|
+| `NewDbModelProperties` — Create Record | `Do` | `created` | `done` · `failure` · `completed` |
+| `SetDbModelProperties` — Update Record | `Do` | `stored` | same, on **both** `Store to` branches |
+| `DeleteDbModelProperties` — Delete Record | `Do` | `deleted` | same |
+| `AddDbModelRelation` — Add Record Relation | `Do` | `relationAdded` | same |
+| `RemoveDbModelRelation` — Remove Record Relation | `Do` | `relationRemoved` | same |
+
+Four of §0.2 Result 2's four spellings of one displayed "Done" are here, which is why the family is
+one commit: doing half of it manufactures the divergence the finding is about.
+
+⚠️ **The opposite shape to Cloud Services.** There, eleven nodes each owned their own funnel and the
+work was eleven times. Here `dbmodelcrudbase.setError` is *one* funnel reached from four places —
+the verb's own error callback, `checkWarningsBeforeCloudOp`, `cloudStoreForScope`, and the relation
+nodes' `validateInputs` — and every one of them now settles the **caller's** tokens. The ports are
+declared once in `addBaseInfo`; only the `Done` sentence differs, and it arrives as an option
+because `addBaseInfo` runs *last* and would clobber anything a node declared for itself.
+`pendingOutcomes` / `takeOutcomes` are on the base for the same reason: five copies of
+`foreach.tsx`'s array is exactly the divergence `outcome.ts` exists to prevent.
+
+⚠️ **No `Unchanged` on any of the five.** The closest call is **Remove Record Relation**, whose own
+description says it succeeds "when the relation was not there to begin with" — the duplicate-insert
+shape the contract's problem statement opens with. The backend answers identically either way, so
+the node has nothing to tell them apart with, and a port that can never fire is what §5 exists to
+complain about. `Update Record`'s `Local only` branch calls `Model.set`, which *does* suppress an
+identical value but reports nothing back; recorded as an unmeasured candidate beside
+`GlobalStore.Set` rather than given a port that would be guessing.
+
+### Build 1b — the three `Fetch` twins, and Object's dead end
+
+| Node | Action | Shape |
+|---|---|---|
+| `Collection2` — Array | `Fetch` | `done` **added** · `completed`; no `Failure` |
+| `Model2` — Object | `Fetch` | `done` **added** · **`failure` added** · `completed` |
+| `Variable2` — Variable | `Fetch` | `done` **added** · `completed`; the existing `Failure` is *not* this port's |
+
+**`Fetched` is added-beside rather than renamed on all three** — the Record/User answer applied a
+second time. On **Object** and **Variable** it is *measured*: `fetched` fires inside `setModelID` /
+`setVariableName`, which are the `Id` and `Name` **input setters**. ⚠️ On **Array** it is not — its
+`fetched` is reached only by the port, so the two always co-fire. **That cost is recorded rather
+than hidden**, and it is precisely the cost `User` carries against `Record`: splitting a family of
+documented twins so one says `Fetched` where the others say `Done` for the identical author gesture
+is the per-node divergence the contract exists to stop.
+
+⚠️ **Object had a real dead end and it is fixed, not merely adopted.** `setModelID` returns early
+for `undefined` / `null` / `''` and the file's own comment defends that — *"`Fetched` is not sent on
+this path: nothing was fetched"* — which was right as far as it went and left `Fetch` with a blank
+`Id` emitting **nothing at all**. NDA-012 had already measured those spellings arriving from a
+cleared Text Input. The check is **repeated in `scheduleSetModel` rather than moved into
+`setModelID`**, deliberately: a blank `Id` *arriving* is not a failure of anything — nobody asked
+for anything — while pressing `Fetch` with nothing to fetch is a request the node cannot honour.
+Two rows hold that line apart. New code `object/fetch-failed`; this node had no error channel at
+all before, and the Record family's `record/storage-op-failed` names a *backend* operation this node
+never performs.
+
+⚠️ **Variable's `Failure` belongs to the `Value` input setter, not to `Fetch`**, and its description
+now says so. A setter is not an invocation: it reports no outcome and fires no `Completed`. A row
+pins that, because the alternative reading — route the setter through `reportOutcome` — announces a
+completion for work nobody asked for.
+
+### The discrimination check — twelve reverts, eight exact
+
+**Build 1a**
+
+| Revert | Predicted | Actual |
+|---|---|---|
+| `setError` bypasses `reportOutcome` | 6 | **5 — wrong, see below** |
+| `scheduleStore` mints *after* the `hasScheduledStore` guard | 1 | **1, that row** |
+| `storageInsert` mints inside the deferral | 1 | **1, that row** |
+| the base declares an `unchanged` port | 5 | **5, the five pinned controls** |
+| `checkWarningsBeforeCloudOp` mints its own token | **0** | **0** |
+| local `Update` reports `Done` before writing the values | **0** | **0** |
+
+⚠️ **The `setError` miss is the one worth keeping.** The survivor was *"a refused delete reports
+Failure with the family code, **then Completed**"* — a row whose **name** claims the assertion its
+body never made. A title is not an assertion; the revert is what found it. With the assertion added
+(`3ba66cf9`), it reddens six.
+
+The two predicted-zero rows are recorded as honest non-discriminations rather than quietly dropped:
+a token that is minted and then simply *dropped* is unobservable, because `reportOutcome`'s
+duplicate guard keys on the token, not the node. Passing the caller's tokens into
+`checkWarningsBeforeCloudOp` and `cloudStore` is therefore correctness-by-construction that no row
+can currently see. Likewise no row asserts value-before-signal on `Update Record`.
+
+**Build 1b**
+
+| Revert | Predicted | Actual |
+|---|---|---|
+| Object's empty-Id branch returns silently again | 1 row (2 `test.each` cases) | **2, that row's two cases** |
+| Object mints in `setModelID` too | 2 — binding-is-silent + two-pulses | **3 — wrong, and instructively** |
+| Object mints inside the guard | 1 | **1, that row** |
+| Array mints inside the guard | 1 | **1, that row** |
+| Variable's `Value`-setter refusal routed through `reportOutcome` | 1 | **1, that row** |
+| Variable mints in `setVariableName` | 1 | **3 — wrong, and more strongly** |
+
+⚠️ **Both misses under-predicted, and both say something the prediction did not.**
+
+- **Object minting in `setModelID` reddens the successful-`Fetch` row, the *blank*-Id failure row
+  and the two-pulses row — and leaves the binding-is-silent row GREEN.** That is the Cloud Services
+  lesson confirmed a second time and sharper: *a token minted in a setter is never settled, so
+  nothing is reported and a silence row cannot see it.* What catches it is the next invocation
+  draining the stale token and reporting twice. It also discriminates *within* a `test.each`: the
+  `unset` case never touches the setter and stays green, the `blank` case does and reddens.
+- **Variable minting in `setVariableName` reddens the boot control.** A `name` **parameter** applied
+  at boot runs the setter, so the node reports `Done` before anything has been invoked — the
+  boot-path false positive NDA-004 §2 warns about, and NDA-017's "a saved project applies a
+  parameter before the port exists" by a second road. A pinned control caught it.
+
+### The rename sweep — measured, and two files deliberately left
+
+Build 1a renamed five wire names; build 1b renamed nothing (it is purely additive).
+
+- **8 wires** in `docs/node-catalog/{acceptance,examples}`, rewritten by a rewriter that handles
+  both formattings; the sweep was sanity-checked against known-existing wires before any zero was
+  believed. `node-catalog-enriched.json`'s copies regenerated away.
+- **Author-facing prose** in four `examples` descriptions and one `acceptance` description named the
+  old ports in sentences; all five rewritten.
+- **All five enrichment files** rewritten by hand — ⚠️ every one of these nodes is *dynamic*, which
+  is precisely the case `catalog:merge:check` is blind to. The gate passed before the sweep and
+  would have gone on passing.
+- ⚠️ **Deliberately left:** `packages/noodl-editor/tests/testfs/{git-repo-utf8,merge-tests,…}` (7
+  wires) and `dev-docs/tasks/phase-15-…/measurements/live/…` (2). The first are **git**-merge
+  fixtures whose JSON is payload rather than contract — nothing runs them through a runtime, and
+  rewriting content inside a checked-in test repo risks the golden comparisons they exist for. The
+  second is a historical measurement record of what was measured at the time.
+- **No hits at all** in `library/prefabs/*` for these five names, checked rather than assumed.
+
+### Noise, measured rather than asserted
+
+| Suite | Before | After | From these builds |
+|---|---|---|---|
+| `noodl-runtime` | 118 | **127** | 9 |
+| `noodl-viewer-react` | 195 | **196** | 1 |
+
+Seven `record/storage-op-failed`, two `object/fetch-failed`, one `variable/no-name`. Every one is a
+raise a row explicitly asserts, and no existing path's raise count moved.
+
+### Two test-harness repairs, both the traps the phase already names
+
+- ⚠️ `nda-004-record-failure-channel.test.ts` read `expect(...).not.toContain('stored')` — which
+  passes **vacuously** the moment the port stops existing, and this rename *is* that moment. It is
+  now an exact-array assertion plus an explicit `hasOutput('stored') === false`.
+- ⚠️ `nda-012-data-record-family.test.ts` answered `hasOutput: () => false` flatly, which turns
+  every outcome into a spurious `outcome/missing-port`. It now carries the real
+  `beginOutcome`/`reportOutcome` and a `hasOutput` backed by the definition's declared outputs —
+  the fourth harness in the phase to need this and the same fix each time.
+
+### Gates — measured before and after
+
+| Gate | Before | After |
+|---|---|---|
+| `noodl-runtime` jest | 102 suites, 1891 passing, 13 skipped | **104 suites, 1925 passing, 13 skipped** |
+| `noodl-viewer-react` jest | 55 suites, 720 passing | **57 suites, 753 passing** |
+| `typecheck:runtime` | pass | pass |
+| viewer-react `tsc` | pass | pass |
+| `typecheck:cloud` | pass | pass |
+| `catalog:check` | pass | pass |
+| `catalog:merge:check` | pass | pass |
+| `cloud-library:check` | pass | pass |
+| editor `test:ci` | 2007 specs, 0 failures | **2007 specs, 0 failures** |
+
+⚠️ **Live QA is owed for these two builds and was not run.** Nothing in either build was verified in
+the running editor or preview; the claims above are all corpus-level. The Cloud Services slice's rig
+recipe applies unchanged and the two things it shows that no row can — the real port set off
+`NodeLibraryData`, and `Completed` counting equal to raw clicks — have not been checked for these
+eight nodes.
+
+### What remains of §0's 82 — measured
+
+**53 done. 29 remain.** Per-category counts below are derived from the catalog by the same
+script, one category at a time — not counted from this document's prose, which is how the previous
+register lost a node.
+
+| Remaining | Count | Note |
+|---|---|---|
+| **Data** | 13 | `net.noodl.ActionHandler`, `Filter Collection`, `Map Collection`, `FilterDBModels`, `net.noodl.HTTP`, `JSONStreamParser`, `OptimisticUpdate`, `PatternExtractor`, `RunTasks`, `Set Variable`, `StateSnapshot`, `StreamBuffer`, `TextAccumulator`. `Set Variable` is the only single-action rename left in the category. |
+| **CustomCode** | 3 | ⚠️ `Logic Builder` registers block names verbatim — FINDINGS **SR-ix**. |
+| **Cloud** | 2 | `Response`, `Send Email`. |
+| **Component Utilities** | 2 | `Component Object`, `Parent Component Object` — ⚠️ the `Fetched`-is-not-`Done` question, now answered **three** times the same way. |
+| **Navigation** | 4 | ⚠️ `Close Popup` is NV-iii's original latch. |
+| **Animation / Events / Logic / String / Utilities** | 5 | `States`, `Send Event`, `Condition`, `Unique Id`, `Open File Picker`. ⚠️ `Condition` has no completion path at all today; `Open File Picker`'s `success` is referenced by `upload-file`'s enrichment prose and by two `examples` graphs. |
+| **§3** `Treat Unchanged as` | — | Not started. |
+| **§5** the validator's dead-end check | — | Not started. ⚠️ The **absent-`Unchanged`** list grew by eight: all five Record CRUD nodes and all three `Fetch` twins. Absent **`Failure`**: add `Collection2` and `Variable2`'s `Fetch` to the existing list. |
+
+Carried forward unchanged: `GlobalStore.Set`'s unmeasured `Unchanged` candidate; `Counter`'s
+`Reset` guard that has never fired; `Items Rendered` firing with zero item nodes after a `Refresh`
+(the one-character fix is `() => this.refresh()`).
