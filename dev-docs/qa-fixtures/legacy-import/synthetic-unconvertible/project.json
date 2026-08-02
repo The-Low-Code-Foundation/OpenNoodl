@@ -1,0 +1,97 @@
+{
+  "name": "Synthetic unconvertible fixture",
+  "version": 1,
+  "rootComponent": "App",
+  "deviceSettings": { "width": 375, "height": 812 },
+  "thumbnailURI": "data:image/png;base64,iVBORw0KGgo=",
+  "settings": {},
+  "metadata": {
+    "cloudservices": {
+      "endpoint": "https://parse.example.invalid/parse",
+      "appId": "fixture-app-id",
+      "instanceId": "fixture-instance",
+      "type": "parse"
+    }
+  },
+  "components": [
+    {
+      "name": "/App",
+      "id": "c-app",
+      "graph": {
+        "roots": [
+          {
+            "id": "n-group",
+            "type": "Group",
+            "x": 0,
+            "y": 0,
+            "children": [
+              { "id": "n-text", "type": "Text", "x": 0, "y": 0, "parameters": { "text": "Records" } },
+              { "id": "n-label", "type": "Label", "x": 0, "y": 40, "label": "Old label", "parameters": {} }
+            ]
+          },
+          {
+            "id": "n-byob-query",
+            "type": "noodl.byob.QueryData",
+            "x": 300,
+            "y": 0,
+            "label": "Fetch users",
+            "parameters": { "collectionName": "users" }
+          },
+          {
+            "id": "n-byob-create",
+            "type": "noodl.byob.CreateRecord",
+            "x": 300,
+            "y": 120,
+            "label": "Add user",
+            "parameters": { "collectionName": "users" }
+          },
+          {
+            "id": "n-byob-subscribe",
+            "type": "noodl.byob.SubscribeToChanges",
+            "x": 300,
+            "y": 240,
+            "label": "Watch users",
+            "parameters": { "collectionName": "users" }
+          },
+          {
+            "id": "n-rest-plain",
+            "type": "REST2",
+            "x": 600,
+            "y": 0,
+            "label": "Fetch weather",
+            "parameters": { "resource": "https://api.example.invalid/weather", "method": "GET" }
+          },
+          {
+            "id": "n-rest-scripted",
+            "type": "REST2",
+            "x": 600,
+            "y": 120,
+            "label": "Signed request",
+            "parameters": {
+              "resource": "https://api.example.invalid/signed",
+              "requestScript": "request.headers['X-Signature'] = sign(request.body);"
+            }
+          },
+          {
+            "id": "n-fn-legacy-react",
+            "type": "JavaScriptFunction",
+            "x": 900,
+            "y": 0,
+            "label": "Measure row",
+            "parameters": { "functionScript": "const el = findDOMNode(this.refs.row);\nOutputs.height = el.offsetHeight;" }
+          },
+          {
+            "id": "n-module-node",
+            "type": "SomeModuleProvidedNode",
+            "x": 900,
+            "y": 160,
+            "label": "From a module we do not have",
+            "parameters": { "size": 48 }
+          }
+        ],
+        "connections": []
+      }
+    }
+  ],
+  "variants": []
+}

@@ -149,6 +149,19 @@ export interface LegacyFinding {
    * no equivalent, rebuilding is genuinely cheaper than repairing.
    */
   recommendation?: string;
+  /**
+   * The outcome looks like it needs attention but does not.
+   *
+   * `thumbnailURI` is the case this exists for: it is genuinely `dropped` — the
+   * taxonomy's test says so, and hiding it would be the silent drop this task
+   * removes — but the launcher regenerates it, so nothing is lost. Listing it to
+   * an assistant under "these are rebuilds, not repairs" would be false, and an
+   * assistant that spends a turn on it is an assistant that stops being trusted.
+   *
+   * It still appears in the report and in the counts. It is only excluded from
+   * the hand-off's action lists.
+   */
+  benign?: true;
 }
 
 // ─── The rebuild verdict ─────────────────────────────────────────────────────

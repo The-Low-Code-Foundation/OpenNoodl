@@ -95,7 +95,7 @@ export const REMOVED_TYPES: readonly RemovedType[] = [
     removedIn: '9d050626',
     equivalents: [],
     portChanges: [],
-    note: 'Realtime subscription stopped being a node in BCN-008; it is now a property of the Query Records node. There is no node to convert to — this one is rebuilt, not repaired.'
+    note: 'Realtime subscription stopped being a node in BCN-008; it is now a property of the Query Records node.'
   }
 ];
 
@@ -142,6 +142,8 @@ export const REST_UNCARRIED_PARAMETERS = ['method'] as const;
 
 export interface DroppedProjectField {
   field: string;
+  /** True when the loss costs the user nothing — see `LegacyFinding.benign`. */
+  benign?: true;
   /** Why it is lost — with the code that loses it. */
   evidence: string;
   /** Whether losing it matters. */
@@ -166,6 +168,7 @@ export const DROPPED_PROJECT_FIELDS: readonly DroppedProjectField[] = [
   },
   {
     field: 'thumbnailURI',
+    benign: true,
     evidence: 'projectmodel.ts:151 (read commented out) and :1350 (write commented out)',
     message:
       'The project carried an embedded thumbnail. NodeGX regenerates thumbnails from the running project, so the stored one is not carried.',

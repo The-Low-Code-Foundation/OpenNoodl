@@ -348,6 +348,7 @@ export function assess(input: AssessInput): AssessResult {
       message: dropped.message,
       location: { field: dropped.field },
       equivalents: [],
+      benign: dropped.benign,
       recommendation: dropped.recommendation
     });
   }

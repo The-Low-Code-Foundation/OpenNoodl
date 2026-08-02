@@ -51,7 +51,7 @@ function buildHandoff(findings: LegacyFinding[]): AssistantHandoff {
   const catalogTypes = new Set<string>();
 
   for (const finding of findings) {
-    if (!NEEDS_ACTION.has(finding.outcome)) {
+    if (!NEEDS_ACTION.has(finding.outcome) || finding.benign) {
       continue;
     }
     if (finding.equivalents.length > 0) {
@@ -149,7 +149,7 @@ const MAX_ASSISTANT_ENTRIES = 25;
  * absent-means-omitted convention `libraryOverview` and `docBlocks` use.
  */
 export function renderReportForAssistant(report: ImportReport): string | undefined {
-  const actionable = report.findings.filter((f) => ACTIONABLE.has(f.outcome));
+  const actionable = report.findings.filter((f) => ACTIONABLE.has(f.outcome) && !f.benign);
   if (actionable.length === 0) {
     return undefined;
   }

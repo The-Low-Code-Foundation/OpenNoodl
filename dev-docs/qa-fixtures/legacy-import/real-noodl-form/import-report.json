@@ -1,0 +1,45 @@
+{
+  "reportFormatVersion": "1",
+  "generatedBy": "LIB-006",
+  "generatedAt": "2026-08-02T00:00:00.000Z",
+  "source": {
+    "dir": "<fixture>/real-noodl-form",
+    "projectName": "Export",
+    "projectVersion": "4"
+  },
+  "target": {},
+  "counts": {
+    "converted": 82,
+    "converted-with-changes": 0,
+    "placeholder": 0,
+    "dropped": 0
+  },
+  "coverage": {
+    "constructsAssessed": 82,
+    "findingsEmitted": 0,
+    "silentlyConverted": 82
+  },
+  "findings": [],
+  "verdict": {
+    "recommendation": "proceed",
+    "fidelity": 1,
+    "nodeCount": 82,
+    "unconvertedCount": 0,
+    "reasons": [
+      "Nothing was left unconverted."
+    ],
+    "message": "Everything in this project converted unchanged. There is nothing to repair."
+  },
+  "handoff": {
+    "repairable": [],
+    "unrepairable": [],
+    "catalogTypes": [],
+    "instructions": [
+      "Every entry with outcome `placeholder` is a node still present in the project, with its original type name, parameters and wiring intact. Nothing was dropped; you do not need the source project to know what was there.",
+      "Look each `equivalents` type up in the node catalog (SUB-004/005) before proposing a replacement — the ports differ between a legacy node and its replacement more often than not, and `portChanges` lists the ones we know about.",
+      "Propose repairs through the authoring loop (AIX-002) as a whole-component candidate. It arrives as a reviewable diff against the live component; the user accepts or rejects it. Do not edit nodes in place.",
+      "The semantic validator (SUB-006) will reject a candidate that leaves a placeholder unresolved or wires a port that does not exist. Run it before submitting; its diagnostics are the fastest way to find a wrong port name.",
+      "When `verdict.recommendation` is `rebuild`, say so to the user before offering repairs. A specification to rebuild from is a better deliverable than twenty partial fixes, and the entries below are that specification."
+    ]
+  }
+}
