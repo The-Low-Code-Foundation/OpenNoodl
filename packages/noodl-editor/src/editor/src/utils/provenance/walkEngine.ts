@@ -204,12 +204,32 @@ export interface WalkIndex {
   bySeq: Map<number, TraceEventLike>;
   /** Direct causal children, keyed by the parent's `seq`. `0` holds the roots. */
   effects: Map<number, TraceEventLike[]>;
-  /** False when no trace has been loaded, which is what makes status `unknown`. */
+  /**
+   * Whether a recording is in effect, which is what makes a silent edge `never-fired` rather
+   * than `unknown`.
+   *
+   * ⚠️ **Not `events.length > 0`.** Those differ in exactly the case the feature exists for:
+   * the user presses Record, reproduces the bug, and *nothing fires at all*. Inferring this
+   * from the event count reports that run as "no trace, status unknown" — which is the
+   * opposite of the truth, and hides the one answer they came for. Observed live before it was
+   * a parameter. The count is still the default, because a consumer handed a buffer with no
+   * other context (OBS-004) can only infer it.
+   */
   hasTrace: boolean;
   portValues: PortValues;
 }
 
-export function buildIndex(topology: Topology, events: TraceEventLike[], portValues: PortValues = {}): WalkIndex {
+export interface IndexOptions {
+  /** Pass the recording state explicitly whenever the caller knows it. See {@link WalkIndex.hasTrace}. */
+  recording?: boolean;
+}
+
+export function buildIndex(
+  topology: Topology,
+  events: TraceEventLike[],
+  portValues: PortValues = {},
+  options: IndexOptions = {}
+): WalkIndex {
   const byTarget = new Map<string, Edge[]>();
   const bySource = new Map<string, Edge[]>();
   const connectedInputs = new Map<string, string[]>();
@@ -259,7 +279,7 @@ export function buildIndex(topology: Topology, events: TraceEventLike[], portVal
     eventsByEdge,
     bySeq,
     effects,
-    hasTrace: events.length > 0,
+    hasTrace: options.recording ?? events.length > 0,
     portValues
   };
 }

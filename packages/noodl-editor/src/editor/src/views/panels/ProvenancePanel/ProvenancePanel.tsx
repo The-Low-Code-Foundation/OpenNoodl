@@ -73,9 +73,9 @@ export function ProvenancePanel() {
   }, [session, bump]);
 
   const index = useMemo(
-    () => buildIndex(session.topology, session.traceEvents, session.portValues),
+    () => buildIndex(session.topology, session.traceEvents, session.portValues, { recording: session.recording }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [session, revision]
+    [session, revision, recording]
   );
 
   /**
@@ -90,7 +90,9 @@ export function ProvenancePanel() {
       await session.refreshTopology();
       if (session.recording) await session.refreshEvents();
 
-      const scratch = buildIndex(session.topology, session.traceEvents, session.portValues);
+      const scratch = buildIndex(session.topology, session.traceEvents, session.portValues, {
+        recording: session.recording
+      });
       const ports = portsToResolve(scratch, next);
       setStatus(`Reading ${ports.length} port${ports.length === 1 ? '' : 's'}…`);
       await session.resolvePortValues(ports);
@@ -231,7 +233,13 @@ function WalkSummary({ walk, index }: { walk: WalkResult; index: ReturnType<type
   const boundary = walk.boundary[0];
 
   let message: string;
-  if (!boundary) {
+  if (!index.hasTrace) {
+    // ⚠️ Do not say "every hop carried a value" here. With no recording, no hop has a firing
+    // status at all — every row is `unknown` — and claiming they all carried something is a
+    // confident wrong answer of exactly the kind that got the last panel retired. Observed
+    // live: this branch fired on a cold editor and asserted the opposite of what it knew.
+    message = 'No recording. Showing each hop\u2019s current value; press Record to see which one never fired.';
+  } else if (!boundary) {
     message =
       walk.mode === 'causal'
         ? `Traced back ${walk.rowCount - 1} hop${walk.rowCount === 2 ? '' : 's'} to a root event.`
@@ -248,7 +256,8 @@ function WalkSummary({ walk, index }: { walk: WalkResult; index: ReturnType<type
     <div className={css.Summary}>
       <Text>{message}</Text>
       <Text textType={TextType.Shy}>
-        {walk.rowCount} row{walk.rowCount === 1 ? '' : 's'} · {walk.mode === 'causal' ? 'cause chain' : 'declared wires'}
+        {walk.rowCount} row{walk.rowCount === 1 ? '' : 's'} ·{' '}
+        {walk.mode === 'causal' ? 'cause chain' : 'declared wires'}
       </Text>
     </div>
   );

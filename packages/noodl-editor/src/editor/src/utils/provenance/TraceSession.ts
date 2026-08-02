@@ -14,6 +14,7 @@
 
 import { NodeLibraryImporter } from '@noodl-models/nodelibrary/NodeLibraryImporter';
 import { RuntimeType } from '@noodl-models/nodelibrary/NodeLibraryData';
+import { ProjectModel } from '@noodl-models/projectmodel';
 
 import Model from '../../../../shared/model';
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
@@ -28,6 +29,37 @@ interface PortValueResult extends PortRef {
 
 /** How long a pull may go unanswered before the caller is told rather than left hanging. */
 const REQUEST_TIMEOUT = 2000;
+
+/**
+ * Replace the runtime's node names with the labels the user actually typed.
+ *
+ * ⚠️ The dictionary's `name` is the *runtime* node's `name`, which is its **type** — so a walk
+ * built straight from it reads `Text.text` and `net.noodl.controls.button.onClick` where the
+ * canvas says `RAW: -` and `Add To Cart`. Observed live on the QA fixture. The whole claim of
+ * the walk is that it reads in one glance, and a chain of type names identifies nothing when a
+ * component contains four Texts and three Counters.
+ *
+ * The runtime cannot fix this at source — it has never been told the editor's labels — so the
+ * merge belongs here, on the way in, where the project is available. The engine stays pure and
+ * still needs no project access, which is what keeps it usable from OBS-004.
+ */
+function withEditorLabels(dictionary: Topology): Topology {
+  const project = ProjectModel.instance;
+  if (!project) return dictionary;
+
+  const nodes: Topology['nodes'] = {};
+  for (const id of Object.keys(dictionary.nodes)) {
+    const entry = dictionary.nodes[id];
+    let label: string | undefined;
+    try {
+      label = project.findNodeWithId(id)?.label;
+    } catch (e) {
+      /* a node the editor no longer has is still worth showing under its runtime name */
+    }
+    nodes[id] = label ? { ...entry, name: label } : entry;
+  }
+  return { nodes, edges: dictionary.edges };
+}
 
 export class TraceSession extends Model {
   public static instance: TraceSession = new TraceSession();
@@ -72,7 +104,7 @@ export class TraceSession extends Model {
     EventDispatcher.instance.on(
       'TraceDictionary',
       ({ dictionary }) => {
-        this.topology = dictionary;
+        this.topology = withEditorLabels(dictionary);
         this.hasTopology = true;
         this.notifyListeners('topologyChanged');
       },

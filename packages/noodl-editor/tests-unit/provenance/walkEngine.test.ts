@@ -377,3 +377,23 @@ describe('OBS-002 — the walk terminates on hostile graphs', () => {
     expect(labelFor(index, walk.root.ref)).toBe('txt.text');
   });
 });
+
+describe('OBS-002 — recording with nothing captured is an answer, not an absence', () => {
+  it('reports every hop as never-fired when a recording produced no events at all', () => {
+    // ⚠️ The case the feature exists for: press Record, reproduce the bug, and nothing fires.
+    // Inferring "is there a trace?" from the event count reports this run as `unknown` — "we
+    // know nothing" — when in fact we know the most important thing there is to know.
+    const index = buildIndex(CHAIN, [], {}, { recording: true });
+    const walk = backwardWalk(index, { node: 'txt', port: 'text' });
+
+    forEachRow(walk.root, (row) => expect(row.status).toBe('never-fired'));
+    expect(walk.boundary.map((row) => labelFor(index, row.ref))).toEqual(['cart.Value']);
+  });
+
+  it('still says unknown when no recording was made', () => {
+    const index = buildIndex(CHAIN, [], {}, { recording: false });
+    const walk = backwardWalk(index, { node: 'txt', port: 'text' });
+    forEachRow(walk.root, (row) => expect(row.status).toBe('unknown'));
+    expect(walk.boundary).toEqual([]);
+  });
+});
