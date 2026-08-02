@@ -391,6 +391,10 @@ describe('ERG-001 §4: Delete Record', () => {
     await graph.settle(2);
 
     expect(outcomesOf(graph)).toEqual(['failure']);
+    // ⚠️ Added after the discrimination check caught it: this row's *name* said "then
+    // Completed" and its body never asserted it, so it survived a revert that took
+    // `Completed` off every failure in the family. A title is not an assertion.
+    expect(graph.signalsFor('node')).toContain('completed');
     expect(graph.errors.map((e) => e.code)).toEqual(['record/storage-op-failed']);
   });
 
