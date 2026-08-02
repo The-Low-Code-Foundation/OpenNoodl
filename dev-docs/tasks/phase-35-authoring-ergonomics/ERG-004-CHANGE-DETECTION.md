@@ -16,7 +16,14 @@
 
 **It is not a step too far. Four of the five are already being broadcast and nothing is listening.**
 
-## §0 — What the runtime already carries (measured 2026-08-01)
+## §0 — What the runtime already carries (measured 2026-08-01, **re-measured 2026-08-02**)
+
+> **Re-measurement note (build session, 2026-08-02).** Every line number and payload shape below
+> was re-verified against the source and is now pinned by
+> [`erg-004-s0-event-payloads.test.ts`](../../../packages/noodl-runtime/test/corpus/erg-004-s0-event-payloads.test.ts).
+> The five claims in this table **all held.** The claim in "the gap in the plumbing" below did
+> **not**, and has been corrected in place. See
+> [`ERG-004-NOTES.md`](./ERG-004-NOTES.md) §0 for the decision it forced.
 
 | What Richard asked for | Status |
 |---|---|
@@ -43,12 +50,39 @@ The port's own description already admits the limitation — *"changes are detec
 editing an Object or Array in place is not a change here"* — which is honest and useless. Every one of
 the events above is discarded.
 
-### ⚠️ And the gap in the plumbing
+### ⚠️ ~~And the gap in the plumbing~~ — **CORRECTED 2026-08-02: there is no gap**
 
-`Collection.notify('change')` at `collection.ts:180` and `:192` is **bare — no payload.** That is the
-whole-array-replacement path. So a wholesale `set` can report *that* the array changed and nothing
-about how. Either enrich those two calls or have the node report `Replaced` and be explicit that it
-knows no more.
+> The original text read:
+>
+> > `Collection.notify('change')` at `collection.ts:180` and `:192` is **bare — no payload.** That
+> > is the whole-array-replacement path. So a wholesale `set` can report *that* the array changed
+> > and nothing about how. Either enrich those two calls or have the node report `Replaced` and be
+> > explicit that it knows no more.
+>
+> The first sentence is right and the rest is wrong. Measured, and pinned by row **S0-C**.
+
+`Collection.notify('change')` at `:180`/`:192` is indeed bare. But it is **not** the
+whole-array-replacement path — it is the *coalesced companion* to every structural event:
+
+- `announceAdd` calls it (`:207`) and so does `announceRemove` (`:213`), so every `add` and every
+  `remove` is followed by one `change`.
+- `withBatch` holds it back so one logical operation emits one `change` however many items it
+  moved. Line `:180` **is** that flush.
+- `Collection.set` runs its whole diff **inside `withBatch`** (`:512`). A wholesale `set` therefore
+  emits a full per-item `add`/`remove` stream *and then* one summary `change`.
+
+So a `set` reports a great deal about how the array changed, on the events beside the bare one. The
+detail this section thought was missing was already being broadcast.
+
+**Decision taken: the two calls were NOT enriched.** There is nothing to enrich a batch flush over
+*N* heterogeneous events *with*; the information is already carried per item; and fourteen
+production consumers treat `change` as a payload-free "re-read the collection" ping. Reasoning in
+full in [`ERG-004-NOTES.md`](./ERG-004-NOTES.md) §0.
+
+One real limitation survives, and the node states it on its ports: a **reorder** — `sort`,
+`reverse`, `fill`, `copyWithin` (`:277`), and growing an array by writing `length` (`:387`) — emits
+`change` alone with no `add`/`remove` beside it. `Array Changed` sends no signal for it, and uses
+`change` only to keep `Count` accurate.
 
 ## §1 — Shape: new nodes, not modes on `Value Changed`
 
@@ -95,6 +129,22 @@ nodes are that exact shape and will get it wrong by default.
 *visible* depends on whether the paired value port held a non-`undefined` value at connect time. "Does
 a test catch it" is not the test — write the row that drives it twice.
 
+> **What driving it twice actually caught (2026-08-02).** The node's own ordering was correct —
+> values written, all outputs flagged, signal last — and was defeated underneath it.
+> `Node.prototype.sendValue` returns early on `undefined` (`node.ts:706`), so a port whose first
+> emit is `undefined` queues nothing; and the receiver drains with
+> `Object.keys(this._inputValuesQueue)` (`node.ts:566`), which is **insertion order of keys created
+> on each port's first delivery**. A value port that was `undefined` the first time therefore has
+> its key created *after* the signal that did fire, and is delivered behind that signal
+> permanently. `Previous Value` is `undefined` on the first `Object Replaced`, so it landed one
+> signal late on every subsequent one.
+>
+> Fix: value ports emit `null`, never `undefined` — which is also what `EMPTY-VALUE-CONTRACT.md`
+> asks for. Pinned by row **OC-3b**.
+>
+> ⚠️ **This is latent in any node that pairs a signal with a value port that can be `undefined` on
+> its first emit.** Auditing the library for it was out of ERG-004's scope and remains open.
+
 ## §2 — Build order
 
 1. **`Object Changed` first.** Every signal it needs is already in the event payload, so it is pure
@@ -129,6 +179,14 @@ Requirements:
   transaction holding a rollback timer. The bar is **0 failures *and* no new noise.**
 
 ## Success criteria
+
+**Build status 2026-08-02 — 6 of 7 met, criterion 7 blocked.** Criteria 1–5 met; criterion 6
+partially (both catalogs regenerated, 153/153 enriched, `catalog:check` and `catalog:merge:check`
+green — `catalog:examples` is red and was already red at the base commit `2a1138a8`, from examples
+left behind by ERG-001's port renames, which is outside this task's territory). Criterion 7 not
+done: the editor's single-instance lock was held by another session throughout. The specific list a
+later session must drive is in [`ERG-004-NOTES.md`](./ERG-004-NOTES.md) §4.1 — it is a **fourth**
+live-QA debt, recorded rather than disguised.
 
 1. `Object Changed` reports key-added, key-changed and replaced, each with the key and both values,
    and each pinned by a corpus row driven **twice** so the signal-before-value class cannot hide.
