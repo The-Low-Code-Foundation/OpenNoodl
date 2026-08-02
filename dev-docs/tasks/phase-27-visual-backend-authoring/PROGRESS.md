@@ -1,6 +1,6 @@
 # Phase 27 — Visual Backend Authoring (Track L): Progress
 
-**Status:** 🚧 9 / 9 built — **live QA is the only thing outstanding.** 2026-08-02 closed the
+**Status:** 🚧 9 / 9 built; **WFA-009 live-verified in part, WFA-007 not at all.** 2026-08-02 closed the
 phase's code: WFA-007 and WFA-009 were built in parallel worktrees alongside F26 and F37, merged
 together and gated. Nothing here has been driven in the running editor, because the checkout's editor
 belonged to a concurrent session throughout; every task carries an ordered live-QA script in its
@@ -148,6 +148,38 @@ base — not assumed.
 | F63 | **CI's `typecheck` job has been failing, and no branch has ever reached it.** `npm run typecheck` — `pr.yml`'s first step — reported 18 × `TS2307: Cannot find module '@noodl-versioning'`. The alias is declared in `packages/noodl-editor/tsconfig.json` and was never added to the root config, whose `paths` mirrors every other editor alias. Two entries make it exit 0 with zero diagnostics, so nothing was masked behind it. It survived because `pr.yml` runs on pull requests and on pushes to `main`/`cline-dev`, and this repo commits to `cline-dev` **without pushing** — so the job that would have caught it has never run. Fixed twice on 2026-08-02, independently and within the hour, by this batch and by a concurrent session | `tsconfig.json`; `.github/workflows/pr.yml:28` | ✅ fixed |
 | F64 | **The merge made the node catalog stale, and neither branch could have seen it.** `catalog:check` is green at the merge base and green on `wt-wfa-009` alone, and red once merged: the catalog is generated from the live registries, and WFA-009 gave the two cloud nodes a `namedports/list` rule. Regenerating then makes `node-catalog-enriched.json` stale in turn, so `catalog:merge:check` goes red exactly as `catalog:check` goes green. Both regenerated, both diffs verified as the identical 27-line set. **The general rule this batch confirms: after merging, regenerate every artefact and require an empty diff** — textual conflict-freedom proves nothing about a generated file | `packages/noodl-types/src/node-catalog*.json` | ✅ fixed in the merge, not on either branch |
 | F65 | **Three suites are red on `cline-dev` and have nothing to do with this phase**, verified by running them at the merge base: `nodegx-backend`'s `email-flows.test.ts` (2 tests, 30s timeouts in the Send Email node's `WorkflowRunner` integration) and `noodl-mcp`'s `tools.test.ts` (`create_component validates, writes and updates the registry`). Both are in `test:packages`, which is a CI job — so that job is red for everyone, for the same reason F63 went unnoticed | `packages/nodegx-backend/tests/email-flows.test.ts`; `packages/noodl-mcp/tests/tools.test.ts` | unowned — [OPEN-WORK.md](./OPEN-WORK.md) |
+
+### Live QA, 2026-08-02 — what was actually driven
+
+Run in the real editor (`dev:debug` + CDP) against `import_collide_target`, a fixture outside the
+repo, with **no backend running** — which is the point of criterion 1.
+
+**WFA-009 — steps 1–4 of its own list pass.** A cloud function created from the shipped template:
+
+| Step | Result |
+|---|---|
+| Response `params` = `id,total` | `pm-id` and `pm-total` appear as **input** ports in group `Parameters`. Before the change: nothing |
+| Request `params` = `userId` | `pm-userId` appears as an **output** port — the mirror, from the same rule and a different `plug` |
+| Remove `id` | `pm-id` goes, `pm-total` stays |
+| `status = failure` | both `pm-` ports disappear |
+| **A connection into a removed port** | the connection **survives** and raises `"Target port doesn't exist."` at level `error`. **This was the one claim WFA-009 wrote into the docs and could not run** — it now holds |
+
+**F26 — both halves pass.** The real `createPopup` for the cloud-function template returns a prompt
+labelled *New component name* with **one `<input>`, no textarea, no line-number gutter**, placeholder
+`e.g. ProductCard`. Constructed with `multiline: true` as the comment node does, the same component
+still returns a `<textarea rows=8>` with the gutter and `// Add your comment here...` — so the one
+caller the code editor was written for kept it.
+
+**Not driven, and still open:** WFA-009's steps 5–8 (the deploy→call→read-body loop, a workflow step
+reading `previous.result.total`, the `projectLoaded` sweep on a second project, and the
+no-regression check on a large project's property panel), and **the whole of WFA-007** — its nine
+steps and its six Jasmine specs, which have still never executed.
+
+**A note on how this was driven, because it bounds the claim:** ports were set through
+`node.setParameter`, the same call the property panel makes, not by typing into the panel. That
+exercises the adapter and everything downstream of it; it does not exercise the panel's own editor
+for a `stringlist` parameter. F57 — the checkbox that ignores a synthetic click — is a standing
+reminder that those two are not the same thing.
 
 ### What already exists and is worth reusing
 
