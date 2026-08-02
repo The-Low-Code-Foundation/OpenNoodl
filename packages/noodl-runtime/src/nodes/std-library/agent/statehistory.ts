@@ -305,13 +305,26 @@ export class StateHistoryManager {
     return this.goTo(record, target);
   }
 
-  /** Throws the history away and starts again from the live state. */
-  clearHistory(storeName: string): void {
+  /**
+   * Throws the history away and starts again from the live state.
+   *
+   * ERG-001 §4 — the return value exists so `Clear History` can say which of three things
+   * happened. It used to be `void`, and `if (!record) return` collapsed "no history is being
+   * tracked" into the same silence as a successful clear.
+   *
+   * `'unchanged'` is a history that is already nothing but its baseline entry: there is no
+   * earlier state to throw away, and re-taking the baseline from live state cannot move it,
+   * because the single entry *is* the live state until something is recorded.
+   */
+  clearHistory(storeName: string): 'cleared' | 'unchanged' | 'not-tracking' {
     const record = this.histories.get(normalizeName(storeName));
-    if (!record) return;
+    if (!record) return 'not-tracking';
+
+    if (record.entries.length <= 1 && record.currentIndex <= 0) return 'unchanged';
 
     this.resetEntries(record, 'reset', 'Cleared');
     this.notifyChanged(record);
+    return 'cleared';
   }
 
   isTracking(storeName: string): boolean {

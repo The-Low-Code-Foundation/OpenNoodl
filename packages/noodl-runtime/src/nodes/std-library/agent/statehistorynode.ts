@@ -15,6 +15,7 @@
  */
 import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
+import { outcomeOutputs } from '../../../outcome';
 import { HistoryInfo, stateHistoryManager } from './statehistory';
 
 import Node = require('../../../node');
@@ -175,8 +176,26 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
       description: 'Throws the history away and starts again from the live state',
       group: 'Actions',
       valueChangedToTrue: function (this: StateHistoryInstance) {
+        // ERG-001 §4. The token is minted here, at the signal input, and travels through the
+        // deferral — `scheduleAfterInputsHaveUpdated` runs a frame later, and the token is what
+        // ties the report back to *this* press rather than to the node.
+        const outcome = this.beginOutcome();
         this.scheduleAfterInputsHaveUpdated(function (this: StateHistoryInstance) {
-          stateHistoryManager.clearHistory(this._internal.storeName);
+          const result = stateHistoryManager.clearHistory(this._internal.storeName);
+
+          // Values before the signal, always: a graph wiring `Done -> show the history` must be
+          // able to read the emptied history when the pulse lands.
+          this.refreshOutputs();
+
+          // ⚠️ `'not-tracking'` is `Unchanged`, not `Failure`, and NDA-004's pinned control is
+          // what caught the first attempt to make it one. Its reasoning holds: this node *is*
+          // the tracker and `storeName` normalises, so there is no store it can be asked for and
+          // persistently fail to find. `'not-tracking'` is only reachable as a one-frame race —
+          // a `Clear History` landing in the same frame as a `Store Name` change, before
+          // `setupTracking` has run — and raising at an author whose graph is correct is exactly
+          // what the contract says trains people to ignore the port. Either way nothing was
+          // thrown away and the post-condition (a history that is just its baseline) holds.
+          this.reportOutcome(outcome, result === 'cleared' ? 'done' : 'unchanged');
         });
       }
     }
@@ -260,7 +279,16 @@ const StateHistoryNodeDefinition: NodeDefinitionOptions = {
       displayName: 'History Changed',
       description: 'Fires whenever an entry is added, the position moves, or the history is cleared',
       group: 'Events'
-    }
+    },
+    // ERG-001 §4 / OUTCOME-CONTRACT.md. `Clear History` was one of §0.3's "emits nothing at all"
+    // cases: the handler called a `void` method whose first line was `if (!record) return`.
+    //
+    // ⚠️ No `Failure`, and NDA-004's pinned control in `statehistory.test.ts` is what holds that
+    // in place — see `clearHistory`'s handler for why the one non-clearing path is `Unchanged`.
+    ...outcomeOutputs({
+      done: 'Fires once the history has been thrown away and re-baselined from the live state',
+      unchanged: 'Fires when there was nothing to throw away, because the history was already just its baseline'
+    })
   },
 
   methods: {

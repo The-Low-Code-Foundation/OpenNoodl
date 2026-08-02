@@ -5,8 +5,12 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  NodeOutcome,
+  OutcomeFailureOptions,
+  OutcomeToken
 } from '@noodl/types';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 
 import NavigationHandler from './navigation-handler';
 import Transitions from './transitions';
@@ -27,6 +31,12 @@ interface PageListItem {
   label: string;
 }
 
+/** One `Navigate` invocation's worth of tokens, and whether it has been settled. */
+interface PendingNavigation {
+  tokens: OutcomeToken[];
+  settled: boolean;
+}
+
 interface NavigateInstance extends NodeInstance {
   _internal: {
     transitionParams: Record<string, unknown>;
@@ -37,12 +47,15 @@ interface NavigateInstance extends NodeInstance {
     target?: string;
     transition?: string;
     hasScheduledNavigate?: boolean;
+    /** ERG-001 §4 — tokens for the presses this frame; see `scheduleNavigate`. */
+    pendingOutcomes?: OutcomeToken[];
     /** Message for the `Error` output; see NDA-004. */
     lastError?: string;
   };
-  scheduleNavigate(): void;
-  navigate(): void;
-  reportFailure(code: string, message: string): void;
+  scheduleNavigate(outcome: OutcomeToken): void;
+  navigate(pending: PendingNavigation): void;
+  settle(pending: PendingNavigation, outcome: NodeOutcome, options?: OutcomeFailureOptions): void;
+  reportFailure(pending: PendingNavigation, code: string, message: string): void;
   setTransitionParam(param: string, value: unknown): void;
   setPageParam(param: string, value: unknown): void;
   getBackResult(param: string): unknown;
@@ -92,7 +105,7 @@ const Navigate: NodeDefinitionOptions = {
       group: 'Actions',
       description: 'Navigates the Component Stack to Target Page',
       valueChangedToTrue: function (this: NavigateInstance) {
-        this.scheduleNavigate();
+        this.scheduleNavigate(this.beginOutcome());
       }
     }
   },
@@ -100,20 +113,20 @@ const Navigate: NodeDefinitionOptions = {
   // components configured, a Target Page that does not resolve, a navigation already
   // animating — was indistinguishable from one that worked. The trigger is an author `Do`
   // (`Navigate`, group `Actions`), so this port cannot fire on the boot path.
+  //
+  // ⚠️ ERG-001 §4 renamed `navigated` to `done` — see `router-navigate.ts` for the decision; it
+  // applies to the whole navigation family or to none of it.
   outputs: {
-    navigated: {
-      type: 'signal',
-      displayName: 'Navigated',
-      group: 'Events',
-      description: 'Fires once the stack has switched to the target component'
-    },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description:
+    ...outcomeOutputs({
+      done:
+        'Fires once the stack has switched to the target component. ⚠️ If this node lives on the ' +
+        'component being replaced it is destroyed with it, so sequence anything that must survive ' +
+        'the navigation from a node outside the stack',
+      unchanged:
+        'Fires when the stack is already showing that component with those parameters, so it was not pushed again',
+      failure:
         'Fires when no Target Page is set, the stack has no components configured, or a navigation is still animating'
-    },
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -125,24 +138,42 @@ const Navigate: NodeDefinitionOptions = {
     }
   },
   methods: {
-    reportFailure(this: NavigateInstance, code: string, message: string) {
-      this._internal.lastError = message;
-      this.raiseRuntimeError(code, message);
-      this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
+    /**
+     * End this invocation, at most once.
+     *
+     * ⚠️ `NavigationHandler._performNavigation` fans out over every stack registered under the
+     * name, so without this guard one press against two same-named stacks would report twice and
+     * `reportOutcome` would raise `outcome/duplicate` at an author whose app is merely unusual.
+     */
+    settle(this: NavigateInstance, pending: PendingNavigation, outcome: NodeOutcome, options?: OutcomeFailureOptions) {
+      if (pending.settled) return;
+      pending.settled = true;
+      for (const token of pending.tokens) this.reportOutcome(token, outcome, options);
     },
-    scheduleNavigate: function (this: NavigateInstance) {
+    reportFailure(this: NavigateInstance, pending: PendingNavigation, code: string, message: string) {
+      this._internal.lastError = message;
+      // Value first, signal last. `reportOutcome` raises the reason on the NDA-004 channel, so
+      // `raiseRuntimeError` is not called here as well.
+      this.flagOutputDirty('error');
+      this.settle(pending, 'failure', { code, message });
+    },
+    scheduleNavigate: function (this: NavigateInstance, outcome: OutcomeToken) {
       const _this = this;
       const internal = this._internal;
+      if (internal.pendingOutcomes === undefined) internal.pendingOutcomes = [];
+      internal.pendingOutcomes.push(outcome);
+
       if (!internal.hasScheduledNavigate) {
         internal.hasScheduledNavigate = true;
         this.scheduleAfterInputsHaveUpdated(function () {
           internal.hasScheduledNavigate = false;
-          _this.navigate();
+          const pending: PendingNavigation = { tokens: internal.pendingOutcomes || [], settled: false };
+          internal.pendingOutcomes = undefined;
+          _this.navigate(pending);
         });
       }
     },
-    navigate(this: NavigateInstance) {
+    navigate(this: NavigateInstance, pending: PendingNavigation) {
       if (this._internal.navigationMode === 'push' || this._internal.navigationMode === undefined) {
         NavigationHandler.instance.navigate(this._internal.stack, {
           target: this._internal.target,
@@ -160,10 +191,13 @@ const Navigate: NodeDefinitionOptions = {
             if (action !== undefined) this.sendSignalOnOutput(action);
           },
           hasNavigated: () => {
-            this.sendSignalOnOutput('navigated');
+            this.settle(pending, 'done');
+          },
+          hasUnchanged: () => {
+            this.settle(pending, 'unchanged');
           },
           hasFailed: (code, message) => {
-            this.reportFailure(code, message);
+            this.reportFailure(pending, code, message);
           }
         });
       } else if (this._internal.navigationMode === 'replace') {
@@ -176,11 +210,16 @@ const Navigate: NodeDefinitionOptions = {
           params: this._internal.pageParams,
           hasNavigated: () => {
             this.scheduleAfterInputsHaveUpdated(() => {
-              this.sendSignalOnOutput('navigated');
+              this.settle(pending, 'done');
+            });
+          },
+          hasUnchanged: () => {
+            this.scheduleAfterInputsHaveUpdated(() => {
+              this.settle(pending, 'unchanged');
             });
           },
           hasFailed: (code, message) => {
-            this.reportFailure(code, message);
+            this.reportFailure(pending, code, message);
           }
         });
       }

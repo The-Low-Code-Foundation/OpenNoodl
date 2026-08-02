@@ -12,6 +12,14 @@ export interface StackNavigateArgs {
   backCallback?(action: string | undefined, results: Record<string, unknown>): void;
   hasNavigated?(): void;
   /**
+   * ERG-001 §4. The stack is already showing exactly what was asked for, so it did not switch.
+   *
+   * ⚠️ NDA-008 §2's `_isAlreadyShowing` branch called `hasNavigated`, which was the best of the
+   * two callbacks that existed. Reporting "the stack switched" for a request that changed
+   * nothing is `Insert Object Into Array`'s lie, and this is the port the contract mints for it.
+   */
+  hasUnchanged?(): void;
+  /**
    * NDA-004 §2. The counterpart to `hasNavigated`, for the three ways a push can be
    * dropped on the floor. Optional for the same reason `hasNavigated` is: only the
    * Push Component To Stack *node* supplies one, and it is the node that owns the

@@ -38,6 +38,13 @@
  * supplies neither callback. Falling back to raising on the *stack* would put the diagnosis for
  * a script's mistake onto a node the author did not write.
  *
+ * ## ⚠️ Updated by ERG-001 §4
+ *
+ * The navigation family adopted the outcome contract, so every invocation now also emits
+ * `Completed`, and `navigated` became `done` — §0.2 Result 2's one concept under a fifth wire
+ * name. The claims these rows make are unchanged; the port names and the extra pulse are not.
+ * `erg-001-navigation-outcomes.test.ts` pins the contract itself.
+ *
  * ## Not fixed, deliberately
  *
  * A Stack (or Router) **name** that matches nothing is *queued*, not dropped —
@@ -258,7 +265,7 @@ describe('NDA-004 §2: Push Component To Stack', () => {
     await press(graph, 'no-such-page');
 
     expect(graph.signalsFor('nav')).toContain('failure');
-    expect(graph.signalsFor('nav')).not.toContain('navigated');
+    expect(graph.signalsFor('nav')).not.toContain('done');
   });
 
   test('the diagnosis reaches the runtime channel, with the name of the page it looked for', async () => {
@@ -299,7 +306,7 @@ describe('NDA-004 §2: Push Component To Stack', () => {
     const { graph } = await pushGraph({});
 
     await press(graph, 'p1');
-    expect(graph.signalsFor('nav')).toContain('navigated');
+    expect(graph.signalsFor('nav')).toContain('done');
     expect(constructed).toHaveLength(1); // the transition is open, and stays open
 
     await press(graph, 'p1');
@@ -320,11 +327,11 @@ describe('NDA-004 §2: Push Component To Stack', () => {
 
   // ✅ Pinned control. Without this every row above is equally consistent with a node that has
   // simply stopped navigating.
-  test('(pinned control) a Target Page that resolves navigates, says Navigated, and raises nothing', async () => {
+  test('(pinned control) a Target Page that resolves navigates, says Done, and raises nothing', async () => {
     const { graph, stack } = await pushGraph({});
     await press(graph, 'p1');
 
-    expect(graph.signalsFor('nav')).toEqual(['navigated']);
+    expect(graph.signalsFor('nav')).toEqual(['done', 'completed']);
     expect(graph.errors).toEqual([]);
     expect(stack._internal.stack).toHaveLength(2);
   });
@@ -350,7 +357,8 @@ describe('NDA-004 §2: Push Component To Stack', () => {
     const { graph } = await pushGraph({});
     const nav = graph.node('nav');
 
-    expect(nav.hasOutput('navigated')).toBe(true);
+    expect(nav.hasOutput('done')).toBe(true);
+    expect(nav.hasOutput('completed')).toBe(true);
     expect(nav.hasOutput('failure')).toBe(true);
     expect(nav.hasOutput('error')).toBe(true);
   });
@@ -379,6 +387,8 @@ function makeRouter() {
   router.reset = () => {
     /* `registerRouter` calls this when nothing was queued */
   };
+  // ERG-001 §4 split the already-showing guard out of `_navigateInCurrentWindow` into it and
+  // `_buildPage`; these rows are about `navigateAsync`'s two drops, which sit above both.
   router._navigateInCurrentWindow = async (_page: unknown, args: { hasNavigated?: () => void }) => {
     router.navigated.push(_page);
     args.hasNavigated && args.hasNavigated();
@@ -450,7 +460,7 @@ describe('NDA-004 §2: Navigate', () => {
     await pressNavigate(graph);
 
     expect(graph.signalsFor('nav')).toContain('failure');
-    expect(graph.signalsFor('nav')).not.toContain('navigated');
+    expect(graph.signalsFor('nav')).not.toContain('done');
 
     // The return this replaces carried `//TODO: send error to editor, "invalid page component
     // name"` — the diagnosis was known and simply had nowhere to go.
@@ -469,11 +479,11 @@ describe('NDA-004 §2: Navigate', () => {
   });
 
   // ✅ Pinned control.
-  test('(pinned control) a target the Router serves navigates, says Navigated, and raises nothing', async () => {
+  test('(pinned control) a target the Router serves navigates, says Done, and raises nothing', async () => {
     const graph = await navigateGraph({ pages: ['/Home'], target: '/Home' });
     await pressNavigate(graph);
 
-    expect(graph.signalsFor('nav')).toEqual(['navigated']);
+    expect(graph.signalsFor('nav')).toEqual(['done', 'completed']);
     expect(graph.errors).toEqual([]);
   });
 
@@ -490,7 +500,8 @@ describe('NDA-004 §2: Navigate', () => {
     const graph = await navigateGraph({ pages: ['/Home'], target: '/Home' });
     const nav = graph.node('nav');
 
-    expect(nav.hasOutput('navigated')).toBe(true);
+    expect(nav.hasOutput('done')).toBe(true);
+    expect(nav.hasOutput('completed')).toBe(true);
     expect(nav.hasOutput('failure')).toBe(true);
     expect(nav.hasOutput('error')).toBe(true);
   });

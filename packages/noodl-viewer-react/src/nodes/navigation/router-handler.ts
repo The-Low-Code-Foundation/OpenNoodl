@@ -15,6 +15,15 @@ export type NavigateArgs = {
    */
   hasNavigated?: () => void;
   /**
+   * ERG-001 §4. The third outcome: the Router is already showing that page with those
+   * parameters, so it did not rebuild it. Optional for the same reason the other two are.
+   *
+   * ⚠️ Distinct from `hasNavigated` on purpose. `_navigateInCurrentWindow` used to have no
+   * already-showing check and re-mounted the page; folding the no-op into `hasNavigated` once
+   * it did would be `Insert Object Into Array`'s lie in a third node.
+   */
+  hasUnchanged?: () => void;
+  /**
    * NDA-004 §2. The counterpart to `hasNavigated`, for the two ways `navigateAsync` drops a
    * navigation — no target set, and a target that is not a page of this router. Optional for
    * the same reason `hasNavigated` is: only the Navigate *node* supplies one.

@@ -1,12 +1,16 @@
 import React, { useEffect } from 'react';
 import NoodlRuntime from '@noodl/runtime';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type {
   EditorConnectionLike,
   GraphModelLike,
   GraphNodeModel,
   InspectInfoEntry,
   NodeContextLike,
-  NodeInstance
+  NodeInstance,
+  NodeOutcome,
+  OutcomeFailureOptions,
+  OutcomeToken
 } from '@noodl/types';
 
 import type { TSFixme } from '../../../typings/global';
@@ -81,7 +85,21 @@ interface StackEntry {
  * Pop Component Stack node was asked to act and could not, and it is the one carrying the
  * `Failure` port and the provenance an author can act on (Failure Contract).
  */
-export type StackBackResult = { ok: true } | { ok: false; code: string; message: string };
+export type StackBackResult =
+  | { ok: true }
+  /**
+   * ERG-001 §4 — an ordinary end-stop, not a failure.
+   *
+   * ⚠️ **A deliberate change to NDA-008 §3's verdict.** It made "the stack is already at its
+   * first component" a `Failure` with a code and a message, which was the only honest choice
+   * with two outcomes available. Build 2b made `Undo` at the beginning of history `Unchanged`
+   * on the contract's reasoning — "a `Failure` that fires on a graph working exactly as written
+   * is how authors are trained to ignore the port" — and a Back button on the root component is
+   * exactly that graph. The transitioning case stays a `Failure`, because a dropped tap is not
+   * something the author asked for.
+   */
+  | { ok: false; unchanged: true }
+  | { ok: false; code: string; message: string };
 
 interface PageStackInstance extends ReactNodeInstance {
   _internal: {
@@ -99,6 +117,8 @@ interface PageStackInstance extends ReactNodeInstance {
     startPageId?: string;
     startPage?: string;
     hasScheduledReset?: boolean;
+    /** ERG-001 §4 — tokens for the `Reset` presses this frame; see `scheduleReset`. */
+    pendingResetOutcomes?: OutcomeToken[];
     remainingNavigationPath?: string[];
     [extra: string]: unknown;
   };
@@ -111,10 +131,12 @@ interface PageStackInstance extends ReactNodeInstance {
   /** NDA-008 §2 — whether this exact page-and-params is already the top of the stack. */
   _isAlreadyShowing(pageInfo: FoundPage, params: Record<string, unknown> | undefined): boolean;
   setPageOutputs(outputs: Record<string, unknown>): void;
-  scheduleReset(): void;
+  scheduleReset(outcome?: OutcomeToken): void;
+  /** ERG-001 §4 — end a `Reset` invocation, or on the mount path end none. */
+  _reportReset(outcomes: OutcomeToken[] | undefined, outcome: NodeOutcome, options?: OutcomeFailureOptions): void;
   createPageContainer(): ReactNodeInstance;
-  reset(): void;
-  resetAsync(): Promise<void>;
+  reset(outcomes?: OutcomeToken[]): void;
+  resetAsync(outcomes?: OutcomeToken[]): Promise<void>;
   getRelativeURL(): { path: string; query: { name: string; value: unknown }[] } | undefined;
   getNavigationAbsoluteURL(): { path: string; query: { name: string; value: unknown }[] };
   _getLocationPath(): string;
@@ -296,7 +318,10 @@ const PageStack = {
       description: 'Empties the stack and rebuilds the start component',
       group: 'Actions',
       valueChangedToTrue: function (this: PageStackInstance) {
-        this.scheduleReset();
+        // ERG-001 §4 — the only caller of `scheduleReset` that is an author asking for a reset.
+        // `NavigationHandler.registerPageStack` calls `reset()` on mount (`:90`, `:106`) so the
+        // start component is created, and that must report nothing.
+        this.scheduleReset(this.beginOutcome());
       }
     }
   },
@@ -311,6 +336,18 @@ const PageStack = {
     }
   },
   outputs: {
+    // ERG-001 §4 / OUTCOME-CONTRACT.md. §0.3 recorded this node as emitting nothing at all.
+    //
+    // ⚠️ **No `Unchanged` port, and that is the contract being followed rather than skipped.**
+    // "A node that cannot be a no-op gets no `Unchanged` port." `resetAsync` tears every child
+    // down and rebuilds the start component unconditionally — a reset that lands on the
+    // component already showing still destroys and recreates it, which is a change. An
+    // `Unchanged` here would be a port that can never fire, and §5's dead-end check would then
+    // be right to complain about it. Contrast the Page Router, whose reset genuinely can no-op.
+    ...outcomeOutputs({
+      done: 'Fires once the stack has been emptied and the start component rebuilt',
+      failure: 'Fires when the stack has no components configured, or its start component does not resolve'
+    }),
     topPageName: {
       type: 'string',
       displayName: 'Top Component Name',
@@ -422,25 +459,48 @@ const PageStack = {
         this.flagOutputDirty(prop);
       }
     },
-    scheduleReset(this: PageStackInstance) {
+    /** ERG-001 §4 — the token is optional; see `router.tsx`'s `scheduleReset` for the why. */
+    scheduleReset(this: PageStackInstance, outcome?: OutcomeToken) {
       const internal = this._internal;
+      if (outcome !== undefined) {
+        if (internal.pendingResetOutcomes === undefined) internal.pendingResetOutcomes = [];
+        internal.pendingResetOutcomes.push(outcome);
+      }
+
       if (!internal.hasScheduledReset) {
         internal.hasScheduledReset = true;
         this.scheduleAfterInputsHaveUpdated(() => {
           internal.hasScheduledReset = false;
-          this.reset();
+          const outcomes = internal.pendingResetOutcomes;
+          internal.pendingResetOutcomes = undefined;
+          this.reset(outcomes);
         });
       }
+    },
+    _reportReset(
+      this: PageStackInstance,
+      outcomes: OutcomeToken[] | undefined,
+      outcome: NodeOutcome,
+      options?: OutcomeFailureOptions
+    ) {
+      if (outcomes === undefined || outcomes.length === 0) {
+        // The mount path. Nothing to report to, but the diagnosis still belongs on the channel —
+        // an unconfigured Component Stack is only ever seen at mount.
+        if (outcome === 'failure' && options) this.raiseRuntimeError(options.code, options.message);
+        return;
+      }
+
+      for (const token of outcomes) this.reportOutcome(token, outcome, options);
     },
     createPageContainer(this: PageStackInstance) {
       const group = this.nodeScope.createPrimitiveNode('Group') as ReactNodeInstance;
       group.setStyle({ flex: '1 0 100%' });
       return group;
     },
-    reset(this: PageStackInstance) {
-      this._internal.asyncQueue.enqueue(this.resetAsync.bind(this));
+    reset(this: PageStackInstance, outcomes?: OutcomeToken[]) {
+      this._internal.asyncQueue.enqueue(this.resetAsync.bind(this, outcomes));
     },
-    async resetAsync(this: PageStackInstance) {
+    async resetAsync(this: PageStackInstance, outcomes?: OutcomeToken[]) {
       // `.slice()` for the same reason as in `replaceAsync`: `getChildren()` is the live array,
       // and removing while iterating it by index skips every other child. Reset is the initial
       // mount and deliberately has no transition — the app's first paint should not animate.
@@ -450,7 +510,15 @@ const PageStack = {
         this.nodeScope.deleteNode(c);
       }
 
-      if (this._internal.pages === undefined || this._internal.pages.length === 0) return;
+      // ERG-001 §4 — both of `resetAsync`'s exits were bare returns, so an unconfigured
+      // Component Stack was silent on the one code path that always runs.
+      if (this._internal.pages === undefined || this._internal.pages.length === 0) {
+        this._reportReset(outcomes, 'failure', {
+          code: 'component-stack/no-components',
+          message: `The Component Stack "${this._internal.name || 'Main'}" has no components to show — add them to its Components list`
+        });
+        return;
+      }
 
       let startPageId: string;
       let params: Record<string, unknown> = {};
@@ -470,6 +538,10 @@ const PageStack = {
       const pageInfo = this._findPage(startPageId);
       if (pageInfo === undefined || pageInfo.component === undefined) {
         // No page was found
+        this._reportReset(outcomes, 'failure', {
+          code: 'component-stack/component-not-found',
+          message: `The Component Stack "${this._internal.name || 'Main'}" cannot show "${startPageId}" — check its Start Page against its Components list`
+        });
         return;
       }
 
@@ -500,6 +572,9 @@ const PageStack = {
         topPageName: pageInfo.label,
         stackDepth: this._internal.stack.length
       });
+
+      // Last, after the outputs it describes.
+      this._reportReset(outcomes, 'done');
     },
     getRelativeURL(this: PageStackInstance) {
       const top = this._internal.stack[this._internal.stack.length - 1];
@@ -747,8 +822,14 @@ const PageStack = {
       // collapsing to do even though the top page is right, so it must proceed — skipping
       // there would silently leave entries the author asked to be rid of. The tab case, which
       // is what §2 is about, is depth 1 by construction and lands on the no-op.
+      //
+      // ⚠️ ERG-001 §4 changed which callback this takes. NDA-008 §2 called `hasNavigated` here
+      // and said so out loud: "swallowing the completion callback would turn a re-selected tab
+      // into a dead button". That was the right instinct with only two callbacks available —
+      // and it is `Insert Object Into Array`'s lie, because the stack did not switch anything.
+      // The contract's third outcome is what it was reaching for.
       if (this._internal.stack.length === 1 && this._isAlreadyShowing(pageInfo, args.params)) {
-        args.hasNavigated && args.hasNavigated();
+        args.hasUnchanged ? args.hasUnchanged() : args.hasNavigated && args.hasNavigated();
         return;
       }
 
@@ -874,11 +955,14 @@ const PageStack = {
       }
 
       // NDA-008 §2 — re-selecting the current page is a no-op, not a re-mount *and* a duplicate
-      // stack entry. `hasNavigated` still fires: the request was satisfied, the stack is showing
+      // stack entry. Something still fires: the request was satisfied, the stack is showing
       // exactly what was asked for, and swallowing the completion callback here would turn a
       // re-selected tab into a dead button — the failure this phase exists to remove.
+      //
+      // ⚠️ ERG-001 §4: that something is now `Unchanged` rather than `Navigated`. See
+      // `replaceAsync`'s copy of this branch.
       if (this._isAlreadyShowing(pageInfo, args.params)) {
-        args.hasNavigated && args.hasNavigated();
+        args.hasUnchanged ? args.hasUnchanged() : args.hasNavigated && args.hasNavigated();
         return;
       }
 
@@ -959,7 +1043,7 @@ const PageStack = {
       args: { backAction?: string; results?: Record<string, unknown> }
     ): StackBackResult {
       if (this._internal.stack.length <= 1) {
-        return { ok: false, code: 'pop-component-stack/stack-at-root', message: 'Nothing to pop — the Component Stack is already showing its first component' };
+        return { ok: false, unchanged: true };
       }
       if (this._internal.isTransitioning) {
         return { ok: false, code: 'pop-component-stack/transition-in-progress', message: 'Ignored — the Component Stack is still animating the previous navigation' };

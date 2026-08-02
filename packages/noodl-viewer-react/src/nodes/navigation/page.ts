@@ -1,3 +1,4 @@
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type { ComponentModelLike, GraphModelLike, GraphNodeModel, NodeContextLike } from '@noodl/types';
 
 import { META_TAGS, Page } from '../../components/navigation/Page';
@@ -90,7 +91,12 @@ const PageNode = {
       group: 'Server Side Rendering',
       type: 'signal',
       valueChangedToTrue(this: PageNodeInstance) {
+        // ERG-001 §4 — §0.3's "emits an internal `SSR_PageReady` event only". The event goes to
+        // the SSR server; nothing on the canvas could see that the handshake had happened, so a
+        // graph could not sequence anything after "the page has its data".
+        const outcome = this.beginOutcome();
         this.nodeScope.context.eventEmitter.emit('SSR_PageReady', this.id);
+        this.reportOutcome(outcome, 'done');
       }
     },
     sitemapIncluded: {
@@ -146,6 +152,14 @@ const PageNode = {
     //     codeeditor: 'javascript'
     //   }
     // }
+  },
+  // ERG-001 §4 / OUTCOME-CONTRACT.md.
+  //
+  // No `Failure` and no `Unchanged`, deliberately: "a node that cannot fail gets no `Failure`
+  // port" and announcing an event on an emitter cannot fail, nor can it be a no-op — every
+  // pulse announces. `Completed` is the port with no exemption, so it is here regardless.
+  outputs: {
+    ...outcomeOutputs({ done: 'Fires once the page has announced that it is ready to render' })
   },
   inputProps: META_TAGS.reduce<Record<string, unknown>>((result, x, index) => {
     result[x.key] = {

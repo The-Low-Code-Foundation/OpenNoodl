@@ -21968,7 +21968,7 @@
                     },
                     {
                         "fromId": "6cd30cbe-d9a2-7648-c08e-fcb4a5350e57",
-                        "fromProperty": "navigated",
+                        "fromProperty": "done",
                         "toId": "d9b81358-7cb9-f49c-726b-cf12b316322b",
                         "toProperty": "sendEvent"
                     },

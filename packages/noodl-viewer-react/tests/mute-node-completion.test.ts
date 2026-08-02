@@ -177,6 +177,13 @@ describe('NDA-004: External Link', () => {
 /**
  * NDA-008 §3. Three ways to fail, all of them formerly silent — and the third is the one
  * authors actually hit, because a double-tapped back button lost its second tap without trace.
+ *
+ * ⚠️ **Updated by ERG-001 §4**, which adopted the outcome contract across the navigation family.
+ * Two things moved: every invocation now also emits `Completed`, and `success` (displaying
+ * "Popped") became `done` — §0.2 Result 2's one concept had six wire names and this was the
+ * sixth. The stack-at-root case became `Unchanged` rather than `Failure`, on the reasoning Build
+ * 2b applied to `Undo` at the beginning of history; the row below is updated to the shape the
+ * Component Stack actually returns now, and `erg-001-navigation-outcomes.test.ts` pins both ends.
  */
 describe('NDA-004 / NDA-008 §3: Pop Component Stack', () => {
   test('outside a pushed component, reports instead of doing nothing quietly', async () => {
@@ -185,7 +192,7 @@ describe('NDA-004 / NDA-008 §3: Pop Component Stack', () => {
     graph.node('node').setInputValue('navigate', true);
     await graph.settle(3);
 
-    expect(graph.signalsFor('node')).toEqual(['failure']);
+    expect(graph.signalsFor('node')).toEqual(['failure', 'completed']);
     expect(codesRaised(graph)).toContain('pop-component-stack/no-stack-in-scope');
   });
 
@@ -193,17 +200,15 @@ describe('NDA-004 / NDA-008 §3: Pop Component Stack', () => {
     const graph = await graphWith(NavigateBackModule, 'PageStackNavigateBack');
     const node = graph.node<NavigateBackInstance>('node');
     // What the Component Stack installs when it pushes this node's component.
-    node._internal.backCallback = () => ({
-      ok: false,
-      code: 'pop-component-stack/stack-at-root',
-      message: 'Nothing to pop'
-    });
+    node._internal.backCallback = () => ({ ok: false, unchanged: true });
 
     node.setInputValue('navigate', true);
     await graph.settle(3);
 
-    expect(graph.signalsFor('node')).toEqual(['failure']);
-    expect(codesRaised(graph)).toContain('pop-component-stack/stack-at-root');
+    // ERG-001 §4: still reported, and no longer as a failure. A Back button on the root
+    // component is a graph working exactly as written.
+    expect(graph.signalsFor('node')).toEqual(['unchanged', 'completed']);
+    expect(graph.errors).toEqual([]);
   });
 
   test('a pop during a transition reports, rather than losing the second tap', async () => {
@@ -218,7 +223,7 @@ describe('NDA-004 / NDA-008 §3: Pop Component Stack', () => {
     node.setInputValue('navigate', true);
     await graph.settle(3);
 
-    expect(graph.signalsFor('node')).toEqual(['failure']);
+    expect(graph.signalsFor('node')).toEqual(['failure', 'completed']);
     expect(codesRaised(graph)).toContain('pop-component-stack/transition-in-progress');
   });
 
@@ -235,7 +240,7 @@ describe('NDA-004 / NDA-008 §3: Pop Component Stack', () => {
     await graph.settle(3);
 
     expect(popped.length).toBe(1);
-    expect(graph.signalsFor('node')).toEqual(['success']);
+    expect(graph.signalsFor('node')).toEqual(['done', 'completed']);
   });
 
   test('a callback that returns nothing is treated as success, not failure', async () => {
@@ -249,7 +254,7 @@ describe('NDA-004 / NDA-008 §3: Pop Component Stack', () => {
     node.setInputValue('navigate', true);
     await graph.settle(3);
 
-    expect(graph.signalsFor('node')).toEqual(['success']);
+    expect(graph.signalsFor('node')).toEqual(['done', 'completed']);
   });
 });
 
@@ -266,7 +271,10 @@ describe('NDA-004 §2/§3: the ports exist', () => {
     { label: 'Close Popup', module: ClosePopupModule, type: 'NavigationClosePopup', done: 'success' },
     { label: 'Send Event', module: EventSenderModule, type: 'Event Sender', done: 'sent' },
     { label: 'External Link', module: ExternalLinkModule, type: 'net.noodl.externallink', done: 'success' },
-    { label: 'Pop Component Stack', module: NavigateBackModule, type: 'PageStackNavigateBack', done: 'success' }
+    // ERG-001 §4 renamed this one's `success` to `done`. The other three keep their names until
+    // their own slice of §4 reaches them — recorded here rather than left to look like an
+    // inconsistency someone should quietly "fix".
+    { label: 'Pop Component Stack', module: NavigateBackModule, type: 'PageStackNavigateBack', done: 'done' }
   ];
 
   /**

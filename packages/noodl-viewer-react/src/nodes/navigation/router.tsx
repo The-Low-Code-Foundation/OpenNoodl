@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import NoodlRuntime from '@noodl/runtime';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
+import type { NodeOutcome, OutcomeFailureOptions, OutcomeToken } from '@noodl/types';
 
 import type { TSFixme } from '../../../typings/global';
 
@@ -236,7 +238,9 @@ const RouterNode = {
       description: 'Re-reads the URL and rebuilds the current page from scratch',
       group: 'Actions',
       valueChangedToTrue: function () {
-        this.scheduleReset();
+        // ERG-001 §4. The token is minted **here and only here**, because this is the only
+        // caller of `scheduleReset` that is an author asking for a reset. See `scheduleReset`.
+        this.scheduleReset(this.beginOutcome());
       }
     }
   },
@@ -251,6 +255,16 @@ const RouterNode = {
     }
   },
   outputs: {
+    // ERG-001 §4 / OUTCOME-CONTRACT.md. §0.3 recorded this node as emitting **nothing at all**:
+    // `router.tsx` had zero `sendSignalOnOutput` calls, so a graph could not sequence anything
+    // after a `Reset` and could not tell a rebuild from a drop.
+    ...outcomeOutputs({
+      done: 'Fires once the page has been rebuilt, or its Page Inputs updated with new parameters',
+      unchanged:
+        'Fires when the Router is already showing that page with those parameters, so nothing needed rebuilding',
+      failure:
+        'Fires when the Router has no Pages, no start page, a start page it does not serve, or a routed component that is not a page'
+    }),
     currentPageTitle: {
       type: 'string',
       group: 'General',
@@ -283,23 +297,65 @@ const RouterNode = {
         this.flagOutputDirty(prop);
       }
     },
-    scheduleReset() {
+    /**
+     * ERG-001 §4 — **the token is optional, and that is the design.**
+     *
+     * `scheduleReset` has four callers and only one of them is the author's `Reset` port. The
+     * `pages` setter calls it, `popstate`/`hashchange` call it, and — the one that matters —
+     * `RouterHandler.registerRouter` calls `reset()` directly on mount so the start page is
+     * created (`router-handler.ts:83`). A mount that reported `Done` would pulse every chain in
+     * the app at boot, which is worse than the silence this contract exists to remove.
+     *
+     * So an invocation without a token reports nothing and still raises its diagnosis; see
+     * `_reportReset`.
+     *
+     * ⚠️ Tokens are collected in a **list**, not overwritten. Two `Reset` pulses in one frame
+     * coalesce into one rebuild, and Undo's lesson from Build 2b applies here too: coalescing
+     * the work is right, coalescing the outcomes loses an invocation the author made.
+     */
+    scheduleReset(outcome?: OutcomeToken) {
       const internal = this._internal;
+      if (outcome !== undefined) {
+        if (internal.pendingResetOutcomes === undefined) internal.pendingResetOutcomes = [];
+        internal.pendingResetOutcomes.push(outcome);
+      }
+
       if (!internal.hasScheduledReset) {
         internal.hasScheduledReset = true;
         this.scheduleAfterInputsHaveUpdated(() => {
           internal.hasScheduledReset = false;
-          this.reset();
+          const outcomes = internal.pendingResetOutcomes;
+          internal.pendingResetOutcomes = undefined;
+          this.reset(outcomes);
         });
       }
+    },
+    /**
+     * End a `Reset` invocation — or, on the mount path, end none.
+     *
+     * ⚠️ The four `failure` paths below each **already** called `raiseRuntimeError` (NDA-012).
+     * `reportOutcome` raises too, so the raise moved *into* it rather than sitting beside it —
+     * leave both and one drop puts two events on the error channel.
+     */
+    _reportReset(outcomes: OutcomeToken[] | undefined, outcome: NodeOutcome, options?: OutcomeFailureOptions) {
+      if (outcomes === undefined || outcomes.length === 0) {
+        // No author invocation to report to. The diagnosis still belongs on the channel: an
+        // unconfigured Page Router is diagnosed on mount, which is the only time anyone sees it.
+        if (outcome === 'failure' && options) {
+          this.raiseRuntimeError(options.code, options.message);
+        }
+        return;
+      }
+
+      for (const token of outcomes) this.reportOutcome(token, outcome, options);
     },
     createPageContainer() {
       const group = this.nodeScope.createPrimitiveNode('Group');
       group.setStyle({ flex: '1 0 100%' });
       return group;
     },
-    reset() {
-      this._internal.asyncQueue.enqueue(this.resetAsync.bind(this));
+    reset(outcomes?: OutcomeToken[]) {
+      this._internal.asyncQueue.enqueue(this.resetAsync.bind(this, outcomes));
     },
     scrollToTop() {
       const dom = this.getDOMElement();
@@ -325,11 +381,11 @@ const RouterNode = {
      * three cases — unconfigured, pointed at a page it does not own, or pointed at a component
      * that is not a page — so it owns the provenance.
      *
-     * ⚠️ No outcome *ports* are added here. Completion signals across the Visual family are one
-     * design gap with one collision sweep, and `OUTCOME-CONTRACT.md` / phase 35 `ERG-001` owns
-     * them. Naming them per-node now would mean naming them twice.
+     * ✅ **The outcome ports arrived with ERG-001 §4.** Each of the four raise-and-return paths
+     * below now carries the code it already raised through `reportOutcome`, and the successful
+     * path reports `Done`. ⚠️ `outcomes` is `undefined` on the mount path — see `scheduleReset`.
      */
-    async resetAsync() {
+    async resetAsync(outcomes?: OutcomeToken[]) {
       let component: string;
       let params = {};
 
@@ -355,15 +411,16 @@ const RouterNode = {
         // Unconfigured, rather than misconfigured: distinguish the two, because "you have not
         // filled in Pages yet" and "your Pages list has no start page" are different fixes.
         if (this._internal.pages === undefined) {
-          this.raiseRuntimeError(
-            'router/no-pages',
-            'This Router has no Pages configured, so it has nothing to show — add the components it should route between to its Pages list'
-          );
+          this._reportReset(outcomes, 'failure', {
+            code: 'router/no-pages',
+            message:
+              'This Router has no Pages configured, so it has nothing to show — add the components it should route between to its Pages list'
+          });
         } else {
-          this.raiseRuntimeError(
-            'router/no-start-page',
-            'This Router has no start page, so it has nothing to show on load — pick one in its Pages list'
-          );
+          this._reportReset(outcomes, 'failure', {
+            code: 'router/no-start-page',
+            message: 'This Router has no start page, so it has nothing to show on load — pick one in its Pages list'
+          });
         }
         return;
       }
@@ -376,10 +433,10 @@ const RouterNode = {
       // on every reset. A permanently blank router with no diagnostic.
       const targetPage = RouterHandler.instance.getPageInfoForComponent(component);
       if (targetPage === undefined) {
-        this.raiseRuntimeError(
-          'router/page-not-found',
-          `"${component}" is not a page of this Router, so it cannot be shown — check the Router's Pages list`
-        );
+        this._reportReset(outcomes, 'failure', {
+          code: 'router/page-not-found',
+          message: `"${component}" is not a page of this Router, so it cannot be shown — check the Router's Pages list`
+        });
         return;
       }
 
@@ -402,9 +459,18 @@ const RouterNode = {
         //already at the correct page, keep the current page
         //update page inputs if they have changed
         //TODO: fix if a parameter goes from a value to undefined, the old value will still exist in the connection from previous navigation
+        //
+        // ERG-001 §4 — the split between `Done` and `Unchanged` is here, and it is the
+        // parameters that decide it. "`Done`: the action happened and changed something."
+        // Updating the Page Inputs *is* a change, and a graph wiring `Done -> refetch` wants
+        // the pulse; a reset onto the identical page with identical parameters genuinely did
+        // nothing, and that is the case §0.3 collects.
         if (!shallowObjectsEqual(this._internal.currentParams, params)) {
           this._internal.currentParams = params;
           this._updatePageInputs(this._internal.currentPageComponent.nodeScope, params);
+          this._reportReset(outcomes, 'done');
+        } else {
+          this._reportReset(outcomes, 'unchanged');
         }
         return;
       }
@@ -439,12 +505,12 @@ const RouterNode = {
         this._internal.currentPageComponent = undefined;
         this.flagOutputDirty('currentPageComponent');
 
-        this.raiseRuntimeError(
-          'router/component-is-not-a-page',
-          `"${component}" cannot be shown by this Router: a routed component must contain exactly one Page node, and this one has ${
+        this._reportReset(outcomes, 'failure', {
+          code: 'router/component-is-not-a-page',
+          message: `"${component}" cannot be shown by this Router: a routed component must contain exactly one Page node, and this one has ${
             pageNodes === undefined || pageNodes.length === 0 ? 'none' : pageNodes.length
           }`
-        );
+        });
         return;
       }
 
@@ -468,6 +534,10 @@ const RouterNode = {
 				currentUrl: pageInfo.path,
 				currentTitle: pageInfo.title
 			});*/
+
+      // Last, after the page is on screen and its outputs are flagged — "the outcome is the last
+      // thing an action does" is the phase's most-repeated defect shape, closed here by placement.
+      this._reportReset(outcomes, 'done');
     },
     _updatePageInputs(nodeScope, params) {
       for (const pageInputNode of nodeScope.getNodesWithType('PageInputs')) {
@@ -739,7 +809,34 @@ const RouterNode = {
         await this._navigateInCurrentWindow(newPage, args);
       }
     },
+    /**
+     * ERG-001 §4 / NDA-008 §2 — **re-selecting the page already showing is a no-op.**
+     *
+     * ⚠️ §0.3 filed "`RouterNavigate` — Navigate to the current page" against `router.tsx`'s
+     * already-showing branch, and that branch is in **`resetAsync`**, not here. Measured: this
+     * method had no such check at all. A Navigate to the page already on screen destroyed the
+     * page component and built a fresh one — losing its state on a click that should have done
+     * nothing. That is NDA-008 §2's Component Stack finding, unfixed on the Router side, and
+     * §0.3's verdict was right about the node and wrong about the mechanism.
+     *
+     * Parameters are part of the question, for NDA-008 §2's reason: `/product/{id}` navigated
+     * to twice with different ids is the same page and must still rebuild.
+     *
+     * This is also the path the contract's navigation exception is *about*. It does not leave
+     * the page, so the graph that asked is still there to hear `Unchanged`.
+     */
     async _navigateInCurrentWindow(newPage: ComponentPageInfo, args: NavigateArgs) {
+      if (
+        shallowObjectsEqual(this._internal.currentPageSnapshot, _snapshotPageInfo(newPage)) &&
+        shallowObjectsEqual(this._internal.currentParams, args.params)
+      ) {
+        args.hasUnchanged && args.hasUnchanged();
+        return;
+      }
+
+      await this._buildPage(newPage, args);
+    },
+    async _buildPage(newPage: ComponentPageInfo, args: NavigateArgs) {
       this.scrollToTop();
 
       // Remove all current pages in the stack

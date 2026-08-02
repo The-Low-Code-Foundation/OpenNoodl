@@ -5,9 +5,11 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 import { EdgeTriggeredInput } from '@noodl/runtime';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 
 import type { StackBackResult } from './navigation-stack';
 
@@ -18,14 +20,16 @@ interface NavigateBackInstance extends NodeInstance {
     backActions?: string;
     backAction?: string;
     hasScheduledNavigate?: boolean;
+    /** ERG-001 §4 — tokens for the presses this frame; see `scheduleNavigate`. */
+    pendingOutcomes?: OutcomeToken[];
     /** Set by the Component Stack when this node's page is pushed; see navigation-stack. */
     backCallback?(args: { backAction: string | undefined; results: Record<string, unknown> }): StackBackResult;
     /** Message for the `Error` output; see NDA-004. */
     lastError?: string;
   };
-  scheduleNavigate(): void;
-  navigate(): void;
-  reportFailure(code: string, message: string): void;
+  scheduleNavigate(outcome: OutcomeToken): void;
+  navigate(outcome: OutcomeToken): void;
+  reportFailure(outcome: OutcomeToken, code: string, message: string): void;
   backActionTriggered(name: string): void;
   setResultValue(key: string, value: unknown): void;
 }
@@ -41,7 +45,7 @@ const NavigateBack: NodeDefinitionOptions = {
       group: 'Actions',
       description: 'Pops the enclosing Component Stack back to the component underneath',
       valueChangedToTrue: function (this: NavigateBackInstance) {
-        this.scheduleNavigate();
+        this.scheduleNavigate(this.beginOutcome());
       }
     },
     results: {
@@ -67,20 +71,19 @@ const NavigateBack: NodeDefinitionOptions = {
   },
   // NDA-004 §2/§3 + NDA-008 §3: this node took a signal and emitted none, so nothing could be
   // sequenced after a pop and a pop that did nothing looked identical to one that worked.
+  //
+  // ⚠️ ERG-001 §4 renamed `success` (displaying "Popped") to `done`. It was a sixth wire name for
+  // §0.2 Result 2's one concept, alongside `navigated` on the two Navigate nodes.
   outputs: {
-    success: {
-      type: 'signal',
-      displayName: 'Popped',
-      group: 'Events',
-      description: 'Fires once the stack has popped this component'
-    },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description:
-        'Fires when this node is not inside a pushed component, the stack is already at its first component, or a navigation is still animating'
-    },
+    ...outcomeOutputs({
+      done:
+        'Fires once the stack has popped this component. ⚠️ This node is destroyed with the ' +
+        'component it pops, so sequence anything that must survive the pop from the node that pushed it',
+      unchanged:
+        'Fires when the Component Stack is already showing its first component, so there was nothing to pop',
+      failure:
+        'Fires when this node is not inside a pushed component, or a navigation is still animating'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -95,14 +98,24 @@ const NavigateBack: NodeDefinitionOptions = {
     this._internal.resultValues = {};
   },
   methods: {
-    scheduleNavigate: function (this: NavigateBackInstance) {
+    scheduleNavigate: function (this: NavigateBackInstance, outcome: OutcomeToken) {
       const _this = this;
       const internal = this._internal;
+      // ERG-001 §4 — one token per press. `backActionTriggered` is a second author-facing
+      // trigger for the same action and mints its own, so a frame that carries both a plain
+      // `Navigate` and a back action reports twice, because it *was* asked twice.
+      if (internal.pendingOutcomes === undefined) internal.pendingOutcomes = [];
+      internal.pendingOutcomes.push(outcome);
+
       if (!internal.hasScheduledNavigate) {
         internal.hasScheduledNavigate = true;
         this.scheduleAfterInputsHaveUpdated(function () {
           internal.hasScheduledNavigate = false;
-          _this.navigate();
+          const outcomes = internal.pendingOutcomes || [];
+          internal.pendingOutcomes = undefined;
+          // The pop happens once; each press that asked for it gets its own report. Only the
+          // first can pop, so the rest land on the stack's end-stop and report `Unchanged`.
+          for (const token of outcomes) _this.navigate(token);
         });
       }
     },
@@ -119,7 +132,7 @@ const NavigateBack: NodeDefinitionOptions = {
      * That last one is the case authors actually hit, because a double-tapped back button
      * used to lose its second tap without trace.
      */
-    navigate(this: NavigateBackInstance) {
+    navigate(this: NavigateBackInstance, outcome: OutcomeToken) {
       // NDA-012 (Navigation). The back action describes *this* pop, so it is consumed here
       // rather than left standing. It used to latch: `backActionTriggered` wrote it and
       // nothing ever cleared it, so once a component had been popped through a back action,
@@ -132,6 +145,7 @@ const NavigateBack: NodeDefinitionOptions = {
 
       if (this._internal.backCallback === undefined) {
         return this.reportFailure(
+          outcome,
           'pop-component-stack/no-stack-in-scope',
           'No Component Stack to pop — this node only works inside a component that a Component Stack pushed'
         );
@@ -146,23 +160,26 @@ const NavigateBack: NodeDefinitionOptions = {
       // than `navigation-stack.tsx` could be installing it, and treating "told us nothing" as
       // a failure would be worse than assuming it worked.
       if (result && result.ok === false) {
-        return this.reportFailure(result.code, result.message);
+        // ERG-001 §4 — the stack at its root is an end-stop, not a drop. See `StackBackResult`.
+        if ('unchanged' in result) return this.reportOutcome(outcome, 'unchanged');
+        return this.reportFailure(outcome, result.code, result.message);
       }
 
-      this.sendSignalOnOutput('success');
+      this.reportOutcome(outcome, 'done');
     },
-    reportFailure(this: NavigateBackInstance, code: string, message: string) {
+    reportFailure(this: NavigateBackInstance, outcome: OutcomeToken, code: string, message: string) {
       this._internal.lastError = message;
-      this.raiseRuntimeError(code, message);
+      // Value first, signal last. `reportOutcome` puts the reason on the NDA-004 channel, so
+      // `raiseRuntimeError` is not called here as well — that would raise twice for one drop.
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
+      this.reportOutcome(outcome, 'failure', { code, message });
     },
     setResultValue: function (this: NavigateBackInstance, key: string, value: unknown) {
       this._internal.resultValues[key] = value;
     },
     backActionTriggered: function (this: NavigateBackInstance, name: string) {
       this._internal.backAction = name;
-      this.scheduleNavigate();
+      this.scheduleNavigate(this.beginOutcome());
     },
     registerInputIfNeeded: function (this: NavigateBackInstance, name: string) {
       if (this.hasInput(name)) {
