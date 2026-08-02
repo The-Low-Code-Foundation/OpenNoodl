@@ -9,6 +9,7 @@
 
 import { CatalogIndex } from '../../src/editor/src/validation/CatalogIndex';
 import type { NodeCatalog, CatalogNode, CatalogPort } from '../../src/editor/src/validation/CatalogIndex';
+import { loadDefaultCatalog } from '../../src/editor/src/validation/catalog';
 import { SemanticValidator } from '../../src/editor/src/validation/SemanticValidator';
 import { DiagnosticCode } from '../../src/editor/src/validation/diagnostics';
 import { NormNode, NormProject, buildComponentRefs } from '../../src/editor/src/validation/model';
@@ -327,13 +328,21 @@ describe('SUB-006 rules', () => {
   describe('signal-driven-stale-input', () => {
     const CONSUMER = [node('calc', 'Calc'), node('fetch', 'Fetcher'), node('btn', 'Trigger')];
 
+    /**
+     * ⚠️ The rule is `defaultEnabled: false` since ERG-001 — see its module header. Every case
+     * below opts it back in explicitly, so the logic stays covered while it is off by default.
+     * If it is ever re-enabled, these keep passing unchanged; `only` is not a workaround here,
+     * it is what keeps a disabled rule from rotting.
+     */
+    const ONLY = { only: new Set([DiagnosticCode.SignalDrivenStaleInput]) };
+
     it('flags a control signal that does not wait for an asynchronous producer', () => {
       const v = handValidator();
       const p = oneComponent(CONSUMER, [
         { fromId: 'fetch', fromProperty: 'items', toId: 'calc', toProperty: 'a' },
         { fromId: 'btn', fromProperty: 'onClick', toId: 'calc', toProperty: 'run' }
       ]);
-      const d = v.validate(p).diagnostics.find((x) => x.code === DiagnosticCode.SignalDrivenStaleInput);
+      const d = v.validate(p, ONLY).diagnostics.find((x) => x.code === DiagnosticCode.SignalDrivenStaleInput);
       expect(d).toBeDefined();
       expect(d!.severity).toBe('warning');
       expect(d!.location.port).toBe('a');
@@ -349,7 +358,7 @@ describe('SUB-006 rules', () => {
         { fromId: 'fetch', fromProperty: 'items', toId: 'calc', toProperty: 'a' },
         { fromId: 'fetch', fromProperty: 'success', toId: 'calc', toProperty: 'run' }
       ]);
-      expect(v.validate(p).diagnostics.some((x) => x.code === DiagnosticCode.SignalDrivenStaleInput)).toBe(false);
+      expect(v.validate(p, ONLY).diagnostics.some((x) => x.code === DiagnosticCode.SignalDrivenStaleInput)).toBe(false);
     });
 
     it('follows the completion signal through an intermediate node', () => {
@@ -361,7 +370,7 @@ describe('SUB-006 rules', () => {
       ]);
       // The backward walk is over-approximate on purpose: it concludes "waits" more often
       // than it should, so its failure mode is a missed report rather than a false one.
-      expect(v.validate(p).diagnostics.some((x) => x.code === DiagnosticCode.SignalDrivenStaleInput)).toBe(false);
+      expect(v.validate(p, ONLY).diagnostics.some((x) => x.code === DiagnosticCode.SignalDrivenStaleInput)).toBe(false);
     });
 
     it('reports once per producer, not once per port it feeds', () => {
@@ -371,7 +380,7 @@ describe('SUB-006 rules', () => {
         { fromId: 'fetch', fromProperty: 'count', toId: 'calc', toProperty: 'b' },
         { fromId: 'btn', fromProperty: 'onClick', toId: 'calc', toProperty: 'run' }
       ]);
-      const all = v.validate(p).diagnostics.filter((x) => x.code === DiagnosticCode.SignalDrivenStaleInput);
+      const all = v.validate(p, ONLY).diagnostics.filter((x) => x.code === DiagnosticCode.SignalDrivenStaleInput);
       expect(all.length).toBe(1);
     });
 
@@ -382,7 +391,7 @@ describe('SUB-006 rules', () => {
       const p = oneComponent(CONSUMER, [{ fromId: 'fetch', fromProperty: 'items', toId: 'calc', toProperty: 'a' }]);
       // With `run` unconnected the value setters are live, so there is nothing to be stale
       // relative to. This is the whole point of NDA-017 §2's default and must never warn.
-      expect(v.validate(p).diagnostics.some((x) => x.code === DiagnosticCode.SignalDrivenStaleInput)).toBe(false);
+      expect(v.validate(p, ONLY).diagnostics.some((x) => x.code === DiagnosticCode.SignalDrivenStaleInput)).toBe(false);
     });
 
     it('says nothing for a synchronous producer, which is the canonical correct graph', () => {
@@ -393,7 +402,7 @@ describe('SUB-006 rules', () => {
       ]);
       // A Button driving Run while the value comes from a field is the reporter's own working
       // graph. A rule that fires here is a rule nobody leaves switched on.
-      expect(v.validate(p).diagnostics.some((x) => x.code === DiagnosticCode.SignalDrivenStaleInput)).toBe(false);
+      expect(v.validate(p, ONLY).diagnostics.some((x) => x.code === DiagnosticCode.SignalDrivenStaleInput)).toBe(false);
     });
 
     it('says nothing for a node outside the Run On Value Change families', () => {
@@ -402,7 +411,77 @@ describe('SUB-006 rules', () => {
         { fromId: 'fetch', fromProperty: 'items', toId: 'w', toProperty: 'value' },
         { fromId: 'btn', fromProperty: 'onClick', toId: 'w', toProperty: 'onClick' }
       ]);
-      expect(v.validate(p).diagnostics.some((x) => x.code === DiagnosticCode.SignalDrivenStaleInput)).toBe(false);
+      expect(v.validate(p, ONLY).diagnostics.some((x) => x.code === DiagnosticCode.SignalDrivenStaleInput)).toBe(false);
+    });
+
+    /**
+     * ⚠️ Why this rule is off, pinned against the **real** catalog rather than the hand-built one.
+     *
+     * Every control above passes because `Widget` — the hand-built stand-in for a synchronous
+     * producer — declares no completion signal. In the shipped catalog after ERG-001, the
+     * synchronous producers *do*, and that is the whole defect. **The hand-built fixture is why
+     * this regression reached CI with a green unit suite**, so the guard has to read the real
+     * catalog or it guards nothing.
+     */
+    describe('⚠️ the asynchrony proxy, measured against the shipped catalog', () => {
+      const COMPLETION = ['success', 'done', 'completed', 'fetched', 'stored', 'saved'];
+      const realCatalog = () => loadDefaultCatalog();
+
+      it('is disabled by default, and stays disabled until the proxy is fixed', () => {
+        const rule = ALL_RULES.find((r) => r.code === DiagnosticCode.SignalDrivenStaleInput);
+        expect(rule).toBeDefined();
+        expect(rule!.defaultEnabled).toBe(false);
+      });
+
+      // ⚠️ This suite runs under **jasmine**, not jest — no `it.each`.
+      ['Expression', 'Condition', 'Counter', 'net.noodl.controls.textinput'].forEach((typeName) => {
+        it(`still misreads synchronous ${typeName} as asynchronous — fix this before re-enabling`, () => {
+          // These four are synchronous. Each acquired `done`/`completed` from ERG-001's outcome
+          // contract, which is what the rule reads as "the value lands later than the trigger".
+          // When a real asynchrony marker lands, this expectation flips to `toEqual([])` and the
+          // rule goes back to `defaultEnabled: true`.
+          expect(realCatalog().completionSignalOutputNames(typeName)).not.toEqual([]);
+        });
+      });
+
+      it('cannot be rescued by narrowing the port names', () => {
+        // Both directions fail, which is why the rule is disabled rather than retuned.
+        const narrow = (t: string) =>
+          realCatalog()
+            .completionSignalOutputNames(t)
+            .filter((n) => n !== 'done' && n !== 'completed');
+
+        // Synchronous, yet still matched by the narrowed set via `stored`/`saved`.
+        expect(narrow('Variable')).not.toEqual([]);
+        // Genuinely asynchronous, yet no longer matched at all.
+        expect(narrow('net.noodl.SSE')).toEqual([]);
+        expect(narrow('net.noodl.WebSocket')).toEqual([]);
+      });
+
+      it('would fire on the canonical latched counter, whose graph is correct', () => {
+        // `var-click-counter.json`, reduced: Expression.result → Number.value, Button → saveValue.
+        // The rule's suggested fix (Expression.completed → Number.saveValue) would make this
+        // increment on every recompute — an infinite feedback loop. The example is right.
+        const p = oneComponent([
+          node('counter', 'Number'),
+          node('plus_one', 'Expression'),
+          node('btn', 'net.noodl.controls.button')
+        ], [
+          { fromId: 'counter', fromProperty: 'savedValue', toId: 'plus_one', toProperty: 'count' },
+          { fromId: 'plus_one', fromProperty: 'result', toId: 'counter', toProperty: 'value' },
+          { fromId: 'btn', fromProperty: 'onClick', toId: 'counter', toProperty: 'saveValue' }
+        ]);
+        const fired = new SemanticValidator(realCatalog(), ALL_RULES)
+          .validate(p, ONLY)
+          .diagnostics.filter((x) => x.code === DiagnosticCode.SignalDrivenStaleInput);
+        expect(fired.length).toBe(1);
+
+        // And it stays silent in the shipped configuration, which is the point of disabling it.
+        const shipped = new SemanticValidator(realCatalog(), ALL_RULES)
+          .validate(p)
+          .diagnostics.filter((x) => x.code === DiagnosticCode.SignalDrivenStaleInput);
+        expect(shipped).toEqual([]);
+      });
     });
   });
 

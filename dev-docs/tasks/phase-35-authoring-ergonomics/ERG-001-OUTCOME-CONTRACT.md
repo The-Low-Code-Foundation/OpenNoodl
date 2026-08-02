@@ -13,6 +13,20 @@
 Make every action in the node library end in exactly one of `Done` / `Unchanged` / `Failure`, and
 give every action a universal `Completed` signal, so that a signal chain can never break in silence.
 
+> ⚠️ **A downstream consequence this spec did not anticipate, measured 2026-08-02.** Making
+> `Done`/`Completed` universal **broke NDA-017's `signal-driven-stale-input` validator rule**,
+> which read "publishes a completion signal" as its proxy for *the producer is asynchronous*. That
+> proxy was sound only while completion signals were rare. Node types carrying one went **53 → 97
+> of 153**, the rule began firing on four shipped examples including the canonical latched counter,
+> and `catalog:examples` went red in CI. The rule is now `defaultEnabled: false` and NDA-017
+> criterion 6 is **no longer met**; re-enabling needs a real asynchrony marker in the catalog. Full
+> measurement and the reasoning in
+> [`NDA-017-SIGNAL-INPUT-FRESHNESS.md`](../phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md#-the-asynchrony-proxy-is-dead-2026-08-02).
+>
+> The generalisable lesson: **a contract that makes a port universal destroys the information value
+> of that port for everything that was reading it as a discriminator.** Nothing in this spec is
+> wrong; the cost simply landed somewhere the spec never looked.
+
 ## Why this is not a set of patches
 
 Phase 30 fixed this defect one node at a time, eleven times, under four different task numbers, and

@@ -71,3 +71,22 @@ the two remaining routes are both project-level: `headCode` and `noodl_modules/`
 ⚠️ **Two of phase 30's twelve checks were being read wrongly and were corrected mid-phase** (`B1`
 last, `B3` on the final day). Before comparing any two categories' find rates, check which pre-fill
 each was audited under. Visual's and Navigation's numbers are not comparable with the rest.
+
+## Corrections this phase carries *out*
+
+🔴 **ERG-001 broke NDA-017 criterion 6, and phase 30's file has been corrected to say so.**
+Measured 2026-08-02 during closeout. The outcome contract made `Done`/`Completed` universal, which
+is exactly the signal NDA-017's `signal-driven-stale-input` rule read as *"this producer is
+asynchronous"*. Node types carrying a completion signal went **53 → 97 of 153**; the rule started
+firing on four shipped examples — including the canonical latched counter, where its suggested fix
+is an infinite loop — and `catalog:examples` went red in CI.
+
+The rule is now `defaultEnabled: false`, its tests read the **real** catalog instead of a
+hand-built one (which is why a green unit suite missed this), and re-enabling needs a structured
+asynchrony marker in the catalog. **That marker is open work and wants a decision on where it
+lives.** See
+[NDA-017 § The asynchrony proxy is dead](../phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md#-the-asynchrony-proxy-is-dead-2026-08-02).
+
+The lesson generalises past this phase: **a contract that makes a port universal destroys the
+information value of that port for everything that was reading it as a discriminator.** Worth
+checking before the next library-wide port addition.

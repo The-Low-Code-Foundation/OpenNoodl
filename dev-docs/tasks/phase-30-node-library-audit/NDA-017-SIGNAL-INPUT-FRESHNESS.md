@@ -33,6 +33,12 @@
 > task.** See [§3 — live QA](#3--live-qa). If you take one thing from this file: the corpus set
 > checkboxes with `setInputValue` on a graph that was already built, and a *saved project*
 > applies the parameter first. That single ordering difference was the whole gap.
+>
+> 🔴 **SUPERSEDED, 2026-08-02: criterion 6's rule is now `defaultEnabled: false`.** Phase 35's
+> ERG-001 outcome contract made `done`/`completed` universal on every action, and that is the
+> exact signal the rule reads to mean *asynchronous*. The proxy no longer distinguishes anything.
+> **Criterion 6 is no longer met**; §2's checkbox half is untouched and still is. See
+> [The asynchrony proxy is dead](#-the-asynchrony-proxy-is-dead-2026-08-02) below.
 
 ## The report
 
@@ -434,6 +440,66 @@ method.
    `eval` driven by something that does not wait for `fetched`, and a `Function` reading a
    collection the same way. Three of the seven test rows are controls, each a graph the literal
    reading would have flagged.
+
+## 🔴 The asynchrony proxy is dead (2026-08-02)
+
+Measured during phase 35's closeout, while testing ERG-001. **Criterion 6's rule is disabled and
+the criterion is no longer met.** Recorded here rather than in a report, because the next person to
+read this file must not inherit "all six criteria are met".
+
+### What happened
+
+The rule's second condition defines *asynchronous* as **the producer publishes a completion
+signal** — `success`, `done`, `completed`, `fetched`, `stored`, `saved`. That was a sound proxy in
+phase 30, when only nodes doing deferred work bothered to declare one.
+
+Phase 35's **ERG-001 outcome contract** then gave every adopting action a `Done` and a `Completed`
+port from one helper (`noodl-runtime/src/outcome.ts`). Node types carrying a completion signal went
+**53 → 97 of 153**. The 44 that newly qualify include `Expression`, `Condition`, `Counter`,
+`Group`, `Switch` and `net.noodl.controls.textinput` — every one of them synchronous.
+
+The rule then fired on four shipped examples and turned `catalog:examples` (CI, `pr.yml:137`) red:
+
+| Example | The graph | Why the rule is wrong |
+|---|---|---|
+| `function-compute-on-run` | Text Input → `Function.amount`, Button → `run` | **Verbatim the graph the rule's own header names as the thing it must never flag** — *"including the reporter's own working graph"* |
+| `var-click-counter` | `Expression.result` → `Number.value`, Button → `saveValue` | The canonical latched counter. The rule's suggested fix, `Expression.completed → Number.saveValue`, would make it increment on every recompute — an **infinite feedback loop** |
+| `validate-before-submit` | `Expression` → `Condition.condition` | Same shape |
+| `var-remember-name-across-screens` | Text Input → `String.value` | Same shape |
+
+⚠️ `CatalogIndex.completionSignalOutputNames` already refused to treat `failure` as an async
+marker, *"[because] plenty of synchronous nodes report a failure — `Expression` raises one for a
+compile error"*. ERG-001 produced that exact sweep, on that exact node, through the other door.
+**The guard was right about the risk and wrong about which door.**
+
+### Why disabled rather than retuned
+
+There is no sound narrowing left in the port names. Dropping to `success`/`fetched`/`stored`/`saved`
+fails in **both** directions:
+
+- it still sweeps in synchronous `Variable`, `Component State`, `net.noodl.ComponentObject`, which
+  carry `stored`/`saved`;
+- it now misses genuinely asynchronous `net.noodl.SSE` and `net.noodl.WebSocket`, which after the
+  contract carry only the universal pair.
+
+The rule's logic is unchanged and still correct. Only its input predicate is broken.
+
+### What re-enabling needs
+
+A real asynchrony marker the catalog carries in its own right, rather than one inferred from port
+names. Asynchrony is precisely *"what the source cannot know"* statically, which is the enrichment
+catalog's stated remit; `runtimeBehavior` is the natural home but is prose today and would need a
+structured field. Roughly 150 node types to classify — task-sized, and it wants a decision from
+Richard on where the field lives before anyone starts.
+
+### ⚠️ Why a green unit suite did not catch this
+
+`rules.test.ts` exercises the rule against a **hand-built** catalog whose synchronous stand-in
+(`Widget`) declares no completion signal. Every control passed while the shipped catalog was
+broken. The guard has been rewritten to read the **real** catalog: four cases now pin the
+misclassification, one pins `defaultEnabled === false`, one pins that narrowing cannot rescue it,
+and one reconstructs `var-click-counter` and asserts the rule fires on it. **When a real marker
+lands, those tests fail loudly** — which is the signal to flip the rule back on.
 
 ## Out of scope
 
