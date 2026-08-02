@@ -4,7 +4,8 @@
   "description": "Model Context Protocol server exposing NodeGX (OpenNoodl) v2 projects to external AI agents.",
   "main": "src/index.ts",
   "bin": {
-    "noodl-mcp": "./bin/noodl-mcp.js"
+    "noodl-mcp": "./bin/noodl-mcp.js",
+    "nodegx-observe": "./bin/nodegx-observe.js"
   },
   "files": [
     "bin",

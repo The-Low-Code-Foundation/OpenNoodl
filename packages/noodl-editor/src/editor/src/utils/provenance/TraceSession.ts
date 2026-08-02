@@ -115,8 +115,23 @@ export class TraceSession extends Model {
       'TraceEvents',
       ({ events }) => {
         if (!Array.isArray(events) || events.length === 0) return;
-        this.traceEvents = this.traceEvents.concat(events);
-        this.lastSeq = Math.max(this.lastSeq, events[events.length - 1].seq);
+
+        // ⚠️ **Not every batch that arrives here was asked for by this panel.** The relay
+        // broadcasts viewer traffic to *every* editor peer, and OBS-004 adds a second one:
+        // an MCP server pulling the buffer for an agent. Its reply lands here too, and the
+        // reply to a first pull is the whole buffer — so concatenating blindly would double
+        // every event the panel already had, and with it every `fired N×` count. The
+        // aggregation exists precisely so one row can say "fired 100×" instead of showing
+        // 100 rows; silently doubling it is the failure mode that surface cannot afford.
+        //
+        // `seq` is monotonic across the whole session and never resets when the ring wraps,
+        // so it is a sound identity. Filtering rather than de-duplicating a merged list keeps
+        // this O(batch).
+        const fresh = events.filter((event: TraceEventLike) => event.seq > this.lastSeq);
+        if (fresh.length === 0) return;
+
+        this.traceEvents = this.traceEvents.concat(fresh);
+        this.lastSeq = fresh[fresh.length - 1].seq;
         this.notifyListeners('eventsChanged');
       },
       this

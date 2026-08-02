@@ -343,7 +343,12 @@ export function backwardWalk(index: WalkIndex, target: EdgeRef, options: WalkOpt
 
   const mode: WalkResult['mode'] = lastArrival ? 'causal' : 'structural';
 
-  if (mode === 'causal') {
+  // Branch on `lastArrival` rather than on `mode`, even though the two are equivalent by
+  // construction: only the first narrows the type. OBS-004 compiles this file under
+  // `strictNullChecks` (the editor's own tsconfig does not), where the `mode` form is an
+  // error — and the equivalence is exactly the kind that survives until someone adds a third
+  // mode.
+  if (lastArrival) {
     // `lastArrival` is the edge that delivered the value sitting on this port. Everything
     // upstream of it is the cause chain, which is exact and linear.
     appendCauseChain(index, root, lastArrival, maxDepth);

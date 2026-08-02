@@ -103,6 +103,31 @@ function startWebSocketServer(server, options) {
           _handle.authorised = true;
         }
 
+        // OBS-004 — "who is connected?", answered by the relay itself.
+        //
+        // The relay is the only party that knows. A peer that attaches *after* the preview
+        // has already registered never sees its `nodelibrary` announcement, and there was no
+        // other way to learn a viewer's clientId — which every pull on the trace channel
+        // requires, because the runtime self-filters on it.
+        //
+        // ⚠️ The obvious alternative, `cmd: 'refresh'`, is destructive: the viewer handles it
+        // by reloading the page, which clears the very trace buffer the caller connected to
+        // read. Discovery must not have side effects on the thing being observed.
+        //
+        // Answered only to the asking socket, and only with ids and peer types — no project
+        // content crosses this, and an unauthorised socket never reaches this line.
+        if (request.cmd === 'clients') {
+          ws.send(
+            JSON.stringify({
+              cmd: 'clients',
+              clients: connectedSockets
+                .filter((s) => s.authorised && s.clientId)
+                .map((s) => ({ clientId: s.clientId, type: s.type }))
+            })
+          );
+          return;
+        }
+
         if (request.cmd === 'register') {
           _handle.type = request.type;
           _handle.clientId = request.clientId;
