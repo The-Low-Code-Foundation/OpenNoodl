@@ -1,133 +1,160 @@
-# Next-session prompt — start attacking phase 30's remainder
+# Next-session prompt — ERG-001 §4, starting with the rename
 
-Paste the block below. Everything above the rule is context for choosing; everything below it is the
-prompt.
+**Replaces** the phase-30-remainder prompt that stood here. That work is discharged: stream A
+closed, NDA-012 Visual closed, NDA-014 and NDA-017 closed, phase 30 bookkeeping closed
+(`53434356`). Everything below is phase 35.
+
+Paste the block under the rule. Everything above it is context for choosing.
 
 ## Choosing the slice
 
-Five decisions landed on 2026-08-01 and they split the remaining work into three streams:
+`ERG-001` §0, §1 and §2 landed on 2026-08-02 (`b00c3d4a` → `5f94894c`). What remains splits three
+ways:
 
 | Stream | Contents | State |
 |---|---|---|
-| **A — decided and cheap** | Repeater clears on empty · delete `shortDesc` · `Page Router` reset · `Dropdown` items setter · the three one-liners | Pinned, measured, no design work left |
-| **B — decided and large** | `ERG-001` outcome contract · `NDA-017 §2` run-on-value-change | Specced 2026-08-01, needs a §0 measurement pass first |
-| **C — standing priority** | Finish **phase 34** before the alpha (Richard, 2026-08-01) | Separate track, separate specs |
+| **A — finish the rename** | 6 nodes still carrying a misnamed `Done` | Decided, measured, **breaking**, small |
+| **B — the adoption sweep** | §4 across the other ~72 actions, then §3 and §5 | Decided, large, batchable |
+| **C — the other Tier 1** | `ERG-002` external libraries | Independent; no decision outstanding |
 
-**Recommended first slice: stream A.** Every item is already measured and pinned, the two worst
-symptoms in the library are in it, and it contains no decision. It is also the only stream that can be
-done without reading a new contract first.
+**Recommended first slice: stream A, then as much of B as fits.**
 
-⚠️ **The one exclusion that matters.** Do **not** add completion signals to the seven Visual nodes that
-lack them (**DV-viii**). That is one design gap, not seven defects, and `ERG-001` owns it — patching
-them now means doing them twice with two different port names. `ERG-001 §0`'s collision sweep is what
-decides those names.
+The rename is a breaking change to wire names, and the library is currently **half renamed** — the
+Array family says `done` and six other nodes still say `stored` / `created` / `completed`. That
+window is the worst state to leave it in: a project authored this week against
+`SetModelProperties.stored` has to be migrated twice. Doing the six together closes it, and it is a
+few hours' work rather than the sweep's several days.
+
+⚠️ **Two of the six are not a pure rename** — see the prompt.
 
 ---
 
 ## The prompt
 
-Continue phase 30's remediation on branch `cline-dev` in `/Users/richardosborne/vscode_projects/OpenNoodl`.
-Tip: `ce582305` plus the 2026-08-01 documentation commit. One worktree, three branches, clean tree —
-**an uncommitted file is orphaned work, not another session's; read it, then commit or discard it
-deliberately.**
+Continue `ERG-001` (phase 35) on branch `cline-dev` in `/Users/richardosborne/vscode_projects/OpenNoodl`.
+Tip `5f94894c`, clean tree, one worktree. **An uncommitted file is orphaned work, not another
+session's — read it, then commit or discard it deliberately.**
 
 **Read first, in this order:**
 
-1. `dev-docs/tasks/phase-30-node-library-audit/PROGRESS.md` — the **Decisions** section, items 7–11.
-   Five questions were answered on 2026-08-01 and two of them overrode the recommendation. The newest
-   log entry is always more current than any handover.
-2. `dev-docs/tasks/phase-30-node-library-audit/NEXT-SESSION-HANDOVER.md` §3 — the fix order, with each
-   defect's citation.
-3. `dev-docs/reference/OUTCOME-CONTRACT.md` — **only so you know what not to touch.** It is not this
-   session's work.
+1. `dev-docs/reference/OUTCOME-CONTRACT.md` — the decision. Rules 1–4 are the whole spec.
+2. `dev-docs/tasks/phase-35-authoring-ergonomics/ERG-001-S0-MEASUREMENT.md` — **§0's table is this
+   task's scope.** Read §0.2 (the collision sweep) and the §1/§2 record at the bottom before
+   touching anything. It is more current than this prompt.
+3. `packages/noodl-runtime/src/outcome.ts` and `Node.prototype.reportOutcome` in
+   `packages/noodl-runtime/src/node.ts` — the one implementation. Do not add a second.
+4. `packages/noodl-viewer-react/src/nodes/std-library/data/collectionnode-insert.ts` — the reference
+   implementation, and `tests/corpus/erg-001-outcome-contract.test.ts` for the row style.
 
-**Build, in this order. Each item's defect is already measured; do not re-derive it, but do verify the
-citation still points at the code it describes.**
+### Build 1 — finish the rename (6 nodes), re-derived from the catalog on 2026-08-02
 
-1. **`Page Router`'s `resetAsync`** — `RT-1`/`RT-2`/`RT-3`, already pinned with controls in
-   `nda-012-page-router-reset.test.ts`, so the fix is guarded before it is written. An unconfigured
-   router **throws a `TypeError`** (`_internal.pages` guarded on `router.tsx:272`, dereferenced bare on
-   `:284`, in the else branch of the same `if`). A start page missing from the router index is compared
-   by *identity* against the current page, and on a fresh router both sides are `undefined`, so
-   "resolved nothing" reads as "already showing it" and the router stays **permanently blank**. These
-   are the two worst symptoms in the category. NDA-004 §2 gave `navigateAsync` a full failure channel
-   and never touched `resetAsync`, which is the path that runs *first*.
-2. **`Dropdown`'s `items` setter** (`options.ts:57-67`) — one rewrite closes three defects:
-   `Items = null` throws, a re-sent collection leaves two `change` listeners, and the listener is never
-   removed on delete. Use the `addDeleteListener` shape `Drag` already uses.
-3. **`Repeater`'s `items`** (`foreach.tsx:212`) — ✅ **decided by Richard on 2026-08-01: it clears.**
-   Empty array, `null`, anything falsy. `if (!value) return;` is the truthiness test `DC-iii` warns
-   against by name, so today a query that came back empty leaves the previous list on screen. No
-   dual-path, no back-compat branch — *"we're not catering to existing projects anymore"*.
-4. **Delete `shortDesc`** — ✅ decided. Fifty declarations across the three runtime packages, zero
-   readers: it is in the catalog for no core node, so `ContextBuilder`'s `?? node.shortDesc` cannot
-   fire, and nothing in the editor's own interface reads it either (re-checked 2026-08-01). Delete the
-   field and its declarations; do not wire it up.
-5. **`Icon`'s padding (DV-ii)** — delete the non-zero defaults from `icon.ts` and `button.ts` and let
-   the stylesheet own it. ⚠️ **Read DV-ii's correction before touching this**: Button's padding is
-   specified twice, in two files, and **only `assets/style.css:24` is load-bearing** — change the port
-   default and nothing moves. `Icon` has no such rule, computes `0px`, and is the node the defect
-   actually costs. The other option (dropping `applyDefault: false`) makes both copies live; this one
-   removes the duplicate.
-6. **The three one-liners** — `Component Stack`'s `Clip Content` (DV-iii), `Radio Button Group`'s `G1`
-   (`value?.toString`), `Slider`'s `valuePercentChanged` comparing against a field nothing writes.
-   ⚠️ On the last one: PLAT-003 slice 10 found that exact bug, wrote four lines explaining it, and kept
-   it verbatim in the **deprecated** `range.tsx` without ever looking at the live node. Fix the live one.
+| Node | Today | Becomes |
+|---|---|---|
+| `NewModel` — Create New Object | `created` | `done` |
+| `SetModelProperties` — Set Object Properties | `stored` | `done` |
+| `net.noodl.SetComponentObjectProperties` | `stored` | `done` |
+| `net.noodl.SetParentComponentObjectProperties` | `stored` | `done` |
+| `net.noodl.GlobalStore.Set` | `completed` | `done` **+ a real `completed`** |
+| `net.noodl.ActionDispatcher` | `completed` | see below **+ a real `completed`** |
 
-**Out of scope this session, deliberately:**
+Richard decided both halves on 2026-08-02: unify the wire name on `done`, and rename the two
+`Completed`-that-means-`Done` ports rather than exempting them from the contract.
 
-- ❌ **The seven Visual nodes with no completion signal (DV-viii).** `ERG-001` owns them; its `§0`
-  collision sweep decides the port names. Patching them now means doing them twice.
-- ❌ `ERG-001`…`ERG-005` (`dev-docs/tasks/phase-35-authoring-ergonomics/`), `NDA-017 §2`,
-  `NDA-005 §2`, `NDA-010 §1`.
-- ❌ **Do not re-baseline the TSFixme ratchet.** It is RED at the inherited `any +35` /
-  `@ts-expect-error +1`. **+28 of the +35 is phase 30's own corpus test files** —
-  `nda-016-layout-sizemode.test.ts` (+12), `nda-004-navigation-failure.test.ts` (+9),
-  `nda-008-stack-replace-transition.test.ts` (+7). Typing those three takes it most of the way to
-  green and is a legitimate optional extra; re-baselining is not.
+⚠️ **The last two are not pure renames.** On both, `completed` fires *only* on success and is
+mutually exclusive with `failure` (`globalstoresetnode.ts:178` vs `:190-195`;
+`actiondispatchernode.ts:80-96`). So the existing port becomes `done` and a genuinely universal
+`completed` is minted beside it. ⚠️ **`ActionDispatcher` is harder still**: its `completed` is
+per-*action*, not per-invocation of the node's own `Dispatch` input, so the two are different
+granularities and `actionDone` (or similar) may be the honest name. Decide it in the open and write
+down why.
 
-**Gates — measure all eight before you start and again at the end, and report both numbers:**
+⚠️ **A rename has two sides, and §0's sweep only swept one.** It searched for the names being
+*reserved*, not the names being *renamed away from*, and missed
+`packages/noodl-editor/tests/testfs/git-repo-utf8/project.json` wiring `CollectionInsert.modified`
+five times. `test:ci` went red. **Before renaming: grep every project JSON for `stored`, `created`
+and `completed` as `fromProperty`/`toProperty` on these six types.** Known casualty:
+`library/prefabs/supabase` wires `SetModelProperties.stored -> Component Outputs.Done`.
 
-`packages/noodl-runtime` jest (93/94 suites, 1750 passing) · `packages/noodl-viewer-react` jest
-(39 suites, 437 passing) · runtime typecheck · viewer-react typecheck (`--skipLibCheck`) ·
-`catalog:check` · `catalog:merge:check` · `cloud-library:check` · editor `test:ci` (2000 specs).
+⚠️ **Edit large fixture JSON by line, not by `json.dump`.** Reformatting rewrote 27,000 lines for a
+5-line change and had to be reverted.
 
-⚠️ **The bar is 0 failures *and* no new noise.** The Data batch grew *"a worker process has failed to
-exit gracefully"* alongside a green count and it took a bisect to find the cause.
+### Build 2 — the adoption sweep, as far as it goes
 
-**Live QA is required, not optional.** Every behavioural claim in this list needs the running editor,
-and phase 30's own headline finding was disproved by it. Also still owed from the Visual salvage, and
-fair to fold in: `Image`'s `On Error` reporting (needs a real DOM `error` event) and `Drag`'s
-`scale || 1` fallback plus snap-timer cleanup (need a frame clock). The recipe:
+§0's 82-row table is the scope; §4 of `ERG-001-OUTCOME-CONTRACT.md` says how to batch it (disjoint
+file sets per worker, catalog and enrichment taken away from workers and merged centrally). Suggested
+order, highest value first:
+
+1. **The seven Visual nodes with no completion signal (DV-viii)** — `Router`, `Page Stack`, `Video`,
+   `Drag`, `Text Input`, `Group`, `Checkbox`, plus `Page` and `State History`. These were held back
+   through all of phase 30 *waiting for these port names*, and the names now exist. `Completed`-only
+   for most; `Checkbox` also needs `Unchanged` (`checkbox.ts:77`, `:92` return silently when already
+   in that state).
+2. **The confirmed `Unchanged` register** in §0.3 — `Counter` at its limits, `Switch` already in
+   state, `Timer.Start` on a running timer, `WebSocket`/`SSE` disconnect when not connected,
+   `Undo`/`Redo` at the end of history, `Navigate` to the current page. Every one is **silent**
+   today, so each is a dead chain as well as a missing outcome.
+3. Everything else, by category.
+
+Then **§3** (`Treat Unchanged as`, following NDA-003's shape on the Variables nodes — ⚠️ a declared
+`default` does not run its setter, FINDINGS **A-D1**) and **§5** (the validator's dead-end check;
+`description` on every new port).
+
+### Rules that are not negotiable
+
+- **Corpus rows before ports**, each red first with a green control beside it, and **predict which
+  rows a revert reddens before running it**. Both reverts last session were run; one prediction
+  missed and the reason is recorded — do the same rather than skipping the check.
+- **`sendSignalOnOutput`, never `flagOutputDirty`**, on a signal output (FINDINGS **SR-v**). The
+  helper already does this; do not bypass it.
+- **The outcome is the last thing an action does.** Flag values dirty first.
+- **No `Failure` on a node that cannot fail, no `Unchanged` on one that cannot no-op.** `Completed`
+  has no exemption.
+
+### Gates — measure all eight before you start and again at the end, and report both numbers
+
+`packages/noodl-runtime` jest (**94 suites, 1767 passing, 13 skipped**) · `packages/noodl-viewer-react`
+jest (**51 suites, 598 passing**) · `typecheck:runtime` · viewer-react typecheck
+(`npx tsc -p packages/noodl-viewer-react --noEmit --skipLibCheck`) · `typecheck:cloud` ·
+`catalog:check` · `catalog:merge:check` · `cloud-library:check` · editor `test:ci` (**2007 specs**).
+
+⚠️ **The bar is 0 failures *and* no new noise.** ⚠️ `catalog:check` passes while the other two are
+stale — run all three, and remember the **enrichment files** (`docs/node-catalog/enrichment/*.json`)
+name ports explicitly; a rename reddens `catalog:merge:check`, not `catalog:check`.
+
+**Standing traps:** run `noodl-runtime`'s jest from **inside the package** (`cd packages/noodl-runtime
+&& npx jest --reporters=summary`) — a bare `npx jest` from the root reads 94 suites failing and means
+nothing. Build `dist-types` first (`npm run build:types`). ⚠️ **`graph-harness` does not call a
+module's `setup`, and 45 of the 82 actions are dynamic-port nodes** — a row that needs the real port
+set has to register it another way. Scope greps to `packages/*/src`.
+
+### Live QA is required, and one half is already owed
+
+The editor half is done and recorded: picker and canvas both show `Done`/`Completed`/`Unchanged`.
+**Owed: criterion 8's running-preview half** — one graph where a duplicate insert continues through
+`Completed` and stops at `Done`. Fold it in.
 
 ```bash
+npm run build --prefix packages/noodl-viewer-react   # or a deployed app keeps the old ports
 nohup npm run dev:debug -- --quiet > /dev/null 2>&1 &
 until grep -q "launching Electron" .logs/dev.log; do sleep 15; done; sleep 30
 npm run cdp -- health
-npm run cdp -- click "[class*=Projects-module__Grid] > *:nth-child(4)"   # open a scratch project
-npm run cdp -- eval "Object.keys(window).filter(k=>/Noodl|NodeLibrary|Graph/i.test(k))"
-npm run cdp -- eval "…" --target=viewer                                  # computed styles
+npm run cdp -- click "[class*=Projects-module__Grid] > *:nth-child(8)"    # bcn010-live
+npm run cdp -- click "[class*=EditorTopbar-module__is-padded-s] button[class*=IconButton-module__Root]"
+npm run cdp -- type "input[placeholder*='Search nodes']" "Insert Object"
 npm run dev:stop
 ```
 
-⚠️ `cdp click` takes a **CSS selector only** (`text=Foo` is a syntax error) and the launcher's card
-classes are hashed, so `[class*=…] > *:nth-child(n)` is the reliable form. ⚠️ **A dev launch rewrites
-the project it opens** — use `VerifyFix3`/`VerifyFix4`/`bcn010-live`. ⚠️ `--target=editor` is the
-default and correct; `--target=dashboard` is stale advice. ⚠️ Only one editor at a time
-(`lsof -i :8574`); launch detached; **never `cdp reload`**; `npm run dev:stop` when done.
+⚠️ `cdp click` takes a **CSS selector only**. ⚠️ `cdp eval` already declares `t` — name your
+variables anything else, and wrap in an IIFE. ⚠️ **`packages/noodl-editor/src/external/` holds stale
+duplicate folders `viewer 3/`, `deploy 2/`, `ssr 3/` dated 2025-12-06 that no build writes to** —
+grepping them says a rebuild failed when it succeeded. The live paths are `viewer/`, `deploy/`,
+`ssr/`. ⚠️ Only one editor at a time (`lsof -i :8574`); launch detached; never `cdp reload`;
+`npm run dev:stop` when done.
 
-**Standing traps:** `catalog:check` can pass while `catalog:merge` and `cloud-library:check` are stale —
-run all three. `noodl-runtime`'s bare `npx jest` crashes in `@jest/reporters`; use a minimal reporter.
-Build `noodl-runtime`'s `dist-types` first or corpus suites do not start and the run reads short. Scope
-greps to `packages/*/src` — the root hits the minified `noodl.deploy.js`. ⚠️ **`noodl.deploy.js` is a
-gitignored artifact nothing rebuilds**, so a viewer change does not reach a deployed app until
-`npm run build --prefix packages/noodl-viewer-react` runs. ⚠️ `graph-harness` does not call a module's
-`setup` — three phase-30 findings lived there.
+**Commit straight to `cline-dev`**, one commit per node or per coherent family, pathspec-scoped.
+⚠️ **~860 commits exist only on this machine and Richard has said "leave it — I'll handle the
+remote". Do not push; do not re-litigate it.**
 
-**Commit straight to `cline-dev`**, one commit per item, pathspec-scoped. ⚠️ **857 commits exist only
-on this machine and Richard has said "leave it — I'll handle the remote". Do not push; do not
-re-litigate it.**
-
-**Update on the way out:** `PROGRESS.md`'s log and the NDA-012 cell, `audit/visual.md`'s verdicts for
-anything fixed, and `NEXT-SESSION-HANDOVER.md`. **31 Visual defects were filed and this session should
-close six of them — say which, by name, and which of the 31 remain.**
+**Update on the way out:** the §1/§2 record at the bottom of `ERG-001-S0-MEASUREMENT.md` (add a §4
+section), and this prompt. **Say how many of §0's 82 actions now satisfy the contract, and which
+remain.**
