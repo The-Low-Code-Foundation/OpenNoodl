@@ -26,6 +26,23 @@ interface DebugInspector {
   connection?: { fromId: string; fromProperty: string };
 }
 
+/** One port whose current value OBS-002's layer 1 wants. */
+interface PortValueRequest {
+  node: string;
+  port: string;
+  direction: 'input' | 'output';
+}
+
+/**
+ * ⚠️ `exists: false` is not the same as `value: undefined`. A port that is absent (the graph
+ * changed, or the node never declared it) must read differently in the walk from a port that
+ * is genuinely holding `undefined`, which is a common and meaningful state in this runtime.
+ */
+interface PortValueResult extends PortValueRequest {
+  exists: boolean;
+  value: string | undefined;
+}
+
 /**
  * The runtime's single per-application object: node register, scheduler, global values,
  * component models, and the editor channel.
@@ -105,6 +122,7 @@ interface NodeContext extends RuntimeNodeContext {
   ): number;
   buildSessionDictionary(): SessionDictionary;
   getTraceEvents(afterSeq?: number): TraceEvent[];
+  getPortValues(ports: PortValueRequest[]): PortValueResult[];
   clearTrace(): void;
   sendGlobalEventFromEventSender(channelName: string, inputValues: unknown): void;
   setPopupCallbacks(callbacks: { onShow: (group: any) => void; onClose: (group: any) => void }): void;
@@ -252,6 +270,18 @@ const NodeContext = function NodeContext(this: NodeContext, args?: NodeContextAr
     this.editorConnection.on('getTraceEvents', ({ clientId, afterSeq }) => {
       if (this.editorConnection.clientId !== clientId) return;
       this.editorConnection.sendTraceEvents(this.getTraceEvents(afterSeq).map(toWireEvent));
+    });
+
+    // OBS-002. A consumer attaching to a trace already in progress needs the topology, and
+    // `setTraceEnabled` only sends it on the transition.
+    this.editorConnection.on('getTraceDictionary', ({ clientId }) => {
+      if (this.editorConnection.clientId !== clientId) return;
+      this.editorConnection.sendTraceDictionary(this.buildSessionDictionary());
+    });
+
+    this.editorConnection.on('getPortValues', ({ clientId, ports }) => {
+      if (this.editorConnection.clientId !== clientId) return;
+      this.editorConnection.sendPortValues(this.getPortValues(ports));
     });
   }
 } as unknown as NodeContextConstructor;
@@ -734,6 +764,58 @@ NodeContext.prototype.buildSessionDictionary = function () {
   }
 
   return dictionary;
+};
+
+/**
+ * Read the *current* value of a batch of ports (OBS-002 layer 1).
+ *
+ * ⚠️ **Deliberately not `_outputHistory`.** That map records what was sent, and only while
+ * `debugInspectorsEnabled` was true — so on an app that booted with debugging off it is empty,
+ * and a walk over it would show every hop as blank until the user reproduced the bug. The
+ * whole point of layer 1 is that it answers *"why is this label X?"* on a cold editor with
+ * nothing fired, so it has to read the ports rather than a log of past sends.
+ *
+ * An output port holds no value of its own — `OutputProperty#value` calls the owner's getter
+ * on every read — which is what makes a genuinely current read possible at all.
+ *
+ * ⚠️ Every read is individually guarded. A getter is arbitrary node code that can throw, and a
+ * single bad node must not blank the other nine rows of a walk, let alone take down the app it
+ * is being used to debug.
+ */
+NodeContext.prototype.getPortValues = function (ports) {
+  const out = [];
+  if (!Array.isArray(ports) || !this.rootComponent) return out;
+
+  const byId = {};
+  for (const node of this.rootComponent.nodeScope.getAllNodesRecursive()) {
+    byId[node.id] = node;
+  }
+
+  for (const ref of ports) {
+    if (!ref || typeof ref.node !== 'string' || typeof ref.port !== 'string') continue;
+    const node = byId[ref.node];
+    const entry = { node: ref.node, port: ref.port, direction: ref.direction, exists: false, value: undefined };
+
+    if (node) {
+      try {
+        if (ref.direction === 'output') {
+          if (node.hasOutput(ref.port)) {
+            entry.exists = true;
+            entry.value = previewValue(node.getOutput(ref.port).value, this._traceValueCap);
+          }
+        } else if (node.hasInput(ref.port)) {
+          entry.exists = true;
+          entry.value = previewValue(node.getInputValue(ref.port), this._traceValueCap);
+        }
+      } catch (e) {
+        entry.value = '<unreadable>';
+      }
+    }
+
+    out.push(entry);
+  }
+
+  return out;
 };
 
 NodeContext.prototype.getTraceEvents = function (afterSeq) {

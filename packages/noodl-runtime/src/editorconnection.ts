@@ -96,6 +96,7 @@ interface EditorConnection extends RuntimeEditorConnection, EventSender {
   sendPulsingConnections(connectionMap: Record<string, { connections: unknown[] }>): void;
   sendTraceDictionary(dictionary: unknown): void;
   sendTraceEvents(events: unknown[]): void;
+  sendPortValues(values: unknown[]): void;
   sendDynamicPorts(id: string, ports: RuntimeDiscoveredPort[], options?: SendDynamicPortsOptions): void;
   sendNodeSubLabel(nodeId: string, subLabel: string | undefined): void;
   clearWarnings(componentName: string, nodeId: string): void;
@@ -223,6 +224,25 @@ EditorConnection.prototype.connect = function (this: EditorConnection, address) 
       if (self.isRunningLocally()) {
         content = JSON.parse(message.content);
         await self.emit('getTraceEvents', { clientId: content.clientId, afterSeq: content.afterSeq });
+      }
+    } else if (message.cmd === 'getTraceDictionary') {
+      // OBS-002. `setTraceEnabled` sends the dictionary on the off→on transition only, so a
+      // consumer that attaches to an already-running trace — the walk panel being re-opened,
+      // a second editor window, an agent connecting mid-session — had no way to obtain the
+      // topology short of toggling the trace off and on, which would destroy the buffer it
+      // came for.
+      if (self.isRunningLocally()) {
+        content = JSON.parse(message.content);
+        await self.emit('getTraceDictionary', { clientId: content.clientId });
+      }
+    } else if (message.cmd === 'getPortValues') {
+      // OBS-002 layer 1. Distinct from `getConnectionValue`, which reads `_outputHistory` —
+      // a record of what was *sent* while debug inspectors happened to be on. This reads the
+      // ports themselves, so it answers "why is this label X?" on an app that booted with
+      // debugging off and has fired nothing since.
+      if (self.isRunningLocally()) {
+        content = JSON.parse(message.content);
+        await self.emit('getPortValues', { clientId: content.clientId, ports: content.ports });
       }
     } else if (message.cmd === 'getConnectionValue') {
       if (self.isRunningLocally()) {
@@ -409,6 +429,20 @@ EditorConnection.prototype.sendTraceEvents = function (this: EditorConnection, e
     cmd: 'traceEvents',
     type: 'viewer',
     content: JSON.stringify({ events })
+  });
+};
+
+/**
+ * Current values for a batch of ports (OBS-002 layer 1).
+ *
+ * Batched because a walk annotates every hop at once: one round trip per row would make a
+ * ten-row walk ten round trips over a socket that already coalesces on a 200ms timer.
+ */
+EditorConnection.prototype.sendPortValues = function (this: EditorConnection, values) {
+  this.send({
+    cmd: 'portValues',
+    type: 'viewer',
+    content: JSON.stringify({ values })
   });
 };
 
