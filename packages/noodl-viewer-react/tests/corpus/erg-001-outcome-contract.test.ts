@@ -42,6 +42,10 @@ import CollectionClearModule from '../../src/nodes/std-library/data/collectionno
 import CollectionInsertModule from '../../src/nodes/std-library/data/collectionnode-insert';
 import CollectionNewModule from '../../src/nodes/std-library/data/collectionnode-new';
 import CollectionRemoveModule from '../../src/nodes/std-library/data/collectionnode-remove';
+import ComponentObjectModule from '../../src/nodes/std-library/componentutils/componentobject';
+import SetComponentObjectPropertiesModule from '../../src/nodes/std-library/componentutils/setcomponentobjectproperties';
+import SetParentComponentObjectPropertiesModule from '../../src/nodes/std-library/componentutils/setparentcomponentobjectproperties';
+import { GroupModule } from './visual-container';
 
 /** `Collection.get(name)` is a process-wide registry, so every row needs its own array. */
 let arrayCounter = 0;
@@ -309,6 +313,125 @@ describe('ERG-001 §2: Create New Array', () => {
     // mistake this phase made once already and corrected.
     expect(graph.node('mutator').hasOutput('failure')).toBe(false);
     expect(graph.signalsFor('mutator')).not.toContain('created');
+  });
+});
+
+// =================================================================================================
+// §4 — the Component Object writers, the viewer half of the `stored` -> `done` rename
+// =================================================================================================
+
+/**
+ * `/root` → `/Inner`, so the parent variant has an ancestor to walk to (or not).
+ *
+ * `owners` names the components that get a Component Object node. Pass `[]` and the parent
+ * variant has nothing to write to, which is the NDA-004 §2 failure path — kept here because
+ * §4's addition is precisely that **`Completed` now follows that failure too**, and a row that
+ * only exercised the happy path could not see it.
+ */
+async function componentObjectGraph(owners: string[]): Promise<CorpusGraph> {
+  const objectNodeFor = (component: string) =>
+    owners.indexOf(component) !== -1
+      ? [{ id: component + '-object', type: 'net.noodl.ComponentObject', parameters: { properties: 'title' } }]
+      : [];
+
+  const graph = await createCorpusGraph({
+    modules: [
+      GroupModule,
+      TriggerModule,
+      ComponentObjectModule as unknown as NodeModule,
+      SetComponentObjectPropertiesModule,
+      SetParentComponentObjectPropertiesModule
+    ],
+    rootComponent: '/root',
+    data: {
+      components: [
+        {
+          name: '/root',
+          nodes: [
+            { id: 'root-group', type: 'Group', children: [{ id: 'inner-instance', type: '/Inner' }] },
+            ...objectNodeFor('/root')
+          ]
+        },
+        {
+          name: '/Inner',
+          nodes: [
+            { id: 'trigger', type: 'corpus.Trigger' },
+            { id: 'own-object', type: 'net.noodl.ComponentObject', parameters: { properties: 'title' } },
+            { id: 'self', type: 'net.noodl.SetComponentObjectProperties', parameters: { properties: 'title' } },
+            {
+              id: 'parent',
+              type: 'net.noodl.SetParentComponentObjectProperties',
+              parameters: { properties: 'title' }
+            }
+          ],
+          connections: [
+            { sourceId: 'trigger', sourcePort: 'value', targetId: 'self', targetPort: 'prop-title' },
+            { sourceId: 'trigger', sourcePort: 'go', targetId: 'self', targetPort: 'store' },
+            { sourceId: 'trigger', sourcePort: 'value', targetId: 'parent', targetPort: 'prop-title' },
+            { sourceId: 'trigger', sourcePort: 'go', targetId: 'parent', targetPort: 'store' }
+          ]
+        }
+      ]
+    } as never
+  });
+
+  await graph.settle(4);
+  return graph;
+}
+
+async function pressStore(graph: CorpusGraph, value: unknown): Promise<void> {
+  const trigger = graph.node<TriggerInstance>('trigger');
+  trigger.send(value);
+  trigger.go();
+  await graph.settle(4);
+}
+
+describe('ERG-001 §4: Set Component Object Properties (self variant)', () => {
+  test('reports Done on the contract wire name, then Completed', async () => {
+    const graph = await componentObjectGraph(['/root']);
+    await pressStore(graph, 'hello');
+
+    const signals = graph.signalsFor('self');
+    expect(outcomesOf(graph, 'self')).toEqual(['done']);
+    expect(signals.indexOf('completed')).toBeGreaterThan(signals.indexOf('done'));
+    // The rename cannot pass vacuously.
+    expect(signals).not.toContain('stored');
+    expect(graph.node('self').hasOutput('stored')).toBe(false);
+  });
+
+  test('still has no Failure port, because it cannot miss its own record', async () => {
+    const graph = await componentObjectGraph([]);
+
+    // NDA-004's 🔵 verdict, and the row that stops a mechanical sweep "finishing the family
+    // off". `Completed` is the one port with no exemption; `Failure` is not that port.
+    expect(graph.node('self').hasOutput('failure')).toBe(false);
+    expect(graph.node('self').hasOutput('unchanged')).toBe(false);
+    expect(graph.node('self').hasOutput('completed')).toBe(true);
+  });
+});
+
+describe('ERG-001 §4: Set Parent Component Object Properties', () => {
+  test('a real ancestor reports Done on the contract wire name, then Completed', async () => {
+    const graph = await componentObjectGraph(['/root']);
+    await pressStore(graph, 'hello');
+
+    const signals = graph.signalsFor('parent');
+    expect(outcomesOf(graph, 'parent')).toEqual(['done']);
+    expect(signals.indexOf('completed')).toBeGreaterThan(signals.indexOf('done'));
+    expect(signals).not.toContain('stored');
+  });
+
+  test('⚠️ no ancestor to write to still reports Failure — and now Completed follows it', async () => {
+    const graph = await componentObjectGraph([]);
+    await pressStore(graph, 'hello');
+
+    const signals = graph.signalsFor('parent');
+    expect(outcomesOf(graph, 'parent')).toEqual(['failure']);
+    // The half §4 adds. Before this the chain died here for an author who wanted to carry on
+    // regardless, and this is the node that used to report *success* for the same write.
+    expect(signals).toContain('completed');
+    expect(signals.indexOf('completed')).toBeGreaterThan(signals.indexOf('failure'));
+    expect(graph.errors.map((e) => e.code)).toContain('set-parent-component-object-properties/no-ancestor');
   });
 });
 

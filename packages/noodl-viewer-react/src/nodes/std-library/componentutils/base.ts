@@ -2,6 +2,7 @@
 
 import { Node } from '@noodl/runtime';
 import Model from '@noodl/runtime/src/model';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import { ResolvedTargetReporter } from '@noodl/runtime/src/resolvedtarget';
 import type {
   EditorConnectionLike,
@@ -146,15 +147,19 @@ function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef
       },
       def.inputs
     ),
+    /**
+     * ERG-001 §4. `stored` was one of the four internal names that all displayed as "Done"
+     * (§0.2 Result 2); both variants say `done` now, and `Completed` joins them.
+     *
+     * `Failure` still comes from `canFailToResolve` rather than from the helper, because that
+     * flag is the family's whole NDA-004 verdict — the self variant cannot miss its own
+     * record and a vestigial `Failure` on it would imply a failure mode that does not exist.
+     * `Completed` has no such exemption and is on both.
+     */
     outputs: Object.assign(
-      {
-        stored: {
-          type: 'signal',
-          group: 'Events',
-          displayName: 'Done',
-          description: 'Fires once every property has been written'
-        }
-      },
+      outcomeOutputs({
+        done: 'Fires once every property has been written'
+      }),
       // NDA-004 §2. Only on the variant that can actually miss — see `canFailToResolve`.
       def.canFailToResolve
         ? {
@@ -184,6 +189,9 @@ function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef
       scheduleStore(this: SetComponentObjectPropertiesInstance) {
         if (this.hasScheduledStore) return;
         this.hasScheduledStore = true;
+        // After the coalescing guard: two `Do` pulses in one frame are one store and so one
+        // invocation, which must produce exactly one outcome.
+        const outcome = this.beginOutcome();
 
         const internal = this._internal;
         this.scheduleAfterInputsHaveUpdated(() => {
@@ -209,9 +217,15 @@ function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef
            */
           if (resolution.id === undefined) {
             internal.lastError = resolution.missMessage;
-            this.raiseRuntimeError(resolution.missCode, resolution.missMessage, resolution.missDetail);
             this.flagOutputDirty('error');
-            this.sendSignalOnOutput('failure');
+            // The raise moved inside `reportOutcome`, which does it before the signal for the
+            // same reason `error` is flagged first: a graph wired `Failure -> show` must
+            // already be able to read the reason when the pulse lands.
+            this.reportOutcome(outcome, 'failure', {
+              code: resolution.missCode,
+              message: resolution.missMessage,
+              detail: resolution.missDetail
+            });
             return;
           }
 
@@ -225,7 +239,8 @@ function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef
           for (const i of keysToSet) {
             model.set(i, internal.inputValues[i], { resolve: true });
           }
-          this.sendSignalOnOutput('stored');
+          // Last, after every write has notified.
+          this.reportOutcome(outcome, 'done');
         });
       },
       _onNodeDeleted(this: SetComponentObjectPropertiesInstance) {

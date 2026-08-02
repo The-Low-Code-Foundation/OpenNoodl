@@ -176,8 +176,10 @@ describe('NDA-004 §2: a write with no parent to write to', () => {
 
     // The whole row in two lines. `Done` used to fire here, on top of a write into an
     // anonymous record that nothing could ever read.
+    // ERG-001 §4: the success wire is `done` now. Asserted on the live name, because
+    // `not.toContain('stored')` would pass vacuously once the port no longer exists.
     expect(graph.signalsFor('writer')).toContain('failure');
-    expect(graph.signalsFor('writer')).not.toContain('stored');
+    expect(graph.signalsFor('writer')).not.toContain('done');
   });
 
   test('raises the miss on the runtime error channel, naming the ancestors it did have', async () => {
@@ -208,7 +210,7 @@ describe('NDA-004 §2: a write with no parent to write to', () => {
     // Without this row, every assertion above could be satisfied by a node that had simply
     // stopped working. It also fixes the *direction*: the value must be visible to the reader
     // sitting beside the writer, which is what "it worked" means to an author.
-    expect(graph.signalsFor('writer')).toContain('stored');
+    expect(graph.signalsFor('writer')).toContain('done');
     expect(graph.signalsFor('writer')).not.toContain('failure');
     expect(graph.errors).toEqual([]);
     expect(graph.node<ParentObjectInstance>('reader')._internal.model.data.title).toBe('hello');
@@ -223,7 +225,7 @@ describe('NDA-004 §2 / BINDING-CONTRACT §(a): the writer can name its target',
     // The case with no expressible answer before this change: two nested ancestors each owning
     // a Component Object, and the author wanting the outer one. Both halves of the pair take
     // the same input, so the state written is the state read.
-    expect(graph.signalsFor('writer')).toContain('stored');
+    expect(graph.signalsFor('writer')).toContain('done');
     expect(graph.node<ParentObjectInstance>('reader')._internal.parentComponentName).toBe('/root');
     expect(graph.node<ParentObjectInstance>('reader')._internal.model.data.title).toBe('hello');
   });
@@ -235,7 +237,7 @@ describe('NDA-004 §2 / BINDING-CONTRACT §(a): the writer can name its target',
     // Falling back to /Outer would be worse than writing nothing: the author would see `Done`
     // and believe the component they named had been updated.
     expect(graph.signalsFor('writer')).toContain('failure');
-    expect(graph.signalsFor('writer')).not.toContain('stored');
+    expect(graph.signalsFor('writer')).not.toContain('done');
     expect(graph.errors.map((e) => e.code)).toContain('set-parent-component-object-properties/target-not-found');
   });
 
@@ -335,9 +337,12 @@ describe('NDA-004 §2: the two 🔵 verdicts, pinned', () => {
     // The contract: "a node that *cannot* fail gets no `Failure` output — a vestigial port
     // implies a failure mode that does not exist". This row is what stops a later sweep
     // "finishing the family off" by giving the self variant the ports its sibling has.
-    expect(graph.node('writer').hasOutput('stored')).toBe(true);
+    expect(graph.node('writer').hasOutput('done')).toBe(true);
     expect(graph.node('writer').hasOutput('failure')).toBe(false);
     expect(graph.node('writer').hasOutput('error')).toBe(false);
+    // ERG-001 §4: `Completed` is the one port with no exemption, so the 🔵 verdict above
+    // covers `Failure` and not this.
+    expect(graph.node('writer').hasOutput('completed')).toBe(true);
   });
 
   test('and it stores to its own component, in the root component where there is no ancestor at all', async () => {
@@ -346,7 +351,7 @@ describe('NDA-004 §2: the two 🔵 verdicts, pinned', () => {
 
     // The root component has no ancestors whatsoever — the case that makes the parent variant
     // fail. The self variant is unaffected, which is the evidence behind its 🔵.
-    expect(graph.signalsFor('writer')).toContain('stored');
+    expect(graph.signalsFor('writer')).toContain('done');
     expect(graph.errors).toEqual([]);
   });
 
