@@ -39,6 +39,7 @@ import {
 import { createOpenNoodlTheme } from './codemirror-theme';
 import { noodlCompletionSource } from './noodl-completions';
 import { isExternalValueSync } from './utils/externalValueSync';
+import { defaultPlaceholder } from './utils/modes';
 import { syntaxDiagnostics } from './utils/syntaxDiagnostics';
 import { ValidationType } from './utils/types';
 
@@ -48,9 +49,9 @@ export { externalValueSync, isExternalValueSync } from './utils/externalValueSyn
  * Options for creating CodeMirror extensions
  */
 export interface ExtensionOptions {
-  /** Validation type (expression, function, script, json) */
+  /** What is being edited — picks the language, the linter and the toolbar label. */
   validationType?: ValidationType;
-  /** Placeholder text */
+  /** Placeholder text. Omit it and the mode's own suggestion is used. */
   placeholder?: string;
   /** Is editor read-only? */
   readOnly?: boolean;
@@ -189,6 +190,16 @@ function languageSupport(validationType: ValidationType): Extension {
     return json();
   }
 
+  // CSS, HTML and free text get no language at all rather than JavaScript's.
+  // `@codemirror/lang-css` and `-html` are not dependencies of this package, and
+  // plain text is the honest fallback: JS highlighting over a stylesheet colours
+  // `background-color` as three tokens and offers Noodl completions that mean
+  // nothing there. It also keeps `syntaxDiagnostics` quiet, which is the point —
+  // valid CSS used to be underlined as a JavaScript syntax error.
+  if (validationType === 'text' || validationType === 'css' || validationType === 'html') {
+    return [];
+  }
+
   return [javascript(), javascriptLanguage.data.of({ autocomplete: noodlCompletionSource })];
 }
 
@@ -196,13 +207,8 @@ function languageSupport(validationType: ValidationType): Extension {
  * Create all CodeMirror extensions
  */
 export function createExtensions(options: ExtensionOptions = {}): Extension[] {
-  const {
-    validationType = 'expression',
-    placeholder = '// Enter your JavaScript code here',
-    readOnly = false,
-    onChange,
-    tabSize = 2
-  } = options;
+  const { validationType = 'expression', readOnly = false, onChange, tabSize = 2 } = options;
+  const placeholder = options.placeholder ?? defaultPlaceholder(validationType);
 
   return [
     // 1. Language support and its completions

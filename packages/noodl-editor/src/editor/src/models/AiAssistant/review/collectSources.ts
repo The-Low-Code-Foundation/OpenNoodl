@@ -19,12 +19,13 @@
  */
 
 import { BackendServices } from '../../BackendServices';
+import type { BackendConfig } from '../../BackendServices/types';
 import type { ProjectModel } from '../../projectmodel';
 import { getCloudServices } from '../../projectmodel.editor';
 import { buildStyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
 import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
-import { extractDatabaseSchemaJSON } from '../DatabaseSchemaExtractor';
-import type { BackendSummary, DeclaredRoute, ProjectReviewSources, SchemaCollection, SchemaField } from './types';
+import { buildBackendSummary } from './backendSummary';
+import type { BackendSummary, DeclaredRoute, ProjectReviewSources } from './types';
 
 /**
  * `metadata.routes`, when it is array-shaped.
@@ -52,71 +53,35 @@ export function readDeclaredRoutes(project: ProjectModel): DeclaredRoute[] | und
   }
 }
 
-/** One Parse-style collection schema flattened to names and types. */
-function toCollection(raw: { name?: string; schema?: { properties?: Record<string, unknown> } }): SchemaCollection {
-  const properties = raw.schema?.properties ?? {};
-  const fields: SchemaField[] = Object.keys(properties).map((name) => {
-    const property = properties[name] as { type?: string; targetClass?: string } | undefined;
-    return {
-      name,
-      type: property?.type ?? 'unknown',
-      ...(property?.targetClass ? { targetClass: property.targetClass } : {})
-    };
-  });
-  return { name: raw.name ?? '(unnamed)', fields };
-}
-
 /**
  * Configured backends and the real collections behind them.
  *
- * Three independent systems can each be configured, and a project may have any
- * combination: Parse-wire cloud services (the built-in NodeGX backend or an
- * external Parse), BYOB services (Supabase/Directus/PocketBase/custom), and the
- * schema handler's live collection list.
+ * The reading of the two singletons is all that lives here; the judgement — and
+ * the long-standing defect it fixes — is in `backendSummary.ts`.
  */
 export async function collectBackendSummary(project: ProjectModel): Promise<BackendSummary> {
-  const summary: BackendSummary = { services: [], collections: [], schemaAvailable: false };
-
+  let cloud: BackendSummary['cloud'];
   try {
-    const cloud = getCloudServices(project);
-    if (cloud?.endpoint || cloud?.appId) {
-      summary.cloud = {
-        type: cloud.type ?? 'unknown',
-        endpoint: cloud.endpoint,
-        appId: cloud.appId
+    const configured = getCloudServices(project);
+    if (configured?.endpoint || configured?.appId) {
+      cloud = {
+        type: configured.type ?? 'unknown',
+        endpoint: configured.endpoint,
+        appId: configured.appId
       };
     }
   } catch {
     /* an unreadable cloud config is not a reason to abandon the review */
   }
 
+  let backends: BackendConfig[] = [];
   try {
-    for (const backend of BackendServices.instance?.backends ?? []) {
-      summary.services.push({ id: backend.id, name: backend.name, type: backend.type, url: backend.url });
-    }
+    backends = [...(BackendServices.instance?.backends ?? [])];
   } catch {
-    /* BYOB not initialised in this session */
+    /* Backend Services not initialised in this session */
   }
 
-  try {
-    const raw = await extractDatabaseSchemaJSON();
-    summary.collections = (raw ?? []).map(toCollection);
-    summary.schemaAvailable = true;
-  } catch (error) {
-    summary.schemaAvailable = false;
-    summary.schemaNote =
-      error instanceof Error ? error.message : 'the schema handler could not reach the backend';
-  }
-
-  // The extractor swallows its own fetch failures and returns an empty list, so
-  // "no collections AND no backend configured" is the only shape in which an
-  // empty result is trustworthy. Anything else is reported as unavailable.
-  if (summary.schemaAvailable && summary.collections.length === 0 && (summary.cloud || summary.services.length > 0)) {
-    summary.schemaAvailable = false;
-    summary.schemaNote = 'a backend is configured but its schema returned nothing — it may be unreachable';
-  }
-
-  return summary;
+  return buildBackendSummary(cloud, backends);
 }
 
 /** Everything the assembler needs beyond the graph. Never throws. */

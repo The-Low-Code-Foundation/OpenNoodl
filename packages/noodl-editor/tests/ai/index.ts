@@ -66,6 +66,18 @@ export * from './plan-doc-writer.test';
 // criterion 7's byte-for-byte real-file comparison after rejecting everything.
 export * from './project-review.test';
 
+// AIX-010 residuals: what the backend summary reports when a backend really
+// exists (verified against a live nodegx-backend, and against credential
+// disclosure), and the banner's per-instance listener context — it is mounted
+// twice and the two mounts used to unsubscribe each other.
+export * from './project-review-backend.test';
+export * from './project-review-banner.test';
+
+// The other consumer of the same schema read: the Read/Write Database
+// templates. "No collections" and "could not read the collections" must not
+// render alike — a model told the first invents names.
+export * from './database-schema.test';
+
 // AIX-012: AI project creation. The scoping conversation (scripted chat), the
 // plan it derives from the agreed pages, the four documents it renders, and
 // the write path on real files — including criterion 5's mechanical half:

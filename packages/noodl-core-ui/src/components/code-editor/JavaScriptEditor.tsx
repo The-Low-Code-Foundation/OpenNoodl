@@ -23,7 +23,8 @@ import {
   readOnlyExtensions
 } from './codemirror-extensions';
 import css from './JavaScriptEditor.module.scss';
-import { isSameValidation, validateJavaScript } from './utils/jsValidator';
+import { isSameValidation, isValidatedType, validateJavaScript } from './utils/jsValidator';
+import { defaultPlaceholder, modeLabel } from './utils/modes';
 import { isPixelSize, parseSizeProp, type CssSize } from './utils/size';
 import { firstErrorPosition } from './utils/syntaxDiagnostics';
 import { minimalChange } from './utils/textChange';
@@ -48,9 +49,11 @@ export function JavaScriptEditor({
   disabled = false,
   height,
   width,
-  placeholder = '// Enter your JavaScript code here',
+  placeholder,
   historyProvider
 }: JavaScriptEditorProps) {
+  // Mode-specific, because the editor is not always holding JavaScript.
+  const resolvedPlaceholder = placeholder ?? defaultPlaceholder(validationType);
   const rootRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorViewRef = useRef<EditorView | null>(null);
@@ -149,7 +152,7 @@ export function JavaScriptEditor({
         value || '',
         createExtensions({
           validationType,
-          placeholder,
+          placeholder: resolvedPlaceholder,
           readOnly: disabled,
           onChange: (newValue) => handleChangeRef.current(newValue),
           onSave: onSave ? (newValue) => onSaveRef.current?.(newValue) : undefined,
@@ -226,21 +229,9 @@ export function JavaScriptEditor({
     view.focus();
   }, []);
 
-  // Get validation mode label
-  const getModeLabel = () => {
-    switch (validationType) {
-      case 'expression':
-        return 'Expression';
-      case 'function':
-        return 'Function';
-      case 'script':
-        return 'Script';
-      case 'json':
-        return 'JSON';
-      default:
-        return 'JavaScript';
-    }
-  };
+  // Whether a verdict is ours to give at all. CSS/HTML/text have no validator,
+  // and an unearned "✓ Valid" is as misleading as the "✗ Error" they used to get.
+  const showsVerdict = isValidatedType(validationType);
 
   return (
     <div
@@ -258,12 +249,13 @@ export function JavaScriptEditor({
       {/* Toolbar */}
       <div className={css['Toolbar']}>
         <div className={css['ToolbarLeft']}>
-          <span className={css['ModeLabel']}>{getModeLabel()}</span>
-          {validation.valid ? (
-            <span className={css['StatusValid']}>✓ Valid</span>
-          ) : (
-            <span className={css['StatusInvalid']}>✗ Error</span>
-          )}
+          <span className={css['ModeLabel']}>{modeLabel(validationType)}</span>
+          {showsVerdict &&
+            (validation.valid ? (
+              <span className={css['StatusValid']}>✓ Valid</span>
+            ) : (
+              <span className={css['StatusInvalid']}>✗ Error</span>
+            ))}
         </div>
         <div className={css['ToolbarRight']}>
           {/* History button — only shown when the consumer supplies a provider */}

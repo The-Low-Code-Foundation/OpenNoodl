@@ -221,6 +221,42 @@ only reason it was fixed here rather than reported.
 
 ## Traps hit
 
+- **⚠️ `npm run test:ci` exits 0 after running a fraction of the suite, in a
+  worktree.** The runner reported success having started **300 of 2033
+  specs**. It dies partway through the Git specs with `Error: Git could not be
+  found at the expected path: <worktree>/packages/node_modules/dugite/git/bin/git`
+  — `packages/node_modules` is not a git-tracked directory, so a fresh
+  worktree does not have it, and dugite resolves its bundled binary relative to
+  the worktree rather than to the checkout the modules were installed in. The
+  Electron runner then tears down and **the shell still sees exit 0**.
+
+  Everything after the Git specs is skipped, silently. If your new specs happen
+  to sort after them, "the suite passed" means your specs never ran.
+
+  **The remedy is one symlink**, and it belongs in worktree setup:
+
+  ```sh
+  ln -s <primary-checkout>/packages/node_modules <worktree>/packages/node_modules
+  ```
+
+  It is already in `.git/info/exclude`, so it will not show up as an untracked
+  file. With it in place the same command runs the whole suite.
+
+  **The rule: a green exit code from this suite proves nothing on its own.**
+  Check the spec count, and check your own specs by name:
+
+  ```sh
+  npm run test:ci > run.log 2>&1
+  grep -E "Jasmine: [0-9]+ specs, [0-9]+ failures" run.log   # expect ~2000+, 0 failures
+  grep -c "spec-start" run.log
+  grep "<the name of a spec you just added>" run.log
+  ```
+
+  Two things make this expensive to discover the hard way: piping the run
+  through `tail` (`npm run test:ci | tail -40`) both hides the count *and*
+  makes `$?` the exit code of `tail`, and the failure looks exactly like a
+  slow-but-fine run right up until you count.
+
 - **`git stash` is shared across worktrees, and concurrent agents race on it.**
   This cost real time and nearly cost another agent's work. `git stash pop` in
   this worktree returned **AIX-012's** stash, because their agent pushed one

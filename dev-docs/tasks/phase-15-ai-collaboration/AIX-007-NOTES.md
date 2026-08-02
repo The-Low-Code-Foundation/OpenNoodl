@@ -318,7 +318,64 @@ unaffected — only the status label was wrong.
   figure.** The arithmetic is specced and the token counts come from the
   provider's own `usage` fields, but "our number equals the invoice" needs
   console access and is a human step. Until it is done, treat the cost readout
-  as *internally* consistent rather than *externally* verified.
+  as *internally* consistent rather than *externally* verified. **Whether an
+  agent could close this instead was measured on 2026-08-02 — it cannot, and
+  the five-minute human version is written out below.**
+
+### Why an agent cannot close the reconciliation (measured, 2026-08-02)
+
+Anthropic does expose the two endpoints that would answer it —
+`GET /v1/organizations/usage_report/messages` and
+`GET /v1/organizations/cost_report` — but they take an **Admin API key**
+(`sk-ant-admin…`), which only an organisation owner can mint from the Console.
+The project's `.env` key is a workspace key and is refused.
+
+That is not an inference from the key prefix. Three probes with the repo's own
+`ANTHROPIC_API_KEY`, same headers, same request:
+
+| Request | Result |
+|---|---|
+| `POST /v1/messages` | **200** — the key is live and works for inference |
+| `GET /v1/organizations/cost_report` | **401** `authentication_error: invalid x-api-key` |
+| `GET /v1/organizations/usage_report/messages` | **401** — same |
+| `GET /v1/organizations/not_a_real_report` | **404** `not_found_error` |
+
+The 404 on a made-up sibling route is what makes the 401s meaningful: the
+reporting routes **exist** and are rejecting this *class* of key, rather than
+not existing at all. So the blocker is a credential an agent cannot create,
+not a missing API.
+
+**If Richard ever puts an admin key in the environment, this becomes
+automatable** — `usage_report/messages` returns per-model token counts that
+`calculateCostUsd` can be run against directly, which is a stronger check than
+comparing dollars.
+
+### The five-minute human version
+
+Anthropic's Console shows cost **by day and by model**, and the two
+2026-07-25 runs are the tightest comparison available because each used one
+model and the totals are recorded here.
+
+1. Console → **Usage** (or **Cost**), set the date range to **2026-07-25** and
+   group by model.
+2. Compare against the sums below — these are `metrics.costUsd` totalled
+   straight out of `measurements/`, recomputed 2026-08-02:
+
+| Date | Model | Our recorded cost | Console figure |
+|---|---|--:|---|
+| 2026-07-25 | `claude-sonnet-5` | **$1.1825** (8 components) | ? |
+| 2026-07-25 | `claude-opus-4-8` | **$0.3458** (3 components) | ? |
+| 2026-07-26 | all AIX-007 sweep arms | **$4.8310** (baseline $2.3448 + high $0.8194 + medium $0.6470 + low $0.2817 + opus-low $0.7381) | ? |
+
+3. **Our figure should be a floor, not a match.** Anything else run against
+   the same key on those days is in the Console total and not in ours, so a
+   Console figure *higher* than the table is expected and uninformative; a
+   Console figure *lower* than ours means our arithmetic over-charges, which
+   is the failure this residual exists to catch. The 2026-07-25 rows are the
+   ones worth reading — that day's spend was the measurement runs.
+
+The headline **$0.0352/component** is the `low` arm's $0.2817 ÷ 8; if the
+2026-07-25 rows reconcile, the same pricing table produced that number.
 - **`low` was chosen on a corpus of eight small components.** Every prompt
   improved, and the margin is far too large to be noise — but the corpus does
   not contain a genuinely large or architecturally ambiguous component, and
