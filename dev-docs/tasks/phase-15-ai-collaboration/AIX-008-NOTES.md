@@ -5,7 +5,9 @@
 **Project:** `packages/noodl-editor/tests/testfs/git-repo-utf8` — the same 44-component
 corpus AIX-007 measured on, with the same style vocabulary injected, so the
 $/component here is comparable to its baseline
-**Sessions:** 16 (12 treatment, 4 control) · **spend $2.07**
+**Sessions:** 16 recorded — 12 treatment, 4 control — at **$1.84** in
+`sandbox.jsonl`, plus one discarded shakedown session at $0.23 whose artifacts
+were deleted before the measured runs. **Total spend $2.07.**
 **Harness:** `packages/noodl-editor/scripts/aix15-live/`, `--mode=sandbox`
 **Artifacts:** `measurements/live/sandbox.jsonl` plus, per session, the
 transcript, the candidate, the model's raw `sample_data`, both datasets
@@ -126,8 +128,9 @@ produce `19.5`. Anything doing arithmetic on it gets string concatenation.
 
 "A page that lists the books in my Books collection … each row shows the cover
 image, the title, the author and the rating" produced, in **five runs out of
-five**, a component with `Component Inputs` for title/author/cover/rating and no
-query at all. The model said so itself, in the description it wrote:
+five** (four in `sandbox.jsonl`, plus the shakedown session), a component with
+`Component Inputs` for title/author/cover/rating and no query at all. The model
+said so itself, in the description it wrote:
 
 > A single book row: cover image on the left, title (bold), author and rating
 > stacked on the right. **Used as the repeater template for the AIX Book List
