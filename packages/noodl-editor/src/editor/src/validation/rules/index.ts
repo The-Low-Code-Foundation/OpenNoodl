@@ -22,6 +22,7 @@ import { unresolvedComponentRef } from './unresolvedComponentRef';
 import { orphanedNode } from './orphanedNode';
 import { typeIncompatibleConnection } from './typeIncompatibleConnection';
 import { signalDrivenStaleInput } from './signalDrivenStaleInput';
+import { unwiredOutcome } from './unwiredOutcome';
 
 export const ALL_RULES: Rule[] = [
   duplicateNodeId,
@@ -31,7 +32,8 @@ export const ALL_RULES: Rule[] = [
   unresolvedComponentRef,
   orphanedNode,
   typeIncompatibleConnection,
-  signalDrivenStaleInput
+  signalDrivenStaleInput,
+  unwiredOutcome
 ];
 
 export {
@@ -42,7 +44,8 @@ export {
   unresolvedComponentRef,
   orphanedNode,
   typeIncompatibleConnection,
-  signalDrivenStaleInput
+  signalDrivenStaleInput,
+  unwiredOutcome
 };
 
 export * from './types';

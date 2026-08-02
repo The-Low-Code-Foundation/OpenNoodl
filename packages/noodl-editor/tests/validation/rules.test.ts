@@ -61,6 +61,35 @@ const HAND_CATALOG: NodeCatalog = {
       description: 'runtime outputs'
     }),
 
+    // ── ERG-001 unwired-outcome fixtures ────────────────────────────────────
+    //
+    // `Action` is a node that has adopted the outcome contract in full, plus one
+    // announcement (`applied`) of the kind that made the rule's two wider predicates
+    // unusable. `NoNoop` has no `unchanged`, which is the contract's own exemption for a
+    // node that cannot legitimately do nothing.
+    catNode(
+      'Action',
+      [port('do', 'input', 'signal', true), port('value', 'input', 'string')],
+      [
+        port('applied', 'output', 'signal', true),
+        port('done', 'output', 'signal', true),
+        port('unchanged', 'output', 'signal', true),
+        port('failure', 'output', 'signal', true),
+        port('completed', 'output', 'signal', true)
+      ]
+    ),
+    catNode(
+      'NoNoop',
+      [port('do', 'input', 'signal', true)],
+      [
+        port('done', 'output', 'signal', true),
+        port('failure', 'output', 'signal', true),
+        port('completed', 'output', 'signal', true)
+      ]
+    ),
+    catNode('Sink', [port('in', 'input', 'signal', true), port('other', 'input', 'signal', true)], []),
+    catNode('Src', [], [port('go', 'output', 'signal', true)]),
+
     // ── NDA-017 signal-driven-stale-input fixtures ──────────────────────────
     // An asynchronous producer: it publishes a completion signal, which is what
     // "the value lands later than the trigger" means to the rule.
@@ -377,4 +406,115 @@ describe('SUB-006 rules', () => {
     });
   });
 
+  /**
+   * ERG-001 §5 — the outcome contract's dead-end check, and its three narrowings.
+   *
+   * ⚠️ **The controls are the point of this block, not the positive case.** Two wider
+   * predicates were written first and measured against the 50 shipped examples: "every outcome
+   * unwired" fired 7 times with **zero** true positives, and "`done` wired, `unchanged` not"
+   * fired 6 times with about one. Each control below pins one of the shapes that made those
+   * versions unusable, so a later widening of the rule reddens a row rather than quietly
+   * reintroducing the noise.
+   */
+  describe('unwired-outcome', () => {
+    const fired = (p: NormProject) =>
+      handValidator()
+        .validate(p)
+        .diagnostics.filter((d) => d.code === DiagnosticCode.UnwiredOutcome);
+
+    /** The shape the rule exists for: two outcomes routed, the third forgotten. */
+    function enumerating(extra: NormProject['components'][0]['connections'] = []) {
+      return oneComponent(
+        [node('src', 'Src'), node('a', 'Action'), node('ok', 'Sink'), node('bad', 'Sink')],
+        [
+          { fromId: 'src', fromProperty: 'go', toId: 'a', toProperty: 'do' },
+          { fromId: 'a', fromProperty: 'done', toId: 'ok', toProperty: 'in' },
+          { fromId: 'a', fromProperty: 'failure', toId: 'bad', toProperty: 'in' },
+          ...extra
+        ]
+      );
+    }
+
+    it('flags an action routing done and failure but leaving unchanged nowhere', () => {
+      const d = fired(enumerating());
+      expect(d.length).toBe(1);
+      expect(d[0].severity).toBe('warning');
+      expect(d[0].location.nodeId).toBe('a');
+      expect(d[0].suggestion).toBe('Action.completed');
+      expect(d[0].alternatives).toEqual(['completed', 'unchanged']);
+    });
+
+    it('is satisfied by completed', () => {
+      expect(fired(enumerating([{ fromId: 'a', fromProperty: 'completed', toId: 'ok', toProperty: 'other' }]))).toEqual(
+        []
+      );
+    });
+
+    it('is satisfied by unchanged', () => {
+      expect(fired(enumerating([{ fromId: 'a', fromProperty: 'unchanged', toId: 'ok', toProperty: 'other' }]))).toEqual(
+        []
+      );
+    });
+
+    /**
+     * ⚠️ Control for the **second** rejected predicate. Stopping on a no-op is very often
+     * exactly right — `Unchanged` frequently means the user cancelled — so `done` alone is not
+     * evidence of intent to enumerate.
+     */
+    it('(control) does not flag done alone, without failure also routed', () => {
+      const p = oneComponent(
+        [node('src', 'Src'), node('a', 'Action'), node('ok', 'Sink')],
+        [
+          { fromId: 'src', fromProperty: 'go', toId: 'a', toProperty: 'do' },
+          { fromId: 'a', fromProperty: 'done', toId: 'ok', toProperty: 'in' }
+        ]
+      );
+      expect(fired(p)).toEqual([]);
+    });
+
+    /**
+     * ⚠️ Control for the **first** rejected predicate. An announcement is very often the
+     * better thing to sequence from, being more specific than the generic outcome — wiring
+     * `Applied` to the request that follows is correct authoring, not a dead chain.
+     */
+    it('(control) does not flag a chain sequenced from an announcement', () => {
+      const p = oneComponent(
+        [node('src', 'Src'), node('a', 'Action'), node('ok', 'Sink')],
+        [
+          { fromId: 'src', fromProperty: 'go', toId: 'a', toProperty: 'do' },
+          { fromId: 'a', fromProperty: 'applied', toId: 'ok', toProperty: 'in' }
+        ]
+      );
+      expect(fired(p)).toEqual([]);
+    });
+
+    /**
+     * ⚠️ The contract's own exemption, honoured here rather than by a list of node names:
+     * "a node that cannot be a no-op gets no `Unchanged` port". `Page Stack` and `State
+     * History` are the shipped instances, and neither can reach this rule.
+     */
+    it('(control) does not flag a node with no unchanged port to wire', () => {
+      const p = oneComponent(
+        [node('src', 'Src'), node('a', 'NoNoop'), node('ok', 'Sink'), node('bad', 'Sink')],
+        [
+          { fromId: 'src', fromProperty: 'go', toId: 'a', toProperty: 'do' },
+          { fromId: 'a', fromProperty: 'done', toId: 'ok', toProperty: 'in' },
+          { fromId: 'a', fromProperty: 'failure', toId: 'bad', toProperty: 'in' }
+        ]
+      );
+      expect(fired(p)).toEqual([]);
+    });
+
+    /** An action nobody invokes is not a broken chain. */
+    it('(control) does not flag an action with no signal input driven', () => {
+      const p = oneComponent(
+        [node('a', 'Action'), node('ok', 'Sink'), node('bad', 'Sink')],
+        [
+          { fromId: 'a', fromProperty: 'done', toId: 'ok', toProperty: 'in' },
+          { fromId: 'a', fromProperty: 'failure', toId: 'bad', toProperty: 'in' }
+        ]
+      );
+      expect(fired(p)).toEqual([]);
+    });
+  });
 });

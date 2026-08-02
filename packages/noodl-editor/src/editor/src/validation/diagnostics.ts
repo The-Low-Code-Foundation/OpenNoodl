@@ -59,6 +59,12 @@ export enum DiagnosticCode {
    * it reads, so the node evaluates against whatever arrived last.
    */
   SignalDrivenStaleInput = 'signal-driven-stale-input',
+  /**
+   * ERG-001: an action that is invoked, and whose chain visibly continues from some other
+   * signal, reports its `Done`/`Unchanged`/`Failure`/`Completed` outcome nowhere — so the
+   * chain runs on some paths through the node and stops dead on others.
+   */
+  UnwiredOutcome = 'unwired-outcome',
   /** Info-level: a port check was skipped because the node determines the port at runtime. */
   DynamicPortSkipped = 'dynamic-port-skipped'
 }
