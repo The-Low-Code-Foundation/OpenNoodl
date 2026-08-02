@@ -32751,6 +32751,17 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "connected",
           "displayName": "Connected",
           "group": "Status",
@@ -32795,6 +32806,17 @@
           "description": "What this stream actually guarantees, derived from whether the server sends ids: at-most-once, at-least-once or at-least-once-deduped"
         },
         {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the action finished: a Connect whose stream opened, or a Disconnect that stopped one"
+        },
+        {
           "name": "duplicatesSuppressed",
           "displayName": "Duplicates Suppressed",
           "group": "Status",
@@ -32815,6 +32837,17 @@
           },
           "isSignal": false,
           "description": "The event name the server sent, or message when it sent none"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the stream could not be opened, or gave up retrying. Last Error carries the reason"
         },
         {
           "name": "lastError",
@@ -32936,6 +32969,17 @@
           },
           "isSignal": false,
           "description": "The one data output guaranteed to be a string: Raw when no Text Path is set, the field at that path when one is, blank when it does not resolve"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there was nothing to do: a Disconnect with no stream running, or a Connect a later Connect or Disconnect superseded before it opened"
         }
       ],
       "dynamicPorts": null,
@@ -34521,6 +34565,17 @@
           "description": "Reason the server gave for closing, which is often blank"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "connected",
           "displayName": "Connected",
           "group": "Status",
@@ -34543,6 +34598,17 @@
           "description": "Where the connection is: idle, connecting, open, reconnecting, closed or error"
         },
         {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the action finished: a Connect whose socket opened, a Send accepted for delivery (sent, or queued for the next open), or a Disconnect that closed something"
+        },
+        {
           "name": "droppedCount",
           "displayName": "Dropped",
           "group": "Status",
@@ -34552,6 +34618,17 @@
           },
           "isSignal": false,
           "description": "Messages that will never be sent, whether discarded by policy, by a full queue, or by the node being removed"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the action could not be performed — no URL, a URL that is not ws:// or wss://, a connection that gave up, or a refused Send. Last Error carries the reason"
         },
         {
           "name": "lastError",
@@ -34695,6 +34772,17 @@
           },
           "isSignal": false,
           "description": "Attempts made during the current outage; back to zero once the socket opens"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there was nothing to do: a Disconnect with nothing open, a Send discarded by the Drop policy, or a Connect a later Connect or Disconnect superseded before it opened"
         }
       ],
       "dynamicPorts": null,

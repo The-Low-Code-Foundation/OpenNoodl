@@ -35691,6 +35691,17 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "connected",
           "displayName": "Connected",
           "group": "Status",
@@ -35735,6 +35746,17 @@
           "description": "What this stream actually guarantees, derived from whether the server sends ids: at-most-once, at-least-once or at-least-once-deduped"
         },
         {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the action finished: a Connect whose stream opened, or a Disconnect that stopped one"
+        },
+        {
           "name": "duplicatesSuppressed",
           "displayName": "Duplicates Suppressed",
           "group": "Status",
@@ -35755,6 +35777,17 @@
           },
           "isSignal": false,
           "description": "The event name the server sent, or message when it sent none"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the stream could not be opened, or gave up retrying. Last Error carries the reason"
         },
         {
           "name": "lastError",
@@ -35876,6 +35909,17 @@
           },
           "isSignal": false,
           "description": "The one data output guaranteed to be a string: Raw when no Text Path is set, the field at that path when one is, blank when it does not resolve"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there was nothing to do: a Disconnect with no stream running, or a Connect a later Connect or Disconnect superseded before it opened"
         }
       ],
       "dynamicPorts": null,
@@ -35909,7 +35953,11 @@
           "duplicatesSuppressed": "How many replayed events were dropped after a resume. Non-zero is normal after a reconnect.",
           "onMessage": "Fires once per event, after the Data outputs have updated — so an accumulator wired `text` → `chunk` and `onMessage` → `add` sees the chunk first.",
           "onClose": "Fires when the stream stops, whether cleanly or with a terminal error, so a Close handler always runs.",
-          "onError": "Fires on every failure, including ones the node is about to retry."
+          "onError": "Fires on every failure, including ones the node is about to retry.",
+          "done": "Signal; this invocation finished — a Connect whose stream opened, or a Disconnect that stopped one that was running. ⚠️ A first attempt that fails and a retry that then opens is one Done, not a Failure and then a Done: the invocation is not over until the stream is up or the connection has given up.",
+          "unchanged": "Signal; there was nothing to do — a Disconnect with no stream running, or a Connect that a later Connect, a Disconnect or a URL change superseded before it opened.",
+          "failure": "Signal; the stream could not be opened, or gave up retrying. Last Error carries the reason.",
+          "completed": "Signal; fires after every Connect and Disconnect the author triggered, whatever the outcome. ⚠️ Auto Connect and a URL change also open streams, and neither reports."
         },
         "examples": [
           "agent-sse-chat-stream",
@@ -37757,6 +37805,17 @@
           "description": "Reason the server gave for closing, which is often blank"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "connected",
           "displayName": "Connected",
           "group": "Status",
@@ -37779,6 +37838,17 @@
           "description": "Where the connection is: idle, connecting, open, reconnecting, closed or error"
         },
         {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the action finished: a Connect whose socket opened, a Send accepted for delivery (sent, or queued for the next open), or a Disconnect that closed something"
+        },
+        {
           "name": "droppedCount",
           "displayName": "Dropped",
           "group": "Status",
@@ -37788,6 +37858,17 @@
           },
           "isSignal": false,
           "description": "Messages that will never be sent, whether discarded by policy, by a full queue, or by the node being removed"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the action could not be performed — no URL, a URL that is not ws:// or wss://, a connection that gave up, or a refused Send. Last Error carries the reason"
         },
         {
           "name": "lastError",
@@ -37931,6 +38012,17 @@
           },
           "isSignal": false,
           "description": "Attempts made during the current outage; back to zero once the socket opens"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there was nothing to do: a Disconnect with nothing open, a Send discarded by the Drop policy, or a Connect a later Connect or Disconnect superseded before it opened"
         }
       ],
       "dynamicPorts": null,
@@ -37961,7 +38053,11 @@
           "onMessageSent": "Fires per message handed to the socket, including each one flushed from the queue. Heartbeats do not fire it.",
           "onReconnect": "Fires on every open after the first. A WebSocket has no session resume, so a reconnect is a new session and the node cannot know what was missed — wire this to whatever re-fetches state, the way you would handle a resync.",
           "onClose": "Fires whenever the socket goes down, including when a reconnect is about to be attempted; read `connectionState` to tell the two apart. A Connect that replaces a live socket does not fire it, because the app asked for that.",
-          "onError": "Fires for a rejected URL, a failed connect, a refused or failed send, a dead heartbeat, and the moment reconnection is abandoned."
+          "onError": "Fires for a rejected URL, a failed connect, a refused or failed send, a dead heartbeat, and the moment reconnection is abandoned.",
+          "done": "Signal; this invocation finished and changed something — a Connect whose socket opened, a Send accepted for delivery, or a Disconnect that closed a live socket. ⚠️ A Send that was queued rather than written reports Done too, because the value is still owed to the wire; On Message Sent is what says it actually went.",
+          "unchanged": "Signal; there was nothing to do — a Disconnect with nothing open, a Send the Drop policy discarded, or a Connect that a later Connect or a Disconnect superseded before it opened. None of these is an error and none of them raises.",
+          "failure": "Signal; the action could not be performed — no URL, a URL that is not ws:// or wss://, a connection that gave up retrying, or a Send refused by the Report Error policy, an empty Message, a full queue or an encoding error. Last Error carries the reason.",
+          "completed": "Signal; fires after every Connect, Send and Disconnect the author triggered, whatever the outcome. ⚠️ Auto Connect and a URL change also open sockets, and neither reports — they are not invocations of a port, so a boot that fired Done would pulse every chain in the app."
         },
         "examples": [
           "data-websocket-agent-chat"

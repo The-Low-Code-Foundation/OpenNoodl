@@ -24,7 +24,11 @@
     "onMessageSent": "Fires per message handed to the socket, including each one flushed from the queue. Heartbeats do not fire it.",
     "onReconnect": "Fires on every open after the first. A WebSocket has no session resume, so a reconnect is a new session and the node cannot know what was missed — wire this to whatever re-fetches state, the way you would handle a resync.",
     "onClose": "Fires whenever the socket goes down, including when a reconnect is about to be attempted; read `connectionState` to tell the two apart. A Connect that replaces a live socket does not fire it, because the app asked for that.",
-    "onError": "Fires for a rejected URL, a failed connect, a refused or failed send, a dead heartbeat, and the moment reconnection is abandoned."
+    "onError": "Fires for a rejected URL, a failed connect, a refused or failed send, a dead heartbeat, and the moment reconnection is abandoned.",
+    "done": "Signal; this invocation finished and changed something \u2014 a Connect whose socket opened, a Send accepted for delivery, or a Disconnect that closed a live socket. \u26a0\ufe0f A Send that was queued rather than written reports Done too, because the value is still owed to the wire; On Message Sent is what says it actually went.",
+    "unchanged": "Signal; there was nothing to do \u2014 a Disconnect with nothing open, a Send the Drop policy discarded, or a Connect that a later Connect or a Disconnect superseded before it opened. None of these is an error and none of them raises.",
+    "failure": "Signal; the action could not be performed \u2014 no URL, a URL that is not ws:// or wss://, a connection that gave up retrying, or a Send refused by the Report Error policy, an empty Message, a full queue or an encoding error. Last Error carries the reason.",
+    "completed": "Signal; fires after every Connect, Send and Disconnect the author triggered, whatever the outcome. \u26a0\ufe0f Auto Connect and a URL change also open sockets, and neither reports \u2014 they are not invocations of a port, so a boot that fired Done would pulse every chain in the app."
   },
   "patterns": [
     "`connectionState` → a status Text, and `lastError` → an error Text: an outage becomes something the user can see rather than a UI that has quietly stopped answering.",

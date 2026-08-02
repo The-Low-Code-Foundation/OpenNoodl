@@ -4475,6 +4475,34 @@
           "plug": "output",
           "group": "Events",
           "displayName": "On Reconnect"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
         }
       ]
     },
@@ -4748,6 +4776,34 @@
           "plug": "output",
           "group": "Events",
           "displayName": "On Close"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
         },
         {
           "name": "data",

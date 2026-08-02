@@ -27,7 +27,11 @@
     "duplicatesSuppressed": "How many replayed events were dropped after a resume. Non-zero is normal after a reconnect.",
     "onMessage": "Fires once per event, after the Data outputs have updated — so an accumulator wired `text` → `chunk` and `onMessage` → `add` sees the chunk first.",
     "onClose": "Fires when the stream stops, whether cleanly or with a terminal error, so a Close handler always runs.",
-    "onError": "Fires on every failure, including ones the node is about to retry."
+    "onError": "Fires on every failure, including ones the node is about to retry.",
+    "done": "Signal; this invocation finished \u2014 a Connect whose stream opened, or a Disconnect that stopped one that was running. \u26a0\ufe0f A first attempt that fails and a retry that then opens is one Done, not a Failure and then a Done: the invocation is not over until the stream is up or the connection has given up.",
+    "unchanged": "Signal; there was nothing to do \u2014 a Disconnect with no stream running, or a Connect that a later Connect, a Disconnect or a URL change superseded before it opened.",
+    "failure": "Signal; the stream could not be opened, or gave up retrying. Last Error carries the reason.",
+    "completed": "Signal; fires after every Connect and Disconnect the author triggered, whatever the outcome. \u26a0\ufe0f Auto Connect and a URL change also open streams, and neither reports."
   },
   "patterns": [
     "SSE `text` → Text Accumulator `chunk` and SSE `onMessage` → Text Accumulator `add`, with an empty delimiter, renders an AI response as it is written. Set `textPath` to `choices.0.delta.content` for an OpenAI-compatible endpoint and leave it blank for a stream of bare tokens; either way `text` is a string.",
