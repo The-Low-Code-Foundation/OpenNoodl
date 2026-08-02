@@ -2583,6 +2583,28 @@
           "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
         },
         {
+          "name": "treatUnchangedAs",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced",
+          "displayName": "Treat Unchanged as",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way. Completed fires whatever this is set to.",
+          "default": "unchanged"
+        },
+        {
           "name": "runOnChange-value",
           "type": {
             "name": "boolean",
@@ -2681,6 +2703,28 @@
           "plug": "input",
           "displayName": "Set",
           "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
+        },
+        {
+          "name": "treatUnchangedAs",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced",
+          "displayName": "Treat Unchanged as",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way. Completed fires whatever this is set to.",
+          "default": "unchanged"
         },
         {
           "name": "runOnChange-value",
@@ -2782,6 +2826,28 @@
           "plug": "input",
           "displayName": "Set",
           "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
+        },
+        {
+          "name": "treatUnchangedAs",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced",
+          "displayName": "Treat Unchanged as",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way. Completed fires whatever this is set to.",
+          "default": "unchanged"
         },
         {
           "name": "runOnChange-value",

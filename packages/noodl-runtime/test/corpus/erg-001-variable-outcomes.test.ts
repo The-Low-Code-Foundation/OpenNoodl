@@ -204,4 +204,89 @@ describe.each(FAMILY)('ERG-001 §4: $type Variable', (entry) => {
     expect(outcomesOf(v.signals)).toEqual(['done', 'unchanged', 'unchanged']);
     expect(countOf(v.signals, 'completed')).toBe(3);
   });
+
+  // ── ERG-001 §3 — `Treat Unchanged as` ───────────────────────────────────────
+  //
+  // The contract's one sanctioned setting, on the family the spec names as its first home.
+  // Rule 3 is "prefer a port over a setting whenever both would work"; this is the case where
+  // a setting *is* right, because a project whose whole idiom is "a duplicate is a bug"
+  // genuinely wants a different answer and it is one option on one port.
+
+  it('§3 (the A-D1 trap): defaults to Unchanged with the setter never having run', () => {
+    const v = staged(entry);
+
+    // ⚠️ **The port is deliberately not touched.** A declared `default` does not run its
+    // setter — FINDINGS **A-D1**, where `Global Store`, `Subscribe to Store` and `State
+    // History` did nothing at all until an author touched an input while the panel displayed
+    // the default the whole time. So `_treatUnchangedAs` is `undefined` here, and the remap in
+    // `reportOutcome` is written as "only 'done'/'failure' remap" precisely so that
+    // `undefined` lands on the default without anything having to run.
+    expect(v.node.hasInput('treatUnchangedAs')).toBe(true);
+
+    stage(v, entry.a);
+    pulse(v.node, 'saveValue');
+    v.node.update();
+    stage(v, entry.a);
+    pulse(v.node, 'saveValue');
+    v.node.update();
+
+    expect(outcomesOf(v.signals)).toEqual(['done', 'unchanged']);
+  });
+
+  it('§3: set to Done, a no-op Set reports Done instead', () => {
+    const v = staged(entry);
+    v.node.setInputValue('treatUnchangedAs', 'done');
+
+    stage(v, entry.a);
+    pulse(v.node, 'saveValue');
+    v.node.update();
+    stage(v, entry.a);
+    pulse(v.node, 'saveValue');
+    v.node.update();
+
+    // The escape hatch for a project whose chains should carry on either way. `Unchanged` is
+    // not sent at all — "exactly one" is still the load-bearing half of Rule 1.
+    expect(outcomesOf(v.signals)).toEqual(['done', 'done']);
+    expect(countOf(v.signals, 'unchanged')).toBe(0);
+    // ⚠️ And `Changed` still did not fire, because nothing changed. The setting reinterprets
+    // the *outcome*; it does not make a value-level event lie.
+    expect(countOf(v.signals, 'changed')).toBe(1);
+  });
+
+  it('§3: Completed fires whatever the setting is', () => {
+    const v = staged(entry);
+    v.node.setInputValue('treatUnchangedAs', 'done');
+
+    stage(v, entry.a);
+    pulse(v.node, 'saveValue');
+    v.node.update();
+    stage(v, entry.a);
+    pulse(v.node, 'saveValue');
+    v.node.update();
+
+    // The one port with no exemption, and the reason an author can rely on it: it is the
+    // wire that does not change meaning when somebody edits this setting.
+    expect(countOf(v.signals, 'completed')).toBe(2);
+  });
+
+  /**
+   * ⚠️ **Two options, not three, and derived rather than authored.**
+   *
+   * This node has no `Failure` port — "a node that cannot fail gets no `Failure` port" — so
+   * offering `Failure` would let an author select, through the property panel, an outcome with
+   * nowhere to land; `reportOutcome` would then answer `outcome/missing-port` against a graph
+   * they configured legitimately. `outcomeInputs` derives the enum from the same options object
+   * that builds the outputs, so the two cannot disagree.
+   *
+   * ⚠️ Asserted on the **authored definition**, not the instance: `getInput` returns only the
+   * registered setter, so an instance cannot be asked what an enum's options are. The
+   * definition is the surface the property panel and the catalog generator both read.
+   */
+  it('§3: does not offer Failure on a node that has no Failure port', () => {
+    const definition = (entry.module as { node: { inputs: Record<string, { type: unknown }> } }).node;
+    const type = definition.inputs.treatUnchangedAs.type as { enums: Array<{ value: string }> };
+
+    expect(type.enums.map((e) => e.value)).toEqual(['unchanged', 'done']);
+    expect(staged(entry).node.hasOutput('failure')).toBe(false);
+  });
 });

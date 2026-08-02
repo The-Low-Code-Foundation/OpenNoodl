@@ -755,6 +755,29 @@
           "description": "Back-compat for graphs written before Variables were nullable. `null` (default) keeps a cleared value distinguishable from a real false. Choosing another option restores the pre-NDA-003 coercion for authors who relied on it."
         },
         {
+          "name": "treatUnchangedAs",
+          "displayName": "Treat Unchanged as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "unchanged",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way. Completed fires whatever this is set to."
+        },
+        {
           "name": "value",
           "displayName": "Value",
           "plug": "input",
@@ -4978,6 +5001,29 @@
           "isSignal": false,
           "default": "null",
           "description": "Back-compat for graphs written before Variables were nullable. `null` (default) keeps a cleared value distinguishable from a real \"\". Choosing another option restores the pre-NDA-003 coercion for authors who relied on it."
+        },
+        {
+          "name": "treatUnchangedAs",
+          "displayName": "Treat Unchanged as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "unchanged",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way. Completed fires whatever this is set to."
         },
         {
           "name": "value",
@@ -17084,6 +17130,29 @@
           "description": "Back-compat for graphs written before Variables were nullable. `null` (default) keeps a cleared value distinguishable from a real 0. Choosing another option restores the pre-NDA-003 coercion for authors who relied on it."
         },
         {
+          "name": "treatUnchangedAs",
+          "displayName": "Treat Unchanged as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "unchanged",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way. Completed fires whatever this is set to."
+        },
+        {
           "name": "value",
           "displayName": "Value",
           "plug": "input",
@@ -25537,6 +25606,29 @@
           "isSignal": false,
           "default": "null",
           "description": "Back-compat for graphs written before Variables were nullable. `null` (default) keeps a cleared value distinguishable from a real \"\". Choosing another option restores the pre-NDA-003 coercion for authors who relied on it."
+        },
+        {
+          "name": "treatUnchangedAs",
+          "displayName": "Treat Unchanged as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "unchanged",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way. Completed fires whatever this is set to."
         },
         {
           "name": "value",

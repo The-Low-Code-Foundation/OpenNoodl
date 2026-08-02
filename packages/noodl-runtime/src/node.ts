@@ -12,7 +12,7 @@ import {
 } from './expression-evaluator';
 import { coerceToType } from './expression-type-coercion';
 import { diagnosticsEnabled, setDiagnostic } from './diagnostics';
-import { COMPLETED_PORT } from './outcome';
+import { COMPLETED_PORT, TREAT_UNCHANGED_AS } from './outcome';
 import { runOnChangeInput, runOnChangePortName, runOnValueChange } from './run-on-value-change';
 
 /**
@@ -823,6 +823,36 @@ Node.prototype.beginOutcome = function () {
  *   working exactly as written is how authors are trained to ignore the port.
  */
 Node.prototype.reportOutcome = function (token, outcome, options) {
+  // ERG-001 §3 — `Treat Unchanged as`, applied here so that a node adopting the setting needs
+  // no code of its own beyond spreading `outcomeInputs()` into its inputs.
+  //
+  // ⚠️ **Written as "only these two values remap"**, never as "unless it is 'unchanged'",
+  // because a declared `default` does not run its setter (FINDINGS **A-D1**) — the stored
+  // value is `undefined` until an author touches the panel, and `undefined` has to mean the
+  // default. This direction is the one that is correct without the setter having run.
+  //
+  // `Completed` is unaffected: it fires after whatever this resolves to, which is the whole
+  // point of it being the one port with no exemption.
+  if (outcome === 'unchanged') {
+    const policy = (this._internal as Record<string, unknown>)[TREAT_UNCHANGED_AS];
+    if (policy === 'done') {
+      outcome = 'done';
+    } else if (policy === 'failure') {
+      outcome = 'failure';
+      // The reason has to say it was a *configuration* choice. A bare "the action could not be
+      // performed" would send an author hunting for a fault in a graph that worked exactly as
+      // they told it to, which is the failure channel doing more damage than the thing it
+      // reports.
+      options = {
+        code: 'outcome/unchanged-as-failure',
+        message:
+          'The action was valid and there was nothing to do, which Treat Unchanged as reports ' +
+          'as a failure on this node',
+        detail: options && options.detail
+      };
+    }
+  }
+
   if (token.reported !== undefined) {
     // "Exactly one" is the load-bearing half of the contract, so a second report is a library
     // defect and is reported as one rather than quietly winning or quietly losing.

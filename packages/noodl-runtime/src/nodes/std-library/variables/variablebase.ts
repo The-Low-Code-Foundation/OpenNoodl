@@ -2,7 +2,22 @@
 
 import type { InspectInfo, NodeDefinitionOptions, NodeInstance, PortTypeSpec } from '@noodl/types';
 
-import { outcomeOutputs } from '../../../outcome';
+import { outcomeInputs, outcomeOutputs } from '../../../outcome';
+
+/**
+ * ERG-001 §3/§4 — one options object, spread into both plugs.
+ *
+ * Declared once because {@link outcomeInputs} derives the `Treat Unchanged as` enum from the
+ * *same* description set that builds the outputs: no `failure` here means no `Failure` option
+ * offered, so an author cannot select an outcome this node has nowhere to send.
+ */
+const VARIABLE_OUTCOME = {
+  done: 'Fires when a Set stored a value the Variable was not already holding',
+  unchanged:
+    'Fires when a Set stored the value it already held, so nothing changed. ⚠️ With Value ' +
+    'left ticked under Run On Value Change this is the common case, because Value has ' +
+    'already stored by the time Set fires'
+};
 
 /**
  * What a Variable node's `this` carries.
@@ -176,7 +191,12 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
             this.reportOutcome(outcome, changed ? 'done' : 'unchanged');
           });
         }
-      }
+      },
+
+      // ERG-001 §3 — the contract's one sanctioned setting, on the family the spec names as
+      // its first home. ⚠️ Two options here, not three: this node has no `Failure` port, and
+      // `outcomeInputs` derives that from `VARIABLE_OUTCOME` rather than being told twice.
+      ...outcomeInputs(VARIABLE_OUTCOME)
     },
     outputs: {
       savedValue: {
@@ -206,13 +226,7 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
       //
       // No `Failure`: `setValueTo` casts or substitutes the `Treat empty as` value, and never
       // refuses. A node that cannot fail gets no `Failure` port.
-      ...outcomeOutputs({
-        done: 'Fires when a Set stored a value the Variable was not already holding',
-        unchanged:
-          'Fires when a Set stored the value it already held, so nothing changed. ⚠️ With Value ' +
-          'left ticked under Run On Value Change this is the common case, because Value has ' +
-          'already stored by the time Set fires'
-      })
+      ...outcomeOutputs(VARIABLE_OUTCOME)
     },
     prototypeExtensions: {
       setValueTo: function (this: VariableNodeInstance, value: unknown): boolean {
