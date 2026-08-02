@@ -11,6 +11,12 @@ for the live repair/restyle pass that must follow, and it records what was alrea
   exercising interactive paths, applying the restyle, re-saving in current format, live-installing
   into a fresh project with a zero-console-error check, and verifying on the React 18/19 pairing.
 
+> **Everything below describes the 2026-07-25 static pass and is preserved as written.** A second
+> headless pass on 2026-08-02 then **applied** the colour tokenisation, the namespacing and all five
+> folder-hygiene fixes — the per-prefab findings below name defects that no longer exist. Read
+> [§ 2026-08-02 — headless repair pass](#2026-08-02--headless-repair-pass-isolated-worktree-wt-lib-002)
+> at the bottom for current state, corrections to this record, and the real live residual.
+
 ## Verdict summary
 
 | Verdict | Count | Meaning |
@@ -323,3 +329,131 @@ is the entire per-prefab tail from the spec's Success Criteria):**
    retirements to the index with a reason line here.
 8. Publish the full library build via the LIB-001 pipeline and verify one end-to-end install from the
    published site.
+
+### 2026-08-02 — headless repair pass (isolated worktree `wt-lib-002`)
+
+The 2026-07-25 pass classified its whole tail as "live". Much of it was not: a hard-coded
+colour, a folder-hygiene defect and a collision-risky component name are **file edits**, not
+canvas operations. This pass did all of them. The editor was never opened (another session held
+the single-instance lock), so everything below was read out of and written into `project.json`
+and gated with `library:check` after each prefab.
+
+**`library:check`: 58/58 entries clean, prefabs 29/29 OK with 0 warnings** — unchanged from the
+baseline, re-run after each group of edits.
+
+#### 1. Hard-coded colours → tokens (29 values across 13 prefabs)
+
+| Prefab | Change |
+|--------|--------|
+| date-picker | `borderColor #999` → `Grey - 400` |
+| filters | `borderColor #999` → `Grey - 400`; `iconColor #666` → `Grey - 700` |
+| form | `borderColor #999` → `Grey - 400`; `iconColor #666` → `Grey - 700`; `backgroundColor #FFFFFF` → `White` |
+| multi-choice | `backgroundColor #FFFFFF` → `White` (+ `White` added to palette) |
+| multi-choice-with-pills | 2× `#FFFFFF` → `White`; `Text.color #FFFFFF` → `White`; `iconColor #3E3E3E` → `Grey - 700` (+ `White`) |
+| selection-pills | `backgroundColor`/`Text.color #FFFFFF` → `White` (+ `White`) |
+| time-picker | **2×** `borderColor #999` → `Grey - 400`; `#FFFFFF` → `White` (+ `Grey - 400`, `White`) |
+| table | `borderBottomColor #B4B4B4` → `Grey - 400`; `iconColor #666` → `Grey - 700`; `borderRightColor #000000` → `Grey - 900` |
+| toggle-switch | States `value-false-border color #4C4C4C` → `Grey - 700` (exact value match; + `Grey - 700`) |
+| stripe | JS inputs `#49AD7F`/`#F75A4F`/`#000000` → `Success`/`Danger`/`Grey - 900` (+ `Success`, `Danger`) |
+| supabase | 5× `#FFFFFF` → `White`; header tint → `Supabase/Header Tint` |
+| rating | `Notice` → **`Rating/Star`** (namespaced) |
+| toast | 3 tinted backgrounds → **`Toast/Danger Tint`**, **`Toast/Success Tint`**, **`Toast/Notice Tint`** |
+
+A token absent from a prefab's own palette was **added at its canonical value** (the value the
+other 28 prefabs already agree on). This is required, not cosmetic: `resolveColor` returns the
+raw string when a name is unknown, so an unresolved `Grey - 700` reaches CSS as garbage.
+
+**Result: zero opaque hex colours remain on any node parameter in any of the 29 prefabs.** The
+12 that remain all carry an alpha channel and are exactly the class the charter permits:
+
+- 5 fully-transparent placeholders (`#5836F500`, `#FFFFFF00`) — multi-choice-with-pills,
+  popup-modal, tags ×2, toggle-switch.
+- 2 scrim/overlay — loading-spinner `#FFFFFF7F`, popup-modal `#000000A5`.
+- 5 black shadows — popup-modal `#00000026`; toast `#00000033`/`#00000026`/`#00000019`/`#00000033`.
+
+#### 2. Folder hygiene — all five named defects fixed
+
+`/Tab Bar` → `/Stripe/Tab Bar` (stripe); `/#Supabase Prefab/Supabase Prefab/…` →
+`/#Supabase Prefab/…` (supabase, 145 refs); xano's trailing space trimmed; `#XanoPrefab` →
+`#Xano Prefab`; `/Selection Pills/Pill item` → `/…/Pill Item`.
+
+Renames rewrote **every** reference, not just `components[].name` — instance node `type` and
+Repeater `template` parameters also carry component paths. A tree walk and a raw substring count
+were cross-checked per prefab before rewriting (supabase 145 × 2 = 290 raw; stripe 6; xano 20)
+to prove no reference hides in a script or a setting.
+
+Verified afterwards across all 29: no duplicate component names, no dangling `type`/`template`
+reference, no leading/trailing space in any path segment. Asset integrity re-verified **both
+ways** — every referenced font/SVG resolves *and* every shipped asset is referenced (no orphans).
+
+#### 3. Corrections and additions to the 2026-07-25 record
+
+1. **`#999` → `Grey - 400` is right, but not for the reason a reader would assume.** `Grey - 500`
+   (`#A5A5A5`) is numerically far closer to `#999999` than `Grey - 400` (`#CECECE`). The mapping
+   holds on *sibling* evidence: filters carried both `Grey - 400` and `#999` on `borderColor`, so
+   the tokenised sibling names the intent and the hex is the straggler. Same for `#666` vs the
+   `Grey - 700` date-picker and time-picker already use. Recorded so this is not "corrected" later.
+2. **time-picker has two `#999` borders**, not one.
+3. **`/Table/Row borderRightColor` is inert** — the node has `borderWidth: 0px` and no
+   `borderRightWidth`, so that border is never drawn. Tokenised for consistency, but the honest
+   fix is to delete the parameter; left for the live pass to confirm in the property panel.
+4. **stripe's `in-DefaultColor` is a dead input** — the Plan Picker Detail script reads
+   `Inputs.SuccessColor` and `Inputs.FailureColor` only; `Inputs.DefaultColor` appears nowhere.
+   Not previously recorded. Left in place (removing a port is a graph edit).
+5. **email-verification vs send-grid is a hard name collision, not just redundancy.** Both define
+   `/#__cloud__/SendGrid/Send Email` and `/#__cloud__/SendGrid/Settings`. Diffed: functionally
+   identical apart from node ids and a stale `dynamicports` snapshot, so co-installing produces
+   an overwrite prompt rather than data loss — the consolidation proposal stands, but it is now
+   graded as benign.
+6. **`DbConfig` `dynamicports` enums are stale snapshots and are inert.** They are recomputed at
+   load from the host project's `dbConfigSchema` metadata. send-grid ships `MailGunAPIKey` and
+   `MailGunDomainName` in its dropdown and mail-gun ships `SendGridAPIKey` — leakage from a shared
+   authoring project. Deliberately **not** stripped: the values never reach a user.
+7. **The charter's "apply an alpha over the token" is not expressible.** `resolveColor` is a
+   name→value dictionary lookup with no alpha form, so a tint genuinely cannot track its token.
+   Tokenising the tint (`Toast/* Tint`, `Supabase/Header Tint`) is the best available fix: it does
+   not make the tint follow `Danger`, it makes the pair editable in one place and survives install.
+   **A real α-over-token form is a styles-system feature request, not a prefab defect.**
+8. **Text styles cannot reference colour tokens.** `setStyles` emits `styles.text[*].color`
+   straight to CSS without `resolveColor` (only some consumers, e.g. `Text.tsx`, resolve it
+   afterwards). So the charter's colour rule applies to node parameters only. Every prefab's text
+   styles still hold `#000000`; changing them headlessly would have been unsafe.
+
+#### 4. Live residual after this pass
+
+The charter's colour and folder rules are now **fully applied**. What is left genuinely needs the
+canvas or a running runtime:
+
+- **All 29** — open + re-save in the current format (SUB-010 first-save normalisation); install
+  into a fresh project with a zero-console check; React 18/19 render check.
+- **All 29 — visual confirmation of this pass.** Tokenisation was verified structurally (every
+  edited port is `type: 'color'`, so it passes through `resolveColor`) but **never seen rendered**.
+  Two edits deliberately shift a colour and need an eye: `#B4B4B4` → `Grey - 400` (table cell
+  divider, slightly lighter) and `#3E3E3E` → `Grey - 700` (pills icon, slightly lighter).
+  `#4C4C4C` → `Grey - 700` and stripe's `#49AD7F`/`#F75A4F` are exact-value swaps.
+- **Icons — all 29.** Three inconsistent size families ship today: 680×384/385 (22 prefabs),
+  768×570 (the six cloud prefabs), and media-query at **1326×674 / 101 KB**, a clear outlier.
+  Regeneration is SUB-009 `noodl-preview` work.
+- **toast** — the four shadows use three different alphas (`33`/`26`/`19`) with no visible
+  rationale; `#00000033` is simply the node default. Normalising to one value is a judgement that
+  should be made looking at them.
+- **popup-modal / loading-spinner** — scrim and overlay alphas are charter-permitted but unreviewed.
+- **loading-spinner** — confirm `Rolling-1s-200px.svg` renders under the current runtime.
+- **table** — confirm `/Table/Row borderRightColor` is truly dead, then delete the parameter.
+- **stripe** — remove the dead `DefaultColor` input.
+- **Re-layout / spacing / radius.** The charter's 8px-rhythm and radius rules were **not** applied.
+  Spacing and radius live in per-node numeric parameters whose visual role cannot be read
+  reliably from JSON; changing them blind risks breaking layouts. Untouched by design.
+- **Interaction paths** — no prefab was exercised.
+
+**Orchestrator decisions still open** (unchanged, nothing deleted): the three consolidation
+proposals, and dropping media-query's `Debugger` component.
+
+#### 5. Could not verify
+
+- That any prefab **renders** — no editor, no runtime, no screenshot.
+- That the renamed component trees look right **in LIB-005's import tree**.
+- That an install into a fresh project is console-clean.
+- Whether the two deliberate colour shifts (`#B4B4B4`, `#3E3E3E`) read correctly.
+- Behaviour in a **themed** host project — the adopt-vs-drop behaviour is argued from
+  `installPrefab` and `resolveColor` source, not observed.
