@@ -22,7 +22,7 @@ import * as Exporter from '../../../utils/exporter';
 import { ComponentModel } from '../../componentmodel';
 import type { NodeGraphNode } from '../../nodegraphmodel';
 import type { ProjectModel } from '../../projectmodel';
-import { buildSandboxDataset } from './sandboxData';
+import { buildSandboxDataset, unknownShapeNotice } from './sandboxData';
 import type { AgentSampleData, ComponentFiles } from './types';
 
 /** How deep to follow component instances when collecting what to sample. */
@@ -58,6 +58,12 @@ export interface SandboxExport {
   unrenderable?: string;
   /** Toolbar line describing the data the preview is running on. */
   summary?: string;
+  /**
+   * A caveat about the data, when the preview renders but cannot be trusted to
+   * look full — a class whose field shape could not be inferred. Present with
+   * `json`, unlike `unrenderable`: the component runs, the data does not.
+   */
+  notice?: string;
 }
 
 /**
@@ -148,5 +154,5 @@ export function buildSandboxExport({
   const dataset = buildSandboxDataset({ components: componentClosure(project, component), sampleData });
   json.metadata[SANDBOX_METADATA_KEY] = dataset;
 
-  return { json, summary: dataset.summary };
+  return { json, summary: dataset.summary, notice: unknownShapeNotice(dataset.unknownShape) };
 }

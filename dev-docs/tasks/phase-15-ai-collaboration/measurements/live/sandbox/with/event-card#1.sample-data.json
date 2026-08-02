@@ -1,0 +1,49 @@
+{
+  "Events": [
+    {
+      "objectId": "ev1",
+      "name": "Neon Nights Festival",
+      "photo": "https://picsum.photos/seed/neon/640/360",
+      "startDate": "2024-07-12",
+      "city": "Berlin",
+      "venue": "Kraftwerk Arena",
+      "price": "€49"
+    },
+    {
+      "objectId": "ev2",
+      "name": "Jazz Under the Stars",
+      "photo": "https://picsum.photos/seed/jazz/640/360",
+      "startDate": "2024-08-03",
+      "city": "Lisbon",
+      "venue": "Castelo Gardens",
+      "price": "€35"
+    },
+    {
+      "objectId": "ev3",
+      "name": "Indie Rock Showcase",
+      "photo": "https://picsum.photos/seed/indie/640/360",
+      "startDate": "2024-09-21",
+      "city": "Manchester",
+      "venue": "The Warehouse",
+      "price": "£22"
+    },
+    {
+      "objectId": "ev4",
+      "name": "Electronic Sunrise",
+      "photo": "https://picsum.photos/seed/sunrise/640/360",
+      "startDate": "2024-06-15",
+      "city": "Ibiza",
+      "venue": "Beach Club Sol",
+      "price": "€60"
+    },
+    {
+      "objectId": "ev5",
+      "name": "Classical Evenings",
+      "photo": "https://picsum.photos/seed/classic/640/360",
+      "startDate": "2024-10-05",
+      "city": "Vienna",
+      "venue": "Concert Hall",
+      "price": "€40"
+    }
+  ]
+}

@@ -32,6 +32,8 @@ import { guid } from '@noodl-utils/utils';
 
 import { PreviewTokenInjector } from '../../../services/PreviewTokenInjector';
 
+import { FeedbackType } from '@noodl-constants/FeedbackType';
+
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
@@ -128,6 +130,18 @@ export function SandboxPreview({ files, sampleData, revision }: SandboxPreviewPr
         <div className={css.Summary}>
           <Text textType={TextType.Secondary}>{result?.summary ?? 'Preview'}</Text>
         </div>
+        {/*
+          A class whose field shape could not be inferred renders as blank rows
+          under a heading that claims results — indistinguishable, to the user,
+          from a component that does not work. Saying so is the same rule the
+          logic-only candidate follows, applied to the data instead of the graph.
+        */}
+        {result?.notice ? (
+          <div className={css.Notice} title={result.notice}>
+            <Icon icon={IconName.WarningTriangle} size={IconSize.Small} />
+            <Text textType={FeedbackType.Notice}>Fields unknown</Text>
+          </div>
+        ) : null}
         <div className={css.Modes}>
           <PrimaryButton
             label="Sample data"

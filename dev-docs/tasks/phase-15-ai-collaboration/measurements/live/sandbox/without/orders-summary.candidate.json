@@ -1,0 +1,136 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "cfa62f07-f24f-4f03-afae-d43f17a636ff",
+    "name": "AIX Orders",
+    "path": "/Pages/AIX Orders",
+    "type": "page",
+    "created": "2026-08-02T17:18:28.535Z",
+    "modified": "2026-08-02T17:18:28.535Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Orders page: shows a summary line with the count and total value of all orders, followed by a list of order rows (order number, customer name, total, status, date placed) from the Orders collection, most recent first."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "cfa62f07-f24f-4f03-afae-d43f17a636ff",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Page root",
+        "x": 0,
+        "y": 0,
+        "children": [
+          "summaryText",
+          "rowsText"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "paddingTop": "var(--space-8)",
+          "paddingBottom": "var(--space-8)",
+          "paddingLeft": "var(--space-8)",
+          "paddingRight": "var(--space-8)",
+          "rowGap": "var(--space-4)",
+          "backgroundColor": "var(--background)",
+          "sizeMode": "contentHeight",
+          "widthUnit": "%",
+          "width": 100
+        }
+      },
+      {
+        "id": "orders",
+        "type": "DbCollection2",
+        "label": "Orders query, sorted most recent first",
+        "x": 0,
+        "y": 0,
+        "parameters": {
+          "collectionName": "Orders"
+        }
+      },
+      {
+        "id": "summaryExpr",
+        "type": "Expression",
+        "label": "Order count + total summary",
+        "x": 300,
+        "y": 0,
+        "parameters": {
+          "expression": "orders.length + ' orders, totalling $' + orders.reduce((s,o)=>s+(Number(o.total)||0),0).toFixed(2)"
+        }
+      },
+      {
+        "id": "rowsExpr",
+        "type": "Expression",
+        "label": "Order rows text, most recent first",
+        "x": 300,
+        "y": 150,
+        "parameters": {
+          "expression": "orders.slice().sort((a,b)=>new Date(b.datePlaced)-new Date(a.datePlaced)).map(o=>(o.orderNumber||'')+'   '+(o.customerName||'')+'   $'+(o.total||0)+'   '+(o.status||'')+'   '+(o.datePlaced?new Date(o.datePlaced).toLocaleDateString():'')).join('\\n')"
+        }
+      },
+      {
+        "id": "summaryText",
+        "type": "Text",
+        "label": "Summary line",
+        "x": 600,
+        "y": 0,
+        "parent": "root",
+        "parameters": {
+          "variant": "heading-3",
+          "fontSize": "var(--text-2xl)",
+          "fontWeight": "var(--font-semibold)",
+          "lineHeight": "var(--leading-snug)",
+          "color": "var(--foreground)"
+        }
+      },
+      {
+        "id": "rowsText",
+        "type": "Text",
+        "label": "Order rows",
+        "x": 600,
+        "y": 150,
+        "parent": "root",
+        "parameters": {
+          "fontFamily": "var(--font-mono)",
+          "fontSize": "var(--text-sm)",
+          "color": "var(--foreground)",
+          "lineHeight": "var(--leading-relaxed)"
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "cfa62f07-f24f-4f03-afae-d43f17a636ff",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "orders",
+        "fromProperty": "items",
+        "toId": "summaryExpr",
+        "toProperty": "orders"
+      },
+      {
+        "fromId": "orders",
+        "fromProperty": "items",
+        "toId": "rowsExpr",
+        "toProperty": "orders"
+      },
+      {
+        "fromId": "summaryExpr",
+        "fromProperty": "asString",
+        "toId": "summaryText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "rowsExpr",
+        "fromProperty": "asString",
+        "toId": "rowsText",
+        "toProperty": "text"
+      }
+    ]
+  }
+}

@@ -1,0 +1,217 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "be63cfeb-611f-4cad-930d-768902501b61",
+    "name": "AIX Event Card",
+    "path": "/Visual Components/AIX Event Card",
+    "type": "visual",
+    "created": "2026-08-02T17:28:31.119Z",
+    "modified": "2026-08-02T17:28:31.119Z",
+    "modifiedBy": "ai-authoring",
+    "description": "A reusable card that displays a single Event record (photo, name, start date, city/venue, ticket price), looked up from an eventId component input."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "be63cfeb-611f-4cad-930d-768902501b61",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "inputs",
+        "type": "Component Inputs",
+        "x": 0,
+        "y": 0,
+        "ports": [
+          {
+            "name": "eventId",
+            "plug": "output",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "id": "model",
+        "type": "DbModel2",
+        "label": "Event record lookup",
+        "x": 250,
+        "y": 0,
+        "parameters": {
+          "collectionName": "Event"
+        }
+      },
+      {
+        "id": "dateFmt",
+        "type": "Date To String",
+        "label": "Format start date",
+        "x": 250,
+        "y": 180,
+        "parameters": {
+          "formatString": "{monthShort} {date}, {year}"
+        }
+      },
+      {
+        "id": "card",
+        "type": "Group",
+        "label": "Event Card root",
+        "x": 550,
+        "y": 0,
+        "children": [
+          "photo",
+          "body"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "backgroundColor": "var(--surface)",
+          "borderRadius": "var(--radius-lg)",
+          "borderWidth": "var(--border-1)",
+          "borderColor": "var(--border)",
+          "borderStyle": "solid",
+          "boxShadowEnabled": true,
+          "boxShadowColor": "var(--shadow-sm)",
+          "clip": true,
+          "width": 320,
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "photo",
+        "type": "Image",
+        "label": "Event photo",
+        "x": 550,
+        "y": 100,
+        "parent": "card",
+        "parameters": {
+          "sizeMode": "widthHeight",
+          "width": 320,
+          "height": 180,
+          "objectFit": "cover",
+          "alt": "Event photo"
+        }
+      },
+      {
+        "id": "body",
+        "type": "Group",
+        "label": "Card body",
+        "x": 550,
+        "y": 300,
+        "parent": "card",
+        "children": [
+          "name",
+          "date",
+          "location",
+          "price"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "paddingTop": "var(--space-4)",
+          "paddingBottom": "var(--space-4)",
+          "paddingLeft": "var(--space-4)",
+          "paddingRight": "var(--space-4)",
+          "rowGap": "var(--space-2)"
+        }
+      },
+      {
+        "id": "name",
+        "type": "Text",
+        "label": "Event name",
+        "x": 550,
+        "y": 360,
+        "parent": "body",
+        "parameters": {
+          "textStyle": "heading-4"
+        }
+      },
+      {
+        "id": "date",
+        "type": "Text",
+        "label": "Start date",
+        "x": 550,
+        "y": 420,
+        "parent": "body",
+        "parameters": {
+          "textStyle": "muted"
+        }
+      },
+      {
+        "id": "location",
+        "type": "Text",
+        "label": "City / venue",
+        "x": 550,
+        "y": 480,
+        "parent": "body",
+        "parameters": {
+          "textStyle": "muted"
+        }
+      },
+      {
+        "id": "price",
+        "type": "Text",
+        "label": "Ticket price",
+        "x": 550,
+        "y": 540,
+        "parent": "body",
+        "parameters": {
+          "textStyle": "label",
+          "color": "var(--primary)"
+        }
+      }
+    ],
+    "visualRoots": [
+      "card"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "be63cfeb-611f-4cad-930d-768902501b61",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "inputs",
+        "fromProperty": "eventId",
+        "toId": "model",
+        "toProperty": "modelId"
+      },
+      {
+        "fromId": "model",
+        "fromProperty": "prop-photo",
+        "toId": "photo",
+        "toProperty": "src"
+      },
+      {
+        "fromId": "model",
+        "fromProperty": "prop-name",
+        "toId": "name",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "model",
+        "fromProperty": "prop-startDate",
+        "toId": "dateFmt",
+        "toProperty": "input"
+      },
+      {
+        "fromId": "dateFmt",
+        "fromProperty": "currentValue",
+        "toId": "date",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "model",
+        "fromProperty": "prop-city",
+        "toId": "location",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "model",
+        "fromProperty": "prop-venue",
+        "toId": "location",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "model",
+        "fromProperty": "prop-price",
+        "toId": "price",
+        "toProperty": "text"
+      }
+    ]
+  }
+}
