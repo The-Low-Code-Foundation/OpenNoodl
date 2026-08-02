@@ -33973,6 +33973,28 @@
           "description": "Id of the action currently being handled, so a later Complete can be matched to it"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when Complete or Fail acted on the action in flight — including a Fail, which succeeds by reporting the failure"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Status",
@@ -34054,7 +34076,8 @@
           "result": "Handed back to the dispatcher as its `result` when this action completes.",
           "errorMessage": "Handed back to the dispatcher as its `lastError` when Fail is signalled.",
           "complete": "Marks the in-flight action done so the next queued action can start. Signalling it with nothing in flight reports on `error`.",
-          "fail": "Marks the in-flight action failed. The dispatcher fires `failed` and moves on.",
+          "fail": "Marks the in-flight action failed. The dispatcher fires `failed` and moves on — and this node reports `done`, because reporting the failure is what it was asked to do.",
+          "done": "Fires when Complete or Fail acted on the action in flight. `failure` means the opposite: there was nothing in flight to act on.",
           "trigger": "Fires when a matching action is dispatched. The payload is already set when it fires.",
           "payload": "The action's `payload`, else its `data`, else the whole action object — so `{type, sessionId}` gives you an object with `sessionId` on it.",
           "actionId": "The dispatched action's id, for correlating an acknowledgement back to the server.",
@@ -34987,6 +35010,28 @@
           "description": "Fires once the pending text and the values have been discarded"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Parse consumed text or a Clear discarded something; Success is narrower and fires only when values came out"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Status",
@@ -35017,7 +35062,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires for each value or line that could not be parsed, and when the pending text exceeded Max Pending"
+          "description": "Fires once when a Parse could not read part of its input, or when the pending text exceeded Max Pending; Error Count says how many"
         },
         {
           "name": "isComplete",
@@ -35064,6 +35109,17 @@
           "description": "Fires when a Parse yielded at least one value, so a chunk that merely advanced an incomplete value stays quiet"
         },
         {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there was nothing pending to parse, or nothing to clear — a valid action with nothing to do"
+        },
+        {
           "name": "valueCount",
           "displayName": "Value Count",
           "group": "Status",
@@ -35103,7 +35159,9 @@
           "pendingCharacters": "Text held back because a value is incomplete. Persistently non-zero means the Format does not match the stream.",
           "isComplete": "True when the last Parse left nothing buffered.",
           "success": "Fires only when the Parse produced at least one value, so an advancing-but-incomplete chunk stays quiet.",
-          "failure": "Fires per malformed value; the stream keeps going rather than stalling on one bad record."
+          "failure": "Fires once per Parse that could not read part of its input — not once per bad record; `errorCount` says how many. The stream keeps going rather than stalling.",
+          "unchanged": "Fires when a Parse had nothing pending, or a Clear had nothing to discard — a valid action with nothing to do.",
+          "done": "Fires when a Parse consumed text or a Clear discarded something. Wider than `success`, which needs a value to have come out."
         },
         "examples": [
           "agent-sse-task-monitor"
@@ -35715,6 +35773,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the extract has run, whether it matched or not — Found and Not Found say which"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Status",
@@ -35844,7 +35924,8 @@
           "error": "Empty unless the pattern would not compile.",
           "found": "Fires when there was a match.",
           "notFound": "Fires when the pattern compiled but matched nothing — a normal outcome, not an error.",
-          "failure": "Fires only when the pattern itself is unusable, so a broken pattern cannot hide as 'no match'."
+          "failure": "Fires only when the pattern itself is unusable, so a broken pattern cannot hide as 'no match'.",
+          "done": "Fires after both Found and Not Found — both mean the extract ran. There is deliberately no Unchanged: a miss is a result, not a post-condition that already held."
         },
         "examples": [
           "agent-sse-task-monitor"
@@ -37278,6 +37359,28 @@
           "description": "Comma-separated keys the checkpoint holds as live objects, so restoring will not undo changes made to them since"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Save or Restore you triggered has finished, whichever of the two it was"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -37362,6 +37465,7 @@
           "byReferenceKeys": "Which keys those are.",
           "saved": "Fires after a successful capture.",
           "restored": "Fires after a successful restore.",
+          "done": "Fires after a Save or a Restore you triggered succeeded, whichever it was — wire this when one chain follows both verbs.",
           "error": "Carries a refused save or restore — an unknown store, or snapshot data that could not be read."
         },
         "examples": [

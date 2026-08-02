@@ -1265,7 +1265,8 @@ describe('State Snapshot node', () => {
     node.setInputValue('save', true);
     node.update();
 
-    expect(signals).toEqual(['saved']);
+    // ERG-001 §4: the outcome follows the verb's own signal, and Completed follows the outcome.
+    expect(signals).toEqual(['saved', 'done', 'completed']);
     expect((output(node, 'snapshot') as { state: unknown }).state).toEqual({ a: 1 });
 
     store.setState('app', { a: 99 });
@@ -1274,7 +1275,7 @@ describe('State Snapshot node', () => {
     node.setInputValue('restore', true);
     node.update();
 
-    expect(signals).toEqual(['restored']);
+    expect(signals).toEqual(['restored', 'done', 'completed']);
     expect(store.getState('app')).toEqual({ a: 1 });
   });
 
@@ -1305,7 +1306,7 @@ describe('State Snapshot node', () => {
     node.setInputValue('restore', true);
     node.update();
 
-    expect(signals).toEqual(['failure']);
+    expect(signals).toEqual(['failure', 'completed']);
     expect(String(output(node, 'error'))).toContain('no snapshot named');
     expect(raised).toEqual([
       { code: 'state-snapshot/operation-failed', message: expect.stringContaining('no snapshot named') }
@@ -1320,7 +1321,7 @@ describe('State Snapshot node', () => {
     node.setInputValue('save', true);
     node.update();
 
-    expect(signals).toEqual(['failure']);
+    expect(signals).toEqual(['failure', 'completed']);
     expect(String(output(node, 'error'))).toContain('name is required');
     expect(raised).toEqual([
       { code: 'state-snapshot/operation-failed', message: expect.stringContaining('name is required') }
@@ -1345,7 +1346,8 @@ describe('State Snapshot node', () => {
     node.setInputValue('save', true);
     node.update();
 
-    expect(signals).toEqual(['saved']);
+    // ERG-001 §4: the outcome follows the verb's own signal, and Completed follows the outcome.
+    expect(signals).toEqual(['saved', 'done', 'completed']);
     expect(signals).not.toContain('failure');
     expect(raised).toEqual([]);
   });

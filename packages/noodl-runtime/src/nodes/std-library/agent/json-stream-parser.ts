@@ -18,10 +18,15 @@
  * @since 2.0.0
  */
 
-import type { NodeDefinitionOptions } from '@noodl/types';
+import type { NodeDefinitionOptions, OutcomeToken } from '@noodl/types';
+
+import { outcomeOutputs } from '../../../outcome';
 
 import type { JsonStreamFormat, JsonStreamParserNodeInstance, ParserInternal } from './node-instances';
 import { scanJsonValues, splitDelimited, tryParseJson } from './stream-parsers';
+
+/** NDA-004 — the matchable half of the failure pair. The bus keys by `code`. */
+const PARSE_ERROR_CODE = 'json-stream-parser/parse-failed';
 
 function internalOf(node: JsonStreamParserNodeInstance): ParserInternal {
   return node._internal;
@@ -115,7 +120,9 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
         'Appends the current Chunk and emits every value that is now complete; the chunk is retained between pulses',
       group: 'Actions',
       valueChangedToTrue(this: JsonStreamParserNodeInstance) {
-        this.doParse();
+        // ERG-001 §4. Minted at the port; `doParse` runs inline, so there is no deferral for a
+        // second pulse to be coalesced into and no pending array is needed.
+        this.doParse(this.beginOutcome());
       }
     },
 
@@ -124,7 +131,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       description: 'Discards the pending text, the parsed values and the error counter',
       group: 'Actions',
       valueChangedToTrue(this: JsonStreamParserNodeInstance) {
-        this.clearBuffer();
+        this.clearBuffer(this.beginOutcome());
       }
     }
   },
@@ -207,27 +214,47 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
         'Fires when a Parse yielded at least one value, so a chunk that merely advanced an incomplete value stays quiet',
       group: 'Events'
     },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      description:
-        'Fires for each value or line that could not be parsed, and when the pending text exceeded Max Pending',
-      group: 'Events'
-    },
     cleared: {
       type: 'signal',
       displayName: 'Cleared',
       description: 'Fires once the pending text and the values have been discarded',
       group: 'Events'
-    }
+    },
+    /**
+     * ⚠️ ERG-001 §4 — **`Failure` is narrowed here, deliberately.**
+     *
+     * It used to fire once per unparseable line, so one `Parse` over three bad lines pulsed it
+     * three times. Rule 1's load-bearing half is *exactly* one terminal signal per invocation,
+     * so it is now the invocation's outcome: the per-line detail lives on `Error` and
+     * `Error Count`, and the reason now reaches the NDA-004 bus, which `reportError` never did.
+     * §0.2 Result 3's call — where an existing port's meaning is wrong under the contract, the
+     * honest fix is to change it and say so.
+     *
+     * ⚠️ **`Unchanged` is earned here**, and it is the only node in this batch that earns one.
+     * `doParse` opened with a bare `return` when there was nothing pending, and a `Clear` with
+     * nothing to discard is the same shape: the post-condition already held. A parse that
+     * consumed a chunk without completing a value is **`Done`** — the buffer grew and
+     * `Pending Characters` changed — which is why `Success` keeps its narrower meaning.
+     */
+    ...outcomeOutputs({
+      done: 'Fires when a Parse consumed text or a Clear discarded something; Success is narrower and fires only when values came out',
+      unchanged: 'Fires when there was nothing pending to parse, or nothing to clear — a valid action with nothing to do',
+      failure:
+        'Fires once when a Parse could not read part of its input, or when the pending text exceeded Max Pending; Error Count says how many'
+    })
   },
 
   methods: {
-    doParse(this: JsonStreamParserNodeInstance) {
+    doParse(this: JsonStreamParserNodeInstance, token: OutcomeToken) {
       const internal = internalOf(this);
       const chunk = internal.pendingChunk;
       if (chunk !== '') internal.buffer += chunk;
-      if (internal.buffer === '') return;
+      if (internal.buffer === '') {
+        // ERG-001 §4. This was a bare `return` — the contract's headline class, a node that
+        // emits nothing and leaves a chain dead. Nothing arrived and nothing needed doing.
+        this.reportOutcome(token, 'unchanged');
+        return;
+      }
 
       if (internal.maxLength > 0 && internal.buffer.length > internal.maxLength) {
         // Dropping the buffer loudly beats accumulating a runaway one silently: at
@@ -236,6 +263,11 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
         this.reportError(
           'Gave up on ' + internal.maxLength + '+ characters of unparsed text; check the Format setting'
         );
+        // ⚠️ Settled with the message explicitly. A first draft called `settleParse(token)` bare
+        // here and reported **`Done`** for a buffer the node had just given up on — caught by
+        // the pre-existing "gives up loudly" row, which is why that row is a control worth
+        // having: the outcome must not be inferred from state the branch has already reset.
+        this.settleParse(token, internal.error);
         return;
       }
 
@@ -280,11 +312,30 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
         this.flagOutputDirty('valueCount');
       }
 
+      const errorsBefore = internal.errorCount;
       for (const message of errors) this.reportError(message);
 
       // Success reports "this Parse yielded values", so a chunk that merely advanced
       // an incomplete value stays quiet rather than firing an empty success.
       if (values.length > 0) this.sendSignalOnOutput('success');
+
+      this.settleParse(token, internal.errorCount > errorsBefore ? internal.error : undefined);
+    },
+
+    /**
+     * One outcome for the whole `Parse`, however many lines it read.
+     *
+     * ⚠️ A parse that read *some* values and failed on others reports `failure`: the reason has
+     * to reach `On App Error`, and "partly worked" is not one of the three outcomes. The values
+     * that did parse are still on `Values` and `Value Count`, so nothing is lost — only the
+     * sequencing says "this did not fully work".
+     */
+    settleParse(this: JsonStreamParserNodeInstance, token: OutcomeToken, error?: string) {
+      if (error !== undefined) {
+        this.reportOutcome(token, 'failure', { code: PARSE_ERROR_CODE, message: error });
+        return;
+      }
+      this.reportOutcome(token, 'done');
     },
 
     reportError(this: JsonStreamParserNodeInstance, message: string) {
@@ -293,11 +344,12 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       internal.errorCount++;
       this.flagOutputDirty('error');
       this.flagOutputDirty('errorCount');
-      this.sendSignalOnOutput('failure');
     },
 
-    clearBuffer(this: JsonStreamParserNodeInstance) {
+    clearBuffer(this: JsonStreamParserNodeInstance, token?: OutcomeToken) {
       const internal = internalOf(this);
+      const hadSomething =
+        internal.buffer !== '' || internal.values.length > 0 || internal.errorCount > 0 || internal.totalValues > 0;
       internal.buffer = '';
       internal.values = [];
       internal.parsed = undefined;
@@ -313,6 +365,7 @@ const JSONStreamParserNode: NodeDefinitionOptions = {
       this.flagOutputDirty('error');
       this.flagOutputDirty('errorCount');
       this.sendSignalOnOutput('cleared');
+      if (token) this.reportOutcome(token, hadSomething ? 'done' : 'unchanged');
     }
   }
 };

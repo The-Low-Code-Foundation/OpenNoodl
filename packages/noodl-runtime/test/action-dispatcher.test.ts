@@ -1288,8 +1288,9 @@ describe('net.noodl.ActionHandler (node)', () => {
     );
     expect(Object.keys(metadata.outputs).sort()).toEqual(
       // NDA-012 added `failure`: Complete/Fail with nothing in flight used to end on the
-      // `error` string alone.
-      ['actionId', 'error', 'failure', 'payload', 'registered', 'trigger', 'triggeredCount'].sort()
+      // `error` string alone. ERG-001 §4 added `done` and `completed` beside it — `failure`
+      // keeps that meaning, and a `Fail` that succeeds reports `done` rather than `failure`.
+      ['actionId', 'completed', 'done', 'error', 'failure', 'payload', 'registered', 'trigger', 'triggeredCount'].sort()
     );
   });
 

@@ -31348,6 +31348,28 @@
           "description": "Id of the action currently being handled, so a later Complete can be matched to it"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when Complete or Fail acted on the action in flight — including a Fail, which succeeds by reporting the failure"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Status",
@@ -32155,6 +32177,28 @@
           "description": "Fires once the pending text and the values have been discarded"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Parse consumed text or a Clear discarded something; Success is narrower and fires only when values came out"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Status",
@@ -32185,7 +32229,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires for each value or line that could not be parsed, and when the pending text exceeded Max Pending"
+          "description": "Fires once when a Parse could not read part of its input, or when the pending text exceeded Max Pending; Error Count says how many"
         },
         {
           "name": "isComplete",
@@ -32230,6 +32274,17 @@
           },
           "isSignal": true,
           "description": "Fires when a Parse yielded at least one value, so a chunk that merely advanced an incomplete value stays quiet"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there was nothing pending to parse, or nothing to clear — a valid action with nothing to do"
         },
         {
           "name": "valueCount",
@@ -32782,6 +32837,28 @@
         }
       ],
       "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the extract has run, whether it matched or not — Found and Not Found say which"
+        },
         {
           "name": "error",
           "displayName": "Error",
@@ -34120,6 +34197,28 @@
           },
           "isSignal": false,
           "description": "Comma-separated keys the checkpoint holds as live objects, so restoring will not undo changes made to them since"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Save or Restore you triggered has finished, whichever of the two it was"
         },
         {
           "name": "error",

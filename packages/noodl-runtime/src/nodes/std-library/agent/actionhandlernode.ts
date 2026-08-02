@@ -21,7 +21,9 @@
  * @module noodl-runtime
  * @since 2.0.0
  */
-import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
+import type { NodeDefinitionOptions, NodeInstance, OutcomeToken } from '@noodl/types';
+
+import { outcomeOutputs } from '../../../outcome';
 
 import { ActionContext, ActionRegistry, actionRegistry, isBuiltInAction, Unsubscribe } from './action-dispatcher';
 
@@ -184,7 +186,9 @@ const ActionHandlerNode: NodeDefinitionOptions = {
         'Reports the action finished, so the dispatcher runs whatever is queued behind it; ignored unless Auto Complete is off',
       group: 'Actions',
       valueChangedToTrue(this: NodeInstance) {
-        (this as never as { doComplete(): void }).doComplete();
+        // ERG-001 §4. Minted at the port; `doComplete` runs inline, so no pending array is
+        // needed and none is created.
+        (this as never as { doComplete(t: OutcomeToken): void }).doComplete(this.beginOutcome());
       }
     },
 
@@ -193,7 +197,7 @@ const ActionHandlerNode: NodeDefinitionOptions = {
       description: 'Reports the action failed, so the dispatcher fires Failed with Error Message as the reason',
       group: 'Actions',
       valueChangedToTrue(this: NodeInstance) {
-        (this as never as { doFail(): void }).doFail();
+        (this as never as { doFail(t: OutcomeToken): void }).doFail(this.beginOutcome());
       }
     }
   },
@@ -263,12 +267,22 @@ const ActionHandlerNode: NodeDefinitionOptions = {
      * the graph is still coming up, and a signal on the boot path is the defect NDA-004 §2
      * warns about in `Stream Buffer`'s own comment.
      */
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      description: 'Fires when Complete or Fail was signalled with no action in flight',
-      group: 'Events'
-    }
+    /**
+     * ⚠️ ERG-001 §4 — **`Done` and this `Failure` are not the two halves of `Fail`.**
+     *
+     * A `Fail` that finds an action in flight reports `Done`: the node was asked to report the
+     * action failed and it did. This port keeps the meaning the sentence below has always
+     * given it — the invocation was refused because there was nothing to act on — which is a
+     * genuine refusal and a different thing entirely.
+     *
+     * ⚠️ **No `Unchanged`.** Neither verb has a state in which the post-condition already
+     * holds: an action is either in flight, in which case there is work, or it is not, in which
+     * case the node cannot act at all.
+     */
+    ...outcomeOutputs({
+      done: 'Fires when Complete or Fail acted on the action in flight — including a Fail, which succeeds by reporting the failure',
+      failure: 'Fires when Complete or Fail was signalled with no action in flight'
+    })
   },
 
   methods: {
@@ -359,30 +373,36 @@ const ActionHandlerNode: NodeDefinitionOptions = {
       }
     },
 
-    doComplete(this: NodeInstance) {
+    doComplete(this: NodeInstance, token: OutcomeToken) {
       const internal = internalOf(this);
       const pending = internal.pending;
       if (!pending) {
-        (this as never as { reportFailure(m: string): void }).reportFailure(
-          'Complete was signalled with no action in flight'
+        (this as never as { reportFailure(m: string, t: OutcomeToken): void }).reportFailure(
+          'Complete was signalled with no action in flight',
+          token
         );
         return;
       }
       internal.pending = null;
       pending.complete(internal.result);
+      // Last, after the dispatcher has been told: the outcome is the end of the action.
+      this.reportOutcome(token, 'done');
     },
 
-    doFail(this: NodeInstance) {
+    doFail(this: NodeInstance, token: OutcomeToken) {
       const internal = internalOf(this);
       const pending = internal.pending;
       if (!pending) {
-        (this as never as { reportFailure(m: string): void }).reportFailure(
-          'Fail was signalled with no action in flight'
+        (this as never as { reportFailure(m: string, t: OutcomeToken): void }).reportFailure(
+          'Fail was signalled with no action in flight',
+          token
         );
         return;
       }
       internal.pending = null;
       pending.fail(internal.errorMessage || `the handler for "${internal.actionType}" reported a failure`);
+      // ⚠️ `done`, not `failure`. The node was asked to report a failure and did exactly that.
+      this.reportOutcome(token, 'done');
     },
 
     /**
@@ -390,11 +410,13 @@ const ActionHandlerNode: NodeDefinitionOptions = {
      * Contract asks for: the `error` string, the `Failure` signal, and the runtime error bus,
      * which is what reaches `On App Error` in a deployed build with no editor watching.
      */
-    reportFailure(this: NodeInstance, message: string) {
+    reportFailure(this: NodeInstance, message: string, token: OutcomeToken) {
       internalOf(this).error = message;
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
-      this.raiseRuntimeError(HANDLER_ERROR_CODE, message);
+      // ERG-001 §4: `reportOutcome` raises on the bus and then sends `Failure` and `Completed`,
+      // so the three channels the Failure Contract asks for are still all served — from one
+      // place, in the contract's order.
+      this.reportOutcome(token, 'failure', { code: HANDLER_ERROR_CODE, message });
     },
 
     /**

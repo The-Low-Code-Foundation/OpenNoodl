@@ -13,10 +13,15 @@
  * @since 2.0.0
  */
 
-import type { NodeDefinitionOptions } from '@noodl/types';
+import type { NodeDefinitionOptions, OutcomeToken } from '@noodl/types';
+
+import { outcomeOutputs } from '../../../outcome';
 
 import type { ExtractorInternal, PatternExtractorNodeInstance } from './node-instances';
 import { extractPattern } from './stream-parsers';
+
+/** NDA-004 — the matchable half of the failure pair. The bus keys by `code`. */
+const EXTRACT_ERROR_CODE = 'pattern-extractor/extract-failed';
 
 function internalOf(node: PatternExtractorNodeInstance): ExtractorInternal {
   return node._internal;
@@ -109,7 +114,8 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       description: 'Runs Pattern over Text and reports what it found',
       group: 'Actions',
       valueChangedToTrue(this: PatternExtractorNodeInstance) {
-        this.doExtract();
+        // ERG-001 §4. Minted at the port; `doExtract` runs inline.
+        this.doExtract(this.beginOutcome());
       }
     }
   },
@@ -196,16 +202,30 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       description: 'Fires when the pattern ran and matched nothing, which is an ordinary outcome rather than a mistake',
       group: 'Events'
     },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      description: 'Fires when the pattern itself is unusable, which is a bug to fix rather than a result',
-      group: 'Events'
-    }
+    /**
+     * ⚠️ ERG-001 §4 — **`Not Found` is not an `Unchanged`, and this is the node where that was
+     * decided.**
+     *
+     * `Unchanged` means the action was valid and *the post-condition already held, so nothing
+     * needed doing*. Extract's post-condition is "the outputs reflect running this pattern over
+     * this text" — and running it over text that matches nothing still rewrites `Match`,
+     * `Match Count`, `Groups` and `Named Groups`. Nothing was declined; the work happened and
+     * produced a result. `Found` and `Not Found` are two *results*, and `Done` is the outcome
+     * of both.
+     *
+     * The consequence check agrees. Pulling a percentage out of a stream misses on most chunks,
+     * so `Not Found` is the **common** case — and putting the common case on a different wire
+     * from the uncommon one is `Run Tasks`' defect with the sign flipped, which is why
+     * `For Each` refused an `Unchanged` for an empty list too.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once the extract has run, whether it matched or not — Found and Not Found say which',
+      failure: 'Fires when the pattern itself is unusable, which is a bug to fix rather than a result'
+    })
   },
 
   methods: {
-    doExtract(this: PatternExtractorNodeInstance) {
+    doExtract(this: PatternExtractorNodeInstance, token: OutcomeToken) {
       const internal = internalOf(this);
       const result = extractPattern(internal.text, internal.pattern, {
         all: internal.extractAll,
@@ -229,10 +249,15 @@ const PatternExtractorNode: NodeDefinitionOptions = {
       if (!result.ok) {
         // An unusable pattern is distinct from "no match": one is a bug to fix, the
         // other is a normal outcome, and collapsing them hides broken patterns.
-        this.sendSignalOnOutput('failure');
+        //
+        // ERG-001 §4: `reportOutcome` owns the `failure` pulse now, and raises the reason on
+        // the NDA-004 bus on the way — which this node never did, so a deployed app had the
+        // string on a port and nothing on `On App Error`.
+        this.reportOutcome(token, 'failure', { code: EXTRACT_ERROR_CODE, message: internal.error });
         return;
       }
       this.sendSignalOnOutput(result.match === null ? 'notFound' : 'found');
+      this.reportOutcome(token, 'done');
     }
   }
 };

@@ -15,7 +15,8 @@
     "error": "Empty unless the pattern would not compile.",
     "found": "Fires when there was a match.",
     "notFound": "Fires when the pattern compiled but matched nothing — a normal outcome, not an error.",
-    "failure": "Fires only when the pattern itself is unusable, so a broken pattern cannot hide as 'no match'."
+    "failure": "Fires only when the pattern itself is unusable, so a broken pattern cannot hide as 'no match'.",
+    "done": "Fires after both Found and Not Found \u2014 both mean the extract ran. There is deliberately no Unchanged: a miss is a result, not a post-condition that already held."
   },
   "patterns": [
     "Stream text → `text`, pattern `(\\d+)%`, `firstGroup` → Number → a progress bar.",

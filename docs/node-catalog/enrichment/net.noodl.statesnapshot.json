@@ -14,6 +14,7 @@
     "byReferenceKeys": "Which keys those are.",
     "saved": "Fires after a successful capture.",
     "restored": "Fires after a successful restore.",
+    "done": "Fires after a Save or a Restore you triggered succeeded, whichever it was \u2014 wire this when one chain follows both verbs.",
     "error": "Carries a refused save or restore — an unknown store, or snapshot data that could not be read."
   },
   "patterns": [

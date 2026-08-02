@@ -13,7 +13,9 @@
  * routing it out to a file and back into `snapshotData` is the export/import path the spec
  * asks for, with no extra ports for it.
  */
-import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule, OutcomeToken } from '@noodl/types';
+
+import { outcomeOutputs } from '../../../outcome';
 
 import { StoreSnapshot } from './globalstore';
 import { stateHistoryManager } from './statehistory';
@@ -25,14 +27,21 @@ interface SnapshotInstance extends NodeInstance {
     snapshotData?: unknown;
     snapshot?: StoreSnapshot;
     error?: string;
-    queued: ('save' | 'restore')[];
+    /**
+     * ERG-001 §4 — the queued actions, each carrying its own invocation's token.
+     *
+     * One entry per pulse, so a `Save` and a `Restore` queued in the same frame each report
+     * their own outcome. ⚠️ Paired with the action rather than held in a second array: the two
+     * must not be able to drift out of step.
+     */
+    queued: { action: 'save' | 'restore'; token: OutcomeToken }[];
     scheduled: boolean;
   };
-  queue(action: 'save' | 'restore'): void;
+  queue(action: 'save' | 'restore', token: OutcomeToken): void;
   runQueued(): void;
-  doSave(): void;
-  doRestore(): void;
-  setError(message: string | undefined): void;
+  doSave(token: OutcomeToken): void;
+  doRestore(token: OutcomeToken): void;
+  setError(message: string | undefined, token?: OutcomeToken): void;
   adopt(snapshot: StoreSnapshot): void;
 }
 
@@ -109,7 +118,7 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
       description: 'Copies the store as it is now and keeps it under Snapshot Name',
       group: 'Actions',
       valueChangedToTrue: function (this: SnapshotInstance) {
-        this.queue('save');
+        this.queue('save', this.beginOutcome());
       }
     },
     restore: {
@@ -117,7 +126,7 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
       description: 'Puts a checkpoint back as an ordinary write, so it appears in the history and can itself be undone',
       group: 'Actions',
       valueChangedToTrue: function (this: SnapshotInstance) {
-        this.queue('restore');
+        this.queue('restore', this.beginOutcome());
       }
     }
   },
@@ -169,13 +178,20 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
       description: 'Fires once the store holds the checkpoint again',
       group: 'Events'
     },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      description:
-        'Fires when the checkpoint could not be saved or put back, most often an unnamed or unknown checkpoint',
-      group: 'Events'
-    },
+    /**
+     * ERG-001 §4. `Saved` and `Restored` say *which* verb finished and are kept; `Done` says
+     * "the invocation you triggered succeeded" for either of them, which is what a graph
+     * sequencing two verbs off one node needs.
+     *
+     * ⚠️ **No `Unchanged`.** `Save` copies the store every time and `Restore` writes every
+     * time — deliberately, as an ordinary write that appears in the history — so neither has a
+     * post-condition that can already hold.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once a Save or Restore you triggered has finished, whichever of the two it was',
+      failure:
+        'Fires when the checkpoint could not be saved or put back, most often an unnamed or unknown checkpoint'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -192,8 +208,8 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
      * Deferred like every other write in this set: `snapshotName`, `snapshotData` and the
      * signal all arrive in one frame in no guaranteed order.
      */
-    queue: function (this: SnapshotInstance, action: 'save' | 'restore') {
-      this._internal.queued.push(action);
+    queue: function (this: SnapshotInstance, action: 'save' | 'restore', token: OutcomeToken) {
+      this._internal.queued.push({ action, token });
       if (this._internal.scheduled) return;
       this._internal.scheduled = true;
 
@@ -206,13 +222,13 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
     runQueued: function (this: SnapshotInstance) {
       const actions = this._internal.queued;
       this._internal.queued = [];
-      for (const action of actions) {
-        if (action === 'save') this.doSave();
-        else this.doRestore();
+      for (const entry of actions) {
+        if (entry.action === 'save') this.doSave(entry.token);
+        else this.doRestore(entry.token);
       }
     },
 
-    doSave: function (this: SnapshotInstance) {
+    doSave: function (this: SnapshotInstance, token: OutcomeToken) {
       try {
         const snapshot = stateHistoryManager.saveNamedSnapshot(
           this._internal.snapshotName as string,
@@ -221,12 +237,13 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
         this.adopt(snapshot);
         this.setError(undefined);
         this.sendSignalOnOutput('saved');
+        this.reportOutcome(token, 'done');
       } catch (error) {
-        this.setError(String((error as Error).message || error));
+        this.setError(String((error as Error).message || error), token);
       }
     },
 
-    doRestore: function (this: SnapshotInstance) {
+    doRestore: function (this: SnapshotInstance, token: OutcomeToken) {
       try {
         // Explicit data wins over the name: that is the import path, and an author who wired
         // both meant the one they wired a value into.
@@ -242,10 +259,11 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
         this.adopt(snapshot);
         this.setError(undefined);
         this.sendSignalOnOutput('restored');
+        this.reportOutcome(token, 'done');
       } catch (error) {
         // Reported rather than thrown: the phase-3.5 draft throws out of the signal handler,
         // which in this runtime takes the frame down over a mistyped checkpoint name.
-        this.setError(String((error as Error).message || error));
+        this.setError(String((error as Error).message || error), token);
       }
     },
 
@@ -270,15 +288,27 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
      * the new port fires on every successful operation, which is the Object node's defect
      * inverted.
      */
-    setError: function (this: SnapshotInstance, message: string | undefined) {
-      if (this._internal.error === message) return;
-      this._internal.error = message;
-      this.flagOutputDirty('error');
-
-      if (message !== undefined) {
-        this.sendSignalOnOutput('failure');
-        this.raiseRuntimeError(SNAPSHOT_ERROR_CODE, message);
+    setError: function (this: SnapshotInstance, message: string | undefined, token?: OutcomeToken) {
+      const repeat = this._internal.error === message;
+      if (!repeat) {
+        this._internal.error = message;
+        this.flagOutputDirty('error');
+        if (message !== undefined) this.raiseRuntimeError(SNAPSHOT_ERROR_CODE, message);
       }
+
+      // A clear is not a failure — every success path calls `setError(undefined)` first, and
+      // without this guard the `Failure` port fires on every successful operation.
+      if (message === undefined) return;
+
+      // ⚠️ ERG-001 §4. Settled outside the dedup above: the dedup is about the announcement, and
+      // a second Restore of the same missing checkpoint is a second invocation that still owes
+      // its own outcome. `raise: false` because this method has already decided about the bus.
+      if (token) {
+        this.reportOutcome(token, 'failure', { code: SNAPSHOT_ERROR_CODE, message, raise: false });
+        return;
+      }
+
+      if (!repeat) this.sendSignalOnOutput('failure');
     }
   }
 };

@@ -190,9 +190,10 @@ export type ParserInternal = {
 export interface JsonStreamParserNodeInstance extends NodeInstance {
   _internal: ParserInternal;
 
-  doParse(): void;
+  doParse(token: OutcomeToken): void;
+  settleParse(token: OutcomeToken, error?: string): void;
   reportError(message: string): void;
-  clearBuffer(): void;
+  clearBuffer(token?: OutcomeToken): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -214,7 +215,7 @@ export type ExtractorInternal = {
 export interface PatternExtractorNodeInstance extends NodeInstance {
   _internal: ExtractorInternal;
 
-  doExtract(): void;
+  doExtract(token: OutcomeToken): void;
 }
 
 // ---------------------------------------------------------------------------

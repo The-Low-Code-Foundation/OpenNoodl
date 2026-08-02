@@ -257,8 +257,13 @@ describe('net.noodl.JSONStreamParser', () => {
     const { metadata } = createNode(jsonParserModule, 'net.noodl.JSONStreamParser');
     expect(Object.keys(metadata.inputs).sort()).toEqual(['chunk', 'clear', 'format', 'maxLength', 'parse'].sort());
     expect(Object.keys(metadata.outputs).sort()).toEqual(
+      // ERG-001 §4 added `done`, `unchanged` and `completed`. ⚠️ `failure` survives but its
+      // *meaning* narrowed: it is the invocation's outcome now and fires once per Parse, not
+      // once per unparseable line.
       [
         'cleared',
+        'completed',
+        'done',
         'error',
         'errorCount',
         'failure',
@@ -266,6 +271,7 @@ describe('net.noodl.JSONStreamParser', () => {
         'parsed',
         'pendingCharacters',
         'success',
+        'unchanged',
         'valueCount',
         'values'
       ].sort()
@@ -364,7 +370,11 @@ describe('net.noodl.PatternExtractor', () => {
       ['extract', 'extractAll', 'flags', 'pattern', 'text'].sort()
     );
     expect(Object.keys(metadata.outputs).sort()).toEqual(
+      // ERG-001 §4 added `done` and `completed`. ⚠️ No `unchanged`: `Not Found` is a result,
+      // not a post-condition that already held — see the node's own comment.
       [
+        'completed',
+        'done',
         'error',
         'failure',
         'firstGroup',
@@ -387,7 +397,8 @@ describe('net.noodl.PatternExtractor', () => {
 
     expect(out('match')).toBe('45%');
     expect(out('firstGroup')).toBe('45');
-    expect(signals).toEqual(['found']);
+    // ERG-001 §4: the outcome follows the result, and Completed follows the outcome.
+    expect(signals).toEqual(['found', 'done', 'completed']);
   });
 
   it('collects every match when asked', () => {
@@ -414,14 +425,15 @@ describe('net.noodl.PatternExtractor', () => {
     noMatch.node.setInputValue('text', 'nothing');
     noMatch.node.setInputValue('pattern', '\\d+');
     noMatch.pulse('extract');
-    expect(noMatch.signals).toEqual(['notFound']);
+    // ⚠️ `done`, not `unchanged` — the extract ran and rewrote every output.
+    expect(noMatch.signals).toEqual(['notFound', 'done', 'completed']);
     expect(noMatch.out('error')).toBe('');
 
     const badPattern = createNode(patternModule, 'net.noodl.PatternExtractor');
     badPattern.node.setInputValue('text', 'anything');
     badPattern.node.setInputValue('pattern', '([unclosed');
     badPattern.pulse('extract');
-    expect(badPattern.signals).toEqual(['failure']);
+    expect(badPattern.signals).toEqual(['failure', 'completed']);
     expect(badPattern.out('error')).not.toBe('');
   });
 
