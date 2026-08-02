@@ -8,6 +8,38 @@
  */
 type WarningsByKey = Record<string, unknown>;
 
+/**
+ * Whether two warning payloads say the same thing.
+ *
+ * ⚠️ **This comparison used to be `===`, and so had never de-duplicated anything.** Every caller
+ * in the library builds its payload as a fresh object literal — `{ showGlobally: true, message }` —
+ * and two distinct literals are never `===`, so the "improves editor performance" this file opens
+ * by claiming was not happening at all. The site that paid for it is
+ * `Node._evaluateExpressionParameter`, which re-raises `expression-error-<port>` on *every*
+ * evaluation of a node with a broken expression: one WebSocket message and one Problems-panel
+ * re-render per update, for a warning whose text never changed.
+ *
+ * Own enumerable properties, compared with `===` one level deep. A payload carrying a nested
+ * object therefore still compares by identity and re-sends, which is the safe direction to be
+ * wrong in: a warning sent twice is noise, a warning suppressed wrongly is a lie.
+ */
+function isSameWarning(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+
+  for (let i = 0; i < keysA.length; i++) {
+    const key = keysA[i];
+    if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
+    if ((a as Record<string, unknown>)[key] !== (b as Record<string, unknown>)[key]) return false;
+  }
+
+  return true;
+}
+
 class ActiveWarnings {
   currentWarnings: Map<string, WarningsByKey>;
 
@@ -21,7 +53,7 @@ class ActiveWarnings {
     if (this.currentWarnings.has(nodeId)) {
       //we have sent warnings to this node before, check if we've sent this particular one before
       const warningKeys = this.currentWarnings.get(nodeId);
-      if (warningKeys[key] === warning) {
+      if (isSameWarning(warningKeys[key], warning)) {
         //we've already sent this warning, no need to send it again
         return false;
       }

@@ -206,6 +206,12 @@ export interface RuntimeNode extends NodeInstance {
   _expressionSubscriptions: Record<string, ExpressionSubscription>;
   /** NDA-017 §2. Deliberate answers only; absent reads as ticked. */
   _runOnValueChange: Record<string, boolean>;
+  /**
+   * OBS-003: which inputs are currently holding NaN, so the `node/nan-input` diagnostic can be
+   * cleared when a real number arrives. Left `undefined` until the first NaN, which keeps the
+   * good path on `_setValueFromConnection` to a single `!==` and no property read.
+   */
+  _nanInputs?: Record<string, boolean>;
 
   /**
    * Set false by the node scope while a component is being built, so nodes do not update

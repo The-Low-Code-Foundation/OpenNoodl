@@ -220,6 +220,43 @@ export interface NodeInstance {
    */
   raiseRuntimeError(code: string, message: string, detail?: unknown): void;
 
+  // --- diagnostics --------------------------------------------------------
+  /**
+   * Report — or withdraw — a node-local diagnostic.
+   * See `dev-docs/reference/DIAGNOSTICS-CONTRACT.md`.
+   *
+   * The counterpart to {@link raiseRuntimeError}, and the line between them is **event vs
+   * predicate**. A failure *happened*: the node was asked to act and could not, it is
+   * per-invocation, and a deployed app's operator needs it — so it goes on the error bus. A
+   * diagnostic is true *continuously*, from the moment the condition arises until the author
+   * changes something. It has no moment, so it would fire `On App Error` for nothing, and the
+   * only person who can act on it is the author. Editor-only is the correct audience, not a
+   * limitation.
+   *
+   * Deliberately a setter rather than a report/clear pair — the same statement raises and
+   * clears, so a stale warning is structurally impossible:
+   *
+   * ```ts
+   * this.setDiagnostic(KEY, Array.isArray(v) ? null : `Items expects an array, received ${describeValue(v)}.`);
+   * ```
+   *
+   * @param key     `<node-type>/<condition>`, kebab-case, optionally `/<port>` — the same
+   *                namespace as `raiseRuntimeError` codes, so tooling matches both alike. Never
+   *                interpolate a *value*: an unbounded key space can never be cleared.
+   * @param message One sentence. Falsy — `null`, `undefined`, `''` — means the predicate does
+   *                not hold, and clears. Build it only in the branch that needs it.
+   */
+  setDiagnostic(key: string, message?: string | null): void;
+
+  /**
+   * Whether {@link setDiagnostic} will do anything — for a check whose *predicate* is expensive
+   * enough to be worth skipping outright, rather than merely its message.
+   *
+   * ⚠️ Do not hand-roll this as `if (this.context.editorConnection)`. A deployed build
+   * constructs one anyway and on purpose, so that guard is **true in production**.
+   */
+  readonly diagnosticsEnabled: boolean;
+
   // --- outcome ------------------------------------------------------------
   /**
    * Open an invocation of this action so its outcome can be reported exactly once.

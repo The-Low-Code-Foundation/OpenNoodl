@@ -52,4 +52,41 @@ describe('Tracks active warnings that are sent to the editor', ()=>{
         expect(activeWarnings.setWarning('testId', 'testKey', 'testWarning')).toBe(false);
         expect(activeWarnings.setWarning('testId', 'testKey', 'testWarning2')).toBe(true);
     });
+
+    // OBS-003. The three rows above pass with `===` because they compare *strings*, and no
+    // caller in the library sends a string — every one builds `{ showGlobally, message }` fresh.
+    // So the de-duplication this class exists for had never once applied in production, and the
+    // suite could not see it. These rows are written in the payload shape callers actually use.
+    describe('Object payloads, which is what every caller actually sends', () => {
+        test('An identical payload built as a fresh literal is not re-sent', () => {
+            expect(activeWarnings.setWarning('testId', 'testKey', { showGlobally: true, message: 'same' })).toBe(true);
+            expect(activeWarnings.setWarning('testId', 'testKey', { showGlobally: true, message: 'same' })).toBe(false);
+            expect(activeWarnings.setWarning('testId', 'testKey', { showGlobally: true, message: 'same' })).toBe(false);
+        });
+
+        test('A payload whose message changed is re-sent', () => {
+            expect(activeWarnings.setWarning('testId', 'testKey', { showGlobally: true, message: 'a' })).toBe(true);
+            expect(activeWarnings.setWarning('testId', 'testKey', { showGlobally: true, message: 'b' })).toBe(true);
+        });
+
+        test('A payload that gained or lost a property is re-sent', () => {
+            expect(activeWarnings.setWarning('testId', 'testKey', { message: 'a' })).toBe(true);
+            expect(activeWarnings.setWarning('testId', 'testKey', { message: 'a', level: 'error' })).toBe(true);
+            expect(activeWarnings.setWarning('testId', 'testKey', { message: 'a' })).toBe(true);
+        });
+
+        // The safe direction to be wrong in: a nested object compares by identity, so it
+        // re-sends rather than risking suppressing a warning whose detail actually changed.
+        test('A nested object re-sends rather than being compared deeply', () => {
+            expect(activeWarnings.setWarning('testId', 'testKey', { message: 'a', detail: { n: 1 } })).toBe(true);
+            expect(activeWarnings.setWarning('testId', 'testKey', { message: 'a', detail: { n: 1 } })).toBe(true);
+        });
+
+        test('Clearing still works on an object payload', () => {
+            expect(activeWarnings.setWarning('testId', 'testKey', { message: 'a' })).toBe(true);
+            expect(activeWarnings.clearWarning('testId', 'testKey')).toBe(true);
+            // Cleared, so the same payload is new again.
+            expect(activeWarnings.setWarning('testId', 'testKey', { message: 'a' })).toBe(true);
+        });
+    });
 });

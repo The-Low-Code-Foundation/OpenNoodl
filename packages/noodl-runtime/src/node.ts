@@ -11,8 +11,16 @@ import {
   validateExpression
 } from './expression-evaluator';
 import { coerceToType } from './expression-type-coercion';
+import { diagnosticsEnabled, setDiagnostic } from './diagnostics';
 import { COMPLETED_PORT } from './outcome';
 import { runOnChangeInput, runOnChangePortName, runOnValueChange } from './run-on-value-change';
+
+/**
+ * OBS-003. The port name is appended, so one node with two NaN inputs raises two clearable
+ * diagnostics rather than one that flickers between them. Interpolating a *port* into a key is
+ * allowed by the contract (the port set is finite and stable); interpolating a *value* is not.
+ */
+const NAN_INPUT_KEY = 'node/nan-input/';
 
 /**
  * A parameter whose value is computed from an expression rather than stored literally.
@@ -752,6 +760,34 @@ Node.prototype.raiseRuntimeError = function (code: string, message: string, deta
 };
 
 /**
+ * Report — or withdraw — a node-local diagnostic.
+ * See `dev-docs/reference/DIAGNOSTICS-CONTRACT.md`.
+ *
+ * Deliberately a *setter* rather than a report/clear pair: a falsy `message` means the predicate
+ * does not hold and clears the key, so one call site expresses the whole predicate and a stale
+ * warning is not something a caller can forget to clean up.
+ *
+ * The counterpart to {@link raiseRuntimeError}, and the line between them is *event vs predicate*:
+ * a failure happened at a moment and belongs on the error bus, where a deployed app's operator and
+ * `On App Error` can see it. A diagnostic is true continuously and is editor-only on purpose —
+ * the only person who can fix "`Items` is not an array" is the author, in the editor.
+ */
+Node.prototype.setDiagnostic = function (key: string, message?: string | null) {
+  setDiagnostic(this, key, message);
+};
+
+/**
+ * Whether {@link setDiagnostic} will do anything, for a check whose *predicate* is expensive
+ * enough to be worth skipping outright. Building only the message is handled by the ternary at
+ * the call site; this is for the rarer case where the test itself costs something.
+ */
+Object.defineProperty(Node.prototype, 'diagnosticsEnabled', {
+  get: function (this: RuntimeNode) {
+    return diagnosticsEnabled(this);
+  }
+});
+
+/**
  * Open an invocation of an action, so its outcome can be reported exactly once.
  *
  * See `dev-docs/reference/OUTCOME-CONTRACT.md`. Call this where the signal input is handled and
@@ -886,6 +922,32 @@ Node.prototype._setValueFromConnection = function (inputName, value, sourceType,
         }
       }
     }
+  }
+
+  // OBS-003, `node/nan-input`. See `dev-docs/reference/DIAGNOSTICS-CONTRACT.md`.
+  //
+  // NaN is never a value anyone wired on purpose, and it is the quietest wrong value in the
+  // runtime: it survives every arithmetic operation, compares false against everything
+  // including itself, and reaches a layout port as a width that silently does nothing. The
+  // usual source is a string that did not parse — `Number('12px')` — several hops upstream, so
+  // the node that *renders* wrong is never the node that is wrong.
+  //
+  // `value !== value` is true for NaN and for nothing else, so the good path is one comparison
+  // and no property read. The clear needs a second one, and it is behind `_nanInputs`, which
+  // stays `undefined` on every node that has never seen a NaN — which is all of them.
+  if (value !== value) {
+    if (this._nanInputs === undefined) this._nanInputs = {};
+    if (!this._nanInputs[inputName]) {
+      this._nanInputs[inputName] = true;
+      this.setDiagnostic(
+        NAN_INPUT_KEY + inputName,
+        `Input "${inputName}" received NaN — something upstream produced Not-a-Number, ` +
+          'commonly text that did not parse as a number. Every value computed from it will be NaN too.'
+      );
+    }
+  } else if (this._nanInputs !== undefined && this._nanInputs[inputName]) {
+    this._nanInputs[inputName] = false;
+    this.setDiagnostic(NAN_INPUT_KEY + inputName, null);
   }
 
   this._valuesFromConnections[inputName] = value;
