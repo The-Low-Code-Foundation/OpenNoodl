@@ -51,7 +51,7 @@ describe('NDA-004: Close Popup', () => {
     graph.node('node').setInputValue('close', true);
     await graph.settle(3);
 
-    expect(graph.signalsFor('node')).toEqual(['failure']);
+    expect(graph.signalsFor('node')).toEqual(['failure', 'completed']);
     expect(codesRaised(graph)).toContain('close-popup/no-popup-in-scope');
     // NDA-015 changed this from a shorter, separate string. The Failure Contract asks that a
     // `Failure` signal be "accompanied by an `Error` value output carrying `message`/`code`",
@@ -62,7 +62,7 @@ describe('NDA-004: Close Popup', () => {
     );
   });
 
-  test('inside a popup, closes and signals Closed', async () => {
+  test('inside a popup, closes and reports Done', async () => {
     const graph = await graphWith(ClosePopupModule, 'NavigationClosePopup');
 
     const node = graph.node<ClosePopupInstance>('node');
@@ -74,7 +74,7 @@ describe('NDA-004: Close Popup', () => {
     await graph.settle(3);
 
     expect(closed).toHaveLength(1);
-    expect(graph.signalsFor('node')).toEqual(['success']);
+    expect(graph.signalsFor('node')).toEqual(['done', 'completed']);
   });
 });
 
@@ -141,7 +141,7 @@ describe('NDA-004: External Link', () => {
     graph.node('node').setInputValue('do', true);
     await graph.settle(2);
 
-    expect(graph.signalsFor('node')).toEqual(['failure']);
+    expect(graph.signalsFor('node')).toEqual(['failure', 'completed']);
     expect(codesRaised(graph)).toContain('external-link/blocked');
     expect(graph.node('node').getOutput('error').value).toBe('The browser blocked opening a new tab');
   });
@@ -153,11 +153,11 @@ describe('NDA-004: External Link', () => {
     graph.node('node').setInputValue('do', true);
     await graph.settle(2);
 
-    expect(graph.signalsFor('node')).toEqual(['failure']);
+    expect(graph.signalsFor('node')).toEqual(['failure', 'completed']);
     expect(codesRaised(graph)).toContain('external-link/no-link');
   });
 
-  test('a link that opens signals Success', async () => {
+  test('a link that opens reports Done', async () => {
     const opened: unknown[] = [];
     stubWindow((url: unknown) => {
       opened.push(url);
@@ -172,7 +172,7 @@ describe('NDA-004: External Link', () => {
     await graph.settle(2);
 
     expect(opened).toEqual(['https://example.com']);
-    expect(graph.signalsFor('node')).toEqual(['success']);
+    expect(graph.signalsFor('node')).toEqual(['done', 'completed']);
   });
 });
 
@@ -270,12 +270,11 @@ describe('NDA-004 / NDA-008 §3: Pop Component Stack', () => {
  */
 describe('NDA-004 §2/§3: the ports exist', () => {
   const CASES = [
-    { label: 'Close Popup', module: ClosePopupModule, type: 'NavigationClosePopup', done: 'success' },
+    { label: 'Close Popup', module: ClosePopupModule, type: 'NavigationClosePopup', done: 'done' },
     { label: 'Send Event', module: EventSenderModule, type: 'Event Sender', done: 'done' },
-    { label: 'External Link', module: ExternalLinkModule, type: 'net.noodl.externallink', done: 'success' },
-    // ERG-001 §4 renamed these to `done` as its slices reached them. The two still reading
-    // `success` are waiting on the Navigation slice of §4 — recorded here rather than left to
-    // look like an inconsistency someone should quietly "fix".
+    { label: 'External Link', module: ExternalLinkModule, type: 'net.noodl.externallink', done: 'done' },
+    // ERG-001 §4 renamed all four to `done` as its slices reached them, so this table is now
+    // one vocabulary rather than the four §0.2 Result 2 found.
     { label: 'Pop Component Stack', module: NavigateBackModule, type: 'PageStackNavigateBack', done: 'done' }
   ];
 

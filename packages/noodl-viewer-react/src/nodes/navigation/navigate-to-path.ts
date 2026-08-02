@@ -1,6 +1,7 @@
 'use strict';
 
 import NoodlRuntime from '@noodl/runtime';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 import type {
   EditorConnectionLike,
   GraphModelLike,
@@ -8,7 +9,8 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
 /** A port in the editor's wire format, as pushed by `sendDynamicPorts`. */
@@ -30,8 +32,16 @@ interface NavigateToPathInstance extends NodeInstance {
     hasScheduledNavigate?: boolean;
     /** Message for the `Error` output; see NDA-004. */
     lastError?: string;
+    /**
+     * One token per `Navigate` pulse waiting on the coalescing guard.
+     *
+     * ⚠️ Created lazily in `scheduleNavigate` rather than in `initialize`, for the reason the
+     * Cloud Services slice recorded: a suite that never calls `initialize` finds `undefined`
+     * exactly where the first invocation reads it.
+     */
+    pendingNavigateOutcomes?: OutcomeToken[];
   };
-  scheduleNavigate(): void;
+  scheduleNavigate(token?: OutcomeToken): void;
   navigate(): void;
   setParam(name: string, value: unknown): void;
   setQuery(name: string, value: unknown): void;
@@ -84,26 +94,24 @@ const NavigateToPathNode: NodeDefinitionOptions = {
       group: 'Actions',
       description: 'Navigates to Path, filling in any brace placeholders from their input ports',
       valueChangedToTrue(this: NavigateToPathInstance) {
-        this.scheduleNavigate();
+        // ERG-001 §4. Only the port mints; every `p-`/`q-` setter merely stores a value.
+        this.scheduleNavigate(this.beginOutcome());
       }
     }
   },
   // NDA-004 §3. One of the ten nodes that took a signal and emitted none — so "navigate, then
   // do the next thing" had nothing to hang off, and the `path === undefined` early return
   // below was indistinguishable from a navigation that worked.
+  //
+  // ERG-001 §4 renamed `success` to `done` — `navigate()` is reached from `scheduleNavigate` and
+  // that from the `Navigate` port alone — and gave the server-side no-op an `Unchanged` rather
+  // than leaving it as the bare `return` it was.
   outputs: {
-    success: {
-      type: 'signal',
-      displayName: 'Success',
-      group: 'Events',
-      description: 'Fires once the new path has been pushed to the browser history'
-    },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description: 'Fires when no Path is set, or the browser blocked the new tab'
-    },
+    ...outcomeOutputs({
+      done: 'Fires once the new path has been pushed to the browser history. Navigating in this window replaces the page, so nothing downstream of this may still exist',
+      unchanged: 'Fires when there is no browser history to push to — a server-side render, where there is nothing to do and nothing to fail at',
+      failure: 'Fires when no Path is set, or the browser blocked the new tab'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -115,9 +123,15 @@ const NavigateToPathNode: NodeDefinitionOptions = {
     }
   },
   methods: {
-    scheduleNavigate(this: NavigateToPathInstance) {
+    scheduleNavigate(this: NavigateToPathInstance, token?: OutcomeToken) {
       const internal = this._internal;
+      if (token) {
+        if (!internal.pendingNavigateOutcomes) internal.pendingNavigateOutcomes = [];
+        internal.pendingNavigateOutcomes.push(token);
+      }
 
+      // The guard drops the second pulse's *navigation* deliberately; Rule 1 is per invocation,
+      // so the second pulse's outcome is already queued above.
       if (!internal.hasScheduledNavigate) {
         internal.hasScheduledNavigate = true;
         this.scheduleAfterInputsHaveUpdated(() => {
@@ -129,13 +143,19 @@ const NavigateToPathNode: NodeDefinitionOptions = {
     navigate(this: NavigateToPathInstance) {
       const internal = this._internal;
 
+      // Drained before any branch, so every exit reports the same batch.
+      const tokens = internal.pendingNavigateOutcomes || [];
+      internal.pendingNavigateOutcomes = undefined;
+
       let formattedPath = internal.path;
       if (formattedPath === undefined) {
         // Was a bare `return`: the node was told to navigate, could not, and said nothing.
         internal.lastError = 'No path to navigate to';
-        this.raiseRuntimeError('navigate-to-path/no-path', 'No path to navigate to');
         this.flagOutputDirty('error');
-        this.sendSignalOnOutput('failure');
+        reportOutcomes(this, tokens, 'failure', {
+          code: 'navigate-to-path/no-path',
+          message: 'No path to navigate to'
+        });
         return;
       }
 
@@ -171,23 +191,27 @@ const NavigateToPathNode: NodeDefinitionOptions = {
         (query.length >= 1 ? '?' + query.join('&') : '') +
         (hashPath !== undefined ? '#' + hashPath : '');
 
-      // Browser-history navigation cannot run server-side; if the graph fires
-      // this during an SSR render it degrades to a no-op instead of throwing. No signal
-      // either way — there is no navigation to succeed or fail at, and an SSR pass firing
-      // `Failure` would train authors to ignore the port.
-      if (typeof window === 'undefined') return;
+      // Browser-history navigation cannot run server-side; if the graph fires this during an
+      // SSR render it degrades to a no-op instead of throwing. ERG-001 §4 named that no-op:
+      // `Unchanged`, not `Failure`, for the reason the original line already gave — an SSR pass
+      // firing `Failure` would train authors to ignore the port — and not silence, because the
+      // silence was the dead chain.
+      if (typeof window === 'undefined') {
+        reportOutcomes(this, tokens, 'unchanged');
+        return;
+      }
 
       if (this._internal.openInNewTab) {
         const opened = window.open(compiledUrl, '_blank');
         if (!opened) {
           internal.lastError = 'The browser blocked opening a new tab';
-          this.raiseRuntimeError(
-            'navigate-to-path/blocked',
-            'The browser blocked opening a new tab — this usually means the navigation was not triggered directly by a user action',
-            { url: compiledUrl }
-          );
           this.flagOutputDirty('error');
-          this.sendSignalOnOutput('failure');
+          reportOutcomes(this, tokens, 'failure', {
+            code: 'navigate-to-path/blocked',
+            message:
+              'The browser blocked opening a new tab — this usually means the navigation was not triggered directly by a user action',
+            detail: { url: compiledUrl }
+          });
           return;
         }
       } else {
@@ -195,7 +219,7 @@ const NavigateToPathNode: NodeDefinitionOptions = {
         dispatchEvent(new PopStateEvent('popstate', {}));
       }
 
-      this.sendSignalOnOutput('success');
+      reportOutcomes(this, tokens, 'done');
     },
     setParam(this: NavigateToPathInstance, name: string, value: unknown) {
       this._internal.params[name] = value;

@@ -16397,6 +16397,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the popup has been closed and any Results have been handed back"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -16417,17 +16439,6 @@
           },
           "isSignal": true,
           "description": "Fires when this node is not inside an open popup, or Popup names one it is not inside"
-        },
-        {
-          "name": "success",
-          "displayName": "Closed",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the popup has been closed"
         }
       ],
       "dynamicPorts": {
@@ -16551,6 +16562,28 @@
           },
           "isSignal": true,
           "description": "Fires when another popup replaced this one before the user closed it, so there are no Close Results"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the popup has been opened. Closed and Dismissed are later events about the same popup, not this signal"
         },
         {
           "name": "error",
@@ -19998,6 +20031,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the new path has been pushed to the browser history. Navigating in this window replaces the page, so nothing downstream of this may still exist"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -20020,15 +20075,15 @@
           "description": "Fires when no Path is set, or the browser blocked the new tab"
         },
         {
-          "name": "success",
-          "displayName": "Success",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the new path has been pushed to the browser history"
+          "description": "Fires when there is no browser history to push to — a server-side render, where there is nothing to do and nothing to fail at"
         }
       ],
       "dynamicPorts": {
@@ -47740,6 +47795,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the link has been handed to the browser. With Open In New Tab off the page is replaced, so nothing downstream of this may still exist"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -47762,15 +47839,15 @@
           "description": "Fires when no Link was set, or the browser blocked the new tab"
         },
         {
-          "name": "success",
-          "displayName": "Success",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the link has been handed to the browser"
+          "description": "Fires when there is no browser to open a link in — a server-side render, where there is nothing to do and nothing to fail at"
         }
       ],
       "dynamicPorts": null,

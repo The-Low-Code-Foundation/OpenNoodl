@@ -1,5 +1,6 @@
 import { EdgeTriggeredInput, Node } from '@noodl/runtime';
 import { componentAncestors } from '@noodl/runtime/src/componentwalk';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 import { ResolvedTargetReporter } from '@noodl/runtime/src/resolvedtarget';
 import type {
   ComponentInstanceLike,
@@ -9,7 +10,8 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
 /** BINDING-CONTRACT §(b): which popup this node will close, on the node card. */
@@ -41,8 +43,16 @@ interface ClosePopupInstance extends NodeInstance {
     targetComponent?: string;
     /** Message for the `Error` output; see NDA-004. */
     lastError?: string;
+    /**
+     * One token per `Close` (or close-action) pulse waiting on the coalescing guard.
+     *
+     * ⚠️ Created lazily in `scheduleClose`, not in `initialize`: suites that build this node as
+     * a bag of bound methods never call `initialize`, and an eager field is `undefined` exactly
+     * where the first invocation reads it.
+     */
+    pendingCloseOutcomes?: OutcomeToken[];
   };
-  scheduleClose(): void;
+  scheduleClose(token?: OutcomeToken): void;
   close(): void;
   closeActionTriggered(name: string): void;
   setResultValue(key: string, value: unknown): void;
@@ -115,25 +125,24 @@ const ClosePopupNode: NodeDefinitionOptions = {
       group: 'Actions',
       description: 'Closes the popup and hands back any Results',
       valueChangedToTrue: function (this: ClosePopupInstance) {
-        this.scheduleClose();
+        // ERG-001 §4. Only the ports mint, and this node has two kinds: `Close` and every
+        // author-declared `closeAction-…`. `scheduleClose` has no other caller.
+        this.scheduleClose(this.beginOutcome());
       }
     }
   },
   // NDA-004 §3: this node took a signal and emitted none, so nothing could be sequenced after
   // a popup closed and a close that did nothing looked identical to one that worked.
+  //
+  // ERG-001 §4 renamed `success` (which displayed as "Closed") to `done`: `close()` is reached
+  // from `scheduleClose` and from nothing else, and `scheduleClose` from the two kinds of action
+  // port alone — no setter, no subscription — so it *is* the invocation's outcome. No
+  // `Unchanged`: a Close either closes the popup it resolved or reports that it found none.
   outputs: {
-    success: {
-      type: 'signal',
-      displayName: 'Closed',
-      group: 'Events',
-      description: 'Fires once the popup has been closed'
-    },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description: 'Fires when this node is not inside an open popup, or Popup names one it is not inside'
-    },
+    ...outcomeOutputs({
+      done: 'Fires once the popup has been closed and any Results have been handed back',
+      failure: 'Fires when this node is not inside an open popup, or Popup names one it is not inside'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -159,9 +168,16 @@ const ClosePopupNode: NodeDefinitionOptions = {
       // The reporter holds instances strongly; popups are created and destroyed constantly.
       resolvedTargets.forget(this);
     },
-    scheduleClose: function (this: ClosePopupInstance) {
+    scheduleClose: function (this: ClosePopupInstance, token?: OutcomeToken) {
       const _this = this;
       const internal = this._internal;
+      if (token) {
+        if (!internal.pendingCloseOutcomes) internal.pendingCloseOutcomes = [];
+        internal.pendingCloseOutcomes.push(token);
+      }
+
+      // The guard drops the second pulse's *close* deliberately; Rule 1 is per invocation, so
+      // the second pulse's outcome is already queued above.
       if (!internal.hasScheduledClose) {
         internal.hasScheduledClose = true;
         this.scheduleAfterInputsHaveUpdated(function () {
@@ -251,6 +267,11 @@ const ClosePopupNode: NodeDefinitionOptions = {
       const closeAction = this._internal.closeAction;
       this._internal.closeAction = undefined;
 
+      // Drained before the branches so both of them report the same batch, and taken into a
+      // local because `resolution.close` synchronously tears the popup down.
+      const tokens = this._internal.pendingCloseOutcomes || [];
+      this._internal.pendingCloseOutcomes = undefined;
+
       const resolution = this.resolvePopup();
       resolvedTargets.report(this, resolution.popup ? resolution.popup.name : undefined);
 
@@ -258,21 +279,22 @@ const ClosePopupNode: NodeDefinitionOptions = {
       // a bare `if` with no `else`, which reads to an author as a broken Close button.
       if (!resolution.close) {
         this._internal.lastError = resolution.missMessage;
-        this.raiseRuntimeError(resolution.missCode, resolution.missMessage, {
-          target: this._internal.targetComponent,
-          popupsInScope: resolution.candidates
-        });
         this.flagOutputDirty('error');
-        this.sendSignalOnOutput('failure');
+        reportOutcomes(this, tokens, 'failure', {
+          code: resolution.missCode,
+          message: resolution.missMessage,
+          detail: { target: this._internal.targetComponent, popupsInScope: resolution.candidates }
+        });
         return;
       }
 
       resolution.close(closeAction, this._internal.resultValues);
-      this.sendSignalOnOutput('success');
+      reportOutcomes(this, tokens, 'done');
     },
     closeActionTriggered: function (this: ClosePopupInstance, name: string) {
       this._internal.closeAction = name;
-      this.scheduleClose();
+      // A close action is an action port like `Close`, so it mints too.
+      this.scheduleClose(this.beginOutcome());
     },
     registerInputIfNeeded: function (this: ClosePopupInstance, name: string) {
       if (this.hasInput(name)) {

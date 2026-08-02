@@ -1,3 +1,4 @@
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 import type {
   EditorConnectionLike,
   GraphModelLike,
@@ -5,7 +6,8 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
 /** @see {@link NodeContext.showPopup} — the runtime owns the policy, this node selects it. */
@@ -20,10 +22,18 @@ interface ShowPopupInstance extends NodeInstance {
     stackPolicy?: PopupStackPolicy;
     /** Message for the `Error` output; see NDA-004. */
     lastError?: string;
+    /**
+     * One token per `Show` pulse waiting on the coalescing guard — ERG-001 §4.
+     *
+     * ⚠️ Created lazily in `scheduleShow`, not in `initialize`, for the reason the Cloud
+     * Services slice recorded: a suite that never calls `initialize` finds `undefined` exactly
+     * where the first invocation reads it.
+     */
+    pendingShowOutcomes?: OutcomeToken[];
   };
-  scheduleShow(): void;
+  scheduleShow(token?: OutcomeToken): void;
   show(): void;
-  reportFailure(code: string, message: string): void;
+  reportFailure(code: string, message: string, tokens: OutcomeToken[]): void;
   setPopupParam(param: string, value: unknown): void;
   getCloseResult(param: string): unknown;
 }
@@ -69,7 +79,8 @@ const ShowPopupNode: NodeDefinitionOptions = {
       group: 'Actions',
       description: 'Opens Target as a popup',
       valueChangedToTrue: function (this: ShowPopupInstance) {
-        this.scheduleShow();
+        // ERG-001 §4. Only the port mints; `target`/`stackPolicy`/`popupParam-…` merely store.
+        this.scheduleShow(this.beginOutcome());
       }
     }
   },
@@ -93,12 +104,22 @@ const ShowPopupNode: NodeDefinitionOptions = {
       group: 'Events',
       description: 'Fires when another popup replaced this one before the user closed it, so there are no Close Results'
     },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description: 'Fires when no Target is set, or the component could not be opened'
-    },
+    /**
+     * ERG-001 §4 — `Done` is **added**, and none of the three ports above became it.
+     *
+     * `Closed`, `Dismissed` and the author's `closeAction-…` outputs are all *later* events:
+     * they fire when the user has finished with a popup that opened successfully, which may be
+     * minutes after the `Show` that opened it, and `Dismissed` fires for something the author
+     * never did. None of them is "the Show finished" — that is `Done`, and it fires once the
+     * popup has actually been opened, which is the moment this node could not express at all.
+     *
+     * No `Unchanged`: `Show` either opens the target or reports why it could not. §5 must not
+     * expect one.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once the popup has been opened. Closed and Dismissed are later events about the same popup, not this signal',
+      failure: 'Fires when no Target is set, or the component could not be opened'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -110,11 +131,10 @@ const ShowPopupNode: NodeDefinitionOptions = {
     }
   },
   methods: {
-    reportFailure: function (this: ShowPopupInstance, code: string, message: string) {
+    reportFailure: function (this: ShowPopupInstance, code: string, message: string, tokens: OutcomeToken[]) {
       this._internal.lastError = message;
-      this.raiseRuntimeError(code, message);
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
+      reportOutcomes(this, tokens, 'failure', { code, message });
     },
     setPopupParam: function (this: ShowPopupInstance, param: string, value: unknown) {
       this._internal.popupParams[param] = value;
@@ -122,9 +142,16 @@ const ShowPopupNode: NodeDefinitionOptions = {
     getCloseResult: function (this: ShowPopupInstance, param: string) {
       return this._internal.closeResults[param];
     },
-    scheduleShow: function (this: ShowPopupInstance) {
+    scheduleShow: function (this: ShowPopupInstance, token?: OutcomeToken) {
       const _this = this;
       const internal = this._internal;
+      if (token) {
+        if (!internal.pendingShowOutcomes) internal.pendingShowOutcomes = [];
+        internal.pendingShowOutcomes.push(token);
+      }
+
+      // The guard drops the second pulse's *show* deliberately; Rule 1 is per invocation, so the
+      // second pulse's outcome is already queued above.
       if (!internal.hasScheduledShow) {
         internal.hasScheduledShow = true;
         this.scheduleAfterInputsHaveUpdated(function () {
@@ -134,10 +161,16 @@ const ShowPopupNode: NodeDefinitionOptions = {
       }
     },
     show: function (this: ShowPopupInstance) {
+      // Taken into a local before the async work starts, so a second `Show` arriving mid-flight
+      // owns its own batch rather than being settled by this one's answer.
+      const tokens = this._internal.pendingShowOutcomes || [];
+      this._internal.pendingShowOutcomes = undefined;
+
       if (this._internal.target == undefined) {
         return this.reportFailure(
           'show-popup/no-target',
-          'No Target component is set on this Show Popup node'
+          'No Target component is set on this Show Popup node',
+          tokens
         );
       }
 
@@ -182,14 +215,27 @@ const ShowPopupNode: NodeDefinitionOptions = {
       // `showPopup` is typed as returning a promise, but it is reached through the context
       // interface and a host could hand back nothing; guarding costs one check and turns a
       // `TypeError` on `.catch` into no report at all, which is the defect being fixed.
-      shown &&
-        shown.catch &&
-        shown.catch((e: unknown) => {
-          this.reportFailure(
-            'show-popup/target-failed',
-            'The popup "' + this._internal.target + '" could not be opened: ' + ((e as Error)?.message || String(e))
-          );
-        });
+      //
+      // ⚠️ ERG-001 §4: the outcome rides the same promise rather than being reported
+      // optimistically beside it. `showPopup` rejects for a component that has been deleted or
+      // renamed, and a `Done` sent before the answer arrives would spend the token and turn
+      // every such failure into an `outcome/duplicate`. A host that hands back nothing has
+      // already done its work synchronously by the time `show` returns, so it reports `Done`
+      // here.
+      if (shown && shown.then) {
+        shown.then(
+          () => reportOutcomes(this, tokens, 'done'),
+          (e: unknown) => {
+            this.reportFailure(
+              'show-popup/target-failed',
+              'The popup "' + this._internal.target + '" could not be opened: ' + ((e as Error)?.message || String(e)),
+              tokens
+            );
+          }
+        );
+      } else {
+        reportOutcomes(this, tokens, 'done');
+      }
     },
     registerInputIfNeeded: function (this: ShowPopupInstance, name: string) {
       if (this.hasInput(name)) {

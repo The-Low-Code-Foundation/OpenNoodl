@@ -1,7 +1,7 @@
 {
   "typeName": "net.noodl.externallink",
   "summary": "External Link: opens a URL outside the app — same tab or new tab — when its signal fires.",
-  "description": "External Link leaves the app: when `do` fires, the browser navigates to `link`, in a new tab when `openInNewTab` is true. It performs no in-app routing and returns nothing — the page is left (or a tab opened) and that is the whole contract.",
+  "description": "External Link leaves the app: when `do` fires, the browser navigates to `link`, in a new tab when `openInNewTab` is true. It performs no in-app routing. It reports `done` once the link has been handed to the browser, `failure` when there is no Link or a popup blocker refused the new tab, and `unchanged` during a server-side render where there is no browser to open anything in — with Open In New Tab off the page is replaced, so nothing downstream of `done` may still exist.",
   "whenToUse": "Documentation links, third-party checkout, mailto/tel URLs. For anything inside the app use Navigate or Navigate To Path, which keep SPA state alive.",
   "ports": {
     "do": "Signal; performs the navigation.",

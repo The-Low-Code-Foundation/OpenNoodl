@@ -1,3 +1,4 @@
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import type { NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
 interface ExternalLinkInstance extends NodeInstance {
@@ -29,9 +30,19 @@ const ExternalLinkNode: NodeDefinitionOptions = {
       displayName: 'Do',
       description: 'Opens Link, or fires Failure if there is no Link or the browser blocked the new tab',
       valueChangedToTrue(this: ExternalLinkInstance) {
-        // Opening a browser tab is meaningless server-side; degrade to a no-op
-        // if the graph fires this during an SSR render.
-        if (typeof window === 'undefined') return;
+        // ERG-001 §4. Only the port mints; this node has no value-driven route into the open.
+        const token = this.beginOutcome();
+
+        // Opening a browser tab is meaningless server-side, so it degrades to a no-op if the
+        // graph fires this during an SSR render — and ERG-001 §4 gave that no-op a name. It was
+        // a bare `return`: told to open a link, did nothing, said nothing, which is the dead
+        // chain this contract exists to close. `Unchanged` rather than `Failure`, and nothing
+        // raised, for the reason the line below already gave in prose: an SSR pass firing
+        // `Failure` would train authors to ignore the port.
+        if (typeof window === 'undefined') {
+          this.reportOutcome(token, 'unchanged');
+          return;
+        }
 
         const openInNewTab = this.getInputValue('openInNewTab');
         const params = openInNewTab ? 'noopener,noreferrer' : '';
@@ -44,9 +55,8 @@ const ExternalLinkNode: NodeDefinitionOptions = {
         // does nothing, with nothing anywhere to say why.
         if (link === undefined || link === null || link === '') {
           this._internal.lastError = 'No link to open';
-          this.raiseRuntimeError('external-link/no-link', 'No link to open');
           this.flagOutputDirty('error');
-          this.sendSignalOnOutput('failure');
+          this.reportOutcome(token, 'failure', { code: 'external-link/no-link', message: 'No link to open' });
           return;
         }
 
@@ -56,33 +66,33 @@ const ExternalLinkNode: NodeDefinitionOptions = {
         // treat a null as blocked when a new tab was actually asked for.
         if (target === '_blank' && !opened) {
           this._internal.lastError = 'The browser blocked opening a new tab';
-          this.raiseRuntimeError(
-            'external-link/blocked',
-            'The browser blocked opening a new tab — this usually means the link was not opened directly from a user action',
-            { link }
-          );
           this.flagOutputDirty('error');
-          this.sendSignalOnOutput('failure');
+          this.reportOutcome(token, 'failure', {
+            code: 'external-link/blocked',
+            message:
+              'The browser blocked opening a new tab — this usually means the link was not opened directly from a user action',
+            detail: { link }
+          });
           return;
         }
 
-        this.sendSignalOnOutput('success');
+        this.reportOutcome(token, 'done');
       }
     }
   },
+  // ERG-001 §4. `Success` became `Done` — the grep is clean, this handler is the only caller.
+  //
+  // ⚠️ `Done` is present on the *navigating* path rather than absent, which the navigation slice
+  // settled for the whole family: with Open In New Tab off the document is replaced, but with it
+  // on (the default) this graph demonstrably survives, and a `Completed` silent on the commonest
+  // path defeats Rule 2's whole value. The terminality is documented rather than expressed as a
+  // missing port.
   outputs: {
-    success: {
-      type: 'signal',
-      displayName: 'Success',
-      group: 'Events',
-      description: 'Fires once the link has been handed to the browser'
-    },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      group: 'Events',
-      description: 'Fires when no Link was set, or the browser blocked the new tab'
-    },
+    ...outcomeOutputs({
+      done: 'Fires once the link has been handed to the browser. With Open In New Tab off the page is replaced, so nothing downstream of this may still exist',
+      unchanged: 'Fires when there is no browser to open a link in — a server-side render, where there is nothing to do and nothing to fail at',
+      failure: 'Fires when no Link was set, or the browser blocked the new tab'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',

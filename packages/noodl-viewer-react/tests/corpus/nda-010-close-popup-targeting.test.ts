@@ -132,11 +132,14 @@ describe('NDA-010 §2: Close Popup finds the popup it is inside', () => {
     const graph = await popupGraph({ depth: 0 });
     const popup = await showDialog(graph);
 
-    graph.node<ClosePopupInstance>('closer').close();
+    // ⚠️ Driven through the `Close` port rather than by calling `close()` directly.
+    // ERG-001 §4 made the port the only thing that opens an invocation, so a bare method
+    // call is a route no author has — and reports nothing, by design.
+    graph.node('closer').setInputValue('close', true);
     await closeFrames(graph);
 
     expect(popup.closed()).toBe(true);
-    expect(graph.signalsFor('closer')).toContain('success');
+    expect(graph.signalsFor('closer')).toEqual(['done', 'completed']);
   });
 
   test('a Close Popup node one component deeper closes it too', async () => {
@@ -145,11 +148,14 @@ describe('NDA-010 §2: Close Popup finds the popup it is inside', () => {
     const graph = await popupGraph({ depth: 1 });
     const popup = await showDialog(graph);
 
-    graph.node<ClosePopupInstance>('closer').close();
+    // ⚠️ Driven through the `Close` port rather than by calling `close()` directly.
+    // ERG-001 §4 made the port the only thing that opens an invocation, so a bare method
+    // call is a route no author has — and reports nothing, by design.
+    graph.node('closer').setInputValue('close', true);
     await closeFrames(graph);
 
     expect(popup.closed()).toBe(true);
-    expect(graph.signalsFor('closer')).toContain('success');
+    expect(graph.signalsFor('closer')).toEqual(['done', 'completed']);
     expect(graph.signalsFor('closer')).not.toContain('failure');
   });
 
@@ -181,10 +187,13 @@ describe('NDA-010 §2: and says so when it cannot', () => {
     });
     await graph.settle(3);
 
-    graph.node<ClosePopupInstance>('closer').close();
+    // ⚠️ Driven through the `Close` port rather than by calling `close()` directly.
+    // ERG-001 §4 made the port the only thing that opens an invocation, so a bare method
+    // call is a route no author has — and reports nothing, by design.
+    graph.node('closer').setInputValue('close', true);
     await closeFrames(graph);
 
-    expect(graph.signalsFor('closer')).toContain('failure');
+    expect(graph.signalsFor('closer')).toEqual(['failure', 'completed']);
     expect(graph.errors.map((e) => e.code)).toContain('close-popup/no-popup-in-scope');
   });
 
@@ -192,7 +201,10 @@ describe('NDA-010 §2: and says so when it cannot', () => {
     const graph = await popupGraph({ depth: 1, target: '/SomeOtherDialog' });
     const popup = await showDialog(graph);
 
-    graph.node<ClosePopupInstance>('closer').close();
+    // ⚠️ Driven through the `Close` port rather than by calling `close()` directly.
+    // ERG-001 §4 made the port the only thing that opens an invocation, so a bare method
+    // call is a route no author has — and reports nothing, by design.
+    graph.node('closer').setInputValue('close', true);
     await closeFrames(graph);
 
     // Closing the enclosing popup here would be worse than closing nothing: the author would
@@ -205,7 +217,10 @@ describe('NDA-010 §2: and says so when it cannot', () => {
     const graph = await popupGraph({ depth: 1, target: '/Dialog' });
     const popup = await showDialog(graph);
 
-    graph.node<ClosePopupInstance>('closer').close();
+    // ⚠️ Driven through the `Close` port rather than by calling `close()` directly.
+    // ERG-001 §4 made the port the only thing that opens an invocation, so a bare method
+    // call is a route no author has — and reports nothing, by design.
+    graph.node('closer').setInputValue('close', true);
     await closeFrames(graph);
 
     expect(popup.closed()).toBe(true);

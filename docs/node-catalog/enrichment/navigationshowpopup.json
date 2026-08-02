@@ -1,7 +1,7 @@
 {
   "typeName": "NavigationShowPopup",
   "summary": "Show Popup: overlays a component on top of the app when triggered; the popup closes itself and can hand back results.",
-  "description": "Show Popup instantiates `target` (a component) as an overlay above everything else when `show` fires. The popup component owns its dismissal: a Close Popup node inside it removes the overlay, fires this node's `Closed` signal, and delivers any declared result values as outputs here — plus one signal output per close action, so 'confirmed' and 'dismissed' can be told apart at the call site.",
+  "description": "Show Popup instantiates `target` (a component) as an overlay above everything else when `show` fires. The popup component owns its dismissal: a Close Popup node inside it removes the overlay, fires this node's `Closed` signal, and delivers any declared result values as outputs here — plus one signal output per close action, so 'confirmed' and 'dismissed' can be told apart at the call site. `Closed` is a *later* event about a popup that opened — `done` is the one that says the `show` itself finished, and it fires the moment the popup is on screen.",
   "whenToUse": "Dialogs, sheets, confirmations — transient UI that must sit above the page and return an answer. For a persistent section of the page, conditional `mounted` on a Group is lighter; for full pages use Router or Component Stack.",
   "ports": {
     "show": "Signal; opens the popup.",
