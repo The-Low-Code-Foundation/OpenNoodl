@@ -77,6 +77,7 @@ import type {
   AuthoringStatus,
   ComponentFiles,
   ContextBudget,
+  RegisteredLibraryInfo,
   SubmitPayload,
   SubmitRound,
   SubmittedNode,
@@ -119,6 +120,16 @@ export interface AuthoringSessionOptions {
    * A/B control arm, and every headless spec that does not care).
    */
   projectDocs?: ProjectDocsContent;
+  /**
+   * ERG-002 §2: libraries registered via the Libraries settings section
+   * (Settings → Libraries → `registerLibrary`), handed to the agent so "use
+   * PocketBase for this" resolves to a global it can actually reference.
+   * Unlike `projectDocs`, there is no live default here — reading
+   * `noodl_modules` is async (`listRegisteredLibraries`) and this
+   * constructor is not, so a caller with an open project passes its own
+   * snapshot. Omit for the pre-ERG-002 behaviour (no library block at all).
+   */
+  libraries?: RegisteredLibraryInfo[];
   /**
    * AIX-011: when this session is one operation of a project-scope plan, the
    * rendered plan (sibling kinds/targets/*intents*, never graphs — see
@@ -312,7 +323,8 @@ export class AuthoringSession {
       options.budget,
       undefined,
       options.styleVocabulary,
-      projectDocs
+      projectDocs,
+      options.libraries
     );
     this.docTools = projectDocTools(projectDocs);
     this.legacyName = pathToLegacyName(request.componentPath);
@@ -466,7 +478,8 @@ export class AuthoringSession {
         this.context.catalogOverview(),
         this.styleGuidance ? this.context.styleVocabulary() : undefined,
         this.promptDocs(),
-        planBlock
+        planBlock,
+        this.context.libraryOverview()
       );
     } else {
       opening = initialUserMessage(
@@ -475,7 +488,8 @@ export class AuthoringSession {
         this.context.catalogOverview(),
         this.styleGuidance ? this.context.styleVocabulary() : undefined,
         this.promptDocs(),
-        planBlock
+        planBlock,
+        this.context.libraryOverview()
       );
     }
     this.messages.push(

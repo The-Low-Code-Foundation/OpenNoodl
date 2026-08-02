@@ -29,7 +29,7 @@ import { assembleContext, ExplainContextError } from '../explain/assemble';
 import { componentPorts, findComponent } from '../explain/graph';
 import { renderContext } from '../explain/render';
 import type { ExplainGraph } from '../explain/types';
-import type { ComponentFiles, ContextBudget, ContextLogEntry } from './types';
+import type { ComponentFiles, ContextBudget, ContextLogEntry, RegisteredLibraryInfo } from './types';
 
 export const DEFAULT_BUDGET: ContextBudget = {
   maxChars: 120_000,
@@ -75,12 +75,16 @@ export class AuthoringContextBuilder {
   /** AIX-009: the project's `docs/` bodies. Empty object = project has no docs. */
   readonly docs: ProjectDocsContent;
 
+  /** ERG-002: registered `noodl_modules` libraries — see `libraryOverview()`. */
+  private readonly libraries: RegisteredLibraryInfo[];
+
   constructor(
     private readonly graph: ExplainGraph,
     budget: Partial<ContextBudget> = {},
     private readonly catalog: CatalogIndex = loadDefaultCatalog(),
     styleVocab?: StyleVocabulary,
-    docs: ProjectDocsContent = {}
+    docs: ProjectDocsContent = {},
+    libraries: RegisteredLibraryInfo[] = []
   ) {
     this.budget = { ...DEFAULT_BUDGET, ...budget };
     // Defaults-only when no project-aware vocabulary is injected: the token
@@ -88,6 +92,7 @@ export class AuthoringContextBuilder {
     // values differ, and the agent emits names, not values.
     this.styleVocab = styleVocab ?? buildStyleVocabulary();
     this.docs = docs;
+    this.libraries = libraries;
   }
 
   get log(): readonly ContextLogEntry[] {
@@ -140,6 +145,29 @@ export class AuthoringContextBuilder {
       lines.push(`- ${category}: ${byCategory.get(category)!.join(', ')}`);
     }
     return this.charge('catalog-overview', lines.join('\n'));
+  }
+
+  /**
+   * ERG-002 §2, finding #5: "'Use PocketBase for this' is unanswerable
+   * because the registered libraries are not in the context the loop reads."
+   * One line per library registered via the Libraries settings section
+   * (`registerLibrary`), naming the global it's safe to reference from a
+   * Function/Script node — the same information §2 asks be surfaced to the
+   * code editors, told here instead of inferred from a head-code string the
+   * agent cannot reliably parse. Returns `undefined` (never charged) when the
+   * project has none, matching `docHandout`'s convention for an absent
+   * section rather than emitting an empty heading.
+   */
+  libraryOverview(): string | undefined {
+    if (this.libraries.length === 0) return undefined;
+    const lines: string[] = [
+      'Registered external libraries (Settings → Libraries). Each is already loaded via a <script> tag; ' +
+        'reference the global directly in a Function or Script node, no import/require:'
+    ];
+    for (const lib of this.libraries) {
+      lines.push(`- ${lib.name} — global \`${lib.global}\``);
+    }
+    return this.charge('library-overview', lines.join('\n'));
   }
 
   /**

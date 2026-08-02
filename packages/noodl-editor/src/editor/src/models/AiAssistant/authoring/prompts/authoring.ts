@@ -193,7 +193,8 @@ function referenceBlocks(
   projectOverview: string,
   catalogOverview: string,
   styleVocabulary?: string,
-  docs?: PromptProjectDocs
+  docs?: PromptProjectDocs,
+  libraryOverview?: string
 ): string[] {
   return [
     'Reference material for this project. Your task is at the END of this message — read these first,',
@@ -207,8 +208,19 @@ function referenceBlocks(
     catalogOverview,
     '--- END NODE CATALOG ---',
     ...styleBlock(styleVocabulary),
+    ...libraryBlock(libraryOverview),
     ...docBlocks(docs)
   ];
+}
+
+/**
+ * ERG-002 §2: the registered-libraries block, or nothing when the project has
+ * none — same absent-means-omitted convention as `styleBlock`/`docBlocks`, so
+ * a project with no libraries pays zero prompt bytes for this.
+ */
+function libraryBlock(libraryOverview?: string): string[] {
+  if (!libraryOverview) return [];
+  return ['', '--- REGISTERED LIBRARIES ---', libraryOverview, '--- END REGISTERED LIBRARIES ---'];
 }
 
 /**
@@ -229,9 +241,10 @@ export function initialUserMessage(
   catalogOverview: string,
   styleVocabulary?: string,
   docs?: PromptProjectDocs,
-  planContext?: string
+  planContext?: string,
+  libraryOverview?: string
 ): OpeningTurn {
-  return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary, docs), [
+  return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary, docs, libraryOverview), [
     ...planContextBlock(planContext),
     '--- YOUR TASK ---',
     `Build a new component at "${request.componentPath}"${
@@ -265,9 +278,10 @@ export function updateUserMessage(
   catalogOverview: string,
   styleVocabulary?: string,
   docs?: PromptProjectDocs,
-  planContext?: string
+  planContext?: string,
+  libraryOverview?: string
 ): OpeningTurn {
-  return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary, docs), [
+  return openingTurn(referenceBlocks(projectOverview, catalogOverview, styleVocabulary, docs, libraryOverview), [
     ...planContextBlock(planContext),
     '--- YOUR TASK ---',
     `Revise the existing component "${request.componentPath}".`,

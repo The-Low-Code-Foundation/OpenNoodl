@@ -111,6 +111,20 @@ export interface ContextBudget {
   maxComponentReads: number;
 }
 
+/**
+ * ERG-002 §2: "the registered libraries are not in the context the loop
+ * reads" was finding #5 of what the feature was missing. This is that
+ * context, shaped for a one-line-each handout — not the on-disk manifest
+ * (`RegisteredLibrary` in `shared/utils/projectmodules.ts`), which carries
+ * fields (vendored, dependencies, …) the agent has no use for.
+ */
+export interface RegisteredLibraryInfo {
+  /** Display name, e.g. "PocketBase". */
+  name: string;
+  /** The window-attached global this library defines, e.g. "PocketBase". */
+  global: string;
+}
+
 export interface ContextLogEntry {
   /** What was handed out, e.g. "project-overview", "types:Group,Text", "component:/App". */
   source: string;

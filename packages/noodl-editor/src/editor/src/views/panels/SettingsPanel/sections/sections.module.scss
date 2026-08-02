@@ -204,3 +204,26 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+/* ---------------------------------------------------------------------------
+   ERG-002 — Libraries section. Reuses .ButtonRow/.VariableCard/… above rather
+   than inventing parallel classes; only what's genuinely new lives here.
+   --------------------------------------------------------------------------- */
+
+.HelpText {
+  min-width: 0;
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: var(--theme-color-fg-muted);
+}
+
+.EmptyState {
+  padding: 16px;
+  min-width: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--theme-color-fg-muted);
+  background-color: var(--theme-color-bg-2);
+  border: 1px dashed var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+}
