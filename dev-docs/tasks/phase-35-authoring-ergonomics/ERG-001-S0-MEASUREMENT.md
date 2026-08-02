@@ -1821,17 +1821,19 @@ have nothing to rewrite. What the enrichment pass did find, by reading rather th
 
 ### Noise, measured rather than asserted
 
-| Suite | Before | After | From these builds |
-|---|---|---|---|
-| `noodl-runtime` | 127 | **142** | 15 |
-| `noodl-viewer-react` | 196 | **204** | 8 |
+⚠️ **The absolute totals move under us**, because the concurrent phase-36 session commits to this
+same branch and its work raises too. So the number that matters is measured **by exclusion** —
+each package run with this session's new corpus files ignored, subtracted from the full run:
 
-Of the runtime's 15: 4 from build 1's new rows, 7 from build 2's, and **4 in pre-existing suites
-because `Pattern Extractor` and `JSON Stream Parser` now put their reason on the NDA-004 bus, which
-neither node ever did** — a gap closed, not a regression, and each is a failure an existing row
-already asserted the signal for. (A further 196 → 200 shift in `noodl-viewer-react` and a small
-suite-count rise in both packages come from the concurrent phase-36 work on this branch, not from
-here; attributed by running each package with this session's new files excluded.)
+| Suite | Baseline at session start | From these builds | Concurrent session's share |
+|---|---|---|---|
+| `noodl-runtime` | 127 | **15** | 0 |
+| `noodl-viewer-react` | 196 | **8** | 7, and still rising |
+
+Of the runtime's 15: 4 from build 1's rows, 7 from build 2's, and **4 in pre-existing suites because
+`Pattern Extractor` and `JSON Stream Parser` now put their reason on the NDA-004 bus, which neither
+node ever did** — a gap closed rather than a regression, and each is a failure an existing row
+already asserted the signal for. All 8 in `noodl-viewer-react` are build 1's own rows.
 
 ### Gates — measured before and after
 
