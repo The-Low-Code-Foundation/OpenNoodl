@@ -500,12 +500,23 @@ const commands = {
   }
 };
 
-const [cmd, ...rest] = positional;
-if (!cmd || !commands[cmd]) {
-  console.error(`usage: cdp.js <${Object.keys(commands).join('|')}> [args] [--target=editor|viewer]`);
-  process.exit(1);
+/**
+ * Everything above is also a library. Scripts that drive the editor for longer
+ * than one command — a scripted authoring session, say — need the *same* target
+ * resolution this file uses, because getting it wrong attaches to the preview
+ * window and reads the wrong renderer while looking entirely normal. Re-deriving
+ * `appTarget` in a sibling script is how that regression comes back.
+ */
+module.exports = { appTarget, connect, evaluate, elementCentre, dispatchClick, httpJson, KNOWN_TARGETS };
+
+if (require.main === module) {
+  const [cmd, ...rest] = positional;
+  if (!cmd || !commands[cmd]) {
+    console.error(`usage: cdp.js <${Object.keys(commands).join('|')}> [args] [--target=editor|viewer]`);
+    process.exit(1);
+  }
+  commands[cmd](...rest).catch((err) => {
+    console.error(err.message);
+    process.exit(1);
+  });
 }
-commands[cmd](...rest).catch((err) => {
-  console.error(err.message);
-  process.exit(1);
-});
