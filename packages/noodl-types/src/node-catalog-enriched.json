@@ -20395,6 +20395,17 @@
           "description": "How many child elements are currently mounted inside this one"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "didMount",
           "displayName": "Did Mount",
           "group": "Mounted",
@@ -20404,6 +20415,17 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the page has announced that it is ready to render"
         },
         {
           "name": "screenPositionX",
@@ -20465,6 +20487,9 @@
         "description": "Page is the mandatory root of every page component shown by a Router (Page Router) — a Router only mounts components whose graph contains exactly one Page node. It is not in the node picker because the editor creates it automatically when a page is added to a Router; there is no replacement node, you configure the existing one. Its `title` sets the document title and the Router's `currentPageTitle`; its `urlPath` is the page's URL pattern and may contain `{param}` placeholders that Page Inputs (PageInputs) nodes read; the remaining inputs are SEO meta tags (description, robots, og:*, twitter:*, sitemap hints) plus padding and CSS styling for the page surface.",
         "whenToUse": "Do not add Page from the node picker or use it outside a Router page component — it is created automatically as the root when a page is added to a Router. Edit that existing node to set the page's title, `urlPath` and meta tags.",
         "ports": {
+          "onPageReady": "Signal input; the SSR handshake. Pulse it once the page has the data it needs and the SSR server releases the rendered HTML.",
+          "done": "Signal; the page has announced that it is ready to render.",
+          "completed": "Signal; fires after Done. No Failure or Unchanged — announcing the event cannot fail and every pulse announces.",
           "title": "String value; the page title, shown as the document title when the page is active. Defaults to the component name.",
           "urlPath": "String value; the URL pattern that routes to this page, e.g. \"product/{productId}\" — placeholders become path parameters readable via PageInputs. Defaults to the title, lowercased and hyphenated."
         },
@@ -20656,6 +20681,17 @@
           "description": "How many child elements are currently mounted inside this one"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "didMount",
           "displayName": "Did Mount",
           "group": "Mounted",
@@ -20665,6 +20701,28 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the stack has been emptied and the start component rebuilt"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the stack has no components configured, or its start component does not resolve"
         },
         {
           "name": "screenPositionX",
@@ -20770,6 +20828,9 @@
         "ports": {
           "pages": "The stack's page components and the start page (editor-configured).",
           "reset": "Signal; unwinds the stack to its start page.",
+          "done": "Signal; the stack was emptied and the start component rebuilt.",
+          "failure": "Signal; the stack has no components configured, or its start component does not resolve. ⚠️ Reset is also called on mount, and that call reports nothing.",
+          "completed": "Signal; fires after every Reset the author triggered, whatever the outcome. There is no Unchanged port: reset always tears the stack down and rebuilds it.",
           "topPageName": "String level naming the currently visible page.",
           "stackDepth": "Number level; 1 means at the root, >1 means back is meaningful."
         },
@@ -20965,6 +21026,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the stack has switched to the target component. ⚠️ If this node lives on the component being replaced it is destroyed with it, so sequence anything that must survive the navigation from a node outside the stack"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -20987,15 +21070,15 @@
           "description": "Fires when no Target Page is set, the stack has no components configured, or a navigation is still animating"
         },
         {
-          "name": "navigated",
-          "displayName": "Navigated",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the stack has switched to the target component"
+          "description": "Fires when the stack is already showing that component with those parameters, so it was not pushed again"
         }
       ],
       "dynamicPorts": {
@@ -21011,12 +21094,13 @@
       "enrichment": {
         "typeName": "PageStackNavigate",
         "summary": "Push Component To Stack: pushes a chosen page onto a named Component Stack with a transition when triggered.",
-        "description": "When `navigate` fires, the page selected on this node is pushed onto the Component Stack named in `stack`, animating per the chosen transition. Inputs declared by the target page's Component Inputs appear on this node, so per-page data travels with the push. `navigated` fires when the transition completes; `mode` controls push-vs-replace behaviour.",
+        "description": "When `navigate` fires, the page selected on this node is pushed onto the Component Stack named in `stack`, animating per the chosen transition. Inputs declared by the target page's Component Inputs appear on this node, so per-page data travels with the push. `done` fires when the transition completes, `unchanged` when the stack is already showing that component with those parameters, and `failure` when the push was dropped; `completed` fires after all three. `mode` controls push-vs-replace behaviour.",
         "whenToUse": "Advancing stack flows: next wizard step, opening a detail page over a list. To go back, use Pop Component Stack — never push the previous page again.",
         "ports": {
           "navigate": "Signal; performs the push.",
           "stack": "Name of the target Component Stack (its `name` parameter).",
-          "navigated": "Signal; fires after the page transition finishes."
+          "done": "Signal; fires after the page transition finishes.",
+          "unchanged": "Signal; the stack is already showing that component with those parameters, so nothing was pushed."
         },
         "runtimeBehavior": "The target-page choice, its transition options, and one input port per Component Input of the chosen page are runtime-determined from project content.",
         "examples": [
@@ -21087,6 +21171,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the stack has popped this component. ⚠️ This node is destroyed with the component it pops, so sequence anything that must survive the pop from the node that pushed it"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -21106,18 +21212,18 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when this node is not inside a pushed component, the stack is already at its first component, or a navigation is still animating"
+          "description": "Fires when this node is not inside a pushed component, or a navigation is still animating"
         },
         {
-          "name": "success",
-          "displayName": "Popped",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the stack has popped this component"
+          "description": "Fires when the Component Stack is already showing its first component, so there was nothing to pop"
         }
       ],
       "dynamicPorts": {
@@ -21163,6 +21269,10 @@
         "whenToUse": "The back/cancel/done affordance inside any pushed page. Pair result values with distinct back actions ('save' vs 'cancel') when the opener must react differently.",
         "ports": {
           "navigate": "Signal; pops the current page.",
+          "done": "Signal; the stack popped this component. ⚠️ This node is destroyed with the component it pops, so sequencing that must survive the pop belongs on the node that pushed it.",
+          "unchanged": "Signal; the Component Stack is already showing its first component, so there was nothing to pop — an ordinary end-stop, not a failure.",
+          "failure": "Signal; this node is not inside a pushed component, or a navigation is still animating.",
+          "completed": "Signal; fires after all three.",
           "results": "Names of values handed back to the push site; each becomes an input here.",
           "backActions": "Named back reasons; each appears as a signal output on the corresponding push node."
         },
@@ -24845,6 +24955,17 @@
           "description": "How many child elements are currently mounted inside this one"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "currentPageComponent",
           "displayName": "Current Page Component",
           "group": "General",
@@ -24878,6 +24999,28 @@
           "description": "Fires once this element has been added to the page and can be measured"
         },
         {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the page has been rebuilt, or its Page Inputs updated with new parameters"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the Router has no Pages, no start page, a start page it does not serve, or a routed component that is not a page"
+        },
+        {
           "name": "screenPositionX",
           "displayName": "Screen Position X",
           "group": "Bounding Box",
@@ -24908,6 +25051,17 @@
           },
           "isSignal": false,
           "description": "A reference to this node itself, for ports that take a node rather than a value"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the Router is already showing that page with those parameters, so nothing needed rebuilding"
         },
         {
           "name": "willUnmount",
@@ -24943,6 +25097,10 @@
           "pages": "Edit-only parameter `{ routes, startPage }` listing the page components this router can show. The URL pattern of each page comes from that page's own Page node, not from here.",
           "urlPath": "String value prepended as a base path to every page's URL — used when this router is nested inside another router's page.",
           "reset": "Signal input; re-evaluates the URL and rebuilds the current page (also updates Page Inputs if only params changed).",
+          "done": "Signal; the page was rebuilt, or its Page Inputs updated with new parameters.",
+          "unchanged": "Signal; the Router was already showing that page with those parameters, so nothing needed rebuilding.",
+          "failure": "Signal; no Pages, no start page, a start page this Router does not serve, or a routed component that is not a page. ⚠️ Reset is also called on mount so the start page is created, and that call reports nothing — a mount that fired Done would pulse every chain in the app at boot.",
+          "completed": "Signal; fires after every Reset the author triggered, whatever the outcome.",
           "currentPageTitle": "String value; the title of the page currently shown (also written to the document title).",
           "currentPageComponent": "String value; the component name of the page currently shown."
         },
@@ -25011,6 +25169,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the Router has switched to the target page. ⚠️ If this node lives on the page being left it is destroyed with that page, so sequence anything that must survive the navigation from a node outside the Router"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -25033,15 +25213,15 @@
           "description": "Fires when no Target Page is set, or the Router does not serve that page"
         },
         {
-          "name": "navigated",
-          "displayName": "Navigated",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the Router has switched to the target page"
+          "description": "Fires when the Router is already showing that page with those parameters, so it was not rebuilt"
         }
       ],
       "dynamicPorts": {
@@ -25059,11 +25239,12 @@
       "enrichment": {
         "typeName": "RouterNavigate",
         "summary": "Navigate: tells a named Router to switch to a target page, passing typed path parameters, when its navigate signal fires.",
-        "description": "Navigate drives a Router. When `navigate` is triggered it switches the router named in its `router` parameter to the page chosen in `target`, updating the URL if the router does. Path/query parameters declared by the target page become input ports on this node, so per-page data (an id, a tab name) is wired like any other value. `navigated` fires when the transition completes; `openInNewTab` opens the target in a new browser tab instead of transitioning in place.",
+        "description": "Navigate drives a Router. When `navigate` is triggered it switches the router named in its `router` parameter to the page chosen in `target`, updating the URL if the router does. Path/query parameters declared by the target page become input ports on this node, so per-page data (an id, a tab name) is wired like any other value. `done` fires when the transition completes, `unchanged` when the router is already showing that page with those parameters, and `failure` when the target is not a page of that router; `completed` fires after all three. `openInNewTab` opens the target in a new browser tab instead of transitioning in place.",
         "whenToUse": "All URL-style page switching with a Router. For stack-style flows (push/pop with transitions, e.g. wizards or mobile-style drill-in) use Page Stack with PageStackNavigate instead; for external URLs use net.noodl.externallink.",
         "ports": {
           "navigate": "Signal; performs the navigation. Typically fed from a Button's `onClick`.",
-          "navigated": "Signal; fires after the router has switched — sequence follow-up actions here.",
+          "done": "Signal; fires after the router has switched. If this node lives on the page being left it is destroyed with that page, so sequencing that must survive the navigation belongs on a node outside the Router.",
+          "unchanged": "Signal; the router was already showing that page with those parameters, so it was not rebuilt.",
           "openInNewTab": "Boolean; when true the navigation opens a new tab rather than switching this router."
         },
         "runtimeBehavior": "Runtime-determined inputs (runtime-discovered + editor-adapter): the `router` and `target` choices come from the routers and pages that exist in the project, and each parameter declared by the chosen target page is registered as an input port on demand. The port set therefore depends on project content, not the node type.",
@@ -36154,6 +36335,17 @@
           "description": "True when there is an earlier entry to step back to"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "currentIndex",
           "displayName": "Current Index",
           "group": "Status",
@@ -36163,6 +36355,17 @@
           },
           "isSignal": false,
           "description": "Where in the history the store is sitting; -1 when nothing is being tracked"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the history has been thrown away and re-baselined from the live state"
         },
         {
           "name": "fullyRestorable",
@@ -36207,6 +36410,17 @@
           },
           "isSignal": false,
           "description": "How many entries the history holds, including the baseline it started from"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there was nothing to throw away, because the history was already just its baseline"
         }
       ],
       "dynamicPorts": null,
@@ -36223,6 +36437,9 @@
           "coalesceMs": "Window in which consecutive writes to the same keys fold into one entry. 0 (default) records every commit separately. Set it to roughly a typing pause when undo should step by word rather than by character.",
           "enabled": "False pauses recording without discarding history. Resuming records an entry if state drifted while paused, so the history never claims a change did not happen.",
           "clearHistory": "Discards every entry and starts again from live state.",
+          "done": "Signal; the history was thrown away and re-baselined.",
+          "unchanged": "Signal; there was nothing to throw away, because the history was already just its baseline.",
+          "completed": "Signal; fires after either outcome. There is no Failure port — this node is the tracker for its own store name, so there is no store it can be asked for and fail to find.",
           "historySize": "How many entries exist.",
           "currentIndex": "Where in the history live state sits. Not at the end means you are mid-travel and a new write will truncate the redo tail.",
           "canUndo": "Whether an earlier entry exists — wire it to the Undo button's enabled state rather than guessing.",

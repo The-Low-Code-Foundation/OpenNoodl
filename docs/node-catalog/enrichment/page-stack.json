@@ -6,6 +6,9 @@
   "ports": {
     "pages": "The stack's page components and the start page (editor-configured).",
     "reset": "Signal; unwinds the stack to its start page.",
+    "done": "Signal; the stack was emptied and the start component rebuilt.",
+    "failure": "Signal; the stack has no components configured, or its start component does not resolve. ⚠️ Reset is also called on mount, and that call reports nothing.",
+    "completed": "Signal; fires after every Reset the author triggered, whatever the outcome. There is no Unchanged port: reset always tears the stack down and rebuilds it.",
     "topPageName": "String level naming the currently visible page.",
     "stackDepth": "Number level; 1 means at the root, >1 means back is meaningful."
   },

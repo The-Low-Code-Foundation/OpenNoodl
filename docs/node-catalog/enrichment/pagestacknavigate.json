@@ -1,12 +1,13 @@
 {
   "typeName": "PageStackNavigate",
   "summary": "Push Component To Stack: pushes a chosen page onto a named Component Stack with a transition when triggered.",
-  "description": "When `navigate` fires, the page selected on this node is pushed onto the Component Stack named in `stack`, animating per the chosen transition. Inputs declared by the target page's Component Inputs appear on this node, so per-page data travels with the push. `navigated` fires when the transition completes; `mode` controls push-vs-replace behaviour.",
+  "description": "When `navigate` fires, the page selected on this node is pushed onto the Component Stack named in `stack`, animating per the chosen transition. Inputs declared by the target page's Component Inputs appear on this node, so per-page data travels with the push. `done` fires when the transition completes, `unchanged` when the stack is already showing that component with those parameters, and `failure` when the push was dropped; `completed` fires after all three. `mode` controls push-vs-replace behaviour.",
   "whenToUse": "Advancing stack flows: next wizard step, opening a detail page over a list. To go back, use Pop Component Stack — never push the previous page again.",
   "ports": {
     "navigate": "Signal; performs the push.",
     "stack": "Name of the target Component Stack (its `name` parameter).",
-    "navigated": "Signal; fires after the page transition finishes."
+    "done": "Signal; fires after the page transition finishes.",
+    "unchanged": "Signal; the stack is already showing that component with those parameters, so nothing was pushed."
   },
   "runtimeBehavior": "The target-page choice, its transition options, and one input port per Component Input of the chosen page are runtime-determined from project content.",
   "examples": ["nav-page-stack-push-pop"],

@@ -18824,6 +18824,17 @@
           "description": "How many child elements are currently mounted inside this one"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "didMount",
           "displayName": "Did Mount",
           "group": "Mounted",
@@ -18833,6 +18844,17 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the page has announced that it is ready to render"
         },
         {
           "name": "screenPositionX",
@@ -19069,6 +19091,17 @@
           "description": "How many child elements are currently mounted inside this one"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "didMount",
           "displayName": "Did Mount",
           "group": "Mounted",
@@ -19078,6 +19111,28 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the stack has been emptied and the start component rebuilt"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the stack has no components configured, or its start component does not resolve"
         },
         {
           "name": "screenPositionX",
@@ -19323,6 +19378,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the stack has switched to the target component. ⚠️ If this node lives on the component being replaced it is destroyed with it, so sequence anything that must survive the navigation from a node outside the stack"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -19345,15 +19422,15 @@
           "description": "Fires when no Target Page is set, the stack has no components configured, or a navigation is still animating"
         },
         {
-          "name": "navigated",
-          "displayName": "Navigated",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the stack has switched to the target component"
+          "description": "Fires when the stack is already showing that component with those parameters, so it was not pushed again"
         }
       ],
       "dynamicPorts": {
@@ -19422,6 +19499,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the stack has popped this component. ⚠️ This node is destroyed with the component it pops, so sequence anything that must survive the pop from the node that pushed it"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -19441,18 +19540,18 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when this node is not inside a pushed component, the stack is already at its first component, or a navigation is still animating"
+          "description": "Fires when this node is not inside a pushed component, or a navigation is still animating"
         },
         {
-          "name": "success",
-          "displayName": "Popped",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the stack has popped this component"
+          "description": "Fires when the Component Stack is already showing its first component, so there was nothing to pop"
         }
       ],
       "dynamicPorts": {
@@ -23047,6 +23146,17 @@
           "description": "How many child elements are currently mounted inside this one"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "currentPageComponent",
           "displayName": "Current Page Component",
           "group": "General",
@@ -23080,6 +23190,28 @@
           "description": "Fires once this element has been added to the page and can be measured"
         },
         {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the page has been rebuilt, or its Page Inputs updated with new parameters"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the Router has no Pages, no start page, a start page it does not serve, or a routed component that is not a page"
+        },
+        {
           "name": "screenPositionX",
           "displayName": "Screen Position X",
           "group": "Bounding Box",
@@ -23110,6 +23242,17 @@
           },
           "isSignal": false,
           "description": "A reference to this node itself, for ports that take a node rather than a value"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the Router is already showing that page with those parameters, so nothing needed rebuilding"
         },
         {
           "name": "willUnmount",
@@ -23180,6 +23323,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the Router has switched to the target page. ⚠️ If this node lives on the page being left it is destroyed with that page, so sequence anything that must survive the navigation from a node outside the Router"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -23202,15 +23367,15 @@
           "description": "Fires when no Target Page is set, or the Router does not serve that page"
         },
         {
-          "name": "navigated",
-          "displayName": "Navigated",
+          "name": "unchanged",
+          "displayName": "Unchanged",
           "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the Router has switched to the target page"
+          "description": "Fires when the Router is already showing that page with those parameters, so it was not rebuilt"
         }
       ],
       "dynamicPorts": {
@@ -33132,6 +33297,17 @@
           "description": "True when there is an earlier entry to step back to"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "currentIndex",
           "displayName": "Current Index",
           "group": "Status",
@@ -33141,6 +33317,17 @@
           },
           "isSignal": false,
           "description": "Where in the history the store is sitting; -1 when nothing is being tracked"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the history has been thrown away and re-baselined from the live state"
         },
         {
           "name": "fullyRestorable",
@@ -33185,6 +33372,17 @@
           },
           "isSignal": false,
           "description": "How many entries the history holds, including the baseline it started from"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there was nothing to throw away, because the history was already just its baseline"
         }
       ],
       "dynamicPorts": null,

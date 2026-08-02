@@ -5,6 +5,10 @@
   "whenToUse": "The back/cancel/done affordance inside any pushed page. Pair result values with distinct back actions ('save' vs 'cancel') when the opener must react differently.",
   "ports": {
     "navigate": "Signal; pops the current page.",
+    "done": "Signal; the stack popped this component. ⚠️ This node is destroyed with the component it pops, so sequencing that must survive the pop belongs on the node that pushed it.",
+    "unchanged": "Signal; the Component Stack is already showing its first component, so there was nothing to pop — an ordinary end-stop, not a failure.",
+    "failure": "Signal; this node is not inside a pushed component, or a navigation is still animating.",
+    "completed": "Signal; fires after all three.",
     "results": "Names of values handed back to the push site; each becomes an input here.",
     "backActions": "Named back reasons; each appears as a signal output on the corresponding push node."
   },

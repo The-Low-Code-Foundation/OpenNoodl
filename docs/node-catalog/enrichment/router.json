@@ -8,6 +8,10 @@
     "pages": "Edit-only parameter `{ routes, startPage }` listing the page components this router can show. The URL pattern of each page comes from that page's own Page node, not from here.",
     "urlPath": "String value prepended as a base path to every page's URL — used when this router is nested inside another router's page.",
     "reset": "Signal input; re-evaluates the URL and rebuilds the current page (also updates Page Inputs if only params changed).",
+    "done": "Signal; the page was rebuilt, or its Page Inputs updated with new parameters.",
+    "unchanged": "Signal; the Router was already showing that page with those parameters, so nothing needed rebuilding.",
+    "failure": "Signal; no Pages, no start page, a start page this Router does not serve, or a routed component that is not a page. ⚠️ Reset is also called on mount so the start page is created, and that call reports nothing — a mount that fired Done would pulse every chain in the app at boot.",
+    "completed": "Signal; fires after every Reset the author triggered, whatever the outcome.",
     "currentPageTitle": "String value; the title of the page currently shown (also written to the document title).",
     "currentPageComponent": "String value; the component name of the page currently shown."
   },
