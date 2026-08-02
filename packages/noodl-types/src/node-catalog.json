@@ -34713,6 +34713,28 @@
           "description": "Fires once the buffer has been discarded"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once an Add, Flush or Clear you triggered has changed the buffer"
+        },
+        {
           "name": "droppedItems",
           "displayName": "Dropped Items",
           "group": "Status",
@@ -34788,6 +34810,17 @@
           },
           "isSignal": true,
           "description": "Fires when Max Size has just discarded something"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Flush found nothing to send, or a Clear found nothing to discard — an idle buffer doing exactly what it should"
         }
       ],
       "dynamicPorts": null,
@@ -34950,6 +34983,28 @@
           "description": "Fires once the buffer and the messages have been emptied"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once an Add or Clear you triggered has changed the buffer"
+        },
+        {
           "name": "droppedCharacters",
           "displayName": "Dropped Characters",
           "group": "Status",
@@ -35047,6 +35102,17 @@
           },
           "isSignal": true,
           "description": "Fires when Max Length or Max Messages has just discarded something"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when an Add had no text to append — an empty chunk, or one already refused — or a Clear found nothing to discard"
         }
       ],
       "dynamicPorts": null,

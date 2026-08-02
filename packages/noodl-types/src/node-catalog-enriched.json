@@ -37910,6 +37910,28 @@
           "description": "Fires once the buffer has been discarded"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once an Add, Flush or Clear you triggered has changed the buffer"
+        },
+        {
           "name": "droppedItems",
           "displayName": "Dropped Items",
           "group": "Status",
@@ -37985,6 +38007,17 @@
           },
           "isSignal": true,
           "description": "Fires when Max Size has just discarded something"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Flush found nothing to send, or a Clear found nothing to discard — an idle buffer doing exactly what it should"
         }
       ],
       "dynamicPorts": null,
@@ -37992,7 +38025,7 @@
       "enrichment": {
         "typeName": "net.noodl.StreamBuffer",
         "summary": "Stream Buffer: batches items arriving faster than the UI wants to react, flushing on a count, an interval, or on demand.",
-        "description": "Each `add` appends the current `data` to a buffer. The buffer empties when `flushSize` items have collected, when `flushInterval` milliseconds have passed since the first item after the last flush, or when `flush` fires — whichever comes first. `flushedData` is a detached array, so a later Add cannot mutate what a downstream node is already rendering. The interval timer is armed only while items are waiting, is re-armed rather than left stale when the interval changes, and is cleared on a manual flush and when the node is deleted. `maxSize` caps the buffer, dropping the oldest and reporting it on `droppedItems` with an `overflowed` signal.",
+        "description": "Each `add` appends the current `data` to a buffer. The buffer empties when `flushSize` items have collected, when `flushInterval` milliseconds have passed since the first item after the last flush, or when `flush` fires — whichever comes first. `flushedData` is a detached array, so a later Add cannot mutate what a downstream node is already rendering. The interval timer is armed only while items are waiting, is re-armed rather than left stale when the interval changes, and is cleared on a manual flush and when the node is deleted. `maxSize` caps the buffer, dropping the oldest and reporting it on `droppedItems` with an `overflowed` signal. A `flush` that finds nothing, and a `clear` with nothing to discard, report `unchanged` — an idle buffer doing exactly what it should, not a failure.",
         "whenToUse": "Any producer that outruns the UI: a token stream driving a Repeater, high-rate telemetry, a log feed. Batching turns hundreds of small graph updates a second into a few. Not needed when updates are already infrequent, and not a substitute for Text Accumulator when the thing being batched is text that should be concatenated rather than listed.",
         "ports": {
           "data": "The item to buffer on the next Add. Any type.",
@@ -38185,6 +38218,28 @@
           "description": "Fires once the buffer and the messages have been emptied"
         },
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once an Add or Clear you triggered has changed the buffer"
+        },
+        {
           "name": "droppedCharacters",
           "displayName": "Dropped Characters",
           "group": "Status",
@@ -38282,6 +38337,17 @@
           },
           "isSignal": true,
           "description": "Fires when Max Length or Max Messages has just discarded something"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when an Add had no text to append — an empty chunk, or one already refused — or a Clear found nothing to discard"
         }
       ],
       "dynamicPorts": null,
@@ -38289,7 +38355,7 @@
       "enrichment": {
         "typeName": "net.noodl.TextAccumulator",
         "summary": "Text Accumulator: collects stream fragments into growing text, and splits complete messages off a delimiter.",
-        "description": "Each `add` appends the current `chunk` to a buffer. With an empty delimiter nothing is ever split and `accumulated` is simply the text so far — the mode a token stream wants. With a delimiter (newline by default) every complete piece moves to `messages` and only the unfinished tail stays in `accumulated`, so a message split across chunk boundaries reassembles correctly. Both stores are bounded: `maxLength` caps the pending buffer and `maxMessages` caps the retained list, dropping the oldest first and reporting the loss on `droppedCharacters` / `droppedMessages` plus an `overflowed` signal rather than growing without limit in a long-lived session. An empty chunk is ignored, so a stream's keep-alive frames do not fire `changed`.",
+        "description": "Each `add` appends the current `chunk` to a buffer. With an empty delimiter nothing is ever split and `accumulated` is simply the text so far — the mode a token stream wants. With a delimiter (newline by default) every complete piece moves to `messages` and only the unfinished tail stays in `accumulated`, so a message split across chunk boundaries reassembles correctly. Both stores are bounded: `maxLength` caps the pending buffer and `maxMessages` caps the retained list, dropping the oldest first and reporting the loss on `droppedCharacters` / `droppedMessages` plus an `overflowed` signal rather than growing without limit in a long-lived session. An empty chunk appends nothing, so a stream's keep-alive frames do not fire `changed` — the Add reports `unchanged` rather than nothing at all.",
         "whenToUse": "Assembling anything that arrives in pieces: AI tokens into a displayable answer, log lines out of a chunked feed, NDJSON lines before parsing them. Pair it with Server-Sent Events or any node that emits fragments. Not needed when each event is already a whole value — wire that straight to its consumer.",
         "ports": {
           "chunk": "The fragment to append. Text, numbers and booleans are accepted; an object or an array is refused and named on `error`, because it means a JSON-parsed `data` output was wired here where the stream's `text` output was wanted.",

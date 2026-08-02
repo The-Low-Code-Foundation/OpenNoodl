@@ -56,11 +56,16 @@ describe('net.noodl.TextAccumulator', () => {
     );
     expect(Object.keys(metadata.outputs).sort()).toEqual(
       [
+        // ERG-001 §4 added `done`, `unchanged` and `completed`; `failure` survives with its
+        // meaning intact, because on this node it is *also* the `chunk` setter's announcement.
         'accumulated',
         'byteCount',
         'changed',
         'characterCount',
         'cleared',
+        'completed',
+        'done',
+        'unchanged',
         'droppedCharacters',
         'droppedMessages',
         'error',
@@ -120,11 +125,83 @@ describe('net.noodl.TextAccumulator', () => {
     expect(out('accumulated')).toBe('c');
   });
 
+  /**
+   * ERG-001 §4 — the outcome contract on `Add` and `Clear`.
+   *
+   * `Message Received`, `Changed`, `Cleared` and `Overflowed` all stay: each is a value-level
+   * announcement about a specific piece of state, and `Overflowed` fires from *inside* an `Add`
+   * that otherwise succeeded, so none of them is this invocation's outcome.
+   *
+   * ⚠️ `failure` is one port doing two jobs. It fires from `reportChunkError`, which is reached
+   * from the **`chunk` input setter** — a mis-wired stream announces itself the moment the value
+   * arrives, before any `Add` — so a port-driven run must not pulse it twice.
+   *
+   * What reverting reddens, predicted before running:
+   *   - empty-chunk branch back to a bare `return` → 2 (the keep-alive row and the outcome row)
+   *   - `Clear`'s `hadSomethingToClear` read *after* the reset → 1 (the empty-Clear row)
+   *   - the `chunk` setter minting a token → 0 visible; the counting row below is what catches it
+   */
+  it('an Add that appends reports Done after Changed', () => {
+    const { signals, pulse, node } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('chunk', 'hello');
+    pulse('add');
+
+    expect(signals).toEqual(['changed', 'done', 'completed']);
+  });
+
+  it('a mis-wired chunk announces Failure once, and the Add after it is Unchanged', () => {
+    const { signals, pulse, node } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('chunk', { not: 'text' });
+
+    // The setter's own announcement — no invocation, so no `Completed`.
+    expect(signals).toEqual(['failure']);
+
+    pulse('add');
+    // The refused chunk was blanked, so the `Add` has nothing to append. Not silence, and not a
+    // second `Failure` for a mis-wiring already reported.
+    expect(signals).toEqual(['failure', 'unchanged', 'completed']);
+  });
+
+  it('a Clear with nothing to clear is Unchanged, and one with something is Done', () => {
+    const { signals, pulse, node } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+
+    pulse('clear');
+    expect(signals).toEqual(['cleared', 'unchanged', 'completed']);
+
+    signals.length = 0;
+    node.setInputValue('chunk', 'hello');
+    pulse('add');
+    signals.length = 0;
+
+    pulse('clear');
+    expect(signals).toEqual(['cleared', 'done', 'completed']);
+  });
+
+  /**
+   * ⚠️ A counting row, not a silence row. A token minted in the `chunk` setter would never be
+   * settled, so nothing would be reported and a silence row would stay green; what catches it is
+   * the next invocation draining the stale token and reporting twice.
+   */
+  it('two Adds report exactly two outcomes, whatever arrived on Chunk in between', () => {
+    const { signals, pulse, node } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+
+    node.setInputValue('chunk', 'a');
+    pulse('add');
+    node.setInputValue('chunk', 'b');
+    pulse('add');
+
+    expect(signals.filter((sig) => sig === 'completed')).toHaveLength(2);
+    expect(signals.filter((sig) => sig === 'done')).toHaveLength(2);
+  });
+
   it('ignores an empty chunk, so keep-alives do not fire Changed', () => {
     const { node, signals, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
     node.setInputValue('chunk', '');
     pulse('add');
-    expect(signals).toEqual([]);
+    // ⚠️ ERG-001 §4: still no `Changed` — the keep-alive claim this row exists for is intact —
+    // but the `Add` is no longer *silent*. A bare `return` was the dead chain the contract
+    // closes, and an empty chunk is `Unchanged` rather than nothing at all.
+    expect(signals).toEqual(['unchanged', 'completed']);
   });
 
   it('caps the buffer and reports what it dropped rather than dropping silently', () => {
@@ -462,9 +539,13 @@ describe('net.noodl.StreamBuffer', () => {
     expect(Object.keys(metadata.outputs).sort()).toEqual(
       // NDA-004 §2 added `failure`/`error`: `Add` with nothing on `Data` used to return bare.
       [
+        // ERG-001 §4 added `done`, `unchanged` and `completed`.
         'buffer',
         'bufferSize',
         'cleared',
+        'completed',
+        'done',
+        'unchanged',
         'droppedItems',
         'error',
         'failure',
@@ -486,7 +567,8 @@ describe('net.noodl.StreamBuffer', () => {
 
     pulse('add');
 
-    expect(signals).toEqual(['failure']);
+    // ERG-001 §4 added `Completed` after every outcome, whatever it was.
+    expect(signals).toEqual(['failure', 'completed']);
     expect(out('bufferSize')).toBe(0);
     expect(String(out('error'))).toContain('Data input');
   });
@@ -582,10 +664,85 @@ describe('net.noodl.StreamBuffer', () => {
     expect(timers.pending()).toBe(0);
   });
 
+  /**
+   * ERG-001 §4 — the outcome contract on `Add`, `Flush` and `Clear`.
+   *
+   * `Flushed`, `Overflowed` and `Cleared` all stay: value-level announcements about specific
+   * pieces of state, and the interval timer flushes on its own, which is a path nobody invoked.
+   *
+   * What reverting reddens, predicted before running:
+   *   - the empty-`Flush` branch back to a bare `return` → 2 (the no-flush row and the outcome row)
+   *   - an `Add` that triggers a flush settling its token *and* `doFlush` settling again → 1
+   *   - `Clear`'s `hadSomethingToClear` read after the reset → 1 (the empty-Clear row)
+   *   - the interval timer's flush minting a token → 1 (the timer row)
+   */
+  it('an Add that buffers reports Done', () => {
+    const { signals, pulse, node } = createBuffer();
+    node.setInputValue('data', 'x');
+    pulse('add');
+
+    expect(signals).toEqual(['done', 'completed']);
+  });
+
+  /**
+   * ⚠️ One invocation, one outcome. An `Add` that reaches Flush Size flushes inside itself, and
+   * the token travels with it rather than being settled twice — which `reportOutcome` would
+   * report as `outcome/duplicate` rather than quietly allowing.
+   */
+  it('an Add that triggers a flush reports exactly one outcome', () => {
+    const { signals, pulse, node } = createBuffer();
+    node.setInputValue('flushSize', 1);
+    node.setInputValue('data', 'x');
+    pulse('add');
+
+    expect(signals).toEqual(['flushed', 'done', 'completed']);
+  });
+
+  it('a Flush with items reports Done after Flushed', () => {
+    const { signals, pulse, node } = createBuffer();
+    node.setInputValue('data', 'x');
+    pulse('add');
+    signals.length = 0;
+
+    pulse('flush');
+    expect(signals).toEqual(['flushed', 'done', 'completed']);
+  });
+
+  it('a Clear with nothing to clear is Unchanged, and one with something is Done', () => {
+    const { signals, pulse, node } = createBuffer();
+
+    pulse('clear');
+    expect(signals).toEqual(['cleared', 'unchanged', 'completed']);
+
+    signals.length = 0;
+    node.setInputValue('data', 'x');
+    pulse('add');
+    signals.length = 0;
+
+    pulse('clear');
+    expect(signals).toEqual(['cleared', 'done', 'completed']);
+  });
+
+  /** Only the port mints: the interval flush is the node's own timer, not an invocation. */
+  it('the interval timer flushes and reports no outcome', () => {
+    const timers = makeTimers();
+    const { signals, pulse, node } = createBuffer(timers);
+    node.setInputValue('flushInterval', 50);
+    node.setInputValue('data', 'x');
+    pulse('add');
+    signals.length = 0;
+
+    timers.run();
+    expect(signals).toEqual(['flushed']);
+  });
+
   it('does not flush an empty buffer', () => {
     const { signals, out, pulse } = createBuffer();
     pulse('flush');
-    expect(signals).toEqual([]);
+    // ⚠️ ERG-001 §4: still no `Flushed` — the claim this row exists for — but the `Flush` is no
+    // longer silent. An idle buffer with nothing to send is `Unchanged`, which is the branch the
+    // contract's `Unchanged` was written for.
+    expect(signals).toEqual(['unchanged', 'completed']);
     expect(out('flushCount')).toBe(0);
   });
 

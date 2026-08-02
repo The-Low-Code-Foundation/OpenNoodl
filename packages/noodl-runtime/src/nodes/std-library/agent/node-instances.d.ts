@@ -124,10 +124,10 @@ export type AccumulatorInternal = {
 export interface TextAccumulatorNodeInstance extends NodeInstance {
   _internal: AccumulatorInternal;
 
-  reportChunkError(message: string): void;
+  reportChunkError(message: string, token?: OutcomeToken): void;
   clearChunkError(): void;
-  addChunk(): void;
-  clearBuffer(): void;
+  addChunk(token?: OutcomeToken): void;
+  clearBuffer(token?: OutcomeToken): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -160,10 +160,10 @@ export type BufferInternal = {
 export interface StreamBufferNodeInstance extends NodeInstance {
   _internal: BufferInternal;
 
-  reportFailure(code: string, message: string): void;
-  addItem(): void;
-  doFlush(): void;
-  clearBuffer(): void;
+  reportFailure(code: string, message: string, token?: OutcomeToken): void;
+  addItem(token?: OutcomeToken): void;
+  doFlush(token?: OutcomeToken): void;
+  clearBuffer(token?: OutcomeToken): void;
   armTimer(): void;
   stopTimer(): void;
 }

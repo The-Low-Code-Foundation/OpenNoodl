@@ -15,7 +15,9 @@
  * @since 2.0.0
  */
 
-import type { NodeDefinitionOptions } from '@noodl/types';
+import type { NodeDefinitionOptions, OutcomeToken } from '@noodl/types';
+
+import { outcomeOutputs } from '../../../outcome';
 
 import type { BufferInternal, StreamBufferNodeInstance } from './node-instances';
 
@@ -132,7 +134,8 @@ const StreamBufferNode: NodeDefinitionOptions = {
       description: 'Buffers the current Data, flushing straight away if that reaches Flush Size',
       group: 'Actions',
       valueChangedToTrue(this: StreamBufferNodeInstance) {
-        this.addItem();
+        // ERG-001 §4. Only the ports mint; the interval timer's own flush is not an invocation.
+        this.addItem(this.beginOutcome());
       }
     },
 
@@ -141,7 +144,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
       description: 'Hands the whole buffer to Flushed Data now; an empty buffer is a legitimate no-op',
       group: 'Actions',
       valueChangedToTrue(this: StreamBufferNodeInstance) {
-        this.doFlush();
+        this.doFlush(this.beginOutcome());
       }
     },
 
@@ -150,7 +153,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
       description: 'Discards the buffer and resets both counters without flushing',
       group: 'Actions',
       valueChangedToTrue(this: StreamBufferNodeInstance) {
-        this.clearBuffer();
+        this.clearBuffer(this.beginOutcome());
       }
     }
   },
@@ -220,14 +223,24 @@ const StreamBufferNode: NodeDefinitionOptions = {
       description: 'Fires once the buffer has been discarded',
       group: 'Events'
     },
-    // NDA-004 §2 — see `addItem`. `Add` is an author `Do` (group `Actions`), so this cannot
-    // fire on the boot path.
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      description: 'Fires when Add ran before any value had arrived on Data, so nothing was buffered',
-      group: 'Events'
-    },
+    /**
+     * ERG-001 §4. `Flushed`, `Overflowed` and `Cleared` are all kept: each is a *value-level*
+     * announcement about a specific piece of state, and `Overflowed` in particular fires from
+     * inside an `Add` that otherwise succeeded, so none of them is this invocation's outcome.
+     * The interval timer also flushes on its own, which is a path nobody invoked.
+     *
+     * `Unchanged` is earned twice: a `Flush` that found nothing (the source already called that
+     * "a legitimate no-op" and the port descriptions say so), and a `Clear` with nothing to
+     * clear. Neither raises.
+     *
+     * NDA-004 §2's `Failure` is folded in — `Add` is an author `Do` (group `Actions`), so it
+     * cannot fire on the boot path, and `reportFailure` has no caller but `addItem`.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once an Add, Flush or Clear you triggered has changed the buffer',
+      unchanged: 'Fires when a Flush found nothing to send, or a Clear found nothing to discard — an idle buffer doing exactly what it should',
+      failure: 'Fires when Add ran before any value had arrived on Data, so nothing was buffered'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -255,10 +268,14 @@ const StreamBufferNode: NodeDefinitionOptions = {
      * buffer should do — and the contract lists those among the things that must *not* raise.
      * Open File Picker's `Cancelled` question, asked and answered the other way.
      */
-    addItem(this: StreamBufferNodeInstance) {
+    addItem(this: StreamBufferNodeInstance, token?: OutcomeToken) {
       const internal = internalOf(this);
       if (!internal.hasPendingData) {
-        return this.reportFailure('stream-buffer/no-data', 'Nothing to add — no value has arrived on the Data input');
+        return this.reportFailure(
+          'stream-buffer/no-data',
+          'Nothing to add — no value has arrived on the Data input',
+          token
+        );
       }
 
       internal.buffer.push(internal.pendingData);
@@ -275,23 +292,37 @@ const StreamBufferNode: NodeDefinitionOptions = {
       this.flagOutputDirty('bufferSize');
 
       if (internal.flushSize > 0 && internal.buffer.length >= internal.flushSize) {
-        this.doFlush();
+        // One invocation: the `Add` that filled the buffer owns the flush it triggered, so the
+        // token travels with it rather than being settled here and again inside `doFlush`.
+        this.doFlush(token);
         return;
       }
       this.armTimer();
+      if (token) this.reportOutcome(token, 'done');
     },
 
-    reportFailure(this: StreamBufferNodeInstance, code: string, message: string) {
+    reportFailure(this: StreamBufferNodeInstance, code: string, message: string, token?: OutcomeToken) {
       internalOf(this).lastError = message;
-      this.raiseRuntimeError(code, message);
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
+      if (token) {
+        this.reportOutcome(token, 'failure', { code, message });
+      } else {
+        this.raiseRuntimeError(code, message);
+        this.sendSignalOnOutput('failure');
+      }
     },
 
-    doFlush(this: StreamBufferNodeInstance) {
+    doFlush(this: StreamBufferNodeInstance, token?: OutcomeToken) {
       const internal = internalOf(this);
       this.stopTimer();
-      if (internal.buffer.length === 0) return;
+      if (internal.buffer.length === 0) {
+        // ERG-001 §4. Was a bare `return`, and it is the one branch on this node the contract's
+        // `Unchanged` was written for: a timed flush with nothing to send is exactly what an
+        // idle buffer should do, so it is neither a `Done` that lies nor a `Failure` that fires
+        // on a correct graph.
+        if (token) this.reportOutcome(token, 'unchanged');
+        return;
+      }
 
       // A fresh array: handing out the live buffer would let a downstream node see it
       // mutate under it on the next Add.
@@ -304,11 +335,19 @@ const StreamBufferNode: NodeDefinitionOptions = {
       this.flagOutputDirty('bufferSize');
       this.flagOutputDirty('flushCount');
       this.sendSignalOnOutput('flushed');
+      if (token) this.reportOutcome(token, 'done');
     },
 
-    clearBuffer(this: StreamBufferNodeInstance) {
+    clearBuffer(this: StreamBufferNodeInstance, token?: OutcomeToken) {
       const internal = internalOf(this);
       this.stopTimer();
+      // Read before the reset, not after: an outcome inferred from state a branch has already
+      // changed is the defect the JSON parser's runaway-buffer branch introduced.
+      const hadSomethingToClear =
+        internal.buffer.length > 0 ||
+        internal.flushedData.length > 0 ||
+        internal.droppedItems > 0 ||
+        internal.flushCount > 0;
       internal.buffer = [];
       internal.flushedData = [];
       internal.droppedItems = 0;
@@ -320,6 +359,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
       this.flagOutputDirty('flushCount');
       this.flagOutputDirty('droppedItems');
       this.sendSignalOnOutput('cleared');
+      if (token) this.reportOutcome(token, hadSomethingToClear ? 'done' : 'unchanged');
     },
 
     armTimer(this: StreamBufferNodeInstance) {

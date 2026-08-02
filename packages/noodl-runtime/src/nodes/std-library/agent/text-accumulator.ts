@@ -18,7 +18,9 @@
  * @since 2.0.0
  */
 
-import type { NodeDefinitionOptions } from '@noodl/types';
+import type { NodeDefinitionOptions, OutcomeToken } from '@noodl/types';
+
+import { outcomeOutputs } from '../../../outcome';
 
 import type { AccumulatorInternal, TextAccumulatorNodeInstance } from './node-instances';
 import { splitDelimited, truncateHead, utf8ByteLength } from './stream-parsers';
@@ -177,7 +179,9 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
         'Appends the current Chunk, which is retained between pulses, so a second Add with no new chunk appends it again',
       group: 'Actions',
       valueChangedToTrue(this: TextAccumulatorNodeInstance) {
-        this.addChunk();
+        // ERG-001 §4. Only the ports mint; the `chunk` setter merely stores, and
+        // `reportChunkError` fires from it, which is why `failure` stays a two-job port below.
+        this.addChunk(this.beginOutcome());
       }
     },
 
@@ -186,7 +190,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       description: 'Empties the buffer, the messages and both dropped counts',
       group: 'Actions',
       valueChangedToTrue(this: TextAccumulatorNodeInstance) {
-        this.clearBuffer();
+        this.clearBuffer(this.beginOutcome());
       }
     }
   },
@@ -305,13 +309,27 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
      * chunk is blanked, and a blank chunk is a deliberate no-op) and the graph had no branch
      * to take. Five siblings in this directory already carry `Failure`; this one did not.
      */
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      description:
-        'Fires when a chunk was not text and nothing was appended, which usually means the wrong stream output is wired',
-      group: 'Events'
-    }
+    /**
+     * ERG-001 §4. `Message Received`, `Changed`, `Cleared` and `Overflowed` all stay: each is a
+     * value-level announcement about a specific piece of state — `Overflowed` fires from inside
+     * an `Add` that otherwise succeeded — and none is this invocation's outcome.
+     *
+     * ⚠️ `failure` is one port doing two jobs. It fires from `reportChunkError`, which is
+     * reached from the **`chunk` input setter** — a mis-wired stream announces itself the moment
+     * the value arrives, before any `Add`. So a port-driven run must not pulse it twice: where
+     * there is a token `reportOutcome` owns the pulse, where there is none the setter's
+     * announcement stands.
+     *
+     * `Unchanged` is earned twice: an `Add` whose chunk is empty (the source already called that
+     * "a no-op, not an error" — a stream's keep-alive frames are empty), and a `Clear` with
+     * nothing to clear. Neither raises.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once an Add or Clear you triggered has changed the buffer',
+      unchanged: 'Fires when an Add had no text to append — an empty chunk, or one already refused — or a Clear found nothing to discard',
+      failure:
+        'Fires when a chunk was not text and nothing was appended, which usually means the wrong stream output is wired'
+    })
   },
 
   methods: {
@@ -322,17 +340,29 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
      * author who has just wired the wrong port has not wired anything to `error` either, so
      * an editor warning is the only thing that reaches them unprompted.
      */
-    reportChunkError(this: TextAccumulatorNodeInstance, message: string) {
+    reportChunkError(this: TextAccumulatorNodeInstance, message: string, token?: OutcomeToken) {
       const internal = internalOf(this);
-      if (internal.error === message) return;
-      internal.error = message;
-      this.flagOutputDirty('error');
+      const isRepeat = internal.error === message;
+      if (!isRepeat) {
+        internal.error = message;
+        this.flagOutputDirty('error');
+      }
+
+      // ⚠️ ERG-001 §4. The token settles **outside** the message dedup above: the dedup is about
+      // the announcement — one mis-wired stream would otherwise report per chunk — while Rule 1
+      // is per invocation. `failure` is not pulsed twice; see the port's own note.
+      if (token) {
+        this.reportOutcome(token, 'failure', { code: CHUNK_ERROR_CODE, message, raise: isRepeat ? false : undefined });
+      }
+      if (isRepeat) return;
 
       // The graph-visible half, which is what a deployed build has. `raiseRuntimeError` is
       // what reaches `On App Error`; the editor warning below is the *second* channel now
       // rather than the only one.
-      this.sendSignalOnOutput('failure');
-      this.raiseRuntimeError(CHUNK_ERROR_CODE, message);
+      if (!token) {
+        this.sendSignalOnOutput('failure');
+        this.raiseRuntimeError(CHUNK_ERROR_CODE, message);
+      }
 
       const editorConnection = this.context && this.context.editorConnection;
       if (editorConnection && this.nodeScope && this.nodeScope.componentOwner) {
@@ -355,12 +385,15 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       }
     },
 
-    addChunk(this: TextAccumulatorNodeInstance) {
+    addChunk(this: TextAccumulatorNodeInstance, token?: OutcomeToken) {
       const internal = internalOf(this);
       const chunk = internal.pendingChunk;
       if (chunk === '') {
-        // An empty chunk is a no-op, not an error: a stream's keep-alive frames are
-        // empty and should not fire Changed on every heartbeat.
+        // An empty chunk is a no-op, not an error: a stream's keep-alive frames are empty and
+        // should not fire Changed on every heartbeat. ERG-001 §4 gave the no-op a name rather
+        // than leaving it as the bare `return` it was — this is also the path an `Add` takes
+        // after a chunk was refused, because the refused chunk is blanked.
+        if (token) this.reportOutcome(token, 'unchanged');
         return;
       }
 
@@ -404,10 +437,20 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       // leave a downstream node reading only the last value anyway.
       if (split.messages.length > 0) this.sendSignalOnOutput('messageReceived');
       this.sendSignalOnOutput('changed');
+
+      // Last, after every value and every value-level announcement.
+      if (token) this.reportOutcome(token, 'done');
     },
 
-    clearBuffer(this: TextAccumulatorNodeInstance) {
+    clearBuffer(this: TextAccumulatorNodeInstance, token?: OutcomeToken) {
       const internal = internalOf(this);
+      // Read before the reset, not after.
+      const hadSomethingToClear =
+        internal.buffer.length > 0 ||
+        internal.messages.length > 0 ||
+        internal.droppedCharacters > 0 ||
+        internal.droppedMessages > 0 ||
+        !!internal.error;
       internal.buffer = '';
       internal.messages = [];
       internal.lastMessage = '';
@@ -424,6 +467,7 @@ const TextAccumulatorNode: NodeDefinitionOptions = {
       this.flagOutputDirty('droppedCharacters');
       this.flagOutputDirty('droppedMessages');
       this.sendSignalOnOutput('cleared');
+      if (token) this.reportOutcome(token, hadSomethingToClear ? 'done' : 'unchanged');
     }
   }
 };
