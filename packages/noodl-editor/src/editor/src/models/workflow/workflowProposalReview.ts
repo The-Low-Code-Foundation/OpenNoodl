@@ -104,7 +104,20 @@ export async function openWorkflowProposal(
     contextNote:
       `Proposed by ${proposal.origin} for ${backendName}. Nothing is written until you accept.` +
       (proposal.note ? ` — “${proposal.note}”` : ''),
-    onAccept: (rejected: ReadonlySet<string>) => acceptWorkflowProposal(proposal, changeSet, rejected, backendName),
+    // The refresh belongs on the SUCCESS path only. `acceptWorkflowProposal`
+    // spends the proposal — it deletes it from disk — and the panel holds its
+    // own list, so without this it goes on advertising a proposal that is gone,
+    // and its Review button reopens the stale copy still in memory. Accepting
+    // that phantom writes the old candidate over whatever the workflow has
+    // become since. Found live, 2026-08-02: `onReject` had the callback and this
+    // did not.
+    onAccept: async (rejected: ReadonlySet<string>) => {
+      const failure = await acceptWorkflowProposal(proposal, changeSet, rejected, backendName);
+      // A failure leaves the proposal on disk on purpose, so the list must keep
+      // showing it — refreshing here would hide work the user still has to do.
+      if (failure === null) context.onDone?.();
+      return failure;
+    },
     onReject: () => {
       void discardWorkflowProposal(backendId, proposal.proposalId).then(() => context.onDone?.());
     }
