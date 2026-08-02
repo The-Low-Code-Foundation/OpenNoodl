@@ -77,11 +77,17 @@ in `tests/versioning/graphdiff.test.ts`.
 
 ## Not yet done
 
-1. **Live pass on the slice-4/5 UI** (exclude/restore clicks, Before/After
-   toggle, walkthrough, Accept-N-of-M through the real panel): blocked
-   mid-smoke by an unrelated in-flight edit breaking the workspace build
-   (`ProjectScanner.ts`, RUN-001 work). Logic is spec-covered; the UI needs
-   one clean-session smoke.
+1. ~~**Live pass on the slice-4/5 UI**~~ **Done, 2026-08-02** — see
+   `AIX-003-SLICE-4-5-SMOKE.md`. It needed an asset before it needed a session:
+   `packages/noodl-editor/scripts/aix15-live/scripted-session.js` replays a
+   recorded candidate through `AiClient.chatStream` with no provider, so the
+   Build panel stages for real and "Review changes" opens the document the way
+   the app opens it. **The pass found a defect that had made the rail unusable**:
+   clicking any change row, or "Walk through", closed the review and returned the
+   app to the editor document (`74c4b4a8`). The click-to-focus recorded as
+   verified above had never been exercised through a real document — a read-only
+   editor mounted on its own works; one mounted *inside a document* does not
+   survive its own sidebar being hidden.
 2. **The 40+ node fresh-reviewer test** (success criterion: a human who
    hasn't seen the change can say what happened). Still needs a human — but the
    artifact it needs now exists:

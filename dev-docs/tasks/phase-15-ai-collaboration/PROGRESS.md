@@ -14,7 +14,7 @@
 | In Progress  | 0      |
 | Not Started  | 0      |
 | Blocked      | 0 — AIX-009's blocker cleared by DEP-008 (phase 26) on 2026-07-27 |
-| **Progress** | **100% built; 3 residuals need a human, not an engineer** |
+| **Progress** | **100% built; 3 residuals need a human, not an engineer** (the last engineering residual, AIX-003's slice-4/5 smoke, closed 2026-08-02) |
 
 **Closed 2026-08-02.** The Anthropic key had credit again, which was the stated
 blocker on almost everything left. Four parallel worktree agents plus a
@@ -62,21 +62,28 @@ endpoints exist but require an Admin key (200 on messages, 401 on both reports,
 404 on a made-up route — the 404 is what makes the 401s meaningful), and the
 exact figures to compare are in AIX-007-NOTES.md. Gate G2 remains a calendar.
 
-**One smoke attempted and not completed, stated plainly.** AIX-003's slice-4/5 UI
-pass (exclude/restore clicks, Before/After, walkthrough, Accept-N-of-M *through
-the real panel*) is still not done. It was attempted on 2026-08-02 by building a
-genuine 10-change set from a live candidate in the running editor and mounting
-`ChangeReviewDocument` directly; the mount renders nothing and the console
-reports `Element type is invalid … got: undefined` — a child component resolving
-to undefined. The same ad-hoc mounting technique worked for four other components
-that day (`ProjectReviewBanner`, `AiSettingsSection`, `LauncherSettingsDialog`,
-`SandboxPreview`), so this is *suggestive* of something real, but it was not
-chased to a conclusion and **must not be recorded as a defect** — the document
-normally arrives through `AppRegistry`'s document path, which ad-hoc mounting
-bypasses. What it actually needs is the scripted no-provider session that has
-been owed since the last pass: a staged candidate in a real project, opened the
-way the app opens it. The underlying logic is not the risk here — it is covered
-by 318 single-change rejections and 520 seeded subsets against live proposals.
+**The last owed smoke is done, and it was not a formality.** AIX-003's slice-4/5
+UI pass (exclude/restore clicks, Before/After, walkthrough, Accept-N-of-M
+*through the real panel*) closed on 2026-08-02 — see
+[AIX-003-SLICE-4-5-SMOKE.md](AIX-003-SLICE-4-5-SMOKE.md). The blocker was never
+the logic (318 single-change rejections and 520 seeded subsets already covered
+it); it was that reaching the document at all meant paying a provider. That is
+now an asset: `scripts/aix15-live/scripted-session.js` swaps `AiClient.chatStream`
+and `isConfigured` for a replay of a recorded candidate, so the Build panel
+stages for real and the review opens through `AppRegistry` the way the app opens
+it. **$0.00 per run**, and it also gives AIX-008 and AIX-011 their panel smokes —
+the same patch serves `PlanningSession` and `DocSession`.
+
+**It found a defect that made the rail's central interaction unusable.** Clicking
+any change row, or "Walk through", closed the review and returned the app to the
+editor document: a read-only editor's `clearSelection` called the *global*
+`SidebarModel.hidePanels()`, whose panel-close handler reopens the editor
+document. Every other action in `SelectionActions` already guarded on `readOnly`;
+`deselect` was missed, and it is the one reached with no gesture on the canvas at
+all. Fixed and spec-covered in `74c4b4a8`; the same guard covers the
+version-control diff and the authoring preview, which build read-only editors the
+same way. The 2026-07-24 notes had recorded row-click focus as live-verified — it
+was, on an editor that was not inside a document whose sidebar could be hidden.
 
 **One open design question, deliberately not decided by an agent.** When a
 component's base uses module types absent from the catalog, the strict gate
