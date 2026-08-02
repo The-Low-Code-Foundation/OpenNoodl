@@ -54,6 +54,28 @@ export function ResultStage({ summary, failed, failureMessage, verb, isExport = 
       <h2 className={css['headline']}>{verb} complete</h2>
       <p className={css['headlineSub']}>{summary.undoNote}</p>
 
+      {/*
+        LIB-006. Only shown when there is something to say — a clean import gets
+        a `proceed` verdict and no banner, so this never becomes decoration the
+        user learns to skim past. When it does appear it uses the warning
+        treatment, because "complete" with eight unconvertible nodes behind it is
+        not the whole truth.
+      */}
+      {summary.legacy && summary.legacy.recommendation !== 'proceed' && (
+        <div className={classNames(css['resultNote'], css['warnNote'])} style={{ marginTop: 12 }}>
+          <div>{summary.legacy.line}</div>
+          {summary.legacy.placeholders > 0 && (
+            <div>
+              {summary.legacy.placeholders === 1 ? 'It is' : 'They are'} still on the canvas with the original type and
+              settings, flagged in the Problems panel.
+            </div>
+          )}
+          {summary.legacy.reportFiles.length > 0 && (
+            <div>Written to your project: {summary.legacy.reportFiles.join(', ')}.</div>
+          )}
+        </div>
+      )}
+
       {summary.modelLines.length > 0 && (
         <>
           {/* Export packs into an archive; nothing reaches the open project. */}

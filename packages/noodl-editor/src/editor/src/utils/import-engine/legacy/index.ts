@@ -10,6 +10,7 @@
  * Layering, deliberately mirroring LIB-004's:
  *
  *   assess()             pure     ProjectData + catalog → findings
+ *   applyLegacyTransforms() pure  report + live source → markers + the REST retype
  *   buildReport()        pure     findings → the one report object
  *   renderReportMarkdown() pure   that object → the human rendering
  *   computeVerdict()     pure     counts + size → proceed / repair / rebuild
@@ -25,7 +26,7 @@
 export * from './types';
 export { assess } from './assess';
 export type { AssessInput, AssessResult, LegacyCodePattern } from './assess';
-export { buildReport, renderReportMarkdown } from './report';
+export { buildReport, renderReportMarkdown, reportSummaryLine } from './report';
 export type { BuildReportInput } from './report';
 export {
   computeVerdict,
@@ -35,6 +36,10 @@ export {
   REBUILD_UNCONVERTED_SHARE
 } from './verdict';
 export type { VerdictInput } from './verdict';
+export { applyLegacyTransforms } from './transforms';
+export type { TransformResult, LiveNode, LiveComponent, LiveProject } from './transforms';
+export { assessImport, writeImportReport } from './importAssessment';
+export type { WriteReportResult } from './importAssessment';
 export { defaultCatalogQuery } from './catalogQuery';
 export { reactRemovalPatterns } from './codePatterns';
 export {

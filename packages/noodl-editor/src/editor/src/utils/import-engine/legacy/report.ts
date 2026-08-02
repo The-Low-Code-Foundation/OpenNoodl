@@ -106,6 +106,27 @@ export function buildReport(input: BuildReportInput): ImportReport {
   };
 }
 
+/**
+ * The one-line summary an import surface shows when it is done.
+ *
+ * Deliberately blunt when the verdict is `rebuild`: the policy's position is
+ * that saying so plainly beats a broken half-conversion, and a summary that
+ * reads "Imported successfully" over a 40%-broken project is the failure mode
+ * this whole task exists to prevent.
+ */
+export function reportSummaryLine(report: ImportReport): string {
+  const { verdict, counts } = report;
+  if (verdict.recommendation === 'proceed') {
+    return counts['converted-with-changes'] > 0
+      ? `Imported. ${counts['converted-with-changes']} construct${counts['converted-with-changes'] === 1 ? ' was' : 's were'} rewritten — see the import report.`
+      : 'Imported. Everything converted.';
+  }
+  if (verdict.recommendation === 'rebuild') {
+    return `Imported, but ${verdict.unconvertedCount} of ${report.coverage.constructsAssessed} constructs did not convert. For a project this size, rebuilding is likely cheaper than repairing — see the import report.`;
+  }
+  return `Imported. ${verdict.unconvertedCount} construct${verdict.unconvertedCount === 1 ? '' : 's'} could not be converted and ${verdict.unconvertedCount === 1 ? 'is' : 'are'} marked as errors on the canvas — see the import report.`;
+}
+
 // ─── Markdown rendering ──────────────────────────────────────────────────────
 
 const OUTCOME_HEADING: Record<LegacyOutcome, string> = {

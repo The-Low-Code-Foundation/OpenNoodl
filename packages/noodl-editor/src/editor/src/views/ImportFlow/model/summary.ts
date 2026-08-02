@@ -10,7 +10,8 @@
  * @module noodl-editor/views/ImportFlow/model/summary
  */
 
-import type { ImportPlan, ImportResult, PlannedItem } from '@noodl-utils/import-engine';
+import type { ImportPlan, ImportReport, ImportResult, PlannedItem } from '@noodl-utils/import-engine';
+import { reportSummaryLine } from '@noodl-utils/import-engine';
 
 import { CATEGORY_NOUN, ItemCategory, splitPath } from './items';
 import { PlannedStatus } from './selection';
@@ -122,6 +123,20 @@ export interface ResultSummary {
   kept: string[];
   warnings: string[];
   undoNote: string;
+  /**
+   * LIB-006. Present whenever the import produced an assessment, which is every
+   * import — a clean one yields a `proceed` verdict with no findings.
+   *
+   * Surfaced here rather than left in the report file because a result screen
+   * that says "Import complete" over a project with eight unconvertible nodes is
+   * exactly the dishonesty this task exists to remove.
+   */
+  legacy?: {
+    line: string;
+    recommendation: ImportReport['verdict']['recommendation'];
+    placeholders: number;
+    reportFiles: string[];
+  };
 }
 
 /**
@@ -180,5 +195,18 @@ export function summarizeResult(
       ? `Undo removes the imported components and variants in one step. ${staysBehind.join(' and ')} stay.`
       : 'Undo removes everything this import added, in one step.';
 
-  return { modelLines, diskLines, renames, kept, warnings: result.warnings, undoNote };
+  // LIB-006: the assessment, if the import produced one. Export stages into a
+  // throwaway project, so its report describes the staging copy rather than
+  // anything the user keeps — not worth showing.
+  const legacy =
+    !isExport && result.legacyReport
+      ? {
+          line: reportSummaryLine(result.legacyReport),
+          recommendation: result.legacyReport.verdict.recommendation,
+          placeholders: result.legacyReport.counts.placeholder,
+          reportFiles: result.reportFilesWritten ?? []
+        }
+      : undefined;
+
+  return { modelLines, diskLines, renames, kept, warnings: result.warnings, undoNote, legacy };
 }
