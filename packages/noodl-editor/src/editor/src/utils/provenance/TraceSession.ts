@@ -124,9 +124,24 @@ export class TraceSession extends Model {
         // aggregation exists precisely so one row can say "fired 100×" instead of showing
         // 100 rows; silently doubling it is the failure mode that surface cannot afford.
         //
-        // `seq` is monotonic across the whole session and never resets when the ring wraps,
-        // so it is a sound identity. Filtering rather than de-duplicating a merged list keeps
-        // this O(batch).
+        // `seq` is monotonic across a session and does not reset when the ring wraps, so it is
+        // a sound identity *within* a session. Filtering rather than de-duplicating a merged
+        // list keeps this O(batch).
+        //
+        // ⚠️ It is **not** monotonic across a preview reload: a reloaded page builds a fresh
+        // `TraceBuffer` numbering from 1 again. A filter that only ever moves `lastSeq`
+        // forward would then discard every event of the new session — silently, and for as
+        // long as the panel stayed open. A whole batch numbered *below* what we hold can only
+        // mean the runtime restarted its numbering; a mere re-delivery of what we already have
+        // tops out at `lastSeq`, never under it.
+        const highest = events[events.length - 1].seq;
+        if (highest < this.lastSeq) {
+          this.traceEvents = events.slice();
+          this.lastSeq = highest;
+          this.notifyListeners('eventsChanged');
+          return;
+        }
+
         const fresh = events.filter((event: TraceEventLike) => event.seq > this.lastSeq);
         if (fresh.length === 0) return;
 

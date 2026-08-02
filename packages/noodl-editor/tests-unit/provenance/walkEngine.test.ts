@@ -333,8 +333,35 @@ describe('OBS-002 — the forward walk and filter-by-cause', () => {
     const walk = forwardWalk(index, click);
 
     expect(explainTerminus(index, walk.boundary[0])).toBe(
-      'B fired. Its `Items` output has 1 connection. None of them carried a value.'
+      'B fired, but none of its 1 outgoing connection carried a value — its `Items` output stayed silent.'
     );
+  });
+
+  it('counts the silent edges as silent edges, not as the node\'s fan-out', () => {
+    // ⚠️ OBS-004, found live. The first wording reported the count of *failures* as a claim
+    // about *topology* — "its `Items` output has 1 connection" — which is right only when
+    // every connection happened to be silent, and understates the fan-out the moment one of
+    // them fires. A node with three outgoing wires, one silent, was described as having one
+    // connection. Stating more than is known is the failure this surface exists to avoid.
+    const top = topology(
+      [node('a', 'A', 'X'), node('b', 'B', 'X'), node('c', 'C', 'X'), node('d', 'D', 'X')],
+      ['a.Done -> b.In', 'a.Items -> c.In', 'a.Items -> d.In']
+    );
+    const fired = event('a.Done -> b.In', { kind: 'signal' });
+    const index = buildIndex(top, [fired]);
+
+    const explanation = explainTerminus(index, {
+      id: 'x',
+      ref: { node: 'a', port: 'Done' },
+      direction: 'output',
+      status: 'fired',
+      fireCount: 1,
+      warnings: [],
+      children: [],
+      depth: 0
+    });
+
+    expect(explanation).toBe('A fired, but 2 of its 3 outgoing connections carried nothing — its `Items` output stayed silent.');
   });
 });
 

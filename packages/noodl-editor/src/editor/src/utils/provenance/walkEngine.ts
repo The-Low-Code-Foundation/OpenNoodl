@@ -688,9 +688,20 @@ export function explainTerminus(index: WalkIndex, row: WalkRow): string | undefi
   const info = describeNode(index, nodeId);
   const name = info.name || info.type || nodeId;
   const ports = Array.from(new Set(silent.map((edge) => edge.from.port)));
-  const portList = ports.length === 1 ? `Its \`${ports[0]}\` output` : `Its ${ports.length} outputs`;
-  const carried = silent.length === outgoing.length ? 'None of them carried a value.' : 'Some carried nothing.';
-  return `${name} fired. ${portList} ${silent.length === 1 ? 'has 1 connection' : `has ${silent.length} connections`}. ${carried}`;
+  const portList = ports.length === 1 ? `its \`${ports[0]}\` output` : `${ports.length} of its outputs`;
+
+  // ⚠️ Count the silent edges as silent edges. The first version phrased `silent.length` as
+  // "has N connections", which is a claim about **topology** derived from a count of
+  // **failures** — right only when every connection on those ports happened to be silent, and
+  // wrong (understating the fan-out) the moment one of them fired. Observed live, where a
+  // node with a partly-silent output was described as having exactly one connection. Stating
+  // more than is known is the specific failure this whole surface exists to avoid.
+  const scope =
+    silent.length === outgoing.length
+      ? `none of its ${outgoing.length} outgoing connection${outgoing.length === 1 ? '' : 's'} carried a value`
+      : `${silent.length} of its ${outgoing.length} outgoing connections carried nothing`;
+
+  return `${name} fired, but ${scope} — ${portList} stayed silent.`;
 }
 
 // ---------------------------------------------------------------------------

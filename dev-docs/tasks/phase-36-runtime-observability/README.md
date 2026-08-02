@@ -82,12 +82,22 @@ LLM over a raw graph dump guesses. An LLM over a provenance walk is good **for f
 |---|---|---|---|
 | [OBS-001](./OBS-001-TRACE-SUBSTRATE.md) | The trace substrate | 1 | ✅ **Built.** Append-only per-edge event log + session dictionary. **Replaces a map that structurally cannot record the same wire firing twice** |
 | [OBS-002](./OBS-002-PROVENANCE-WALK.md) | The provenance walk | 1 | ✅ **Built** — see [OBS-002-NOTES.md](./OBS-002-NOTES.md). Right-click → backward walk, all three annotation layers wired, click-to-reveal. The shelved panel is **not** retired; that is still open question 3 |
-| [OBS-003](./OBS-003-NODE-DIAGNOSTICS.md) | Node-local diagnostics | 2 | Layer 3. **Zero dependencies — ships alone, on infrastructure that already exists** |
-| [OBS-004](./OBS-004-AGENT-ACCESS.md) | Agent access | 3 | MCP server on the relay + input injection + the auth this opens up |
+| [OBS-003](./OBS-003-NODE-DIAGNOSTICS.md) | Node-local diagnostics | 2 | Layer 3. **Zero dependencies — ships alone, on infrastructure that already exists.** The one task left |
+| [OBS-004](./OBS-004-AGENT-ACCESS.md) | Agent access | 3 | ✅ **Built** — see [OBS-004-NOTES.md](./OBS-004-NOTES.md). `nodegx-observe` MCP server, node-id-addressed input injection, and a token on every relay `register` |
 
-**Tier 1 is complete** as of 2026-08-02. Read [OBS-002-NOTES.md](./OBS-002-NOTES.md) before
-building on it: three of its defects were surfaces stating more than they knew, and the same trap is
-available to anything else built over this trace.
+**Tiers 1 and 3 are complete** as of 2026-08-02; **OBS-003 is the only task left in the phase.**
+Read [OBS-002-NOTES.md](./OBS-002-NOTES.md) before building on the trace: three of its defects were
+surfaces stating more than they knew, and the same trap is available to anything else built over it.
+[OBS-004-NOTES.md](./OBS-004-NOTES.md) records what agent access actually shipped, and the one
+correction it forced — **the relay was never authenticated, and that was worse than "obscure but
+open"**, because browsers do not apply the same-origin policy to WebSockets.
+
+⚠️ **Tier 3 landed before tier 2, against the intended order.** The reason was territory, not
+appetite: OBS-003's first batch of checks lives in the same runtime node files phase 35's ERG-001
+was actively rewriting, and OBS-004 is disjoint from both. The argument for building tier 2 first
+is unaffected and still correct — **OBS-004 is only as good as the layers under it**, and today its
+`get_warnings` returns whatever the existing `sendWarning` call sites happen to emit, which is
+thin. OBS-003 is what makes it good.
 
 **Tiers are stopping points.** Tier 1 is the product and must ship together — OBS-001 alone is
 invisible, OBS-002 without it is layer 1 only (which is still useful, and is a legitimate early
@@ -173,5 +183,18 @@ None blocking; all are refinements that can be answered when the task is picked 
 3. **Does the shelved panel get rebuilt or retired?** OBS-002 assumes the walk replaces it and the
    `experimental` flag comes off something new. The forward-chain view is a genuine companion surface
    and could keep the old panel's identity instead.
-4. **OBS-004 scope.** Shipping an MCP server against port 8574 means documenting an unauthenticated
-   local relay as an integration point. Token first, or keep the server local-only and defer?
+4. ~~**OBS-004 scope.**~~ **Answered: token first.** Richard chose the token handshake over
+   deferring. Shipped: every peer presents a per-launch token in its `register`, and a peer that has
+   not is neither sent to nor read from.
+
+   ⚠️ **The question understated the exposure.** It framed the relay as "obscure but open". It was
+   not obscure in the way that implies: **browsers do not apply the same-origin policy to
+   WebSockets**, so any page a user visited could open `ws://localhost:8574`, register as an
+   `editor`, and read the project export and every traced value out of the running app — no prompt,
+   no CORS preflight, nothing to notice. The token was overdue rather than newly required.
+
+5. **New: do the two MCP servers merge?** `nodegx-observe` ships **inside `packages/noodl-mcp`** as
+   a second binary — one dependency set, one build, no shared code path. That is a packaging
+   decision taken to avoid adding a package (and a lockfile change) while a concurrent session held
+   the checkout, not a judgement that they belong together. The spec's warning that the two must not
+   be *confused* stands, and sharing a package works against it.
