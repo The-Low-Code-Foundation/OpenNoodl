@@ -73,6 +73,19 @@ The relay carries no input command today — the runtime handles `debuggingEnabl
 - CDP `Input.dispatchMouseEvent` against the viewer target. Works today, needs the env var, and adds
   a second channel for no benefit.
 
+⚠️ **Built as neither. Both of these address the app by screen coordinate, and that is the wrong
+address for this consumer.** Everything else in tier 1 speaks node ids — the walk's rows, the
+session dictionary, the warnings — so an agent just told *"`Add To Cart.Click` never fired"* can
+name the node and has no idea where it is on screen. Screenshot, vision, guess a coordinate, hope
+nothing scrolled: a great deal of machinery to arrive back where it started.
+
+Shipped as `injectInput`, addressed by **node id**, resolved in the viewer through
+`getNodesWithIdRecursive` + `getDOMElement` — the same mapping the hover highlighter already uses.
+That also settles "which process": `sendInputEvent` from main would first have to find the preview's
+`webContents` by URL and would *still* be unable to resolve a node id, because only the viewer holds
+the mapping. The cost, recorded rather than discovered: these are DOM events, so `isTrusted` is
+false. CDP remains the escape hatch. See [OBS-004-NOTES.md](./OBS-004-NOTES.md).
+
 ⚠️ **This is not optional for the agent story.** Richard's own framing of the open-ended case was
 *"let me fire a couple of buttons and see why"* — that is **agency**, and it is what distinguishes an
 agent from a chat box. It is also the piece that makes the in-editor read-only AI and Claude Code
@@ -86,6 +99,18 @@ a real surface**, and adding input injection makes that surface able to drive th
 
 A token handshake belongs **before** this ships publicly, not after. See [README](./README.md) open
 question 4 — the alternative is keeping the server local-only and deferring.
+
+⚠️ **"Obscure but open" was too gentle, and the reason matters.** **Browsers do not apply the
+same-origin policy to WebSockets** — there is no preflight and no origin check on a WS handshake. So
+*any page a user visited* could already open `ws://localhost:8574`, register as an `editor`, and
+receive the project export, every traced value and every warning, with no prompt and nothing to
+notice. The token was overdue, not newly required by this task.
+
+**Built:** every peer presents a per-launch token in its `register`, and a peer that has not is
+neither sent to nor read from — both halves are load-bearing, because `close()` is asynchronous and
+`broadcastMessage`'s `!type` branch fans to every socket regardless of peer type. The token is
+minted in `relay-token.js`, written to `<userData>/relay-token` at mode 0600, delivered to the
+editor renderer over IPC and to the preview by injection into the HTML the relay itself served.
 
 ### 4. The in-editor AI path
 
@@ -103,11 +128,22 @@ Build the tools once; let both consume them. Do not build LLM reasoning into the
 
 ## Acceptance
 
-- [ ] A user's Claude Code, against a **packaged** NodeGX with no dev flags, can start a trace,
+**Built 2026-08-02** — commits `75c10708`, `bc0ed19c`, `0d9e4a05`, `039817de`. See
+[OBS-004-NOTES.md](./OBS-004-NOTES.md) for what shipped, what did not, and the three corrections
+this task forced.
+
+- [x] A user's Claude Code, against a **packaged** NodeGX with no dev flags, can start a trace,
       click a button in the running preview, and report where the data stopped.
-- [ ] The MCP server needs no access to the project on disk, and works on a legacy-format project.
-- [ ] The relay rejects unauthenticated peers once the token lands.
-- [ ] The walk engine is shared with OBS-002, not reimplemented.
+      ⚠️ **Verified against a dev build.** Nothing in the path is dev-gated — the relay, the token
+      file and the injector all ship — but "packaged" is unverified.
+- [x] The MCP server needs no access to the project on disk — by construction; it never reads a
+      path. ⚠️ **"works on a legacy-format project" is unverified**; it cannot *not* work, since it
+      never parses a project, but none was tried.
+- [x] The relay rejects unauthenticated peers once the token lands. 11 specs over the real relay
+      with real sockets, plus the drive-by case run against the live editor.
+- [x] The walk engine is shared with OBS-002, not reimplemented.
+- [ ] **Scope item 4 — the in-editor AI path — was not built.** The tools exist and the walk engine
+      is shared; nothing inside the editor consumes them, and `AiChat` is untouched.
 
 ## Notes
 
