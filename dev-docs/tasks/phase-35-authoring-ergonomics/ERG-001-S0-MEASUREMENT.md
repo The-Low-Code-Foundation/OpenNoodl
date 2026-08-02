@@ -2192,24 +2192,67 @@ Also measured, though not one of the nine: `noodl-viewer-cloud` jest, **5 suites
 95 corpus rows added across four new files, plus 11 into `agent-stream-nodes.test.ts`. Eleven
 pre-existing specs updated.
 
-### ⚠️ Live QA — owed, and blocked for a reason worth stating
+### Live QA — the debt is paid, and it found a defect no corpus row had asked about
 
-`lsof -i :8574` came back **held**, by an `Electron … --dev` process belonging to the concurrent
-phase-36 session's `nodegx-observe` build. Nothing built in this session has been driven in the
-real editor.
+**Session of 2026-08-02, later.** `lsof -i :8574` came back **free** — the phase-36 editor had
+been stopped — so all eighteen nodes were driven in the real app. Five rigs, built
+programmatically against `window.__nodeGraphEditor.model.owner.owner` in the `tier1-tails` scratch
+project rather than through the picker.
 
-The rebuild half is blocked for a second and more decisive reason: `npm run build --prefix
-packages/noodl-viewer-react` rewrites the three shipped bundles in
-`packages/noodl-editor/src/external/`, which is the **same checkout** that running editor is
-serving from. Doing it would hot-reload someone else's live preview mid-session. Reading
-`NodeLibraryData` off their editor without rebuilding would have been worse than no answer, not
-better: the bundle it is running predates every port added here, so it would have reported the
-old surface with complete confidence.
+⚠️ The first project the launcher opens is now the phase-36 **demo**, which belongs to the
+concurrent session. It was opened, read, and left alone; the rigs went into `tier1-tails`.
 
-**What is therefore unverified for all eighteen nodes:** that the new ports reach the editor's
-node library as connectable ports, that `Completed` counts equal raw invocation counts on a real
-click, and that the eleven new failure codes reach the warnings chip with provenance. Every one
-of those has a corpus row asserting the runtime half; none has been seen in the app.
+**All three claims are now measured, not assumed:**
+
+| Claim | Result |
+|---|---|
+| the new ports reach the node library as connectable ports | ✅ **18/18.** Read off `NodeLibraryData`, and every retired port (`sent`, `success`, `generated`, `cancelled`, `failed`) confirmed **absent** — so the check is not the vacuous `not.toContain` shape. Connectability proved by wires that actually carried on 13 of them. |
+| `Completed` counts equal raw invocation counts on real clicks | ✅ **8 nodes**, each from a verified zero: `Unique Id` 7/7, `States` 5/5, and `Condition`, `Expression`, `JavaScriptFunction`, `net.noodl.ComponentObject`, `net.noodl.StreamBuffer`, `net.noodl.TextAccumulator` all 6/6. Every rig carried a raw counter wired straight off the trigger, so "the node is silent" is distinguishable from "the wire goes nowhere". |
+| the eleven new failure codes reach the warnings chip with provenance | ✅ **8 of 11**, each rendered as `At node <X> in component <Y>`. ❌ **3 not reachable from a rig**, and recorded as such rather than faked. |
+
+Reached and read on the chip: `event-sender/no-channel`, `navigate-to-path/no-path`,
+`states/no-states`, `states/unknown-state`, `show-popup/no-target`,
+`close-popup/no-popup-in-scope`, `parent-component-object/fetch-no-parent`,
+`logic-builder/reserved-port-name`.
+
+Not reached, each needing a genuinely exceptional condition rather than a misconfiguration:
+`open-file-picker/open-failed` (an OS dialog that fails to open), `show-popup/target-failed` (a
+target component that throws on mount), `external-link/blocked` (a popup blocker — Electron's
+`window.open` succeeds). **Unverified, not verified-absent.**
+
+#### ⚠️ The defect — `States` warned against its own ports (fixed, `64864784`)
+
+Wiring `State Changed` — or any of the four ports §4 had just added — into anything at all raised
+`states/reserved-port-name` and told the author to **rename a value they had never created**. The
+node did not have to be misconfigured; a correct one with two states and one value was enough.
+
+`registerOutputIfNeeded` has two callers and only one carries a name an author chose. The `values`
+setter passes what was typed; **`nodescope.ts:121` passes the source port of every connection**,
+which is how a runtime-discovered output comes into being. The reserved check sat above the
+`hasOutput` skip and so could not tell them apart. Moved onto the `values` path.
+
+`Logic Builder` has the same guard and was **already correct** — `hasOutput` first, the reserved
+check on the program-write path. The difference between the two is the whole lesson.
+
+**Six rows** in `nda-004-states-unknown-state.test.ts`: five wiring a reserved port and asserting
+silence — *all five red before the move, predicted as five* — and one that keeps the author-value
+collision caught while the node's own `done` is wired, so the fix could not have been "delete the
+guard".
+
+⚠️ **This is the class of defect a corpus row cannot find by accident.** Every existing row
+approached the guard from the `values` side, which is the side that was right. Only a real wire
+from a real port asked the other question.
+
+#### Two other live findings, neither a defect
+
+- **`net.noodl.ParentComponentObject` pulses `failure` on the mount path**, before any invocation —
+  its counter read 1 before the first click and 4 after three. This is **as designed**:
+  `reportMiss` owns a resolution announcement that deliberately shares the port (NDA-004 §2), mints
+  no token, and therefore sends no `Completed`. It is the "`failure` is one port doing two jobs"
+  shape, working. Worth knowing that this node's `Failure` can fire without a `Completed` beside it.
+- **The editor flags a wire to a port that does not exist** — "Target port doesn't exist. At
+  connection between … and States (unknown)". `addConnection` still accepts it silently at the
+  model layer, so the standing trap stands for rigs; but an author gets told.
 
 ### What remains of §0's 82 — measured
 
@@ -2217,7 +2260,7 @@ of those has a corpus row asserting the runtime half; none has been seen in the 
 
 | Remaining | Count | Note |
 |---|---|---|
-| **Data** | 3 | `net.noodl.HTTP`, `net.noodl.OptimisticUpdate`, `RunTasks`. ⚠️ `Run Tasks`' existing `done` already means `Completed` — see above; it is a two-step rename. `HTTP` has `success`/`failure`/`canceled` and an abort path; `Optimistic Update` has `applied`/`committed`/`rolledBack`/`timedOut`, which are almost certainly four *later* events rather than one invocation's outcome, and wants the same grep before anything is renamed. |
+| **Data** | 3 | `net.noodl.HTTP`, `net.noodl.OptimisticUpdate`, `RunTasks`. All three read; none built. The two shapes below are **measured** — see §"the last three, read". |
 | **§3** `Treat Unchanged as` | — | Still not started. ⚠️ A declared `default` does not run its setter — FINDINGS **A-D1**. The Variables family remains the obvious first home. |
 | **§5** the validator's dead-end check | — | Still not started. The absent-`Unchanged` list grew by nine this session: `Event Sender`, `Unique Id`, `net.noodl.ComponentObject`, `net.noodl.ParentComponentObject`, `noodl.cloud.response`, `noodl.cloud.sendemail`, `NavigationClosePopup`, `NavigationShowPopup`, `Condition`, `Expression`. Absent-`Failure` grew by five: `Unique Id`, `net.noodl.ComponentObject`, `Condition`, and (already recorded) the Variables family. |
 
@@ -2230,3 +2273,85 @@ New and carried forward from this session:
 ⚠️ **`States`' `goToState` same-state guard is unreachable from any action port** — see the
 discrimination note above. Repairing or removing it is a behaviour question, not a rename, and it
 was not this slice's to make.
+
+---
+
+## The last three, read — measured shapes, 2026-08-02
+
+Read but **not built**, deliberately: a two-step rename applied halfway is worse than one not
+started, and this session spent its budget paying the live-QA debt. What follows is measurement,
+so the next session starts from the source rather than from a prediction. Two of the three
+predictions in the previous handover were wrong.
+
+### `RunTasks` — the prediction was right
+
+`done`'s own description already reads *"Fires when the run has ended, whether it succeeded, failed
+or was aborted"*, and **every terminal path sends it**. It is `Completed` under another name.
+
+The nine terminal paths, from source:
+
+| Path | Sends today |
+|---|---|
+| `endRunAsFailed` | `failure` + `done` |
+| `_failToStart` × 3 (no template, no items, invalid concurrency) | `failure` + `done` |
+| `run`, already running | ⚠️ **nothing** — raise only, deliberately |
+| `run`, empty `items` | `success` + `done` |
+| `abort`, nothing in flight | `aborted` + `done` |
+| `checkDone`, aborted | `aborted` + `done` |
+| `checkDone`, all complete, no failures | `success` + `done` |
+| `checkDone`, all complete, some failed | `failure` + `done` |
+| `checkDone`, `stopOnFailure` caught | `failure` + `aborted` + `done` |
+
+**The rename is two steps and the order is load-bearing**: `done` → `completed` **first**, then
+`success` → `done`. The other order collides `success` onto a `done` that still exists.
+
+⚠️ **The empty-list path must stay a success** — `Done`, never `Unchanged`. `For Each`'s and
+`Pattern Extractor`'s exemptions are recorded for exactly this, and the node's own NDA-012 §B3
+comment explains why: a query that matched nothing hands this node `[]`, and that is the one time
+the chain should sail through.
+
+Two design questions this session did **not** decide, both real:
+
+1. **`Abort` is a second action port** and needs its own outcome. `Unchanged` fits its
+   nothing-to-abort branch exactly — "the action was valid and the post-condition already held".
+2. **An author-requested abort is not a `Failure`** — folding it there is precisely the collapse
+   Rule 1 names. `Done` with `Aborted` beside it (the `stateChanged` shape) is the likely answer.
+   Note this makes `Completed` fire twice for one abort — once for `Do`'s token, once for
+   `Abort`'s — which is two invocations and therefore correct, but should be stated in the row.
+
+⚠️ `run`'s already-running branch currently emits **nothing**. Under Rule 1 it must emit, and
+`Unchanged` is the honest reading. Its existing comment argues against `failure`, not against
+`Unchanged`.
+
+Sweep surface, measured: **3 fixtures** name the signals — `nda-012-run-tasks-lifecycle.test.ts`
+(11), `nda-009-run-tasks-contract.test.ts` (6), `nda-001-failure-reporting.test.ts` (2) — plus
+`docs/node-catalog/enrichment/runtasks.json` and
+`docs/node-catalog/examples/data-run-tasks-batch.json`. ⚠️ Those counts include the **template
+contract's** `success`/`failure`, which are the *template's* output names and must not be renamed
+with the node's ports.
+
+### ⚠️ `net.noodl.OptimisticUpdate` — the prediction was WRONG
+
+The previous handover said its four signals "are probably all *later* events, not one invocation's
+outcome". The grep says otherwise, and it is decisive:
+
+| Signal | Sent from | Verdict |
+|---|---|---|
+| `applied` | `doApply`, last line | **an invocation's outcome** — the `Apply` port |
+| `committed` | `doCommit`, last line | **an invocation's outcome** — the `Commit` port |
+| `rolledBack` | `finishRollback` | **dual-route** — the `Rollback` port *and* the timeout timer |
+| `timedOut` | `finishRollback`, only when `timedOut` | a genuinely later event |
+
+Three action ports: `apply`, `commit`, `rollback`. So this is mostly a **rename**, not an
+additive pass — the opposite of what was planned around. `rolledBack`'s two routes are the
+`parentcomponentobject` shape: only the port mints, and the timer route reports nothing.
+
+Also note `pickTransaction` returns falsy on both `doCommit` and `doRollback` and the method then
+`return`s silently — an unmeasured `Unchanged`-or-`Failure` candidate, and the contract's headline
+dead-chain class.
+
+### `net.noodl.HTTP` — not read in depth
+
+1191 lines, and the only one of the three still unmeasured. It has `success`/`failure`/`canceled`
+and an abort path. Run the grep before assuming any of them is an invocation outcome; that grep
+has now overturned two of the phase's predictions and confirmed a third.
