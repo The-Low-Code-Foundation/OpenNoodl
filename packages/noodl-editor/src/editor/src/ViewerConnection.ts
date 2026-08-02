@@ -218,6 +218,10 @@ export class ViewerConnection extends Model {
     } else if (request.cmd === 'portValues' && request.type === 'viewer') {
       const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
       EventDispatcher.instance.emit('TracePortValues', { clientId: request.clientId, values: content.values });
+    } else if (request.cmd === 'inputResult' && request.type === 'viewer') {
+      // OBS-004 — the reply to an injected click or keystroke.
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('TraceInputResult', { clientId: request.clientId, result: content });
     } else if (request.cmd === 'showwarning' && request.type === 'viewer') {
       const content = JSON.parse(request.content);
       if (ProjectModel.instance !== undefined) {
@@ -493,6 +497,29 @@ export class ViewerConnection extends Model {
     this.send({
       cmd: 'getPortValues',
       content: JSON.stringify({ clientId, ports })
+    });
+  }
+
+  /**
+   * OBS-004 — click or type in the running app, addressing the target by **node id**.
+   *
+   * The one command on this channel with side effects on the user's session rather than on
+   * the editor's view of it. The runtime gates it on `isRunningLocally()` for that reason.
+   */
+  sendInjectInput(
+    clientId: string,
+    request: {
+      requestId?: string;
+      nodeId?: string;
+      selector?: string;
+      action: 'click' | 'setText';
+      value?: string;
+      index?: number;
+    }
+  ) {
+    this.send({
+      cmd: 'injectInput',
+      content: JSON.stringify({ clientId, ...request })
     });
   }
 

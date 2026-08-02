@@ -123,6 +123,7 @@ interface EditorConnection extends RuntimeEditorConnection, EventSender {
   sendTraceDictionary(dictionary: unknown): void;
   sendTraceEvents(events: unknown[]): void;
   sendPortValues(values: unknown[]): void;
+  sendInputResult(result: unknown): void;
   sendDynamicPorts(id: string, ports: RuntimeDiscoveredPort[], options?: SendDynamicPortsOptions): void;
   sendNodeSubLabel(nodeId: string, subLabel: string | undefined): void;
   clearWarnings(componentName: string, nodeId: string): void;
@@ -293,6 +294,15 @@ EditorConnection.prototype.connect = function (this: EditorConnection, address, 
       if (self.isRunningLocally()) {
         content = JSON.parse(message.content);
         await self.emit('getPortValues', { clientId: content.clientId, ports: content.ports });
+      }
+    } else if (message.cmd === 'injectInput') {
+      // OBS-004. Same `isRunningLocally()` gate as the trace commands, and for a stronger
+      // reason: this one *acts*. A deployed app must never be drivable by anything that can
+      // reach its socket, and this is the only inbound command in this file with side effects
+      // on the user's session rather than on the editor's view of it.
+      if (self.isRunningLocally()) {
+        content = JSON.parse(message.content);
+        await self.emit('injectInput', content);
       }
     } else if (message.cmd === 'getConnectionValue') {
       if (self.isRunningLocally()) {
@@ -494,6 +504,32 @@ EditorConnection.prototype.sendPortValues = function (this: EditorConnection, va
     type: 'viewer',
     content: JSON.stringify({ values })
   });
+};
+
+/**
+ * The outcome of one injected input (OBS-004).
+ *
+ * ⚠️ Sent **unbatched**, unlike everything else on this connection. `send()` coalesces on a
+ * 200ms timer, which is right for telemetry and wrong for a request/response: the caller is
+ * blocked on this reply, and the batching would add up to 200ms of latency to a round trip
+ * whose whole point is "click, then look at what happened".
+ */
+EditorConnection.prototype.sendInputResult = function (this: EditorConnection, result) {
+  const message = {
+    cmd: 'inputResult',
+    type: 'viewer',
+    clientId: this.clientId,
+    content: JSON.stringify(result)
+  };
+  if (this.isConnected()) {
+    try {
+      this.socket.send(JSON.stringify(message));
+      return;
+    } catch (e) {
+      /* fall through to the queue, which at least retries */
+    }
+  }
+  this.send(message);
 };
 
 const dynamicPortsHash: Record<string, string> = {};

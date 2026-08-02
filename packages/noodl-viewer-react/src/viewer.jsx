@@ -3,6 +3,7 @@ import React from 'react';
 import { NoHomeError } from './components/common/NoHomeError';
 import GraphWarnings from './graph-warnings';
 import { Highlighter } from './highlighter';
+import { bindInputInjector } from './inputinjector';
 import Inspector from './inspector';
 import NoodlJSAPI from './noodl-js-api';
 import projectSettings from './project-settings';
@@ -256,6 +257,14 @@ export default class Viewer extends React.Component {
     noodlRuntime.editorConnection.on('debuggingEnabledChanged', (enabled) => {
       noodlRuntime.setDebugInspectorsEnabled(enabled);
     });
+
+    // OBS-004 — let an authorised peer click and type in the running app.
+    //
+    // Bound here rather than inside the `window.NoodlEditor` branch above, deliberately: that
+    // branch is the editor's *own* webview, and the whole point of this channel is that an
+    // agent can drive a preview it did not open — a second browser window, or one reached
+    // over the relay with no editor UI in front of it at all.
+    bindInputInjector(noodlRuntime, noodlRuntime.editorConnection);
 
     this.graphWarnings = new GraphWarnings(noodlRuntime.graphModel, noodlRuntime.editorConnection);
   }
