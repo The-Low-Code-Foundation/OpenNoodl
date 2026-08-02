@@ -85,7 +85,14 @@ LLM over a raw graph dump guesses. An LLM over a provenance walk is good **for f
 | [OBS-003](./OBS-003-NODE-DIAGNOSTICS.md) | Node-local diagnostics | 2 | ✅ **Built** — see [OBS-003-NOTES.md](./OBS-003-NOTES.md). [`DIAGNOSTICS-CONTRACT.md`](../../reference/DIAGNOSTICS-CONTRACT.md), three checks, and layer 3 reaching the walk |
 | [OBS-004](./OBS-004-AGENT-ACCESS.md) | Agent access | 3 | ✅ **Built** — see [OBS-004-NOTES.md](./OBS-004-NOTES.md). `nodegx-observe` MCP server, node-id-addressed input injection, and a token on every relay `register` |
 
-**Phase 36 is complete** as of 2026-08-02. All four tasks are built.
+**Phase 36 is complete** as of 2026-08-02. All four tasks are built, and **every open question that
+called for a build has been answered** — the shelved panel is retired (3) and the two MCP servers
+have split (5). What remains open is tuning and one contract question, none of it blocking.
+
+**To see it work:** the `NodeGX Debug Demo` project
+(`~/vscode_projects/NodeGX test projects/nodegx-debug-demo`) exists for exactly that — one button,
+two chains, one silently broken. Right-click the Repeater → *Why is "items" empty?*. See
+[DEMO-WALKTHROUGH.md](./DEMO-WALKTHROUGH.md).
 Read [OBS-002-NOTES.md](./OBS-002-NOTES.md) before building on the trace: three of its defects were
 surfaces stating more than they knew, and the same trap is available to anything else built over it.
 [OBS-004-NOTES.md](./OBS-004-NOTES.md) records what agent access actually shipped, and the one
@@ -195,17 +202,17 @@ None blocking; all are refinements that can be answered when the task is picked 
 2. **Session boundary.** Proposed: clear on Record-start *and* on preview reload. Richard suggested
    time-based ("every X minutes") — count-capped plus clear-on-reload is more predictable and appears
    to cover the intent, but this is his call.
-3. **Does the shelved panel get rebuilt or retired?** OBS-002 assumes the walk replaces it and the
-   `experimental` flag comes off something new. The forward-chain view is a genuine companion surface
-   and could keep the old panel's identity instead.
+3. ~~**Does the shelved panel get rebuilt or retired?**~~ **Answered: retired.** Richard, 2026-08-02.
+   Deleted outright — the panel, its three components, `utils/triggerChain/` entire, the router
+   registration, the `ViewerConnection` tap and the recorder's spec. Superseding was verified on
+   both halves first, because "OBS-002 replaces what it was for" had been asserted repeatedly
+   without being checked: the **view** is covered (`rootEvents` + `forwardWalk` on the Provenance
+   panel is the same forward-chain surface), and its **data source** is the map this phase proved
+   lossy. `snapshotDiff.ts` went with it — its rising-edge insight is what `TraceBuffer` is built
+   on and is recorded in OBS-001's notes, and keeping the file to keep the comment would have left
+   a lossy recorder wired into the viewer connection.
 
-   ⚠️ **Still untouched at the end of the phase, and now the only unanswered *build* question in
-   it.** No task touched `TriggerChainDebuggerPanel`; it remains registered `experimental: true` in
-   [router.setup.ts](../../../packages/noodl-editor/src/editor/src/router.setup.ts) and still reads
-   the snapshot recorder OBS-001 replaced — so it is not merely unfinished, it is reading a source
-   the phase has superseded. Either it gets rebuilt on `TraceBuffer` as the forward-chain companion
-   to the walk, or it gets deleted; leaving it registered against the old recorder is the one
-   outcome that costs something.
+
 4. ~~**OBS-004 scope.**~~ **Answered: token first.** Richard chose the token handshake over
    deferring. Shipped: every peer presents a per-launch token in its `register`, and a peer that has
    not is neither sent to nor read from.
@@ -224,8 +231,9 @@ None blocking; all are refinements that can be answered when the task is picked 
    no longer interesting?* — belongs to [`FAILURE-CONTRACT.md`](../../reference/FAILURE-CONTRACT.md)
    rather than to this phase.
 
-6. **New: do the two MCP servers merge?** `nodegx-observe` ships **inside `packages/noodl-mcp`** as
-   a second binary — one dependency set, one build, no shared code path. That is a packaging
-   decision taken to avoid adding a package (and a lockfile change) while a concurrent session held
-   the checkout, not a judgement that they belong together. The spec's warning that the two must not
-   be *confused* stands, and sharing a package works against it.
+6. ~~**Do the two MCP servers merge?**~~ **Answered: they split.** Richard, 2026-08-02.
+   `nodegx-observe` is now `packages/nodegx-observe`, with its own manifest, build, tsconfig and
+   suite. They never shared a code path; they shared a package to avoid a lockfile change while a
+   concurrent session held the checkout. One `npm install` producing two binaries worked directly
+   against the spec's own warning that the two must not be *confused*. The walk engine is still
+   bundled from the editor sources rather than copied.

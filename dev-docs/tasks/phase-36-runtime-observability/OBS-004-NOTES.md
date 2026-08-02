@@ -17,7 +17,7 @@ thin. OBS-003 is what makes this good.
 
 | Scope item | State |
 |---|---|
-| 1 — an MCP server that registers on the relay | ✅ `nodegx-observe`, 9 tools, zero runtime dependencies |
+| 1 — an MCP server that registers on the relay | ✅ `nodegx-observe`, 9 tools, zero runtime dependencies. ⚠️ **Moved to `packages/nodegx-observe` on 2026-08-02** (open question 5, answered: they split) — paths below that say `packages/noodl-mcp/src/observe/` are historical |
 | 2 — input injection | ✅ **addressed by node id, not by pixel** — see below. `click` and `set_text` |
 | 3 — authentication on the relay | ✅ per-launch token on every `register`; unauthorised peers are neither sent to nor read from |
 | 4 — the in-editor AI path | ❌ **not built.** The tools exist and the walk engine is shared; nothing consumes them from inside the editor |
@@ -213,7 +213,7 @@ Everything else is green: 93 editor jest specs, 753 viewer-react, 121 of 122 noo
 - ⚠️ **`http.Server#close()` never fires its callback while a WebSocket is open.** It waits for
   existing connections and a WebSocket never ends on its own. Both new socket suites hang rather
   than fail without terminating the clients first; this cost one 120s timeout to find.
-- ⚠️ **`noodl-mcp`'s tsconfig has `strictNullChecks`; the editor's does not.** Pulling an editor
+- ⚠️ **Both MCP packages' tsconfigs have `strictNullChecks`; the editor's does not.** Pulling an editor
   module into that package compiles it under stricter rules than it was written under.
   `duplicateNodeId.ts` already had one such error before this task — do not attribute it to a new
   import.
