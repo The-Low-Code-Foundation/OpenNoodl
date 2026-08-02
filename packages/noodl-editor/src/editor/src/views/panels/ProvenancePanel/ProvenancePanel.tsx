@@ -14,6 +14,10 @@ import { TraceSession } from '../../../utils/provenance/TraceSession';
 import { annotateWarnings } from '../../../utils/provenance/annotateWarnings';
 import { editorDiagnoses } from '../../../utils/provenance/editorDiagnoses';
 import {
+  clearPendingProvenanceWalk,
+  takePendingProvenanceWalk
+} from '../../../utils/provenance/provenanceRequest';
+import {
   EdgeRef,
   RootEvent,
   WalkResult,
@@ -121,20 +125,35 @@ export function ProvenancePanel() {
     [session, bump]
   );
 
-  // The entry point. Both right-click surfaces emit this; nothing else drives the panel, so
-  // there is no selection listener to race with.
+  // The entry point. Both right-click surfaces go through `requestProvenanceWalk`; nothing else
+  // drives the panel, so there is no selection listener to race with.
+  //
+  // ⚠️ **The request that arrives before this effect runs is the one that matters.** A right-click
+  // has to switch the sidebar to get here, and the panel does not mount until it does — so the
+  // very first "Why is this empty?" of a session fired into no listener at all and opened the
+  // panel on its own placeholder. `takePendingProvenanceWalk` claims it on mount; the listener
+  // clears it so a live request is never also replayed.
   useEffect(() => {
     const group = {};
+    const start = (ref: EdgeRef) => {
+      setFocusedRoot(undefined);
+      setSelected(undefined);
+      setTarget(ref);
+      void load(ref);
+    };
+
     EventDispatcher.instance.on(
       'provenance:walk',
       (ref: EdgeRef) => {
-        setFocusedRoot(undefined);
-        setSelected(undefined);
-        setTarget(ref);
-        void load(ref);
+        clearPendingProvenanceWalk();
+        start(ref);
       },
       group
     );
+
+    const pending = takePendingProvenanceWalk();
+    if (pending) start(pending);
+
     return () => EventDispatcher.instance.off(group);
   }, [load]);
 

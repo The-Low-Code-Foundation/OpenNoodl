@@ -9,7 +9,7 @@ import { PopupToolbar, PopupToolbarProps } from '@noodl-core-ui/components/popup
 
 import { SidebarModel } from '@noodl-models/sidebar';
 
-import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
+import { requestProvenanceWalk } from '../../utils/provenance/provenanceRequest';
 import { CreateNewNodePanel } from '../createnewnodepanel';
 import { ExplainPanel_ID } from '../panels/ExplainPanel';
 import { rememberTarget } from '../panels/ExplainPanel/explainTarget';
@@ -291,8 +291,7 @@ export class NodeContextMenu {
       label: `Why is "${port}" empty?`,
       icon: IconName.Search,
       onClick: () => {
-        EventDispatcher.instance.emit('provenance:walk', { node: node.model.id, port });
-        SidebarModel.instance.switch('provenance');
+        requestProvenanceWalk({ node: node.model.id, port });
       }
     }));
   }
@@ -311,11 +310,10 @@ export class NodeContextMenu {
         label: 'Where does this come from?',
         icon: IconName.Search,
         onClick: () => {
-          EventDispatcher.instance.emit('provenance:walk', {
+          requestProvenanceWalk({
             node: connection.model.toId,
             port: connection.model.toProperty
           });
-          SidebarModel.instance.switch('provenance');
         }
       },
       'divider',
