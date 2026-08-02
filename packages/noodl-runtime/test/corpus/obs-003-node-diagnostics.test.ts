@@ -264,6 +264,56 @@ describe('OBS-003: describeValue', () => {
   });
 });
 
+describe('OBS-003: nearestName', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { nearestName } = require('../../src/diagnostics') as {
+    nearestName(name: string, candidates: readonly string[]): string | undefined;
+  };
+
+  const STATES = ['clicked', 'hover', 'disabled'];
+
+  // The phase-36 worked example, and the two mistakes that are *invisible* in the editor.
+  test('A capital letter is the worked example', () => {
+    expect(nearestName('Clicked', STATES)).toBe('clicked');
+  });
+
+  test('Surrounding whitespace, which looks like nothing at all in a text field', () => {
+    expect(nearestName(' clicked ', STATES)).toBe('clicked');
+  });
+
+  test('A one-character typo', () => {
+    expect(nearestName('clickd', STATES)).toBe('clicked');
+    expect(nearestName('hovor', STATES)).toBe('hover');
+  });
+
+  // The silent half, and the more important one: a wrong suggestion sends the author to a name
+  // they never typed, and the next thing they doubt is the diagnostic itself.
+  test('A name unlike anything gets no suggestion', () => {
+    expect(nearestName('submitted', STATES)).toBeUndefined();
+  });
+
+  test('A tie between two equally close candidates gets no suggestion', () => {
+    expect(nearestName('bat', ['cat', 'bad'])).toBeUndefined();
+  });
+
+  test('A short name gets a tighter budget, so two edits is not a match', () => {
+    expect(nearestName('abc', ['xyz'])).toBeUndefined();
+    expect(nearestName('abc', ['abd'])).toBe('abd');
+  });
+
+  test.each([
+    ['no candidates', 'clicked', []],
+    ['an empty name', '', STATES]
+  ])('%s yields nothing', (_label, name, candidates) => {
+    expect(nearestName(name as string, candidates as string[])).toBeUndefined();
+  });
+
+  test('An implausibly long candidate list is declined rather than scanned', () => {
+    const many = Array.from({ length: 100 }, (_, i) => 'state' + i);
+    expect(nearestName('state1', many)).toBeUndefined();
+  });
+});
+
 describe('OBS-003: the recording connection itself', () => {
   // Guards the harness the rows above trust: if `clearWarning` stopped removing the entry,
   // every "stays silent" row would pass by accident.

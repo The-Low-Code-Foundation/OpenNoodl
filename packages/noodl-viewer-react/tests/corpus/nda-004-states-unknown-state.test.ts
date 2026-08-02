@@ -88,7 +88,8 @@ interface StatesInternals {
  * `valuesAreInitialised` is true; the first-transition swallow is separate, deliberate behaviour
  * and would otherwise mask these rows.
  */
-async function statesGraph(): Promise<CorpusGraph> {
+async function statesGraph(states = 'A,B'): Promise<CorpusGraph> {
+  const [first, second] = states.split(',');
   const graph = await createCorpusGraph({
     modules: [StatesModule as unknown as NodeModule, TriggerModule, SinkModule],
     data: {
@@ -101,7 +102,12 @@ async function statesGraph(): Promise<CorpusGraph> {
             {
               id: 'states',
               type: 'States',
-              parameters: { states: 'A,B', values: 'x', 'value-A-x': 10, 'value-B-x': 100 }
+              parameters: {
+                states,
+                values: 'x',
+                ['value-' + first + '-x']: 10,
+                ['value-' + second + '-x']: 100
+              }
             }
           ],
           connections: [
@@ -110,7 +116,7 @@ async function statesGraph(): Promise<CorpusGraph> {
             // and nothing registers the port unless a connection asks for it. Unwired, the
             // control below would read "the transition never completed" when the truth is
             // "nobody asked to hear about it".
-            { sourceId: 'states', sourcePort: 'reached-B', targetId: 'reachedB', targetPort: 'ping' }
+            { sourceId: 'states', sourcePort: 'reached-' + second, targetId: 'reachedB', targetPort: 'ping' }
           ]
         }
       ]
@@ -292,5 +298,58 @@ describe('ERG-001 §0.2: States reserves the outcome-contract port names', () =>
 
     expect(graph.node('states').hasOutput('opacity')).toBe(true);
     expect(graph.errors.filter((e) => e.code === 'states/reserved-port-name')).toEqual([]);
+  });});
+
+/**
+ * OBS-003 — the near-match half of the phase-36 worked example.
+ *
+ * The design conversation's example was a States node receiving `"Clicked"` where the state is
+ * named `"clicked"`. NDA-004 §2 already caught it and already listed the real names, so the
+ * afternoon it costs was *shortened* rather than removed: an author still has to read a list and
+ * spot one capital letter, which is exactly the reading nobody does at the end of the day.
+ *
+ * `nearestName` ranks case and surrounding whitespace ahead of edit distance, because those are
+ * the two mistakes that are invisible in the editor — a trailing space in a text field looks like
+ * nothing at all.
+ *
+ * ⚠️ The silent rows matter more than the firing one. A suggestion that is merely the least-bad
+ * of several unrelated names sends the author to a name they never typed, and the next thing they
+ * doubt is the diagnostic.
+ */
+describe('OBS-003: did you mean', () => {
+  test('a capital letter is named, which is the worked example', async () => {
+    const graph = await statesGraph('clicked,hover');
+    requestState(graph, 'Clicked');
+
+    const raised = graph.errors.filter((e) => e.code === 'states/unknown-state');
+    expect(raised).toHaveLength(1);
+    expect(raised[0].message).toContain('Did you mean "clicked"?');
+    // The list is still there — the suggestion is an addition, not a replacement.
+    expect(raised[0].message).toContain('clicked, hover');
+  });
+
+  test('a one-character typo is named', async () => {
+    const graph = await statesGraph('clicked,hover');
+    requestState(graph, 'hovor');
+
+    expect(graph.errors[0].message).toContain('Did you mean "hover"?');
+  });
+
+  test('a name unlike anything gets the list and no guess', async () => {
+    const graph = await statesGraph('clicked,hover');
+    requestState(graph, 'submitted');
+
+    const message = graph.errors[0].message;
+    expect(message).toContain('clicked, hover');
+    expect(message).not.toContain('Did you mean');
+  });
+
+  // Pinned: the pre-OBS-003 corpus above drives `A,B` with `Actve`, which is close to neither.
+  // If the budget were ever widened, that row would start carrying a nonsense suggestion.
+  test("the existing A,B graph's report gains no suggestion", async () => {
+    const graph = await statesGraph();
+    requestState(graph, 'Actve');
+
+    expect(graph.errors[0].message).not.toContain('Did you mean');
   });
 });

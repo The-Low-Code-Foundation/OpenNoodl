@@ -128,3 +128,86 @@ export function describeValue(value: unknown): string {
 
   return `a ${type}`;
 }
+
+/**
+ * How far apart two names are, capped so a long pair cannot cost more than the check is worth.
+ *
+ * Plain Levenshtein over two rows. It runs only where a name has *already* failed to match, so
+ * it is off every hot path by construction.
+ */
+function editDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+
+  let previous = new Array<number>(b.length + 1);
+  let current = new Array<number>(b.length + 1);
+  for (let j = 0; j <= b.length; j++) previous[j] = j;
+
+  for (let i = 1; i <= a.length; i++) {
+    current[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const substitution = previous[j - 1] + (a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1);
+      current[j] = Math.min(current[j - 1] + 1, previous[j] + 1, substitution);
+    }
+    const swap = previous;
+    previous = current;
+    current = swap;
+  }
+
+  return previous[b.length];
+}
+
+/** Beyond this many candidates the suggestion is not worth the scan, and probably not worth reading. */
+const MAX_CANDIDATES = 64;
+
+/**
+ * The candidate an author most likely meant, or `undefined` when nothing is close enough.
+ *
+ * The phase-36 worked example is the whole reason this exists: a States node receives `"Clicked"`
+ * and the state is named `"clicked"`. Listing the real names already made that solvable — by an
+ * author who read the list carefully and spotted one capital letter, which is exactly the reading
+ * nobody does at the end of an afternoon.
+ *
+ * Case and surrounding whitespace are ranked ahead of edit distance because they are the two
+ * mistakes that are *invisible* in the editor: a trailing space in a text field looks like
+ * nothing at all, and a capital in a name read at a glance looks like the name.
+ *
+ * ⚠️ **Returns `undefined` rather than the least-bad candidate.** A suggestion that is merely the
+ * closest of several unrelated names is worse than none: it sends the author to a name they never
+ * typed, and the next thing they doubt is the diagnostic.
+ */
+export function nearestName(name: string, candidates: readonly string[]): string | undefined {
+  if (typeof name !== 'string' || !name.length || !candidates || !candidates.length) return undefined;
+  if (candidates.length > MAX_CANDIDATES) return undefined;
+
+  const normalised = name.trim().toLowerCase();
+
+  for (let i = 0; i < candidates.length; i++) {
+    const candidate = candidates[i];
+    if (typeof candidate === 'string' && candidate.trim().toLowerCase() === normalised) return candidate;
+  }
+
+  // One edit for a short name, two for anything long enough that two typos are still plausibly
+  // one word. Unbounded distance is how "did you mean" starts suggesting nonsense.
+  const budget = normalised.length <= 4 ? 1 : 2;
+
+  let best: string | undefined;
+  let bestDistance = budget + 1;
+
+  for (let i = 0; i < candidates.length; i++) {
+    const candidate = candidates[i];
+    if (typeof candidate !== 'string') continue;
+
+    const distance = editDistance(normalised, candidate.trim().toLowerCase());
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = candidate;
+    } else if (distance === bestDistance) {
+      // A tie means two candidates are equally plausible, and naming either is a guess.
+      best = undefined;
+    }
+  }
+
+  return bestDistance <= budget ? best : undefined;
+}

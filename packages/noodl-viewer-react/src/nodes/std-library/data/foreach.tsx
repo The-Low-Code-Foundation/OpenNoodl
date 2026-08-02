@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 
 import NoodlRuntime, { Node } from '@noodl/runtime';
 import Collection from '@noodl/runtime/src/collection';
+import Model from '@noodl/runtime/src/model';
 import type {
   CollectionChangeEvent,
   CollectionLike,
@@ -20,6 +21,7 @@ import type {
   OutcomeToken
 } from '@noodl/types';
 
+import { describeValue } from '@noodl/runtime/src/diagnostics';
 import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 
 import guid from '../../../guid';
@@ -28,6 +30,44 @@ import guid from '../../../guid';
 interface ForEachComponentProps {
   didMount(): void;
   willUnmount(): void;
+}
+
+/** OBS-003. One key for the port, so a fixed wire un-rings the node. */
+const ITEMS_DIAGNOSTIC = 'repeater/items-not-a-collection';
+
+/**
+ * The `Items` predicate: a message when the value cannot be repeated over, `null` when it can.
+ *
+ * ⚠️ **Empty is not a problem and must not be one** — `DC-iii` and Richard's 2026-08-01 decision
+ * are that a Repeater handed `null` or `[]` *clears*, deliberately and by design. A diagnostic
+ * that fired on the intended way to empty a list would be exactly the noise that gets the
+ * Problems panel ignored.
+ *
+ * ⚠️ **A string never reaches here, and the first version of this check said it did.** `Items` is
+ * an `array`-typed port, so `Node.setInputValue` (node.ts:360-383) `eval`s any string arriving at
+ * it — that is the declared string→array typecast — and substitutes `[]` when it throws, raising
+ * `invalid-array-items` itself. A message claiming "one item per character" described behaviour
+ * that cannot happen, and would have duplicated a warning that already exists. Found by a corpus
+ * row failing, not by review.
+ */
+function itemsProblem(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (Array.isArray(value) || Collection.instanceOf(value)) return null;
+
+  // The one worth naming specifically: a Record wired where a Records/query belongs. `describeValue`
+  // would call it "an object", which is true and useless — the author is looking at a node whose
+  // output is plainly a record and cannot see why one row did not appear.
+  if (Model.instanceOf(value)) {
+    return (
+      'Items expects an array of records, received a single record. ' +
+      'Nothing will render — wire a query or collection here, or an array containing this record.'
+    );
+  }
+
+  return (
+    `Items expects an array, received ${describeValue(value)}. ` +
+    'Nothing will render — a Repeater indexes its input by position, and this value has no length.'
+  );
 }
 
 /**
@@ -257,6 +297,20 @@ const ForEachDefinition: NodeDefinitionOptions = {
        * The identity guard below stays: re-sending the same collection is not a change.
        */
       set: function (this: ForEachInstance, value: CollectionLike | null | undefined) {
+        // OBS-003, `repeater/items-not-a-collection`. See `DIAGNOSTICS-CONTRACT.md`.
+        //
+        // A diagnostic rather than a raised failure, because it is a *predicate*: the wrong
+        // value sits on the port until the author rewires it, and there is no invocation to
+        // attribute a failure to — `Items` is not an action.
+        //
+        // What makes it worth a check is that `Collection.set` neither throws nor complains.
+        // It reads `src.length` and indexes, so a **string** produces one item model per
+        // character (`"abc"` renders three rows) and anything without a `length` produces an
+        // empty list in silence. Both are the "plausible result by a broken route" shape, and
+        // the string one is worse than an obvious failure: the list is populated, so the
+        // Repeater looks like the one thing in the graph that is working.
+        this.setDiagnostic(ITEMS_DIAGNOSTIC, itemsProblem(value));
+
         if (value === this._internal.items) return;
         this.bindCollection(value);
         //this.scheduleRefresh();

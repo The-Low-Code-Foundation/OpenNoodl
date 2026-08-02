@@ -1,5 +1,6 @@
 import BezierEasing from 'bezier-easing';
 import { EdgeTriggeredInput } from '@noodl/runtime';
+import { nearestName } from '@noodl/runtime/src/diagnostics';
 import type {
   EditorConnectionLike,
   GraphNodeModel,
@@ -570,12 +571,20 @@ const StatesNode: NodeDefinitionOptions = {
       const states = this._internal.states || [];
       // Name the alternatives. "Unknown state" is not actionable; "you have A, B, C" is, and a
       // wired `State` input misspelt or left behind by a rename is the common cause.
+      //
+      // OBS-003. The near-match is the phase-36 worked example: a States node receives
+      // `"Clicked"` and the state is named `"clicked"`. Listing the real states already made
+      // that solvable, but only by an author who read the list carefully and spotted one
+      // capital letter — which is precisely the reading nobody does at the end of an afternoon.
+      // Naming the candidate turns it into one glance.
+      const suggestion = nearestName(state, states);
       const message =
         'Cannot go to state "' +
         state +
         '" — this node has no such state. Its states are: ' +
         (states.length > 0 ? states.join(', ') : '(none defined)') +
-        '.';
+        '.' +
+        (suggestion ? ' Did you mean "' + suggestion + '"?' : '');
 
       this._internal.error = message;
       this.flagOutputDirty('error');
