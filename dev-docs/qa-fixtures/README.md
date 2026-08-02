@@ -171,3 +171,43 @@ The same "opening it rewrites it" hazard as above, and here it bites harder
 because the project is hand-authored: after a live deletion test the autosaved
 file had genuinely lost the deleted node, and the next run measured a dead half
 of the graph that briefly read as a regression. Re-run the generator each time.
+
+---
+
+## `generate-erg005.py` — the ERG-005 §0 component-interface project
+
+Written 2026-08-02 for ERG-005 §0 (phase 35). Like `generate-erg004.py` the
+generator is the artefact; it writes to
+`~/vscode_projects/NodeGX test projects/erg005-qa`, outside the repo.
+
+### What it is for
+
+Measuring how a `Component Input`'s / `Component Output`'s type is **derived**
+from what it connects to inside the component. None of §0's five questions can
+be answered by adding one connection — they need a *sequence* of edits with a
+reading after each. So the project ships the nodes and the ports and
+**deliberately no connections**; the measurement wires and unwires them live over
+CDP and reads `ComponentModel.getPorts()` after every step.
+
+| Feature | Serves |
+|---|---|
+| `/Probe` — a `Component Inputs` node with 6 ports, a `Component Outputs` node with 4, all type `*` | the state the Port Editor leaves a freshly-created port in |
+| Typed sinks: `String`, `Number`, `Boolean`, plus a second `String` | "two connections of the same type" has to be distinguishable from "two of different types" |
+| Typed sources: `String.savedValue`, `Number.savedValue` | the output side of the same rule |
+| A `Text` node with a `font`-typed input | the only easy way to build a pair with **no** common typecast, which is what returns `*` |
+| `/App`, visual, with an instance of `/Probe` | the *outer* contract, read from the instance — a different code path from the model call, and the one an author actually sees |
+
+Results, and the four traps driving it cost, are in
+`dev-docs/tasks/phase-35-authoring-ergonomics/ERG-005-COMPONENT-INTERFACE.md` §0.
+
+### ⚠️ Regenerate before every run
+
+Same hazard as `erg004-qa`, and worse here because the project is mutated live by
+design: after a measurement the file on disk carries whatever the last wiring step
+left behind. Re-run the generator each time.
+
+### ⚠️ A hand-authored component port's `plug` is the direction *inside*
+
+`Component Inputs` ports are `plug: 'output'` and `Component Outputs` ports are
+`plug: 'input'` — the opposite of what they become on the instance. Copy the shape
+`componentports.tsx:286-293` creates: `{name, plug, type: {name:'*'}, group, index}`.

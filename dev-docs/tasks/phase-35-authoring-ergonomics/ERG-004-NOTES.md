@@ -419,8 +419,29 @@ Today the **only** way to feed either node is a `Script` node returning
 `Noodl.Object.get(id)` / `Noodl.Array.get(id)` — which is what the QA project does, and which
 puts a JavaScript node in the middle of a feature whose entire point was ergonomics.
 
-⚠️ **This needs a decision and is deliberately not taken here** — it changes the port
-contract of two shipped nodes. The options, with the recommendation first:
+### ✅ DECIDED by Richard, 2026-08-02 — **add an object-valued output to the `Object` node**
+
+Richard chose the second option below, **over** this session's recommendation of resolving an id
+string on the input. The work is unowned and not started.
+
+What that means concretely:
+
+- The `Object` node (`Model2`) gains an output that emits the **live `Model`**, not its id, so
+  `Object → Object Changed` is a genuine `object → object` wire with no cast and no `eval`.
+- `Array Changed` needs the matching treatment on `Collection2` (a live `Collection` output),
+  or it stays reachable only through a `Script` node — the two nodes have the same defect and
+  should not be fixed apart.
+- ⚠️ **The blast radius Richard accepted is real and should be handled, not discovered.** The Data
+  category currently has exactly one way to name an object — by id — and this adds a second. Both
+  will be in the picker, both will be wireable into the same places, and the typecast table will
+  still accept the *wrong* one (`string → object`) silently. So the change is not finished when the
+  port exists: the id-string path into `Object Changed.Object` needs to either resolve or say
+  something better than *"ReferenceError: qa is not defined"*, or authors will keep reaching for
+  the id and keep getting `{}`.
+- The catalog, the enrichment prose and both nodes' `description` fields need to say which of the
+  two to use and when.
+
+The options as they were put, for the record:
 
 - **Resolve an id string on the input** — `(this.nodeScope.modelScope || Model).get(id)` for
   `Object Changed` and the `Collection` equivalent for `Array Changed`, exactly the line
