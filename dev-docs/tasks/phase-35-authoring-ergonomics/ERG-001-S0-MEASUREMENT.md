@@ -1159,3 +1159,267 @@ to one node and every caller is in the repo. `setKey` is not.
 
 ⚠️ **`Counter`'s `Reset` guard reads `this.currentValue` and has never fired** (PLAT-003 NOTES
 §25). Left verbatim: repairing it changes when `Count Changed` fires.
+
+---
+
+## §4, Cloud Services — built 2026-08-02
+
+Commit `d6dda7bf`. **45 of §0's 82 actions now satisfy the contract, up from 34** — measured with
+the script at the bottom of the next-session prompt, against
+`packages/noodl-types/src/node-catalog.json`, not counted from prose.
+
+The whole category in one build, because it is one family and §0.2 Result 2's divergence is
+manufactured by doing half of one.
+
+### The eleven, and the shape each got
+
+| Node | Action | Shape |
+|---|---|---|
+| `CloudFunction2` | `Call` | `success`→`done` · `failure` · `completed` (group stays `Signals`) |
+| `net.noodl.user.LogIn` | `Do` | `success`→`done` · `failure` · `completed` |
+| `net.noodl.user.LogOut` | `Do` (port is named `login`) | same |
+| `net.noodl.user.SignUp` | `Do` | same |
+| `net.noodl.user.RequestMagicLink` | `Do` | same |
+| `net.noodl.user.SetUserProperties` | `Do` | same |
+| `Sign File URL` | `Sign` | same |
+| `Upload File` | `Upload` | same; `Progress Changed` untouched |
+| `net.noodl.user.SignInWith` | `Do` | same — ⚠️ two roles, below |
+| `DbModel2` — Record | `Fetch` | `done` **added** · `failure` · `completed`; `Fetched`/`Changed` untouched |
+| `net.noodl.user.User` | `Fetch` | same as Record |
+
+**No `Unchanged` on any of the eleven**, and each absence is measured rather than argued. The
+tempting one was `Log Out` — "signing out when nobody is signed in" looks like a no-op — but
+`ParseAuthAdapter.logOut` POSTs `/logout` unconditionally and clears the session only on the
+response. There is no local branch that could report `Unchanged` without changing what the node
+does, and a port that can never fire is what §5's dead-end check exists to complain about.
+
+### ⚠️ Why `Fetched` is not the rename, and the cost of that recorded
+
+`Fetched` and `Changed` are value-level announcements, the relationship `Items Rendered` has to
+the Repeater's `Refresh`. On `Record` this is **measurable rather than argued**: `setModel` fires
+`Fetched` straight from the **`Id` input setter**, where there is no invocation at all — folding it
+in would report `Done` for a value binding.
+
+⚠️ **On `User` the two co-fire, and that is a real cost rather than a hidden one.** `User` has no
+bind path, so `fetched` and `done` always arrive together today — the "two ports that always fire
+together" the Variables slice removed `Stored` to avoid. Keeping both was still the call: `Record`
+and `User` are documented twins, and splitting the family so one says `Fetched` and the other
+`Done` for the same author gesture is the per-node divergence `outcome.ts`'s docstring exists to
+prevent. The co-firing is a property of `User` having one path, not of the ports meaning the same
+thing. A corpus row asserts it, including the order.
+
+### ⚠️ One defect fixed, not merely adopted — a dead chain, measured
+
+`ParseAuthAdapter.setUserProperties` wrapped its entire body in `if (_cu !== undefined)` **with no
+`else`**, so `Set User Properties` with nobody signed in called **neither** `success` nor `error`.
+The node could not report anything and the graph stopped, with no diagnosis anywhere — the
+contract's headline class, and the node's own `Do` description had it written down as intended
+behaviour ("does nothing at all while nobody is signed in").
+
+`RestAuthAdapter.setUserProperties` has always answered `'Nobody is signed in.'` on that path, so
+the fix is the REST twin's sentence verbatim rather than an invention, and it is strictly additive:
+no caller can regress on a path that used to call nothing at all. The `Do` description now says
+the node fails there.
+
+### ⚠️ `Sign In With` — the one node the contract's real exception applies to
+
+Its own docblock already said it is two things, and the contract splits them:
+
+- **The launcher.** `Do` hands over and `signInWithProvider` sets `window.location.href`; the
+  document is replaced, so an accepted handover **reports nothing**. Both refusals (no backend, no
+  provider) are raised *synchronously before* `location` is touched, so the token is still open for
+  them and they do report.
+- **The receiver.** The answer arrives on a *later page load*, in a fresh graph, and
+  `applyReturn` mints its own token. ⚠️ This is the one place in the phase where something other
+  than a port opens an invocation. It is not the rule's target: "only the port mints" exists to stop
+  setter and mount paths *duplicating* a port's outcome, and here there is no port invocation in
+  this graph to duplicate — the `Do` that started it ran on a page that no longer exists.
+- ⚠️ `inProgress` is a **state**, not a terminal outcome, and mints nothing. A token there would
+  still be open when the real answer arrived; a corpus row reads the absence of the resulting
+  `outcome/duplicate`.
+
+The navigation slice deliberately kept `Done` on *its* navigating path, and the difference is worth
+stating: a `Navigate` in a nav bar **outside** the Router demonstrably survives, so a silent
+`Completed` there would have defeated Rule 2. Nothing survives a cross-origin redirect.
+
+### `reportOutcomes`, and why the coalescing guards needed it
+
+Eight of the eleven defer through a `scheduleXxx` boolean that drops the **second** pulse in an
+update pass. That is deliberate — it is how "set the fields, then press Do" batches — but it must
+not drop the second pulse's *outcome*: two invocations are two invocations.
+`foreach.tsx`'s `pendingRefreshOutcomes` is the precedent, and eight more copies of it is the
+divergence `outcome.ts` exists to prevent, so the drain is one exported helper. Each node still owns
+its own array and takes it into a local **before** the async work starts, so a second `Do` arriving
+mid-flight owns its own batch rather than being settled by the first request's answer.
+
+⚠️ **The arrays are created lazily in the `schedule` method, not in `initialize`.** Several suites
+build these nodes as a bag of bound methods and never call `initialize`; an eager field is
+`undefined` exactly where the first invocation reads it. `record-backend-routing.test.ts` found
+this within a minute of the first full run.
+
+### ⚠️ Two corrections to what the phase had recorded
+
+**1. `catalog:merge:check` *does* catch a stale enrichment entry — on a static node.** The standing
+note says it does not, full stop. Measured: it flagged four of them by name
+(`port note for unknown port "success" on static node`) and was **silent on three more** —
+`cloudfunction2`, `setuserproperties`, `signup` — because those are dynamic-port nodes. The note is
+right about the gap and wrong about its extent. **The hand sweep is still required, and it is
+required specifically for dynamic-port nodes**, which is 86 of 151.
+
+**2. A rename has three places to sweep, and the third one bites differently each time.** Last
+session it was inline-TypeScript specs. Here the JSON sweep found **25 wires**, of which 22 were
+multi-line connection objects and **one was a single-line one** that the first rewriter silently
+skipped — a clean-looking run that had missed a file. The remaining two were in the *generated*
+`node-catalog-enriched.json` and regenerated away. ⚠️ The sweep was sanity-checked against six
+`Upload File` → `cloudFile` wires known to exist before any zero was believed.
+
+⚠️ Also swept: `docs/node-catalog/examples/user-signup-and-profile.json`'s **prose**, which named
+`success` twice in an author-facing description, and `library/prefabs/{oauth2,totp,stripe}` — the
+shipped prefab library, 14 wires, which no earlier slice had had to touch.
+
+### The discrimination check — six reverts, four exact
+
+| Revert | Predicted | Actual |
+|---|---|---|
+| `Record` mints a token in `setModelID` too | 1 — the successful-`Fetch` row, **not** the binding row | **1, that row** |
+| `Sign File URL`'s `cloudStore()` opens its own token | **0** | **0** |
+| `Set User Properties` mints *after* the coalescing guard | 1 — the two-pulses row | **1, that row** |
+| the adapter's new `else` removed | 1 — the adapter row | **1, that row** |
+| `Sign In With`'s launcher reports `done` on handover | 1 — the handover-is-silent row | **2 — wrong, see below** |
+| `Upload File`'s `progressChanged` through `reportOutcome` | 2 | **1 — wrong, see below** |
+
+⚠️ **Both misses are recorded with the reasoning intact rather than rewritten to match.**
+
+- **The handover revert reddens the *refusal* row too**, which is a stronger result than predicted:
+  the corpus settles `signInWithProvider`'s error callback by hand, *after* the handover would have
+  reported, so reporting `done` optimistically does not merely add a wrong signal — it spends the
+  token and turns every **asynchronous** refusal into an `outcome/duplicate`. The exception is
+  load-bearing for the failure path, not just for the success path.
+- **The progress revert reddens one row, not two.** The prediction assumed the stored-file row also
+  drives progress; it does not — each row has its own stub, and only the progress row calls
+  `onUploadProgress`. The wrong half of the prediction was about the *test*, not the product.
+
+⚠️ **The first prediction is the one worth keeping.** Minting in `setModelID` does **not** redden
+"binding Id reports no outcome" — the row written to catch exactly that — because a token minted in
+a setter is never *settled*, so nothing is reported and the row stays green. What catches it is the
+*next* `Fetch`, which drains both tokens and reports `Done` twice. A row that asserts silence cannot
+detect a mint; only a row that asserts a later count can.
+
+### Live QA — the rig, and the two things no corpus row can show
+
+Driven headlessly against `bcn010-live` after `npm run build --prefix packages/noodl-viewer-react`.
+All three shipped bundles (`external/viewer`, `external/deploy`, `external/ssr`) carry
+`reportOutcome` and the new failure codes.
+
+**The editor surface**, straight off `NodeLibraryData` — every one of the eleven:
+
+```
+CloudFunction2 / LogIn / LogOut / RequestMagicLink /
+SetUserProperties / Sign File URL / SignInWith / SignUp  -> [done, completed, failure]
+Upload File                                              -> [done, completed, failure, progressChanged]
+DbModel2, net.noodl.user.User                            -> [fetched, changed, done, completed, failure]
+```
+
+`success` is gone from all nine that had it; `fetched`/`changed` and `progressChanged` are intact.
+
+**The running preview** — a real `Cloud Function` with no function set, `Call` wired to a real
+Button, counters on `Done`/`Failure`/`Completed` and a raw click counter wired straight off the
+Button:
+
+| | raw clicks | Done | Failure | Completed |
+|---|---|---|---|---|
+| **boot** | 0 | **0** | **0** | **0** |
+| clicks 1–4 | 4 | 0 | **4** | **4** |
+
+The boot row: nothing reported before any invocation. **`Completed` equals the raw click count**,
+which is Rule 2 proved live, and `Done` stays 0 while the action genuinely cannot succeed.
+
+### ⚠️ The warnings panel — the item left open last session, now closed
+
+Last session recorded that whether a failure *code* reaches the editor's warnings panel was
+unverified. It does. The topbar chip read **4** after four failures, and opening it shows:
+
+```
+No cloud services defined in this project.
+At node Cloud Function in component erg001-cloud
+```
+
+So the message and its provenance render; the **code** is the key the panel is filed under rather
+than something it displays, which is what `createEditorWarningSubscriber` always did. And
+`.logs/dev.log` stayed silent, by design — in the editor the bus routes to the editor subscriber
+rather than the console, which is why the corpus asserts codes on the bus directly.
+
+### Noise, measured rather than asserted
+
+Counted as `[noodl]` raise lines rather than `console.error` blocks, because the block count double-
+counts jest's source echo:
+
+| Suite | Total raises | From this slice's new rows |
+|---|---|---|
+| `noodl-runtime` | 118 | **5** |
+| `noodl-viewer-react` | 195 | **10** |
+
+All fifteen are NDA-004 failures a row explicitly asserts: `sign-file-url/sign-failed` ×2,
+`record/storage-op-failed`, `user/fetch-failed`, `user/set-properties-failed`,
+`cloud-function/call-failed` ×2, `upload-file/upload-failed` ×2, `user/sign-in-with-failed` ×2,
+`user/log-in-failed`, `user/log-out-failed`, `user/sign-up-failed`,
+`user/request-magic-link-failed`. No existing path's raise count moved: `setError` used to raise
+once and now reports once through `reportOutcome`, with the same code.
+
+### Gates — measured before and after
+
+| Gate | Before | After |
+|---|---|---|
+| `noodl-runtime` jest | 100 suites, 1859 passing, 13 skipped | **102 suites, 1891 passing, 13 skipped** |
+| `noodl-viewer-react` jest | 54 suites, 678 passing | **55 suites, 720 passing** |
+| `typecheck:runtime` | pass | pass |
+| viewer-react `tsc` | pass | pass |
+| `typecheck:cloud` | pass | pass |
+| `catalog:check` | pass | pass |
+| `catalog:merge:check` | pass | pass |
+| `cloud-library:check` | pass | pass |
+| editor `test:ci` | 2007 specs, 0 failures | **2007 specs, 0 failures** |
+
+64 corpus rows across two new files. Four existing harnesses gained the **real**
+`beginOutcome`/`reportOutcome` rather than doubles — including a `hasOutput` backed by the
+definition's declared outputs, so `outcome/missing-port` stays a live check rather than being
+answered `true` for a port that does not exist.
+
+⚠️ **`cloudfunction2.test.ts`'s `expect(...).not.toContain('success')` became an exact-array
+assertion.** The negative form passes *vacuously* the moment the port stops existing — the trap
+this phase was already caught by once, found here by looking for it rather than by a red gate.
+
+⚠️ Two rows in that file poked `doCall` directly, which is the deferred half; they now drive
+`scheduleCall`, the method the `Call` port actually reaches. Poking the inner method ran the work
+with **no invocation behind it**, which is precisely the state a node must never report from — the
+test was asserting against a state the product cannot be in.
+
+### What remains of §0's 82 — measured
+
+**45 done. 37 remain.**
+
+| Remaining | Count | Note |
+|---|---|---|
+| **Data** | 20 | The largest block and now the obvious next one. `HTTP Request`, `Optimistic Update`, `Stream Buffer`, `Text Accumulator` and `Run Tasks` are multi-action; the rest are single-action renames. ⚠️ `Run Tasks` is the node the contract's own problem statement is about. |
+| **CustomCode** | 3 | ⚠️ `Logic Builder` registers block names verbatim — FINDINGS **SR-ix**, the collision is live and silent. Read NDA-004 §3 first. |
+| **Cloud** | 2 | `Response`, `Send Email`. |
+| **Component Utilities** | 2 | `Component Object`, `Parent Component Object` — `Fetch`. ⚠️ Same `Fetched`-is-not-`Done` question the Record/User twins just answered. |
+| **Navigation** | 4 | `Close Popup`, `External Link`, `Navigate To Path`, `Show Popup`. ⚠️ `Close Popup` is NV-iii's original latch. |
+| **Animation / Events / Logic / String / Utilities** | 6 | `States`, `Send Event`, `Condition`, `Unique Id`, `Open File Picker`. ⚠️ `Condition` has no completion path at all today. ⚠️ `Open File Picker`'s `success` is referenced by `upload-file`'s enrichment prose and by two `docs/node-catalog/examples` graphs — sweep those when it is renamed. |
+| **§3** `Treat Unchanged as` | — | Not started. Variables family first. ⚠️ A declared `default` does not run its setter — FINDINGS **A-D1**. |
+| **§5** the validator's dead-end check | — | Not started. ⚠️ Must not flag the contract's exemptions. The **absent-`Unchanged`** list grew by eleven this slice: `Page Stack`, `For Each`, and now every Cloud Services action. Absent `Failure`: `net.noodl.StateHistory`, `For Each Actions`, all four Variables. |
+
+Still open and still unmeasured, carried forward verbatim:
+
+⚠️ **`GlobalStore.Set` has an unmeasured `Unchanged` candidate** — see the previous section. This
+slice took the "change an internal collaborator's return type" step **once more**
+(`ParseAuthAdapter.setUserProperties`, adding an `else`) and it was safe for a *different* reason
+than the ones before it: not that every caller is in the repo, but that the branch called **nothing
+at all** before, so no caller could regress. That is a stronger licence than the earlier three had,
+and worth separating from them.
+
+⚠️ **`Counter`'s `Reset` guard reads `this.currentValue` and has never fired** (PLAT-003 NOTES
+§25). Left verbatim.
+
+⚠️ **`Items Rendered` fires with zero item nodes existing after a `Refresh`** — filed, not fixed,
+last session. Still live. The one-character fix is `() => this.refresh()`.
