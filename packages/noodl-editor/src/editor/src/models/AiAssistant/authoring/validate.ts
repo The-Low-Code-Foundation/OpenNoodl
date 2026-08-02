@@ -70,13 +70,19 @@ function toNormComponent(component: GraphComponent): NormComponent {
 }
 
 /**
- * A diagnostic's identity for baseline comparison: the rule, the node it is
- * about, the port, and the message. The message is in the key on purpose —
- * "unknown node type Markdown" and "unknown node type Foo" are different
- * problems on the same node, and only the first can be pre-existing.
+ * A diagnostic's identity for baseline comparison: the rule, what it is about,
+ * and the message. The message is in the key on purpose — "unknown node type
+ * Markdown" and "unknown node type Foo" are different problems on the same
+ * node, and only the first can be pre-existing.
+ *
+ * Byte-for-byte the same key the MCP write-gate uses
+ * (`noodl-mcp/src/tools/planTools.ts`), which has had this exemption since
+ * AIX-011 landed. Keeping the two identical is deliberate: they are twins of
+ * one policy, and this is the cheap half of not letting them drift.
  */
 function diagnosticKey(d: Diagnostic): string {
-  return [d.code, d.location.nodeId ?? '', d.location.port ?? '', d.message].join('|');
+  const l = d.location;
+  return JSON.stringify([d.code, l.nodeId, l.port, l.plug, l.connection, d.message]);
 }
 
 export interface ValidateCandidateOptions {

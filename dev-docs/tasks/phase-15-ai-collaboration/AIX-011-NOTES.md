@@ -401,15 +401,101 @@ Two things follow, neither of them addressed here:
   better read as "$0.8–$1.5, with the variance concentrated in the sessions
   that fail".
 
+### 5. The two front doors: MCP already had the right policy
+
+Both fixes change what the *editor* accepts, so the obvious worry is that
+`noodl-mcp`'s write-gate — which shares this policy "by convention, not by
+import" — now disagrees with it. Checked, and the answer is the opposite of the
+worry: **MCP had both behaviours already, and the editor was the odd one out.**
+
+- `planTools.ts`'s `validateStaged` has carried the pre-existing-error
+  exemption since AIX-011 landed, in as many words: *"for updates only NEW
+  errors (relative to the on-disk baseline) reject, so a component that already
+  carried strict-mode errors stays editable."* It diffs baseline diagnostics by
+  key, exactly as the editor now does.
+- MCP never meets an id-less component at all. It reads `component.json` from a
+  v2 project on disk, and `ProjectStore.readComponentFiles` already synthesises
+  `{ id: key, … }` when the file is absent. The id-less base is a *legacy
+  `project.json`* shape, which only the editor's `buildComponentV2Files` path
+  produces.
+
+So this change closes a divergence rather than opening one. To keep it closed,
+the editor's `diagnosticKey` is now byte-for-byte the one in `planTools.ts`
+(`[code, nodeId, port, plug, connection, message]`), with a comment in each
+naming the other — the twins are cheap to keep aligned and expensive to
+discover apart.
+
+**`noodl-mcp` jest under node 22: 76 passed, 29 skipped, 1 failed.** The
+failure is **pre-existing on the base commit** — verified by extracting
+`32e3a946` to a scratch tree and running the same suite there, where it fails
+identically with none of this work present. It is
+`tools.test.ts` → *"create_component validates, writes and updates the
+registry"*, and the three errors are:
+
+```
+duplicate-node-id  Node id "page"   is reused across 2 components: /Pages/Home, /Pages/Settings
+duplicate-node-id  Node id "layout" …
+duplicate-node-id  Node id "nav"    …
+```
+
+The spec authors a component with the generic ids `page`, `layout`, `nav`,
+which collide with the fixture's `/Pages/Home`. Worth someone's attention on
+its own terms, and it is the same shape of problem as §2 one level up:
+`create_component`'s gate is **component-scoped** and accepts those ids, and
+then the **project-scoped** `validate_project` calls them errors. Two gates,
+two answers, one write. Not this task's to fix — recorded so it is not
+rediscovered as a regression of this one.
+
+### 6. The id backfill on disk — what it writes, and what it does not
+
+The backfill puts something in `project.json` that was not there, so it gets
+criterion 4's treatment rather than an argument: a real `ProjectModel`, the
+corpus project, saved through the product's own `project.toDirectory`, and the
+bytes compared. `tests/ai/authoring-update-idless.test.ts`.
+
+`/App` is the right subject twice over — it is the id-less component, **and it
+holds the project's root node**, so an update to it takes the
+root-restoration branch of `updateAuthoredComponentInGroup`.
+
+What the project actually keys on, checked rather than assumed:
+
+| Consumer | Keys on | Affected? |
+| --- | --- | --- |
+| Project root | `rootNodeId` — a **node** id | No |
+| Component references (`/Pages/Article`) | component **name** | No |
+| Router `pages.routes` | component **names** | No |
+| `ProjectExporter` v2 files | `component.id` | Yes — and this is the consumer that was *failing* without it |
+
+Measured after a real save: `/App` gains a string id; all 44 components then
+have distinct ids (43 + the one that was `undefined`); `rootNodeId` is
+unchanged and still resolves to a node inside `/App`; the Router's
+`pages.routes` survives with only `startPage` moved. **One undo, and
+`project.json` is byte-identical to the pre-apply save** — including the
+*absence* of the id, which is the half that could have leaked. The same holds
+through `applyAuthoredPlan`.
+
+So the backfill is safe at the layer it sits in, and the exporter defect
+(`buildComponentV2Files` exporting an id-less `component.json`) stays filed
+rather than fixed. It is worth being explicit about why that is the right split
+and not just the cheaper one: `buildCandidate` **must** produce a schema-valid
+candidate whatever it is handed — it is the boundary between untrusted model
+output and the project — so it needs this guarantee even if the exporter is
+fixed tomorrow. Fixing the exporter as well would make id-less components
+impossible upstream; it would not make this backfill redundant.
+
 ### Gates
 
 - `npx tsc --noEmit` in `packages/noodl-editor`: clean.
 - `webpack.test-ci.js`: compiled successfully.
-- Editor Electron suite: **2024 specs / 0 failures** (seed 18722), all seven
-  new specs among them.
-- +5 specs `tests/ai/authoring-update-baseline.test.ts` (registered in
-  `tests/ai/index.ts` — the spec-barrel trap), +2 in `authoring-plan.test.ts`
-  for the planner's docs block.
+- Editor Electron suite: **2027 specs / 0 failures** (seed 36641), all ten new
+  specs among them.
+- `noodl-mcp` jest under node 22: **76 passed, 29 skipped, 1 failed** — the
+  failure pre-existing on `32e3a946`, proved by running the same suite against
+  an extracted copy of that commit. See §5.
+- +5 specs `tests/ai/authoring-update-baseline.test.ts`, +3
+  `tests/ai/authoring-update-idless.test.ts` (the on-disk half — both
+  registered in `tests/ai/index.ts`, the spec-barrel trap), +2 in
+  `authoring-plan.test.ts` for the planner's docs block.
 
 Two environment traps cost real time and are worth writing down for the next
 worktree agent:
