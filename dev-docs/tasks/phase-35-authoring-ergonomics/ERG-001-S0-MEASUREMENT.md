@@ -2528,8 +2528,52 @@ the rule reddens a row rather than quietly reintroducing the noise.
 |---|---|
 | **§0's 82** | ✅ **Complete. 82/82, measured from the regenerated catalog.** |
 | **§5** dead-end check | ✅ Built, with its false-positive measurements recorded. |
-| **§3** `Treat Unchanged as` | ❌ **Still not started** — the one piece of the spec never begun. ⚠️ A declared `default` does not run its setter (FINDINGS **A-D1**), so the default behaviour must be correct *without* it. The Variables family remains the obvious first home. |
-| **Criterion 8** live QA | ❌ Not paid for this session's five nodes. The previous session's debt was for the eighteen before them; these five have been driven by no editor. |
+| **§3** `Treat Unchanged as` | ✅ Built — see below. |
+| **Criterion 8** live QA | ❌ Not paid for this session's five nodes, nor for §3's new input port. The previous session's debt was for the eighteen before them; these have been driven by no editor. |
+
+### §3 — built, and the constraint the spec did not note
+
+`outcomeInputs()` declares the enum, `reportOutcome` applies it. One implementation, because
+phase 30's clearest structural finding is that a rule implemented per node diverges. Adopted on
+the Variables family, the first home the spec names.
+
+⚠️ **The enum is derived from the same options object that builds the outputs.** The Variables
+family has no `Failure` port — "a node that cannot fail gets no `Failure` port" — so an
+unconditional three-option enum would have let an author select, *through the property panel*,
+an outcome with nowhere to land, and `reportOutcome` would answer `outcome/missing-port` against
+a graph they had configured legitimately. Measured in the catalog: String, Number and Boolean
+each ship `Unchanged | Done`; the synthetic probe with a `Failure` port ships all three. The spec
+did not note this; it falls out of Rule 1's own exemption.
+
+⚠️ **A-D1 is closed by writing the remap the other way round.** The check is "only
+`done`/`failure` remap", never "unless it is `unchanged`", so `undefined` — which is what the
+stored value is until an author touches the panel — lands on the default with nothing having
+run. Two rows pin it and both deliberately never touch the port.
+
+⚠️ **A configured `Failure` carries `outcome/unchanged-as-failure`**, not
+`outcome/unspecified-failure`. It is a policy choice, not a fault, and a bare "the action could
+not be performed" would send an author hunting for a bug in a graph doing exactly what they
+configured.
+
+⚠️ **Rule 4 is not violated.** That rule forbids a port's behaviour depending on whether a
+*different port happens to be connected* — the `Expression`/`Run` defect. This is a declared,
+visible, author-chosen mode, which Rule 4 explicitly allows.
+
+**Not swept across the other ~40 nodes with an `Unchanged` port**, deliberately. Rule 3's own
+first warning is that every option multiplies the test surface and the AI authoring loop's search
+space; broadening this should be a decision someone takes, not a sweep taken because the helper
+existed. The helper is one line to spread wherever it is wanted.
+
+### Final gate figures, after §3
+
+| Gate | Result |
+|---|---|
+| `noodl-runtime` jest | 109 suites, **2066** passing, 13 skipped |
+| `noodl-viewer-react` jest | 62 suites, **853** passing |
+| editor jasmine (`test:ci`) | **2002** specs, 0 failures *(measured before §3, which touches no editor code)* |
+| typechecks — runtime / viewer / editor / editor-tests | clean |
+| `catalog:check` / `catalog:merge:check` / `cloud-library:check` | green |
+| `catalog:examples` | 46/50 (**was 44/50 at HEAD**) |
 
 Carried forward unchanged: `GlobalStore.Set`'s and `Update Record`'s unmeasured `Unchanged`
 candidates; `Counter`'s `Reset` guard that has never fired; `Items Rendered` firing with zero item
