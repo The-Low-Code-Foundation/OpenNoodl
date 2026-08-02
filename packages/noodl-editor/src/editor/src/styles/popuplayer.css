@@ -570,6 +570,40 @@
   margin-bottom: 12px;
 }
 
+/*
+ * F26: the single-line name prompt. A prompt asking for one short name is not
+ * 500px wide and has no room for a 200px code box; the wrapper/gutter rules
+ * below belong to the comment editor alone.
+ */
+.string-input-popup--single {
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+}
+
+.string-input-popup-singleline {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 10px;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 13px;
+  outline: none;
+}
+
+.string-input-popup-singleline:focus {
+  border-color: var(--theme-color-primary);
+  box-shadow: 0 0 0 2px var(--theme-color-primary-transparent);
+}
+
+.string-input-popup-singleline::placeholder {
+  color: var(--theme-color-fg-muted);
+}
+
 .string-input-popup-editor-wrapper {
   position: relative;
   display: flex;
