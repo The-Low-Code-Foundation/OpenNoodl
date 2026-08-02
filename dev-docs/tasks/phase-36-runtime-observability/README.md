@@ -80,10 +80,14 @@ LLM over a raw graph dump guesses. An LLM over a provenance walk is good **for f
 
 | ID | Title | Tier | Focus |
 |---|---|---|---|
-| [OBS-001](./OBS-001-TRACE-SUBSTRATE.md) | The trace substrate | 1 | Append-only per-edge event log + session dictionary. **Replaces a map that structurally cannot record the same wire firing twice** |
-| [OBS-002](./OBS-002-PROVENANCE-WALK.md) | The provenance walk | 1 | The product. Right-click → backward walk, three annotation layers, click-to-reveal. Retires the shelved panel |
+| [OBS-001](./OBS-001-TRACE-SUBSTRATE.md) | The trace substrate | 1 | ✅ **Built.** Append-only per-edge event log + session dictionary. **Replaces a map that structurally cannot record the same wire firing twice** |
+| [OBS-002](./OBS-002-PROVENANCE-WALK.md) | The provenance walk | 1 | ✅ **Built** — see [OBS-002-NOTES.md](./OBS-002-NOTES.md). Right-click → backward walk, all three annotation layers wired, click-to-reveal. The shelved panel is **not** retired; that is still open question 3 |
 | [OBS-003](./OBS-003-NODE-DIAGNOSTICS.md) | Node-local diagnostics | 2 | Layer 3. **Zero dependencies — ships alone, on infrastructure that already exists** |
 | [OBS-004](./OBS-004-AGENT-ACCESS.md) | Agent access | 3 | MCP server on the relay + input injection + the auth this opens up |
+
+**Tier 1 is complete** as of 2026-08-02. Read [OBS-002-NOTES.md](./OBS-002-NOTES.md) before
+building on it: three of its defects were surfaces stating more than they knew, and the same trap is
+available to anything else built over this trace.
 
 **Tiers are stopping points.** Tier 1 is the product and must ship together — OBS-001 alone is
 invisible, OBS-002 without it is layer 1 only (which is still useful, and is a legitimate early
