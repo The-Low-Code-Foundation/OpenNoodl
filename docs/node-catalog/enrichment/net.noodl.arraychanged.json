@@ -1,0 +1,31 @@
+{
+  "typeName": "net.noodl.ArrayChanged",
+  "summary": "Reports what changed inside an Array: items arriving and leaving with their index, and edits to the Objects within it.",
+  "description": "Array Changed watches one Array and reports its changes as they happen. `itemAdded` (Item Added) and `itemRemoved` (Item Removed) fire per item with `index` (Index) and `item` (Item); `itemChanged` (Item Changed) fires when one of the Objects *inside* the Array is edited in place, with `key` (Key) naming the property that changed; `arrayReplaced` (Array Replaced) fires when a different Array arrives, including the first one. `count` (Count) always holds the current length. Every value port is written before its signal is sent. A wholesale replacement of an Array's contents is reported item by item, not as one opaque event, because the runtime emits the individual arrivals and departures. A pure reorder — sort, reverse, or writing `length` — sends no signal, because nothing was added or removed; Count is still kept accurate through it.",
+  "whenToUse": "Use it when a graph must react to *what* moved in an Array rather than that it changed — animating a row as it arrives, saving a record the moment a field inside it is edited, or keeping a running total. Value Changed is the right node when only the fact of a change matters: it compares identity, so an Array mutated in place is not a change there. Use Object Changed when the input is a single Object.",
+  "ports": {
+    "array": "Accepts an Array or a Noodl Array. An empty (`undefined`) input abstains and leaves the current Array watched; `null` clears it, which reports Array Replaced and releases every subscription.",
+    "index": "Empty after Array Replaced, which is about no single item.",
+    "item": "Empty after Array Replaced.",
+    "key": "Set only by Item Changed; the other signals are about the item as a whole and leave it empty.",
+    "count": "Kept accurate through reordering and length changes even though those send no signal."
+  },
+  "examples": [],
+  "patterns": [
+    "`itemAdded` → a Function's `do` with `item` wired in: run per-item work as rows arrive, without re-walking the whole Array.",
+    "`itemChanged` with `item` and `key` → Set Record Properties: persist exactly the field an author edited.",
+    "`count` → a Text node: a live item count that survives reordering."
+  ],
+  "antiPatterns": [
+    "Expecting Item Changed for members that are not Noodl Objects. A plain object in the Array broadcasts nothing, so only its arrival and departure can be reported.",
+    "Expecting a signal from sorting or reversing. Nothing was added or removed, so only Count is refreshed — watch the Array's own order downstream instead.",
+    "Mutating a raw array with `push` and expecting a report. Use the Array node's own actions, or `items`, so the mutation goes through the reactive path."
+  ],
+  "relatedNodes": [
+    "Value Changed",
+    "net.noodl.ObjectChanged",
+    "Collection2",
+    "For Each",
+    "Filter Collection"
+  ]
+}

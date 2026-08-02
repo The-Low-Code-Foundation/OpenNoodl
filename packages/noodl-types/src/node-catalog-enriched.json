@@ -34349,6 +34349,152 @@
       }
     },
     {
+      "typeName": "net.noodl.ArrayChanged",
+      "displayName": "Array Changed",
+      "category": "Logic",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": false,
+      "availableIn": [
+        "browser"
+      ],
+      "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
+      "inputs": [
+        {
+          "name": "array",
+          "displayName": "Array",
+          "plug": "input",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "The Array to watch. Items arriving and leaving are reported as they happen, and edits to the Objects inside it are reported as Item Changed; sending a different Array reports Array Replaced"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "arrayReplaced",
+          "displayName": "Array Replaced",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a different Array arrives on the input, including the first one and including an explicit clear; Index, Item and Key are empty and Count is the new length"
+        },
+        {
+          "name": "count",
+          "displayName": "Count",
+          "group": "Array",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "How many items the watched Array holds now. Kept accurate through reordering and length changes, which send no signal because they add and remove nothing"
+        },
+        {
+          "name": "index",
+          "displayName": "Index",
+          "group": "Change",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "The position the last signal was about; empty after Array Replaced, which is about no single item"
+        },
+        {
+          "name": "item",
+          "displayName": "Item",
+          "group": "Change",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The item the last signal was about; empty after Array Replaced"
+        },
+        {
+          "name": "itemAdded",
+          "displayName": "Item Added",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when an item is added to the watched Array; Index and Item describe it"
+        },
+        {
+          "name": "itemChanged",
+          "displayName": "Item Changed",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when one of the Objects inside the watched Array is edited in place; Key names the property that changed. Items that are not Noodl Objects cannot be watched"
+        },
+        {
+          "name": "itemRemoved",
+          "displayName": "Item Removed",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when an item is removed from the watched Array; Index is the position it occupied"
+        },
+        {
+          "name": "key",
+          "displayName": "Key",
+          "group": "Change",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The property of Item that changed, after Item Changed; empty after the other signals, which are about the item as a whole"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "net.noodl.ArrayChanged",
+        "summary": "Reports what changed inside an Array: items arriving and leaving with their index, and edits to the Objects within it.",
+        "description": "Array Changed watches one Array and reports its changes as they happen. `itemAdded` (Item Added) and `itemRemoved` (Item Removed) fire per item with `index` (Index) and `item` (Item); `itemChanged` (Item Changed) fires when one of the Objects *inside* the Array is edited in place, with `key` (Key) naming the property that changed; `arrayReplaced` (Array Replaced) fires when a different Array arrives, including the first one. `count` (Count) always holds the current length. Every value port is written before its signal is sent. A wholesale replacement of an Array's contents is reported item by item, not as one opaque event, because the runtime emits the individual arrivals and departures. A pure reorder — sort, reverse, or writing `length` — sends no signal, because nothing was added or removed; Count is still kept accurate through it.",
+        "whenToUse": "Use it when a graph must react to *what* moved in an Array rather than that it changed — animating a row as it arrives, saving a record the moment a field inside it is edited, or keeping a running total. Value Changed is the right node when only the fact of a change matters: it compares identity, so an Array mutated in place is not a change there. Use Object Changed when the input is a single Object.",
+        "ports": {
+          "array": "Accepts an Array or a Noodl Array. An empty (`undefined`) input abstains and leaves the current Array watched; `null` clears it, which reports Array Replaced and releases every subscription.",
+          "index": "Empty after Array Replaced, which is about no single item.",
+          "item": "Empty after Array Replaced.",
+          "key": "Set only by Item Changed; the other signals are about the item as a whole and leave it empty.",
+          "count": "Kept accurate through reordering and length changes even though those send no signal."
+        },
+        "examples": [],
+        "patterns": [
+          "`itemAdded` → a Function's `do` with `item` wired in: run per-item work as rows arrive, without re-walking the whole Array.",
+          "`itemChanged` with `item` and `key` → Set Record Properties: persist exactly the field an author edited.",
+          "`count` → a Text node: a live item count that survives reordering."
+        ],
+        "antiPatterns": [
+          "Expecting Item Changed for members that are not Noodl Objects. A plain object in the Array broadcasts nothing, so only its arrival and departure can be reported.",
+          "Expecting a signal from sorting or reversing. Nothing was added or removed, so only Count is refreshed — watch the Array's own order downstream instead.",
+          "Mutating a raw array with `push` and expecting a report. Use the Array node's own actions, or `items`, so the mutation goes through the reactive path."
+        ],
+        "relatedNodes": [
+          "Value Changed",
+          "net.noodl.ObjectChanged",
+          "Collection2",
+          "For Each",
+          "Filter Collection"
+        ]
+      }
+    },
+    {
       "typeName": "net.noodl.ComponentObject",
       "displayName": "Component Object",
       "category": "Component Utilities",
@@ -35465,6 +35611,127 @@
           "net.noodl.TextAccumulator",
           "net.noodl.StreamBuffer",
           "REST2"
+        ]
+      }
+    },
+    {
+      "typeName": "net.noodl.ObjectChanged",
+      "displayName": "Object Changed",
+      "category": "Logic",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": false,
+      "availableIn": [
+        "browser"
+      ],
+      "providedBy": "noodl-viewer-react",
+      "ssr": {
+        "compat": "safe"
+      },
+      "inputs": [
+        {
+          "name": "object",
+          "displayName": "Object",
+          "plug": "input",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false,
+          "description": "The Object to watch. Changes to its keys are reported as they happen; sending a different Object reports Object Replaced. A plain JavaScript object that is not a Noodl Object cannot be watched key-by-key — only its replacement is reported"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "key",
+          "displayName": "Key",
+          "group": "Change",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The key the last Key Added or Key Changed was about; empty after Object Replaced, which is about no single key"
+        },
+        {
+          "name": "keyAdded",
+          "displayName": "Key Added",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a key that did not exist on the watched Object now does"
+        },
+        {
+          "name": "keyChanged",
+          "displayName": "Key Changed",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a key that already existed on the watched Object is given a different value"
+        },
+        {
+          "name": "objectReplaced",
+          "displayName": "Object Replaced",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a different Object arrives on the input, including the first one and including an explicit clear; Key is empty and Value / Previous Value carry the Objects themselves"
+        },
+        {
+          "name": "previousValue",
+          "displayName": "Previous Value",
+          "group": "Change",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The value that key held before — empty when the key has just been added — or, after Object Replaced, the Object that was being watched before"
+        },
+        {
+          "name": "value",
+          "displayName": "Value",
+          "group": "Change",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The new value of that key — or, after Object Replaced, the Object that just arrived"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "net.noodl.ObjectChanged",
+        "summary": "Reports what changed inside an Object: which key was added or edited, its new value and its old one.",
+        "description": "Object Changed watches one Noodl Object and reports its changes as they happen, rather than only noticing that a different Object arrived. `keyAdded` (Key Added) fires when a key that did not exist now does; `keyChanged` (Key Changed) fires when an existing key is given a different value; `objectReplaced` (Object Replaced) fires when a different Object arrives on the input, including the very first one. Each signal is accompanied by `key` (Key), `value` (Value) and `previousValue` (Previous Value), written before the signal is sent so a downstream node reading them on the signal sees the change the signal is about. Writing a key the value it already holds reports nothing — the runtime itself suppresses it. Only Noodl Objects broadcast their edits; a plain JavaScript object is accepted but only its replacement can be reported, and an Array is declined outright because Array Changed is the node for it.",
+        "whenToUse": "Use it when a graph must react to *what* changed inside an Object rather than merely that it changed — logging an audit trail, saving only the field that was edited, or driving a different branch for a newly added key than for an edited one. Value Changed is the right node when only the fact of a change matters, or when the input is not an Object: it compares identity, so an Object edited in place is not a change there. Reach for Array Changed when the input is an Array.",
+        "ports": {
+          "object": "Accepts a Noodl Object. An empty (`undefined`) input abstains and leaves the current Object watched; `null` clears it, which reports Object Replaced and unsubscribes.",
+          "key": "Empty after Object Replaced, which is about no single key — deliberately cleared rather than left holding the previous key change.",
+          "value": "After Object Replaced this carries the Object that just arrived, not a key's value.",
+          "previousValue": "Empty when the key has just been added; after Object Replaced it carries the Object that was being watched before."
+        },
+        "examples": [],
+        "patterns": [
+          "An Object's `keyChanged` → a Function's `do`, with `key` and `value` wired in: react to one edited field without re-reading the whole Object.",
+          "`keyAdded` and `keyChanged` into separate branches: treat a first-time value differently from a correction."
+        ],
+        "antiPatterns": [
+          "Wiring an Array to Object. The node declines it, because an array's change event carries no key; use Array Changed.",
+          "Expecting it to report edits to a plain JavaScript object. Only Noodl Objects broadcast their writes — build the value as an Object node if you need per-key reporting."
+        ],
+        "relatedNodes": [
+          "Value Changed",
+          "net.noodl.ArrayChanged",
+          "Model2",
+          "SetModelProperties"
         ]
       }
     },
@@ -54819,8 +55086,8 @@
     "version": "1.0.0",
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
-      "documented": 151,
-      "total": 151
+      "documented": 153,
+      "total": 153
     }
   },
   "compatibility": {

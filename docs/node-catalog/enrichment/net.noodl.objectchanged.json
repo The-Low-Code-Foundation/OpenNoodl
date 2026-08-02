@@ -1,0 +1,27 @@
+{
+  "typeName": "net.noodl.ObjectChanged",
+  "summary": "Reports what changed inside an Object: which key was added or edited, its new value and its old one.",
+  "description": "Object Changed watches one Noodl Object and reports its changes as they happen, rather than only noticing that a different Object arrived. `keyAdded` (Key Added) fires when a key that did not exist now does; `keyChanged` (Key Changed) fires when an existing key is given a different value; `objectReplaced` (Object Replaced) fires when a different Object arrives on the input, including the very first one. Each signal is accompanied by `key` (Key), `value` (Value) and `previousValue` (Previous Value), written before the signal is sent so a downstream node reading them on the signal sees the change the signal is about. Writing a key the value it already holds reports nothing — the runtime itself suppresses it. Only Noodl Objects broadcast their edits; a plain JavaScript object is accepted but only its replacement can be reported, and an Array is declined outright because Array Changed is the node for it.",
+  "whenToUse": "Use it when a graph must react to *what* changed inside an Object rather than merely that it changed — logging an audit trail, saving only the field that was edited, or driving a different branch for a newly added key than for an edited one. Value Changed is the right node when only the fact of a change matters, or when the input is not an Object: it compares identity, so an Object edited in place is not a change there. Reach for Array Changed when the input is an Array.",
+  "ports": {
+    "object": "Accepts a Noodl Object. An empty (`undefined`) input abstains and leaves the current Object watched; `null` clears it, which reports Object Replaced and unsubscribes.",
+    "key": "Empty after Object Replaced, which is about no single key — deliberately cleared rather than left holding the previous key change.",
+    "value": "After Object Replaced this carries the Object that just arrived, not a key's value.",
+    "previousValue": "Empty when the key has just been added; after Object Replaced it carries the Object that was being watched before."
+  },
+  "examples": [],
+  "patterns": [
+    "An Object's `keyChanged` → a Function's `do`, with `key` and `value` wired in: react to one edited field without re-reading the whole Object.",
+    "`keyAdded` and `keyChanged` into separate branches: treat a first-time value differently from a correction."
+  ],
+  "antiPatterns": [
+    "Wiring an Array to Object. The node declines it, because an array's change event carries no key; use Array Changed.",
+    "Expecting it to report edits to a plain JavaScript object. Only Noodl Objects broadcast their writes — build the value as an Object node if you need per-key reporting."
+  ],
+  "relatedNodes": [
+    "Value Changed",
+    "net.noodl.ArrayChanged",
+    "Model2",
+    "SetModelProperties"
+  ]
+}
