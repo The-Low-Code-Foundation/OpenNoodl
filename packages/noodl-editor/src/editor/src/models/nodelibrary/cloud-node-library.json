@@ -2142,11 +2142,18 @@
           "description": "Names the properties to write; each name listed here gets a value input and a type selector"
         },
         {
-          "name": "stored",
+          "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
           "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         },
         {
           "name": "id",
@@ -2202,11 +2209,18 @@
           "description": "Names the properties to write; each name listed here gets a value input and a type selector"
         },
         {
-          "name": "created",
+          "name": "done",
           "type": "signal",
           "plug": "output",
           "group": "Events",
           "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
         },
         {
           "name": "id",
@@ -3408,6 +3422,13 @@
           "group": "Actions",
           "displayName": "Set",
           "description": "Writes Value at Key, reading both as of the end of the current frame"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
         },
         {
           "name": "completed",
@@ -5538,11 +5559,11 @@
           "displayName": "Dispatched"
         },
         {
-          "name": "completed",
+          "name": "actionCompleted",
           "type": "signal",
           "plug": "output",
           "group": "Events",
-          "displayName": "Completed"
+          "displayName": "Action Completed"
         },
         {
           "name": "failed",
@@ -5648,6 +5669,34 @@
           "plug": "output",
           "group": "Events",
           "displayName": "Cancelled"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure"
         }
       ]
     },

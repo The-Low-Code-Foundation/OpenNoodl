@@ -10,13 +10,14 @@
     "merge": "Merges Value into the existing object at Key instead of replacing it. With no existing object it behaves as a plain set.",
     "transaction": "Batches this write with the other batched writes of the same frame into one commit, so subscribers get a single notification. It does not skip or suppress the notification — the change is always delivered.",
     "set": "Performs the write.",
-    "completed": "Fires after the write has been committed, so a chained action runs against the new state rather than the old.",
+    "done": "Fires after the write has been committed, so a chained action runs against the new state rather than the old.",
+    "completed": "Fires after `done` or `failure`, on every invocation. Wire it to carry on regardless; `failure` still fires and still carries its reason, so this cannot hide an error.",
     "error": "Carries a refused write — a missing key, or a store that could not be persisted — instead of failing quietly."
   },
   "patterns": [
     "Several Set Global Store nodes with Batch With Others turned on, pulsed in the same frame, so a multi-field update renders as one change.",
     "Merge Object to update one field of a settings object without reading, spreading and writing it back.",
-    "`completed` → the next action, rather than assuming the write has landed by the time the next node runs."
+    "`done` → the next action, rather than assuming the write has landed by the time the next node runs. Use `completed` instead when the chain should continue even if the write was refused."
   ],
   "antiPatterns": [
     "Expecting Batch With Others to hide a change. It groups notifications; it never drops the write.",

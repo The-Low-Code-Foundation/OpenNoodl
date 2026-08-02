@@ -17783,7 +17783,18 @@
       ],
       "outputs": [
         {
-          "name": "created",
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
           "displayName": "Done",
           "group": "Events",
           "plug": "output",
@@ -17842,11 +17853,12 @@
       "enrichment": {
         "typeName": "NewModel",
         "summary": "Create New Object: creates a new client-side object with the declared properties set and outputs the new object's id.",
-        "description": "Create New Object makes a new object in the app's client-side object store when the `new` (Do) signal fires. Objects are in-memory key/value records addressable by id from anywhere in the app — Object (Model2) nodes, Set Object Properties, repeaters and Component Inputs all bind to the same store. Which properties the new object gets is declared in the `properties` parameter; each declared name becomes a value input whose current value is written onto the object at creation time. After creation the object's id is available on the `id` output and `created` (Done) fires — creation is deferred until all inputs updated in the same cycle have settled, so payload values wired alongside the trigger are included.",
+        "description": "Create New Object makes a new object in the app's client-side object store when the `new` (Do) signal fires. Objects are in-memory key/value records addressable by id from anywhere in the app — Object (Model2) nodes, Set Object Properties, repeaters and Component Inputs all bind to the same store. Which properties the new object gets is declared in the `properties` parameter; each declared name becomes a value input whose current value is written onto the object at creation time. After creation the object's id is available on the `id` output and `done` (Done) fires, followed by `completed` — creation is deferred until all inputs updated in the same cycle have settled, so payload values wired alongside the trigger are included.",
         "whenToUse": "Use it to mint new client-side state records: items added to a local list, draft objects before saving, per-session working data. Objects are in-memory only — for persistent cloud data use the record nodes (e.g. Create Record / NewDbModelProperties) instead; for a single named value a Variable (Variable2) is simpler.",
         "ports": {
-          "new": "Signal input; schedules creation after pending input updates, then creates the object, writes the declared properties and fires `created`.",
-          "created": "Signal; fires once per creation, after the object exists and its properties are set.",
+          "new": "Signal input; schedules creation after pending input updates, then creates the object, writes the declared properties and fires `done`, then `completed`.",
+          "done": "Signal; fires once per creation, after the object exists and its properties are set.",
+          "completed": "Signal; fires after `done` on every invocation. Wire it to carry on regardless of the outcome — on this node it always follows `done`, because creating an object cannot fail or no-op.",
           "id": "String value; the id of the most recently created object. Feed it to Object (Model2) or Set Object Properties `modelId` to keep working with it.",
           "properties": "Edit-only stringlist declaring the property names to set; each name becomes a `prop-<name>` input."
         },
@@ -25922,6 +25934,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the properties have been written onto the object and anything watching it has been told"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -25953,17 +25987,6 @@
           },
           "isSignal": false,
           "description": "Id of the object this node acted on, which is how a newly created one is picked up downstream"
-        },
-        {
-          "name": "stored",
-          "displayName": "Done",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the properties have been written onto the object and anything watching it has been told"
         }
       ],
       "dynamicPorts": {
@@ -26020,13 +26043,14 @@
       "enrichment": {
         "typeName": "SetModelProperties",
         "summary": "Set Object Properties: writes declared property values onto an existing client-side object, chosen by id or from the repeater item.",
-        "description": "Set Object Properties mutates an object in the client-side object store. The target is chosen by `idSource` (Id Source): with 'Specify explicitly' (the default) the `modelId` (Id) input names the object — it accepts either an id string or an object value directly; with 'From repeater' the node walks up the component tree and targets the item object of the closest enclosing Repeater (For Each) item, which is the idiomatic way to edit \"this row's\" data from inside an item component. When `store` (Do) fires, every property declared in `properties` is written from its input, then `stored` (Done) fires. Because everything bound to the same object shares it, the change immediately propagates to Object nodes, repeater item bindings and Component Inputs reading that object.",
+        "description": "Set Object Properties mutates an object in the client-side object store. The target is chosen by `idSource` (Id Source): with 'Specify explicitly' (the default) the `modelId` (Id) input names the object — it accepts either an id string or an object value directly; with 'From repeater' the node walks up the component tree and targets the item object of the closest enclosing Repeater (For Each) item, which is the idiomatic way to edit \"this row's\" data from inside an item component. When `store` (Do) fires, every property declared in `properties` is written from its input, then `done` (Done) fires, followed by `completed`. Because everything bound to the same object shares it, the change immediately propagates to Object nodes, repeater item bindings and Component Inputs reading that object.",
         "whenToUse": "Use it to change one or more properties of an existing client-side object in a single action — especially from inside a repeater item with Id Source 'From repeater'. To create the object first use Create New Object (NewModel); to write a single property continuously prefer an Object (Model2) node's property inputs; for cloud records use Update Record (SetDbModelProperties) plus a save to persist.",
         "ports": {
           "idSource": "Edit-only enum choosing the target: 'explicit' uses `modelId`; 'foreach' uses the closest enclosing repeater item's object (the `modelId` input disappears in this mode).",
           "modelId": "Value input naming the target object; accepts an id string or an object value (its id is used).",
-          "store": "Signal input; writes all declared property inputs to the target after pending input updates settle, then fires `stored`.",
-          "stored": "Signal; fires after the properties have been written. Does not fire if no target object is set.",
+          "store": "Signal input; writes all declared property inputs to the target after pending input updates settle, then fires `done`.",
+          "done": "Signal; fires after the properties have been written. Does not fire if no target object is set — `failure` fires instead, and `completed` fires either way.",
+          "completed": "Signal; fires after `done` or `failure`, on every invocation. Wire it to sequence work that should happen whether or not the write landed.",
           "id": "String value; the id of the current target object.",
           "properties": "Edit-only stringlist declaring which property names this node writes; each becomes a `prop-<name>` input."
         },
@@ -32646,6 +32670,17 @@
       ],
       "outputs": [
         {
+          "name": "actionCompleted",
+          "displayName": "Action Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once *one action* has finished and Result holds its answer — one Dispatch of an array fires this once per member, which is why it is not the node’s Completed"
+        },
+        {
           "name": "actionId",
           "displayName": "Action Id",
           "group": "Data",
@@ -32698,7 +32733,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once an action has finished and Result holds its answer"
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "completedCount",
@@ -32723,6 +32758,17 @@
           "description": "Fires when an action has been accepted and is about to run"
         },
         {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the invocation did something: Dispatch admitted at least one action, or Cancel All dropped at least one"
+        },
+        {
           "name": "failed",
           "displayName": "Failed",
           "group": "Events",
@@ -32743,6 +32789,17 @@
           },
           "isSignal": false,
           "description": "How many accepted actions have failed since the page loaded"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Dispatch admitted nothing at all, because every action in it was refused"
         },
         {
           "name": "idle",
@@ -32866,6 +32923,17 @@
           "description": "What the handler or built-in returned for the action that just completed"
         },
         {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there was nothing to do — a Cancel All with an empty queue. Not a failure: the queue is empty, which is what was asked for"
+        },
+        {
           "name": "waitingFor",
           "displayName": "Waiting For",
           "group": "Status",
@@ -32902,7 +32970,11 @@
           "payload": "The action's `payload`, else its `data`, else the whole action object.",
           "result": "What the completing handler or built-in returned.",
           "dispatched": "Fires when an action starts executing — after it passed every check.",
-          "completed": "Fires when an action's handlers all completed.",
+          "actionCompleted": "Fires when one action's handlers have all completed. Per *action*: one Dispatch of an array fires this once per member.",
+          "done": "Fires once per invocation: a Dispatch that admitted at least one action, or a Cancel All that dropped at least one.",
+          "unchanged": "Fires once per invocation when there was nothing to do — a Cancel All with an empty queue.",
+          "failure": "Fires once per invocation when a Dispatch admitted nothing at all, because every action in it was refused.",
+          "completed": "Fires after `done`, `unchanged` or `failure`, once per invocation of Dispatch or Cancel All. Not to be confused with `actionCompleted`, which counts actions rather than invocations.",
           "failed": "Fires when a handler failed, threw, or timed out. The action was allowed; it just did not work.",
           "idle": "Fires when the queue drains. This is how a multi-step flow knows it finished.",
           "refused": "Fires when an action was **not** executed. Wire this — it is the only way an author sees that a server asked for something disallowed.",
@@ -33607,6 +33679,17 @@
             "name": "signal"
           },
           "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
           "description": "Fires once the write has been applied and every subscriber has been told"
         },
         {
@@ -33646,7 +33729,8 @@
           "merge": "Merges Value into the existing object at Key instead of replacing it. With no existing object it behaves as a plain set.",
           "transaction": "Batches this write with the other batched writes of the same frame into one commit, so subscribers get a single notification. It does not skip or suppress the notification — the change is always delivered.",
           "set": "Performs the write.",
-          "completed": "Fires after the write has been committed, so a chained action runs against the new state rather than the old.",
+          "done": "Fires after the write has been committed, so a chained action runs against the new state rather than the old.",
+          "completed": "Fires after `done` or `failure`, on every invocation. Wire it to carry on regardless; `failure` still fires and still carries its reason, so this cannot hide an error.",
           "error": "Carries a refused write — a missing key, or a store that could not be persisted — instead of failing quietly."
         },
         "examples": [
@@ -33655,7 +33739,7 @@
         "patterns": [
           "Several Set Global Store nodes with Batch With Others turned on, pulsed in the same frame, so a multi-field update renders as one change.",
           "Merge Object to update one field of a settings object without reading, spreading and writing it back.",
-          "`completed` → the next action, rather than assuming the write has landed by the time the next node runs."
+          "`done` → the next action, rather than assuming the write has landed by the time the next node runs. Use `completed` instead when the chain should continue even if the write was refused."
         ],
         "antiPatterns": [
           "Expecting Batch With Others to hide a change. It groups notifications; it never drops the write.",
@@ -35517,7 +35601,18 @@
       ],
       "outputs": [
         {
-          "name": "stored",
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
           "displayName": "Done",
           "group": "Events",
           "plug": "output",
@@ -35565,12 +35660,13 @@
       "enrichment": {
         "typeName": "net.noodl.SetComponentObjectProperties",
         "summary": "Set Component Object Properties: writes declared values onto this component instance's own object when store fires.",
-        "description": "The writing half of Component Object: property values set on this node's declared inputs are committed to the enclosing component instance's object when `store` fires, and every Component Object / Parent Component Object reader of that instance sees the change immediately. `stored` confirms the write.",
+        "description": "The writing half of Component Object: property values set on this node's declared inputs are committed to the enclosing component instance's object when `store` fires, and every Component Object / Parent Component Object reader of that instance sees the change immediately. `done` confirms the write, and `completed` follows it on every invocation.",
         "whenToUse": "Mutating instance-scoped state: resetting a wizard, recording a selection local to this instance. For state shared across instances or screens use Objects (Model2) or Variables instead.",
         "ports": {
           "properties": "Declared property names; each becomes a value input written on store.",
           "store": "Signal; commits the current input values to the instance's object.",
-          "stored": "Signal; the write completed."
+          "done": "Signal; the write completed.",
+          "completed": "Signal; fires after `done` on every invocation. This node has no `failure` — its record is its own component instance's and cannot be missing."
         },
         "runtimeBehavior": "Property inputs are generated from the per-instance `properties` list (runtime-discovered).",
         "examples": [
@@ -35637,6 +35733,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once every property has been written"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -35657,17 +35775,6 @@
           },
           "isSignal": true,
           "description": "Fires when no parent Component Object could be found, so nothing was written"
-        },
-        {
-          "name": "stored",
-          "displayName": "Done",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once every property has been written"
         }
       ],
       "dynamicPorts": {
@@ -35707,12 +35814,13 @@
       "enrichment": {
         "typeName": "net.noodl.SetParentComponentObjectProperties",
         "summary": "Set Parent Component Object Properties: writes declared values onto the enclosing parent component's object from a child.",
-        "description": "The child-side writer for a parent's instance state: values on the declared property inputs are committed to the nearest ancestor component instance's object when `store` fires, updating every reader of that object (the parent's Component Object, sibling children's Parent Component Object). `stored` confirms.",
+        "description": "The child-side writer for a parent's instance state: values on the declared property inputs are committed to the nearest ancestor component instance's object when `store` fires, updating every reader of that object (the parent's Component Object, sibling children's Parent Component Object). `done` confirms, and `completed` follows on every invocation — including the failure path.",
         "whenToUse": "Child components that advance or edit their host's state — 'next step' controls, embedded editors. Keep writes coarse (one store per user action); each store fans out to all readers.",
         "ports": {
           "properties": "Declared property names; each becomes a value input written on store.",
           "store": "Signal; commits to the parent instance's object.",
-          "stored": "Signal; the write completed."
+          "done": "Signal; the write completed.",
+          "completed": "Signal; fires after `done` or `failure`, on every invocation. Wire it to carry on whether or not an ancestor was found."
         },
         "runtimeBehavior": "Property inputs are generated from the per-instance `properties` list (runtime-discovered); resolution targets the nearest ancestor component instance.",
         "examples": [
@@ -53459,7 +53567,7 @@
             },
             {
               "fromId": "store_session",
-              "fromProperty": "completed",
+              "fromProperty": "done",
               "toId": "open_session",
               "toProperty": "complete"
             }

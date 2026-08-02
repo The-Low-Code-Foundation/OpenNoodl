@@ -7342,7 +7342,7 @@
                     },
                     {
                         "fromId": "1d596a19-82d8-581a-29ff-bda59d0205b7",
-                        "fromProperty": "stored",
+                        "fromProperty": "done",
                         "toId": "98be3a54-a1f5-fd41-ac5b-62a9837f88ea",
                         "toProperty": "Selected Tab Changed"
                     },

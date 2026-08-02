@@ -16405,7 +16405,18 @@
       ],
       "outputs": [
         {
-          "name": "created",
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
           "displayName": "Done",
           "group": "Events",
           "plug": "output",
@@ -23939,6 +23950,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the properties have been written onto the object and anything watching it has been told"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Error",
@@ -23970,17 +24003,6 @@
           },
           "isSignal": false,
           "description": "Id of the object this node acted on, which is how a newly created one is picked up downstream"
-        },
-        {
-          "name": "stored",
-          "displayName": "Done",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once the properties have been written onto the object and anything watching it has been told"
         }
       ],
       "dynamicPorts": {
@@ -30141,6 +30163,17 @@
       ],
       "outputs": [
         {
+          "name": "actionCompleted",
+          "displayName": "Action Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once *one action* has finished and Result holds its answer — one Dispatch of an array fires this once per member, which is why it is not the node’s Completed"
+        },
+        {
           "name": "actionId",
           "displayName": "Action Id",
           "group": "Data",
@@ -30193,7 +30226,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once an action has finished and Result holds its answer"
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
         },
         {
           "name": "completedCount",
@@ -30218,6 +30251,17 @@
           "description": "Fires when an action has been accepted and is about to run"
         },
         {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the invocation did something: Dispatch admitted at least one action, or Cancel All dropped at least one"
+        },
+        {
           "name": "failed",
           "displayName": "Failed",
           "group": "Events",
@@ -30238,6 +30282,17 @@
           },
           "isSignal": false,
           "description": "How many accepted actions have failed since the page loaded"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a Dispatch admitted nothing at all, because every action in it was refused"
         },
         {
           "name": "idle",
@@ -30359,6 +30414,17 @@
           },
           "isSignal": false,
           "description": "What the handler or built-in returned for the action that just completed"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there was nothing to do — a Cancel All with an empty queue. Not a failure: the queue is empty, which is what was asked for"
         },
         {
           "name": "waitingFor",
@@ -30916,6 +30982,17 @@
         {
           "name": "completed",
           "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
           "group": "Events",
           "plug": "output",
           "type": {
@@ -32544,7 +32621,18 @@
       ],
       "outputs": [
         {
-          "name": "stored",
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
           "displayName": "Done",
           "group": "Events",
           "plug": "output",
@@ -32644,6 +32732,28 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once every property has been written"
+        },
+        {
           "name": "error",
           "displayName": "Error",
           "group": "Events",
@@ -32664,17 +32774,6 @@
           },
           "isSignal": true,
           "description": "Fires when no parent Component Object could be found, so nothing was written"
-        },
-        {
-          "name": "stored",
-          "displayName": "Done",
-          "group": "Events",
-          "plug": "output",
-          "type": {
-            "name": "signal"
-          },
-          "isSignal": true,
-          "description": "Fires once every property has been written"
         }
       ],
       "dynamicPorts": {

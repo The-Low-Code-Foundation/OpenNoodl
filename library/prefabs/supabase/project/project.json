@@ -5393,7 +5393,7 @@
                     },
                     {
                         "fromId": "21f8ab8f-e3e3-7d5d-841c-bc6c0a4a9d04",
-                        "fromProperty": "stored",
+                        "fromProperty": "done",
                         "toId": "7ee5dabc-4456-eb18-e39f-d452290be96b",
                         "toProperty": "Done"
                     },

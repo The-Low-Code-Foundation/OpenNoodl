@@ -1965,7 +1965,7 @@
                     },
                     {
                         "fromId": "76129c8f-9237-e2f9-ece8-44f5bf75e706",
-                        "fromProperty": "stored",
+                        "fromProperty": "done",
                         "toId": "3761ac9f-2e13-5535-6aa8-533d925b886d",
                         "toProperty": "Selection Changed"
                     }

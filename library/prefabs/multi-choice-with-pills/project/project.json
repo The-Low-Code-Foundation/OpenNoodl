@@ -1302,7 +1302,7 @@
                     },
                     {
                         "fromId": "1a74f9f4-60a2-2d32-2fe7-5214b605e277",
-                        "fromProperty": "stored",
+                        "fromProperty": "done",
                         "toId": "631962f8-3f2f-7425-a975-3cf547a29041",
                         "toProperty": "Selection Changed"
                     }
@@ -1499,7 +1499,7 @@
                     },
                     {
                         "fromId": "f53fb282-efe4-d055-10b0-8c1c9f891ec7",
-                        "fromProperty": "stored",
+                        "fromProperty": "done",
                         "toId": "fa6e8a64-91a7-c6cd-9cff-053261ac22ce",
                         "toProperty": "Selection Changed"
                     },

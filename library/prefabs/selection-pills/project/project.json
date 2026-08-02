@@ -748,7 +748,7 @@
                     },
                     {
                         "fromId": "9ee219ae-da94-f2c4-d601-7970754393d5",
-                        "fromProperty": "stored",
+                        "fromProperty": "done",
                         "toId": "99bab246-1313-6bed-0c24-ae9f6b62e6d3",
                         "toProperty": "Selection Changed"
                     },
