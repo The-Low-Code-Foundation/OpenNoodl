@@ -177,7 +177,9 @@ describe('NDA-005 C1: every static port of the Record family is described', () =
     // two non-port sources `records` and `filterSettings`). Their descriptions come from
     // `runOnChangeInput`, so the coverage half of this row is satisfied by construction — the
     // count is the half that had to be re-derived, and it is the half this row exists for.
-    { typeName: 'FilterDBModels', module: '../../src/nodes/std-library/data/filterdbmodelsnode', staticPorts: 13 }
+    // 13 → 15 with ERG-001 §4's `done` and `completed`; both carry a `description` from
+    // `outcomeOutputs`, which is why only the denominator moved.
+    { typeName: 'FilterDBModels', module: '../../src/nodes/std-library/data/filterdbmodelsnode', staticPorts: 15 }
   ];
 
   /** Every static port of one node, as `plug.name`, with whatever description it carries. */

@@ -13,8 +13,11 @@ import type {
   NodeDefinitionOptions,
   NodeInstance,
   NodeModule,
+  OutcomeToken,
   RuntimeDiscoveredPort
 } from '@noodl/types';
+
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 
 import Node = require('../../../node');
 import CollectionImport = require('../../../collection');
@@ -78,8 +81,15 @@ interface FilterDbModelsInstance extends NodeInstance {
     lastError?: string;
     /** Last message actually raised, so a repeat is not re-announced. */
     lastReportedError?: string;
-    /** NDA-004 §2 — did an author *ask* for this run? See `scheduleFilter`. */
-    filterRequested?: boolean;
+    /**
+     * NDA-004 §2 — did an author *ask* for this run, and how many times? See `scheduleFilter`.
+     *
+     * ERG-001 §4 replaced the `filterRequested` boolean with the contract's own mechanism rather
+     * than running two flags side by side: one token per `Filter` pulse, and "an author asked" is
+     * `tokens.length > 0`. Array Filter's `pendingFilterOutcomes` verbatim, twins to the end.
+     * ⚠️ Created lazily in `requestFilter`, not in `initialize`.
+     */
+    pendingFilterOutcomes?: OutcomeToken[];
     /** The `Backend` picker's value: a backend id, `'_endpoint_'`, or `'_active_'`. */
     backendId?: string;
     /** The store this node's `save` subscription is currently on. */
@@ -94,7 +104,7 @@ interface FilterDbModelsInstance extends NodeInstance {
   getSkip(): number | undefined;
   scheduleFilter(): void;
   requestFilter(): void;
-  reportFailure(code: string, message: string, detail?: unknown): void;
+  reportFailure(code: string, message: string, detail?: unknown, tokens?: OutcomeToken[]): void;
   setCollectionName(name: string): void;
   setVisualFilter(value: unknown): void;
   setVisualSorting(value: unknown[]): void;
@@ -258,19 +268,32 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
         return this._internal.filteredCollection ? this._internal.filteredCollection.size() : 0;
       }
     },
+    /**
+     * ⚠️ ERG-001 §4 — **kept, and deliberately not renamed to `Done`**; Array Filter's `Filtered`
+     * carries the reasoning in full. This port fires from the `items` and `enabled` setters, the
+     * visual filter and sorting setters, each `fp-` filter parameter, the bound collection's
+     * `change` callback and the cloud store's `save` event — all ticked by default. Its own
+     * sentence already says it fires "including when the same records come back", which is a
+     * result rather than an invocation's outcome.
+     */
     modified: {
       group: 'Events',
       type: 'signal',
       displayName: 'Filtered',
-      description: 'Fires each time the result has been rebuilt, including when the same records come back'
+      description:
+        'Fires each time the result has been rebuilt, including when the same records come back ' +
+        'and including runs nobody triggered; wire Done for the outcome of a Filter you triggered'
     },
-    // NDA-004 §2 — see `scheduleFilter`. Array Filter's twin, structurally and in its fix.
-    failure: {
-      group: 'Events',
-      type: 'signal',
-      displayName: 'Failure',
-      description: 'Fires when the filter could not be applied, or when Filter was triggered with nothing on Items'
-    },
+    /**
+     * NDA-004 §2 — see `scheduleFilter`. Array Filter's twin, structurally and in its fix.
+     *
+     * ⚠️ **No `Unchanged`**: every run builds a fresh `Collection.create(...)`, so there is no
+     * post-condition that can already hold and no state in which the action declines to act.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once a Filter you triggered has run and Items is up to date',
+      failure: 'Fires when the filter could not be applied, or when Filter was triggered with nothing on Items'
+    }),
     error: {
       group: 'Events',
       type: 'string',
@@ -367,19 +390,38 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
      * *trigger paths* are what made them twins, not what gated them.)
      */
     requestFilter: function (this: FilterDbModelsInstance) {
-      this._internal.filterRequested = true;
+      // ERG-001 §4. Minted at the `Filter` port and nowhere else — `scheduleFilter` is also
+      // reached from seven value-arrival paths, and none of them is an invocation.
+      const internal = this._internal;
+      if (!internal.pendingFilterOutcomes) internal.pendingFilterOutcomes = [];
+      internal.pendingFilterOutcomes.push(this.beginOutcome());
       this.scheduleFilter();
     },
-    reportFailure: function (this: FilterDbModelsInstance, code: string, message: string, detail?: unknown) {
+    reportFailure: function (
+      this: FilterDbModelsInstance,
+      code: string,
+      message: string,
+      detail?: unknown,
+      tokens?: OutcomeToken[]
+    ) {
       const internal = this._internal;
       internal.lastError = message;
       this.flagOutputDirty('error');
 
-      if (internal.lastReportedError === message) return;
-      internal.lastReportedError = message;
+      const repeat = internal.lastReportedError === message;
+      if (!repeat) {
+        internal.lastReportedError = message;
+        this.raiseRuntimeError(code, message, detail);
+      }
 
-      this.raiseRuntimeError(code, message, detail);
-      this.sendSignalOnOutput('failure');
+      // ⚠️ ERG-001 §4 — the dedup is about the *announcement*. Rule 1 is per invocation, so a
+      // second `Filter` with the same broken filter still owes its own `Failure` and `Completed`.
+      if (tokens && tokens.length) {
+        reportOutcomes(this, tokens, 'failure', { code, message, detail, raise: false });
+        return;
+      }
+
+      if (!repeat) this.sendSignalOnOutput('failure');
     },
     scheduleFilter: function (this: FilterDbModelsInstance) {
       if (this.collectionChangedScheduled) return;
@@ -388,8 +430,10 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       this.scheduleAfterInputsHaveUpdated(() => {
         this.collectionChangedScheduled = false;
 
-        const requested = this._internal.filterRequested === true;
-        this._internal.filterRequested = false;
+        // Drained before the run starts, so a later `Filter` owns its own batch.
+        const tokens = this._internal.pendingFilterOutcomes || [];
+        this._internal.pendingFilterOutcomes = [];
+        const requested = tokens.length > 0;
 
         if (!this._internal.collection) {
           // Silent unless an author asked: without this test the raise fires while the graph
@@ -397,7 +441,9 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
           if (requested) {
             this.reportFailure(
               'filter-records/no-items',
-              'Nothing to filter — no records are connected to the Items input'
+              'Nothing to filter — no records are connected to the Items input',
+              undefined,
+              tokens
             );
           }
           return;
@@ -426,7 +472,8 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
               this.reportFailure(
                 'filter-records/filter-failed',
                 'The filter could not be applied: ' + ((e as Error).message || String(e)),
-                { collectionName: this._internal.collectionName }
+                { collectionName: this._internal.collectionName },
+                tokens
               );
               return;
             }
@@ -453,10 +500,12 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
 
         this._internal.filteredCollection = Collection.create(filtered);
 
-        this.sendSignalOnOutput('modified');
+        // Values first, then the value-level announcement, then the invocation's outcome last.
         this.flagOutputDirty('firstItemId');
         this.flagOutputDirty('items');
         this.flagOutputDirty('count');
+        this.sendSignalOnOutput('modified');
+        reportOutcomes(this, tokens, 'done');
       });
     },
     setCollectionName: function (this: FilterDbModelsInstance, name: string) {

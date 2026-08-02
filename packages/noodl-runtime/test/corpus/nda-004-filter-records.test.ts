@@ -182,7 +182,10 @@ describe('NDA-004 §2: Filter Records', () => {
     graph.node<TriggerInstance>('trigger').go();
     await graph.settle(4);
 
-    expect(graph.signalsFor('records')).toEqual(['modified']);
+    // ERG-001 §4 added `done` and `completed` after the existing `Filtered`, so a `Do` now says
+    // all three — in that order, values flagged before any of them. The row's claim is unchanged:
+    // it still filters, still announces, still raises nothing.
+    expect(graph.signalsFor('records')).toEqual(['modified', 'done', 'completed']);
     expect(graph.errors).toEqual([]);
     expect(graph.node('records').getOutput('count').value).toBe(2);
   });

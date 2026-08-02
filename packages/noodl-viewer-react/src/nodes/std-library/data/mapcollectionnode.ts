@@ -3,13 +3,15 @@
 import { Node } from '@noodl/runtime';
 import Collection from '@noodl/runtime/src/collection';
 import Model from '@noodl/runtime/src/model';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 import type {
   CollectionLike,
   ModelLike,
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
 
@@ -51,8 +53,14 @@ interface MapCollectionInstance extends NodeInstance {
     lastError?: string;
     /** Last message actually raised, so a repeat is not re-announced. Array Filter's shape. */
     lastReportedError?: string;
-    /** Did an author *ask* for this run (a `Refresh` pulse), or did a value simply arrive? */
-    mapRequested?: boolean;
+    /**
+     * Did an author *ask* for this run (a `Refresh` pulse), and how many times?
+     *
+     * ERG-001 §4 replaced the `mapRequested` boolean with the contract's own mechanism rather
+     * than running two flags side by side — Array Filter's `pendingFilterOutcomes` verbatim,
+     * including the stickiness across the coalescing window. ⚠️ Created lazily in `requestMap`.
+     */
+    pendingMapOutcomes?: OutcomeToken[];
     collectionChangedCallback(): void;
   };
   collectionChangedScheduled?: boolean;
@@ -61,7 +69,7 @@ interface MapCollectionInstance extends NodeInstance {
   bindCollection(collection: CollectionLike): void;
   scheduleMap(): void;
   requestMap(): void;
-  reportFailure(code: string, message: string, detail?: unknown): void;
+  reportFailure(code: string, message: string, detail?: unknown, tokens?: OutcomeToken[]): void;
 }
 
 const MapCollectionNode: NodeDefinitionOptions = {
@@ -151,18 +159,25 @@ const MapCollectionNode: NodeDefinitionOptions = {
         return this._internal.mappedCollection ? this._internal.mappedCollection.size() : 0;
       }
     },
+    /**
+     * ⚠️ ERG-001 §4 — kept, and deliberately not renamed to `Done`; Array Filter's `Filtered`
+     * carries the reasoning. Here it is stronger still: the `items` and `mapScript` setters
+     * reach `scheduleMap` *ungated* — this node has no Run On Value Change boxes — so a rename
+     * would fire `Done` on the boot path of every graph that binds an array.
+     */
     modified: {
       group: 'Events',
       type: 'signal',
       displayName: 'Changed',
-      description: 'Fires once the mapping has run and Items is up to date'
+      description:
+        'Fires once the mapping has run and Items is up to date, whether an author asked for the ' +
+        'run or an input changed; wire Done instead for the outcome of a Refresh you triggered'
     },
-    failure: {
-      group: 'Events',
-      type: 'signal',
-      displayName: 'Failure',
-      description: 'Fires when the script could not be compiled, or threw while mapping a record'
-    },
+    /** ⚠️ **No `Unchanged`** — every run builds a fresh collection and cannot decline to act. */
+    ...outcomeOutputs({
+      done: 'Fires once a Refresh you triggered has run and Items is up to date',
+      failure: 'Fires when the script could not be compiled, or threw while mapping a record'
+    }),
     error: {
       group: 'Events',
       type: 'string',
@@ -202,20 +217,38 @@ const MapCollectionNode: NodeDefinitionOptions = {
      * callback fires, the author did ask, and the run that happens is the one they asked for.
      */
     requestMap: function (this: MapCollectionInstance) {
-      this._internal.mapRequested = true;
+      // ERG-001 §4. Minted at the `Refresh` port and nowhere else — the `items` and `mapScript`
+      // setters also reach `scheduleMap`, and neither is an invocation.
+      const internal = this._internal;
+      if (!internal.pendingMapOutcomes) internal.pendingMapOutcomes = [];
+      internal.pendingMapOutcomes.push(this.beginOutcome());
       this.scheduleMap();
     },
     /** Array Filter's `reportFailure`, same dedup, same reason — see `filtercollectionnode.ts`. */
-    reportFailure: function (this: MapCollectionInstance, code: string, message: string, detail?: unknown) {
+    reportFailure: function (
+      this: MapCollectionInstance,
+      code: string,
+      message: string,
+      detail?: unknown,
+      tokens?: OutcomeToken[]
+    ) {
       const internal = this._internal;
       internal.lastError = message;
       this.flagOutputDirty('error');
 
-      if (internal.lastReportedError === message) return;
-      internal.lastReportedError = message;
+      const repeat = internal.lastReportedError === message;
+      if (!repeat) {
+        internal.lastReportedError = message;
+        this.raiseRuntimeError(code, message, detail);
+      }
 
-      this.raiseRuntimeError(code, message, detail);
-      this.sendSignalOnOutput('failure');
+      // ⚠️ The dedup is about the announcement; an invocation is still owed its outcome.
+      if (tokens && tokens.length) {
+        reportOutcomes(this, tokens, 'failure', { code, message, detail, raise: false });
+        return;
+      }
+
+      if (!repeat) this.sendSignalOnOutput('failure');
     },
     scheduleMap: function (this: MapCollectionInstance) {
       if (this.collectionChangedScheduled) return;
@@ -224,15 +257,22 @@ const MapCollectionNode: NodeDefinitionOptions = {
       this.scheduleAfterInputsHaveUpdated(() => {
         this.collectionChangedScheduled = false;
 
-        const requested = this._internal.mapRequested === true;
-        this._internal.mapRequested = false;
+        // Drained before the run starts, so a later `Refresh` owns its own batch.
+        const tokens = this._internal.pendingMapOutcomes || [];
+        this._internal.pendingMapOutcomes = [];
+        const requested = tokens.length > 0;
 
         if (this._internal.collection === undefined) {
           // Silent unless an author asked, for the reason Array Filter states: the script and the
           // array arrive in some order during boot, and reporting here would fire on the ordinary
           // path every time the script lands first.
           if (requested) {
-            this.reportFailure('array-map/no-items', 'Nothing to map — no array is connected to the Items input');
+            this.reportFailure(
+              'array-map/no-items',
+              'Nothing to map — no array is connected to the Items input',
+              undefined,
+              tokens
+            );
           }
           return;
         }
@@ -255,7 +295,9 @@ const MapCollectionNode: NodeDefinitionOptions = {
         if (this._internal.mapFunc === undefined) {
           this.reportFailure(
             'array-map/script-failed',
-            'The map script could not be compiled: ' + (this._internal.mapCompileError || 'unknown error')
+            'The map script could not be compiled: ' + (this._internal.mapCompileError || 'unknown error'),
+            undefined,
+            tokens
           );
           return;
         }
@@ -277,7 +319,12 @@ const MapCollectionNode: NodeDefinitionOptions = {
             return m;
           });
         } catch (e) {
-          this.reportFailure('array-map/map-failed', 'The map script failed: ' + ((e as Error).message || String(e)));
+          this.reportFailure(
+            'array-map/map-failed',
+            'The map script failed: ' + ((e as Error).message || String(e)),
+            undefined,
+            tokens
+          );
           return;
         }
 
@@ -287,9 +334,11 @@ const MapCollectionNode: NodeDefinitionOptions = {
 
         this._internal.mappedCollection = Collection.create(mappedModels);
 
-        this.sendSignalOnOutput('modified');
+        // Values first, then the value-level announcement, then the invocation's outcome last.
         this.flagOutputDirty('items');
         this.flagOutputDirty('count');
+        this.sendSignalOnOutput('modified');
+        reportOutcomes(this, tokens, 'done');
       });
     }
   }

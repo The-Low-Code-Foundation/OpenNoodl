@@ -6,7 +6,8 @@
   "ports": {
     "items": "Input array to transform (input) and the transformed array (output) — same port name, opposite plugs.",
     "mapScript": "Per-element script; call map({...}) with the output element, reading the source element from `object`.",
-    "modified": "Signal; fires when the output array has been recomputed."
+    "modified": "Signal (Changed); fires after every run, including the automatic ones an `items` or `mapScript` change starts. For the outcome of a `refresh` you triggered, wire `done`.",
+    "done": "Signal; fires only for a run started by `refresh`, once `items` is up to date. `completed` follows it, and follows `failure` too."
   },
   "examples": ["data-static-array-filter-repeater"],
   "patterns": [

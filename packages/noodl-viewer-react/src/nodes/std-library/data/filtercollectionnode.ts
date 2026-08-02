@@ -3,6 +3,7 @@
 import { Node } from '@noodl/runtime';
 import Collection from '@noodl/runtime/src/collection';
 import Model from '@noodl/runtime/src/model';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 import type {
   CollectionLike,
   EditorConnectionLike,
@@ -12,7 +13,8 @@ import type {
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
 
@@ -115,13 +117,17 @@ interface FilterCollectionInstance extends NodeInstance {
     /** Last message actually raised, so a repeat is not re-announced. Expression's shape. */
     lastReportedError?: string;
     /**
-     * NDA-004 §2 — did an author *ask* for this run?
+     * NDA-004 §2 — did an author *ask* for this run, and how many times?
      *
-     * Sticky across the coalescing window on purpose: if a value arrival schedules a run and a
+     * ERG-001 §4 replaced the `filterRequested` boolean this used to be with the contract's own
+     * mechanism rather than running two flags side by side: one token per `Filter`/`Refresh`
+     * pulse, and "an author asked" is `tokens.length > 0`. It is sticky across the coalescing
+     * window for exactly the reason the boolean was — if a value arrival schedules a run and a
      * `Filter` pulse lands before the callback fires, the author did ask, and the run that
-     * happens is the one they asked for.
+     * happens is the one they asked for. ⚠️ Created lazily in `requestFilter`, not in
+     * `initialize`.
      */
-    filterRequested?: boolean;
+    pendingFilterOutcomes?: OutcomeToken[];
   };
   collectionChangedScheduled?: boolean;
   unbindCurrentCollection(): void;
@@ -132,7 +138,7 @@ interface FilterCollectionInstance extends NodeInstance {
   getSkip(): number | undefined;
   scheduleFilter(): void;
   requestFilter(): void;
-  reportFailure(code: string, message: string, detail?: unknown): void;
+  reportFailure(code: string, message: string, detail?: unknown, tokens?: OutcomeToken[]): void;
 }
 
 const FilterCollectionNode: NodeDefinitionOptions = {
@@ -269,20 +275,38 @@ const FilterCollectionNode: NodeDefinitionOptions = {
         return this._internal.filteredCollection ? this._internal.filteredCollection.size() : 0;
       }
     },
+    /**
+     * ⚠️ ERG-001 §4 — **kept, and deliberately not renamed to `Done`.**
+     *
+     * This is a *value-level* announcement, not an invocation's outcome. It fires from the
+     * `items` setter, the `enabled` setter, any `filter…` panel setting arriving and the bound
+     * collection's own `change` callback — each ticked by default under Run On Value Change.
+     * Renamed, `Done` would fire on the boot path every time an array binds while `Completed`,
+     * which only an invocation may emit, stayed silent: `Done` and `Completed` counts diverging
+     * on a node doing nothing wrong is Rule 2 broken where its whole value lies.
+     *
+     * `For Each`'s `Items Rendered` is the same call in the same directory, and the cost — two
+     * ports that co-fire on the port path — is recorded rather than hidden, as it was on `Array`.
+     */
     modified: {
       group: 'Events',
       type: 'signal',
       displayName: 'Filtered',
-      description: 'Fires once the filter has run and Items is up to date'
-    },
-    failure: {
-      group: 'Events',
-      type: 'signal',
-      displayName: 'Failure',
       description:
+        'Fires once the filter has run and Items is up to date, whether an author asked for the ' +
+        'run or an input changed; wire Done instead for the outcome of a Filter you triggered'
+    },
+    /**
+     * ⚠️ **No `Unchanged`.** Every run builds a fresh `Collection.create(...)`; "the same records
+     * came back" is a result, not a post-condition that already held, so there is no state in
+     * which this action declines to act. §5 must not expect a port here.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once a Filter or Refresh you triggered has run and Items is up to date',
+      failure:
         'Fires when the filter could not be applied — a pattern that will not compile, or a Filter ' +
         'pulse with no array connected'
-    },
+    }),
     error: {
       group: 'Events',
       type: 'string',
@@ -372,10 +396,21 @@ const FilterCollectionNode: NodeDefinitionOptions = {
      * them — and all four are still value arrivals.)
      */
     requestFilter: function (this: FilterCollectionInstance) {
-      this._internal.filterRequested = true;
+      // ERG-001 §4. Minted here, at the two ports that reach this method, and nowhere else:
+      // `scheduleFilter` is also reached from four value-arrival paths and none of them is an
+      // invocation an author asked for.
+      const internal = this._internal;
+      if (!internal.pendingFilterOutcomes) internal.pendingFilterOutcomes = [];
+      internal.pendingFilterOutcomes.push(this.beginOutcome());
       this.scheduleFilter();
     },
-    reportFailure: function (this: FilterCollectionInstance, code: string, message: string, detail?: unknown) {
+    reportFailure: function (
+      this: FilterCollectionInstance,
+      code: string,
+      message: string,
+      detail?: unknown,
+      tokens?: OutcomeToken[]
+    ) {
       const internal = this._internal;
       internal.lastError = message;
       this.flagOutputDirty('error');
@@ -383,11 +418,24 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       // Deduped by message, re-armed by the next good run — Expression's shape, and it matters
       // more here: a `regex` value can be *wired*, so an author typing one produces a run per
       // keystroke and most of the intermediate values are malformed.
-      if (internal.lastReportedError === message) return;
-      internal.lastReportedError = message;
+      const repeat = internal.lastReportedError === message;
+      if (!repeat) {
+        internal.lastReportedError = message;
+        this.raiseRuntimeError(code, message, detail);
+      }
 
-      this.raiseRuntimeError(code, message, detail);
-      this.sendSignalOnOutput('failure');
+      // ⚠️ ERG-001 §4 — the dedup is about the *announcement*, and it must not swallow an
+      // outcome: Rule 1 is per invocation, so a second `Filter` with the same broken pattern
+      // still owes its own `Failure` and `Completed`. `raise: false` because this method has
+      // already decided whether the reason goes on the channel.
+      if (tokens && tokens.length) {
+        reportOutcomes(this, tokens, 'failure', { code, message, detail, raise: false });
+        return;
+      }
+
+      // No token means no invocation: a malformed pattern arriving on a value path is announced
+      // — it is wrong whenever it arrives — but it is not anyone's outcome.
+      if (!repeat) this.sendSignalOnOutput('failure');
     },
     scheduleFilter: function (this: FilterCollectionInstance) {
       if (this.collectionChangedScheduled) return;
@@ -396,8 +444,11 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       this.scheduleAfterInputsHaveUpdated(() => {
         this.collectionChangedScheduled = false;
 
-        const requested = this._internal.filterRequested === true;
-        this._internal.filterRequested = false;
+        // Drained into a local before the run starts, so a `Filter` arriving later owns its own
+        // batch rather than being settled by this run's answer.
+        const tokens = this._internal.pendingFilterOutcomes || [];
+        this._internal.pendingFilterOutcomes = [];
+        const requested = tokens.length > 0;
 
         if (!this._internal.collection) {
           // Silent unless an author asked. Without the `requested` test this fires while the
@@ -407,7 +458,9 @@ const FilterCollectionNode: NodeDefinitionOptions = {
           if (requested) {
             this.reportFailure(
               'array-filter/no-items',
-              'Nothing to filter — no array is connected to the Items input'
+              'Nothing to filter — no array is connected to the Items input',
+              undefined,
+              tokens
             );
           }
           return;
@@ -441,7 +494,8 @@ const FilterCollectionNode: NodeDefinitionOptions = {
             this.reportFailure(
               'array-filter/filter-failed',
               'The filter could not be applied: ' + ((e as Error).message || String(e)),
-              { filter, sort }
+              { filter, sort },
+              tokens
             );
             return;
           }
@@ -459,11 +513,14 @@ const FilterCollectionNode: NodeDefinitionOptions = {
 
         this._internal.filteredCollection = Collection.create(filtered);
 
-        this.sendSignalOnOutput('modified');
+        // Values first, then the value-level announcement, then the invocation's outcome last —
+        // "announce after you update", and the outcome is the last thing an action does.
         this.flagOutputDirty('firstItemId');
         this.flagOutputDirty('items');
         // this.flagOutputDirty('firstItem');
         this.flagOutputDirty('count');
+        this.sendSignalOnOutput('modified');
+        reportOutcomes(this, tokens, 'done');
       });
     },
     /**

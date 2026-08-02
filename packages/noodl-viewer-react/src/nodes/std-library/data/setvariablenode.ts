@@ -2,13 +2,15 @@
 
 import Collection from '@noodl/runtime/src/collection';
 import Model from '@noodl/runtime/src/model';
+import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
 import type {
   GraphNodeModel,
   ModelLike,
   NodeContextLike,
   NodeDefinitionOptions,
   NodeInstance,
-  NodeModule
+  NodeModule,
+  OutcomeToken
 } from '@noodl/types';
 
 
@@ -24,11 +26,20 @@ interface SetVariableInstance extends NodeInstance {
     lastError?: string;
     setWith?: SetVariableAs;
     variablesModel: ModelLike;
+    /**
+     * ERG-001 §4 — one token per `Do`, drained by the deferred callback.
+     *
+     * An array rather than a single token because `hasScheduledStore` drops the *second* pulse's
+     * work in an update pass, which is deliberate and is how "set the value, then press Do"
+     * batches. It must not drop the second pulse's **outcome**: two presses are two invocations
+     * and Rule 1 is about each of them. ⚠️ Created lazily here rather than in `initialize`.
+     */
+    pendingStoreOutcomes?: OutcomeToken[];
   };
   hasScheduledStore?: boolean;
   setValue(value: unknown): void;
   scheduleStore(): void;
-  reportFailure(code: string, message: string): void;
+  reportFailure(code: string, message: string, tokens: OutcomeToken[]): void;
 }
 
 /** NDA-004 §2 — see `scheduleStore`. Also the editor's warning key; the bus keys by `code`. */
@@ -49,18 +60,20 @@ const SetVariableNodeDefinition: NodeDefinitionOptions = {
   // `scheduleStore`. The trigger is an author `Do` (group `Actions`), so these cannot fire on
   // the boot path.
   outputs: {
-    done: {
-      type: 'signal',
-      displayName: 'Done',
-      description: 'Fires once the variable has been written and every Variable node reading it has been notified',
-      group: 'Events'
-    },
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      description: 'Fires when nothing was stored because no variable Name is set',
-      group: 'Events'
-    },
+    /**
+     * ERG-001 §4. This node's `Done` already meant what the contract means — `scheduleStore` is
+     * reached from the `Do` port and from nothing else — so it is not renamed and not
+     * re-described. What it gained is `Completed`, and the routing of both terminal paths
+     * through `reportOutcome` so neither can be emitted twice or skipped.
+     *
+     * ⚠️ **No `Unchanged`.** The write uses `forceChange: true` deliberately, so storing the
+     * identical value still notifies every Variable node reading it. There is no no-op to
+     * declare, and §5 must not expect a port here.
+     */
+    ...outcomeOutputs({
+      done: 'Fires once the variable has been written and every Variable node reading it has been notified',
+      failure: 'Fires when nothing was stored because no variable Name is set'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -119,16 +132,23 @@ const SetVariableNodeDefinition: NodeDefinitionOptions = {
       description: 'Writes Value into the named variable, or fires Failure when no Name is set',
       group: 'Actions',
       valueChangedToTrue: function (this: SetVariableInstance) {
+        // ERG-001 §4. Minted here, at the port, and nowhere else. `setValue` and the `name`
+        // setter are value arrivals — nobody invoked anything — and a mint in either would
+        // report `Done` on the boot path the moment a saved project applies its parameters.
+        const internal = this._internal;
+        if (!internal.pendingStoreOutcomes) internal.pendingStoreOutcomes = [];
+        internal.pendingStoreOutcomes.push(this.beginOutcome());
         this.scheduleStore();
       }
     }
   },
   methods: {
-    reportFailure: function (this: SetVariableInstance, code: string, message: string) {
+    reportFailure: function (this: SetVariableInstance, code: string, message: string, tokens: OutcomeToken[]) {
       this._internal.lastError = message;
-      this.raiseRuntimeError(code, message);
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
+      // The value is dirty first and the outcome is last: `reportOutcome` raises on the NDA-004
+      // channel and then sends `Failure` and `Completed`, in that order.
+      reportOutcomes(this, tokens, 'failure', { code, message });
     },
     setValue: function (this: SetVariableInstance, value: unknown) {
       this._internal.value = value;
@@ -140,6 +160,11 @@ const SetVariableNodeDefinition: NodeDefinitionOptions = {
       const internal = this._internal;
       this.scheduleAfterInputsHaveUpdated(function (this: SetVariableInstance) {
         this.hasScheduledStore = false;
+
+        // Drained into a local before anything else can run, so a `Do` arriving later owns its
+        // own batch rather than being settled by this one's answer.
+        const tokens = internal.pendingStoreOutcomes || [];
+        internal.pendingStoreOutcomes = [];
 
         /**
          * NDA-004 §2 — the phase's worst shape, in one of its simplest nodes.
@@ -158,7 +183,8 @@ const SetVariableNodeDefinition: NodeDefinitionOptions = {
         if (internal.name === undefined || internal.name === null || internal.name === '') {
           this.reportFailure(
             NO_NAME_ERROR_CODE,
-            'No variable name is set — the value was not stored anywhere a Variable node can read'
+            'No variable name is set — the value was not stored anywhere a Variable node can read',
+            tokens
           );
           return;
         }
@@ -173,7 +199,9 @@ const SetVariableNodeDefinition: NodeDefinitionOptions = {
         internal.variablesModel.set(internal.name, value, {
           forceChange: true
         });
-        this.sendSignalOnOutput('done');
+        // The outcome is the last thing the action does — the write above has already landed and
+        // every Variable node reading this name has already been notified.
+        reportOutcomes(this, tokens, 'done');
       });
     },
     registerInputIfNeeded: function (this: SetVariableInstance, name: string) {

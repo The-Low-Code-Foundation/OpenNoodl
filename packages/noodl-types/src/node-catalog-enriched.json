@@ -9597,6 +9597,17 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "count",
           "displayName": "Count",
           "group": "General",
@@ -9606,6 +9617,17 @@
           },
           "isSignal": false,
           "description": "How many records passed the filter, after Skip and Limit have been applied"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Filter or Refresh you triggered has run and Items is up to date"
         },
         {
           "name": "error",
@@ -9660,7 +9682,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the filter has run and Items is up to date"
+          "description": "Fires once the filter has run and Items is up to date, whether an author asked for the run or an input changed; wire Done instead for the outcome of a Filter you triggered"
         }
       ],
       "dynamicPorts": {
@@ -9676,13 +9698,14 @@
       "enrichment": {
         "typeName": "Filter Collection",
         "summary": "Array Filter: filters, sorts and limits an input array into a new output array, re-running automatically when the source changes.",
-        "description": "Takes an array on `items`, applies the filter, sort and limit configured in its parameters, and outputs the result as a new array on `items` — the input array is never mutated, and each run produces a fresh array object. It re-runs automatically whenever the input array's contents change, unless the `filter` (Filter) signal input is connected, in which case filtering happens only when that signal fires. With `enabled` false the input passes through unfiltered (still as a copy). After each run `modified` (Filtered) fires and `count`/`firstItemId` describe the output. Filter operators: eq/neq for all types, lt/gt/lte/gte for numbers, regex (with optional case sensitivity) for strings.",
+        "description": "Takes an array on `items`, applies the filter, sort and limit configured in its parameters, and outputs the result as a new array on `items` — the input array is never mutated, and each run produces a fresh array object. It re-runs automatically whenever `items`, `enabled`, the filter settings or the source array's contents change; each of those is a Run On Value Change tick-box, ticked by default, and connecting the `filter` signal does not turn any of them off. With `enabled` false the input passes through unfiltered (still as a copy). After each run `modified` (Filtered) fires and `count`/`firstItemId` describe the output; a run you triggered with `filter` or `refresh` also reports `done`/`failure` and then `completed`. Filter operators: eq/neq for all types, lt/gt/lte/gte for numbers, regex (with optional case sensitivity) for strings.",
         "whenToUse": "Client-side filtering, searching and sorting of arrays already in memory — e.g. a live search box over a Static Array or shared Array. For server data prefer filtering in the Query Records node so the database does the work; for reshaping item properties use Array Map.",
         "ports": {
           "items": "Input (value): the source array. Output (value): a new filtered/sorted array — this is what you feed a Repeater.",
-          "filter": "Signal input; when connected, disables automatic re-filtering and runs the filter only on this signal.",
+          "filter": "Signal input; runs the filter now. Additional to the automatic re-runs, not instead of them — untick the Run On Value Change boxes to stop those.",
           "enabled": "Boolean value; false passes the input through without filtering, sorting or limiting.",
-          "modified": "Signal (Filtered); fires after each filter run."
+          "modified": "Signal (Filtered); fires after every filter run, including the automatic ones nobody triggered. For the outcome of a run you triggered, wire `done`.",
+          "done": "Signal; fires only for a run started by `filter` or `refresh`, once `items` is up to date. `completed` follows it, and follows `failure` too."
         },
         "runtimeBehavior": "The filter/sort/limit configuration creates its own input ports, pushed to the editor per instance: `filterFilter` (a stringlist of property names) generates, per property <p>, `filterFilterType-<p>` (string/number/boolean), `filterFilterOp-<p>` (eq, neq, regex for strings; eq, neq, lt, gt, gte, lte for numbers), `filterFilterValue-<p>` (a connectable value — wire a text input here for live search) and, for regex, `filterFilterOption-case-<p>`. `filterSort` (stringlist) generates `filterSort-<p>` (ascending/descending) per property. `filterEnableLimit` (boolean) reveals `filterLimit` (default 10) and `filterSkip` (default 0). An authoring tool must set `filterFilter`/`filterSort` first and use exactly these generated names.",
         "examples": [
@@ -9811,6 +9834,17 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "count",
           "displayName": "Count",
           "group": "General",
@@ -9820,6 +9854,17 @@
           },
           "isSignal": false,
           "description": "How many records are in the result after Skip and Limit, not how many matched the filter"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Filter you triggered has run and Items is up to date"
         },
         {
           "name": "error",
@@ -9874,7 +9919,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires each time the result has been rebuilt, including when the same records come back"
+          "description": "Fires each time the result has been rebuilt, including when the same records come back and including runs nobody triggered; wire Done for the outcome of a Filter you triggered"
         }
       ],
       "dynamicPorts": {
@@ -9925,11 +9970,13 @@
       "enrichment": {
         "typeName": "FilterDBModels",
         "summary": "Filter Records: applies a visual filter/sort/limit to an already-fetched array of records, client-side.",
-        "description": "Filter Records narrows and orders an `items` array of records without touching the server: the filter, sorting and limit are configured on the node exactly like Query Records' visual filter, but evaluated locally against the incoming array. The result comes out on `items` with `count` alongside; `modified` fires when the output recomputes. Use `filter` (signal) to re-evaluate on demand and `enabled` to bypass.",
+        "description": "Filter Records narrows and orders an `items` array of records without touching the server: the filter, sorting and limit are configured on the node exactly like Query Records' visual filter, but evaluated locally against the incoming array. The result comes out on `items` with `count` alongside; `modified` fires whenever the output recomputes, including the automatic re-runs an input or a record change starts. Use `filter` (signal) to re-evaluate on demand — that run also reports `done`/`failure` and then `completed` — and `enabled` to bypass.",
         "whenToUse": "Deriving multiple views from one fetched result set — tabs, local search-as-you-type, secondary sorts — without re-querying. When the full data set should never reach the client, filter in the query itself (Query Records) instead.",
         "ports": {
           "items": "Records in (input) and the filtered, sorted subset out (output).",
-          "enabled": "Boolean; when false the input passes through unfiltered."
+          "enabled": "Boolean; when false the input passes through unfiltered.",
+          "modified": "Signal (Filtered); fires after every run, including the automatic ones nobody triggered. For the outcome of a run you triggered, wire `done`.",
+          "done": "Signal; fires only for a run started by `filter`, once `items` is up to date. `completed` follows it, and follows `failure` too."
         },
         "runtimeBehavior": "Filter-value inputs are generated from the visual filter you build in the editor (each 'value' placeholder becomes an input port) — runtime-discovered + editor-adapter, same mechanism as Query Records.",
         "examples": [
@@ -17037,6 +17084,17 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "count",
           "displayName": "Count",
           "group": "General",
@@ -17046,6 +17104,17 @@
           },
           "isSignal": false,
           "description": "How many records the last successful mapping produced"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Refresh you triggered has run and Items is up to date"
         },
         {
           "name": "error",
@@ -17089,7 +17158,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the mapping has run and Items is up to date"
+          "description": "Fires once the mapping has run and Items is up to date, whether an author asked for the run or an input changed; wire Done instead for the outcome of a Refresh you triggered"
         }
       ],
       "dynamicPorts": null,
@@ -17102,7 +17171,8 @@
         "ports": {
           "items": "Input array to transform (input) and the transformed array (output) — same port name, opposite plugs.",
           "mapScript": "Per-element script; call map({...}) with the output element, reading the source element from `object`.",
-          "modified": "Signal; fires when the output array has been recomputed."
+          "modified": "Signal (Changed); fires after every run, including the automatic ones an `items` or `mapScript` change starts. For the outcome of a `refresh` you triggered, wire `done`.",
+          "done": "Signal; fires only for a run started by `refresh`, once `items` is up to date. `completed` follows it, and follows `failure` too."
         },
         "examples": [
           "data-static-array-filter-repeater"
@@ -26021,6 +26091,17 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "done",
           "displayName": "Done",
           "group": "Events",
@@ -26067,13 +26148,14 @@
       "enrichment": {
         "typeName": "Set Variable",
         "summary": "Writes one named app-wide variable when its Do signal fires, converting the value per the 'Set as' type choice.",
-        "description": "Set Variable stores a value into the named app-wide variable — the same store Variable2 reads — only when the `do` (Do) signal fires; the incoming value is held but nothing is written before that. `setWith` (Set as, parameters-only) selects the value type: it types the node's dynamic `value` input and controls conversion on store — 'boolean' coerces with !!, 'emptyString' writes '' and removes the value input entirely, and 'object'/'array' accept a shared Object/Array id string and resolve it to the actual object or collection before storing. Writes always use force-change semantics, so Variable2 nodes bound to that name fire `changed` even when the new value equals the old one. `done` fires after the store completes.",
+        "description": "Set Variable stores a value into the named app-wide variable — the same store Variable2 reads — only when the `do` (Do) signal fires; the incoming value is held but nothing is written before that. `setWith` (Set as, parameters-only) selects the value type: it types the node's dynamic `value` input and controls conversion on store — 'boolean' coerces with !!, 'emptyString' writes '' and removes the value input entirely, and 'object'/'array' accept a shared Object/Array id string and resolve it to the actual object or collection before storing. Writes always use force-change semantics, so Variable2 nodes bound to that name fire `changed` even when the new value equals the old one. `done` fires after the store completes, `failure` when no `name` is set, and `completed` after either.",
         "whenToUse": "Use it when writing shared state should happen at an explicit moment — on click, on submit, after a fetch — or when you need the type conversions ('Set as'). For continuous write-on-change semantics, wire into a Variable2 node's `value` input instead; to clear a variable, choose Set as 'Empty string'.",
         "ports": {
-          "do": "Signal; performs the store, then fires `done`. Nothing is written until this fires.",
+          "do": "Signal; performs the store, then fires `done` (or `failure` when no `name` is set) and `completed` after either. Nothing is written until this fires.",
           "name": "String value input naming the variable to write; shares the same namespace as Variable2.",
           "setWith": "Editor-only enum ('Set as'); selects the dynamic value input's type and the conversion applied when storing. Cannot be connected.",
-          "done": "Signal; fires after the value has been stored."
+          "done": "Signal; fires after the value has been stored, followed by `completed`. Wire `completed` instead to carry on whether or not the store succeeded.",
+          "completed": "Signal; fires after every `do`, whatever the outcome — `failure` still fires and still carries its reason, so this cannot hide an error."
         },
         "runtimeBehavior": "The value input is runtime-determined: the editor pushes a single dynamic input port named `value` whose type follows the `setWith` parameter ('*' when unset), and no value port exists at all when setWith is 'emptyString'. The runtime registers `value` on demand when a connection or parameter references it. An authoring tool may wire or set `value` (except in emptyString mode) and must set `setWith` via parameters, never a connection.",
         "examples": [

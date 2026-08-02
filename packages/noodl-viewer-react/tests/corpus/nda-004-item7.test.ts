@@ -164,7 +164,8 @@ describe('NDA-004 §2: Set Variable', () => {
     graph.node<TriggerInstance>('trigger').go();
     await graph.settle(3);
 
-    expect(graph.signalsFor('setvar')).toEqual(['done']);
+    // ERG-001 §4 added `completed` after the existing `done`. The row's claim is unchanged.
+    expect(graph.signalsFor('setvar')).toEqual(['done', 'completed']);
     expect(graph.errors).toEqual([]);
     expect(variables().get('corpus-greeting')).toBe('hello');
   });

@@ -8691,6 +8691,17 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "count",
           "displayName": "Count",
           "group": "General",
@@ -8700,6 +8711,17 @@
           },
           "isSignal": false,
           "description": "How many records passed the filter, after Skip and Limit have been applied"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Filter or Refresh you triggered has run and Items is up to date"
         },
         {
           "name": "error",
@@ -8754,7 +8776,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the filter has run and Items is up to date"
+          "description": "Fires once the filter has run and Items is up to date, whether an author asked for the run or an input changed; wire Done instead for the outcome of a Filter you triggered"
         }
       ],
       "dynamicPorts": {
@@ -8875,6 +8897,17 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "count",
           "displayName": "Count",
           "group": "General",
@@ -8884,6 +8917,17 @@
           },
           "isSignal": false,
           "description": "How many records are in the result after Skip and Limit, not how many matched the filter"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Filter you triggered has run and Items is up to date"
         },
         {
           "name": "error",
@@ -8938,7 +8982,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires each time the result has been rebuilt, including when the same records come back"
+          "description": "Fires each time the result has been rebuilt, including when the same records come back and including runs nobody triggered; wire Done for the outcome of a Filter you triggered"
         }
       ],
       "dynamicPorts": {
@@ -15790,6 +15834,17 @@
       ],
       "outputs": [
         {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
           "name": "count",
           "displayName": "Count",
           "group": "General",
@@ -15799,6 +15854,17 @@
           },
           "isSignal": false,
           "description": "How many records the last successful mapping produced"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a Refresh you triggered has run and Items is up to date"
         },
         {
           "name": "error",
@@ -15842,7 +15908,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the mapping has run and Items is up to date"
+          "description": "Fires once the mapping has run and Items is up to date, whether an author asked for the run or an input changed; wire Done instead for the outcome of a Refresh you triggered"
         }
       ],
       "dynamicPorts": null,
@@ -24061,6 +24127,17 @@
         }
       ],
       "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
         {
           "name": "done",
           "displayName": "Done",

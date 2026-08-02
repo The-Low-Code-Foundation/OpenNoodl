@@ -1914,6 +1914,20 @@
           "displayName": "Filtered"
         },
         {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed"
+        },
+        {
           "name": "failure",
           "type": "signal",
           "plug": "output",

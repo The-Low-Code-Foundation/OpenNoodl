@@ -212,7 +212,9 @@ describe('NDA-004 §2: Array Filter — a Do with nothing to filter', () => {
     graph.node<TriggerInstance>('trigger').go();
     await graph.settle(4);
 
-    expect(graph.signalsFor('filter')).toEqual(['modified']);
+    // ERG-001 §4 added `done` and `completed` after the existing `Filtered`, in that order and
+    // after the values are flagged. The row's claim is unchanged.
+    expect(graph.signalsFor('filter')).toEqual(['modified', 'done', 'completed']);
     expect(graph.errors).toEqual([]);
     expect(graph.node('filter').getOutput('count').value).toBe(2);
   });
