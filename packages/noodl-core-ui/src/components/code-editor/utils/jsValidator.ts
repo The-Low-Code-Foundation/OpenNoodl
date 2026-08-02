@@ -152,6 +152,22 @@ function validateJson(code: string): ValidationResult {
 }
 
 /**
+ * Modes this module has no opinion about.
+ *
+ * CSS, HTML and free text are all edited here, and none of them is checkable by
+ * a JavaScript parser. They report `valid` so nothing downstream has to special
+ * case the result, but {@link isValidatedType} is what consumers ask before
+ * *showing* a verdict — claiming "✓ Valid" over text nobody checked is the same
+ * lie as the "✗ Error" these modes used to produce.
+ */
+const UNVALIDATED: readonly ValidationType[] = ['text', 'css', 'html'];
+
+/** Does this mode have a validator behind it, or is the editor just holding text? */
+export function isValidatedType(validationType: ValidationType): boolean {
+  return !UNVALIDATED.includes(validationType);
+}
+
+/**
  * Main validation function
  * Validates JavaScript code based on validation type
  */
@@ -165,6 +181,10 @@ export function validateJavaScript(code: string, validationType: ValidationType 
       return validateScript(code);
     case 'json':
       return validateJson(code);
+    case 'text':
+    case 'css':
+    case 'html':
+      return { valid: true };
     default:
       return { valid: false, error: 'Unknown validation type' };
   }
