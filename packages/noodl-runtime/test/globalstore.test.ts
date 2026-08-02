@@ -945,7 +945,8 @@ describe('Set Global Store node', () => {
     node.update();
 
     expect(store.getKey('app', 'count')).toBe(5);
-    expect(signals).toContain('completed');
+    // ERG-001 §4 renamed this port: `completed` meant "the write happened", which is `done`.
+    expect(signals).toContain('done');
     expect(output(node, 'error')).toBeUndefined();
   });
 
@@ -958,7 +959,12 @@ describe('Set Global Store node', () => {
     node.update();
 
     expect(output(node, 'error')).toBe('Key is required');
-    expect(signals).not.toContain('completed');
+    // ⚠️ This row's meaning changed with ERG-001 §4, and the change is the point. It used to
+    // pin `Completed` as *absent* on a failed write — the mutual exclusivity §0.2 Result 3
+    // measured. The success signal is `done` now and is still absent; `completed` is the
+    // universal one and must now be *present*, which is what the contract bought.
+    expect(signals).not.toContain('done');
+    expect(signals).toContain('completed');
     expect(store.getState('app')).toEqual({});
   });
 

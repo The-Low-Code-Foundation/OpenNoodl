@@ -8,8 +8,9 @@
  * in one frame in no guaranteed order. Writing straight from the signal setter would read
  * whichever of them happened to land first.
  */
-import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
+import type { InspectInfo, NodeDefinitionOptions, NodeInstance, NodeModule, OutcomeToken } from '@noodl/types';
 
+import { outcomeOutputs } from '../../../outcome';
 import { globalStoreManager } from './globalstore';
 
 interface SetGlobalStoreInstance extends NodeInstance {
@@ -23,8 +24,13 @@ interface SetGlobalStoreInstance extends NodeInstance {
     writeScheduled: boolean;
   };
   scheduleWrite(): void;
-  doSet(): void;
-  reportFailure(message: string): void;
+  /**
+   * The outcome token travels as an argument rather than on `_internal`, so it cannot outlive
+   * its invocation — which is the property that makes NV-iii's latched-first-result class
+   * unrepresentable rather than merely absent.
+   */
+  doSet(outcome: OutcomeToken): void;
+  reportFailure(outcome: OutcomeToken, message: string): void;
 }
 
 /** NDA-004 §2 — the matchable half of the failure pair. The bus keys by `code`. */
@@ -113,22 +119,33 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
     }
   },
 
+  /**
+   * ⚠️ **ERG-001 §4, and this is not a rename** — §0.2 Result 3.
+   *
+   * The port that used to be called `Completed` fired *inside* the `try` and the no-key guard
+   * routed to `reportFailure` instead, so `Completed` and `Failure` were **mutually
+   * exclusive**. That is the exact opposite of the contract's `Completed`, which fires after
+   * all three outcomes. Adopting the reserved name in place would have silently inverted the
+   * meaning of every wire an author had already drawn from it — the SR-ix class.
+   *
+   * So the existing port becomes `Done` (which is what it always meant: the write happened),
+   * and a genuinely universal `Completed` is minted beside it.
+   *
+   * ⚠️ **No `Unchanged`, and it is a live candidate rather than a settled no.** `setKey`
+   * ends in `Model.set` without `forceChange`, which does not notify when the value compares
+   * equal — so re-writing a key with the value it already holds *is* a real no-op, of exactly
+   * the shape §0.3's register collects. It is not added here because `setKey` returns `void`
+   * and detecting it means changing that signature and reasoning about `merge`; §0.3 never
+   * measured this node, and inventing the verdict from the shape of the code is the mistake
+   * that section exists to prevent. Recorded in `ERG-001-S0-MEASUREMENT.md`.
+   */
   outputs: {
-    completed: {
-      type: 'signal',
-      displayName: 'Completed',
-      description: 'Fires once the write has been applied and every subscriber has been told',
-      group: 'Events'
-    },
-    // NDA-012 / NDA-004 §2. `Set` used to end on the `error` string and nothing else, so an
-    // author could wire `Completed` and had nothing at all to sequence off a failure. `Set` is
-    // an author `Do` (group `Actions`), so this cannot fire on the boot path.
-    failure: {
-      type: 'signal',
-      displayName: 'Failure',
-      description: 'Fires when the write could not be made, most often because Key is empty',
-      group: 'Events'
-    },
+    ...outcomeOutputs({
+      done: 'Fires once the write has been applied and every subscriber has been told',
+      // NDA-012 / NDA-004 §2. `Set` used to end on the `error` string and nothing else. `Set`
+      // is an author `Do` (group `Actions`), so this cannot fire on the boot path.
+      failure: 'Fires when the write could not be made, most often because Key is empty'
+    }),
     error: {
       type: 'string',
       displayName: 'Error',
@@ -144,20 +161,23 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
     scheduleWrite: function (this: SetGlobalStoreInstance) {
       if (this._internal.writeScheduled) return;
       this._internal.writeScheduled = true;
+      // After the coalescing guard, so two `Set` pulses in one frame — which this node
+      // deliberately collapses into one write — are one invocation with one outcome.
+      const outcome = this.beginOutcome();
 
       this.scheduleAfterInputsHaveUpdated(function (this: SetGlobalStoreInstance) {
         this._internal.writeScheduled = false;
-        this.doSet();
+        this.doSet(outcome);
       });
     },
 
-    doSet: function (this: SetGlobalStoreInstance) {
+    doSet: function (this: SetGlobalStoreInstance, outcome: OutcomeToken) {
       const key = this._internal.key;
 
       if (!key) {
         // Reported rather than dropped: a Set node with no key is a graph the author has
         // half-finished, and silence is the worst way to tell them.
-        this.reportFailure('Key is required');
+        this.reportFailure(outcome, 'Key is required');
         return;
       }
 
@@ -175,9 +195,10 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
           this.flagOutputDirty('error');
         }
 
-        this.sendSignalOnOutput('completed');
+        // Last, after the store has notified and `error` has been cleared.
+        this.reportOutcome(outcome, 'done');
       } catch (error) {
-        this.reportFailure(String((error as Error).message || error));
+        this.reportFailure(outcome, String((error as Error).message || error));
       }
     },
 
@@ -186,12 +207,14 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
      * Contract asks for: the `error` string an author can display, the `Failure` signal an
      * author can sequence off, and the runtime error bus, which is what reaches `On App Error`
      * in a deployed build where no editor is watching.
+     *
+     * ERG-001 §4 folded the last two into `reportOutcome`, which also mints the `Completed`
+     * this path could never emit before.
      */
-    reportFailure: function (this: SetGlobalStoreInstance, message: string) {
+    reportFailure: function (this: SetGlobalStoreInstance, outcome: OutcomeToken, message: string) {
       this._internal.error = message;
       this.flagOutputDirty('error');
-      this.sendSignalOnOutput('failure');
-      this.raiseRuntimeError(SET_ERROR_CODE, message);
+      this.reportOutcome(outcome, 'failure', { code: SET_ERROR_CODE, message });
     }
   }
 };
