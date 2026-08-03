@@ -7,7 +7,7 @@
 | **Difficulty** | 🟠 Medium-hard (the fix is clear; the surface is 24 port types) |
 | **Recommended executor** | 🟠 Opus — the repair is specified, but deciding the coercion-vs-reject policy per type is judgement |
 | **Prerequisites** | none |
-| **Status** | ✅ **BUILT 2026-08-03** — all four slices. Criteria 1–5 met and tested; criterion 6 (live replay) is owed. |
+| **Status** | ✅ **COMPLETE 2026-08-03** — all four slices, all six criteria. Criterion 6 replayed against a real provider: a real model wrote `pathParams: "chatId"` and the plan applied clean. |
 
 > ## ⚠️ Two wire formats in this task were wrong
 > **`dimension` is not `"100px"` and a units-typed `number` is not a bare number.** Both are
@@ -213,7 +213,29 @@ fixing the crash. The module is pure and catalog-only, so promoting it later is 
 4. ✅ `tests-unit/aib-001/nameListParameter.test.ts` over the pure rule; the six call sites are one line
    each.
 5. ✅ `tests/ai/authoring-plan.test.ts`, "AIB-001 — retrying one operation of a plan".
-6. ⏳ **Owed.** Needs a live provider and a real project; everything below it is offline.
+6. ✅ **Live, 2026-08-03**, against the user's own configured provider (`claude-sonnet-5`), via
+   `scripts/aib38-live/live-plan-pageinputs.js`. Nothing stubbed, $0.46 spent.
+
+   Asked for Richard's app in a user's words — *"a Chat page that reads a chat id from the URL"*,
+   never naming `PageInputs` or `pathParams`, because naming the node is telling the model the
+   answer. It planned four operations (three pages plus an `/App` update it decided it needed),
+   authored all four through the gate, and **applied clean**. `/Pages/Chat` came out of
+   `ProjectModel` holding `pathParams: "chatId"` — a `String` — with the `pm-chatId` output port
+   live on the node.
+
+   That is the whole of what the phase opened on: a real model, a real path parameter, and no
+   `.split is not a function`.
+
+   Two notes worth carrying:
+
+   - **The apply that closed this criterion went through AIB-003 slice 4's recovery path.** Editing
+     a source file mid-run hot-swapped `PlanSessionStore` and emptied it with all four operations
+     staged; the candidates were on disk, and reopening the project brought them back and applied
+     them. Stronger evidence than the run that was planned.
+   - **The driver reported an empty project against a project with three of the nodes**, twice, for
+     two different reasons: `forEachNode` walks the roots only, and in the live model `node.type` is
+     the resolved type *object* — a string only in `project.json`, which is where the name was read
+     from. Neither is a defect in the app, and both would have been reported as one.
 
 ## Traps
 

@@ -240,12 +240,83 @@ Driven in the running editor against a scratch project.
 Both re-verified after a **restart** rather than through HMR: the fix turns on a new CSS-module
 class, and HMR dropping CSS-module classes is the documented trap here.
 
+### Criteria 3 and 7, live — and the defect they found
+
+**2026-08-03, against a real GitHub account** (`scripts/aib38-live/live-github-connect.js`, which
+creates a private throwaway repo and prints its URL).
+
+Criterion 7 works end to end: a project with no `.git` at all was initialised from the panel's empty
+state, connected to a **newly created** GitHub repository from the same panel, and pushed —
+`git ls-remote origin` returned `refs/heads/main` at the local HEAD. Criterion 3's label renders
+where the task said it should, beside the branch in the Repository section, with no section change.
+
+And running it found a defect that had been sitting in the flow this task exists to make reachable.
+
+> **After connecting a local project to GitHub, the Repository section reads "No remote".**
+>
+> Beside an **"Up to date"** figure it could only have computed *from* a remote — the two halves of
+> the same four-line section contradicting each other on screen. The Issues and pull requests section
+> does not appear either.
+>
+> `Git.setRemoteURL()` returned early when there was no existing remote:
+>
+> ```ts
+> if (!remoteName) {
+>   await addRemote(this.repositoryPath, 'origin', url);
+>   return;                       // ← originUrl and originProvider never set
+> }
+> this.originUrl = url;           // ← only on the *replace* path
+> ```
+>
+> "No existing remote" is precisely the connect-a-local-project case. `getRemoteName()` then reports
+> an origin while `OriginUrl` is still null, so `useGitHubRepository` classifies a freshly connected
+> GitHub repo as `remote-not-github` with a null url. `remoteLabel(null, null, null)` is the string
+> *"No remote"*; `hasRemote` is true for `remote-not-github`, so the sync figure renders anyway.
+>
+> `setRemoteURL` is confirmed to be the path the connect flow takes
+> ([`ConnectToGitHubView.tsx:127`](../../../packages/noodl-editor/src/editor/src/views/panels/VersionControlPanel/components/github/ConnectToGitHub/ConnectToGitHubView.tsx#L127)),
+> and both fields are now set after the write on both branches.
+>
+> **⚠️ That change did not clear the symptom, so the missing cache is a real bug and not *the* bug.**
+> Re-running the whole flow against the fixed build produced the same screen.
+>
+> **The scope is exactly one session, and that was worth measuring.** Reopening the same project in
+> a fresh editor renders it correctly — `richardosborne14/nodegx-aib008-livecheck-…`, *"Up to
+> date"*, **and** the Issues and pull requests section, which is gated on `github-connected`. So
+> nothing is wrong with the section, the parse, or the classification. What is wrong is that
+> **connecting a remote does not refresh the panel that connected it**, and it stays wrong until the
+> project is reopened.
+>
+> That puts `useGitHubRepository.refetch` in the frame rather than `git.OriginUrl`. `onConnected`
+> calls it, and sidebar panels are hidden rather than unmounted (the WFA-002 trap this phase has now
+> hit three times), so a `refetch` bound to a stale closure — or resolving before `setRemoteURL`
+> lands — leaves the hook's classification frozen for the life of the session. Unverified; that is
+> the next thing to check, not a conclusion.
+>
+> **What this does not block.** The remote is created, set and pushed to correctly — verified twice
+> by `git ls-remote` against the account, not by reading the screen — and the panel renders all of
+> it on the next open. Criteria 3 and 7 are met. What is wrong is the *first* thing the user sees
+> after doing it.
+
+Two notes on the driver, because both cost time and both are the same shape as defects this phase
+has filed:
+
+- **`clickButtonWithText(client, 'Create')`** matched **Create New Repository** — the button that
+  *opens* the modal — not the **Create Repository** that submits it, because the fallback is
+  `startsWith` and that one comes first in the DOM. The driver reopened the modal it was trying to
+  submit, indefinitely, with no error to show for it.
+- **A coordinate click missed the modal entirely** and landed on the canvas behind it. `el.click()`
+  drove the same button correctly. Worth knowing: `dispatchClick` is the better default for panel
+  chrome, and the wrong one for a centred modal.
+
 ### Owed
 
-- **Criterion 3 (ahead/behind) and criterion 7's second half** — the figure needs a remote to be
-  non-empty, and connecting one needs a real GitHub account. The code path is the context's
-  `localCommitCount`/`remoteCommitCount`, which the panel has rendered since long before this task;
-  what is unverified is the new label beside the branch.
+- **The "connect does not refresh the panel" defect above is open**, scoped to the session that
+  connects and cleared by reopening the project. A display bug over a working flow — but it is the
+  first thing a user sees after doing the thing this task made possible, which makes it worth more
+  than its severity suggests. `useGitHubRepository.refetch` is the place to look.
+- Two private scratch repos under `richardosborne14` — `nodegx-aib008-livecheck-1785772604409` and
+  `nodegx-aib008-fixcheck-1785773045321`. Delete them when convenient.
 - The scratch project used for this (`bcn010-live`) now has a `.git` from criterion 5's init step.
 - **AIB-009 F6** — the 404-per-repo launch logging is in `services/github`, untouched by this task and
   still open. What *did* go with the shell is `GitHubPanel.tsx`'s own per-render `🔧`/`🎧`/`🔔`

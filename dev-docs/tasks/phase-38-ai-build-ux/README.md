@@ -234,15 +234,45 @@ says which. Where something is still a hypothesis, it says that instead.
 
 | Task | State |
 |---|---|
-| AIB-001 | built; criterion 6 (live, real provider) still owed |
+| AIB-001 | ✅ **complete** — criterion 6 replayed against a real provider |
 | AIB-002 | **built, live QA green** |
-| AIB-003 | slices 1–3 built, **criterion 6 live QA green**; slice 4 (persist under `.nodegx/plan/`) optional, not done |
+| AIB-003 | ✅ **complete** — all four slices; slice 4 closes exit criterion 7 |
 | AIB-004 | **built, live QA green** |
 | AIB-005 | **built, live QA green** — slice 3's wizard label now driven through the real wizard |
 | AIB-006 | **built, criteria 1, 2 and 6 live QA green** |
-| AIB-007 | **built** (all four slices); criterion 6 (live, against a real provider) owed |
-| AIB-008 | **built** (all four slices); criterion 7 (live connect + push) owed — needs a GitHub account |
+| AIB-007 | **built** (all four slices); criterion 6 (live, against a real provider) **still owed** |
+| AIB-008 | ✅ **criteria 3 and 7 met live**, against a real GitHub account; one open display defect |
 | AIB-009 | **register closed** — F1, F2, F4, F6, F7, F8, F9, F10, F11, F12; F5 open at low priority |
+
+> **✅ AIB-001 criterion 6, exit criterion 7, and AIB-008 criteria 3 and 7 are met** (2026-08-03),
+> and **AIB-003 slice 4 was built to get there**. Carry forward:
+>
+> - **A real model wrote the format.** Asked for *"a Chat page that reads a chat id from the URL"* —
+>   never naming `PageInputs` or `pathParams`, because naming the node is telling the model the
+>   answer — it planned four operations, authored all four, applied clean, and left
+>   `pathParams: "chatId"` (a `String`) on the node with the `pm-chatId` port live. $0.46. That is
+>   the defect this phase opened on, gone at the source rather than at the `.split`.
+> - **Slice 4 was paid for by an accident before its own test ran.** Editing a source file mid-run
+>   hot-swapped `PlanSessionStore` and emptied it with four operations staged. 96KB of candidates
+>   were already on disk; reopening the project brought the build back and applied it. The
+>   design — *a restart is a stop* — meant no new UI was needed: a restored run is a cancelled run,
+>   so Retry and the doc pass were already there.
+> - **Slice 4's own live QA found that `Discard plan` did nothing.** Discarding empties the session,
+>   the restore effect watches for exactly that, and it read the build straight back in. Eight of
+>   this phase's defects have now come from a mount rather than a diff.
+> - **A driver that swallows a click failure reports the absence of a defect.** The check for
+>   Discard clicked `Abandon` (the handler's name) where the button says **Discard plan** (AIB-004's
+>   vocabulary), inside a `.catch`. It passed by never running. The AIB-008 driver hit the same class
+>   twice more: `startsWith('Create')` matched **Create New Repository** rather than the
+>   **Create Repository** that submits, and a coordinate click missed a centred modal entirely and
+>   landed on the canvas. Assert on the label the user sees; never let a click failure be silent.
+> - **Two probes reported an empty project against a project holding three of the nodes.**
+>   `forEachNode` walks the roots only, and in the live model `node.type` is the resolved type
+>   *object* — a string only in `project.json`, which is where the name was read from. Both would
+>   have been filed as app defects.
+> - **AIB-008 gained an open defect**: connecting a remote does not refresh the panel that connected
+>   it. Everything works — repo created, remote set, pushed, all verified by `git ls-remote` — and
+>   the panel says *"No remote"* beside an *"Up to date"* figure until the project is reopened.
 
 ### What the exit criteria still owe
 
@@ -252,7 +282,14 @@ editor opening it, and the Build panel announcing the waiting plan unprompted. C
 half is green the same way — `docs/CONVENTIONS.md` renders all eight of its headings in the Docs
 panel, with no comment leaking into the HTML.
 
-What no scripted driver can stand in for is a **model**: criteria 3, 4, 5 and 7 are about what a real
-plan run does with real output, and AIB-001 criterion 6 (Richard's own three-page plan with a
-`PageInputs` node) is the one that matters. That, AIB-007 criterion 6 and AIB-008 criterion 3/7 are
-the whole of what is left, and all of it needs either provider credit or a GitHub account.
+**Criterion 5 — the phase — is met**, against a real model: see AIB-001 criterion 6 above. So are
+criteria 3 and 4 (that run's operations reported position, elapsed and cost, and were reviewable as
+they landed) and **criterion 7**, twice: once by accident when HMR emptied the store mid-run, and
+once on purpose with the editor killed while an operation was in flight.
+
+**What is left is criterion 6's first half and AIB-007 criterion 6** — *"the backend the scope
+described exists in Backend Services"*, and the Sign Up node working against it in preview. The
+provisioning half was proven when AIB-007 shipped; what is unproven is the **scoping** half — a real
+wizard conversation agreeing a backend, and the built app signing a user up against the thing it
+provisioned. That is one long run against a real provider, and it is the only thing this phase still
+owes.

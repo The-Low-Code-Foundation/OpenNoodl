@@ -7,7 +7,7 @@
 | **Difficulty** | 🟠 Medium-hard (a lifetime change, not a bug fix) |
 | **Recommended executor** | 🔵 Fable for the lifetime decision, 🟠 Opus to build it |
 | **Prerequisites** | none |
-| **Status** | ✅ **BUILT 2026-08-03** — slices 1–3. Slice 4 (persist candidates to disk) not done. Criteria 1–5 covered; criterion 6 (live) owed. |
+| **Status** | ✅ **COMPLETE 2026-08-03** — all four slices. Criteria 1–6 met, criterion 6 live twice (scripted and by accident). Slice 4 closes phase-38 exit criterion 7. |
 
 ## What was built
 
@@ -154,6 +154,44 @@ already written there in full.
 Candidates under `.nodegx/plan/<planId>/` in the project folder, gitignored. Restores the
 authored-but-unapplied set across a restart.
 
+> **✅ Built 2026-08-03.** Not optional after all: it is phase 38's **exit criterion 7**, and no
+> other task was going to deliver it.
+>
+> **The design in one sentence: a restart is a stop.** A restored run comes back in exactly the
+> state `cancel()` leaves — staged candidates intact, anything mid-flight `failed` with AIB-001's
+> Retry beside it, an unwritten doc `skippedByCancel` so AIB-009 F4's doc-pass button appears. No new
+> affordance, and no branch in the panel for "this one came from disk".
+>
+> Resuming was the tempting alternative and it is wrong. The model session died with the process, so
+> "resume" means silently re-running an operation — spending money the user did not ask to spend, on
+> a screen they have just opened. Stopping is the honest report, and the two ways forward from a stop
+> already exist.
+>
+> **One file, not a directory per plan.** `.nodegx/plan/session.json`. The task sketched
+> `<planId>/` and there is no plan id anywhere in the model; inventing one buys a directory per plan
+> for a store that can only ever hold the newest. That is the seventh stated mechanism in this phase
+> to move under the task that built it.
+>
+> **Where the pieces went, and why they are split that way.** `PlanRun` imports `AuthoringSession`,
+> which reaches an `AiClient`, so it cannot be constructed in the plain-Node runner where the rest of
+> AIB-003 is tested. The *decisions* — which operation comes back retryable, what a hand-edited file
+> may introduce, what the panel says — are pure functions in `planSessionSnapshot.ts`; `PlanRun`
+> keeps only `snapshot()` and `restore()`, which assign fields. `PlanSessionSidecar` is the only
+> thing that touches a filesystem, and `PlanSessionStore` reaches it through an injected seam that is
+> `null` by default — which is what keeps slices 1–2's tests free of Electron.
+>
+> **The store subscribes to the run, and that is the whole trick.** A `PlanRun` publishes to its own
+> listeners, never through the store, so a hook on `update()` would have persisted the plan, the
+> exclusions and the description — everything except the authored output slice 4 exists for — and
+> would have looked completely correct until someone closed the window mid-build. The store
+> subscribes because it is the only thing that outlives a mount; the view unsubscribes on a tab
+> click, which is where this task started.
+>
+> **`.nodegx/` gained a second resident**, so "create it and make sure git ignores it" moved out of
+> `CodeHistoryStore` into `utils/nodegxSidecar`. A second copy of that rule is one that eventually
+> disagrees with the first, and disagreeing means a scratch directory committed to somebody's
+> repository.
+
 ## Acceptance criteria
 
 1. Author a plan, switch to *This component*, switch back — plan, run state, staged candidates and
@@ -178,12 +216,45 @@ authored-but-unapplied set across a restart.
    `renderScopeRecord` rather than a fixture — the transcript is recovered by
    parsing the rendered form, and a fixture would let the two drift while the
    parser kept passing.
+7. *(slice 4, added)* ✅ **Live, 2026-08-03**, via `scripts/aib38-live/scripted-restart.js` — two
+   phases with a real `dev:stop` between them. Operation 1 staged and operation 2 held in flight at
+   the moment of the kill; after the relaunch the plan is back unprompted, the staged candidate
+   still has its nodes, the interrupted operation reads *"The editor closed while this was being
+   authored"* with a **Retry** beside it, the unreached doc offers **Write the documentation (1)**,
+   and the panel offers **Apply 1 of 3 to project**. Ten checks, all green — including the two that
+   only exist because the first run failed one of them (below).
 6. ✅ **Live, 2026-08-03**, via `scripts/aib38-live/scripted-stop.js`. With operation 1 staged and
    operation 2 still authoring: scope tab to *This component* and back, then the Build panel closed
    (switched to Docs) and reopened — the plan, the run and the staged candidate all intact each
    time, and the panel came back reading `Building 2 of 3 · 13s · $0.01` rather than an empty
    panel with the candidates still in memory behind it. The driver holds each turn on a promise it
    resolves over CDP, so "navigate away mid-run" is a step rather than a race.
+
+## What slice 4's live QA found
+
+**`Discard plan` did nothing.** Discarding empties the session; the panel's restore effect watches
+for exactly that emptiness; it read the file straight back in and restored the whole build — same
+plan, same note, same staged candidate. The discard's own debounced removal then deleted the file,
+so disk and memory disagreed and the next keystroke wrote it back out. A user pressing Discard saw
+the plan stay.
+
+Fixed with a promise per project in the store (`consultSavedBuild`) rather than a ref in the view,
+for the reason everything else in this task moved to the store: the view unmounts on a tab click and
+a decision the user made has to outlive that. It is deliberately **not** cleared by `discard`, and
+not cleared when a project closes.
+
+**The driver hid it, and looked green doing so.** It clicked `Abandon` — which is what the code
+calls the handler — where the button reads **Discard plan**, which is AIB-004's one vocabulary. The
+miss was swallowed by a `.catch`, so a check that never ran reported the absence of a defect. Two
+lessons, both cheap: assert on the label the user sees, and never let a driver's click failure be
+non-fatal.
+
+**Slice 4 was paid for by an accident before its own test ran.** Editing a source file during the
+AIB-001 live run hot-swapped `PlanSessionStore` and emptied it — the trap listed below, sprung for
+real — with four operations already staged against the real provider. 96KB of candidates were in
+`.nodegx/plan/session.json`; reopening the project brought the whole build back and it applied
+clean. The trap note below is now *"this is what slice 4 is for"* rather than *"this will waste a
+live-QA session"*.
 
 ## Traps
 
@@ -194,5 +265,7 @@ authored-but-unapplied set across a restart.
   must not reintroduce a double-`take` race — the comment at line 110-118 explains why two consumers
   of a destructive take silently lose.
 - `ProjectReviewStore` is the precedent. Read it before designing a new store.
-- HMR will hot-swap the store module and drop its contents. That is not a real-world failure but it
-  will waste a live-QA session if unexpected.
+- HMR will hot-swap the store module and drop its contents. Since slice 4 this is survivable rather
+  than fatal — the sidecar is on disk and reopening the project brings the build back — but the
+  in-memory session still goes, so a run in flight is still lost. **Do not edit source while a live
+  run is going.**

@@ -974,12 +974,26 @@ export class Git {
     //if there's no existing remote, add one called origin
     if (!remoteName) {
       await addRemote(this.repositoryPath, 'origin', url);
-      return;
+    } else {
+      await setRemoteURL(this.repositoryPath, remoteName, url);
     }
 
+    // AIB-008 criterion 7, found live. Both branches, and *after* the write —
+    // a cache set before a failed git call would be a lie.
+    //
+    // Adding the FIRST remote returned early and set neither of these, which is
+    // precisely the flow the merged panel exists for: connect a local project to
+    // GitHub. `getRemoteName()` then reported an origin while `OriginUrl` stayed
+    // null, so `useGitHubRepository` classified a freshly connected GitHub repo
+    // as `remote-not-github` with a null url — and the Repository section read
+    // **"No remote" beside an "Up to date" figure it could only have computed
+    // from one**, with the Issues and pull requests section absent because that
+    // is gated on `github-connected`.
+    //
+    // It self-healed on the next `fetch()` or on reopening the project, which is
+    // why a flow that is only run once per project never showed it.
     this.originUrl = url;
     this.originProvider = this.getProviderForRemote(url);
-    await setRemoteURL(this.repositoryPath, remoteName, url);
   }
 
   public async tryHandleRebaseState() {

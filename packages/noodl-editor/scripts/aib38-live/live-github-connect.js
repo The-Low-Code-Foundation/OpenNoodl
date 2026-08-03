@@ -148,10 +148,31 @@ async function main() {
   }
 
   const repoName = String(args.repo || `nodegx-aib008-livecheck-${Date.now()}`);
-  const projectDir = path.join(os.tmpdir(), `aib008-live-${Date.now()}`);
-  fs.cpSync(CORPUS_PROJECT_DIR, projectDir, { recursive: true });
-  // Criterion 7 starts from "a local project" — no git at all.
-  fs.rmSync(path.join(projectDir, '.git'), { recursive: true, force: true });
+
+  // `--use-open-project` picks up whatever the editor already has open instead
+  // of copying a fresh one. The editor takes a single-instance lock and refuses
+  // to open a second project, so a re-run after a driver failure otherwise costs
+  // a full restart — two and a half minutes of webpack — to get back to the step
+  // that failed.
+  const projectDir = args['use-open-project']
+    ? await (async () => {
+        const c = await connect(await appTarget('editor'));
+        await evaluate(c, PROBE);
+        const dir = await evaluate(
+          c,
+          `(() => { const p = ${REQ(PROJECT_MODULE)}.ProjectModel.instance; return p ? p._retainedProjectDirectory : ''; })()`
+        );
+        c.close();
+        if (!dir) throw new Error('--use-open-project, but no project is open');
+        return dir;
+      })()
+    : (() => {
+        const dir = path.join(os.tmpdir(), `aib008-live-${Date.now()}`);
+        fs.cpSync(CORPUS_PROJECT_DIR, dir, { recursive: true });
+        // Criterion 7 starts from "a local project" — no git at all.
+        fs.rmSync(path.join(dir, '.git'), { recursive: true, force: true });
+        return dir;
+      })();
 
   const client = await connect(await appTarget('editor'));
   const steps = [];
@@ -164,22 +185,33 @@ async function main() {
     await evaluate(client, `(() => { ${REQ(SIDEBAR_MODULE)}.SidebarModel.instance.switch('versioncontrol'); return true; })()`);
     await sleep(1200);
 
-    // ── The honest empty state (criterion 5, re-checked as the starting point) ─
+    // ── The honest empty state, and init ─────────────────────────────────────
     const empty = await panelText(client);
-    check(
-      steps,
-      'AIB-008 §5: a project with no git says so, with one action',
-      /missing a git setup/i.test(empty) && /Initialize Version Control/i.test(empty),
-      empty.slice(0, 160)
-    );
-
-    // ── Init ────────────────────────────────────────────────────────────────
-    await clickButtonWithText(client, 'Initialize Version Control (git)');
-    await waitFor(client, `(() => /Local Changes|No remote/i.test(${'((document.body.innerText)||"")'}))()`, {
-      timeoutMs: 60000,
-      what: 'the panel to come up on the initialised repo'
-    });
-    check(steps, 'AIB-008 §7: git is initialised from the panel', fs.existsSync(path.join(projectDir, '.git')), projectDir);
+    const alreadyInitialised = fs.existsSync(path.join(projectDir, '.git'));
+    if (!alreadyInitialised) {
+      check(
+        steps,
+        'AIB-008 §5: a project with no git says so, with one action',
+        /missing a git setup/i.test(empty) && /Initialize Version Control/i.test(empty),
+        empty.slice(0, 160)
+      );
+      await clickButtonWithText(client, 'Initialize Version Control (git)');
+      await waitFor(client, `(() => /Local Changes|No remote/i.test(document.body.innerText || ''))()`, {
+        timeoutMs: 60000,
+        what: 'the panel to come up on the initialised repo'
+      });
+      check(
+        steps,
+        'AIB-008 §7: git is initialised from the panel',
+        fs.existsSync(path.join(projectDir, '.git')),
+        projectDir
+      );
+    } else {
+      // `--use-open-project` resuming a run whose init already happened. Said out
+      // loud rather than silently skipped: a step that did not run is not a step
+      // that passed.
+      report.skipped = 'init — this project already has a .git (resumed run)';
+    }
     report.initialCommit = git(projectDir, 'log', '--oneline', '-1');
 
     const beforeRemote = await panelText(client);
@@ -196,30 +228,33 @@ async function main() {
       beforeRemote.split('\n').slice(0, 8).join(' | ')
     );
 
-    // ── A commit of the user's own, so ahead/behind has something to count ───
-    fs.writeFileSync(path.join(projectDir, 'AIB-008-LIVE.md'), `Live check ${new Date().toISOString()}\n`);
-    await sleep(1500);
-    await setInputValue(client, 'textarea', 'AIB-008 live check');
-    await sleep(300);
-    await clickButtonWithText(client, 'Commit local changes').catch(async () => clickButtonWithText(client, 'Commit'));
-    await sleep(3000);
-    report.commits = git(projectDir, 'log', '--oneline').split('\n');
-    check(
-      steps,
-      'AIB-008 §7: a commit is made from the panel',
-      report.commits.length >= 2,
-      report.commits.join(' | ')
-    );
-
     // ── Connect a remote ────────────────────────────────────────────────────
-    await clickButtonWithText(client, 'Connect to GitHub');
-    await sleep(1200);
+    //
+    // Before the second commit rather than after, and that ordering is not
+    // arbitrary. The panel reads the working directory through `fetchLocal`,
+    // which runs on mount and after its own operations — it does not watch the
+    // filesystem, so a file written behind its back is invisible until something
+    // makes it look again. Connecting is such a something (`onConnected` calls
+    // `refetchRepo` and `fetchRemote`), so the change goes in first and the
+    // connect is what surfaces it. It also means the push at the end carries a
+    // commit the panel made, which is the half of criterion 7 that matters.
+    fs.writeFileSync(path.join(projectDir, 'AIB-008-LIVE.md'), `Live check ${new Date().toISOString()}\n`);
+
+    // Both of these are idempotent on a resumed run: the connect view and the
+    // modal may already be open, and clicking the trigger again would close what
+    // it opened.
+    if (!(await evaluate(client, `(() => /Create New Repository/.test(document.body.innerText || ''))()`))) {
+      await clickButtonWithText(client, 'Connect to GitHub');
+      await sleep(1500);
+    }
     const connectText = await panelText(client);
     if (/Connect GitHub Account/i.test(connectText)) {
       throw new Error('the editor has no GitHub token — sign in once by hand, then re-run');
     }
 
-    await clickButtonWithText(client, 'Create New Repository');
+    if (!(await evaluate(client, `(() => Boolean(document.querySelector('#name')))()`))) {
+      await clickButtonWithText(client, 'Create New Repository');
+    }
     await waitFor(client, `(() => Boolean(document.querySelector('#name')))()`, { what: 'the create-repo modal' });
     await setInputValue(client, '#name', repoName);
     await sleep(300);
@@ -236,7 +271,11 @@ async function main() {
        })()`
     );
     await sleep(300);
-    await clickButtonWithText(client, 'Create');
+    // Exact. `startsWith('Create')` matches **Create New Repository** — the
+    // button that opened this modal, and the one that comes first in the DOM —
+    // so the driver kept reopening the modal it was trying to submit, forever,
+    // with no error to show for it.
+    await clickButtonWithText(client, 'Create Repository', { exact: true });
 
     // ── Criterion 3, and the push ───────────────────────────────────────────
     const connected = await waitFor(
@@ -259,6 +298,37 @@ async function main() {
       /Up to date|\d+ ahead|\d+ behind/.test(afterText),
       report.panelAfter.join(' | ')
     );
+
+    // ── The commit, from the panel that shows the history ───────────────────
+    await waitFor(
+      client,
+      `(() => /AIB-008-LIVE\\.md/.test(document.body.innerText || ''))()`,
+      { timeoutMs: 45000, what: 'the local change to appear in the panel' }
+    );
+    await setInputValue(client, 'textarea', 'AIB-008 live check');
+    await sleep(400);
+    await clickButtonWithText(client, 'Commit local changes');
+    await sleep(4000);
+    report.commits = git(projectDir, 'log', '--oneline').split('\n');
+    check(
+      steps,
+      'AIB-008 §7: a commit is made from the panel, on top of the one init made',
+      report.commits.length >= 2,
+      report.commits.join(' | ')
+    );
+
+    // Criterion 3 with a number in it, not just the "Up to date" branch: the
+    // whole point of the figure is that it tells you there is something to push.
+    const ahead = await waitFor(
+      client,
+      `(() => { const m = (document.body.innerText || '').match(/(\\d+) ahead/); return m ? m[1] : null; })()`,
+      { timeoutMs: 45000, what: 'the ahead count to reflect the new commit' }
+    );
+    check(steps, 'AIB-008 §3: the ahead figure counts the unpushed commit', Number(ahead) >= 1, `${ahead} ahead`);
+
+    // ── Push ────────────────────────────────────────────────────────────────
+    await clickButtonWithText(client, 'Push');
+    await sleep(6000);
 
     // The remote is the authority on whether a push happened — the panel is not.
     report.remoteUrl = git(projectDir, 'remote', '-v').split('\n')[0];
