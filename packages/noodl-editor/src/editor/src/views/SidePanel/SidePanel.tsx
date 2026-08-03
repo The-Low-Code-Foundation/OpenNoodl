@@ -198,14 +198,21 @@ export function SidePanel() {
   // without a second header component existing; PNL-005 formalises the slot.
   const modeSlot = layout ? (
     <>
-      <Tooltip content={layout.mode === 'wide' ? 'Narrow panel' : 'Widen panel'} fineType="⌘\" showAfterMs={300}>
-        <IconButton
-          variant={IconButtonVariant.Transparent}
-          icon={layout.mode === 'wide' ? IconName.FoldHorizontal : IconName.UnfoldHorizontal}
-          testId="side-panel-wide-toggle"
-          onClick={layout.toggleWide}
-        />
-      </Tooltip>
+      {/* POL-003: this was the only one of the four with no wrapper, which is why
+          it sat 5px above its neighbours — measured in the running editor, centres
+          at y=48 against y=53 for the other three. `Tooltip` renders a
+          block-level trigger div, so a bare control and a wrapped one do not land
+          on the same baseline. */}
+      <span className={css['ModeControl']}>
+        <Tooltip content={layout.mode === 'wide' ? 'Narrow panel' : 'Widen panel'} fineType="⌘\" showAfterMs={300}>
+          <IconButton
+            variant={IconButtonVariant.Transparent}
+            icon={layout.mode === 'wide' ? IconName.FoldHorizontal : IconName.UnfoldHorizontal}
+            testId="side-panel-wide-toggle"
+            onClick={layout.toggleWide}
+          />
+        </Tooltip>
+      </span>
       {/* PNL-009: float and full. Demotable — under a 357px frame these two are
           hidden and the `⋯` below takes their place. The tag sits on a wrapper
           rather than on the button because `Tooltip` puts a block-level trigger

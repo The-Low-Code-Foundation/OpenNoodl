@@ -33,20 +33,38 @@
   align-items: center;
 }
 
-/* POL-003 — the hide-panel glyph, sized from its own container.
+/* POL-003 — the mode row's glyphs, sized from their own container.
  *
- * Phase 39 deliberately did NOT add the missing `is-size-*` rules to
- * `Icon.module.scss`: doing so would change icon sizes at ~130 call sites in one
- * step, and Richard scoped this phase to the one button and filed the sweep.
- * So this is the honest version of "make it bigger" — an explicit box here,
- * not a `size` prop that changes no pixels.
+ * Richard asked for the hide-panel icon to be bigger and vertically centred.
+ * Measured in the running editor, the row was ragged in both axes:
  *
- * `.HideControl button > span` is specificity (0,1,2), which beats
+ *     narrow/widen   16x16   centre y=48
+ *     float          24x24   centre y=53
+ *     full           24x25   centre y=53
+ *     hide           16x16   centre y=53
+ *
+ * Two separate causes. The heights differ because these glyphs' SVGs carry
+ * different intrinsic sizes (the older `cards`/`viewport_*` files are 24-25px,
+ * the newer house glyphs 16px) and NOTHING normalises them: `Icon.module.scss`
+ * declares no `is-size-*` rules, so `size={IconSize.Large}` is an inert class
+ * name at every call site in the codebase (UIX-010, confirmed at the CSS level).
+ * The narrow/widen control sat higher because it was the only one of the four
+ * without a flex wrapper — see the JSX.
+ *
+ * Phase 39 deliberately does NOT add the missing `is-size-*` rules: that is a
+ * ~130-call-site change in one step, and Richard scoped this phase to this row
+ * and filed the sweep. So the row is normalised here, locally, to one box. This
+ * is the honest version of "make it bigger" — an explicit box, not a `size` prop
+ * that changes no pixels.
+ *
+ * `.ModeControl button > span` is specificity (0,1,2), which beats
  * `Icon.module.scss`'s `.Root` (0,1,0); the glyph's own `svg { width: 100% }`
- * then fills whatever we set. Nothing outside this one control is affected.
+ * then fills whatever we set. Nothing outside this row is affected.
  *
  * When the `IconSize` sweep lands, delete this block and pass a size instead.
  */
+.ModeControl,
+.ModeOverflow,
 .HideControl {
   button > span {
     width: 20px;
