@@ -212,6 +212,21 @@ it first — you are choosing to share whatever is in it.
 
 Development builds run from source do not write these files.
 
+### "Report a problem"
+
+**Help → Report a problem…** does not transmit anything either. It writes a
+report folder under `reports/` in the same application-data directory (§7),
+containing a screenshot of the editor window, the description you typed, and a
+block of diagnostics — version, operating system, and *counts* of the things in
+your project. It never includes your project's content, node settings,
+component or page names, file contents, API keys, or the address of any backend
+you have configured.
+
+It then opens GitHub's new-issue form **in your web browser** with all of that
+already filled in. Nothing is filed until you read it and press Submit, under
+your own GitHub account. If you close the browser instead, nothing has left your
+machine and the folder is still there for you to delete.
+
 ---
 
 ## 6. Other network connections
@@ -240,9 +255,12 @@ the application. It makes **no network request at all** and works offline.
 The update check can be disabled by starting NodeGX with the environment
 variable `autoUpdate=no`.
 
-Opening the documentation, the guides, the release notes or a bug-report form
-from the Help menu opens them in **your web browser**, at which point that site's
-own privacy policy applies.
+Opening the documentation, the guides, the release notes, an issue form or
+**Report a problem** (§5) — whether from the Help menu or from the Help Center
+inside the editor — opens them in **your web browser**, at which point that
+site's own privacy policy applies. NodeGX itself makes no request in any of
+those cases. Searching the documentation now happens on the website, in your
+browser, rather than in the application.
 
 ---
 
@@ -256,8 +274,8 @@ The application-data directory referred to above is:
 
 It holds `editorSettings.json` (your editor preferences, in plain text — never
 credentials), the credential files described in §2 and §8, the telemetry file
-(§4) and the debug logs (§5), together with the standard caches any Electron
-application keeps.
+(§4), the debug logs and any "Report a problem" folders (§5), together with the
+standard caches any Electron application keeps.
 
 Your **projects** live wherever you chose to put them, and NodeGX does not copy
 them anywhere else.
