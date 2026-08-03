@@ -12,6 +12,8 @@ import React from 'react';
 
 import { platform } from '@noodl/platform';
 
+import { EXTERNAL_LINKS } from '@noodl-core-ui/constants/externalLinks';
+
 import { useLauncherContext } from '../../LauncherContext';
 import css from './LauncherFooter.module.scss';
 
@@ -37,9 +39,9 @@ export function LauncherFooter({}: LauncherFooterProps) {
 
   return (
     <footer className={css['Root']}>
-      <FooterLink href="https://docs.noodl.net">Documentation</FooterLink>
-      <FooterLink href="https://youtube.com/@noodlapp">YouTube</FooterLink>
-      <FooterLink href="https://discord.gg/noodl">Discord</FooterLink>
+      <FooterLink href={EXTERNAL_LINKS.docs}>Documentation</FooterLink>
+      <FooterLink href={EXTERNAL_LINKS.youtube}>YouTube</FooterLink>
+      <FooterLink href={EXTERNAL_LINKS.discord}>Discord</FooterLink>
       <div className={css['Spacer']} />
       <span className={css['Version']}>NodeGX {appVersion || '0.1.0'}</span>
     </footer>

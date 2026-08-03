@@ -20,10 +20,17 @@ interface HeaderTab {
   label: string;
 }
 
-// Tab order follows the mock: Projects, Learn, Templates, GitHub.
+// Tab order follows the mock, minus Learn.
+//
+// POL-002: the lesson content predates every project-format change since
+// LEARN-001, so the tab led to a catalogue of lessons that no longer play.
+// Removed rather than feature-flagged — a flag implies someone will flip it,
+// and what the lessons need is the rebuild a later learn phase owns, not a
+// switch. `LearningCenter` and the whole lesson pipeline are left in place and
+// compiling (the same convention `router.setup.ts` uses for the shelved
+// Topology and retired Data Lineage panels); only this entry is gone.
 const HEADER_TABS: HeaderTab[] = [
   { id: 'projects', label: 'Projects' },
-  { id: 'learn', label: 'Learn' },
   { id: 'templates', label: 'Templates' },
   { id: 'github', label: 'GitHub' }
 ];

@@ -188,7 +188,8 @@ function parseDeepLink(): LauncherPageId | null {
     const pathParts = url.pathname.split('/');
     const tabPart = pathParts[pathParts.length - 1];
 
-    if (tabPart === 'projects' || tabPart === 'learn' || tabPart === 'templates') {
+    // POL-002: `'learn'` is no longer reachable — see HEADER_TABS.
+    if (tabPart === 'projects' || tabPart === 'templates' || tabPart === 'github') {
       return tabPart as LauncherPageId;
     }
   } catch (error) {
@@ -311,6 +312,10 @@ export function Launcher({
         return <Projects />;
       case 'github':
         return <GitHubRepos />;
+      // POL-002: unreachable — the Learn tab, the deep link and the persisted
+      // tab id all stopped producing `'learn'`. Kept so `LearningCenter` and
+      // the lesson pipeline behind it stay compiled and one line from coming
+      // back when the learn phase rebuilds the content.
       case 'learn':
         return <LearningCenter />;
       case 'templates':

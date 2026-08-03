@@ -260,7 +260,7 @@ function getPhaseLabel(phase?: string): string {
 }
 
 function LogIcon({ level }: { level: string }) {
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<string, React.JSX.Element> = {
     info: (
       <svg viewBox="0 0 16 16" width={12} height={12}>
         <path

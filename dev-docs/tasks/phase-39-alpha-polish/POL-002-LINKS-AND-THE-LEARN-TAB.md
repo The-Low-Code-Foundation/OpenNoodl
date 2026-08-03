@@ -82,6 +82,43 @@ phase. Confirm nothing else routes to `'learn'` (e.g. a deep link or a saved `ac
 persisted `activePageId` can still be `'learn'`, it must fall back to `'projects'` rather than
 render an empty page.
 
+## What removing Algolia actually found — 2026-08-03
+
+The spec warned that dropping the dependency could break a **packaged** build without breaking the
+dev build. It broke the **type** build instead, in eighteen files that have nothing to do with the
+help menu:
+
+```
+TS2503: Cannot find namespace 'JSX'.
+  DialogLayerModel.tsx, PopupMenu.tsx, SelectStage.tsx, MigratingStep.tsx,
+  ScanningStep.tsx, VariablesSection.tsx, Card.tsx, TreeView.tsx,
+  BasicTreeView.tsx, ConfirmationDialog.hooks.tsx, LauncherApp.tsx,
+  LauncherPage.tsx, DefaultApp.tsx, ToolbarButton.tsx, ErrorBoundary.stories.tsx
+```
+
+`@types/react` **19 no longer declares a global `JSX` namespace** — it lives at `React.JSX` now. The
+only thing in the entire dependency tree still declaring one was
+`instantsearch-ui-components/dist/es/types/Renderer.d.ts`, a transitive dependency of
+`react-instantsearch`:
+
+```ts
+declare global {
+  namespace JSX {
+    interface Element extends VNode {}   // ← Preact's VNode
+```
+
+So every bare `JSX.Element` annotation in the editor and in `noodl-core-ui` was resolving against
+**Preact's** element type, supplied by a search widget library, because a help menu nobody could use
+imported it. It typechecked. It was wrong the whole time.
+
+Fixed by rewriting all 22 annotations to `React.JSX.Element` — the React 19 form — which removes the
+accidental dependency rather than replacing it with a shim of our own. `npx tsc --noEmit` is clean.
+
+**The generalisation, which is the useful part:** a dependency's *ambient* declarations are part of
+your build whether or not you import them. Removing a package can therefore change types in files
+that never referenced it, and the failure surfaces nowhere near the edit. `grep -rl "declare global"`
+over the removed package's tree is the cheap check before believing a dependency is inert.
+
 ## Criteria
 
 1. The launcher footer's three links open the three URLs above in an external browser.

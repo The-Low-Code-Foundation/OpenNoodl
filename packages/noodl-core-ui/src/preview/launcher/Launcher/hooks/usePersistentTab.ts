@@ -51,10 +51,14 @@ export function usePersistentTab(defaultTab: LauncherPageId): [LauncherPageId, (
 }
 
 /**
- * Type guard to validate stored values
+ * Type guard to validate stored values.
+ *
+ * POL-002 dropped `'learn'`: the tab is gone, and anyone whose last session
+ * ended on it has `'learn'` sitting in localStorage. Rejecting it here is what
+ * lands them on the default tab rather than on a page with no way back to it.
  */
 function isValidPageId(value: string): value is LauncherPageId {
-  return value === 'projects' || value === 'learn' || value === 'templates';
+  return value === 'projects' || value === 'templates' || value === 'github';
 }
 
 /**

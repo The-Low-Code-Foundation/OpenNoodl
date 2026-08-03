@@ -200,15 +200,17 @@ export function Projects({}: ProjectsViewProps) {
             <div className={css['Welcome']}>
               <h2 className={css['WelcomeTitle']}>Welcome to NodeGX</h2>
               <p className={css['WelcomeBody']}>
-                Build full-stack apps visually. Create your first project to get started — or open a guided lesson to
-                learn the ropes.
+                Build full-stack apps visually. Create your first project to get started — or start from a template.
               </p>
               <div className={css['WelcomeActions']}>
                 <LauncherButton label="New project" icon={PlusGlyph} onClick={onNewProjectClick} />
+                {/* POL-002: was "Browse lessons" → the removed Learn tab. On the
+                    empty-state screen this is the literal first thing a new user
+                    sees, so it could not be left pointing at a tab that is gone. */}
                 <LauncherButton
-                  label="Browse lessons"
+                  label="Browse templates"
                   variant={LauncherButtonVariant.Ghost}
-                  onClick={() => setActivePageId('learn')}
+                  onClick={() => setActivePageId('templates')}
                 />
               </div>
             </div>

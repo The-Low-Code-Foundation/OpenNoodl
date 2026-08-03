@@ -33,20 +33,19 @@ references in each spec. **Two do not**, and their first slice is diagnosis, not
 
 Neither should be estimated or started as a fix.
 
-## Open questions for Richard
+## Answered by Richard — 2026-08-03
 
-1. **Font choice.** POL-006 recommends **Inter** (neutral, OFL, built for UI). Alternatives offered:
-   Figtree (warmer) or Geist (more technical). Your call — it is what every project made in NodeGX
-   will look like by default.
-2. **Icon set size.** Lucide has ~1,500 glyphs. Shipping all of them makes the picker unusable and
-   bloats every project. POL-006 proposes a curated 100–200. Do you want to pick the list, or should
-   we propose one?
-3. **`IconSize`.** Making it real (POL-003 slice 2) changes icon sizes at ~130 call sites at once.
-   Do it properly with a screenshot sweep, or scope this phase to the one hide-panel button and file
-   the rest? The spec recommends the former and names the fallback.
-4. **POL-008 Part B** — the AI's output being visually thin is partly a prompt/conventions question,
-   which is a phase, not a task. This phase scopes it to "re-judge after a default font exists, then
-   give the agent a styling floor in the CONVENTIONS template". Enough for alpha?
+1. **Font: Inter.**
+2. **Icon set: we pick the list** — *"but make sure a user can expand the number easily, adding their
+   own icons to the project from the Lucide library (dunno how you would do that, maybe add a help
+   tip somewhere on the icon node?)"*. So POL-006 owns two deliverables, not one: a curated starter
+   set **and** a documented, discoverable path to add any other Lucide glyph to a project. The
+   affordance goes where a user meets the limit — the Icon node's property panel.
+3. **`IconSize`: scope to the hide-panel button, file the rest.** POL-003 slice 2 (the four
+   `is-size-*` rules, a ~130-call-site change in effect) is **out of this phase**. The hide-panel
+   glyph is sized from its own container instead. `IconSize` stays inert everywhere else and the
+   sweep becomes its own task — say so in the notes rather than claiming the size prop was fixed.
+4. **POL-008 Part B: styling floor in CONVENTIONS, re-judged after the font lands.** As specified.
 
 ## Not in this phase
 
