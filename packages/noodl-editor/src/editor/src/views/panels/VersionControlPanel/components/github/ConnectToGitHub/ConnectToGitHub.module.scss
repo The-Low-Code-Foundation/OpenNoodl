@@ -13,6 +13,26 @@
   text-align: center;
   color: var(--theme-color-fg-default-shy);
   min-height: 300px;
+}
+
+/*
+ * AIB-008 — the same component as a SECTION of the version-control panel.
+ *
+ * Found in live QA rather than in the diff: at 48px of padding and a 300px
+ * floor, the full-panel layout pushed Local Changes and History to the bottom
+ * edge of the panel. The rules below are the whole of "compact" — no `min-height`
+ * floor, ordinary section padding, and left-aligned prose, because a centred
+ * paragraph inside a left-aligned panel reads as a different app.
+ */
+.Compact {
+  padding: 8px 12px 12px;
+  min-height: 0;
+  align-items: stretch;
+  text-align: left;
+
+  p {
+    margin: 0 0 8px;
+  }
 
   h3 {
     margin: 16px 0 8px;

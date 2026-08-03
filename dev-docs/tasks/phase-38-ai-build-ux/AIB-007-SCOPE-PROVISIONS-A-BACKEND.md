@@ -276,10 +276,40 @@ have, and only a caller that genuinely knows (a provision spec that did not ask 
 - **The export allow-list** — checked and clear. It applies to `backendServices.backends[].auth`; a
   provision writes an endpoint and an app id and no credential, so it adds nothing to filter.
 
+### Live QA (2026-08-03) — criteria 2, 3 and 4 driven in the running editor
+
+No provider. `AiClient` is a plain object literal, so `chatStream` and `isConfigured` are replaced at
+runtime (the `aix-003` recipe); the plan is handed over through `setPendingScopePlan`, the real
+launcher→editor seam, because `submit_plan`'s schema deliberately cannot express a provision. What
+ran was the app's own `PlanRun`, gate, panel, `applyAuthoredPlan` and `editorBackendProvisioner`.
+
+Measured, in order:
+
+| | Result |
+|---|---|
+| The plan row, before anything runs | *"Creates a backend on this computer and starts it. Undoing the plan stops using it but does not delete it or its data — remove it in Backend Services."* — next to a live **Drop** |
+| The run row | `provision AIB-007 live backend — Message`, **0s** (no model call), detail *"Will be created when you apply, with 1 collection and user accounts"*, and **no Review and no Retry** |
+| Apply | *"Backend "AIB-007 live backend" is running at http://localhost:8580 with Message."* — a real backend, created, started, collection made, project bound |
+| Backend Services (criterion 3) | **AIB-007 live backend · Built-in • Port 8580 · Running**, and the endpoint card showing it as the project's |
+| One undo (criterion 4) | undo label `apply AI plan (1 component + backend)`; after it, `cloudservices` gone and `/Pages/Messages` gone — **and port 8580 still answering, still listed**. The boundary works. |
+
+**A third mount defect, found here and nowhere else.** The pre-apply note read *"Applying is one edit:
+a single undo reverts the whole plan"* — **unconditionally**. With a provision in the plan that is
+false, and it is the same unqualified undo promise already fixed one screen later in the *applied*
+summary. The applied summary is an explanation; this note is where the user decides. Now qualified.
+
+That is three defects from this task alone that a suite with no DOM could not see, and none of them
+visible from reading the diff. The phase's own note holds.
+
 ### Owed
 
-- **Criterion 6** — the live replay: Richard's chat app scoped again, built, applied, and the Sign Up
-  node working against the provisioned backend in preview. Needs a real provider.
-- The provisioner's `describeSideEffects` is written and returns the right sentences, but the panel
-  currently states the same facts in its own plan-row copy rather than calling it. One or the other
-  should go; the call site is the better home and was left for the live pass to judge.
+- **Criterion 6** — the full replay: Richard's chat app scoped again *through the wizard*, built, and
+  the Sign Up node working against the provisioned backend in preview. The provisioning half is
+  proven above; the scoping half needs a real provider.
+- Slice 4's wizard row (`provision App backend (1 collection, sign-in)`) is unit-tested and the
+  `ReviewStep` change is one line, but it was not driven live for the same reason.
+- ~~The provisioner's `describeSideEffects`~~ — **removed.** It returned the right sentences and
+  nothing called it, while two comments in `planStaging.ts` claimed the panel did. The sentence has
+  to appear beside the **Drop** button in the plan list, which is a screen the transaction never
+  reaches, so `ProjectAuthoringView`'s provision row owns that copy and the interface says why it
+  does not.

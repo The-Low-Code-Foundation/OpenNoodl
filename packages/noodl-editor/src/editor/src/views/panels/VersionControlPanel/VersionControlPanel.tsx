@@ -207,7 +207,7 @@ function BaseVersionControlPanel() {
               remoteUrl={remoteUrl}
               owner={owner}
               repo={repo}
-              onConnect={() => setIsConnectingRemote(true)}
+              onConnect={isConnectingRemote ? undefined : () => setIsConnectingRemote(true)}
             />
             <GitStatusButton openGitSettingsPopout={openGitSettingsPopout} />
             <BranchStatusButton />
@@ -221,11 +221,13 @@ function BaseVersionControlPanel() {
               it is how a consolidation becomes a regression.
             */}
             {isConnectingRemote && (
-              <Box hasXSpacing hasBottomSpacing>
+              <Box hasBottomSpacing>
                 <ConnectToGitHubView
+                  isCompact
                   gitState={gitState}
                   remoteUrl={remoteUrl}
                   provider={provider}
+                  onCancel={() => setIsConnectingRemote(false)}
                   onConnected={() => {
                     setIsConnectingRemote(false);
                     refetchRepo();

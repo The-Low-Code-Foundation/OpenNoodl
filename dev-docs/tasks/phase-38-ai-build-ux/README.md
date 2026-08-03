@@ -200,6 +200,12 @@ says which. Where something is still a hypothesis, it says that instead.
 > - **Measure before adding a mechanism.** F2's own suggested fix was a sanitiser or an allow-list.
 >   Remarkable turned out to already refuse every script-bearing link target, leaving raw HTML as the
 >   only vector and `html: false` as a complete answer in one line.
+> - **Live QA found three more defects, and all three were promises made in prose.** Two panels
+>   inherited a layout from the container they used to be (a full-panel empty state inside a
+>   section, and a trigger left live under the view it opened); the third was the sentence *"a single
+>   undo reverts the whole plan"*, still unqualified on the screen where the user **decides**, after
+>   the same claim had already been qualified on the screen that merely **explains**. That is now
+>   **five** of this phase's defects that came from a mount rather than a diff.
 
 ## Where the phase stands (2026-08-03)
 

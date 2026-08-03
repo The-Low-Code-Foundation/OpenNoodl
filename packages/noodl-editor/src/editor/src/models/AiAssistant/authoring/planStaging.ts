@@ -145,9 +145,15 @@ export interface PlanDocWriter {
  * - **The backend itself survives the undo**, idempotently, visible and
  *   deletable in Backend Services.
  *
- * `describeSideEffects` is what makes that honest rather than silent: the panel
- * shows it *before* apply. A step that cannot be undone must be declared in
- * preflight, which is what the task's rule actually asks for.
+ * ⚠️ **This interface deliberately does NOT carry a `describeSideEffects`.**
+ * There was one, and nothing called it: the sentence a user needs ("creates a
+ * backend on this computer… undoing stops using it but does not delete it") has
+ * to appear next to the **Drop** button in the plan list, which is a screen the
+ * transaction never reaches. `ProjectAuthoringView`'s provision row owns that
+ * copy. A method here would be a second place to write it and a first place to
+ * forget it. What the rule "a step that cannot be undone must be declared in
+ * preflight" actually needs is that the declaration reach the user *before* they
+ * commit — and it does, one screen earlier than this module exists.
  */
 export interface PlanBackendProvisioner {
   /**
@@ -166,11 +172,6 @@ export interface PlanBackendProvisioner {
    * ability to run.
    */
   apply(op: AppliedPlanProvisionOperation, undoGroup: UndoActionGroup): Promise<ProvisionedBackend>;
-  /**
-   * One or more sentences naming what this apply does that an undo will not
-   * reverse. Shown before the user presses Apply.
-   */
-  describeSideEffects?(op: AppliedPlanProvisionOperation): string[];
 }
 
 /** What a provision actually did. */

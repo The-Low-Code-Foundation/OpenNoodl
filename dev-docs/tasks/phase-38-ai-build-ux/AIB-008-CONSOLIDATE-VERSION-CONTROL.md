@@ -214,10 +214,39 @@ the editor on the GitHub panel opens on the panel that absorbed it. Pinned by
 does not. That boundary is deliberate (see `jest.config.js`), so the spec moved rather than the
 boundary.
 
+### Live QA (2026-08-03) — and it found two defects a diff cannot show
+
+Driven in the running editor against a scratch project.
+
+| Criterion | Result |
+|---|---|
+| 1 — one panel, GitHub gone from the rail | `SidebarModel.getVisibleItems()` returns **12 ids, no `github`**, `versioncontrol` present |
+| 5 — no git repository | *"This project is missing a git setup"* + one action, unchanged |
+| 7 (first half) | **Initialize Version Control (git)** → the merged panel: Repository (`No remote` / `main` / **Connect to GitHub**), sync button, Active branch, Local Changes / History |
+| 4 — connect from the panel that shows the history | **Create New Repository** / **Connect Existing Repository** render *inside* the version-control panel |
+
+**Two defects, both only visible in a mount.**
+
+1. **The connect view was a whole panel inside a section.** `ConnectToGitHubView` was written as a
+   full-panel empty state — a 48px logo, a centred heading, `min-height: 300px`, 48px of padding.
+   Embedded, it pushed Local Changes and History to the bottom edge of the panel. Same class as
+   AIB-004's overflowing review topbar. It gained an `isCompact` mode: no logo, no heading, no
+   height floor, left-aligned prose. The buttons and every error path are untouched.
+2. **The trigger stayed live under the open view.** "Connect to GitHub" remained clickable above a
+   connect flow it had already opened — two affordances for one thing, one of them a no-op. Hidden
+   while the view is open, and the view gained a **Cancel** it did not have (as a panel it never
+   needed one; as a section it does).
+
+Both re-verified after a **restart** rather than through HMR: the fix turns on a new CSS-module
+class, and HMR dropping CSS-module classes is the documented trap here.
+
 ### Owed
 
-- **Criterion 7 (live)** — init a local project, commit, connect a remote, push, all from the one
-  panel. The connect half needs a real GitHub account.
+- **Criterion 3 (ahead/behind) and criterion 7's second half** — the figure needs a remote to be
+  non-empty, and connecting one needs a real GitHub account. The code path is the context's
+  `localCommitCount`/`remoteCommitCount`, which the panel has rendered since long before this task;
+  what is unverified is the new label beside the branch.
+- The scratch project used for this (`bcn010-live`) now has a `.git` from criterion 5's init step.
 - **AIB-009 F6** — the 404-per-repo launch logging is in `services/github`, untouched by this task and
   still open. What *did* go with the shell is `GitHubPanel.tsx`'s own per-render `🔧`/`🎧`/`🔔`
   logging, which was a second, unrelated source of the same noise.

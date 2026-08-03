@@ -25,9 +25,47 @@ interface ConnectToGitHubViewProps {
   remoteUrl?: string | null;
   provider?: string | null;
   onConnected: () => void;
+  /**
+   * AIB-008 — rendered as a section of the version-control panel rather than as
+   * a whole panel.
+   *
+   * ⚠️ Found in live QA, not in the diff. This component was written as a
+   * full-panel empty state: a 48px logo, a centred heading and a paragraph of
+   * prose. Inside the merged panel that pushed Local Changes and History to the
+   * bottom edge — the same class of defect as AIB-004's overflowing review
+   * topbar, and equally invisible to a suite with no DOM. Compact mode drops the
+   * logo and the heading; the buttons and every error path are unchanged.
+   */
+  isCompact?: boolean;
+  /** Close the section. Absent when this IS the whole surface. */
+  onCancel?: () => void;
 }
 
-export function ConnectToGitHubView({ gitState, remoteUrl, provider, onConnected }: ConnectToGitHubViewProps) {
+/**
+ * The illustrated heading — the part compact mode drops.
+ *
+ * A component rather than four `{!isCompact && (<>…</>)}` wrappers: the four
+ * differed only in which glyph and which sentence, and a conditional repeated
+ * four times is four places to forget it.
+ */
+function StateHeading({ icon, title, isCompact }: { icon: React.ReactNode; title: string; isCompact?: boolean }) {
+  if (isCompact) return null;
+  return (
+    <>
+      <div className={styles.Icon}>{icon}</div>
+      <h3>{title}</h3>
+    </>
+  );
+}
+
+export function ConnectToGitHubView({
+  gitState,
+  remoteUrl,
+  provider,
+  onConnected,
+  isCompact,
+  onCancel
+}: ConnectToGitHubViewProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSelectModal, setShowSelectModal] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -180,48 +218,41 @@ export function ConnectToGitHubView({ gitState, remoteUrl, provider, onConnected
   // If not connected to GitHub, show connect button
   if (!isGitHubConnected) {
     return (
-      <div className={styles.ConnectView}>
-        <div className={styles.Icon}>
-          <GitHubIcon />
-        </div>
-        <h3>Connect to GitHub</h3>
+      <div className={`${styles.ConnectView} ${isCompact ? styles.Compact : ''}`}>
+        <StateHeading icon={<GitHubIcon />} title="Connect to GitHub" isCompact={isCompact} />
         <p>Connect your GitHub account to create or link repositories.</p>
         <button className={styles.PrimaryButton} onClick={handleConnectGitHub}>
           Connect GitHub Account
         </button>
+        {onCancel && (
+          <button className={styles.SecondaryButton} onClick={onCancel}>
+            Cancel
+          </button>
+        )}
       </div>
     );
   }
 
   // Show state-specific UI
   return (
-    <div className={styles.ConnectView}>
+    <div className={`${styles.ConnectView} ${isCompact ? styles.Compact : ''}`}>
       {gitState === 'no-git' && (
         <>
-          <div className={styles.Icon}>
-            <FolderIcon />
-          </div>
-          <h3>Initialize Git Repository</h3>
+          <StateHeading icon={<FolderIcon />} title="Initialize Git Repository" isCompact={isCompact} />
           <p>This project is not under version control. Initialize git and connect to GitHub.</p>
         </>
       )}
 
       {gitState === 'git-no-remote' && (
         <>
-          <div className={styles.Icon}>
-            <GitIcon />
-          </div>
-          <h3>Connect to GitHub</h3>
+          <StateHeading icon={<GitIcon />} title="Connect to GitHub" isCompact={isCompact} />
           <p>This project has git initialized but no remote. Connect it to a GitHub repository.</p>
         </>
       )}
 
       {gitState === 'remote-not-github' && (
         <>
-          <div className={styles.Icon}>
-            <CloudIcon />
-          </div>
-          <h3>Not a GitHub Repository</h3>
+          <StateHeading icon={<CloudIcon />} title="Not a GitHub Repository" isCompact={isCompact} />
           <p>
             This project is connected to a different git provider:
             <br />
@@ -243,6 +274,11 @@ export function ConnectToGitHubView({ gitState, remoteUrl, provider, onConnected
           <button className={styles.SecondaryButton} onClick={() => setShowSelectModal(true)} disabled={isConnecting}>
             Connect Existing Repository
           </button>
+          {onCancel && (
+            <button className={styles.SecondaryButton} onClick={onCancel} disabled={isConnecting}>
+              Cancel
+            </button>
+          )}
         </div>
       )}
 

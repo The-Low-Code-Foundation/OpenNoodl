@@ -21,9 +21,10 @@
  * disk — but the real reason is that they *should not* be undone: deleting a
  * database because someone pressed Cmd+Z on "apply plan" destroys durable output
  * nobody asked to destroy, which is the defect phase 38 exists to fix, inverted.
- * {@link editorBackendProvisioner.describeSideEffects} says so before the user
- * presses Apply. See `planStaging.ts::PlanBackendProvisioner` for the full
- * reasoning.
+ * The user is told so **before** pressing Apply — by the provision's row in the
+ * Build panel's plan list, next to its Drop button, which is the screen where
+ * the decision is actually made. See `planStaging.ts::PlanBackendProvisioner`
+ * for why that sentence does not live here.
  *
  * ## Idempotence
  *
@@ -143,24 +144,6 @@ export function editorBackendProvisioner(options: EditorProvisionerOptions = {})
         throw new Error('the editor has no connection to its main process, so it cannot start a backend');
       }
       if (!op.provision.name.trim()) throw new Error('the backend has no name');
-    },
-
-    describeSideEffects(op: AppliedPlanProvisionOperation): string[] {
-      const { name, collections } = op.provision;
-      const lines = [
-        `Creates a backend called "${name}" on this computer and starts it. ` +
-          'It stays on this computer — deploying the app points it somewhere else.'
-      ];
-      if (collections.length > 0) {
-        lines.push(`Creates ${collections.length} collection${collections.length === 1 ? '' : 's'} in it.`);
-      }
-      // The honest sentence. This is the one thing in the whole apply that
-      // Cmd+Z does not take back, and it is said here rather than discovered.
-      lines.push(
-        'Undo puts the project back to using no backend, but does not delete the backend or anything in it — ' +
-          'remove it in Backend Services if you want it gone.'
-      );
-      return lines;
     },
 
     async apply(op: AppliedPlanProvisionOperation, undoGroup: UndoActionGroup): Promise<ProvisionedBackend> {

@@ -38,6 +38,7 @@ import {
   type PlanApplyFailure,
   type PlanOperationState,
   type AppliedPlanOperation,
+  type PlanProvisionSpec,
   type PlanRunState,
   type PlanSession
 } from '@noodl-models/AiAssistant/authoring';
@@ -166,8 +167,7 @@ export function formatCost(costUsd: number | null): string {
  * backend has sign-in switched on is not readable from `cloudservices`, and
  * claiming to know would report a problem we cannot see.
  */
-function planBackendFacts(project: ProjectModel, plan: AuthoringPlan): ProjectBackendFacts {
-  const provision = plan.operations.find((op) => op.kind === 'provision')?.provision;
+function backendFacts(project: ProjectModel, provision: PlanProvisionSpec | undefined): ProjectBackendFacts {
   return {
     hasBackend: Boolean(getCloudServices(project).endpoint),
     ...(provision
@@ -176,20 +176,18 @@ function planBackendFacts(project: ProjectModel, plan: AuthoringPlan): ProjectBa
   };
 }
 
-/** The same facts at apply time, from the *accepted* set rather than the plan. */
+/** The provision in a plan, before anything has run. */
+function planBackendFacts(project: ProjectModel, plan: AuthoringPlan): ProjectBackendFacts {
+  return backendFacts(project, plan.operations.find((op) => op.kind === 'provision')?.provision);
+}
+
+/**
+ * The same facts at apply time, from the **accepted** set rather than the plan —
+ * so an excluded provision correctly makes this the stricter check.
+ */
 function appliedBackendFacts(project: ProjectModel, operations: readonly AppliedPlanOperation[]): ProjectBackendFacts {
   const provision = operations.find((op) => op.kind === 'provision');
-  return {
-    hasBackend: Boolean(getCloudServices(project).endpoint),
-    ...(provision && provision.kind === 'provision'
-      ? {
-          plannedProvision: {
-            collections: provision.provision.collections.map((c) => c.name),
-            needsAuth: provision.provision.needsAuth
-          }
-        }
-      : {})
-  };
+  return backendFacts(project, provision?.kind === 'provision' ? provision.provision : undefined);
 }
 
 /**
@@ -745,6 +743,10 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     runState?.operations.filter((op) => op.status === 'staged' && op.operation.kind !== 'doc').length ?? 0;
   const failedOps = runState?.operations.filter((op) => op.status === 'failed') ?? [];
   const stagedDocOps = runState?.operations.filter((op) => op.status === 'staged' && op.operation.kind === 'doc') ?? [];
+  /** AIB-007 — is a backend among the things Apply would create? */
+  const stagedProvision = runState?.operations.some(
+    (op) => op.status === 'staged' && op.operation.kind === 'provision' && !excluded.has(op.operation.id)
+  );
   const applyCount = done
     ? runRef.current?.acceptedOperations(excluded, { includeDocs: docsAvailable }).operations.length ?? 0
     : 0;
@@ -1170,8 +1172,21 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                     )}
                     {stagedCount > 0 || stagedDocOps.length > 0 ? (
                       <Text textType={TextType.Secondary}>
-                        Nothing is in your project yet — not the components, and not the documents. Applying is one
-                        edit: a single undo reverts the whole plan.
+                        Nothing is in your project yet — not the components, and not the documents.
+                        {/*
+                          ⚠️ AIB-007, found in live QA. This sentence used to end
+                          "Applying is one edit: a single undo reverts the whole
+                          plan" unconditionally — and with a provision in the plan
+                          that is simply false. It is the same unqualified undo
+                          promise already fixed in the *applied* summary, one
+                          screen earlier, which is where a user actually decides.
+                          A note that has to be true only after the fact is not a
+                          note, it is an apology.
+                        */}
+                        {stagedProvision
+                          ? ' Applying is one edit for the project — one undo reverts all of it. The backend is' +
+                            ' created on this computer and stays until you remove it in Backend Services.'
+                          : ' Applying is one edit: a single undo reverts the whole plan.'}
                       </Text>
                     ) : (
                       <Text textType={TextType.Secondary}>No operation produced anything to apply.</Text>
