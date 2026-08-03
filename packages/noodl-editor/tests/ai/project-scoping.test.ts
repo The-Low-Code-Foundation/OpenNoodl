@@ -494,12 +494,23 @@ describe('AIX-012 — the plan handover', () => {
     expect(takePendingScopePlan('p1')).toBeUndefined();
   });
 
-  it('drops a plan belonging to a different project rather than offering it', () => {
+  it('never offers a plan to a different project — and survives one asking (AIB-005)', () => {
     const plan = planFromScope(agreedScope(), { existingComponents: new Set(['/App']) });
     setPendingScopePlan({ projectId: 'p1', plan, recordPath: DOC_INITIAL_SCOPE });
 
     expect(peekPendingScopePlan('p2')).toBeUndefined();
     expect(takePendingScopePlan('p2')).toBeUndefined();
+
+    // AIB-005 reversed the second half of this spec, deliberately. It used to
+    // assert that p2's ask DESTROYED p1's plan, on AIX-012's reasoning that "a
+    // stale plan that keeps offering itself is a bug that presents as a
+    // feature". But the id check above is what stops a plan reaching the wrong
+    // project; clearing on a mismatch protected nothing and cost everything —
+    // opening any other project first silently threw away the handover for the
+    // one the user had just spent ten minutes scoping, and the editor would then
+    // open on an unexplained hello-world page with no announcement to make.
+    expect(takePendingScopePlan('p1')?.plan.operations.length).toBe(2);
+    // Still exactly one consumption, by its own project.
     expect(takePendingScopePlan('p1')).toBeUndefined();
   });
 });

@@ -107,3 +107,56 @@ replace, which is a collision AIB-001's preflight would refuse.
   is started or discarded.
 - `DialogLayer` does not centre; `CoreBaseDialog` does — relevant if slice 2 becomes a dialog after
   all (it should not).
+
+---
+
+## What was built (2026-08-03)
+
+All four slices, with slice 4 answered by slice 2 as the task recommends. Criteria 1–5 are built
+and 2–5 are tested; criterion 6 is the live replay.
+
+### AIB-003 moved the fact this task announces
+
+The task's mechanism section is accurate about AIX-012 and stale about where the plan *is*. After
+AIB-003, `ProjectAuthoringView` takes the handover into `PlanSessionStore` on its first mount —
+so the plan lives in **two places at different times**: the launcher's module state until the Build
+panel has mounted once, the store afterwards. An announcement written against `peekPendingScopePlan`
+alone would have gone dark the instant slice 1 opened the panel, which is the moment it is most
+needed.
+
+`scopePlanAnnouncement(projectId)` is the single predicate over both, exported from `ScopePlanStrip`
+and specced without mounting React (the split `ProjectReviewBanner` already uses). Callers do not
+choose a source.
+
+### `takePendingScopePlan` was destroying other projects' handovers
+
+Criterion 5 asks the id check to be asserted, on the understanding that it already holds. Half of
+it did not: `takePendingScopePlan` cleared module state **before** checking the project id, on the
+documented reasoning that *"a stale plan that keeps offering itself is a bug that presents as a
+feature"*. But the id check is what stops a plan reaching the wrong project; clearing protected
+nothing, and cost everything — opening any other project first silently destroyed the handover for
+the one just scoped. The clear now happens only on a match. Still window-lifetime, still consumed
+exactly once, by its own project.
+
+### Where the announcement earns its place on the canvas
+
+`ProjectReviewBanner`'s header rules the canvas out for itself — *"Two surfaces only… never the
+canvas, never a modal, never on project open"* — and that rule is right for an unsolicited offer to
+a user who asked for nothing. This is the other case: the continuation of something the user agreed
+to thirty seconds ago in the previous screen, landing in an otherwise-empty hello-world page. The
+empty canvas is exactly what read as failure, so the canvas is where the correction has to be. Same
+neutral treatment (accent rule, no colour of its own), same never-runs-anything rule.
+
+Dismissal lives in the plan session, not component state: switching to a review document unmounts
+the canvas, and an announcement that returned every time the user looked at their own work would be
+worse than never showing it. It is not the plan (criterion 3, tested) — abandon and apply remain the
+only two things that destroy a session.
+
+### Slice 1 and the layout trap
+
+`SidebarModel.instance.switch(AiAuthoringPanel_ID)` at editor mount, peeked and never taken — the
+panel still owns consumption, so no second consumer races AIB-003's take. The trap says to restore
+the user's layout afterwards; that is not built, deliberately. Switching the active panel is a
+visible, one-click-reversible action, and forcibly switching *back* at some later moment — after the
+user has navigated somewhere else on purpose — is the more surprising behaviour. Panel *width* is
+already per panel per project (PNL-003) and is untouched.

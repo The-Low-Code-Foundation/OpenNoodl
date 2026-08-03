@@ -114,3 +114,68 @@ in `filesById`. This is the one genuinely new piece of work in this task.
 - `IconSize` is inert at all call sites (UIX-010) — do not size icons with it and expect an effect.
 - The review document already has a Walk-through affordance ("25 on canvas"). Preview must not
   break it; walking should switch to Changes and centre the node.
+
+---
+
+## What was built (2026-08-03)
+
+Both parts, landed with [AIB-002](AIB-002-THE-RUN-IS-LEGIBLE.md) as one experience. Criteria 1–6
+are built and 2/3/5 are tested at the export level; criterion 7 is the live replay.
+
+### Part 2 was two functions, not one
+
+The task calls the closure splice "the one genuinely new piece of work", and it was right that
+`buildSandboxExport` had to take siblings. What it does not say is that **`componentClosure` needed
+the same fix and would have failed silently without it.** It resolves component instances by name
+against `project.getComponents()`, so after the export correctly splices `/Components/BookCard` in,
+the sample-data discovery still walks a project that has never heard of it, stops at the page, and
+produces a dataset describing nothing the card reads. The preview would have rendered — with empty
+rows under a heading claiming results, which is the failure mode `unknownShapeNotice` exists to
+prevent. `componentClosure(project, root, extra)` now lets a staged candidate shadow a project
+component of the same name.
+
+Also not in the task: **`PlanRun` was not holding the model's sample data at all.**
+`AuthoringOutcome` does not carry it — it is reachable only as `session.stagedSampleData` — so the
+run staged `outcome.files` and dropped it. Every plan-operation preview would have run on an
+inferred dataset while the single-component loop ran on the model's own. `sampleDataById` now
+mirrors `filesById`, including through a failed retry, where restoring the previous candidate
+without its sample data would preview the old graph against nothing.
+
+### Preview and Changes are stacked panes, not swapped ones
+
+The obvious implementation — render one or the other — is wrong twice over. Unmounting the preview
+tears down an Electron `<webview>` and rebooting it is a whole runtime start, on every toggle; and
+`display: none` on a webview stops it running, so the usual hide-don't-unmount trick does not
+apply either. Both panes stay mounted, absolutely positioned, and the inactive one is
+`visibility: hidden`. The keep/drop selection is shared for free because it never left
+`ChangeReviewDocument` — no state was lifted, so criterion 4 is structural.
+
+The walkthrough trap needed nothing: `focus()` already did `if (viewMode !== 'review')
+setViewMode('review')`, which covers the new mode without knowing about it.
+
+### Criterion 6 contradicts the phase's own design position, and lost
+
+> *"Red is used for no action that leaves the project unchanged."*
+
+Taken literally this makes `Discard plan` non-red — it leaves the project unchanged. But it
+irreversibly destroys three components' worth of authored, validated output, which is precisely
+what this phase's design position calls **the expensive artifact**, and the phase-23 law reserves
+red for danger, not for "writes to disk". The criterion uses the project as a proxy for danger, and
+this phase exists because that proxy is wrong.
+
+Resolved by the distinction the criterion was reaching for: **red exactly when there is something
+to lose.** `Discard plan` before authoring is Ghost — it throws away a paragraph of text. After a
+run has staged anything it is Danger. `Drop from plan` on the review document is never red: it is
+restorable from the panel with one click, which is the case the criterion actually describes.
+
+### The vocabulary as shipped
+
+| Level | Commit | Discard |
+|---|---|---|
+| Operation (review doc) | `Keep all in plan` / `Keep N of M in plan` | `Drop from plan` (muted) |
+| Plan, before authoring (panel) | `Author plan (N)` | `Discard plan` (ghost) |
+| Plan, after authoring (panel) | **`Apply to project (N)`** / `Apply N of M to project` | `Discard plan` (danger) |
+
+One button in the product says "project". It is the only one that writes. The plan context moved
+from a title suffix to a persistent chip — *"Operation 1 of 3 · nothing applied yet"* — because a
+suffix is the first thing a reader stops seeing.

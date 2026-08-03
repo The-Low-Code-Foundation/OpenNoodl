@@ -31,6 +31,18 @@ const MAX_CLOSURE_DEPTH = 4;
 export interface SandboxExportOptions {
   project: ProjectModel;
   files: ComponentFiles;
+  /**
+   * AIB-004 — other staged candidates from the same plan, spliced in beside the
+   * subject.
+   *
+   * A plan's operations reference each other by design: the sign-up page the
+   * agent authored instantiates the form component another operation authored,
+   * and *neither* is in the project until the whole plan is applied. Without
+   * these the preview boots a page whose child component does not exist, which
+   * renders as a blank frame — the exact failure this preview was wired in to
+   * answer. Ignored for the single-component loop, which has no siblings.
+   */
+  siblings?: ComponentFiles[];
   /** `sample_data` from the authoring model, when it supplied any. */
   sampleData?: AgentSampleData;
   /** False for the "Real backend" toggle: ship no dataset, so nothing is faked. */
@@ -78,9 +90,21 @@ export function candidateComponent(files: ComponentFiles): { component: Componen
   return { component: ComponentModel.fromJSON(legacy), legacyName };
 }
 
-/** The candidate plus every project component it instantiates, transitively. */
-export function componentClosure(project: ProjectModel, root: ComponentModel): ComponentModel[] {
+/**
+ * The candidate plus every component it instantiates, transitively.
+ *
+ * `extra` (AIB-004) are staged candidates from the same plan: they shadow a
+ * project component of the same name, because the sandbox is running the
+ * candidates, and a closure that sampled the project's version would describe a
+ * component the preview is not showing.
+ */
+export function componentClosure(
+  project: ProjectModel,
+  root: ComponentModel,
+  extra: ComponentModel[] = []
+): ComponentModel[] {
   const byName = new Map(project.getComponents().map((c) => [c.name, c]));
+  for (const component of extra) byName.set(component.name, component);
   const collected = new Map<string, ComponentModel>();
   const visit = (component: ComponentModel, depth: number) => {
     if (depth > MAX_CLOSURE_DEPTH) return;
@@ -106,6 +130,19 @@ function visualRoot(component: ComponentModel, files: ComponentFiles): NodeGraph
 }
 
 /**
+ * Whether a candidate has anything to render at all.
+ *
+ * AIB-004 asks this *before* opening a review document, to decide whether it
+ * opens on the rendered preview or the diff — and at that point no preview
+ * window exists to ask. Deliberately the same two lines `buildSandboxExport`
+ * runs, so the tab and the frame can never disagree about what is renderable.
+ */
+export function candidateIsRenderable(files: ComponentFiles): boolean {
+  const { component } = candidateComponent(files);
+  return visualRoot(component, files) !== undefined;
+}
+
+/**
  * Build the export for one sandbox preview window.
  *
  * Returns `unrenderable` instead of an export when the candidate has no visual
@@ -115,6 +152,7 @@ function visualRoot(component: ComponentModel, files: ComponentFiles): NodeGraph
 export function buildSandboxExport({
   project,
   files,
+  siblings = [],
   sampleData,
   useSampleData = true
 }: SandboxExportOptions): SandboxExport {
@@ -123,7 +161,7 @@ export function buildSandboxExport({
   const root = visualRoot(component, files);
   if (!root) {
     return {
-      unrenderable: `${legacyName} has no visual root — there is nothing to render. The graph beside this shows what it does.`
+      unrenderable: `${legacyName} has no visual root — there is nothing to render.`
     };
   }
 
@@ -132,17 +170,30 @@ export function buildSandboxExport({
     return { unrenderable: 'This project has no root component yet, so the runtime has nothing to boot.' };
   }
 
-  // Splice the candidate in: replacing the same-named component covers update
+  // The plan's other staged candidates, reconstructed the same way the subject
+  // is. Keyed by name so a sibling naming the subject (or another sibling twice)
+  // cannot produce two components with one name in the export.
+  const siblingsByName = new Map<string, ComponentModel>();
+  for (const files of siblings) {
+    const sibling = candidateComponent(files);
+    if (sibling.legacyName === legacyName) continue;
+    siblingsByName.set(sibling.legacyName, sibling.component);
+  }
+  const spliced = [component, ...siblingsByName.values()];
+  const splicedNames = new Set([legacyName, ...siblingsByName.keys()]);
+
+  // Splice the candidates in: replacing same-named components covers update
   // mode, where the project already holds the version being revised.
-  const exported = Exporter.exportComponent(component) as { name: string };
-  json.components = json.components.filter((c) => c.name !== legacyName).concat([exported]);
+  json.components = json.components
+    .filter((c) => !splicedNames.has(c.name))
+    .concat(spliced.map((c) => Exporter.exportComponent(c) as { name: string }));
   json.rootComponent = legacyName;
   json.rootNode = root.id;
 
   // Routes are derived from the component set, so they have to be re-derived
   // from the set the sandbox is actually running.
-  const components = project.getComponents().filter((c) => c.name !== legacyName);
-  json.routerIndex = Exporter.getRouterIndex([...components, component]);
+  const components = project.getComponents().filter((c) => !splicedNames.has(c.name));
+  json.routerIndex = Exporter.getRouterIndex([...components, ...spliced]);
 
   json.metadata = { ...(json.metadata ?? {}) };
 
@@ -151,7 +202,10 @@ export function buildSandboxExport({
     return { json, summary: 'Real backend — this preview uses your project’s live data.' };
   }
 
-  const dataset = buildSandboxDataset({ components: componentClosure(project, component), sampleData });
+  const dataset = buildSandboxDataset({
+    components: componentClosure(project, component, [...siblingsByName.values()]),
+    sampleData
+  });
   json.metadata[SANDBOX_METADATA_KEY] = dataset;
 
   return { json, summary: dataset.summary, notice: unknownShapeNotice(dataset.unknownShape) };

@@ -44,10 +44,22 @@ import css from './SandboxPreview.module.scss';
 export interface SandboxPreviewProps {
   /** The staged candidate. Absent while the agent is still writing one. */
   files?: ComponentFiles;
+  /**
+   * AIB-004: other staged candidates from the same plan, spliced in beside this
+   * one so a page that instantiates a sibling operation's component renders.
+   * Must be referentially stable — it is an effect dependency.
+   */
+  siblings?: ComponentFiles[];
   /** Sample data the authoring model supplied with the candidate. */
   sampleData?: AgentSampleData;
   /** Bumped by the session on every new submission, so a refine re-renders. */
   revision: number;
+  /**
+   * AIB-004: where to look instead, appended when there is nothing to render.
+   * The graph is *beside* this preview in the single-component loop and behind
+   * a view toggle in a plan review, and the empty state has to say which.
+   */
+  unrenderableHint?: string;
 }
 
 /** Its own storage jar: the sandbox signs in as a fake user and must not leak that. */
@@ -68,7 +80,7 @@ function viewerOrigin(): string {
   return `${protocol}localhost:${port}`;
 }
 
-export function SandboxPreview({ files, sampleData, revision }: SandboxPreviewProps) {
+export function SandboxPreview({ files, siblings, sampleData, revision, unrenderableHint }: SandboxPreviewProps) {
   const sessionId = useMemo(() => guid(), []);
   const clientId = `sandbox-${sessionId}`;
   const webviewRef = useRef<Electron.WebviewTag>(null);
@@ -93,8 +105,8 @@ export function SandboxPreview({ files, sampleData, revision }: SandboxPreviewPr
       setResult(undefined);
       return;
     }
-    setResult(buildSandboxExport({ project: ProjectModel.instance, files, sampleData, useSampleData }));
-  }, [files, sampleData, revision, useSampleData]);
+    setResult(buildSandboxExport({ project: ProjectModel.instance, files, siblings, sampleData, useSampleData }));
+  }, [files, siblings, sampleData, revision, useSampleData]);
 
   useEffect(() => {
     if (result?.json) ViewerConnection.instance.exportSandbox(clientId);
@@ -121,7 +133,9 @@ export function SandboxPreview({ files, sampleData, revision }: SandboxPreviewPr
 
   const message = !files
     ? 'Nothing staged yet — the preview appears as soon as the agent submits.'
-    : result?.unrenderable;
+    : result?.unrenderable
+      ? [result.unrenderable, unrenderableHint].filter(Boolean).join(' ')
+      : undefined;
 
   return (
     <div className={css.Root}>

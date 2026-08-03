@@ -127,3 +127,66 @@ timing from a three-page plan in hand. Do not build it speculatively.
 - Sidebar panels are hidden-not-unmounted (WFA-002) — an elapsed-time interval must not keep ticking
   in a hidden panel, and equally must not be *reset* by the panel being hidden.
 - `costUsd` is `null` when any turn had unknown pricing. Render that as "cost unknown", not `$0`.
+
+---
+
+## What was built (2026-08-03)
+
+Slices 1–3. Slice 4 (parallelism) deliberately not built — see below. Criteria 1–4 are tested;
+criterion 5 is the live replay.
+
+### Where this task's stated mechanism had already moved
+
+**Slice 1's second paragraph was stale before the task was picked up.** It says `workingGraph`
+is built from `outcome.files` at stage time, so "a user's partial-accept during the run will
+**not** be seen by later operations", and asks for a rebuild. AIB-003's rewrite of `PlanRun` had
+already made `workingGraph()` a method that recomputes from `filesById` at the point each session
+starts — so the "prefer the former" option was true before this task began. What was missing was
+not a change but a **test**: `authoring-plan.test.ts` now edits a staged candidate from inside
+`run.onChange` mid-run and asserts the next operation's project overview describes the edit
+(`/Pages/Checkout — 1 nodes`). Criterion 4 is met by the first of its two options, and nothing
+had to be built to meet it.
+
+The corollary is worth carrying: **the only thing the validation gate does with a sibling
+candidate is check that its name exists.** `validateCandidateComponent` passes
+`components.map((c) => c.name)` to `buildComponentRefs` — no ports, no shape. So a mid-run edit
+is visible to a later operation's *prompt* (the project overview renders node counts and the
+component interface) and invisible to its *gate*. That is fine, but it means a test written
+against the gate would have passed no matter which way the mechanism worked.
+
+### What the run publishes now
+
+`PlanOperationState` gained `startedAt` / `endedAt` / `session`, and `PlanRunState` gained
+`startedAt` / `endedAt`. The clock is injected (`PlanRunOptions.now`) so a spec can pin a duration.
+
+- **`session` per operation is the actual fix for the feed.** The task frames it as "its own
+  activity feed, under its own row", which reads like a layout change. It is not: there was one
+  `activeSessionState`, replaced wholesale when the next operation started, so operation 1's rows
+  were *gone*, not misplaced. The run now keeps each session's last published state on the
+  operation it belongs to, and the panel folds finished feeds behind a toggle.
+- **The run clock is frozen when the run ends, and a retry does not restart it.**
+  `retryOperation` runs after `done`, minutes of reviewing later; a header that resumed counting
+  from `startedAt` would report the user's reading time as build time. The retried operation gets
+  a fresh per-operation clock instead.
+- **`costUsd` renders as "cost unknown", never `$0`** — and sub-cent totals render to four
+  decimals, because `$0.00` after a real run reads as "nothing happened".
+
+### The elapsed clock and the WFA-002 trap
+
+The trap has two halves that pull against each other — do not tick in a hidden panel, do not
+*reset* when the panel is hidden. Both fall out for free once elapsed is **derived** from the
+timestamps the run publishes rather than accumulated in the view: the interval exists only to
+force a re-render, so skipping it while hidden costs nothing, and a panel that comes back computes
+the right number on its first frame. `useElapsedClock` skips the `setState` when
+`ref.current.offsetParent === null` (an ancestor is `display: none`) and only runs at all while
+`runState.busy`.
+
+### Slice 4 — decided, not deferred
+
+Not built, per the task's own recommendation, and the reason is now stronger than "measure first":
+with slice 1 landed, the wait is no longer dead time. An operation is reviewable the moment it
+stages, so the user has something to do while the rest run, which is what the complaint was
+actually about. Parallelism would also cost the cross-operation visibility that `workingGraph`
+provides and that criterion 4 has just been pinned on — two concurrent operations cannot see each
+other's output. Worth revisiting with a real timing from a three-page plan; not worth building
+blind.

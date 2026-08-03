@@ -96,3 +96,8 @@ export * from './database-schema.test';
 // the CONVENTIONS.md written at creation is what the context builder hands the
 // authoring loop.
 export * from './project-scoping.test';
+
+// AIB-005: the handoff the launcher makes and the editor never mentioned. One
+// predicate over two homes for the same fact — the launcher's module state
+// before the Build panel mounts, `PlanSessionStore` after it has taken it.
+export * from './scope-plan-announcement.test';

@@ -213,6 +213,7 @@ function AuthoringPreviewDocument({ session, onAccept, onReject, onOpenReview }:
               files={session.stagedFiles}
               sampleData={session.stagedSampleData}
               revision={state.stagedRevision}
+              unrenderableHint="The graph beside this shows what it does."
             />
           }
           second={<Frame instance={nodeGraph} onResize={(bounds) => nodeGraph.resize(bounds)} />}

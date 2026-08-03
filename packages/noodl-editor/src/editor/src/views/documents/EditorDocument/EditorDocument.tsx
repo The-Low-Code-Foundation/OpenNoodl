@@ -21,6 +21,7 @@ import { Frame } from '../../common/Frame';
 import { EditorTopbar } from '../../EditorTopbar';
 import { HelpCenter } from '../../HelpCenter';
 import { NodeGraphEditor } from '../../nodegrapheditor';
+import { ScopePlanStrip } from '../../panels/AiAuthoringPanel/ScopePlanStrip';
 import { showContextMenuInPopup } from '../../ShowContextMenuInPopup';
 import { useCanvasView } from './hooks/UseCanvasView';
 import { useCaptureThumbnails } from './hooks/UseCaptureThumbnails';
@@ -395,6 +396,13 @@ function EditorDocument() {
         nodeGraph={nodeGraph}
         deployIsDisabled={ProjectModel.instance.isLesson()}
       />
+      {/*
+        AIB-005: a project created from a scoping conversation opens on an empty
+        hello-world page, which reads as the plan having failed. The user's eye
+        is here, not on the sidebar rail. Renders nothing for every other
+        project — see `scopePlanAnnouncement`.
+      */}
+      <ScopePlanStrip />
       {hasLoadedEditorSettings && (
         <ViewComponent
           documentLayout={documentLayout}

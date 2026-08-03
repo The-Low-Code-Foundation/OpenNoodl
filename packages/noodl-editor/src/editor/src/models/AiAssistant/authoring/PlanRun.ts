@@ -39,7 +39,7 @@ import { DocSession } from './DocSession';
 import type { AuthoringPlan, PlanOperation, PlanOutcomeEntry } from './plan';
 import { graphComponentFromFiles, planExcludedWith, planOperationRequires, renderPlanContext } from './plan';
 import type { AppliedPlanOperation } from './planStaging';
-import type { AuthoringMode, ComponentFiles } from './types';
+import type { AgentSampleData, AuthoringMode, ComponentFiles } from './types';
 
 export type PlanOperationStatus =
   /** Not reached yet. */
@@ -76,6 +76,26 @@ export interface PlanOperationState {
   staged?: { nodeCount: number; connectionCount: number };
   /** Doc operations: the authored body's size and headline, for the plan list. */
   stagedDoc?: { chars: number; summary?: string; created: boolean; lintFindings: string[] };
+  /**
+   * AIB-002 — when this operation's session started and finished, in wall-clock
+   * milliseconds. A row can then say *how long* it has been authoring rather
+   * than only that it is, which is half the answer to "wtf is it doing"; the
+   * other half is `session`, below. `startedAt` survives into the finished
+   * state so the row keeps showing a duration.
+   */
+  startedAt?: number;
+  endedAt?: number;
+  /**
+   * AIB-002 — this operation's own published session state, kept after it
+   * finishes.
+   *
+   * `PlanRunState.session` used to be the only copy and it held the *active*
+   * session, so operation 1's feed was replaced wholesale the moment operation 2
+   * started, and while it was on screen nothing said which operation the rows
+   * belonged to. Holding it per operation is what lets each feed live under the
+   * row it describes.
+   */
+  session?: AuthoringSessionState;
 }
 
 export interface PlanRunState {
@@ -87,6 +107,14 @@ export interface PlanRunState {
   session?: AuthoringSessionState;
   /** Cumulative across all sessions; null when any turn had unknown pricing. */
   costUsd: number | null;
+  /**
+   * AIB-002 — the whole run's wall-clock bounds, for the header line. Frozen
+   * when the run finishes: a later `retryOperation` has its own per-operation
+   * clock and must not make the header count the minutes the user spent
+   * reviewing.
+   */
+  startedAt?: number;
+  endedAt?: number;
 }
 
 export interface PlanRunOptions {
@@ -110,6 +138,12 @@ export interface PlanRunOptions {
   docBaselineFor?: (relPath: string) => string | undefined | Promise<string | undefined>;
   /** Per-doc-session options: chat seam, budget, effort, lint. */
   doc?: DocSessionOptions;
+  /**
+   * AIB-002 — the clock the durations are read from. Injected for the same
+   * reason everything else here is: a spec that pins "operation 1 took 4
+   * minutes" must not depend on how fast the machine running it happens to be.
+   */
+  now?: () => number;
 }
 
 type Listener = (state: PlanRunState) => void;
@@ -117,6 +151,13 @@ type Listener = (state: PlanRunState) => void;
 export class PlanRun {
   private readonly states: PlanOperationState[];
   private readonly filesById = new Map<string, ComponentFiles>();
+  /**
+   * AIB-004 — the sample records the authoring model supplied with each
+   * candidate. `AuthoringOutcome` does not carry them (the session exposes them
+   * separately), and without them a plan operation's rendered preview runs on an
+   * inferred dataset where the single-component loop runs on the model's own.
+   */
+  private readonly sampleDataById = new Map<string, AgentSampleData>();
   private readonly docsById = new Map<string, StagedDoc>();
   private readonly listeners = new Set<Listener>();
   private phase: PlanRunState['phase'] = 'idle';
@@ -128,12 +169,16 @@ export class PlanRun {
   private costUsd: number | null = 0;
   private cancelled = false;
   private started = false;
+  private runStartedAt?: number;
+  private runEndedAt?: number;
+  private readonly now: () => number;
 
   constructor(
     private readonly graph: ExplainGraph,
     readonly plan: AuthoringPlan,
     private readonly options: PlanRunOptions = {}
   ) {
+    this.now = options.now ?? (() => Date.now());
     this.states = plan.operations.map((operation) => ({
       operation,
       status: 'pending' as const,
@@ -148,7 +193,9 @@ export class PlanRun {
       operations: this.states.map((s) => ({ ...s })),
       activeOperationId: this.activeOperationId,
       session: this.activeSessionState,
-      costUsd: this.costUsd
+      costUsd: this.costUsd,
+      startedAt: this.runStartedAt,
+      endedAt: this.runEndedAt
     };
   }
 
@@ -183,6 +230,34 @@ export class PlanRun {
   /** The authored doc body for one doc operation (the diff review reads this). */
   docFor(operationId: string): StagedDoc | undefined {
     return this.docsById.get(operationId);
+  }
+
+  /**
+   * AIB-004 — the sample records the model supplied with this operation's
+   * candidate, so its rendered preview shows the data the model meant it to.
+   */
+  sampleDataFor(operationId: string): AgentSampleData | undefined {
+    return this.sampleDataById.get(operationId);
+  }
+
+  /**
+   * AIB-004 — every OTHER operation's staged candidate.
+   *
+   * A rendered preview of one operation needs these spliced in beside it: a page
+   * that instantiates a component a sibling operation authored has nothing to
+   * render without it, because the project will not hold that component until
+   * the whole plan is applied. Same working-copy trick as `workingGraph`, one
+   * layer down — the graph version is what the *gate* sees, this is what the
+   * *runtime* sees.
+   */
+  stagedSiblings(operationId: string): ComponentFiles[] {
+    const siblings: ComponentFiles[] = [];
+    for (const state of this.states) {
+      if (state.operation.id === operationId || state.operation.kind === 'doc') continue;
+      const files = this.filesById.get(state.operation.id);
+      if (files) siblings.push(files);
+    }
+    return siblings;
   }
 
   /**
@@ -286,6 +361,7 @@ export class PlanRun {
     this.cancelled = false;
     this.phase = 'running';
     const previousFiles = this.filesById.get(operationId);
+    const previousSampleData = this.sampleDataById.get(operationId);
     this.filesById.delete(operationId);
     await this.authorOperation(state, this.workingGraph(operationId), repairContext);
     // A failed retry must not silently destroy what the user already had: the
@@ -293,6 +369,9 @@ export class PlanRun {
     // is still the best thing anyone has.
     if (state.status !== 'staged' && previousFiles) {
       this.filesById.set(operationId, previousFiles);
+      // The sample data belongs to the candidate; restoring one without the
+      // other would preview the old graph against nothing.
+      if (previousSampleData) this.sampleDataById.set(operationId, previousSampleData);
     }
     this.activeOperationId = undefined;
     this.phase = this.cancelled ? 'cancelled' : 'done';
@@ -329,6 +408,7 @@ export class PlanRun {
     if (this.started) throw new AuthoringSetupError('run() was already called on this plan.');
     this.started = true;
     this.phase = 'running';
+    this.runStartedAt = this.now();
     this.publish();
 
     for (const state of this.states) {
@@ -360,6 +440,7 @@ export class PlanRun {
 
     this.activeOperationId = undefined;
     this.phase = this.cancelled ? 'cancelled' : 'done';
+    this.runEndedAt = this.now();
     this.publish();
     return this.state;
   }
@@ -382,6 +463,9 @@ export class PlanRun {
     const legacyName = pathToLegacyName(operation.target);
     state.status = 'authoring';
     state.error = undefined;
+    state.startedAt = this.now();
+    state.endedAt = undefined;
+    state.session = undefined;
     this.activeOperationId = operation.id;
     this.publish();
 
@@ -410,20 +494,26 @@ export class PlanRun {
     } catch (error) {
       state.status = 'failed';
       state.error = error instanceof Error ? error.message : String(error);
+      state.endedAt = this.now();
       this.publish();
       return;
     }
 
     this.activeSession = session;
     const unsubscribe = session.onChange((sessionState) => {
+      // Both: `session` is the live feed the header watches, `state.session` is
+      // the copy that stays under this row after the next operation starts.
       this.activeSessionState = sessionState;
+      state.session = sessionState;
       this.publish();
     });
     this.activeSessionState = session.state;
+    state.session = session.state;
     this.publish();
 
     const outcome = await session.run();
     unsubscribe();
+    state.endedAt = this.now();
     this.costUsd =
       this.costUsd === null || outcome.metrics.costUsd === null ? null : this.costUsd + outcome.metrics.costUsd;
 
@@ -435,6 +525,12 @@ export class PlanRun {
       };
       // Later operations see this candidate — staged, never applied.
       this.filesById.set(operation.id, outcome.files);
+      // AIB-004: the model's own sample records, read off the session because
+      // the outcome does not carry them. A retry that produces no sample data
+      // must not leave the previous attempt's behind.
+      const sampleData = session.stagedSampleData;
+      if (sampleData) this.sampleDataById.set(operation.id, sampleData);
+      else this.sampleDataById.delete(operation.id);
     } else if (outcome.status === 'cancelled') {
       state.status = 'skipped';
       this.cancelled = true;
@@ -466,6 +562,8 @@ export class PlanRun {
   private async runDocOperation(state: PlanOperationState): Promise<void> {
     const operation = state.operation;
     state.status = 'authoring';
+    state.startedAt = this.now();
+    state.endedAt = undefined;
     this.activeOperationId = operation.id;
     this.publish();
 
@@ -474,6 +572,7 @@ export class PlanRun {
       state.error =
         'This plan run has no project-docs reader, so the current contents of ' +
         `${operation.target} are unknown — a document cannot be rewritten from a guess.`;
+      state.endedAt = this.now();
       this.publish();
       return;
     }
@@ -484,6 +583,7 @@ export class PlanRun {
     } catch (error) {
       state.status = 'failed';
       state.error = `Could not read ${operation.target}: ${error instanceof Error ? error.message : String(error)}`;
+      state.endedAt = this.now();
       this.publish();
       return;
     }
@@ -507,9 +607,11 @@ export class PlanRun {
     } catch (error) {
       state.status = 'failed';
       state.error = error instanceof Error ? error.message : String(error);
+      state.endedAt = this.now();
       this.publish();
       return;
     }
+    state.endedAt = this.now();
 
     if (outcome.status === 'authored' && outcome.content !== undefined) {
       this.docsById.set(operation.id, {

@@ -19,6 +19,7 @@ import {
 import {
   buildSandboxExport,
   candidateComponent,
+  candidateIsRenderable,
   componentClosure
 } from '../../src/editor/src/models/AiAssistant/authoring/sandboxExport';
 import type { AuthoringRequest, ComponentFiles, SubmitPayload } from '../../src/editor/src/models/AiAssistant/authoring/types';
@@ -40,6 +41,13 @@ function loadProject(): ProjectModel {
 
 function files(payload: SubmitPayload): ComponentFiles {
   const result = buildCandidate(REQUEST, payload);
+  expect(result.errors).toEqual([]);
+  return result.files!;
+}
+
+/** The same, for a second component — AIB-004's siblings need distinct paths. */
+function filesAt(componentPath: string, payload: SubmitPayload): ComponentFiles {
+  const result = buildCandidate({ ...REQUEST, componentPath }, payload);
   expect(result.errors).toEqual([]);
   return result.files!;
 }
@@ -368,5 +376,93 @@ describe('AIX-008 sandbox export', () => {
 
     expect(result.json).toBeUndefined();
     expect(result.unrenderable).toContain('nothing to render');
+  });
+});
+
+/**
+ * AIB-004 — a plan's operations reference each other, and until the whole plan
+ * is applied NONE of them is in the project. A preview of one that splices only
+ * itself boots a page whose child component does not exist, which is a blank
+ * frame — the exact failure the preview was wired in to answer.
+ */
+describe('AIB-004 sandbox export with sibling candidates', () => {
+  const CARD = 'Components/BookCard';
+  const LIST = 'Pages/BookList';
+
+  function cardFiles(): ComponentFiles {
+    return filesAt(CARD, {
+      nodes: [
+        { id: 'card_root', type: 'Group' },
+        { id: 'card_title', type: 'Text', parent: 'card_root', parameters: { text: 'A book' } }
+      ],
+      visualRoots: ['card_root']
+    });
+  }
+
+  /** A page whose only child is the component another operation authored. */
+  function listFiles(): ComponentFiles {
+    return filesAt(LIST, {
+      nodes: [
+        { id: 'list_root', type: 'Group' },
+        { id: 'list_card', type: `/${CARD}`, parent: 'list_root' }
+      ],
+      visualRoots: ['list_root']
+    });
+  }
+
+  it('splices every staged candidate in, so a page that instantiates a sibling renders', () => {
+    const project = loadProject();
+    const before = JSON.stringify(project.toJSON());
+
+    const result = buildSandboxExport({ project, files: listFiles(), siblings: [cardFiles()] });
+
+    const names = result.json!.components.map((c) => c.name);
+    expect(result.json!.rootComponent).toBe(`/${LIST}`);
+    expect(names).toContain(`/${LIST}`);
+    // Without this the runtime boots a Group whose only child is a component
+    // type it has never heard of.
+    expect(names).toContain(`/${CARD}`);
+    // The whole point of splicing rather than applying: still nothing written.
+    expect(JSON.stringify(project.toJSON())).toEqual(before);
+  });
+
+  it('never lets a sibling produce a second component under the subject’s own name', () => {
+    // A sibling naming the subject is what an `update` operation on the page
+    // being previewed looks like; two components with one name in an export is
+    // a runtime coin toss.
+    const result = buildSandboxExport({
+      project: loadProject(),
+      files: listFiles(),
+      siblings: [listFiles(), cardFiles(), cardFiles()]
+    });
+
+    const names = result.json!.components.map((c) => c.name);
+    expect(names.filter((n) => n === `/${LIST}`).length).toBe(1);
+    expect(names.filter((n) => n === `/${CARD}`).length).toBe(1);
+  });
+
+  it('samples data for what a sibling candidate reads, not for what the project has', () => {
+    // The closure has to follow the instance into the *candidate*: the project
+    // has no /Components/BookCard at all, so a closure built from project
+    // components alone stops at the page.
+    const project = loadProject();
+    const { component } = candidateComponent(listFiles());
+    const { component: card } = candidateComponent(cardFiles());
+
+    expect(componentClosure(project, component).map((c) => c.name)).toEqual([`/${LIST}`]);
+    expect(componentClosure(project, component, [card]).map((c) => c.name)).toEqual([`/${LIST}`, `/${CARD}`]);
+  });
+
+  it('answers "is there anything to render" without building an export', () => {
+    // The review document has to choose Preview or Changes before any preview
+    // window exists, and the two must never disagree.
+    const logicOnly = files({
+      nodes: [{ id: 'in', type: 'Component Inputs', ports: [{ name: 'Trigger', plug: 'output', type: '*' }] }]
+    });
+    expect(candidateIsRenderable(logicOnly)).toBe(false);
+    expect(buildSandboxExport({ project: loadProject(), files: logicOnly }).json).toBeUndefined();
+
+    expect(candidateIsRenderable(listFiles())).toBe(true);
+    expect(buildSandboxExport({ project: loadProject(), files: listFiles() }).json).toBeDefined();
   });
 });

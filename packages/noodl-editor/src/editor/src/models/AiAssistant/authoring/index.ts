@@ -104,5 +104,5 @@ export { countStyleValues, formatStyleFindings, styleLintCandidate } from './sty
 export type { StyleLint, StyleLintOptions } from './styleLint';
 export { buildSandboxDataset, codeFields, discoverDataShape, unknownShapeNotice } from './sandboxData';
 export type { BuildSandboxDatasetOptions } from './sandboxData';
-export { buildSandboxExport, candidateComponent, componentClosure } from './sandboxExport';
+export { buildSandboxExport, candidateComponent, candidateIsRenderable, componentClosure } from './sandboxExport';
 export type { SandboxExport, SandboxExportOptions } from './sandboxExport';

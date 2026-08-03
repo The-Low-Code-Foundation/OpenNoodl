@@ -102,7 +102,15 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailabi
   // Determine if this is the final step before creation
   const isLastStep = currentStep === 'review' || (mode === 'quick' && currentStep === 'basics');
 
-  const nextLabel = isLastStep ? 'Create Project' : 'Next';
+  /**
+   * AIB-005 slice 3 — the last screen has to land the expectation the editor
+   * then has to meet. "Create Project" beside a list of three agreed pages reads
+   * as "build them"; it does not, and the gap between those two readings is
+   * where Richard's *"it took me into the hello world app"* lives. Naming the
+   * panel the plan will be waiting in costs four words.
+   */
+  const hasPlan = mode === 'ai' && (scoping?.planRows?.length ?? 0) > 0;
+  const nextLabel = isLastStep ? (hasPlan ? 'Create project — the plan waits in Build' : 'Create Project') : 'Next';
   const showBack = !STEPS_WITHOUT_BACK.includes(currentStep);
 
   // A turn in flight must not be walked out from under: the reply would land

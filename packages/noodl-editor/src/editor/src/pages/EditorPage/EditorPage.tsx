@@ -6,6 +6,7 @@ import { ipcRenderer } from 'electron';
 import React, { useEffect, useRef, useState } from 'react';
 import { platform } from '@noodl/platform';
 
+import { peekPendingScopePlan } from '@noodl-models/AiAssistant/scoping/pendingPlan';
 import { App } from '@noodl-models/app';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { NodeLibraryImporter } from '@noodl-models/nodelibrary/NodeLibraryImporter';
@@ -34,6 +35,7 @@ import { Frame } from '../../views/common/Frame';
 import { ImportFlowCancelled, openImportFlow } from '../../views/ImportFlow';
 import { LessonLayer } from '../../views/lessonlayer2';
 import PopupLayer from '../../views/popuplayer';
+import { AiAuthoringPanel_ID } from '../../views/panels/AiAuthoringPanel';
 import { SidePanel } from '../../views/SidePanel';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 import { BaseWindow } from '../../views/windows/BaseWindow';
@@ -104,6 +106,21 @@ export function EditorPage({ route }: EditorPageProps) {
 
     setupSidePanels();
     installDocuments();
+
+    // AIB-005: arriving with a plan agreed in the launcher's wizard is not a
+    // normal project open — it is the continuation of something the user was in
+    // the middle of thirty seconds ago, and they landed in an unexplained
+    // hello-world page. Open the Build panel so the plan is where their hands
+    // already are.
+    //
+    // Peeked, never taken: `ProjectAuthoringView` owns the consumption (into
+    // `PlanSessionStore`, per AIB-003), and a second consumer here would be the
+    // race that task exists to remove. And it opens the panel without starting
+    // anything — the wizard promised nothing would be built until the user
+    // chose, and that promise is worth more than the saved click.
+    if (peekPendingScopePlan(ProjectModel.instance?.id)) {
+      SidebarModel.instance.switch(AiAuthoringPanel_ID);
+    }
 
     const eventGroup = {};
 

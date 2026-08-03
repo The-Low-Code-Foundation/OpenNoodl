@@ -51,13 +51,21 @@ export function peekPendingScopePlan(projectId?: string): PendingScopePlan | und
 
 /**
  * Consume the plan. Returns `undefined` when there is none, or when the one on
- * file belongs to a different project — in which case it is dropped, because a
- * stale plan that keeps offering itself is a bug that presents as a feature.
+ * file belongs to a different project — in which case it is **left alone**.
+ *
+ * AIB-005 changed that second case. It used to clear unconditionally, on the
+ * reasoning that "a stale plan that keeps offering itself is a bug that presents
+ * as a feature" — but the id check above is already what stops a plan reaching
+ * the wrong project, and clearing on mismatch meant that opening any *other*
+ * project first silently destroyed the handover for the one the user had just
+ * scoped. The plan is still window-lifetime and still single-consumption by its
+ * own project; it simply no longer dies of a project it has nothing to do with
+ * being opened in front of it.
  */
 export function takePendingScopePlan(projectId?: string): PendingScopePlan | undefined {
   const value = pending;
-  pending = undefined;
   if (!value) return undefined;
   if (projectId !== undefined && value.projectId !== projectId) return undefined;
+  pending = undefined;
   return value;
 }

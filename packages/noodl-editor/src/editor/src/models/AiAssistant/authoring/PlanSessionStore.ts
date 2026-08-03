@@ -90,6 +90,15 @@ export interface PlanSession {
    * starts and after the plan is applied or abandoned.
    */
   run: PlanRun | null;
+  /**
+   * AIB-005 — where this plan came from. `'scoping'` means the user agreed it in
+   * the launcher's wizard minutes ago and has not seen it since, which is the
+   * one case that earns an announcement outside the Build panel. A plan the user
+   * typed into the panel needs no announcement: they are looking at it.
+   */
+  origin: 'scoping' | null;
+  /** AIB-005 — the canvas announcement has been dismissed. Never the plan. */
+  announcementDismissed: boolean;
 }
 
 function emptySession(): PlanSession {
@@ -100,7 +109,9 @@ function emptySession(): PlanSession {
     excluded: new Set(),
     applied: null,
     applyFailure: null,
-    run: null
+    run: null,
+    origin: null,
+    announcementDismissed: false
   };
 }
 

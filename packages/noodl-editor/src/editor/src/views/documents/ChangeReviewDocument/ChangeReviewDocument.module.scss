@@ -27,6 +27,29 @@
   position: relative;
 }
 
+/* AIB-004: Preview and Changes are stacked panes, not swapped ones — see the
+   comment at the call site for why the hidden one must keep its box. */
+.Pane {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
+}
+
+.PaneHidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* AIB-004: the plan context, as a chip that survives scrolling rather than a
+   suffix on a title nobody re-reads. */
+.Chip {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background-color: var(--theme-color-bg-3);
+  white-space: nowrap;
+}
+
 .Rail {
   width: 340px;
   flex-shrink: 0;

@@ -458,3 +458,152 @@ describe('AIB-001 — retrying one operation of a plan', () => {
     await expectAsync(run.retryOperation('op-nope')).toBeRejected();
   });
 });
+
+/**
+ * AIB-002 — the run is legible.
+ *
+ * Richard's complaint was not about a nicer spinner. It was two requirements
+ * wearing one sentence: know *what it is doing*, and *act on finished work
+ * while the rest runs*. Both are answered by the run publishing per-operation
+ * state the UI can use, instead of one global `busy` and one feed belonging to
+ * whichever session happens to be active.
+ *
+ * The clock is injected for the same reason everything else here is: a spec
+ * that pins "operation 1 took four minutes" must not depend on the machine.
+ */
+describe('AIB-002 — what a run publishes about itself', () => {
+  /** A clock that advances 1s per read — enough to order events, not to flake. */
+  function tickingClock(step = 1000) {
+    let t = 1_000_000;
+    return () => (t += step);
+  }
+
+  it('times the run and every operation in it', async () => {
+    const run = new PlanRun(loadGraph(), THREE_OP_PLAN, {
+      baseFilesFor,
+      session: { chat: planChatScript([]) },
+      now: tickingClock()
+    });
+    const state = await run.run();
+
+    expect(state.startedAt).toBeDefined();
+    expect(state.endedAt).toBeGreaterThan(state.startedAt!);
+    for (const op of state.operations) {
+      // Every operation that ran has both bounds — including op-3, which failed
+      // for want of a docs reader. A row that reports no duration because the
+      // operation went wrong is the same blank the task exists to remove.
+      expect(op.startedAt).toBeDefined();
+      expect(op.endedAt).toBeGreaterThan(op.startedAt!);
+    }
+    // Plan order is wall-clock order — the header's "2 of 3" means something.
+    const starts = state.operations.map((op) => op.startedAt!);
+    expect([...starts].sort((a, b) => a - b)).toEqual(starts);
+  });
+
+  it('freezes the run clock when the run finishes, so a later retry cannot rewrite the total', async () => {
+    const run = new PlanRun(loadGraph(), THREE_OP_PLAN, {
+      baseFilesFor,
+      session: { chat: planChatScript([]) },
+      now: tickingClock()
+    });
+    const finished = await run.run();
+    await run.retryOperation('op-1', 'something to fix');
+
+    // The header must not start counting the minutes the user spent reviewing.
+    expect(run.state.startedAt).toBe(finished.startedAt);
+    expect(run.state.endedAt).toBe(finished.endedAt);
+    // The retried operation, however, has its own fresh clock.
+    const op1 = run.state.operations.find((op) => op.operation.id === 'op-1')!;
+    expect(op1.startedAt!).toBeGreaterThan(finished.endedAt!);
+  });
+
+  it('keeps each operation’s own activity feed after the next one starts', async () => {
+    const run = new PlanRun(loadGraph(), THREE_OP_PLAN, { baseFilesFor, session: { chat: planChatScript([]) } });
+    const state = await run.run();
+
+    const op1 = state.operations.find((op) => op.operation.id === 'op-1')!;
+    const op2 = state.operations.find((op) => op.operation.id === 'op-2')!;
+    // The whole defect: there used to be ONE feed, holding the active session,
+    // replaced wholesale when the next operation started — so operation 1's
+    // rows vanished, and while they were up nothing said whose they were.
+    expect(op1.session!.legacyName).toBe('/Pages/Checkout');
+    expect(op2.session!.legacyName).toBe('/Pages/Article');
+    expect(op1.session!.activities.length).toBeGreaterThan(0);
+    expect(op1.session).not.toBe(op2.session);
+    // A doc operation has no AuthoringSession — its row shows its own detail.
+    expect(state.operations.find((op) => op.operation.id === 'op-3')!.session).toBeUndefined();
+  });
+
+  it('accumulates cost, and reports it as unknown rather than zero when a turn had no price', async () => {
+    const priced = new PlanRun(loadGraph(), THREE_OP_PLAN, { baseFilesFor, session: { chat: planChatScript([]) } });
+    const pricedState = await priced.run();
+    // Two component sessions at $0.01 a turn.
+    expect(pricedState.costUsd).toBeCloseTo(0.02, 5);
+
+    const unpriced = planChatScript([]);
+    const run = new PlanRun(loadGraph(), THREE_OP_PLAN, {
+      baseFilesFor,
+      session: {
+        chat: async (request: AiChatRequest) => {
+          const response = await unpriced(request);
+          return { ...response, usage: { ...response.usage, costUsd: null } };
+        }
+      }
+    });
+    // Null, not 0: an alpha user bringing their own key must not be told a plan
+    // was free because one turn's model had no published price.
+    expect((await run.run()).costUsd).toBeNull();
+  });
+
+  it('hands a later operation the candidate as the user edited it mid-run, not as it was authored', async () => {
+    // AIB-002 criterion 4. Reviewing operation 1 while operation 3 is still
+    // authoring means `setOperationFiles` lands mid-run; what the operations
+    // still to come author against has to be the edit.
+    const openings: string[] = [];
+    const chat = planChatScript([]);
+    const run = new PlanRun(loadGraph(), THREE_OP_PLAN, {
+      baseFilesFor,
+      session: {
+        chat: async (request: AiChatRequest) => {
+          openings.push(request.messages.find((m) => m.role === 'user')?.content ?? '');
+          return chat(request);
+        }
+      }
+    });
+
+    let edited = false;
+    run.onChange((state) => {
+      if (edited) return;
+      if (state.operations.find((op) => op.operation.id === 'op-1')?.status !== 'staged') return;
+      edited = true;
+      // What a partial keep in the review document does: two nodes become one.
+      const staged = run.filesFor('op-1')!;
+      run.setOperationFiles('op-1', {
+        ...staged,
+        nodes: { ...staged.nodes, nodes: staged.nodes.nodes.slice(0, 1) }
+      });
+    });
+    await run.run();
+
+    expect(edited).toBe(true);
+    // op-2's project overview describes the EDITED checkout page. This holds
+    // because `workingGraph` is recomputed from the staged files at the start of
+    // each operation rather than accumulated as they land.
+    expect(openings[1]).toContain('/Pages/Checkout — 1 nodes');
+    expect(openings[1]).not.toContain('/Pages/Checkout — 2 nodes');
+  });
+
+  it('offers a candidate’s siblings and its sample data, for the rendered preview', async () => {
+    const run = new PlanRun(loadGraph(), THREE_OP_PLAN, { baseFilesFor, session: { chat: planChatScript([]) } });
+    await run.run();
+
+    // AIB-004: the page under review needs the plan's OTHER candidates spliced
+    // in beside it, and must never be handed itself.
+    expect(run.stagedSiblings('op-2')).toEqual([run.filesFor('op-1')!]);
+    expect(run.stagedSiblings('op-1')).toEqual([run.filesFor('op-2')!]);
+    // A doc operation is not a component and never joins a sandbox export.
+    expect(run.stagedSiblings('op-3').length).toBe(2);
+    // No sample data in these submissions, so none is invented.
+    expect(run.sampleDataFor('op-1')).toBeUndefined();
+  });
+});

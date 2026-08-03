@@ -20,6 +20,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   applyAuthoredPlan,
   buildChangeSet,
+  candidateIsRenderable,
   graphComponentFromFiles,
   materializeSelection,
   pathToLegacyName,
@@ -32,6 +33,7 @@ import {
   StagingError,
   validateCandidateComponent,
   type AuthoringPlan,
+  type AuthoringSessionState,
   type ComponentFiles,
   type PlanApplyFailure,
   type PlanOperationState,
@@ -64,6 +66,7 @@ import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { SandboxPreview } from '../../documents/AuthoringPreviewDocument/SandboxPreview';
 import { ChangeReviewDocumentProvider } from '../../documents/ChangeReviewDocument';
 import { ActivityRow } from './AiAuthoringPanel';
 import { PlanDocReviewDialog } from './PlanDocReviewDialog';
@@ -104,6 +107,70 @@ function operationDetail(state: PlanOperationState): string | undefined {
     return summary ? `${size} — ${summary}` : size;
   }
   return undefined;
+}
+
+/** "4m 12s", "38s" — a duration read at a glance, not parsed. */
+export function formatDuration(ms: number): string {
+  const seconds = Math.max(0, Math.round(ms / 1000));
+  const minutes = Math.floor(seconds / 60);
+  return minutes > 0 ? `${minutes}m ${seconds % 60}s` : `${seconds}s`;
+}
+
+/**
+ * AIB-002 — cost, or the honest absence of one.
+ *
+ * `costUsd` is null when *any* turn had unknown pricing, and rendering that as
+ * `$0.00` would tell a user bringing their own key that the plan was free. In
+ * an alpha where the cost of a plan is the only thing standing between a user
+ * and a surprise invoice, that is not a rounding error.
+ */
+export function formatCost(costUsd: number | null): string {
+  if (costUsd === null) return 'cost unknown';
+  // Sub-cent totals are real during testing; $0.00 reads as "nothing happened".
+  return costUsd > 0 && costUsd < 0.01 ? `$${costUsd.toFixed(4)}` : `$${costUsd.toFixed(2)}`;
+}
+
+/**
+ * AIB-002 — what an authoring operation is doing *right now*, in one clause.
+ *
+ * The attempt number is the single most reassuring thing on screen during a
+ * long turn: a run that has silently been repairing its third submission for
+ * four minutes is indistinguishable, without it, from one that has hung.
+ */
+function authoringDetail(session: AuthoringSessionState | undefined): string | undefined {
+  if (!session) return undefined;
+  const building = session.building;
+  if (!building) return 'Reading context…';
+  const nodes = `${building.nodes.length} node${building.nodes.length === 1 ? '' : 's'}`;
+  const attempt = building.submission > 1 ? ` · attempt ${building.submission}` : '';
+  return building.complete ? `Validating — ${nodes}${attempt}` : `Writing — ${nodes} so far${attempt}`;
+}
+
+/**
+ * AIB-002 — a clock that re-renders once a second while the run is working, and
+ * only while this panel is actually on screen.
+ *
+ * Elapsed is always *derived* from the timestamps `PlanRun` publishes, never
+ * accumulated here, which is what makes both halves of the WFA-002 trap fall
+ * out for free: a hidden panel stops re-rendering (nobody is reading it) and a
+ * panel that comes back computes the right number on its first frame instead of
+ * restarting from zero.
+ */
+function useElapsedClock(active: boolean, ref: React.RefObject<HTMLElement>): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    setNow(Date.now());
+    const timer = setInterval(() => {
+      // `offsetParent` is null when this element or an ancestor is
+      // `display: none` — which is how the sidebar hides a panel it has not
+      // unmounted.
+      if (ref.current && ref.current.offsetParent === null) return;
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [active, ref]);
+  return now;
 }
 
 export interface ProjectAuthoringViewProps {
@@ -153,6 +220,8 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     if (!scopePlan) return existing;
     return store.update(projectId, {
       plan: scopePlan.plan,
+      // AIB-005: what earns this plan an announcement outside the Build panel.
+      origin: 'scoping',
       note: {
         text:
           `From the scoping conversation that created this project — ${scopePlan.plan.operations.length} ` +
@@ -265,6 +334,12 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     if (!recovered) return;
     patch({
       plan: recovered.plan,
+      // Same provenance as the fast path — this IS the scoping conversation's
+      // plan, read back off disk a day later. Announced as already seen: the
+      // user adopted it from this panel, and a canvas strip telling them about
+      // the thing they are looking at is noise, not news.
+      origin: 'scoping',
+      announcementDismissed: true,
       note: {
         text:
           `Recovered from ${recovered.recordPath} — the plan agreed when this project was created, still ` +
@@ -384,10 +459,45 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     if (!run || !project || !files) return;
     const operation = run.plan.operations.find((op) => op.id === id);
     const changeSet = buildChangeSet(project, files);
+    const componentOps = run.plan.operations.filter((op) => op.kind !== 'doc');
+    const position = componentOps.findIndex((op) => op.id === id);
+    // AIB-004: the plan's other staged candidates travel with this one. A page
+    // that instantiates a component a sibling operation authored renders as a
+    // blank frame without them — the project will not hold that component until
+    // the whole plan is applied.
+    const siblings = run.stagedSiblings(id);
     AppRegistry.instance.openDocument(ChangeReviewDocumentProvider.ID, {
       changeSet,
-      title: `Review ${operation?.target ?? id} — plan operation`,
+      title: `Review ${operation?.target ?? id}`,
+      // AIB-004: the plan context as a chip rather than a title suffix, so it
+      // survives a reader who has scrolled away from the header.
+      chip:
+        position >= 0
+          ? `Operation ${position + 1} of ${componentOps.length} · nothing applied yet`
+          : 'Plan operation · nothing applied yet',
+      // AIB-004 one vocabulary: every operation-level verb names the plan, and
+      // the only button in the product that says "project" is the one that
+      // writes. "Keep" alone was the ambiguity Richard hit.
       acceptLabel: 'Keep',
+      acceptScope: 'in plan',
+      rejectLabel: 'Drop from plan',
+      // Dropping an operation is restorable from the panel and changes nothing
+      // outside the plan — per the phase-23 law, not red.
+      isRejectDangerous: false,
+      // AIB-004: preview-first for a component that did not exist five minutes
+      // ago. There is no meaningful diff for "25 additions, 1 change", and "is
+      // this the login page I asked for" is a question only a render answers.
+      // An update has a real before, so it opens on the diff.
+      defaultView: operation?.kind === 'create' && candidateIsRenderable(files) ? 'preview' : 'review',
+      preview: (
+        <SandboxPreview
+          files={files}
+          siblings={siblings}
+          sampleData={run.sampleDataFor(id)}
+          revision={0}
+          unrenderableHint="Switch to Changes to see what it does."
+        />
+      ),
       contextNote:
         'This is one operation of a plan. Keeping a selection updates the plan — nothing reaches your project ' +
         'until you apply the whole plan.',
@@ -467,24 +577,42 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     }
   }, [excluded, reset, setApplied, setApplyFailure, setNote]);
 
+  /**
+   * Re-author one operation with the reason it went wrong as repair context.
+   *
+   * AIB-001 slice 4 built this for an **apply** failure. AIB-009 F1 is the same
+   * loss one stage earlier: an operation whose *authoring* failed left the user
+   * with a red sentence, a dependency closure that quietly invalidated whatever
+   * depended on it, and no way forward but Abandon or apply-the-survivors. Same
+   * shape, same fix, and `retryOperation` needed nothing added — the panel was
+   * simply only ever offering it for one of the two failures.
+   */
+  const retryOperation = useCallback(
+    async (id: string, target: string, reason: string) => {
+      const run = runRef.current;
+      if (!run) return;
+      setRetrying(true);
+      setApplyFailure(null);
+      setNote({ text: `Re-authoring "${target}"…`, type: FeedbackType.Notice });
+      try {
+        await run.retryOperation(id, reason);
+        setNote({
+          text: `"${target}" was authored again. Review it, then apply the plan.`,
+          type: FeedbackType.Notice
+        });
+      } catch (e) {
+        setNote({ text: e instanceof Error ? e.message : String(e), type: FeedbackType.Danger });
+      } finally {
+        setRetrying(false);
+      }
+    },
+    [setApplyFailure, setNote]
+  );
+
   const retryFailedOperation = useCallback(async () => {
-    const run = runRef.current;
-    if (!run || !applyFailure) return;
-    setRetrying(true);
-    setApplyFailure(null);
-    setNote({ text: `Re-authoring "${applyFailure.target}"…`, type: FeedbackType.Notice });
-    try {
-      await run.retryOperation(applyFailure.id, applyFailure.reason);
-      setNote({
-        text: `"${applyFailure.target}" was authored again. Review it, then apply the plan.`,
-        type: FeedbackType.Notice
-      });
-    } catch (e) {
-      setNote({ text: e instanceof Error ? e.message : String(e), type: FeedbackType.Danger });
-    } finally {
-      setRetrying(false);
-    }
-  }, [applyFailure]);
+    if (!applyFailure) return;
+    await retryOperation(applyFailure.id, applyFailure.target, applyFailure.reason);
+  }, [applyFailure, retryOperation]);
 
   const abandon = useCallback(() => {
     // Abandon is the absence of an apply call: drop everything, nothing was written.
@@ -502,6 +630,42 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
   const totalComponentOps = runState ? runState.operations.filter((op) => op.operation.kind !== 'doc').length : 0;
   const totalOps = runState?.operations.length ?? 0;
   const reviewedDoc = reviewingDoc ? runRef.current?.docFor(reviewingDoc) : undefined;
+
+  // AIB-002 slice 3 — the run header. Ticks only while something is working,
+  // and only while this panel is on screen; see `useElapsedClock`.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const clockNow = useElapsedClock(Boolean(runState?.busy), headerRef);
+  const activeIndex = runState?.activeOperationId
+    ? runState.operations.findIndex((op) => op.operation.id === runState.activeOperationId)
+    : -1;
+  const runElapsed =
+    runState?.startedAt !== undefined ? (runState.endedAt ?? clockNow) - runState.startedAt : undefined;
+  const runHeadline = !runState
+    ? undefined
+    : [
+        runState.busy
+          ? `Building ${activeIndex >= 0 ? activeIndex + 1 : 1} of ${totalOps}`
+          : `${stagedCount + stagedDocOps.length} of ${totalOps} built`,
+        runElapsed !== undefined ? formatDuration(runElapsed) : undefined,
+        formatCost(runState.costUsd)
+      ]
+        .filter(Boolean)
+        .join(' · ');
+
+  /**
+   * Which finished operations have their activity feed open. Transient by the
+   * same rule as `planBusy` — re-derived on mount, and the active operation's
+   * feed is open regardless of what is in here.
+   */
+  const [openFeeds, setOpenFeeds] = useState<ReadonlySet<string>>(new Set());
+  const toggleFeed = useCallback((id: string) => {
+    setOpenFeeds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   return (
     <>
@@ -662,18 +826,47 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                     isGrowing
                     onClick={authorPlan}
                   />
-                  <PrimaryButton label="Reject" variant={PrimaryButtonVariant.Danger} isGrowing onClick={abandon} />
+                  {/*
+                    AIB-004: not red. Nothing has been authored yet, so this
+                    throws away a paragraph of text — per the phase-23 law, red
+                    is for danger, and there is none here.
+                  */}
+                  <PrimaryButton
+                    label="Discard plan"
+                    variant={PrimaryButtonVariant.Ghost}
+                    isGrowing
+                    onClick={abandon}
+                  />
                 </HStack>
               </VStack>
             )}
 
             {runState && (
               <VStack UNSAFE_style={{ gap: 8 }}>
+                {/*
+                  AIB-002 slice 3 — position, elapsed and cumulative cost, live.
+                  Cost during an alpha where every user brings their own key is
+                  not decoration: it is the only feedback loop anyone has on what
+                  a plan costs before committing to one.
+                */}
+                {runHeadline && (
+                  <div ref={headerRef}>
+                    <Text textType={TextType.Proud}>{runHeadline}</Text>
+                  </div>
+                )}
+
                 {runState.operations.map((op) => {
                   const { icon, variant } = statusIcon(op);
                   const isExcluded = excluded.has(op.operation.id);
                   const isDoc = op.operation.kind === 'doc';
                   const detail = operationDetail(op);
+                  const isAuthoring = op.status === 'authoring';
+                  // AIB-002 slice 2 — this operation's own elapsed time, live
+                  // while it authors and frozen as a duration once it lands.
+                  const elapsed =
+                    op.startedAt !== undefined ? (op.endedAt ?? clockNow) - op.startedAt : undefined;
+                  const activities = op.session?.activities ?? [];
+                  const feedOpen = isAuthoring || openFeeds.has(op.operation.id);
                   return (
                     <VStack key={op.operation.id} UNSAFE_style={{ gap: 2, opacity: isExcluded ? 0.5 : 1 }}>
                       <HStack UNSAFE_style={{ alignItems: 'center', gap: 6 }}>
@@ -684,7 +877,17 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                             ? ` — ${op.staged.nodeCount} node${op.staged.nodeCount === 1 ? '' : 's'}`
                             : ''}
                         </Text>
-                        {done && op.status === 'staged' && (
+                        {elapsed !== undefined && <Text textType={TextType.Shy}>{formatDuration(elapsed)}</Text>}
+                        {/*
+                          AIB-002 slice 1 — reviewable the moment it stages, not
+                          when the whole run finishes. The candidate has been in
+                          `filesFor(id)` all along; the gate was `done &&`, and
+                          removing it is most of what Richard asked for. A
+                          partial accept taken now IS seen by the operations
+                          still to run: `PlanRun.workingGraph` is recomputed from
+                          the staged files at the start of each one.
+                        */}
+                        {op.status === 'staged' && (
                           <>
                             <PrimaryButton
                               label="Review"
@@ -694,7 +897,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                               }
                             />
                             <PrimaryButton
-                              label={isExcluded ? 'Restore' : 'Exclude'}
+                              label={isExcluded ? 'Restore to plan' : 'Drop from plan'}
                               variant={PrimaryButtonVariant.Ghost}
                               onClick={() =>
                                 isExcluded ? restoreOperation(op.operation.id) : excludeOperation(op.operation.id)
@@ -702,24 +905,61 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                             />
                           </>
                         )}
+                        {/*
+                          AIB-009 F1 — the authoring failure gets the same
+                          recovery as the apply failure. Docs are excluded
+                          because `retryOperation` refuses them: a doc is
+                          re-authored by re-running the plan, since its whole
+                          value is seeing what the plan built.
+                        */}
+                        {done && op.status === 'failed' && !isDoc && (
+                          <PrimaryButton
+                            label={retrying ? 'Re-authoring…' : 'Retry'}
+                            variant={PrimaryButtonVariant.Ghost}
+                            isDisabled={retrying}
+                            onClick={() =>
+                              void retryOperation(
+                                op.operation.id,
+                                op.operation.target,
+                                op.error ?? 'The agent could not produce a valid component.'
+                              )
+                            }
+                          />
+                        )}
                       </HStack>
+                      {isAuthoring && <Text textType={TextType.Shy}>{authoringDetail(op.session)}</Text>}
                       {detail && <Text textType={TextType.Shy}>{detail}</Text>}
                       {isDoc && op.status === 'staged' && done && !docsAvailable && (
                         <Text textType={TextType.Shy}>
                           Not applied — this project has never been saved, so it has no docs folder.
                         </Text>
                       )}
+
+                      {/*
+                        AIB-002 slice 2 — each operation's activity feed under
+                        its own row. There used to be one global feed showing the
+                        ACTIVE session, replaced wholesale when the next
+                        operation started, with nothing saying whose rows those
+                        were. Finished feeds fold away: three operations' worth
+                        expanded is a wall nobody reads.
+                      */}
+                      {!isAuthoring && activities.length > 0 && (
+                        <PrimaryButton
+                          label={feedOpen ? 'Hide activity' : `Show activity (${activities.length})`}
+                          variant={PrimaryButtonVariant.Ghost}
+                          onClick={() => toggleFeed(op.operation.id)}
+                        />
+                      )}
+                      {feedOpen && activities.length > 0 && (
+                        <VStack UNSAFE_style={{ gap: 8, paddingLeft: 20 }}>
+                          {activities.map((activity, index) => (
+                            <ActivityRow key={index} activity={activity} />
+                          ))}
+                        </VStack>
+                      )}
                     </VStack>
                   );
                 })}
-
-                {runState.busy && runState.session && (
-                  <VStack UNSAFE_style={{ gap: 8 }}>
-                    {runState.session.activities.map((activity, index) => (
-                      <ActivityRow key={index} activity={activity} />
-                    ))}
-                  </VStack>
-                )}
 
                 {done && (
                   <VStack UNSAFE_style={{ gap: 8 }}>
@@ -762,12 +1002,18 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                           onClick={() => void retryFailedOperation()}
                         />
                       )}
+                      {/*
+                        AIB-004: the ONE button in the product that says
+                        "project", because it is the one that writes to it.
+                        Everything else — here and in the review document —
+                        names the plan.
+                      */}
                       {applyCount > 0 && (
                         <PrimaryButton
                           label={
                             applyCount === totalOps && failedOps.length === 0 && excluded.size === 0
-                              ? `Apply plan (${applyCount})`
-                              : `Apply ${applyCount} of ${totalOps}`
+                              ? `Apply to project (${applyCount})`
+                              : `Apply ${applyCount} of ${totalOps} to project`
                           }
                           icon={IconName.Check}
                           isDisabled={retrying}
@@ -775,7 +1021,24 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                           onClick={() => void applyPlan()}
                         />
                       )}
-                      <PrimaryButton label="Abandon" variant={PrimaryButtonVariant.Danger} isGrowing onClick={abandon} />
+                      {/*
+                        Red exactly when there is something to lose. Discarding a
+                        run that authored three components destroys an hour of
+                        model output irreversibly — which is what this phase
+                        calls the expensive artifact, and what the phase-23 law
+                        calls danger. Discarding a run that produced nothing is
+                        not dangerous and does not get to look like it.
+                      */}
+                      <PrimaryButton
+                        label="Discard plan"
+                        variant={
+                          stagedCount + stagedDocOps.length > 0
+                            ? PrimaryButtonVariant.Danger
+                            : PrimaryButtonVariant.Ghost
+                        }
+                        isGrowing
+                        onClick={abandon}
+                      />
                     </HStack>
                   </VStack>
                 )}

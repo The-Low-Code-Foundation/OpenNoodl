@@ -1,0 +1,19 @@
+/*
+ * AIB-005 — the waiting-plan announcement, on the canvas.
+ *
+ * Deliberately the same neutral treatment as `ProjectReviewBanner`: accent left
+ * rule, panel background, no colour of its own. Phase 23's palette law reserves
+ * red for danger and amber for warning, and a plan waiting to be built is
+ * neither — it is an offer, and it should read as one.
+ *
+ * Full-bleed rather than inset, because this one sits above the canvas and not
+ * inside a panel: a floating card over a node graph reads as a dialog that has
+ * lost its backdrop.
+ */
+.Root {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-left: 2px solid var(--theme-color-primary);
+  border-bottom: 1px solid var(--theme-color-bg-1);
+  background-color: var(--theme-color-bg-2);
+}

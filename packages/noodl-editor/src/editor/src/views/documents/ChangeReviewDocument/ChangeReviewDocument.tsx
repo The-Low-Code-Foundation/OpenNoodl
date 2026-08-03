@@ -86,11 +86,48 @@ export interface ChangeReviewDocumentProps {
    * should say so. Default keeps the single-component wording.
    */
   acceptLabel?: string;
+  /**
+   * AIB-004: what the accept verb acts on, appended to the button — "in plan".
+   *
+   * The whole complaint was four buttons in one viewport, two sounding like
+   * commit and two like discard, with nothing saying which of them touched the
+   * project. "Keep" alone is the ambiguity; "Keep all in plan" is not.
+   */
+  acceptScope?: string;
+  /** AIB-004: the discard verb. Defaults to the single-component "Reject". */
+  rejectLabel?: string;
+  /**
+   * AIB-004 + the phase-23 law that red means danger only. A plan operation's
+   * "Drop from plan" is restorable from the panel and changes nothing outside
+   * the plan, so it is not red. Defaults true for the single-component loop,
+   * where rejecting throws the only candidate away.
+   */
+  isRejectDangerous?: boolean;
   /** AIX-011: one extra sentence in the rail summary (e.g. plan-mode framing). */
   contextNote?: string;
+  /**
+   * AIB-004: a persistent chip beside the title — "Operation 1 of 3 · nothing
+   * applied yet". The framing used to be a suffix on the title, which a reader
+   * who scrolled to a green canvas with a red button on it had long stopped
+   * reading.
+   */
+  chip?: string;
+  /**
+   * AIB-004: a rendered view of the same candidate, offered as a fourth view
+   * mode beside Before / Changes / After.
+   *
+   * A `create` operation has no meaningful diff — "25 additions" does not
+   * answer "is this the login page I asked for" — and the sandbox preview that
+   * *does* answer it has existed since AIX-008, wired only to the
+   * single-component loop. The selection is not lifted out of this document, so
+   * switching views preserves it by construction.
+   */
+  preview?: React.ReactNode;
+  /** AIB-004: which view to open on. Defaults to the diff. */
+  defaultView?: ViewMode;
 }
 
-type ViewMode = 'before' | 'review' | 'after';
+type ViewMode = 'preview' | 'before' | 'review' | 'after';
 
 /** Above this many changes, groups start collapsed and the walkthrough matters. */
 const LARGE_CHANGE_SET = 20;
@@ -149,7 +186,13 @@ function ChangeReviewDocument({
   onAccept,
   onReject,
   acceptLabel,
-  contextNote
+  acceptScope,
+  rejectLabel,
+  isRejectDangerous = true,
+  contextNote,
+  chip,
+  preview,
+  defaultView
 }: ChangeReviewDocumentProps) {
   const [nodeGraph] = useState<NodeGraphEditor>(() => {
     const ng = new NodeGraphEditor({});
@@ -158,7 +201,10 @@ function ChangeReviewDocument({
     return ng;
   });
 
-  const [viewMode, setViewMode] = useState<ViewMode>('review');
+  // Opening on a view the caller did not supply would show an empty pane.
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    defaultView === 'preview' && !preview ? 'review' : defaultView ?? 'review'
+  );
   const [rejected, setRejected] = useState<ReadonlySet<string>>(new Set());
   const [applyError, setApplyError] = useState<string | null>(null);
   /**
@@ -187,6 +233,9 @@ function ChangeReviewDocument({
     return componentFromLegacy(legacy);
   }, [changeSet]);
 
+  // What the canvas holds. `preview` is not a canvas view — it is a second pane
+  // stacked over the same frame — so it leaves the canvas on the diff, and
+  // switching back to Changes needs no re-bind.
   const activeComponent =
     viewMode === 'before' ? beforeComponent : viewMode === 'after' ? afterComponent : reviewComponent;
 
@@ -284,7 +333,13 @@ function ChangeReviewDocument({
     <div className={css.Root}>
       <div className={css.Topbar}>
         <Label hasLeftSpacing>{title}</Label>
+        {chip && (
+          <div className={css.Chip}>
+            <Text textType={TextType.Shy}>{chip}</Text>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 2, marginLeft: 16 }}>
+          {preview && viewButton('preview', 'Preview')}
           {viewButton('before', 'Before')}
           {viewButton('review', 'Changes')}
           {viewButton('after', 'After')}
@@ -295,15 +350,17 @@ function ChangeReviewDocument({
               accepting
                 ? 'Applying…'
                 : rejected.size > 0
-                  ? `${acceptLabel ?? 'Accept'} ${keptCount} of ${excludableCount}`
-                  : `${acceptLabel ?? 'Accept'} all`
+                  ? [acceptLabel ?? 'Accept', `${keptCount} of ${excludableCount}`, acceptScope]
+                      .filter(Boolean)
+                      .join(' ')
+                  : [acceptLabel ?? 'Accept', 'all', acceptScope].filter(Boolean).join(' ')
             }
             isDisabled={accepting}
             onClick={() => void acceptSelected()}
           />
           <PrimaryButton
-            label="Reject"
-            variant={PrimaryButtonVariant.Danger}
+            label={rejectLabel ?? 'Reject'}
+            variant={isRejectDangerous ? PrimaryButtonVariant.Danger : PrimaryButtonVariant.MutedOnLowBg}
             isDisabled={accepting}
             onClick={() => {
               onReject();
@@ -315,8 +372,20 @@ function ChangeReviewDocument({
       </div>
 
       <div className={css.Body}>
+        {/*
+          Both panes stay mounted and one is hidden, rather than swapped.
+          Unmounting would tear down the read-only canvas's DOM binding on every
+          toggle, and — worse — reboot the preview's <webview>, which is a whole
+          runtime start. `visibility` and not `display: none` for the same
+          reason: a zero-sized or undisplayed webview does not keep running.
+        */}
         <div className={css.Canvas}>
-          <Frame instance={nodeGraph} onResize={(bounds) => nodeGraph.resize(bounds)} />
+          <div className={`${css.Pane} ${viewMode === 'preview' ? css.PaneHidden : ''}`}>
+            <Frame instance={nodeGraph} onResize={(bounds) => nodeGraph.resize(bounds)} />
+          </div>
+          {preview && (
+            <div className={`${css.Pane} ${viewMode === 'preview' ? '' : css.PaneHidden}`}>{preview}</div>
+          )}
         </div>
 
         <div className={css.Rail}>

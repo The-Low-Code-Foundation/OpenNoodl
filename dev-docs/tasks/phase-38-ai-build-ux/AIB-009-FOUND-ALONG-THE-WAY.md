@@ -20,6 +20,24 @@ from the code, not confirmed.
 
 ## F1 — A failed operation's model output is unrecoverable
 
+**✅ Closed 2026-08-03 (AIB-002 pass) · was: Verified · 🔴 High**
+
+The recovery half is built: a failed operation now offers **Retry** in the panel once the run is
+done, calling the `PlanRun.retryOperation` AIB-001 slice 4 already built and tested, with the gate's
+own error as repair context. Nothing had to be added to the model — the panel was only ever offering
+that path for an *apply* failure, which is the rarer of the two.
+
+**One stated mechanism here is wrong, and checking it is why the fix stayed small.** The entry says
+the run "keeps **nothing** — no partial candidate". True, but not because anything is discarded:
+within a single `run()`, `AuthoringSession` returns `authored` the moment a submission passes the
+gate (including the AIX-006 style-pass fallbacks at lines 673, 679, 727 and 743, all of which finish
+`authored` on `stylePassBaseline`). So an `exhausted` outcome in a plan run means *nothing ever
+passed the gate*, and `session.stagedFiles` is genuinely empty. A "keep the last valid candidate"
+fix would have had nothing to keep. It only becomes reachable through `refine()`, which `PlanRun`
+never calls.
+
+Original entry follows.
+
 **Verified · 🔴 High · related to [AIB-001](AIB-001-PARAMETER-VALUE-CONTRACT.md) slice 4**
 
 When an operation's session ends `failed` or `exhausted`,
@@ -115,6 +133,19 @@ one with no feedback at all. Listed separately from AIB-006 because it may need 
 
 ## F8 — Mid-run partial accepts are invisible to later operations
 
+**✅ Closed 2026-08-03 — the mechanism had already changed · was: Verified · 🟠 High**
+
+Not true by the time AIB-002 was built, and not because of AIB-002. AIB-003's rewrite made
+`workingGraph()` a method that recomputes from `filesById` at the point each session starts, so a
+mid-run `setOperationFiles` *is* what the remaining operations author against. What this pass added
+is the spec that pins it (`authoring-plan.test.ts`, "hands a later operation the candidate as the
+user edited it mid-run"). Worth noting for anyone reading the entry as written: a test aimed at the
+**gate** would have passed either way — `validateCandidateComponent` gives the semantic validator
+only `components.map(c => c.name)`, so a sibling candidate's *shape* reaches the prompt and never
+the gate.
+
+Original entry follows.
+
 **Verified · 🟠 High · folded into [AIB-002](AIB-002-THE-RUN-IS-LEGIBLE.md) slice 1**
 
 Only reachable once AIB-002 lets you review during a run, which is why it is filed here rather than
@@ -126,6 +157,15 @@ a validation refusal on a component the user thought they had fixed.
 
 ## F9 — `contextNote` is the only thing explaining the plan/project boundary
 
+**✅ Closed 2026-08-03 by AIB-004 · was: Verified · 🟡 Medium**
+
+The buttons carry the meaning now — `Keep all in plan` / `Drop from plan` against the single
+`Apply to project (N)` — and the plan context is a persistent chip rather than a title suffix. The
+note is kept, unshortened for the moment: it is the only place that states *why* the levels differ,
+and shortening it is a judgement worth making against the live surface rather than the source.
+
+Original entry follows.
+
 **Verified · 🟡 Medium · folded into [AIB-004](AIB-004-ONE-VOCABULARY-AND-A-REAL-PREVIEW.md)**
 
 The sentence *"Keeping a selection updates the plan — nothing reaches your project until you apply
@@ -134,6 +174,13 @@ panel next to a full-screen canvas. Structural affordances beat prose here; AIB-
 gets fixed, but the note is worth keeping in a shorter form once the buttons carry the meaning.
 
 ## F10 — State is mutated during render in `ProjectAuthoringView`
+
+**✅ Closed by [AIB-003](AIB-003-THE-BUILD-SURVIVES-NAVIGATION.md) · was: Verified · 🟢 Low**
+
+The take moved into the `useState` initialiser, which runs before anything is subscribed and at most
+once per mount, and the guard is now the store's own content rather than a ref sentinel.
+
+Original entry follows.
 
 **Verified · 🟢 Low · correctness hazard**
 
@@ -151,6 +198,17 @@ faithfully reproduced in the new store.
 
 Items folded into another task (F3, F7, F8, F9) are cross-referenced there and should be closed by
 that task, not separately. F1, F2, F5 and F6 are standalone. F4 and F10 are one slice each.
+
+**Closed so far:** F1 (AIB-002 pass), F8 and F9 (AIB-002/AIB-004 pass), F10 (AIB-003).
+**Open:** F2 (the XSS surface — the one that must not ship to alpha), F4, F5, F6, F7.
+
+**F3 is half closed and the half that remains is now harmless.** AIB-001 replaced the raw
+`.split(',')` in `updatePortsForNode` with `readNameList`, so nothing throws. But `nodeAdded` still
+copies `queryParams`/`pathParams` verbatim from a sibling, and `parametersChanged` still writes them
+to every sibling with `setParameter` — the *spread* the entry describes is unchanged. It no longer
+rolls back a transaction, because every reader now tolerates any shape; what it still does is carry a
+malformed value to nodes the user never touched, where the next reader to be written without
+`readNameList` will find it. Left as written rather than closed.
 
 Anything that turns out to be larger than described gets promoted to AIB-010+, with the finding kept
 here as a pointer rather than deleted — the register is the record of what one real session
