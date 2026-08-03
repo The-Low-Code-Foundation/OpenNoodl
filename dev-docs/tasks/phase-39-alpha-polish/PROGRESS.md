@@ -1,7 +1,7 @@
 # Phase 39 — Progress
 
-**Status:** 4 done, 2 partly built, 6 not started.
-**Last updated:** 2026-08-03
+**Status:** 6 done, 8 not started (2 of those found by the verification pass, not reported).
+**Last updated:** 2026-08-03 (second session)
 
 POL-006 also has a head start nobody had noticed: **`library/modules/lucide-icons/` already ships the
 full Lucide set as a bundled ISC webfont** (1998 glyphs, `lucide.woff2` + a `type: "iconset"`
@@ -18,8 +18,10 @@ both a matter of wiring that module in, not of sourcing an icon set.
 | [POL-003](POL-003-THE-LEFT-RAIL.md) — the left rail | 3, 4, 6 | ✅ **done** (slice 2 deferred) | Contrast now 8.26:1 dark / 7.49:1 light, measured live. 5 Lucide glyphs in. `IconSize` sweep deferred per Richard → [POL-013](POL-013-ICONSIZE-SWEEP.md). `d32b3d13`, `fc10449a` |
 | [POL-013](POL-013-ICONSIZE-SWEEP.md) — make `IconSize` real | — | ☐ filed, not started | Split out of POL-003 slice 2 on Richard's call. ~130 call sites. |
 | [POL-004](POL-004-TOKENS-USED-AS-WHAT-THEY-ARE-NOT.md) — token misuse | 9b, 12a | ✅ **done** (2 residuals) | The check found **25** undefined tokens, not 6 — writing it first, per its own trap, is what caught that. `DialogBackground.Secondary` deleted; it was also miscolouring **every tooltip arrow** in the editor, which nobody reported. Gate: `npm run tokens:css`. Residual: the diff modal and a populated walk are unverified live — both need a longer drive, POL-010 owns the walk. `4382cb24` |
-| [POL-005](POL-005-BACKEND-SURFACES-OPEN-DOCKED.md) — backend surfaces | 7 | ◐ **slices 1-2 built** | `openFull()` and the now-dead `dock()`/`layout` capture removed, so surfaces open at their designed 860px and the X stops existing. **Slice 3 (the per-surface layout pass at 860px, criteria 4-6) is NOT done** — needs a running backend and seven screenshots. |
-| [POL-009](POL-009-A-PIN-BELONGS-TO-ONE-CANVAS.md) — pinned run | 11 | ◐ **built, unverified** | Rule (a): hide off-canvas, keep the pin. Identity is the component open at pin time, matched by `fullName` — the same pattern `explainTarget.ts` uses. Slice 3's branch kept, with the reason it is still reachable. **Criteria are all live-navigation; none verified yet.** |
+| [POL-005](POL-005-BACKEND-SURFACES-OPEN-DOCKED.md) — backend surfaces | 7 | ✅ **done** (1 open question) | Verified live against a running backend: all seven open at **859px** with **zero** detached-bar elements, close returns to Backend Services, WFA-005's route lands identically. Slice 3's layout pass done in both themes. **Criterion 5's premise was wrong** — a surface has no float/full route at all (1 header button vs Backend Services' 6), so this change removed the only path to full mode. Richard's call whether that matters. Three findings filed, none width-caused: [POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md), the invisible "Save policy" button, Schema's bespoke header. |
+| [POL-009](POL-009-A-PIN-BELONGS-TO-ONE-CANVAS.md) — pinned run | 11 | ✅ **done** | All six criteria verified live. The identity the fix compares **does** exist for a workflow canvas (`/#__workflow__/wf_pol009`) — that was the open risk. Step index survives navigation at a *non-default* value (`Step 2 / 3`), a second pin replaces the first, unpin is permanent. The pin even outlives the workflow document being closed and rebuilt. |
+| [POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md) — `record.id` vs `objectId` | — | ☐ filed, not started | Found doing POL-005 slice 3. Blank id column, React key warning, **one cell click opens editors in all rows**, **delete silently does nothing**. Five consequences, all observed live. |
+| [POL-015](POL-015-THE-FIRST-WORKFLOW-CANNOT-BE-CREATED.md) — first workflow | — | ☐ filed, not started | Found setting up POL-009's fixture. The create form's backend list is derived from *existing workflows*, so with none it passes `''` and fails. A first-run blocker for the whole workflow feature. |
 | [POL-006](POL-006-A-FONT-AND-AN-ICON-SET.md) — font + icon set | 8 | ☐ not started | `--font-sans` is dangling repo-wide. Recommends Inter + Lucide sprite, bundled not CDN. Touches `LocalProjectsModel.ts` — dirty in another session. |
 | [POL-007](POL-007-THE-BUILD-PANEL-FITS.md) — Build panel layout | 9a | ☐ not started | Mechanism confirmed (row min-width > 400px panel). |
 | [POL-008](POL-008-SAMPLE-DATA-AND-A-THIN-BUILD.md) — sample data + thin build | 10 | ☐ not started | **Part A undiagnosed** — three candidates, pick one before fixing. Part B gated on POL-006. |

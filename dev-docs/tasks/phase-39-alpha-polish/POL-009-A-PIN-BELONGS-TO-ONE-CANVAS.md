@@ -67,8 +67,40 @@ unreachable, delete it rather than leave dead reassurance.
 5. Pin a run, navigate away, pin a *different* run, navigate back — the right run is showing.
 6. Verified in the running editor. This is a navigation defect; jest will not see it.
 
+## Outcome — verified live 2026-08-03
+
+Driven in the running editor. Fixture: a three-step `wait` workflow (`wf_pol009`) on a started local
+backend, four recorded runs. The active component while a workflow document is open is
+`/#__workflow__/wf_pol009` — the identity the fix compares does exist for a workflow canvas, which
+was the open risk.
+
+| Criterion | Result |
+|---|---|
+| 1. Pin → header and step bars appear | ✅ *Run & pin* on the canvas; header `pol009-wf · success · Unpin`, step bar `Step 3 / 3`, per-step badges |
+| 2. Navigate away → both gone, immediately | ✅ on `/#__page__/Home` and on `Settings`: zero Unpin bars, no step bar |
+| 3. Navigate back → still there, **same step index** | ✅ seeked to a non-default `Step 2 / 3`, went to Home, came back → `Step 2 / 3` |
+| 4. Unpin → gone everywhere, does not come back | ✅ gone on the workflow, gone on Home, still gone after returning |
+| 5. Second pin, away, back → the right run | ✅ pinned a *different* run from Execution History; after away/back `pinnedExecutionId` is that run, not the first |
+| 6. Verified in the running editor | ✅ |
+
+Criterion 3 was measured against the **rendered** `Step N / 3` text. An earlier read of
+`currentStepIndex` through the fiber disagreed with the DOM by one — see the trap below.
+
+### Two things this needed and did not have
+
+- **[POL-015](POL-015-THE-FIRST-WORKFLOW-CANNOT-BE-CREATED.md)** — the Workflows panel cannot create
+  the first workflow on a backend. The fixture had to be written with `POST /admin/workflow-defs`.
+  Nothing else about workflows is broken; only creation.
+- Opening a component from the Components panel **closes** the workflow document rather than keeping
+  it in a tab, and the tab-history `‹` skipped past it. "Navigate back" therefore means reopening
+  from the Workflows panel. The pin survives that — which is the stronger result, since the document
+  is destroyed and rebuilt in between and the overlay's state outlives it.
+
 ## Traps
 
+- Reading React state through a DOM node's `__reactFiber$` can hand you the **alternate** fiber, one
+  render stale: `currentStepIndex` read that way said `1` while the timeline rendered `Step 1 / 3`
+  (index 0). Assert on rendered text for anything that is rendered.
 - `currentStepIndex` and the selected node are component state alongside the pin. Whatever slice 1
   decides, they must follow the same rule — a pin that survives navigation with a stale step index
   is a new defect.

@@ -70,6 +70,53 @@ coherent. Confirm that path still works and that `Escape` still docks.
 5. Choosing full from `⋯` still works, still shows the detached bar, and `Escape` still docks.
 6. WFA-005's `OPEN_TRIGGERS_SURFACE` route from the workflow canvas lands the same way.
 
+## Outcome — verified live 2026-08-03
+
+Driven in the running editor against a started local backend ("App backend", port 8580) with a
+populated `Message` collection. All seven surfaces opened from the backend card, measured and
+screenshotted in **both themes**.
+
+| Criterion | Result |
+|---|---|
+| 1. Docked at 860px | ✅ **859px measured** on all seven (PNL-003's clamp, 1368px window) |
+| 2. No X on that path | ✅ zero elements matching `Detached` in any of the seven. The X that *is* in the header belongs to each surface's own header and is criterion 3's close |
+| 3. Close returns to Backend Services | ✅ panel returns to its own 559px |
+| 4. Usable at 860 in both themes | ✅ — three findings below, **none of them width-caused** |
+| 5. Full from `⋯`, Escape docks | ⚠️ **the premise was wrong — see below** |
+| 6. WFA-005 `OPEN_TRIGGERS_SURFACE` | ✅ lands identically: Triggers, 859px, no detached bar |
+
+### Slice 4's premise was wrong: a surface has no float/full route at all
+
+The spec said "The header's float and full buttons still exist for these panels via `⋯`". They do
+not. Counting buttons in the panel header: **Backend Services has 6, a surface has 1** (its own
+close). The mode buttons go into `PanelHeader`'s slot for every `BasePanel`, and the surfaces render
+their own header instead. `⋯` never appears because there is nothing to demote — the frame is 859px,
+far above the 357px threshold. `Escape` on a docked surface correctly does nothing.
+
+So this change removed the only route to full mode that these surfaces had, because that route was
+`openFull()` firing unasked. Nothing was lost that anyone chose, all seven are usable at 860, and
+Richard's report was that 860 is where they belong — but it is a real reduction and it is **Richard's
+call** whether a surface should be able to reach full deliberately.
+
+### Three findings from the layout pass — filed, not fixed
+
+1. **[POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md) — the Data Browser reads
+   `record.id`; records carry `objectId`.** Blank id column, a React key warning on every load,
+   one cell click opening editors in all eight rows, and a delete that silently does nothing.
+   Its own task; it is not a layout defect and it is not width-dependent.
+2. **"Save policy" on the Sign-in surface is invisible as a button.** It is a real `PrimaryButton`,
+   90×30, `is-variant-muted`: computed background `rgb(247,249,251)` against a panel that is
+   essentially the same colour, with `border-width: 0`. The only save control on that surface reads
+   as plain text, in both themes. Every sibling surface uses a normal button for its action ("Add
+   role", "Issue key", "Add provider"). One-line variant change; needs a decision about whether
+   `muted` is wrong here or wrong generally.
+3. **Schema's header is bespoke.** Six surfaces use icon + title + subtitle + X; Schema uses a plain
+   title with a `+ New Table / Refresh / Close` group and no backend subtitle. Cosmetic,
+   pre-existing, and the odd one out now that the surfaces are the only thing in the panel.
+
+The Data grid **scrolls rather than clips** at 860 (row width 1550px, horizontal scrollbar present)
+and shows five of twelve columns, of which two are `createdAt`/`updatedAt`. Usable; noted.
+
 ## Traps
 
 - These panels are **transient** — `SidePanel` re-creates them on every activation, so a stale
