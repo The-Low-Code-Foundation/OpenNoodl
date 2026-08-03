@@ -447,8 +447,12 @@ export function checkParameterValues(
     const dynamic = catalog.isDynamicNode(node.type);
 
     for (const [name, value] of Object.entries(parameters)) {
-      // `undefined` is "not set", which the editor writes for a cleared field.
-      if (value === undefined) continue;
+      // "Not set". `undefined` is what the editor writes for a cleared field;
+      // `null` is what a model writes to mean the same thing, and it behaves
+      // that way at runtime too — a null colour resolves to nothing and leaves
+      // the property unset, which is exactly what it asked for. Erroring on it
+      // would spend a repair round making a candidate no better.
+      if (value === undefined || value === null) continue;
 
       const port = catalog.getPort(node.type, 'input', name);
       if (!port) {
