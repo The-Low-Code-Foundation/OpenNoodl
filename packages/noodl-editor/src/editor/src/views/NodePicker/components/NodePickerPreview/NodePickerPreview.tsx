@@ -57,11 +57,11 @@ export function NodePickerPreview({ item, docs }: NodePickerPreviewProps) {
       <div className={css['Body']}>
         {docs.content ? (
           <div className={css['Docs']}>
-            <HtmlRenderer html={stripEmbeds(docs.content)} />
+            <HtmlRenderer html={docs.content} />
           </div>
         ) : (
           <p className={css['Placeholder']}>
-            {docs.isLoading ? 'Loading documentation…' : item.kind === 'action' ? item.meta : 'No documentation yet.'}
+            {item.kind === 'action' ? item.meta : 'No documentation yet.'}
           </p>
         )}
       </div>
@@ -100,37 +100,4 @@ export function NodePickerPreview({ item, docs }: NodePickerPreviewProps) {
       )}
     </aside>
   );
-}
-
-/**
- * Trim the fetched documentation for a 292px column.
- *
- * Node pages open with a run of tutorial videos, authored as
- * `<p>Tutorial 1: Styling</p><div class="youtube-embed"><iframe …>`. In this
- * width the iframe is an error box (the YouTube player refuses the `file://`
- * origin) rather than a video, and its caption is meaningless without it — so
- * the embed and the caption above it both go, and the page starts on the
- * description. The leading `<h1>` goes too: the pane already shows the node's
- * name one line above, in the right typography.
- */
-function stripEmbeds(html: string): string {
-  const el = document.createElement('div');
-  el.innerHTML = html;
-
-  // `DocsParser` hands over its own wrapper element's `outerHTML`, so the
-  // content is one level down.
-  const root = el.children.length === 1 && el.firstElementChild.tagName === 'DIV' ? el.firstElementChild : el;
-
-  root.querySelectorAll('iframe, video, script').forEach((node) => {
-    const block = node.parentElement && node.parentElement !== root ? node.parentElement : node;
-    const caption = block.previousElementSibling;
-
-    if (caption && caption.tagName === 'P' && caption.textContent.trim().length < 60) caption.remove();
-    block.remove();
-  });
-
-  const first = root.firstElementChild;
-  if (first && /^H[1-3]$/.test(first.tagName)) first.remove();
-
-  return el.innerHTML;
 }

@@ -13,8 +13,8 @@ import css from './LauncherPage.module.scss';
 
 export interface LauncherPageProps {
   title: string;
-  children?: JSX.Element | JSX.Element[];
-  headerSlot?: JSX.Element | JSX.Element[];
+  children?: React.JSX.Element | React.JSX.Element[];
+  headerSlot?: React.JSX.Element | React.JSX.Element[];
 }
 
 export function LauncherPage({ title, children, headerSlot }: LauncherPageProps) {

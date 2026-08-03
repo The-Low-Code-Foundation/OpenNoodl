@@ -1,7 +1,7 @@
 # NodeGX Privacy Policy
 
 **Applies to:** NodeGX 0.1.0 (alpha), the desktop application.
-**Last updated:** 2026-07-30.
+**Last updated:** 2026-08-03.
 
 This document was written by reading the source, not by filling in a template.
 Every claim below names the thing in the product that makes it true, so that a
@@ -224,20 +224,25 @@ content.
 | **Update check** | At launch, and repeatedly while running. macOS and Windows only — the Linux build never checks. | The project's GitHub releases | Your IP, app version, platform |
 | **Changelog** | When you open a project | The project's documentation site, on GitHub Pages | Your IP |
 | **Library modules, prefabs and project templates** | When you browse the library or templates, and when you install one | Same documentation site | Your IP, and which module you chose |
-| **Help search** | Only while the "Quick search docs" box is open and you are typing | Algolia (a hosted search service) | Your IP and **the words you type into the search box** |
 | **GitHub** | Only if you connect a GitHub account, and then only when you use version control | `api.github.com` | See §8 |
 | **Your own services** | When your app or backend uses them | Wherever you pointed them | Whatever you configured |
 
-The help search is the only one of these that sends anything you typed, and it
-sends it only while that search box is open. The search modal is not loaded into
-the app until you open it, so simply having NodeGX running sends Algolia nothing.
+**None of these sends anything you typed.** Until this release the Help Center
+had a "Quick search docs" box that sent every keystroke to Algolia, a hosted
+search service, to query an index of Noodl 2.9's documentation — a different
+product. That search box has been removed along with the Algolia client, so
+there is no longer any request from NodeGX carrying text you entered.
+
+The node help shown inside the editor — the property panel, the node picker's
+preview pane and the connection popup — is read from a catalog that ships inside
+the application. It makes **no network request at all** and works offline.
 
 The update check can be disabled by starting NodeGX with the environment
 variable `autoUpdate=no`.
 
-Opening documentation, guides, the community Discord or the support forum from
-the Help menu opens them in **your web browser**, at which point that site's own
-privacy policy applies.
+Opening the documentation, the guides, the release notes or a bug-report form
+from the Help menu opens them in **your web browser**, at which point that site's
+own privacy policy applies.
 
 ---
 
@@ -341,6 +346,7 @@ source is:
 | The local debug log | `.../src/utils/bugtracker.ts` |
 | The analytics no-op | `.../src/utils/tracker/` |
 | Update check | `packages/noodl-editor/src/main/src/autoupdater.js` |
-| Help search | `.../src/views/HelpCenter/HelpCenter.tsx` |
+| The Help menu links out, and searches nothing | `.../src/views/HelpCenter/HelpCenter.tsx` |
+| Node help comes from a bundled catalog, not the network | `.../src/editor/src/utils/nodeDocs.ts` |
 | GitHub OAuth scope and callback | `packages/noodl-editor/src/main/github-oauth-handler.js` |
 | Backend data directory and binding | `packages/nodegx-backend/src/config.ts` |

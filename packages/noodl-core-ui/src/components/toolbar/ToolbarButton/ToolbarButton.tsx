@@ -6,7 +6,7 @@ import css from './ToolbarButton.module.scss';
 
 export interface ToolbarButtonProps {
   label: string;
-  prefix?: JSX.Element;
+  prefix?: React.JSX.Element;
 
   onClick?: MouseEventHandler<HTMLButtonElement>;
 }

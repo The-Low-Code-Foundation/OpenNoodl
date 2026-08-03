@@ -21,7 +21,7 @@ export function insideFrame() {
 export interface DefaultAppProps {
   title?: string;
 
-  panel?: JSX.Element;
+  panel?: React.JSX.Element;
   document?: Slot;
 }
 

@@ -29,7 +29,7 @@ export function insideFrame() {
 export interface LauncherSectionProps extends UnsafeStyleProps {
   hasTopBorder?: boolean;
 
-  children: JSX.Element | JSX.Element[];
+  children: React.JSX.Element | React.JSX.Element[];
 }
 
 export function LauncherSection({ hasTopBorder, children, UNSAFE_style, UNSAFE_className }: LauncherSectionProps) {
@@ -134,9 +134,9 @@ export function LauncherSidebarExample() {
 export interface LauncherAppProps {
   title?: string;
 
-  sidePanel?: JSX.Element;
+  sidePanel?: React.JSX.Element;
 
-  children?: JSX.Element | JSX.Element[];
+  children?: React.JSX.Element | React.JSX.Element[];
 }
 
 export function LauncherApp({ title = 'Noodl Launcher', sidePanel, children }: LauncherAppProps) {

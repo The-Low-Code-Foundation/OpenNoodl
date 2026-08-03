@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 
 import { ErrorBoundary } from './ErrorBoundary';
@@ -18,7 +19,7 @@ export const Common = (args) => (
   </ErrorBoundary>
 );
 
-function CauseError(): JSX.Element {
+function CauseError(): React.JSX.Element {
   let invalid_object = {};
 
   // @ts-ignore

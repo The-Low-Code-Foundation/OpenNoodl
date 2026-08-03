@@ -305,7 +305,7 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
 
   // Returns an element rather than a `ReactNode` so it satisfies core-ui's
   // `Slot`, which deliberately excludes bare numbers.
-  const renderValueInput = (type: ConfigType, value: string, onValueChange: (v: string) => void): JSX.Element => {
+  const renderValueInput = (type: ConfigType, value: string, onValueChange: (v: string) => void): React.JSX.Element => {
     if (type === 'boolean') {
       return (
         <label
