@@ -329,6 +329,101 @@ describe('AIX-011 criterion 7 — doc operations in the fan-out', () => {
   });
 });
 
+describe('AIB-009 F4 — the doc pass after a stopped run', () => {
+  const mixed: AuthoringPlan = {
+    request: 'Wire Checkout into the app',
+    operations: [
+      { id: 'op-c', kind: 'create', target: 'Pages/Checkout', intent: 'the new page' },
+      { id: 'op-doc', kind: 'doc', target: 'docs/ARCHITECTURE.md', intent: 'record it' }
+    ]
+  };
+
+  const componentSubmission: AiChatResponse = {
+    text: '',
+    toolCalls: [
+      {
+        id: 'c1',
+        name: 'submit_component',
+        arguments: {
+          nodes: [{ id: 'co_root', type: 'Group', label: 'Checkout root' }],
+          visual_roots: ['co_root']
+        }
+      }
+    ],
+    usage,
+    model: 'test',
+    stopReason: 'tool_calls'
+  };
+
+  /** A run stopped while the component was authoring: the component still stages. */
+  async function stoppedRun(docChat: (request: AiChatRequest) => Promise<AiChatResponse>) {
+    const held: { run?: PlanRun } = {};
+    const sessionChat = async (): Promise<AiChatResponse> => {
+      // Stop pressed while the first operation is in flight. The submission
+      // still arrives and still passes the gate — which is the case F4 is
+      // about: work survives, documentation does not.
+      held.run!.cancel();
+      return componentSubmission;
+    };
+    const run = new PlanRun(loadGraph(), mixed, {
+      docBaselineFor: () => BASELINE,
+      doc: { chat: docChat },
+      session: { chat: sessionChat }
+    });
+    held.run = run;
+    const state = await run.run();
+    return { run, state };
+  }
+
+  it('a stop leaves the components staged and the documents skipped — and says which is which', async () => {
+    const { chat } = scripted([submitDoc(CLEAN_DOC, 'Recorded checkout')]);
+    const { run, state } = await stoppedRun(chat);
+
+    expect(state.phase).toBe('cancelled');
+    const byId = new Map(state.operations.map((op) => [op.operation.id, op]));
+    expect(byId.get('op-c')!.status).toBe('staged');
+    expect(byId.get('op-doc')!.status).toBe('skipped');
+    // The flag is the whole of F4: `skipped` alone cannot tell a stop apart from
+    // an agent that read the work and decided there was nothing to record.
+    expect(byId.get('op-doc')!.skippedByCancel).toBe(true);
+    expect(run.docsAwaitingCancelledPass().map((s) => s.operation.id)).toEqual(['op-doc']);
+    expect(run.acceptedOperations().operations.map((op) => op.operation.id)).toEqual(['op-c']);
+  });
+
+  it('runs just the doc pass afterwards, against what is staged, and stages the body', async () => {
+    const { chat, seen } = scripted([submitDoc(CLEAN_DOC, 'Recorded checkout')]);
+    const { run } = await stoppedRun(chat);
+
+    const state = await run.runDocPass();
+
+    expect(state.phase).toBe('done');
+    const doc = state.operations.find((op) => op.operation.id === 'op-doc')!;
+    expect(doc.status).toBe('staged');
+    expect(doc.skippedByCancel).toBeFalsy();
+    expect(run.docFor('op-doc')!.proposed).toBe(CLEAN_DOC);
+    // The doc turn saw the component the stopped run managed to build — the
+    // whole reason the pass runs second in the first place.
+    expect(seen[0].messages.map((m) => m.content).join('\n')).toContain('Pages/Checkout');
+    // Nothing has reached any project; the accepted set is what apply is offered.
+    expect(run.acceptedOperations().operations.map((op) => op.operation.id)).toEqual(['op-c', 'op-doc']);
+  });
+
+  it('refuses to re-ask a document the agent declined — that was an answer, not an interruption', async () => {
+    const { chat } = scripted([prose('The architecture doc already covers this.')]);
+    const run = new PlanRun(loadGraph(), mixed, {
+      docBaselineFor: () => BASELINE,
+      doc: { chat },
+      session: {
+        chat: async () => componentSubmission
+      }
+    });
+    await run.run();
+
+    expect(run.docsAwaitingCancelledPass()).toEqual([]);
+    await expectAsync(run.runDocPass()).toBeRejectedWithError(/no document in this plan waiting/);
+  });
+});
+
 describe('AIX-011 criterion 7 — the plan outcome rendering', () => {
   it('says so plainly when a plan changes no components at all', () => {
     expect(renderPlanOutcome([])).toContain('documentation-only change');

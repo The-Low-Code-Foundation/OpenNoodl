@@ -168,7 +168,10 @@ export function useGitHubRepos(client: GitHubClientInterface | null, isAuthentic
    */
   const checkNoodlStatusForRepos = useCallback(
     async (repos: NoodlGitHubRepo[], updateFn: (repoId: number, isNoodl: boolean) => void) => {
-      console.log('🔍 [checkNoodlStatusForRepos] Starting check for', repos.length, 'repos');
+      // AIB-009 F6: one line per repo per launch, on a path that runs for every
+      // repository in the user's account. Debug, like the client-side probe it
+      // drives — the launch log is where a real error has to be findable.
+      console.debug('🔍 [checkNoodlStatusForRepos] Starting check for', repos.length, 'repos');
 
       // Check repos sequentially to avoid rate limits
       for (const repo of repos) {
@@ -177,7 +180,7 @@ export function useGitHubRepos(client: GitHubClientInterface | null, isAuthentic
         try {
           const isNoodl = await checkIfNoodlProject(repo.owner.login, repo.name);
 
-          console.log('🔍 [checkNoodlStatusForRepos]', repo.full_name, '- isNoodl:', isNoodl);
+          console.debug('🔍 [checkNoodlStatusForRepos]', repo.full_name, '- isNoodl:', isNoodl);
 
           updateFn(repo.id, isNoodl);
 
@@ -190,7 +193,7 @@ export function useGitHubRepos(client: GitHubClientInterface | null, isAuthentic
         }
       }
 
-      console.log('✅ [checkNoodlStatusForRepos] Finished checking repos');
+      console.debug('✅ [checkNoodlStatusForRepos] Finished checking repos');
     },
     [checkIfNoodlProject]
   );

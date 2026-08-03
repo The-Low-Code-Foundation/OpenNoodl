@@ -833,11 +833,11 @@ export class GitHubClient extends EventDispatcher {
     const cached = this.getFromCache<string | null>(cacheKey, 60000); // 1 minute cache
 
     if (cached !== undefined) {
-      console.log('📦 [getFileContent] Cache hit for', `${owner}/${repo}/${path}`);
+      console.debug('📦 [getFileContent] Cache hit for', `${owner}/${repo}/${path}`);
       return cached;
     }
 
-    console.log('🔍 [getFileContent] Fetching', `${owner}/${repo}/${path}`);
+    console.debug('🔍 [getFileContent] Fetching', `${owner}/${repo}/${path}`);
 
     try {
       const octokit = await this.ensureAuthenticated();
@@ -848,7 +848,7 @@ export class GitHubClient extends EventDispatcher {
       });
 
       const responseType = !Array.isArray(response.data) && 'type' in response.data ? response.data.type : 'unknown';
-      console.log('✅ [getFileContent] Got response for', `${owner}/${repo}/${path}`, responseType);
+      console.debug('✅ [getFileContent] Got response for', `${owner}/${repo}/${path}`, responseType);
 
       this.updateRateLimitFromHeaders(response.headers as Record<string, string>);
 
@@ -856,24 +856,31 @@ export class GitHubClient extends EventDispatcher {
       if (!Array.isArray(response.data) && 'content' in response.data && response.data.type === 'file') {
         const content = Buffer.from(response.data.content, 'base64').toString('utf-8');
         this.setCache(cacheKey, content);
-        console.log('✅ [getFileContent] Found file', `${owner}/${repo}/${path}`, content.substring(0, 50) + '...');
+        console.debug('✅ [getFileContent] Found file', `${owner}/${repo}/${path}`, content.substring(0, 50) + '...');
         return content;
       }
 
       // It's a directory or something else
-      console.log('⚠️ [getFileContent] Not a file:', `${owner}/${repo}/${path}`, responseType);
+      console.debug('⚠️ [getFileContent] Not a file:', `${owner}/${repo}/${path}`, responseType);
       this.setCache(cacheKey, null);
       return null;
     } catch (error) {
       const errorStatus =
         error && typeof error === 'object' && 'status' in error ? (error as { status: number }).status : 'unknown';
-      console.log('❌ [getFileContent] Error for', `${owner}/${repo}/${path}`, 'status:', errorStatus);
 
-      // 404 means file doesn't exist - cache that result
+      // 404 means file doesn't exist - cache that result.
+      //
+      // AIB-009 F6: a miss is the expected answer for a caller asking whether a
+      // file is there, so it is logged at debug like every other step of the
+      // lookup. It used to be one `❌ … Error … status: 404` per call in the
+      // launch log, which is how a real error stops being visible.
       if (errorStatus === 404) {
+        console.debug('· [getFileContent] Not present:', `${owner}/${repo}/${path}`);
         this.setCache(cacheKey, null);
         return null;
       }
+
+      console.log('❌ [getFileContent] Error for', `${owner}/${repo}/${path}`, 'status:', errorStatus);
 
       // Log the full error for non-404 errors
       console.error('❌ [getFileContent] Full error:', error);
@@ -884,22 +891,54 @@ export class GitHubClient extends EventDispatcher {
   }
 
   /**
-   * Check if a repository is a Noodl project
-   * Checks for project.json at the root of the repo
+   * Check if a repository is a NodeGX project — is there a `project.json` at its
+   * root?
+   *
+   * AIB-009 F6: this used to fetch `project.json` directly, so for every repo in
+   * the user's account that is *not* a NodeGX project — the overwhelming
+   * majority — the answer arrived as an HTTP 404. Chromium logs a failed request
+   * to the console itself, at error level, before any of our code sees it, so
+   * demoting our own lines could only ever fix half of it: the launcher's log
+   * still carried a `Failed to load resource: … 404 (project.json)` per repo, and
+   * a launch that probes 100 repos buried everything else under 100 errors.
+   *
+   * Listing the root directory answers the same question with a **200 whether or
+   * not the file is there**, which is the only way to stop generating the line.
+   * Same one request per repo, same cache, same rate-limit cost.
+   *
+   * (An empty repository still 404s — there is no tree to list. That is one line
+   * for a rare case rather than one line for the common one.)
    */
   async isNoodlProject(owner: string, repo: string): Promise<boolean> {
-    console.log('🔍 [GitHubClient] isNoodlProject checking:', `${owner}/${repo}`);
+    console.debug('🔍 [GitHubClient] isNoodlProject checking:', `${owner}/${repo}`);
+
+    const cacheKey = this.getCacheKey('rootEntries', { owner, repo });
+    const cached = this.getFromCache<string[]>(cacheKey, 60000);
+    if (cached !== undefined) return cached.includes('project.json');
 
     try {
-      const projectJson = await this.getFileContent(owner, repo, 'project.json');
-      if (projectJson !== null) {
-        console.log('✅ [GitHubClient] Found project.json in', `${owner}/${repo}`);
-        return true;
-      }
+      const octokit = await this.ensureAuthenticated();
+      const response = await octokit.repos.getContent({ owner, repo, path: '' });
 
-      console.log('❌ [GitHubClient] No project.json found in', `${owner}/${repo}`);
-      return false;
+      this.updateRateLimitFromHeaders(response.headers as Record<string, string>);
+
+      // A root path always lists as a directory. Anything else is a repository
+      // shaped in a way this probe cannot read, and the answer is "no", not an
+      // error — it is not a NodeGX project either way.
+      const names = Array.isArray(response.data)
+        ? response.data.filter((entry) => entry.type === 'file').map((entry) => entry.name)
+        : [];
+      this.setCache(cacheKey, names);
+      return names.includes('project.json');
     } catch (error) {
+      const status =
+        error && typeof error === 'object' && 'status' in error ? (error as { status: number }).status : 'unknown';
+      // An empty repo (404) or one this token cannot read (403) is not a NodeGX
+      // project and is not an error worth a line in the launch log.
+      if (status === 404 || status === 403) {
+        this.setCache(cacheKey, []);
+        return false;
+      }
       console.error('❌ [GitHubClient] Error checking isNoodlProject for', `${owner}/${repo}`, error);
       return false;
     }

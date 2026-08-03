@@ -351,6 +351,25 @@ describe('AIX-002 authoring session', () => {
       expect(session.state.staged).toBeDefined();
     });
 
+    it('AIB-009 F11: a turn that never returns ends as an error, not as a cancellation', async () => {
+      // The provider took the request and said nothing. Before the deadline this
+      // session stayed `busy` forever: the turn budget needs a reply to count,
+      // and so does the submission budget. The distinction being pinned is the
+      // *status* — a stall reported as `cancelled` tells the user they stopped
+      // something they did not, and inside a plan run it skips every remaining
+      // operation for a reason that never happened.
+      const chat: AuthoringChatFn = () => new Promise(() => undefined);
+
+      const session = AuthoringSession.create(GRAPH, REQUEST, { chat, stallMs: 40 });
+      const outcome = await session.run();
+
+      expect(outcome.status).toBe('error');
+      expect(outcome.error).toContain('stopped responding');
+      expect(session.state.phase).toBe('error');
+      expect(session.state.busy).toBe(false);
+    });
+
+
     it('publishes the forming graph as submit_component arguments stream', async () => {
       const args = goodSubmitArgs();
       const json = JSON.stringify(args);

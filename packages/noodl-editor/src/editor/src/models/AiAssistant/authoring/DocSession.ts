@@ -21,6 +21,7 @@
  */
 
 import { AiClient } from '../client';
+import { withTurnDeadline } from '../client/turnDeadline';
 import type { AiEffort, AiMessage, AiToolCall } from '../client/types';
 import type { ExplainGraph } from '../explain/types';
 // Pure ProjectDocs submodules only — the barrel drags ProjectModel and the
@@ -71,6 +72,8 @@ export interface DocSessionOptions {
   maxTurns?: number;
   maxSubmits?: number;
   effort?: AiEffort;
+  /** AIB-009 F11: silence window for one turn. Defaults to {@link TURN_STALL_MS}. */
+  stallMs?: number;
   /**
    * When false, the graph-restatement lint is neither run nor offered. The
    * advisory is a quality pass, not a gate — this exists for measurement arms
@@ -134,7 +137,12 @@ export class DocSession {
     if (!request.intent.trim()) {
       throw new AuthoringSetupError(`Doc operation "${request.path}" has no intent — nothing to record.`);
     }
-    this.chat = options.chat ?? ((req, callbacks) => AiClient.chatStream(req, callbacks ?? {}));
+    // AIB-009 F11. This session passes no callbacks of its own, which is exactly
+    // the case the wrapper handles: it supplies them, so the provider's activity
+    // still reaches the deadline.
+    this.chat = withTurnDeadline(options.chat ?? ((req, callbacks) => AiClient.chatStream(req, callbacks ?? {})), {
+      stallMs: options.stallMs
+    });
     this.maxTurns = options.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
     this.effort = options.effort ?? AUTHORING_EFFORT;

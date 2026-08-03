@@ -283,6 +283,8 @@ export class OpenAiProvider implements AiProvider {
     try {
       for await (const data of readSseData(response.body)) {
         if (signal?.aborted) break;
+        // AIB-009 F11: life on the wire, whatever the chunk turns out to hold.
+        callbacks.onActivity?.();
 
         let chunk: OpenAiChatResponse;
         try {

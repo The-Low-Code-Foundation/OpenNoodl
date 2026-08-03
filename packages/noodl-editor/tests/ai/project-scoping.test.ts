@@ -228,6 +228,20 @@ describe('AIX-012 — the scoping conversation', () => {
     expect(turn.note).toContain('unreachable');
     expect(turn.scope.request).toBe('a reading list app');
   });
+
+  it('AIB-009 F11: a turn that never returns ends, and the scope so far survives it', async () => {
+    // The first AI interaction anyone has with the product. Without a deadline
+    // the composer stayed disabled behind `Thinking…` with no way out except
+    // closing the wizard, which loses the conversation.
+    const chat = () => new Promise<AiChatResponse>(() => undefined);
+    const session = new ScopingSession({ chat, stallMs: 40 });
+
+    const turn = await session.send('a reading list app');
+
+    expect(turn.status).toBe('error');
+    expect(turn.note).toContain('stopped responding');
+    expect(turn.scope.request).toBe('a reading list app');
+  });
 });
 
 describe('AIX-012 — the plan derived from an agreed scope', () => {

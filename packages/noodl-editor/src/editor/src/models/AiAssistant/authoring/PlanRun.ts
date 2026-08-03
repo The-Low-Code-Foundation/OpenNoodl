@@ -77,6 +77,18 @@ export interface PlanOperationState {
   /** Doc operations: the authored body's size and headline, for the plan list. */
   stagedDoc?: { chars: number; summary?: string; created: boolean; lintFindings: string[] };
   /**
+   * AIB-009 F4 — this operation is `skipped` because the run was stopped, not
+   * because anything decided it should be.
+   *
+   * The distinction is the whole of F4. A doc operation ends `skipped` for two
+   * unrelated reasons: the agent read the finished work and found nothing worth
+   * recording (a real answer, and re-running it buys another model call and the
+   * same answer), or the user pressed Stop before the doc pass reached it (not
+   * an answer at all). Only the second is worth offering to run again, and from
+   * the outside they were indistinguishable.
+   */
+  skippedByCancel?: boolean;
+  /**
    * AIB-007 — a provision operation's staged summary.
    *
    * "Staged" here means what it means everywhere else in this class: computed,
@@ -406,6 +418,59 @@ export class PlanRun {
   }
 
   /**
+   * AIB-009 F4 — run the doc pass on its own, against what is staged now.
+   *
+   * Stopping a run keeps the components it built, which is right, and skips the
+   * documents that would have recorded them, which is also right — the doc turn's
+   * whole value is seeing the finished work, and there was no finished work yet.
+   * What was wrong is that the two together left the plan permanently
+   * half-documented with no way back: `run()` refuses a second call, and
+   * `retryOperation` refuses a doc.
+   *
+   * Only the operations the *cancel* skipped are re-run. A doc the agent read the
+   * work and declined has already answered the question, and re-asking it costs a
+   * model call to be told the same thing (see `skippedByCancel`). A doc that
+   * failed keeps its error: what failed there was a precondition — no docs
+   * reader, an unreadable file — and repeating the turn cannot fix it.
+   */
+  async runDocPass(): Promise<PlanRunState> {
+    if (this.phase === 'running') {
+      throw new AuthoringSetupError('The plan is still running — wait for it to finish before writing the docs.');
+    }
+    const pending = this.docsAwaitingCancelledPass();
+    if (pending.length === 0) {
+      throw new AuthoringSetupError('There is no document in this plan waiting to be written.');
+    }
+
+    // A doc pass is a fresh attempt, not a continuation of the cancelled run —
+    // the same reset `retryOperation` makes, for the same reason.
+    this.cancelled = false;
+    this.phase = 'running';
+    this.publish();
+    for (const state of pending) {
+      if (this.cancelled) {
+        state.status = 'skipped';
+        state.skippedByCancel = true;
+        continue;
+      }
+      state.skippedByCancel = undefined;
+      await this.runDocOperation(state);
+    }
+    this.activeOperationId = undefined;
+    this.phase = this.cancelled ? 'cancelled' : 'done';
+    // `runStartedAt`/`runEndedAt` are deliberately untouched: the header's
+    // duration is the run's, and a doc pass started ten minutes later must not
+    // make it count the minutes the user spent reading.
+    this.publish();
+    return this.state;
+  }
+
+  /** AIB-009 F4 — doc operations a stop left unwritten, which a doc pass would write. */
+  docsAwaitingCancelledPass(): PlanOperationState[] {
+    return this.states.filter((s) => s.operation.kind === 'doc' && Boolean(s.skippedByCancel));
+  }
+
+  /**
    * The graph an operation authors against: the project plus every OTHER
    * operation's staged candidate. Recomputed rather than remembered, so a retry
    * sees the plan as it stands now — including candidates the user has since
@@ -475,6 +540,8 @@ export class PlanRun {
       if (state.operation.kind !== 'doc') continue;
       if (this.cancelled) {
         state.status = 'skipped';
+        // AIB-009 F4: stopped, not declined. `runDocPass` reads this.
+        state.skippedByCancel = true;
         continue;
       }
       await this.runDocOperation(state);
@@ -715,6 +782,7 @@ export class PlanRun {
       state.error = outcome.note ?? 'The agent found nothing worth recording here.';
     } else if (outcome.status === 'cancelled') {
       state.status = 'skipped';
+      state.skippedByCancel = true;
       this.cancelled = true;
     } else {
       state.status = 'failed';

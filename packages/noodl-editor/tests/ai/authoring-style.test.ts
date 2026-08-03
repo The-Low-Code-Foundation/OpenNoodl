@@ -195,6 +195,40 @@ describe('AIX-006 style vocabulary', () => {
     expect(outcome.files).toBeDefined();
   });
 
+  it('AIB-009 F11: a provider that stalls during the style pass never costs the accepted candidate', async () => {
+    // Same rule as the spec above, against the failure mode F11 describes: the
+    // advisory turn is the one most likely to be waiting on a provider that has
+    // stopped answering, because it is the extra one nobody asked for. Before
+    // the deadline this hung; the first fix for the deadline then reported it as
+    // an *error* and threw the accepted component away, which is worse than
+    // hanging — the user paid for it and it passed the gate.
+    let turns = 0;
+    const chat = (): Promise<AiChatResponse> => {
+      turns++;
+      if (turns === 1) {
+        return Promise.resolve(
+          respond({
+            toolCalls: [
+              call('submit_component', submitArgs({ backgroundColor: '#3b82f6', color: '#ffffff', borderColor: '#3b82f6' }))
+            ]
+          })
+        );
+      }
+      return new Promise(() => undefined);
+    };
+    const session = AuthoringSession.create(
+      GRAPH,
+      { description: 'a styled page', componentPath: 'Pages/StyledStall' },
+      { chat, stallMs: 40 }
+    );
+    const outcome = await session.run();
+
+    expect(turns).toBe(2);
+    expect(outcome.status).toBe('authored');
+    expect(outcome.files).toBeDefined();
+    expect(session.stagedFiles).toBeDefined();
+  });
+
   it('with guidance off, a raw candidate is accepted immediately with no style pass', async () => {
     const { chat, requests } = scriptedChat([
       () => respond({ toolCalls: [call('submit_component', submitArgs({ backgroundColor: '#3b82f6', color: '#ffffff', borderColor: '#3b82f6' }))] })

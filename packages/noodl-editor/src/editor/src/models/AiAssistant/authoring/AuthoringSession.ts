@@ -38,6 +38,7 @@ import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
 import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
 import type { StyleTokenRecord } from '../../StyleTokensModel/TokenCategories';
 import { AiClient } from '../client';
+import { withTurnDeadline } from '../client/turnDeadline';
 import type {
   AiChatRequest,
   AiChatResponse,
@@ -159,6 +160,12 @@ export interface AuthoringSessionOptions {
    * provisions a backend, which a session has no way to know and the panel does.
    */
   backend?: ProjectBackendFacts;
+  /**
+   * AIB-009 F11: how long one turn may deliver *nothing* before it is ended.
+   * Defaults to {@link TURN_STALL_MS}; `0` disables the deadline. Specs that
+   * script an unresponsive provider set it to a few milliseconds.
+   */
+  stallMs?: number;
 }
 
 const DEFAULT_MAX_TURNS = 12;
@@ -333,7 +340,12 @@ export class AuthoringSession {
     readonly mode: AuthoringMode = 'create',
     private readonly baseFiles?: ComponentFiles
   ) {
-    this.chat = options.chat ?? ((req, callbacks) => AiClient.chatStream(req, callbacks ?? {}));
+    // AIB-009 F11: the deadline wraps whatever chat this session was given —
+    // the live client, a spec's script, the measurement harness's provider — so
+    // there is no path into the loop that can hang forever.
+    this.chat = withTurnDeadline(options.chat ?? ((req, callbacks) => AiClient.chatStream(req, callbacks ?? {})), {
+      stallMs: options.stallMs
+    });
     this.maxTurns = options.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
     this.effort = options.effort ?? AUTHORING_EFFORT;
@@ -649,6 +661,15 @@ export class AuthoringSession {
         prose.streaming = false;
         if (!prose.text.trim()) this.dropActivity(prose);
         if (abortController.signal.aborted) return this.finish('cancelled');
+        // AIB-009 F11: a stalled turn reaches here, and `signal.aborted` is
+        // deliberately false — `withTurnDeadline` aborts its own inner
+        // controller, so a provider that stopped answering reads as an error
+        // with a reason rather than as the user having pressed Stop.
+        //
+        // And whatever ended the turn, a candidate that already passed the gate
+        // stands: the same rule the exhausted and aborted paths above apply, for
+        // the same reason. An optional style pass must never cost a valid one.
+        if (stylePassBaseline) return this.finish('authored', stylePassBaseline);
         return this.finish('error', undefined, error instanceof Error ? error.message : String(error));
       }
 

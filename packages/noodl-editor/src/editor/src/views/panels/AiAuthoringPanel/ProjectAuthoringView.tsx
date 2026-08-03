@@ -337,6 +337,8 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
   const [planBusy, setPlanBusy] = useState(false);
   const [reviewingDoc, setReviewingDoc] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  /** AIB-009 F4 — the doc pass is running on its own, after a stopped run. */
+  const [writingDocs, setWritingDocs] = useState(false);
 
   // The run's published state. Seeded from the store's run so a remount shows a
   // finished run exactly as the user left it, rather than an empty panel with
@@ -733,6 +735,29 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     await retryOperation(applyFailure.id, applyFailure.target, applyFailure.reason);
   }, [applyFailure, retryOperation]);
 
+  /**
+   * AIB-009 F4 — write the documents a stopped run never reached.
+   *
+   * The run itself is over: this authors the doc operations against the
+   * components that are staged now, and stages the bodies exactly as the run's
+   * second pass would have. Nothing reaches the project — the same Apply button
+   * is still the only thing that does.
+   */
+  const writeSkippedDocs = useCallback(async () => {
+    const run = runRef.current;
+    if (!run) return;
+    setWritingDocs(true);
+    setNote({ text: 'Writing the documents for what was built…', type: FeedbackType.Notice });
+    try {
+      await run.runDocPass();
+      setNote({ text: 'The documents are written. Review them, then apply the plan.', type: FeedbackType.Notice });
+    } catch (e) {
+      setNote({ text: e instanceof Error ? e.message : String(e), type: FeedbackType.Danger });
+    } finally {
+      setWritingDocs(false);
+    }
+  }, [setNote]);
+
   const abandon = useCallback(() => {
     // Abandon is the absence of an apply call: drop everything, nothing was written.
     reset();
@@ -743,6 +768,14 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     runState?.operations.filter((op) => op.status === 'staged' && op.operation.kind !== 'doc').length ?? 0;
   const failedOps = runState?.operations.filter((op) => op.status === 'failed') ?? [];
   const stagedDocOps = runState?.operations.filter((op) => op.status === 'staged' && op.operation.kind === 'doc') ?? [];
+  /**
+   * AIB-009 F4 — doc operations a Stop left unwritten. Read off the published
+   * state rather than off the run, so the offer appears and disappears with the
+   * same render as everything else it sits beside.
+   */
+  const docsSkippedByStop = runState?.operations.filter((op) => op.skippedByCancel) ?? [];
+  /** Doc operations that have not been written yet, while the run is still going. */
+  const docsPending = runState?.operations.filter((op) => op.operation.kind === 'doc' && op.status !== 'staged') ?? [];
   /** AIB-007 — is a backend among the things Apply would create? */
   const stagedProvision = runState?.operations.some(
     (op) => op.status === 'staged' && op.operation.kind === 'provision' && !excluded.has(op.operation.id)
@@ -820,12 +853,28 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
             </>
           )}
           {runState?.busy && (
-            <PrimaryButton
-              label="Stop"
-              variant={PrimaryButtonVariant.Ghost}
-              isGrowing
-              onClick={() => runRef.current?.cancel()}
-            />
+            <>
+              <PrimaryButton
+                label="Stop"
+                variant={PrimaryButtonVariant.Ghost}
+                isGrowing
+                onClick={() => runRef.current?.cancel()}
+              />
+              {/*
+                AIB-009 F4. Stopping keeps every component already built — that
+                part was always true and never said. What was also never said is
+                that the documents are written in a second pass, after the
+                components, so stopping skips all of them. Said here, before the
+                click, because afterwards it is a fact rather than a choice.
+              */}
+              {docsPending.length > 0 && !writingDocs && (
+                <Text textType={TextType.Shy}>
+                  Stopping keeps everything built so far. The {docsPending.length} document
+                  {docsPending.length === 1 ? '' : 's'} are written last, so they will be skipped — you can write
+                  them afterwards without re-running the build.
+                </Text>
+              )}
+            </>
           )}
         </VStack>
       </Section>
@@ -1163,6 +1212,30 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                           failed. Nothing has touched your project — apply the rest explicitly, or abandon.
                         </Text>
                       </HStack>
+                    )}
+                    {/*
+                      AIB-009 F4 — the way back. Before this, a stopped run left
+                      the plan permanently half-documented: `run()` refuses a
+                      second call and `retryOperation` refuses a doc, so the
+                      components were staged, the documents were skipped, and
+                      neither the UI nor the model had anything to say about it.
+                    */}
+                    {docsSkippedByStop.length > 0 && (
+                      <VStack UNSAFE_style={{ gap: 6 }}>
+                        <Text textType={TextType.Secondary}>
+                          Stopping skipped {docsSkippedByStop.length} document
+                          {docsSkippedByStop.length === 1 ? '' : 's'}. What was built is still staged — the
+                          documents can be written against it now, without authoring anything again.
+                        </Text>
+                        <PrimaryButton
+                          label={writingDocs ? 'Writing…' : `Write the documentation (${docsSkippedByStop.length})`}
+                          icon={IconName.File}
+                          variant={PrimaryButtonVariant.Ghost}
+                          isDisabled={writingDocs || retrying}
+                          isGrowing
+                          onClick={() => void writeSkippedDocs()}
+                        />
+                      </VStack>
                     )}
                     {stagedDocOps.length > 0 && !docsAvailable && (
                       <Text textType={TextType.Shy}>

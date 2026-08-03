@@ -223,6 +223,8 @@ export function ProjectsPage(props: ProjectsPageProps) {
   const [scopingScope, setScopingScope] = useState<ProjectScope>(() => emptyScope());
   const [isScopingBusy, setIsScopingBusy] = useState(false);
   const [scopingError, setScopingError] = useState<string | undefined>(undefined);
+  /** AIB-009 F7 — the reply of the turn in flight, as it streams in. */
+  const [scopingStreaming, setScopingStreaming] = useState('');
   const [aiConfigVersion, setAiConfigVersion] = useState(0);
 
   // GitHub OAuth state
@@ -506,12 +508,18 @@ export function ProjectsPage(props: ProjectsPageProps) {
 
     setScopingError(undefined);
     setIsScopingBusy(true);
+    setScopingStreaming('');
     // Show the user's own words immediately; a chat that waits for the model
     // before echoing what you typed reads as dropped input.
     setScopingMessages((prev) => [...prev, { role: 'user', text }]);
 
     try {
-      const turn = await session.send(text);
+      // AIB-009 F7. `send` has always taken stream callbacks and passed them to
+      // every round; nothing here passed any, so the launcher's wizard was the
+      // one AI surface in the product that showed a static `Thinking…` for the
+      // whole turn. `onText` hands back the accumulated text of the round in
+      // flight, which is exactly what a bubble wants.
+      const turn = await session.send(text, { onText: (fullText) => setScopingStreaming(fullText) });
       setScopingScope(turn.scope);
       if (turn.status === 'ok' || turn.status === 'cancelled') {
         if (turn.reply) setScopingMessages([...session.transcript]);
@@ -522,6 +530,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
       setScopingError(error instanceof Error ? error.message : String(error));
     } finally {
       setIsScopingBusy(false);
+      // The streamed copy is only ever the turn in flight; the transcript is
+      // what stands afterwards. Leaving it set would double the last reply.
+      setScopingStreaming('');
     }
   }, []);
 
@@ -538,6 +549,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
     () => ({
       messages: scopingMessages,
       isBusy: isScopingBusy,
+      streamingReply: scopingStreaming,
       outline: scopeOutline(scopingScope),
       isAgreed: scopingScope.agreed,
       error: scopingError,
@@ -546,7 +558,15 @@ export function ProjectsPage(props: ProjectsPageProps) {
         void handleScopingSend(text);
       }
     }),
-    [scopingMessages, isScopingBusy, scopingScope, scopingError, previewPlan, handleScopingSend]
+    [
+      scopingMessages,
+      isScopingBusy,
+      scopingStreaming,
+      scopingScope,
+      scopingError,
+      previewPlan,
+      handleScopingSend
+    ]
   );
 
   const handleChooseLocation = useCallback(async (): Promise<string | null> => {

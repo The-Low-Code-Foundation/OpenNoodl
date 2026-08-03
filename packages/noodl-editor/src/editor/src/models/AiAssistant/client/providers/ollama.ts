@@ -240,6 +240,8 @@ export class OllamaProvider implements AiProvider {
     try {
       for await (const line of readNdjson(response.body)) {
         if (signal?.aborted) break;
+        // AIB-009 F11: life on the wire, whatever the line turns out to hold.
+        callbacks.onActivity?.();
 
         let chunk: OllamaChatResponse;
         try {

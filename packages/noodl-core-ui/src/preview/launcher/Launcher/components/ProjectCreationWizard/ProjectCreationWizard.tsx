@@ -37,6 +37,12 @@ export interface ScopingState {
   /** Short lines describing what has been agreed so far. */
   outline: readonly string[];
   isAgreed: boolean;
+  /**
+   * AIB-009 F7 — the assistant's reply as it arrives, before the turn is over.
+   * Empty (or absent) while the model has produced no prose yet, which is when
+   * the thinking row is the honest thing to show.
+   */
+  streamingReply?: string;
   error?: string;
   /** The plan derived from the agreed scope, for the review step. */
   planRows: readonly ReviewPlanRow[];
@@ -140,6 +146,7 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailabi
           <ScopingStep
             messages={scoping.messages}
             isBusy={scoping.isBusy}
+            streamingReply={scoping.streamingReply}
             outline={scoping.outline}
             isAgreed={scoping.isAgreed}
             error={scoping.error}

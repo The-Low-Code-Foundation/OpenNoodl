@@ -26,6 +26,7 @@
  */
 
 import { AiClient } from '../client';
+import { withTurnDeadline } from '../client/turnDeadline';
 import type { AiChatRequest, AiChatResponse, AiEffort, AiMessage, AiStreamCallbacks } from '../client/types';
 import { RECORD_SCOPE, SCOPING_TOOLS, scopingOpeningMessage, scopingSystemPrompt, unknownToolMessage } from './prompts';
 import type { ProjectScope, ScopeBackendInput, ScopeTranscriptEntry } from './scope';
@@ -55,6 +56,13 @@ export interface ScopingOptions {
   chat?: ScopingChatFn;
   effort?: AiEffort;
   maxToolRounds?: number;
+  /**
+   * AIB-009 F11: how long one turn may deliver nothing before it is ended.
+   * Defaults to {@link TURN_STALL_MS}; `0` disables it. This is the first AI
+   * interaction anyone has with the product, so a silent hang here is the most
+   * expensive one there is.
+   */
+  stallMs?: number;
 }
 
 export type ScopingTurnStatus = 'ok' | 'cancelled' | 'error';
@@ -81,7 +89,10 @@ export class ScopingSession {
   private abortController: AbortController | undefined;
 
   constructor(options: ScopingOptions = {}) {
-    this.chat = options.chat ?? ((request, callbacks) => AiClient.chatStream(request, callbacks ?? {}));
+    this.chat = withTurnDeadline(
+      options.chat ?? ((request, callbacks) => AiClient.chatStream(request, callbacks ?? {})),
+      { stallMs: options.stallMs }
+    );
     this.effort = options.effort ?? SCOPING_EFFORT;
     this.maxToolRounds = options.maxToolRounds ?? MAX_TOOL_ROUNDS;
   }

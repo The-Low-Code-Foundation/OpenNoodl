@@ -156,6 +156,16 @@ export interface AiStreamCallbacks {
   onToolCallPartial?: (partial: { index: number; name: string; argsText: string }) => void;
   /** Called once per tool call, when its arguments have finished streaming. */
   onToolCall?: (toolCall: AiToolCall) => void;
+  /**
+   * AIB-009 F11: called once per event received from the provider's stream,
+   * including the ones that carry nothing a user would see — pings, keepalives,
+   * and the reasoning deltas this client deliberately drops.
+   *
+   * It reports that the stream is *alive*, not that the model said anything, and
+   * it is the only signal that separates a model thinking hard from a provider
+   * that has stopped answering. `withTurnDeadline` is its consumer.
+   */
+  onActivity?: () => void;
   onEnd?: () => void;
 }
 

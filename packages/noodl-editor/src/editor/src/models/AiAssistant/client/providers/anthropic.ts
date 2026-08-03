@@ -451,6 +451,10 @@ export class AnthropicProvider implements AiProvider {
 
       for await (const event of stream) {
         if (signal?.aborted) break;
+        // AIB-009 F11: every event counts as life on the wire, including `ping`
+        // and the `thinking_delta`s dropped below — a turn that is thinking is
+        // not a turn that has stalled.
+        callbacks.onActivity?.();
 
         switch (event.type) {
           case 'message_start':

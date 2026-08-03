@@ -28,6 +28,11 @@ export interface ScopingStepProps {
   messages: readonly ScopingMessage[];
   /** A turn is in flight — the composer is disabled and the thinking row shows. */
   isBusy: boolean;
+  /**
+   * AIB-009 F7 — the reply as it arrives. Rendered in place of the thinking row
+   * the moment there is a first word, so the wait is legible rather than blank.
+   */
+  streamingReply?: string;
   /** Short lines describing what has been agreed so far. Empty until something is. */
   outline: readonly string[];
   /** True once the assistant and the user have agreed the whole scope. */
@@ -40,16 +45,27 @@ export interface ScopingStepProps {
 const PLACEHOLDER_OPENING = 'Describe the app you want to build…';
 const PLACEHOLDER_REPLY = 'Reply…';
 
-export function ScopingStep({ messages, isBusy, outline, isAgreed, error, onSend }: ScopingStepProps) {
+export function ScopingStep({
+  messages,
+  isBusy,
+  streamingReply,
+  outline,
+  isAgreed,
+  error,
+  onSend
+}: ScopingStepProps) {
   const [draft, setDraft] = useState('');
   const feedRef = useRef<HTMLDivElement>(null);
+  const streaming = isBusy ? streamingReply?.trim() ?? '' : '';
 
   // Keep the newest message in view. A transcript that silently grows off the
-  // bottom reads as an unresponsive app.
+  // bottom reads as an unresponsive app — and a reply that streams in below the
+  // fold is the same thing wearing a nicer hat, so the growing text is a
+  // dependency here too.
   useEffect(() => {
     const feed = feedRef.current;
     if (feed) feed.scrollTop = feed.scrollHeight;
-  }, [messages.length, isBusy, error]);
+  }, [messages.length, isBusy, error, streaming.length]);
 
   const submit = () => {
     const text = draft.trim();
@@ -91,7 +107,25 @@ export function ScopingStep({ messages, isBusy, outline, isAgreed, error, onSend
           )
         )}
 
-        {isBusy && <div className={`${css['Message']} ${css['Message--pending']}`}>Thinking…</div>}
+        {/*
+          AIB-009 F7: this was `Thinking…` for the whole turn, however long the
+          turn was — the first AI interaction anyone has with the product, and
+          the only one in the app with no feedback at all. The session already
+          took stream callbacks and the launcher simply passed none.
+
+          The row stays for the part of a turn that genuinely has nothing to
+          show: a model that is still thinking, or one that is calling
+          `record_scope` before it answers, has produced no prose to render.
+        */}
+        {isBusy &&
+          (streaming ? (
+            <Markdown
+              content={streaming}
+              UNSAFE_className={`${css['Message']} ${css['Message--assistant']} ${css['Message--markdown']}`}
+            />
+          ) : (
+            <div className={`${css['Message']} ${css['Message--pending']}`}>Thinking…</div>
+          ))}
 
         {error && <div className={css['Error']}>{error}</div>}
       </div>
