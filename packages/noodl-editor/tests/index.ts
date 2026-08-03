@@ -18,6 +18,7 @@ export * from './ai';
 export * from './canvas';
 export * from './cloud';
 export * from './components';
+export * from './databrowser';
 export * from './git';
 export * from './import-engine';
 export * from './import-flow';

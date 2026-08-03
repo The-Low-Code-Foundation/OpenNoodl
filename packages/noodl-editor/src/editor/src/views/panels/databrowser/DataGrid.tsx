@@ -34,8 +34,46 @@ export interface DataGridProps {
   onDeleteRecord: (recordId: string) => void;
 }
 
-/** System fields that are read-only */
-const READ_ONLY_FIELDS = new Set(['id', 'createdAt', 'updatedAt']);
+/**
+ * System fields that are read-only.
+ *
+ * POL-014: the record's primary key is `objectId` — that is what the backend
+ * stores, what `/api/:collection` returns, and what every write channel names
+ * (`backend:saveRecord(id, collection, objectId, data)`). This grid used to read
+ * `record.id`, which no row carries.
+ */
+const READ_ONLY_FIELDS = new Set(['objectId', 'createdAt', 'updatedAt']);
+
+/** Which cell, if any, is being edited. */
+export interface EditingCell {
+  recordId: string;
+  field: string;
+}
+
+/**
+ * The identity of a row, or `undefined` when the record has none.
+ *
+ * Exported and separate from the render so it can be tested without React
+ * infra, which this repo's editor suite does not have (see
+ * `tests/sidepanel/hideTransitions.spec.ts` for the same shape).
+ */
+export function recordKey(record: Record<string, unknown>): string | undefined {
+  const key = record.objectId;
+  return typeof key === 'string' && key.length > 0 ? key : undefined;
+}
+
+/**
+ * Whether this cell is the one being edited.
+ *
+ * The `recordId == null` arm is the whole point: comparing two absent ids with
+ * `===` says *true*, so a grid whose records carry no identity opened an editor
+ * in every row on a single click (POL-014, consequence 3). An unidentified row
+ * is never the edited one.
+ */
+export function isCellEditing(editing: EditingCell | null, recordId: string | undefined, field: string): boolean {
+  if (recordId == null || editing == null) return false;
+  return editing.recordId === recordId && editing.field === field;
+}
 
 /**
  * Format a cell value for display
@@ -97,22 +135,24 @@ export function DataGrid({
   onSaveCell,
   onDeleteRecord
 }: DataGridProps) {
-  const [editingCell, setEditingCell] = useState<{ recordId: string; field: string } | null>(null);
+  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [savingError, setSavingError] = useState<string | null>(null);
 
   // Check if all records are selected
   const allSelected = records.length > 0 && selectedRecords.size === records.length;
 
   // Handle cell click - start editing if editable
-  const handleCellClick = useCallback((recordId: string, field: string) => {
+  const handleCellClick = useCallback((recordId: string | undefined, field: string) => {
     if (READ_ONLY_FIELDS.has(field)) return;
+    if (recordId == null) return; // a row with no identity cannot be edited
     setEditingCell({ recordId, field });
     setSavingError(null);
   }, []);
 
   // Handle save from CellEditor
   const handleSave = useCallback(
-    async (recordId: string, field: string, value: unknown) => {
+    async (recordId: string | undefined, field: string, value: unknown) => {
+      if (recordId == null) return; // unreachable while an editor only opens on an identified row
       try {
         await onSaveCell(recordId, field, value);
         setEditingCell(null);
@@ -154,24 +194,28 @@ export function DataGrid({
           </tr>
         </thead>
         <tbody>
-          {records.map((record) => {
-            const recordId = record.id as string;
-            const isSelected = selectedRecords.has(recordId);
+          {records.map((record, rowIndex) => {
+            const recordId = recordKey(record);
+            const isSelected = recordId != null && selectedRecords.has(recordId);
 
             return (
-              <tr key={recordId} className={isSelected ? css.SelectedRow : ''}>
+              // `rowIndex` only backs up a missing key; with `objectId` present it is
+              // never reached. Before POL-014 the key was `undefined` for every row,
+              // which is what React was warning about on every load.
+              <tr key={recordId ?? `row-${rowIndex}`} className={isSelected ? css.SelectedRow : ''}>
                 {/* Checkbox */}
                 <td className={css.CheckboxCol}>
                   <input
                     type="checkbox"
                     checked={isSelected}
-                    onChange={(e) => onSelectRecord(recordId, e.target.checked)}
+                    disabled={recordId == null}
+                    onChange={(e) => recordId != null && onSelectRecord(recordId, e.target.checked)}
                   />
                 </td>
                 {/* Data cells */}
                 {columns.map((col) => {
                   const value = record[col.name];
-                  const isEditing = editingCell?.recordId === recordId && editingCell?.field === col.name;
+                  const isEditing = isCellEditing(editingCell, recordId, col.name);
                   const isReadOnly = READ_ONLY_FIELDS.has(col.name);
 
                   return (
@@ -198,7 +242,12 @@ export function DataGrid({
                 })}
                 {/* Actions */}
                 <td className={css.ActionsCol}>
-                  <IconButton icon={IconName.Trash} size={IconSize.Small} onClick={() => onDeleteRecord(recordId)} />
+                  <IconButton
+                    icon={IconName.Trash}
+                    size={IconSize.Small}
+                    isDisabled={recordId == null}
+                    onClick={() => recordId != null && onDeleteRecord(recordId)}
+                  />
                 </td>
               </tr>
             );

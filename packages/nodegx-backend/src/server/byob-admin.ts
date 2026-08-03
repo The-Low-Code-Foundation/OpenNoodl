@@ -124,6 +124,21 @@ export class ByobAdminRoutes {
   }
 
   async delete(ctx: RequestContext): Promise<void> {
+    // POL-014 slice 2. The adapter's DELETE only reports "Object not found" when
+    // an ACL predicate is in play; an admin delete of a row that isn't there
+    // removes nothing, throws nothing, and this route answered `{deleted: true}`
+    // — which is how the Data Browser could accept a confirm, delete nothing and
+    // show no error. `fetch` and `save` already 404 for a missing row; so does
+    // this now, and for the same reason.
+    // The probe is a `fetch` under the *write* ACL, not `existsSync`: it is the
+    // same query `GET /api/:table/:id` runs, so it behaves identically in
+    // ephemeral (mock-SQL) mode, and a row the caller may not write answers like
+    // a missing one — which is the existence hiding the adapter already does.
+    try {
+      await this.facade.rawFetch(ctx.params.table, ctx.params.id, ctx.acl('write'));
+    } catch {
+      throw new HttpError(404, 'Record not found');
+    }
     try {
       await this.facade.rawDelete(ctx.params.table, ctx.params.id, ctx.acl('write'));
     } catch {

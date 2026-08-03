@@ -455,6 +455,22 @@ describe('nodegx-backend HTTP surface', () => {
     expect(deleted.json.deleted).toBe(true);
   });
 
+  it('DELETE /api/:table/:id 404s for a row that is not there (POL-014)', async () => {
+    // The adapter only reports "Object not found" when an ACL predicate is in
+    // play, so an admin delete of a missing row removed nothing, threw nothing,
+    // and this route used to answer `{ deleted: true }`. That is how the Data
+    // Browser could accept a delete confirm and silently do nothing.
+    const missing = await req<{ error?: string }>('DELETE', '/api/Notes/undefined');
+    expect(missing.status).toBe(404);
+
+    // Deleting the same row twice: the first is a delete, the second is not.
+    const created = await req<ParseRecord>('POST', '/api/Notes', { text: 'transient' });
+    const first = await req<DeletedResponse>('DELETE', `/api/Notes/${created.json.objectId}`);
+    expect(first.status).toBe(200);
+    const second = await req('DELETE', `/api/Notes/${created.json.objectId}`);
+    expect(second.status).toBe(404);
+  });
+
   it('GET /admin/schema lists user tables but not system (_-prefixed) ones', async () => {
     const { json } = await req<SchemaResponse>('GET', '/admin/schema');
     const names = json.tables.map((t) => t.name);

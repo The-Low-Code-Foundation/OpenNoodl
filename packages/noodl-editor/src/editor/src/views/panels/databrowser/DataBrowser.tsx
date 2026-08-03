@@ -70,7 +70,10 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
   // System columns shown for all tables
   const systemColumns: ColumnDef[] = useMemo(
     () => [
-      { name: 'id', type: 'String', required: true },
+      // POL-014: `objectId`, not `id`. The backend, the IPC layer and the Parse
+      // wire all name the primary key `objectId`; this column header used to say
+      // `id` and render blank in every row because no record carries that field.
+      { name: 'objectId', type: 'String', required: true },
       { name: 'createdAt', type: 'Date', required: true },
       { name: 'updatedAt', type: 'Date', required: true }
     ],
@@ -138,8 +141,10 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
           [col.name]: { contains: searchQuery.trim() }
         }));
 
-        // Also search id
-        searchConditions.push({ id: { contains: searchQuery.trim() } });
+        // Also search the record id. This said `id`, which the adapter turns into
+        // `"id" LIKE ?` against a table that has no such column — so every search
+        // failed at the database, not just quietly matched nothing (POL-014).
+        searchConditions.push({ objectId: { contains: searchQuery.trim() } });
 
         if (searchConditions.length > 0) {
           queryOptions.where = { $or: searchConditions };
@@ -215,7 +220,7 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
 
         // Update local state
         setRecords((prev) =>
-          prev.map((r) => (r.id === recordId ? { ...r, [field]: value, updatedAt: new Date().toISOString() } : r))
+          prev.map((r) => (r.objectId === recordId ? { ...r, [field]: value, updatedAt: new Date().toISOString() } : r))
         );
       } catch (err) {
         console.error('Failed to save cell:', err);
@@ -229,14 +234,21 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
   const handleDeleteRecord = useCallback(
     async (recordId: string) => {
       if (!selectedTable) return;
+      // A row with no id cannot be deleted, and must not look as if it was
+      // (POL-014, consequence 4 — the confirm was accepted and nothing happened).
+      if (!recordId) {
+        setError('Cannot delete: this row has no objectId.');
+        return;
+      }
       if (!window.confirm('Delete this record?')) return;
 
       try {
         await ipcRenderer.invoke('backend:deleteRecord', backendId, selectedTable, recordId);
+        setError(null);
         loadData();
       } catch (err) {
         console.error('Failed to delete record:', err);
-        setError('Failed to delete record');
+        setError(`Failed to delete record: ${err instanceof Error ? err.message : String(err)}`);
       }
     },
     [backendId, selectedTable, loadData]
@@ -252,10 +264,11 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
         await ipcRenderer.invoke('backend:deleteRecord', backendId, selectedTable, recordId);
       }
       setSelectedRecords(new Set());
+      setError(null);
       loadData();
     } catch (err) {
       console.error('Failed to bulk delete:', err);
-      setError('Failed to delete some records');
+      setError(`Failed to delete some records: ${err instanceof Error ? err.message : String(err)}`);
     }
   }, [backendId, selectedTable, selectedRecords, loadData]);
 
@@ -308,7 +321,7 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
   const handleSelectAll = useCallback(
     (selected: boolean) => {
       if (selected) {
-        setSelectedRecords(new Set(records.map((r) => r.id as string)));
+        setSelectedRecords(new Set(records.map((r) => r.objectId as string)));
       } else {
         setSelectedRecords(new Set());
       }
