@@ -253,6 +253,75 @@ export class PlanRun {
   }
 
   /**
+   * AIB-001 slice 4 — re-author ONE operation, leaving every other staged
+   * candidate alone.
+   *
+   * The recovery path for a failed apply. `applyAuthoredPlan` is all-or-nothing
+   * by construction and stays that way: this does not apply anything, it
+   * replaces one operation's staged candidate with a freshly authored one and
+   * leaves the user back at the same Apply button. The transaction property is
+   * untouched; what becomes incremental is the *repair*.
+   *
+   * `repairContext` is the failure the user just saw, handed to the session as
+   * part of its task so the model is fixing a named defect rather than
+   * re-rolling the dice. After AIB-001's gate that failure will usually be a
+   * parameter-value diagnostic naming the node and the port — which is the
+   * difference between a retry and a retry that works.
+   *
+   * The graph it authors against includes every OTHER staged candidate, exactly
+   * as the original run did, so an operation that instantiates a sibling
+   * component still sees it.
+   */
+  async retryOperation(operationId: string, repairContext?: string): Promise<PlanRunState> {
+    const state = this.states.find((s) => s.operation.id === operationId);
+    if (!state) throw new AuthoringSetupError(`No operation "${operationId}" in this plan.`);
+    if (state.operation.kind === 'doc') {
+      throw new AuthoringSetupError('A doc operation is re-authored by re-running the plan, not retried alone.');
+    }
+    if (this.phase === 'running') {
+      throw new AuthoringSetupError('The plan is still running — wait for it to finish before retrying an operation.');
+    }
+
+    // A retry is a fresh attempt, not a continuation of a cancelled run.
+    this.cancelled = false;
+    this.phase = 'running';
+    const previousFiles = this.filesById.get(operationId);
+    this.filesById.delete(operationId);
+    await this.authorOperation(state, this.workingGraph(operationId), repairContext);
+    // A failed retry must not silently destroy what the user already had: the
+    // previous candidate was rejected by the *project*, not by the gate, and it
+    // is still the best thing anyone has.
+    if (state.status !== 'staged' && previousFiles) {
+      this.filesById.set(operationId, previousFiles);
+    }
+    this.activeOperationId = undefined;
+    this.phase = this.cancelled ? 'cancelled' : 'done';
+    this.publish();
+    return this.state;
+  }
+
+  /**
+   * The graph an operation authors against: the project plus every OTHER
+   * operation's staged candidate. Recomputed rather than remembered, so a retry
+   * sees the plan as it stands now — including candidates the user has since
+   * edited in review.
+   */
+  private workingGraph(excludeOperationId?: string): ExplainGraph {
+    let components = [...this.graph.components];
+    for (const state of this.states) {
+      if (state.operation.kind === 'doc' || state.operation.id === excludeOperationId) continue;
+      const files = this.filesById.get(state.operation.id);
+      if (!files) continue;
+      const legacyName = pathToLegacyName(state.operation.target);
+      components = [
+        ...components.filter((c) => c.name !== legacyName),
+        graphComponentFromFiles(legacyName, files)
+      ];
+    }
+    return { components };
+  }
+
+  /**
    * Author every operation: components first, in plan order, then the docs
    * that record them. Never throws for loop-shaped failures.
    */
@@ -262,82 +331,17 @@ export class PlanRun {
     this.phase = 'running';
     this.publish();
 
-    // The working copy later sessions see; the caller's graph stays pristine.
-    let workingGraph: ExplainGraph = { components: [...this.graph.components] };
-
     for (const state of this.states) {
       if (state.operation.kind === 'doc') continue; // second pass — see below
       if (this.cancelled) {
         state.status = 'skipped';
         continue;
       }
-
-      const operation = state.operation;
-      const legacyName = pathToLegacyName(operation.target);
-      state.status = 'authoring';
-      this.activeOperationId = operation.id;
-      this.publish();
-
-      let session: AuthoringSession;
-      try {
-        const request = { description: operation.intent, componentPath: operation.target };
-        const sessionOptions: AuthoringSessionOptions = {
-          ...this.options.session,
-          planContext: renderPlanContext(this.plan, operation.id)
-        };
-        if (operation.kind === 'update') {
-          const base = this.options.baseFilesFor?.(legacyName);
-          if (!base) {
-            throw new AuthoringSetupError(`No current source for "${operation.target}" — cannot author an update.`);
-          }
-          session = AuthoringSession.createUpdate(workingGraph, request, base, sessionOptions);
-        } else {
-          session = AuthoringSession.create(workingGraph, request, sessionOptions);
-        }
-      } catch (error) {
-        state.status = 'failed';
-        state.error = error instanceof Error ? error.message : String(error);
-        this.publish();
-        continue;
-      }
-
-      this.activeSession = session;
-      const unsubscribe = session.onChange((sessionState) => {
-        this.activeSessionState = sessionState;
-        this.publish();
-      });
-      this.activeSessionState = session.state;
-      this.publish();
-
-      const outcome = await session.run();
-      unsubscribe();
-      this.costUsd =
-        this.costUsd === null || outcome.metrics.costUsd === null ? null : this.costUsd + outcome.metrics.costUsd;
-
-      if (outcome.status === 'authored' && outcome.files) {
-        state.status = 'staged';
-        state.staged = {
-          nodeCount: outcome.files.nodes.nodes.length,
-          connectionCount: outcome.files.connections.connections.length
-        };
-        this.filesById.set(operation.id, outcome.files);
-        // Later operations see this candidate — staged, never applied.
-        const authored = graphComponentFromFiles(legacyName, outcome.files);
-        const components = workingGraph.components.filter((c) => c.name !== legacyName);
-        workingGraph = { components: [...components, authored] };
-      } else if (outcome.status === 'cancelled') {
-        state.status = 'skipped';
-        this.cancelled = true;
-      } else {
-        state.status = 'failed';
-        state.error =
-          outcome.error ??
-          (outcome.status === 'exhausted'
-            ? 'The agent could not produce a valid component within its budget.'
-            : outcome.status);
-      }
-      this.activeSession = undefined;
-      this.publish();
+      // The working copy later sessions see — the project plus every candidate
+      // staged so far; the caller's graph stays pristine. Derived from
+      // `filesById` rather than threaded through the loop so that a retry, which
+      // runs outside this loop entirely, cannot see a different project.
+      await this.authorOperation(state, this.workingGraph(state.operation.id));
     }
 
     // ── Second pass: the docs that record what the first pass built. ──────────
@@ -358,6 +362,92 @@ export class PlanRun {
     this.phase = this.cancelled ? 'cancelled' : 'done';
     this.publish();
     return this.state;
+  }
+
+  /**
+   * One component operation, authored through the unchanged single-component
+   * loop and staged in memory. Never throws for loop-shaped failures — the
+   * outcome lands on `state`.
+   *
+   * Shared by `run()` and `retryOperation()` so a retry is provably the same
+   * authoring path as the original attempt, differing only in the repair
+   * context it carries.
+   */
+  private async authorOperation(
+    state: PlanOperationState,
+    workingGraph: ExplainGraph,
+    repairContext?: string
+  ): Promise<void> {
+    const operation = state.operation;
+    const legacyName = pathToLegacyName(operation.target);
+    state.status = 'authoring';
+    state.error = undefined;
+    this.activeOperationId = operation.id;
+    this.publish();
+
+    let session: AuthoringSession;
+    try {
+      const request = {
+        description: repairContext
+          ? `${operation.intent}\n\nA previous attempt at this was rejected when the plan was applied:\n` +
+            `${repairContext}\n\nAuthor it again, fixing exactly what that names.`
+          : operation.intent,
+        componentPath: operation.target
+      };
+      const sessionOptions: AuthoringSessionOptions = {
+        ...this.options.session,
+        planContext: renderPlanContext(this.plan, operation.id)
+      };
+      if (operation.kind === 'update') {
+        const base = this.options.baseFilesFor?.(legacyName);
+        if (!base) {
+          throw new AuthoringSetupError(`No current source for "${operation.target}" — cannot author an update.`);
+        }
+        session = AuthoringSession.createUpdate(workingGraph, request, base, sessionOptions);
+      } else {
+        session = AuthoringSession.create(workingGraph, request, sessionOptions);
+      }
+    } catch (error) {
+      state.status = 'failed';
+      state.error = error instanceof Error ? error.message : String(error);
+      this.publish();
+      return;
+    }
+
+    this.activeSession = session;
+    const unsubscribe = session.onChange((sessionState) => {
+      this.activeSessionState = sessionState;
+      this.publish();
+    });
+    this.activeSessionState = session.state;
+    this.publish();
+
+    const outcome = await session.run();
+    unsubscribe();
+    this.costUsd =
+      this.costUsd === null || outcome.metrics.costUsd === null ? null : this.costUsd + outcome.metrics.costUsd;
+
+    if (outcome.status === 'authored' && outcome.files) {
+      state.status = 'staged';
+      state.staged = {
+        nodeCount: outcome.files.nodes.nodes.length,
+        connectionCount: outcome.files.connections.connections.length
+      };
+      // Later operations see this candidate — staged, never applied.
+      this.filesById.set(operation.id, outcome.files);
+    } else if (outcome.status === 'cancelled') {
+      state.status = 'skipped';
+      this.cancelled = true;
+    } else {
+      state.status = 'failed';
+      state.error =
+        outcome.error ??
+        (outcome.status === 'exhausted'
+          ? 'The agent could not produce a valid component within its budget.'
+          : outcome.status);
+    }
+    this.activeSession = undefined;
+    this.publish();
   }
 
   /** What the fan-out achieved, as the doc turn is told it. */

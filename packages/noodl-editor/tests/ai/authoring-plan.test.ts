@@ -385,3 +385,76 @@ describe('AIX-011 criterion 7 — the planner can see the project docs', () => {
     expect(opening.indexOf('PROJECT DOCUMENTS')).toBe(-1);
   });
 });
+
+/**
+ * AIB-001 slice 4 — an apply failure is a question, not an outcome.
+ *
+ * `applyAuthoredPlan` rolling back cleanly is correct engineering and terrible
+ * product: it left the user holding a red sentence and a dead plan, with no way
+ * forward that did not discard every other authored component. The transaction
+ * stays all-or-nothing — what becomes incremental is the recovery.
+ */
+describe('AIB-001 — retrying one operation of a plan', () => {
+  it('re-authors only the named operation and leaves every other candidate staged', async () => {
+    const log: string[] = [];
+    const run = new PlanRun(loadGraph(), THREE_OP_PLAN, { baseFilesFor, session: { chat: planChatScript(log) } });
+    await run.run();
+    expect(log).toEqual(['Pages/Checkout', 'Pages/Article']);
+
+    const articleBefore = run.filesFor('op-2');
+    await run.retryOperation('op-1', 'pathParams expects a comma-separated string');
+
+    // One more authoring session, for the named operation only.
+    expect(log).toEqual(['Pages/Checkout', 'Pages/Article', 'Pages/Checkout']);
+    // …and the sibling's staged candidate is untouched, not re-run and not lost.
+    expect(run.filesFor('op-2')).toBe(articleBefore);
+    expect(run.state.operations.find((op) => op.operation.id === 'op-1')!.status).toBe('staged');
+  });
+
+  it('hands the model the failure it is fixing, so a retry is not a re-roll', async () => {
+    const openings: string[] = [];
+    const chat = planChatScript([]);
+    const spyChat = async (request: AiChatRequest): Promise<AiChatResponse> => {
+      openings.push(request.messages.find((m) => m.role === 'user')?.content ?? '');
+      return chat(request);
+    };
+    const run = new PlanRun(loadGraph(), THREE_OP_PLAN, { baseFilesFor, session: { chat: spyChat } });
+    await run.run();
+    openings.length = 0;
+
+    await run.retryOperation('op-1', 'node "params" parameter "pathParams" (stringlist) is an array');
+    expect(openings[0]).toContain('rejected when the plan was applied');
+    expect(openings[0]).toContain('pathParams');
+    // The intent survives — the model is revising this operation, not a new one.
+    expect(openings[0]).toContain('The new checkout page.');
+  });
+
+  it('a retry that fails keeps the candidate the user already had', async () => {
+    // The previous candidate was rejected by the PROJECT, not by the gate — it
+    // is still the best thing anyone has, and destroying it would reproduce the
+    // exact loss this task exists to stop, one level down.
+    let goodTurnsLeft = 2;
+    const good = planChatScript([]);
+    const chat = async (request: AiChatRequest): Promise<AiChatResponse> => {
+      if (goodTurnsLeft-- > 0) return good(request);
+      return toolResponse('submit_component', { nodes: [{ id: 'x', type: 'NoSuchTypeAtAll' }] });
+    };
+
+    const run = new PlanRun(loadGraph(), THREE_OP_PLAN, { baseFilesFor, session: { chat } });
+    await run.run();
+    const staged = run.filesFor('op-1');
+    expect(staged).toBeDefined();
+
+    await run.retryOperation('op-1', 'something went wrong');
+    const op1 = run.state.operations.find((op) => op.operation.id === 'op-1')!;
+    expect(op1.status).toBe('failed');
+    expect(run.filesFor('op-1')).toBe(staged);
+  });
+
+  it('refuses to retry a doc operation, which is re-authored by re-running the plan', async () => {
+    const run = new PlanRun(loadGraph(), THREE_OP_PLAN, { baseFilesFor, session: { chat: planChatScript([]) } });
+    await run.run();
+    await expectAsync(run.retryOperation('op-3')).toBeRejected();
+    await expectAsync(run.retryOperation('op-nope')).toBeRejected();
+  });
+});

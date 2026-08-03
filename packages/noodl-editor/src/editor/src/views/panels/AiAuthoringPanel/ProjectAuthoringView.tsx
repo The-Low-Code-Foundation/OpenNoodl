@@ -141,6 +141,17 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
   const [applied, setApplied] = useState<{ count: number; docs: string[] } | null>(null);
   const [reviewingDoc, setReviewingDoc] = useState<string | null>(null);
+  /**
+   * AIB-001 slice 4 — the operation an apply failure was about, and the reason.
+   *
+   * A rollback is correct engineering and terrible product: without this the
+   * user is left holding a red sentence and a dead plan, and the only way
+   * forward is to throw away every other authored component and start again.
+   * With it, the failure is a question — "re-author just that one?" — and the
+   * transaction stays exactly as all-or-nothing as it was.
+   */
+  const [applyFailure, setApplyFailure] = useState<{ id: string; target: string; reason: string } | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   const runRef = useRef<PlanRun | null>(null);
   const planAbortRef = useRef<AbortController | null>(null);
@@ -159,6 +170,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     setExcluded(new Set());
     setReviewingDoc(null);
     setNote(null);
+    setApplyFailure(null);
   }, []);
 
   const startPlanning = useCallback(async () => {
@@ -274,6 +286,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     const docWriter = createPlanDocWriter(projectDocs());
     const { operations } = run.acceptedOperations(excluded, { includeDocs: docWriter !== undefined });
     if (operations.length === 0) return;
+    setApplyFailure(null);
 
     // Belt-and-braces: the same gate that validated each candidate during
     // authoring re-validates the final selection against the live project,
@@ -293,11 +306,16 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
           : {})
       });
       if (!validation.ok) {
+        // AIB-001: after slice 1 this is where a bad parameter value surfaces if
+        // one ever reaches apply — naming the node and the port. Offer the same
+        // recovery as a transaction failure: re-author this one operation with
+        // the diagnostic as its repair context.
         const lines = validation.errors.slice(0, 3).map(formatDiagnosticLine);
-        setNote({
-          text: `"${op.operation.target}" is no longer valid: ${lines.join(' · ')}`,
-          type: FeedbackType.Danger
-        });
+        const reason = `"${op.operation.target}" is no longer valid: ${lines.join(' · ')}`;
+        setNote({ text: reason, type: FeedbackType.Danger });
+        // `op.kind` is narrowed to create/update here — the loop skips docs
+        // above, because a doc has no graph to re-validate.
+        setApplyFailure({ id: op.operation.id, target: op.operation.target, reason });
         return;
       }
       // Extend with the accepted candidate so later operations validate
@@ -311,12 +329,34 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
       reset();
       setDescription('');
     } catch (e) {
-      setNote({
-        text: e instanceof StagingError ? e.message : e instanceof Error ? e.message : String(e),
-        type: FeedbackType.Danger
-      });
+      const message = e instanceof Error ? e.message : String(e);
+      setNote({ text: message, type: FeedbackType.Danger });
+      // The transaction knows which operation it was mutating. When it is a
+      // component operation, that is enough to offer the only recovery worth
+      // having — re-author that one and leave every other candidate staged.
+      const failed = e instanceof StagingError ? e.operation : undefined;
+      setApplyFailure(failed && failed.kind !== 'doc' ? { ...failed, reason: message } : null);
     }
   }, [excluded, reset]);
+
+  const retryFailedOperation = useCallback(async () => {
+    const run = runRef.current;
+    if (!run || !applyFailure) return;
+    setRetrying(true);
+    setApplyFailure(null);
+    setNote({ text: `Re-authoring "${applyFailure.target}"…`, type: FeedbackType.Notice });
+    try {
+      await run.retryOperation(applyFailure.id, applyFailure.reason);
+      setNote({
+        text: `"${applyFailure.target}" was authored again. Review it, then apply the plan.`,
+        type: FeedbackType.Notice
+      });
+    } catch (e) {
+      setNote({ text: e instanceof Error ? e.message : String(e), type: FeedbackType.Danger });
+    } finally {
+      setRetrying(false);
+    }
+  }, [applyFailure]);
 
   const abandon = useCallback(() => {
     // Abandon is the absence of an apply call: drop everything, nothing was written.
@@ -527,7 +567,22 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                     ) : (
                       <Text textType={TextType.Secondary}>No operation produced anything to apply.</Text>
                     )}
+                    {applyFailure && (
+                      <Text textType={TextType.Secondary}>
+                        Nothing was applied and nothing was lost — every other component is still staged. Re-author
+                        “{applyFailure.target}” against what went wrong, then apply again.
+                      </Text>
+                    )}
                     <HStack UNSAFE_style={{ gap: 8 }}>
+                      {applyFailure && (
+                        <PrimaryButton
+                          label={retrying ? 'Re-authoring…' : `Retry "${applyFailure.target}"`}
+                          icon={IconName.MagicWand}
+                          isDisabled={retrying}
+                          isGrowing
+                          onClick={() => void retryFailedOperation()}
+                        />
+                      )}
                       {applyCount > 0 && (
                         <PrimaryButton
                           label={
@@ -536,6 +591,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                               : `Apply ${applyCount} of ${totalOps}`
                           }
                           icon={IconName.Check}
+                          isDisabled={retrying}
                           isGrowing
                           onClick={() => void applyPlan()}
                         />

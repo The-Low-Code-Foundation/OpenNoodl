@@ -22,9 +22,26 @@ import type { ComponentFiles } from './types';
 
 /** Thrown when accept cannot proceed; the project is untouched. */
 export class StagingError extends Error {
-  constructor(message: string) {
+  /**
+   * AIB-001 slice 4 — which plan operation the transaction was applying when it
+   * failed.
+   *
+   * A rollback is correct engineering and terrible product: it leaves the user
+   * holding a red sentence and a dead plan. The transaction always knew which
+   * operation it was mutating; it simply threw the knowledge away, so the panel
+   * could offer nothing better than "the plan could not be applied". Carrying it
+   * is what makes an apply failure a question ("retry just that one?") rather
+   * than an outcome.
+   *
+   * Absent for the failures that are about the plan as a whole — an empty
+   * accepted set, two operations writing one document.
+   */
+  readonly operation?: { id: string; target: string; kind: string };
+
+  constructor(message: string, operation?: { id: string; target: string; kind: string }) {
     super(message);
     this.name = 'StagingError';
+    this.operation = operation;
   }
 }
 

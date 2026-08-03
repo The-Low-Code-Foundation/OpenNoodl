@@ -197,13 +197,20 @@ export async function applyAuthoredPlan(
   const components = new Map<string, ComponentModel>();
   const docs: string[] = [];
 
+  // AIB-001 slice 4: which operation the transaction is inside. A mutation that
+  // throws is nearly always about ONE operation's candidate — the crash this
+  // task is named for came from a single node's parameter — and the recovery
+  // the user needs ("re-author that one") is unreachable without knowing which.
+  let applying: AppliedPlanOperation | undefined;
   try {
     // Disk first — see the module note. Preflight guaranteed the writer exists.
     for (const op of docOps) {
+      applying = op;
       await options.docWriter!.apply(op, undo);
       docs.push(op.operation.target);
     }
     for (const op of componentOps) {
+      applying = op;
       components.set(
         op.operation.id,
         op.kind === 'create'
@@ -219,9 +226,15 @@ export async function applyAuthoredPlan(
     } catch {
       /* a failed rollback must not hide the failure that caused it */
     }
+    const reason = error instanceof Error ? error.message : String(error);
     throw new StagingError(
-      `The plan could not be applied: ${error instanceof Error ? error.message : String(error)} ` +
-        'Everything it had already changed was rolled back.'
+      applying
+        ? `"${applying.operation.target}" could not be applied: ${reason} ` +
+          'Nothing reached your project — everything the plan had already changed was rolled back.'
+        : `The plan could not be applied: ${reason} Everything it had already changed was rolled back.`,
+      applying
+        ? { id: applying.operation.id, target: applying.operation.target, kind: applying.kind }
+        : undefined
     );
   }
 
