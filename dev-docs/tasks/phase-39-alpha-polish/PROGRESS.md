@@ -1,15 +1,16 @@
 # Phase 39 — Progress
 
-**Status:** specified, nothing built.
+**Status:** 3 of 12 built and verified in the running editor.
 **Last updated:** 2026-08-03
 
 ## Tasks
 
 | Task | Reported items | Status | Notes |
 |---|---|---|---|
-| [POL-001](POL-001-SETTINGS-PANEL-CRASH.md) — settings panel crash | 15 | ☐ not started | **Alpha-blocking.** Mechanism confirmed. Slice 2 (where the `settings` key goes) is open. Touches `projectmodel.ts` — dirty in another session. |
-| [POL-002](POL-002-LINKS-AND-THE-LEARN-TAB.md) — links + Learn tab | 1, 2, 5 | ☐ not started | Mechanism confirmed. Removes an Algolia dependency — re-check the packaged build. |
-| [POL-003](POL-003-THE-LEFT-RAIL.md) — the left rail | 3, 4, 6 | ☐ not started | Contrast measured at 3.8:1. `IconSize` confirmed inert at the CSS level. Needs 5 new Lucide SVGs. |
+| [POL-001](POL-001-SETTINGS-PANEL-CRASH.md) — settings panel crash | 15 | ✅ **done** | All 5 criteria. Slice 2 answered: the key is not lost — v2 elides an empty `settings: {}` by design on both sides. Verified live on "AIB38 Live Chat", the project that actually crashed. `c6d5f9f8` |
+| [POL-002](POL-002-LINKS-AND-THE-LEARN-TAB.md) — links + Learn tab | 1, 2, 5 | ✅ **done** (1 residual) | Removing `react-instantsearch` broke 18 unrelated files: it was the only thing in the tree still declaring a **global `JSX` namespace**, typed for *Preact's* VNode. All 22 annotations moved to `React.JSX`. Criterion 6 (packaged build) not run — human-gated. `d9c0f37c` |
+| [POL-003](POL-003-THE-LEFT-RAIL.md) — the left rail | 3, 4, 6 | ✅ **done** (slice 2 deferred) | Contrast now 8.26:1 dark / 7.49:1 light, measured live. 5 Lucide glyphs in. `IconSize` sweep deferred per Richard → [POL-013](POL-013-ICONSIZE-SWEEP.md). `d32b3d13`, `fc10449a` |
+| [POL-013](POL-013-ICONSIZE-SWEEP.md) — make `IconSize` real | — | ☐ filed, not started | Split out of POL-003 slice 2 on Richard's call. ~130 call sites. |
 | [POL-004](POL-004-TOKENS-USED-AS-WHAT-THEY-ARE-NOT.md) — token misuse | 9b, 12a | ☐ not started | 6 undefined tokens across 8 files. Adds a gate check. Prerequisite for POL-010. |
 | [POL-005](POL-005-BACKEND-SURFACES-OPEN-DOCKED.md) — backend surfaces | 7 | ☐ not started | One deleted call fixes both halves. Needs a per-surface layout pass at 860px. |
 | [POL-006](POL-006-A-FONT-AND-AN-ICON-SET.md) — font + icon set | 8 | ☐ not started | `--font-sans` is dangling repo-wide. Recommends Inter + Lucide sprite, bundled not CDN. Touches `LocalProjectsModel.ts` — dirty in another session. |
