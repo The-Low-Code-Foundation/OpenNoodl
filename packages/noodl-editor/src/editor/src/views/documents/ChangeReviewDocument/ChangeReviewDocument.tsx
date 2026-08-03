@@ -332,19 +332,21 @@ function ChangeReviewDocument({
   return (
     <div className={css.Root}>
       <div className={css.Topbar}>
-        <Label hasLeftSpacing>{title}</Label>
+        <div className={css.Title}>
+          <Label hasLeftSpacing>{title}</Label>
+        </div>
         {chip && (
           <div className={css.Chip}>
             <Text textType={TextType.Shy}>{chip}</Text>
           </div>
         )}
-        <div style={{ display: 'flex', gap: 2, marginLeft: 16 }}>
+        <div style={{ display: 'flex', gap: 2, marginLeft: 16, flexShrink: 0 }}>
           {preview && viewButton('preview', 'Preview')}
           {viewButton('before', 'Before')}
           {viewButton('review', 'Changes')}
           {viewButton('after', 'After')}
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexShrink: 0 }}>
           <PrimaryButton
             label={
               accepting

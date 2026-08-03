@@ -192,6 +192,25 @@ StrictMode and concurrent-rendering hazard, and the codebase is on React 19.
 [AIB-003](AIB-003-THE-BUILD-SURVIVES-NAVIGATION.md) rewrites this seam anyway. Flagged so it is not
 faithfully reproduced in the new store.
 
+## F11 — Nothing anywhere ends a turn that never returns
+
+**Verified 2026-08-03 (AIB-002 live QA) · 🟠 High**
+
+Found by accident and worth keeping. During the AIB-002 live replay two operations reported 3m21s
+and 4m25s for turns whose scripted work is seven seconds — Chromium throttling `setTimeout` in an
+occluded window, so the *cause* was the harness. The *screen* was not: the panel read
+`Writing — 3 nodes so far` and nothing else, indefinitely, and there was no way from inside the
+editor to tell a throttled timer from a provider that had stopped answering.
+
+Neither `AuthoringSession.run()` nor `PlanRun` has a deadline. The budget they enforce is turns and
+submissions, both of which require the model to *reply*. A provider that accepts the request and
+never responds leaves the run `busy` forever, the Stop button as the only exit, and — because
+`PlanRun.cancel()` marks the remaining operations `skipped` — the rest of the plan unbuilt.
+
+The fix is a per-turn deadline with a clear message, not a global one: a long turn is normal, a
+silent one is not. AIB-002 now shows elapsed per operation, which makes the symptom *visible*; it
+does not make it *end*.
+
 ---
 
 ## How to work this register
@@ -200,7 +219,11 @@ Items folded into another task (F3, F7, F8, F9) are cross-referenced there and s
 that task, not separately. F1, F2, F5 and F6 are standalone. F4 and F10 are one slice each.
 
 **Closed so far:** F1 (AIB-002 pass), F8 and F9 (AIB-002/AIB-004 pass), F10 (AIB-003).
-**Open:** F2 (the XSS surface — the one that must not ship to alpha), F4, F5, F6, F7.
+**Open:** F2 (the XSS surface — the one that must not ship to alpha), F4, F5, F6, F7, F11.
+
+**F5 did not reproduce.** Two clean `npm run dev:debug` launches on 2026-08-03 rendered the launcher
+with no Settings dialog over it. Persisted UI state from the session that filed it remains the best
+explanation; left open rather than closed, since "did not reproduce twice" is not "cannot happen".
 
 **F3 is half closed and the half that remains is now harmless.** AIB-001 replaced the raw
 `.split(',')` in `updatePortsForNode` with `readNameList`, so nothing throws. But `nodeAdded` still

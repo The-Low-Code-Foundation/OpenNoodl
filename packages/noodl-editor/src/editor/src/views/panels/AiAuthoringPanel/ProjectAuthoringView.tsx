@@ -947,6 +947,10 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                         <PrimaryButton
                           label={feedOpen ? 'Hide activity' : `Show activity (${activities.length})`}
                           variant={PrimaryButtonVariant.Ghost}
+                          // Live QA: a stretched, outlined button per operation
+                          // row reads as three primary actions stacked down the
+                          // panel. It is a disclosure toggle; it should hug.
+                          isFitContent
                           onClick={() => toggleFeed(op.operation.id)}
                         />
                       )}

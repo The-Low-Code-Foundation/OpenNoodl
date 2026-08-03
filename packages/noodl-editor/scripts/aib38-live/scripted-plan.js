@@ -43,9 +43,18 @@
  *   node packages/noodl-editor/scripts/aib38-live/scripted-plan.js --copy-corpus [--json]
  *
  * `--delay=<ms>` is the per-turn pause that makes the run observable mid-flight
- * (default 3500). `--copy-corpus` copies the tracked corpus fixture somewhere the
+ * (default 7000). `--copy-corpus` copies the tracked corpus fixture somewhere the
  * editor may safely rewrite — always use it; the editor minifies and rewrites any
  * project it opens.
+ *
+ * ## Timers, and why a run can appear to hang
+ *
+ * Chromium throttles `setTimeout` in an occluded window to roughly one wake a
+ * minute. A turn whose scripted work is seven seconds measured **200 seconds**
+ * with the editor behind another window — indistinguishable, from the panel,
+ * from the run hanging. Nothing in this script asserts a duration for that
+ * reason, and the scripted reply now uses exactly one timer per turn. If a run
+ * here looks stuck, check `window.__aib38.timings` before suspecting the editor.
  */
 const fs = require('fs');
 const os = require('os');
@@ -140,7 +149,7 @@ function installScript(delayMs) {
     const DELAY = ${delayMs};
     const COST = ${COST_PER_TURN};
 
-    window.__aib38 = { turns: [], cost: 0 };
+    window.__aib38 = { turns: [], cost: 0, timings: [] };
     if (!window.__aib38original) {
       window.__aib38original = { chatStream: AiClient.chatStream, isConfigured: AiClient.isConfigured };
     }
@@ -155,6 +164,8 @@ function installScript(delayMs) {
 
     AiClient.isConfigured = () => true;
     AiClient.chatStream = async (request, callbacks = {}) => {
+      const enteredAt = performance.now();
+      window.__aib38.timings.push({ at: enteredAt, event: 'enter' });
       const tools = (request.tools || []).map((t) => t.name);
       const opening = (request.messages || []).filter((m) => m.role === 'user').map((m) => m.content).join('\\n');
 
@@ -174,17 +185,25 @@ function installScript(delayMs) {
         if (!target) return reply('submit_component', { nodes: [{ id: 'x', type: 'NoSuchType' }] });
         const args = SUBMISSIONS[target];
         const argsText = JSON.stringify(args);
-        // Stream the arguments the way a provider does, so the panel's live
-        // node count climbs and PartialPayloadScanner runs its real path.
+        // Stream the arguments the way a provider does, so the panel's live node
+        // count climbs and PartialPayloadScanner runs its real path.
+        //
+        // Back to back, with NO sleep between them. Chromium throttles timers in
+        // an occluded window down to roughly one wake a minute, and this loop
+        // originally slept 120ms four times — which measured 200s and 265s for
+        // turns whose own work is seven seconds, and read exactly like the editor
+        // hanging mid-run. Every timer here is one more chance to be throttled,
+        // so there is now exactly one per turn, and even that only stretches the
+        // wait (no assertion in this script depends on a duration).
         for (let i = 1; i <= 4; i++) {
           callbacks.onToolCallPartial?.({
             index: 0, name: 'submit_component', argsText: argsText.slice(0, Math.floor((argsText.length * i) / 4))
           });
-          await new Promise((r) => setTimeout(r, 120));
         }
         const response = reply('submit_component', args);
         callbacks.onToolCall?.(response.toolCalls[0]);
         callbacks.onEnd?.();
+        window.__aib38.timings.push({ at: performance.now(), event: 'return:' + target, ms: performance.now() - enteredAt });
         return response;
       }
 
@@ -416,6 +435,19 @@ async function main() {
     );
 
     // ── Review operation 1, mid-run ─────────────────────────────────────────
+    // `--no-review` runs the plan without opening anything, as the baseline for
+    // "does reviewing mid-run cost the run anything".
+    if (args['no-review']) {
+      await waitFor(client, `(() => /of 3 built ·/.test(document.body.innerText || ''))()`, {
+        timeoutMs: 180000,
+        what: 'the run to finish (no-review baseline)'
+      });
+      report.baseline = await evaluate(
+        client,
+        `(() => ((document.body.innerText || '').match(/^\\d+ of 3 built ·.*$/m) || [''])[0])()`
+      );
+      throw new Error('--no-review: baseline only');
+    }
     await clickButtonWithText(client, 'Review');
     await waitFor(client, `(() => /Operation \\d+ of 3 · nothing applied yet/.test(document.body.innerText || ''))()`, {
       what: 'the review document to open'
@@ -442,14 +474,23 @@ async function main() {
 
     // Every visible button, sidebar included: the complaint was four buttons in
     // ONE viewport, so scoping this to the document would measure the wrong thing.
+    //
+    // Filtered to the commit/discard *verbs*, though, which is what criterion 1
+    // is about. A first pass tested every label for "project" and failed on the
+    // "Project" scope tab and the review banner's "Not for this project" — two
+    // controls that commit and discard nothing, and whose presence was never the
+    // complaint. Widening a check until it fails is not the same as it finding
+    // something.
     const reviewLabels = await buttonLabels(client);
+    const verbs = reviewLabels.filter((l) => /^(keep|drop|apply|discard|abandon|reject|accept)\b/i.test(l));
     check(
       steps,
-      'AIB-004 §1: one vocabulary — keep names the plan, nothing on screen names the project',
-      reviewLabels.some((l) => /^Keep all in plan$/.test(l)) &&
-        reviewLabels.includes('Drop from plan') &&
-        !reviewLabels.some((l) => /project/i.test(l)),
-      reviewLabels.join(' | ')
+      'AIB-004 §1: every commit/discard verb on screen names its level, and none names the project',
+      verbs.some((l) => /^Keep all in plan$/.test(l)) &&
+        verbs.includes('Drop from plan') &&
+        verbs.every((l) => /\bin plan$|\bfrom plan$|\bplan$/.test(l)) &&
+        !verbs.some((l) => /project/i.test(l)),
+      verbs.join(' | ')
     );
 
     const view = await evaluate(
@@ -501,30 +542,50 @@ async function main() {
         Boolean(kept(before)) && kept(before) === kept(after),
         `${kept(before)} → ${kept(after)}`
       );
-      // Put it back, so the plan applies whole.
-      const restore = await evaluate(
-        client,
-        `(() => {
-           const btn = Array.from(document.querySelectorAll('button'))
-             .find((b) => (b.getAttribute('aria-label') || '') === 'Include this change again');
-           if (!btn) return null;
-           const r = btn.getBoundingClientRect();
-           return { x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height };
-         })()`
+      // Put it all back, so the plan applies whole.
+      //
+      // One click does NOT undo one exclusion. Exclusion closes *forward* over
+      // dependents (dropping the Group drops the Text and the Button inside it —
+      // hence "Keep 0 of 3" from a single click) while restore closes *back*
+      // over prerequisites only, returning one row. That asymmetry is deliberate
+      // (AIX-003) and it means the way back is a loop, not a click.
+      for (let i = 0; i < 12; i++) {
+        const restore = await evaluate(
+          client,
+          `(() => {
+             const btn = Array.from(document.querySelectorAll('button'))
+               .find((b) => (b.getAttribute('aria-label') || '') === 'Include this change again');
+             if (!btn) return null;
+             const r = btn.getBoundingClientRect();
+             return { x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height };
+           })()`
+        );
+        if (!restore || !restore.width) break;
+        await dispatchClick(client, restore);
+        await sleep(250);
+      }
+      const restored = await buttonLabels(client);
+      check(
+        steps,
+        'AIX-003 asymmetry holds: restoring every excluded row returns the whole candidate',
+        restored.includes('Keep all in plan'),
+        restored.find((l) => /^Keep .*in plan$/.test(l)) ?? 'no keep button'
       );
-      if (restore) await dispatchClick(client, restore);
-      await sleep(300);
     } else {
       check(steps, 'AIB-004 §4: switching Preview↔Changes preserves the keep/drop selection', false, 'no excludable row found');
     }
 
-    await clickButtonWithText(client, 'Keep all in plan');
+    // Prefix match: if a row is still excluded this reads "Keep N of M in plan",
+    // which is the same button and the same code path.
+    await clickButtonWithText(client, 'Keep');
     await sleep(800);
 
     // ── Wait for the run to finish ──────────────────────────────────────────
     await openBuildPanel(client);
+    // Generous: an occluded editor window has its timers throttled, so the
+    // scripted turns take minutes rather than seconds. See the streaming loop.
     await waitFor(client, `(() => /of 3 built ·/.test(document.body.innerText || ''))()`, {
-      timeoutMs: 120000,
+      timeoutMs: 300000,
       what: 'the run to finish'
     });
 
@@ -548,13 +609,21 @@ async function main() {
     );
 
     const doneLabels = await buttonLabels(client);
+    const doneVerbs = doneLabels.filter((l) => /^(keep|drop|apply|discard|abandon|reject|accept)\b/i.test(l));
     check(
       steps,
-      'AIB-004 §1: exactly one button names the project, and it is the one that writes',
-      doneLabels.filter((l) => /project/i.test(l)).length === 1 &&
-        doneLabels.some((l) => /^Apply to project \(3\)$/.test(l)),
-      doneLabels.join(' | ')
+      'AIB-004 §1: exactly one commit/discard verb names the project, and it is the one that writes',
+      doneVerbs.filter((l) => /project/i.test(l)).length === 1 &&
+        doneVerbs.some((l) => /^Apply to project \(3\)$/.test(l)) &&
+        doneVerbs.every((l) => /\bin plan$|\bfrom plan$|\bplan$|to project \(\d+\)$/.test(l)),
+      doneVerbs.join(' | ')
     );
+    // The two other labels carrying the word are the "Project" scope tab and the
+    // review banner's "Not for this project" dismissal. Neither commits nor
+    // discards anything, so neither is the ambiguity criterion 1 is about — but
+    // the banner's is discard-shaped and sits two rows above "Discard plan", so
+    // it is recorded rather than filtered away silently.
+    report.otherProjectLabels = doneLabels.filter((l) => /project/i.test(l) && !doneVerbs.includes(l));
 
     // ── AIB-004 §3: the sibling splice, on the operation that needs it ──────
     report.turns = await evaluate(client, `(() => window.__aib38.turns)()`);
@@ -588,16 +657,26 @@ async function main() {
   } catch (error) {
     report.error = error instanceof Error ? error.message : String(error);
   } finally {
-    // Put the real client back, whatever happened.
+    report.timings = await evaluate(client, `(() => window.__aib38 && window.__aib38.timings)()`).catch(() => undefined);
+    // Put the real client back — but NOT while a run is still authoring against
+    // it. An earlier version restored unconditionally in this block, so a step
+    // that timed out handed the *next* operation to a provider that is not
+    // configured, and everything measured after that was measuring the restore.
     await evaluate(
       client,
-      `(() => {
+      `(async () => {
          const AiClient = ${REQ(AI_CLIENT_MODULE)}.AiClient;
+         const store = ${REQ(PLAN_STORE_MODULE)}.PlanSessionStore.instance;
+         const project = ${REQ(PROJECT_MODULE)}.ProjectModel.instance;
+         const run = store.get(project && project.id).run;
+         for (let i = 0; i < 120 && run && run.state.busy; i++) {
+           await new Promise((r) => setTimeout(r, 1000));
+         }
          if (window.__aib38original) {
            AiClient.chatStream = window.__aib38original.chatStream;
            AiClient.isConfigured = window.__aib38original.isConfigured;
          }
-         return true;
+         return run ? run.state.busy : false;
        })()`
     ).catch(() => undefined);
     client.close?.();

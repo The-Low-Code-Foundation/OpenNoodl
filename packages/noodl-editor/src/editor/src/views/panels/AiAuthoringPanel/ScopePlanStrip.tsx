@@ -32,7 +32,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { PlanSessionStore, PLAN_SESSION_CHANGED } from '@noodl-models/AiAssistant/authoring';
-import { peekPendingScopePlan } from '@noodl-models/AiAssistant/scoping/pendingPlan';
+import { peekPendingScopePlan, takePendingScopePlan } from '@noodl-models/AiAssistant/scoping/pendingPlan';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { SidebarModel } from '@noodl-models/sidebar';
 
@@ -103,12 +103,35 @@ export function ScopePlanStrip() {
   const announcement = useScopePlanAnnouncement();
 
   const dismiss = useCallback(() => {
+    const projectId = ProjectModel.instance?.id;
+    const store = PlanSessionStore.instance;
+    const session = store.get(projectId);
+
+    /**
+     * Take the launcher's handover into the session *before* silencing the
+     * announcement, when the Build panel has not mounted yet.
+     *
+     * Found in live QA. Dismissing was one line — write `announcementDismissed`
+     * and stop — and on the path that matters (the user lands, reads the strip,
+     * says "not now", never opens the panel) the plan was still sitting in the
+     * launcher's module state, which dies with the window. So "not now" quietly
+     * meant "not ever", against a plan that had cost a ten-minute conversation.
+     * That is exactly the loss this phase exists to stop, in the one control
+     * whose whole promise is that it does not lose anything.
+     */
+    if (!session.plan && !session.run && !session.applied) {
+      const pending = takePendingScopePlan(projectId);
+      if (pending) {
+        store.update(projectId, { plan: pending.plan, origin: 'scoping' });
+      }
+    }
+
     // Into the session, not component state: switching to a review document
     // unmounts the canvas, and an announcement that came back every time the
     // user looked at their own work would be worse than never showing it.
     // Dismissing the announcement is not discarding the plan — the plan is
     // untouched here, and Abandon is still the only thing that drops it.
-    PlanSessionStore.instance.update(ProjectModel.instance?.id, { announcementDismissed: true });
+    store.update(projectId, { announcementDismissed: true });
   }, []);
 
   const open = useCallback(() => {

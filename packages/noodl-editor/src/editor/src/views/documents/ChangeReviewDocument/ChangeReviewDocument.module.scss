@@ -4,15 +4,33 @@
   height: 100%;
 }
 
+/*
+ * AIB-004 live QA: this was `height: 36px` with no wrapping, and the row had
+ * only ever held a title, three view buttons and three short verbs. Adding the
+ * Preview view, the plan chip and the longer plan-level verbs pushed it past the
+ * document width at 1368px — `Close` was entirely off-screen and `Drop from
+ * plan` was clipped mid-word. A control you cannot reach is worse than an ugly
+ * row, and this editor's panels are resizable well below that, so it wraps
+ * (the F20 precedent) rather than relying on any particular width fitting.
+ */
 .Topbar {
-  height: 36px;
+  min-height: 36px;
   flex-shrink: 0;
   background-color: var(--theme-color-bg-2);
   border-bottom: 2px solid var(--theme-color-bg-1);
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  padding-right: 8px;
+  padding: 4px 8px 4px 0;
+}
+
+/* The one elastic thing in the row: it gives way before anything wraps. */
+.Title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .Body {

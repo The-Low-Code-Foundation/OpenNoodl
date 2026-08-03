@@ -179,3 +179,38 @@ restorable from the panel with one click, which is the case the criterion actual
 One button in the product says "project". It is the only one that writes. The plan context moved
 from a title suffix to a persistent chip — *"Operation 1 of 3 · nothing applied yet"* — because a
 suffix is the first thing a reader stops seeing.
+
+### Criterion 7 — the live replay, and the two things it caught
+
+Driven by `packages/noodl-editor/scripts/aib38-live/scripted-plan.js` against a three-operation
+fixture whose **second page instantiates its first** — chosen so criterion 3 cannot pass by accident;
+three independent pages would render fine with the sibling splice still broken.
+
+```
+ok  AIB-004 §1: the pre-authoring panel says "Discard plan", not "Reject"
+ok  AIB-004 §1: the operation row says "Drop from plan", not "Exclude"
+ok  AIB-004 §1: every commit/discard verb on screen names its level     Drop from plan | Keep all in plan | Drop from plan
+ok  AIB-004 §1: exactly one verb names the project, and it is the one that writes
+                                                                        Drop from plan ×3 | Apply to project (3) | Discard plan
+ok  AIB-004 §2: reviewing a create opens on a rendered preview           {"hasPreviewTab":true,"previewVisible":true,
+                                                                         "chip":"Operation 1 of 3 · nothing applied yet"}
+ok  AIB-004 §3: the preview splices a candidate another operation authored
+                                                                        {"siblingCount":2,"withSiblings":true,"alone":false}
+ok  AIB-004 §4: switching Preview↔Changes preserves the keep/drop selection
+```
+
+Two defects that only the running app could show:
+
+- **The review topbar overflowed and `Close` was off-screen.** The row had held a title, three view
+  buttons and three short verbs; this task added a fourth view, a chip, and two longer verbs, and at
+  1368px `Drop from plan` was clipped mid-word with `Close` past the edge entirely. `scrollWidth 1019
+  vs clientWidth 916` — measured, not eyeballed. It now wraps (the F20 precedent) with the title as
+  the one elastic element. Nothing in the tests could see this: the suite has no DOM.
+- **The per-operation activity toggle stretched full width**, so three disclosure toggles read as
+  three primary actions stacked down the panel. `isFitContent`.
+
+One measurement caveat worth carrying: **a first check of "no button says project" failed on the
+`Project` scope tab and the review banner's `Not for this project`** — two controls that commit and
+discard nothing. The criterion is about commit/discard verbs, and a check widened until it fails is
+not the same as a check that found something. (The banner's label *is* discard-shaped and sits two
+rows above `Discard plan`; recorded rather than filtered away.)

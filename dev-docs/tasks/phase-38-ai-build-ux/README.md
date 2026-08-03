@@ -156,3 +156,37 @@ Every mechanism in the table above was verified against the source or against Ri
 `ai-test` project on disk during the session that opened this phase — not inferred from the
 symptom. Where a task says "verified", it means a file was read or a script was run, and the task
 says which. Where something is still a hypothesis, it says that instead.
+
+> **✅ AIB-002, AIB-004 and AIB-005 are built** (2026-08-03), with live QA. Carry forward:
+>
+> - **AIB-002 slice 1's stated mechanism had already been fixed by AIB-003**, and the fix it asked
+>   for ("rebuild the working entry from `filesById`") was already the behaviour. What criterion 4
+>   needed was a *spec*, not a change. That is now four of this phase's stated mechanisms that moved
+>   under a later task — read the mechanism, including this README's.
+> - **Two of the four defects this batch found came from a mount, not from a diff.** The review
+>   topbar overflowed off-screen once it carried a fourth view and two longer verbs, and AIB-005's
+>   panel switch was silently overwritten by a *later effect in the same mount*
+>   (`useSetupSettings`). Neither is visible to a suite with no DOM, and neither is visible from
+>   reading the diff. `scripts/aib38-live/scripted-plan.js` and `scripted-handoff.js` are the
+>   no-provider drivers; both are reusable for the remaining tasks.
+> - **A task's acceptance criterion can contradict the phase's design position.** AIB-004 criterion 6
+>   ("red for no action that leaves the project unchanged") would have made `Discard plan` non-red,
+>   while this phase's own position is that model output is the expensive artifact. Resolved as *red
+>   exactly when there is something to lose*. Expect more of these: the criteria were written before
+>   the position was.
+> - **AIB-009 gained F11** — nothing anywhere ends a turn that never returns. Found because a
+>   throttled timer made a scripted run look hung, and the editor had no way to tell the difference.
+
+## Where the phase stands (2026-08-03)
+
+| Task | State |
+|---|---|
+| AIB-001 | built; criterion 6 (live replay) still owed |
+| AIB-002 | **built, live QA green** |
+| AIB-003 | slices 1–3 built; slice 4 (persist under `.nodegx/plan/`) optional, not done; live QA owed |
+| AIB-004 | **built, live QA green** |
+| AIB-005 | **built, live QA green** (slice 3's wizard label not driven live) |
+| AIB-006 | built; criteria 1–2 not testable offline, live QA owed |
+| AIB-007 | not started |
+| AIB-008 | not started |
+| AIB-009 | F1, F8, F9, F10 closed; F11 added; F2 is the alpha blocker in this register |

@@ -190,3 +190,27 @@ actually about. Parallelism would also cost the cross-operation visibility that 
 provides and that criterion 4 has just been pinned on — two concurrent operations cannot see each
 other's output. Worth revisiting with a real timing from a three-page plan; not worth building
 blind.
+
+### Criterion 5 — the live replay
+
+Driven through the real editor by `packages/noodl-editor/scripts/aib38-live/scripted-plan.js`
+(no provider: `AiClient.chatStream` replays a fixture plan and one submission per target, routed by
+the component path in each session's opening message — the same seam AIX-015's single-component
+driver uses). A three-operation plan; operation 1 reviewed, edited and kept while operations 2 and 3
+were still authoring, asserted from the run's own state rather than from the screen:
+
+```
+ok  AIB-002 §1: an operation is reviewable while the rest still run      Building 2 of 3 · 7s · $0.01
+ok  AIB-002 §3: the header reads position · elapsed · cost, live         Building 2 of 3 · 7s · $0.01
+ok  AIB-002 §1 (live): the review is open while the rest is authoring    {"busy":true,"statuses":["staged","authoring","pending"]}
+ok  AIB-002 §3: the finished header carries the authoring turns' total   3 of 3 built · 24s · $0.04
+```
+
+**The one thing live QA found that no spec could: a run that looks hung.** Operations 2 and 3
+reported 3m21s and 4m25s for turns whose scripted work is seven seconds. It is not the editor —
+Chromium throttles `setTimeout` in an occluded window to roughly one wake a minute, and the driver's
+streaming loop slept four times per turn. It is recorded here because the *symptom* is a real one a
+user can hit: the panel says "Writing — 3 nodes so far" and nothing else, indefinitely, and there is
+no timeout anywhere in `PlanRun` or `AuthoringSession` that would ever end it. A provider that stops
+responding mid-turn produces exactly this screen. **A per-turn deadline is not in this task and is
+worth its own entry** — filed as AIB-009 F11.

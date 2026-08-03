@@ -107,20 +107,9 @@ export function EditorPage({ route }: EditorPageProps) {
     setupSidePanels();
     installDocuments();
 
-    // AIB-005: arriving with a plan agreed in the launcher's wizard is not a
-    // normal project open — it is the continuation of something the user was in
-    // the middle of thirty seconds ago, and they landed in an unexplained
-    // hello-world page. Open the Build panel so the plan is where their hands
-    // already are.
-    //
-    // Peeked, never taken: `ProjectAuthoringView` owns the consumption (into
-    // `PlanSessionStore`, per AIB-003), and a second consumer here would be the
-    // race that task exists to remove. And it opens the panel without starting
-    // anything — the wizard promised nothing would be built until the user
-    // chose, and that promise is worth more than the saved click.
-    if (peekPendingScopePlan(ProjectModel.instance?.id)) {
-      SidebarModel.instance.switch(AiAuthoringPanel_ID);
-    }
+    // AIB-005's "open the Build panel when a plan is waiting" lives in
+    // `useSetupSettings`, which owns the initial panel — putting it here meant
+    // two switch calls in one mount, and this one lost.
 
     const eventGroup = {};
 
