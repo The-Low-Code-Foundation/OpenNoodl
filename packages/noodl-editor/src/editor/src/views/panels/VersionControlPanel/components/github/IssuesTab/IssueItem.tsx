@@ -6,7 +6,7 @@
 
 import React from 'react';
 
-import type { GitHubIssue } from '../../../../../services/github/GitHubTypes';
+import type { GitHubIssue } from '../../../../../../services/github/GitHubTypes';
 import styles from './IssueItem.module.scss';
 
 interface IssueItemProps {

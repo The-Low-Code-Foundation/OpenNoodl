@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 
-import type { GitHubPullRequest } from '../../../../../services/github/GitHubTypes';
+import type { GitHubPullRequest } from '../../../../../../services/github/GitHubTypes';
 import { PRDetail } from './PRDetail';
 import { PRItem } from './PRItem';
 import styles from './PRsList.module.scss';

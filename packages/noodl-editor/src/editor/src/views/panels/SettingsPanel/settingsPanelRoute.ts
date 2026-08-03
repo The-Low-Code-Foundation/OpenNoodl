@@ -31,7 +31,14 @@ export type SettingsTabId = 'project' | 'editor';
 export const RETIRED_PANEL_IDS: Record<string, { id: string; tab?: SettingsTabId }> = {
   'app-setup': { id: SETTINGS_PANEL_ID, tab: 'project' },
   'editor-settings': { id: SETTINGS_PANEL_ID, tab: 'editor' },
-  'cloud-functions': { id: 'components' }
+  'cloud-functions': { id: 'components' },
+  // AIB-008 criterion 6. The GitHub panel's contents — the remote, the
+  // connect-and-create flow, the issues and pull requests — are sections of the
+  // version-control panel now, so a user who last closed the editor on `github`
+  // lands where those things went rather than on `components`. No `tab`: the
+  // merged panel has sections, not tabs, and the Issues section opens itself on
+  // a click rather than on a route.
+  github: { id: 'versioncontrol' }
 };
 
 /**

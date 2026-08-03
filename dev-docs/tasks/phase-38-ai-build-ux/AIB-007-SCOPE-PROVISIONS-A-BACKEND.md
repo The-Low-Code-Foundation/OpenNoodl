@@ -213,3 +213,73 @@ The Review step lists the plan. A backend operation appears there like any other
   written.
 - The export path publishes credentials by allow-list. A newly provisioned backend's config must be
   checked against that allow-list or it either leaks or silently fails to publish.
+
+---
+
+## ✅ What was built (2026-08-03)
+
+All four slices. Criteria 1–5 tested; criterion 6 (the live replay against a real backend in
+preview) owed. The design decision and its three corrections are recorded above, at the question
+they answer; what follows is what the code does and where this task's own stated facts turned out to
+be wrong.
+
+### The shape
+
+| Slice | Where |
+|---|---|
+| 1 — structured scope | `scoping/scope.ts` (`ScopeBackend`, `normalizeScopeBackend`, `provisionFromScope`), `scoping/prompts.ts`, `noodl-mcp/src/tools/createProject.ts` |
+| 2 — the diagnostic | `validation/backendRequirement.ts` (new), wired through `authoring/validate.ts` |
+| 3 — the provision operation | `authoring/plan.ts`, `authoring/PlanRun.ts`, `authoring/planStaging.ts`, `BackendServices/provisionBackend.ts` (new) |
+| 4 — say it in the wizard | `ProjectsPage.tsx`, `ReviewStep.tsx`, `ProjectAuthoringView.tsx` |
+
+### Four things this task did not anticipate
+
+**1. `kind` needed a fourth value, and the reason is the rule this module is built on.**
+The stated union is `'none' | 'nodegx' | 'external'`. A conversation that produces only *prose* — the
+pre-AIB-007 shape, still what `create_project` accepts and still what a model may send — fits none of
+them. Classifying prose as `'external'` asserts "the user told us they run something else", which
+nobody said. `'unspecified'` provisions nothing and diagnoses as a warning, so it costs one union
+member and no behaviour, and it keeps the asymmetry that matters: **prose can conclude "no backend"
+and can never conclude "provision one"**.
+
+**2. `get/setCloudServices` is lossy, and the undo inverse was built on it.**
+That pair reads and writes exactly `{instanceId, endpoint, appId, type}`. The corpus fixture — a real
+Noodl Cloud project — carries a `workspaceId` beside them. Snapshotting the inverse through the
+projection and restoring through it dropped that field, so **one undo of a provision would have
+silently unpicked a project's workspace binding**. Caught by criterion 4's byte-for-byte assertion,
+which is the only check in the suite that could have caught it; the round trip *looks* correct at
+every other level. The inverse is the raw metadata now, in both the provisioner and the spec's fake.
+
+**3. Dropping the provision produced a warning nobody read.**
+The plan deliberately lets you keep the Sign Up page and drop the backend it needs — the graph is
+valid and the decision is the user's. The diagnostic for it is therefore a *warning*, `validation.ok`
+stays true, and the apply loop only reads `validation.errors`. Worse, a note raised before the apply
+is wiped by the `reset()` a **successful** apply calls, so the first fix existed for exactly as long
+as it took to succeed. It rides the applied summary instead.
+
+**4. Slice 2's severity rule needed a third case the task did not name.**
+Error when the scope said none, warning otherwise — but "this project has a backend with no sign-in
+configured" is a different sentence with a different repair, and `cloudservices` cannot tell you
+whether auth is on. So `hasAuth` defaults to `hasBackend`: the check claims no knowledge it does not
+have, and only a caller that genuinely knows (a provision spec that did not ask for auth) passes it.
+
+### Traps, checked
+
+- **`catalog:merge:check` / `cloud-library:check`** — not reached. Slice 2 touches no generator and no
+  committed snapshot; see the settled-design note for why.
+- **One backend contract (phase 34)** — provisioning writes `cloudservices` through
+  `setCloudServices`, the same pointer WF-004's local-backend Start has written since it shipped. No
+  second write path.
+- **Baked `cloudservices` (WF-003)** — unchanged. `exportToJSON` already *overrides* `cloudservices`
+  from the chosen deploy environment, so a provisioned `http://localhost:8578` does not reach a
+  deploy that names one.
+- **The export allow-list** — checked and clear. It applies to `backendServices.backends[].auth`; a
+  provision writes an endpoint and an app id and no credential, so it adds nothing to filter.
+
+### Owed
+
+- **Criterion 6** — the live replay: Richard's chat app scoped again, built, applied, and the Sign Up
+  node working against the provisioned backend in preview. Needs a real provider.
+- The provisioner's `describeSideEffects` is written and returns the right sentences, but the panel
+  currently states the same facts in its own plan-row copy rather than calling it. One or the other
+  should go; the call site is the better home and was left for the live pass to judge.

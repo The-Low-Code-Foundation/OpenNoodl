@@ -6,8 +6,8 @@
 
 import React, { useState, useEffect } from 'react';
 
-import { GitHubClient } from '../../../../../services/github';
-import type { GitHubOrganization } from '../../../../../services/github/GitHubTypes';
+import { GitHubClient } from '../../../../../../services/github';
+import type { GitHubOrganization } from '../../../../../../services/github/GitHubTypes';
 import styles from './ConnectToGitHub.module.scss';
 
 interface CreateRepoModalProps {

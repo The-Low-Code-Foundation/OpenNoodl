@@ -27,12 +27,16 @@ import PopupLayer from '../../popuplayer';
 import { useIsActivePanel } from '../useIsActivePanel';
 import { BranchMerge } from './components/BranchMerge';
 import { BranchStatusButton } from './components/BranchStatusButton';
+import { ConnectToGitHubView } from './components/github/ConnectToGitHub';
+import { GitHubSection } from './components/github/GitHubSection';
 import { GitProviderPopout } from './components/GitProviderPopout/GitProviderPopout';
 import { GitStatusButton } from './components/GitStatusButton';
 import { History } from './components/History';
 import { LocalChanges } from './components/LocalChanges';
 import { MergeConflicts } from './components/MergeConflicts';
+import { RepositorySection } from './components/RepositorySection';
 import { useVersionControlContext, VersionControlProvider } from './context';
+import { useGitHubRepository } from './hooks/useGitHubRepository';
 
 enum ViewState {
   Default,
@@ -66,6 +70,13 @@ function BaseVersionControlPanel() {
 
   const isActivePanel = useIsActivePanel(VersionControlPanel_ID);
   const shouldUpdateDiff = useRef(true);
+
+  // AIB-008 — what the remote IS, for the Repository and GitHub sections.
+  // Held here rather than inside either of them because both need the same
+  // answer and two callers would be two `useGitHubRepository` instances, which
+  // is the duplication this merge exists to remove one level up.
+  const { gitState, remoteUrl, owner, repo, provider, refetch: refetchRepo } = useGitHubRepository();
+  const [isConnectingRemote, setIsConnectingRemote] = useState(false);
 
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -184,9 +195,51 @@ function BaseVersionControlPanel() {
           <MergeConflicts />
         ) : (
           <>
+            {/*
+              AIB-008 — Repository, above the sync button rather than in a
+              second panel. This is the section that only exists once the two
+              panels are one: it carries the ahead/behind figure, which was
+              previously computed twice (here in context, and again in
+              `useGitSyncStatus`) and rendered beside the branch in neither.
+            */}
+            <RepositorySection
+              gitState={gitState}
+              remoteUrl={remoteUrl}
+              owner={owner}
+              repo={repo}
+              onConnect={() => setIsConnectingRemote(true)}
+            />
             <GitStatusButton openGitSettingsPopout={openGitSettingsPopout} />
             <BranchStatusButton />
             {viewState === ViewState.BranchMerge && <BranchMerge />}
+            {/*
+              AIB-008 slice 3 — the flow Richard actually ran, in the panel that
+              shows his history rather than in one he had to know to look in.
+              `ConnectToGitHubView` is the GitHub panel's own component, moved
+              rather than rewritten: it creates the repo, sets the remote and
+              pushes, and rewriting 300 lines of working OAuth flow to relocate
+              it is how a consolidation becomes a regression.
+            */}
+            {isConnectingRemote && (
+              <Box hasXSpacing hasBottomSpacing>
+                <ConnectToGitHubView
+                  gitState={gitState}
+                  remoteUrl={remoteUrl}
+                  provider={provider}
+                  onConnected={() => {
+                    setIsConnectingRemote(false);
+                    refetchRepo();
+                    // The remote is what `fetch` reads ahead/behind from, and it
+                    // has just come into existence. Without this the Repository
+                    // section keeps saying "No remote" until the panel is
+                    // switched away from and back.
+                    fetch.fetchRemote();
+                  }}
+                />
+              </Box>
+            )}
+            {/* AIB-008 — Issues and pull requests. Only for a GitHub remote. */}
+            {gitState === 'github-connected' && <GitHubSection owner={owner} repo={repo} />}
           </>
         )}
 

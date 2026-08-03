@@ -6,7 +6,7 @@
 
 import React from 'react';
 
-import type { GitHubPullRequest } from '../../../../../services/github/GitHubTypes';
+import type { GitHubPullRequest } from '../../../../../../services/github/GitHubTypes';
 import styles from './PRDetail.module.scss';
 
 interface PRDetailProps {

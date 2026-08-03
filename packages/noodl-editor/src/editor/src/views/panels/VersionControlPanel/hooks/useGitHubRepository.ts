@@ -6,10 +6,10 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Git } from '@noodl/git';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
-import { mergeProject, mergeV2ComponentFiles } from '@noodl-versioning';
+
+import { useVersionControlContext } from '../context';
 
 /**
  * Possible states for a project's git connection
@@ -85,35 +85,28 @@ const initialState: GitHubRepoInfo = {
 };
 
 /**
- * Hook to get GitHub repository information from current project's Git remote
+ * Hook to get GitHub repository information from the panel's Git remote.
+ *
+ * ⚠️ **AIB-008: this reads the version-control panel's `Git`, it does not make
+ * one.** It used to open its own repository on every fetch, which was one of the
+ * seven `new Git(…)` pairs the audit found across three files where the panel
+ * beside it held exactly one in context. The three in `useGitSyncStatus` went
+ * with that file; this one is the context's.
+ *
+ * The consequence worth knowing: this hook is now only callable **inside**
+ * `VersionControlProvider`, which only renders once the project is a git
+ * repository. The `no-git` branch below is therefore unreachable from the merged
+ * panel — the panel's own "Initialize Version Control (git)" empty state stands
+ * in front of it — and it is kept because `ProjectGitState` is `ConnectToGitHub
+ * View`'s input and that component still distinguishes the case.
  */
 export function useGitHubRepository(): GitHubRepoInfo & { refetch: () => void } {
+  const { git } = useVersionControlContext();
   const [repoInfo, setRepoInfo] = useState<GitHubRepoInfo>(initialState);
 
   const fetchRepoInfo = useCallback(async () => {
     try {
-      const projectDirectory = ProjectModel.instance?._retainedProjectDirectory;
-      if (!projectDirectory) {
-        setRepoInfo({
-          ...initialState,
-          gitState: 'no-git'
-        });
-        return;
-      }
-
-      // Create Git instance and try to open repository
-      const git = new Git(mergeProject, mergeV2ComponentFiles);
-
-      try {
-        await git.openRepository(projectDirectory);
-      } catch (gitError) {
-        // Not a git repository - this is expected for non-git projects
-        const errorMessage = gitError instanceof Error ? gitError.message : String(gitError);
-        if (errorMessage.includes('Not a git repository')) {
-          console.log('[useGitHubRepository] Project is not a git repository');
-        } else {
-          console.warn('[useGitHubRepository] Git error:', errorMessage);
-        }
+      if (!git || !ProjectModel.instance?._retainedProjectDirectory) {
         setRepoInfo({
           ...initialState,
           gitState: 'no-git'
@@ -181,7 +174,7 @@ export function useGitHubRepository(): GitHubRepoInfo & { refetch: () => void } 
         gitState: 'no-git'
       });
     }
-  }, []);
+  }, [git]);
 
   useEffect(() => {
     fetchRepoInfo();

@@ -56,6 +56,33 @@ show why, and offer to re-run that operation alone with the diagnostics as repai
 
 ## F2 — Model-authored HTML reaches `dangerouslySetInnerHTML`
 
+**✅ Closed 2026-08-03 · was: Verified · 🟠 High · security**
+
+`Markdown.tsx` builds Remarkable with `html: false` now. Off at the parser rather than sanitised at
+the output, and the choice was **measured rather than reasoned** — which is what made it small:
+
+- `html: false` escapes every raw-HTML vector. Blocks, inline tags and event-handler attributes all
+  come out as text, visible and inert.
+- **Remarkable already refuses `javascript:`, `vbscript:` and `data:text/html` link targets**, and
+  leaves the markdown literal rather than emitting an anchor. So raw HTML was the *only* remaining
+  vector, and there is nothing an allow-list sanitiser would add that this does not already deny.
+
+That second point is why the entry's own suggestion — "add a sanitiser (or the comment-stripping pass
+extended to a full allow-list)" — was not taken. A hand-rolled HTML allow-list is the one kind of
+security code that is worse than the hole it closes, and the alternative it was competing with turned
+out to close the same hole in one line. The cost is that genuine inline HTML in a document renders as
+literal text; nothing shipped writes any (checked: no doc template, no prompt).
+
+**One thing worth carrying: the obvious assertion is wrong.** The first version of the spec asserted
+`expect(html).not.toMatch(/ onerror=/)` and it **failed against the fixed code** — an escaped
+`&lt;img src=x onerror=&quot;…&quot;&gt;` contains that substring as *text* and is entirely inert.
+Substring checks over rendered HTML cannot tell markup from content, which is the same confusion that
+produces XSS in the first place. The spec asserts that every `<` in the output opens a tag markdown
+itself generated (`tests-unit/aib-009/markdownHtml.test.ts`), and carries a guard that reads
+`html: false` out of `Markdown.tsx` so the duplicated options cannot drift.
+
+Original entry follows.
+
 **Verified · 🟠 High · security**
 
 [`Markdown.tsx`](../../../packages/noodl-core-ui/src/components/common/Markdown/Markdown.tsx)
@@ -218,8 +245,13 @@ does not make it *end*.
 Items folded into another task (F3, F7, F8, F9) are cross-referenced there and should be closed by
 that task, not separately. F1, F2, F5 and F6 are standalone. F4 and F10 are one slice each.
 
-**Closed so far:** F1 (AIB-002 pass), F8 and F9 (AIB-002/AIB-004 pass), F10 (AIB-003).
-**Open:** F2 (the XSS surface — the one that must not ship to alpha), F4, F5, F6, F7, F11.
+**Closed so far:** F1 (AIB-002 pass), F2 (AIB-007/AIB-008 pass), F8 and F9 (AIB-002/AIB-004 pass),
+F10 (AIB-003).
+**Open:** F4, F5, F6, F7, F11.
+
+**F6 is half closed.** AIB-008 deleted `GitHubPanel.tsx`, and with it a second, unrelated source of
+launch-log noise: a `🔧`/`🎧`/`🔔` line per mount and per render. The 404-per-repo probe the entry
+actually describes lives in `services/github` and is untouched.
 
 **F5 did not reproduce.** Two clean `npm run dev:debug` launches on 2026-08-03 rendered the launcher
 with no Settings dialog over it. Persisted UI state from the session that filed it remains the best

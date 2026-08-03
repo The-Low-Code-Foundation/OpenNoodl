@@ -1,0 +1,54 @@
+/**
+ * AIB-008 — the Issues / Pull requests tab strip inside the version-control
+ * panel.
+ *
+ * Carried over from `GitHubPanel.module.scss` with the panel-level rules
+ * dropped: the section is no longer a panel and must not set its own height,
+ * background or scroll container. Tokens only — `npm run colors` counts hex in
+ * this package and the count may go down, never up.
+ */
+
+.Lists {
+  display: flex;
+  flex-direction: column;
+  max-height: 50vh;
+}
+
+.Tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--theme-color-bg-2);
+}
+
+.Tab {
+  flex: 1;
+  padding: 6px 8px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &:hover {
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
+.TabActive {
+  color: var(--theme-color-fg-highlight);
+  border-bottom-color: var(--theme-color-primary);
+}
+
+/*
+ * The lists scroll inside the section rather than growing it. A section that
+ * grows to fit 200 issues pushes Changes and History off the panel, which is
+ * the failure the collapsed-by-default default is already guarding against —
+ * this is the second half of that guard, for when it IS open.
+ */
+.Content {
+  overflow-y: auto;
+  min-height: 0;
+}

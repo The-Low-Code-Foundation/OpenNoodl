@@ -14,8 +14,8 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
 import { mergeProject, mergeV2ComponentFiles } from '@noodl-versioning';
 
-import { GitHubClient, GitHubOAuthService } from '../../../../../services/github';
-import type { ProjectGitState } from '../../hooks/useGitHubRepository';
+import { GitHubClient, GitHubOAuthService } from '../../../../../../services/github';
+import type { ProjectGitState } from '../../../hooks/useGitHubRepository';
 import styles from './ConnectToGitHub.module.scss';
 import { CreateRepoModal } from './CreateRepoModal';
 import { SelectRepoModal } from './SelectRepoModal';

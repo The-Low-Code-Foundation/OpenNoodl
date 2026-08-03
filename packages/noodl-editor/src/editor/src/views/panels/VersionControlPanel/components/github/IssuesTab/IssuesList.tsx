@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 
-import type { GitHubIssue } from '../../../../../services/github/GitHubTypes';
+import type { GitHubIssue } from '../../../../../../services/github/GitHubTypes';
 import { IssueDetail } from './IssueDetail';
 import { IssueItem } from './IssueItem';
 import styles from './IssuesList.module.scss';

@@ -177,6 +177,30 @@ says which. Where something is still a hypothesis, it says that instead.
 > - **AIB-009 gained F11** — nothing anywhere ends a turn that never returns. Found because a
 >   throttled timer made a scripted run look hung, and the editor had no way to tell the difference.
 
+> **✅ AIB-007, AIB-008 and AIB-009 F2 are built** (2026-08-03). Carry forward:
+>
+> - **A sixth stated mechanism moved.** AIB-007 slice 2 asked for a `requires: ['backend']` catalog
+>   marker behind a generator with a committed snapshot. BCN-010 had already built the reviewed
+>   table (`NODE_CAPABILITIES`), with a module note giving the reasons slice 2 would have re-derived
+>   — so the change is a small table beside it and the `catalog:merge:check` trap is never reached.
+>   AIB-008's "Current state" was wrong in the same way: `GitHubPanel` is an Issues and Pull Requests
+>   panel, and its proposed four-section shape had nowhere to put them.
+> - **An inverse must restore what was there, not what the reader understands.**
+>   `get/setCloudServices` reads and writes four fields; the corpus fixture carries a fifth
+>   (`workspaceId`). Snapshotting an undo through that projection dropped it silently. Only
+>   criterion 4's byte-for-byte assertion could catch it — the round trip looks correct at every
+>   other level. Worth expecting wherever this phase records an inverse through a helper.
+> - **A warning is not surfaced by being emitted.** Dropping the provision and keeping the pages that
+>   need it produces a *warning*, so `validation.ok` stays true and the apply loop never reads it —
+>   and a note raised before the apply is wiped by the `reset()` a **successful** apply calls. The
+>   first two fixes for this were both invisible.
+> - **F2's obvious assertion was wrong, and failed against correct code.** `not.toMatch(/ onerror=/)`
+>   fires on escaped text. A substring check over rendered HTML cannot tell markup from content —
+>   the same confusion that produces XSS. Assert on the tags, not the string.
+> - **Measure before adding a mechanism.** F2's own suggested fix was a sanitiser or an allow-list.
+>   Remarkable turned out to already refuse every script-bearing link target, leaving raw HTML as the
+>   only vector and `html: false` as a complete answer in one line.
+
 ## Where the phase stands (2026-08-03)
 
 | Task | State |
@@ -187,6 +211,6 @@ says which. Where something is still a hypothesis, it says that instead.
 | AIB-004 | **built, live QA green** |
 | AIB-005 | **built, live QA green** (slice 3's wizard label not driven live) |
 | AIB-006 | built; criteria 1–2 not testable offline, live QA owed |
-| AIB-007 | not started |
-| AIB-008 | not started |
-| AIB-009 | F1, F8, F9, F10 closed; F11 added; F2 is the alpha blocker in this register |
+| AIB-007 | **built** (all four slices); criterion 6 (live, against a real provider) owed |
+| AIB-008 | **built** (all four slices); criterion 7 (live connect + push) owed |
+| AIB-009 | F1, F2, F8, F9, F10 closed; F6 half closed; F11 open |

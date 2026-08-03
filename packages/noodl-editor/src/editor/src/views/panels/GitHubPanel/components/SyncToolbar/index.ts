@@ -1,1 +1,0 @@
-export { SyncToolbar } from './SyncToolbar';

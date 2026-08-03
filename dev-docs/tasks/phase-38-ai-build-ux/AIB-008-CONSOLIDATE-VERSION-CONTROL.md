@@ -158,3 +158,66 @@ panel must not look like it requires a GitHub account, because it does not.
 - OAuth scheme stays `noodl://` (REV-007) even though the product is NodeGX. Do not "fix" it.
 - Per the launcher screenshot, GitHub repo probing already logs a 404 per repo on launch. Not this
   task's defect, but it is in the same subsystem — see [AIB-009](AIB-009-FOUND-ALONG-THE-WAY.md).
+
+---
+
+## ✅ What was built (2026-08-03)
+
+All four slices. Criteria 1–6 met; criterion 7 (the live init → commit → connect → push) owed.
+
+`GitHubPanel/` is deleted. Its contents moved into `VersionControlPanel/`:
+
+| Was | Is |
+|---|---|
+| `GitHubPanel.tsx` + `.module.scss` | deleted — it was a shell around six early returns |
+| `components/SyncToolbar/` | **deleted**; every action it offered is on `GitStatusButton` |
+| `hooks/useGitSyncStatus.ts` | **deleted**; ahead/behind comes from the panel's one context |
+| `components/ConnectToGitHub/` | `VersionControlPanel/components/github/ConnectToGitHub/` |
+| `components/IssuesTab/`, `PullRequestsTab/` | `VersionControlPanel/components/github/` |
+| `hooks/useGitHubRepository.ts`, `useIssues.ts`, `usePullRequests.ts` | `VersionControlPanel/hooks/` |
+
+Two new components: `RepositorySection` (remote, branch, ahead/behind, connect) and
+`github/GitHubSection` (the collapsed issues/PRs section).
+
+**Git instances: seven `new Git(…)` on the GitHub side → zero.**
+
+- The three in `useGitSyncStatus` went with the file.
+- `useGitHubRepository` **reads the panel's context git** rather than opening its own, and is called
+  once — by the panel — with its answer passed to both sections. That is what closes slice 1's
+  "the merged panel should have exactly one".
+- The two in `ConnectToGitHubView` remain and should: that component runs **before** the repository
+  has a remote (and, on one path, before it is a repository at all), which is the one case the
+  context cannot serve. Rewriting 300 lines of working OAuth flow to relocate it is how a
+  consolidation becomes a regression.
+
+Making `useGitHubRepository` context-bound has a consequence worth stating: it is now only callable
+inside `VersionControlProvider`, which renders only once the project is a git repository. Its
+`no-git` branch is therefore unreachable from the merged panel — the panel's own "Initialize Version
+Control (git)" empty state stands in front of it, which is criterion 5, unchanged.
+
+### Criterion 6 had a better answer than the one it asked for
+
+The criterion is "existing saved sidebar layouts do not break", and keeping the `versioncontrol` id
+satisfies it literally — `SidebarModel.switch()` on an unknown id throws into a catch that selects
+the first visible panel, so nothing breaks.
+
+But nothing breaking is not the same as landing where you left off, and **PNL-008 already built the
+mechanism for this**: `RETIRED_PANEL_IDS` remaps a retired id and clears its stale width and
+float-rect entries. `github → versioncontrol` is one line there, and it means a user who last closed
+the editor on the GitHub panel opens on the panel that absorbed it. Pinned by
+`tests/sidepanel/panelRetirement.spec.ts`.
+
+### The spec lives in the jasmine suite, and that is the runner working
+
+`tests-unit/` was the first home for the retirement spec and it refused the import:
+`settingsPanelRoute.ts` reaches `SidebarModel`, and the plain-Node runner is scoped to code that
+does not. That boundary is deliberate (see `jest.config.js`), so the spec moved rather than the
+boundary.
+
+### Owed
+
+- **Criterion 7 (live)** — init a local project, commit, connect a remote, push, all from the one
+  panel. The connect half needs a real GitHub account.
+- **AIB-009 F6** — the 404-per-repo launch logging is in `services/github`, untouched by this task and
+  still open. What *did* go with the shell is `GitHubPanel.tsx`'s own per-render `🔧`/`🎧`/`🔔`
+  logging, which was a second, unrelated source of the same noise.

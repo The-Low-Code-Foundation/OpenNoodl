@@ -28,7 +28,6 @@ import { ExecutionHistoryPanel } from './views/panels/ExecutionHistoryPanel';
 import { WorkflowsPanel, WorkflowsPanel_ID } from './views/panels/WorkflowsPanel';
 import { ExplainPanel, ExplainPanel_ID, startExplainTargetTracking } from './views/panels/ExplainPanel';
 import { FileExplorerPanel } from './views/panels/FileExplorerPanel';
-import { GitHubPanel } from './views/panels/GitHubPanel';
 import { NodeReferencesPanel_ID } from './views/panels/NodeReferencesPanel';
 import { NodeReferencesPanel } from './views/panels/NodeReferencesPanel/NodeReferencesPanel';
 import { ProblemsPanel_ID } from './views/panels/ProblemsPanel';
@@ -227,6 +226,20 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     panel: ProblemsPanel
   });
 
+  // AIB-008 slice 4: ONE rail entry over one repository. The `github` slot that
+  // sat beside this at order 5.5 is gone, and its contents — the remote, the
+  // connect-and-create flow, and the issues and pull requests — are sections of
+  // this panel.
+  //
+  // ⚠️ `GitBranch` and not the pull-request glyph the GitHub slot carried. The
+  // panel must not read as *GitHub*: it is a git panel that has a GitHub section
+  // when the remote happens to be there, and it works perfectly well for a
+  // project that will never have a GitHub account (slice 4's own instruction).
+  //
+  // The id is unchanged, which is what keeps saved sidebar layouts working
+  // (criterion 6). A layout that pinned `github` simply names a panel that no
+  // longer exists, which `SidebarModel` already tolerates the same way it
+  // tolerates a panel disabled for lessons.
   SidebarModel.instance.register({
     id: VersionControlPanel_ID,
     name: 'Version control',
@@ -235,18 +248,6 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     // using the identical file, so the rail carried the same mark twice.
     icon: IconName.GitBranch,
     panel: VersionControlPanel
-  });
-
-  SidebarModel.instance.register({
-    id: 'github',
-    name: 'GitHub',
-    order: 5.5,
-    // Was Link — a chain link, i.e. "hyperlink". Not the Octocat: Lucide dropped
-    // its brand icons, and a second upstream for one slot brings a trademark
-    // question with it. Paired with GitBranch above, the rail now says local vs
-    // remote instead of saying nothing twice.
-    icon: IconName.GitPullRequest,
-    panel: GitHubPanel
   });
 
   SidebarModel.instance.register({
