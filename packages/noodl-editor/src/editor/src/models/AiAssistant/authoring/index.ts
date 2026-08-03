@@ -70,7 +70,19 @@ export type { PlanOperationState, PlanOperationStatus, PlanRunOptions, PlanRunSt
 // AIB-003 — the plan, the run and every staged candidate outlive the view that
 // renders them, because the Build panel unmounts it on a scope-tab click.
 export { PlanSessionStore, PLAN_SESSION_CHANGED } from './PlanSessionStore';
-export type { PlanApplyFailure, PlanSession, PlanSessionNote } from './PlanSessionStore';
+export type { PlanApplyFailure, PlanSession, PlanSessionNote, PlanSessionPersistence } from './PlanSessionStore';
+// AIB-003 slice 4 — the saved build. `PlanSessionSidecar` is the only piece here
+// that touches a filesystem; the rules it writes through are pure.
+export { PlanSessionSidecar } from './PlanSessionSidecar';
+export {
+  describeRestore,
+  isWorthPersisting,
+  parsePlanSessionSnapshot,
+  PLAN_SNAPSHOT_VERSION,
+  restoreOperations,
+  snapshotSession
+} from './planSessionSnapshot';
+export type { PlanRunSnapshot, PlanSessionSnapshot } from './planSessionSnapshot';
 // AIX-011 criterion 7 — the doc-authoring turn and its graph-restatement lint.
 export { DocSession, MAX_DOC_CHARS } from './DocSession';
 export type { DocSessionOptions, DocSessionOutcome, DocSessionRequest, DocSessionStatus } from './DocSession';

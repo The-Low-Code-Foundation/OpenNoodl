@@ -1,3 +1,4 @@
+import { installPlanSessionPersistence } from '@noodl-models/AiAssistant/authoring/installPlanSessionPersistence';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { installProjectDocs } from '@noodl-models/ProjectDocs';
 import { installImportReport } from '@noodl-utils/import-engine/legacy/loadReport';
@@ -194,6 +195,11 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   // import needs to know what the importer could not convert, and it is
   // constructed long before anyone opens a panel.
   installImportReport();
+
+  // AIB-003 slice 4: and again — a `PlanRun` staging candidates publishes them
+  // whether or not the Build panel is mounted, so the thing that writes them to
+  // disk cannot be installed by a mount.
+  installPlanSessionPersistence();
 
   SidebarModel.instance.register({
     experimental: true,

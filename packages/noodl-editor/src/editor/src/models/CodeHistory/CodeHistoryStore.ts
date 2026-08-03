@@ -18,6 +18,10 @@
 import { filesystem } from '@noodl/platform';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
+// AIB-003 slice 4 gave `.nodegx/` a second resident (the unapplied AI build), so
+// "create it and make sure git ignores it" moved out of here and into one place
+// both can share. The reasoning that put code history in a sidecar is unchanged.
+import { ensureSidecarDirectory, sidecarPath as nodegxPath } from '@noodl-utils/nodegxSidecar';
 
 /** A single code snapshot. Structurally the core-ui `CodeSnapshot`. */
 export interface CodeSnapshot {
@@ -34,7 +38,6 @@ interface CodeHistoryFile {
   entries: Record<string, CodeSnapshot[]>;
 }
 
-const SIDECAR_DIR = '.nodegx';
 const SIDECAR_FILE = 'code-history.json';
 const FORMAT_VERSION = 1;
 
@@ -80,9 +83,6 @@ export class CodeHistoryStore {
   /** The directory `cache` was loaded from, so opening another project drops it. */
   private cachedDirectory: string | undefined;
   private cache: CodeHistoryFile | undefined;
-
-  /** Directories whose `.gitignore` has already been checked this session. */
-  private ignoredDirectories = new Set<string>();
 
   /**
    * Saves are read-modify-write, and two ports can be saved in the same tick when a
@@ -210,13 +210,8 @@ export class CodeHistoryStore {
     this.prune(file);
 
     try {
-      const sidecarDir = filesystem.join(directory, SIDECAR_DIR);
-      if (!filesystem.exists(sidecarDir)) {
-        await filesystem.makeDirectory(sidecarDir);
-      }
-
+      if (!(await ensureSidecarDirectory(directory))) return;
       await filesystem.writeJson(this.sidecarPath(directory), file);
-      await this.ensureIgnored(directory);
     } catch (error) {
       // Losing a snapshot is not worth surfacing; losing the user's code would be.
       console.warn('Could not write code history sidecar:', error);
@@ -238,37 +233,6 @@ export class CodeHistoryStore {
   }
 
   private sidecarPath(directory: string): string {
-    return filesystem.join(directory, SIDECAR_DIR, SIDECAR_FILE);
-  }
-
-  /**
-   * Make sure `.nodegx/` is ignored by git. Appends one line if it is missing and
-   * never rewrites what is already there.
-   */
-  private async ensureIgnored(directory: string): Promise<void> {
-    if (this.ignoredDirectories.has(directory)) {
-      return;
-    }
-    this.ignoredDirectories.add(directory);
-
-    const path = filesystem.join(directory, '.gitignore');
-    const entry = `${SIDECAR_DIR}/`;
-
-    try {
-      const current = filesystem.exists(path) ? await filesystem.readFile(path) : '';
-
-      const alreadyIgnored = current
-        .split(/\r?\n/)
-        .some((line) => line.trim() === entry || line.trim() === SIDECAR_DIR);
-
-      if (alreadyIgnored) {
-        return;
-      }
-
-      const separator = current.length === 0 || current.endsWith('\n') ? '' : '\n';
-      await filesystem.writeFileOverride(path, `${current}${separator}${entry}\n`);
-    } catch (error) {
-      console.warn('Could not add .nodegx/ to .gitignore:', error);
-    }
+    return nodegxPath(directory, SIDECAR_FILE);
   }
 }

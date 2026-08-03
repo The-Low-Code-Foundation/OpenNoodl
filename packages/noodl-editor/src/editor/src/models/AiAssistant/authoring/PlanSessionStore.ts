@@ -47,8 +47,29 @@ import Model from '../../../../../shared/model';
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import type { AuthoringPlan } from './plan';
 import type { PlanRun } from './PlanRun';
+import type { PlanSessionSnapshot } from './planSessionSnapshot';
+import { isWorthPersisting, snapshotSession } from './planSessionSnapshot';
 
 export const PLAN_SESSION_CHANGED = 'planSessionChanged';
+
+/**
+ * AIB-003 slice 4 — where a session goes so it survives the process.
+ *
+ * Injected rather than imported, and `null` by default, so this store keeps the
+ * property that made slices 1–2 testable at all: it is a plain model that can be
+ * exercised in a plain-Node runner with no filesystem, no Electron and no
+ * project on disk. The editor attaches the real one at boot
+ * (`installPlanSessionPersistence`); a spec attaches a recording fake.
+ *
+ * Both methods are fire-and-forget on purpose. A store update happens on a
+ * keystroke and inside a `PlanRun` publish; neither can wait on a disk, and
+ * neither has anywhere to report a failure to. The implementation debounces,
+ * queues and swallows — see `PlanSessionSidecar`.
+ */
+export interface PlanSessionPersistence {
+  save(projectId: string | undefined, snapshot: PlanSessionSnapshot): void;
+  remove(projectId: string | undefined): void;
+}
 
 /** Which operation an apply failure was about, and why — see AIB-001 slice 4. */
 export interface PlanApplyFailure {
@@ -138,6 +159,20 @@ export class PlanSessionStore extends Model {
   private readonly sessions = new Map<string, PlanSession>();
   private wired = false;
 
+  /** AIB-003 slice 4. Null until the editor attaches one; see the interface. */
+  private persistence: PlanSessionPersistence | null = null;
+  /**
+   * How we stop listening to the run we are currently persisting, by project.
+   *
+   * A `PlanRun` publishes on its own listeners, not through this store, so a
+   * staged candidate never reaches `update()` — which meant the one thing slice
+   * 4 exists to save was the one thing a store-side hook would have missed. The
+   * store subscribes because it is the only thing that holds a session for
+   * longer than a mount: the view unsubscribes on a tab click, which is where
+   * this whole task started.
+   */
+  private readonly runSubscriptions = new Map<string, () => void>();
+
   /**
    * The session for a project, created empty on first ask.
    *
@@ -158,9 +193,12 @@ export class PlanSessionStore extends Model {
 
   /** Merge a patch into a project's session and tell every subscriber. */
   update(projectId: string | undefined, patch: Partial<PlanSession>): PlanSession {
-    const session = { ...this.get(projectId), ...patch };
+    const previous = this.get(projectId);
+    const session = { ...previous, ...patch };
     this.sessions.set(projectId ?? UNSAVED, session);
+    if (session.run !== previous.run) this.followRun(projectId, session.run);
     this.notifyListeners(PLAN_SESSION_CHANGED, { projectId, session });
+    this.persist(projectId, session);
     return session;
   }
 
@@ -173,8 +211,73 @@ export class PlanSessionStore extends Model {
   discard(projectId: string | undefined): void {
     const session = this.sessions.get(projectId ?? UNSAVED);
     session?.run?.dispose();
+    this.followRun(projectId, null);
     this.sessions.set(projectId ?? UNSAVED, emptySession());
     this.notifyListeners(PLAN_SESSION_CHANGED, { projectId, session: this.sessions.get(projectId ?? UNSAVED) });
+    // AIB-003 slice 4. The file goes with the session, and both of the callers
+    // that get here — the user's Abandon, and a successful apply — are the user
+    // saying so. Recovering a build that is already in the project would offer
+    // to re-apply work that has been applied.
+    this.persistence?.remove(projectId);
+  }
+
+  /** AIB-003 slice 4 — the editor's disk-backed persistence, attached at boot. */
+  attachPersistence(persistence: PlanSessionPersistence | null): void {
+    this.persistence = persistence;
+    // Boot order is not something this store gets to assume. If anything is
+    // already running when persistence arrives, pick it up rather than
+    // persisting every session except the one in flight.
+    for (const [key, session] of this.sessions) {
+      this.followRun(key === UNSAVED ? undefined : key, session.run);
+    }
+  }
+
+  /**
+   * Seed a project's session from a snapshot read off disk.
+   *
+   * Separate from `update` because it must not write back what it just read: the
+   * only thing that could go wrong here is a restore that immediately re-persists
+   * a normalised copy of the file, and then does it again next launch. It is also
+   * the honest signature — a restore replaces a session, it does not patch one.
+   */
+  restore(projectId: string | undefined, session: PlanSession): PlanSession {
+    this.get(projectId);
+    this.sessions.set(projectId ?? UNSAVED, session);
+    this.followRun(projectId, session.run);
+    this.notifyListeners(PLAN_SESSION_CHANGED, { projectId, session });
+    return session;
+  }
+
+  /**
+   * Persist, or delete — a session that is not worth persisting must actively
+   * remove whatever the last one wrote, or Abandon-then-type would leave the
+   * abandoned plan on disk to be offered again next launch.
+   */
+  private persist(projectId: string | undefined, session: PlanSession): void {
+    if (!this.persistence) return;
+    if (isWorthPersisting(session)) {
+      this.persistence.save(projectId, snapshotSession(session, new Date().toISOString()));
+    } else {
+      this.persistence.remove(projectId);
+    }
+  }
+
+  /**
+   * Subscribe to a session's run so its staged candidates reach the disk.
+   *
+   * Unsubscribing first matters: a project that starts a second run would
+   * otherwise keep persisting on behalf of the first, which is a listener on a
+   * disposed object writing a session it is no longer part of.
+   */
+  private followRun(projectId: string | undefined, run: PlanRun | null): void {
+    const key = projectId ?? UNSAVED;
+    this.runSubscriptions.get(key)?.();
+    this.runSubscriptions.delete(key);
+    if (!run || !this.persistence) return;
+    this.runSubscriptions.set(
+      key,
+      run.onChange(() => this.persist(projectId, this.get(projectId)))
+    );
   }
 
   /**

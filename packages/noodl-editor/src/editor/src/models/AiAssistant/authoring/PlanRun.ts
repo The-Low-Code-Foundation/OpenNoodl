@@ -38,6 +38,8 @@ import type { DocSessionOptions } from './DocSession';
 import { DocSession } from './DocSession';
 import type { AuthoringPlan, PlanOperation, PlanOutcomeEntry, PlanProvisionSpec } from './plan';
 import { graphComponentFromFiles, planExcludedWith, planOperationRequires, renderPlanContext } from './plan';
+import type { PlanRunSnapshot } from './planSessionSnapshot';
+import { restoreOperations } from './planSessionSnapshot';
 import type { AppliedPlanOperation } from './planStaging';
 import type { AgentSampleData, AuthoringMode, ComponentFiles } from './types';
 
@@ -241,6 +243,67 @@ export class PlanRun {
     this.cancel();
     this.activeSession?.dispose();
     this.listeners.clear();
+  }
+
+  /**
+   * AIB-003 slice 4 — everything this run holds that is worth more than the
+   * process, as JSON.
+   *
+   * The live `AuthoringSession` is deliberately absent: it owns an abort
+   * controller and a model conversation, neither of which means anything after a
+   * restart. Its last *published state* travels (it is data, and it is the feed
+   * under each row), the object does not.
+   */
+  snapshot(): PlanRunSnapshot {
+    return {
+      operations: this.states.map((s) => ({ ...s })),
+      files: Object.fromEntries(this.filesById),
+      sampleData: Object.fromEntries(this.sampleDataById),
+      docs: Object.fromEntries(this.docsById),
+      costUsd: this.costUsd,
+      ...(this.runStartedAt !== undefined ? { startedAt: this.runStartedAt } : {}),
+      ...(this.runEndedAt !== undefined ? { endedAt: this.runEndedAt } : {})
+    };
+  }
+
+  /**
+   * AIB-003 slice 4 — a run read back off disk, in the state a Stop leaves.
+   *
+   * See `planSessionSnapshot` for why that is the right state and not a resumed
+   * one. What matters here is that this is the *only* way to build a `PlanRun`
+   * that is already finished, and it goes through `restoreOperations` rather
+   * than trusting the file: an operation that was mid-flight when the window
+   * closed comes back `failed` (with a Retry) or `skippedByCancel` (with a doc
+   * pass), never `authoring`, because there is nothing authoring it.
+   *
+   * `started` is set so `run()` refuses. The plan already ran; what is on offer
+   * now is repair, and re-running the whole thing would re-author every
+   * candidate the user just got back.
+   */
+  static restore(
+    graph: ExplainGraph,
+    plan: AuthoringPlan,
+    snapshot: PlanRunSnapshot,
+    options: PlanRunOptions = {}
+  ): PlanRun {
+    const run = new PlanRun(graph, plan, options);
+    const { operations, interrupted } = restoreOperations(snapshot);
+
+    run.states.length = 0;
+    run.states.push(...operations);
+    for (const [id, files] of Object.entries(snapshot.files)) run.filesById.set(id, files);
+    for (const [id, sample] of Object.entries(snapshot.sampleData)) run.sampleDataById.set(id, sample);
+    for (const [id, doc] of Object.entries(snapshot.docs)) run.docsById.set(id, doc);
+
+    run.costUsd = snapshot.costUsd;
+    run.runStartedAt = snapshot.startedAt;
+    run.runEndedAt = snapshot.endedAt;
+    run.started = true;
+    // `cancelled` stays false: it is the flag the authoring loop reads to decide
+    // whether to keep going, and `retryOperation` resets it anyway. Setting it
+    // here would only mean a retry had to clear a state nothing was in.
+    run.phase = interrupted > 0 ? 'cancelled' : 'done';
+    return run;
   }
 
   /** The staged candidate for one operation (review reads this). */

@@ -21,11 +21,13 @@ import {
   applyAuthoredPlan,
   buildChangeSet,
   candidateIsRenderable,
+  describeRestore,
   graphComponentFromFiles,
   materializeSelection,
   pathToLegacyName,
   PlanningSession,
   PlanRun,
+  PlanSessionSidecar,
   PlanSessionStore,
   PLAN_SESSION_CHANGED,
   planExcludedWith,
@@ -39,8 +41,10 @@ import {
   type PlanOperationState,
   type AppliedPlanOperation,
   type PlanProvisionSpec,
+  type PlanRunOptions,
   type PlanRunState,
-  type PlanSession
+  type PlanSession,
+  type PlanSessionSnapshot
 } from '@noodl-models/AiAssistant/authoring';
 import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
 // Imported from the module rather than the `scoping` barrel: the barrel pulls
@@ -233,6 +237,45 @@ function useElapsedClock(active: boolean, ref: React.RefObject<HTMLElement>): nu
   return now;
 }
 
+/**
+ * The seams a `PlanRun` needs from the editor.
+ *
+ * Extracted for AIB-003 slice 4, which builds a second `PlanRun` — one restored
+ * from disk — and needs it to be the same object in every respect that matters
+ * after a restore. A restored run's whole purpose is that `retryOperation` and
+ * `runDocPass` still work on it, and both of those author: a copy of this list
+ * that drifted would give a retried operation a different style vocabulary, or
+ * no doc baseline, from the run it is repairing.
+ */
+function planRunOptions(
+  project: ProjectModel,
+  plan: AuthoringPlan,
+  docs: ReturnType<typeof projectDocs>
+): PlanRunOptions {
+  return {
+    baseFilesFor: (legacyName) => {
+      const existing = project.getComponentWithName(legacyName);
+      return existing
+        ? (buildComponentV2Files(existing.toJSON(), new Date().toISOString()) as ComponentFiles)
+        : undefined;
+    },
+    // The doc turn reads the file it is about to rewrite; the same bytes become
+    // the write path's drift baseline. `PlanRun` never touches a filesystem
+    // itself — this is the only seam through which it sees one.
+    docBaselineFor: docs ? (relPath: string) => docs.read(relPath) : undefined,
+    session: {
+      styleVocabulary: buildStyleVocabulary(project),
+      styleTokenRecords: Array.from(buildEffectiveTokens(readStoredTokens(project)).values()),
+      // AIB-007 criterion 2 and 5. Bound here rather than defaulted inside the
+      // session, because the true answer needs the *plan*: a run that provisions
+      // a backend must not warn about the Sign Up nodes it is building for the
+      // backend it is about to create. Nothing else in the product knows both
+      // halves.
+      backend: planBackendFacts(project, plan)
+    }
+  };
+}
+
 export interface ProjectAuthoringViewProps {
   isConfigured: boolean;
   hasProject: boolean;
@@ -372,25 +415,98 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
    * fast one, and it runs only when the session has nothing: a recovered plan
    * must never overwrite work in progress.
    */
+  /**
+   * AIB-003 slice 4 — a saved build, back in the panel.
+   *
+   * The run is rebuilt through `PlanRun.restore`, which puts every operation
+   * into the state a Stop leaves: staged candidates intact, anything that was
+   * mid-flight when the process ended marked failed with a Retry beside it. So
+   * the panel below needs no branch for "this run came from disk" — a restored
+   * run and a stopped one are the same object in the same state, which is the
+   * whole reason slice 4 restores rather than resumes.
+   *
+   * `store.restore` and not `patch`: this replaces the session wholesale, and
+   * patching would write the restored copy straight back to the file it was just
+   * read from.
+   */
+  const restoreSnapshot = useCallback(
+    (project: ProjectModel, snapshot: PlanSessionSnapshot) => {
+      const plan = snapshot.plan;
+      if (!plan) return;
+      const run = snapshot.run
+        ? PlanRun.restore(fromProjectModel(project), plan, snapshot.run, planRunOptions(project, plan, projectDocs()))
+        : null;
+
+      store.restore(project.id, {
+        description: snapshot.description,
+        plan,
+        note: { text: describeRestore(snapshot), type: 'notice' },
+        excluded: new Set(snapshot.excluded),
+        // Never restored — see `isWorthPersisting`. A session only holds an
+        // `applied` summary after the work has reached the project, and this
+        // file is deleted at that moment.
+        applied: null,
+        applyFailure: snapshot.applyFailure,
+        run,
+        origin: snapshot.origin,
+        // AIB-005's canvas strip announces a plan that is *waiting*. A build that
+        // has already authored something is not waiting, and the panel's own note
+        // is the better place to say what came back — so a restored run suppresses
+        // the announcement even when the stored flag says it was never dismissed.
+        announcementDismissed: snapshot.announcementDismissed || Boolean(run)
+      });
+    },
+    [store]
+  );
+
   const [recovered, setRecovered] = useState<RecoveredScopePlan | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
   useEffect(() => {
     if (session.plan || session.run || session.applied) return;
-    const docs = projectDocs();
     const project = ProjectModel.instance;
-    if (!docs || !project) return;
+    if (!project) return;
     let cancelled = false;
-    void recoverScopePlan({
-      readDoc: (relPath) => docs.read(relPath),
-      componentExists: (legacyName) => !!project.getComponentWithName(legacyName),
-      toLegacyName: pathToLegacyName
-    }).then((found) => {
+
+    void (async () => {
+      /**
+       * AIB-003 slice 4 — the sidecar is tried first, and if it answers, slice 3
+       * is not consulted at all.
+       *
+       * The two are not alternatives so much as different ages of the same
+       * thing. `.nodegx/plan/session.json` is this build: the plan as the user
+       * has pruned it, plus every candidate authored from it.
+       * `docs/decisions/000-initial-scope.md` is the plan as it was agreed when
+       * the project was created, with nothing authored. Offering the second
+       * while the first exists would invite someone to replace an afternoon of
+       * staged output with the empty plan it started as.
+       *
+       * They also present differently, and deliberately. The decision record is
+       * *offered* — it may be weeks old and the project may have moved on. The
+       * sidecar is *restored* — it is the work the user was in the middle of,
+       * nothing in it has touched the project, and Abandon is one click away.
+       */
+      const directory = project._retainedProjectDirectory;
+      const snapshot = directory ? await PlanSessionSidecar.instance.read(directory) : null;
+      if (cancelled) return;
+      if (snapshot?.plan) {
+        restoreSnapshot(project, snapshot);
+        return;
+      }
+
+      const docs = projectDocs();
+      if (!docs) return;
+      const found = await recoverScopePlan({
+        readDoc: (relPath) => docs.read(relPath),
+        componentExists: (legacyName) => !!project.getComponentWithName(legacyName),
+        toLegacyName: pathToLegacyName
+      });
       if (!cancelled) setRecovered(found ?? null);
-    });
+    })();
+
     return () => {
       cancelled = true;
     };
-  }, [session.plan, session.run, session.applied]);
+  }, [session.plan, session.run, session.applied, restoreSnapshot]);
 
   const adoptRecoveredPlan = useCallback(() => {
     if (!recovered) return;
@@ -466,33 +582,9 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
   const authorPlan = useCallback(async () => {
     const project = ProjectModel.instance;
     if (!project || !plan) return;
-    const styleOptions = {
-      styleVocabulary: buildStyleVocabulary(project),
-      styleTokenRecords: Array.from(buildEffectiveTokens(readStoredTokens(project)).values())
-    };
     const docs = projectDocs();
     setDocsAvailable(docs !== undefined);
-    const run = new PlanRun(fromProjectModel(project), plan, {
-      baseFilesFor: (legacyName) => {
-        const existing = project.getComponentWithName(legacyName);
-        return existing
-          ? (buildComponentV2Files(existing.toJSON(), new Date().toISOString()) as ComponentFiles)
-          : undefined;
-      },
-      // The doc turn reads the file it is about to rewrite; the same bytes
-      // become the write path's drift baseline. `PlanRun` never touches a
-      // filesystem itself — this is the only seam through which it sees one.
-      docBaselineFor: docs ? (relPath: string) => docs.read(relPath) : undefined,
-      session: {
-        ...styleOptions,
-        // AIB-007 criterion 2 and 5. Bound here rather than defaulted inside the
-        // session, because the true answer needs the *plan*: a run that
-        // provisions a backend must not warn about the Sign Up nodes it is
-        // building for the backend it is about to create. Nothing else in the
-        // product knows both halves.
-        backend: planBackendFacts(project, plan)
-      }
-    });
+    const run = new PlanRun(fromProjectModel(project), plan, planRunOptions(project, plan, docs));
     runRef.current = run;
     // Into the store first: the run must outlive this mount, and the effect that
     // watches `session.run` is what subscribes to it. Doing it here rather than
