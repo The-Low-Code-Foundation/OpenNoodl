@@ -25,7 +25,7 @@ both a matter of wiring that module in, not of sourcing an icon set.
 | [POL-006](POL-006-A-FONT-AND-AN-ICON-SET.md) — font + icon set | 8 | ☐ not started | `--font-sans` is dangling repo-wide. Recommends Inter + Lucide sprite, bundled not CDN. Touches `LocalProjectsModel.ts` — dirty in another session. |
 | [POL-007](POL-007-THE-BUILD-PANEL-FITS.md) — Build panel layout | 9a | ☐ not started | Mechanism confirmed (row min-width > 400px panel). |
 | [POL-008](POL-008-SAMPLE-DATA-AND-A-THIN-BUILD.md) — sample data + thin build | 10 | ☐ not started | **Part A undiagnosed** — three candidates, pick one before fixing. Part B gated on POL-006. |
-| [POL-010](POL-010-THE-WALK-DOESNT-WALK.md) — provenance walk | 12b | ☐ not started | **Undiagnosed.** Two candidates. Blocked on POL-003 + POL-004 for readability. |
+| [POL-010](POL-010-THE-WALK-DOESNT-WALK.md) — provenance walk | 12b | ◐ **diagnosed, not fixed** | Candidate (1): **the topology only contains what the preview has instantiated**. The engine is fine — measured 4 hops from one edge on real runtime ids. Candidate (2) is wrong: NodeGX node ids are readable by design (`filterCollection`, `btn`, `t1`), so nothing failed to join. Two identical `Node`/`Node id` strings is the signature of a node **absent** from the topology. Also found: `TraceSession` is never reset, so it serves the *previous project's* graph after a switch. |
 | [POL-011](POL-011-FX-ON-MULTILINE-STRINGS.md) — `fx` on multiline | 13 | ☐ not started | Mechanism confirmed: `multiline: true` routes to `TextAreaType`, which has no expression support. |
 | [POL-012](POL-012-SET-ALL-FOUR-SIDES-AT-ONCE.md) — link padding/margin | 14 | ☐ not started | Includes the four-undo-entries defect, worth fixing independently. |
 
