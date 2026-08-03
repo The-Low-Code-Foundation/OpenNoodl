@@ -115,6 +115,19 @@ Then, in parallel: **AIB-003** (stop losing state) and **AIB-006** (two small re
 outsized credibility effect — a wizard that renders `**bold**` literally reads as unfinished before
 the user has judged anything else).
 
+> **✅ AIB-003 (slices 1–3) and AIB-006 are built** (2026-08-03). Carry forward:
+>
+> - **AIB-003's criteria 3 and 4 look contradictory and are not.** "Survives switching projects" and
+>   "a run must not leak past a project close" resolve once the two things a run *is* are separated:
+>   cancel the departing run, keep what it staged. Expect the same shape wherever this phase asks for
+>   durability and safety at once.
+> - **AIB-006's fix could have introduced the defect it was closing.** Stripping HTML comments
+>   unconditionally would have deleted a model's own `<!-- -->` example out of a code fence in the
+>   editor's AI chat — a silent corruption, in the same class as the blank preview. Whenever a fix
+>   here is "sanitise the input", check every consumer of the thing being sanitised.
+> - **`ProjectReviewStore.clear()` is called from nowhere.** AIX-010 left it unwired. It is the
+>   precedent AIB-003 was told to copy — copy its *shape*, not its wiring.
+
 Then **AIB-002** and **AIB-004** together — they are one experience and reviewing them separately
 will produce two vocabularies again. Then **AIB-005**, **AIB-007**, **AIB-008**.
 
