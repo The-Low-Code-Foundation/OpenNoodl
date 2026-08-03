@@ -21,47 +21,6 @@
   overflow: hidden;
 }
 
-.SearchHit {
-  padding: 16px;
-  background-color: var(--theme-color-bg-2);
-  margin-bottom: 16px;
-}
-
-.HitTitle {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.MessageContainer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  height: 40vh;
-  background-color: var(--theme-color-bg-2);
-  margin-top: 32px;
-}
-
-.Buttons {
-  padding-top: 32px;
-  display: flex;
-  justify-content: center;
-}
-
-:global(.ais-InfiniteHits-list),
-:global(.ais-Hits-list) {
-  padding-left: 0;
-  list-style: none;
-  margin: 0;
-
-  > :first-child {
-    padding-top: 16px;
-  }
-}
-
-:global(.ais-Highlight-highlighted) {
-  background: transparent;
-  color: var(--theme-color-primary);
-}
+/* ALPHA-006 §6: the in-editor Algolia search modal is gone (it queried Noodl
+   2.9's index), and with it `.SearchHit`, `.HitTitle`, `.MessageContainer`,
+   `.Buttons` and the `.ais-*` InstantSearch overrides. */

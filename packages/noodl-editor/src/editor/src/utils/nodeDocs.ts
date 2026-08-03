@@ -38,9 +38,9 @@
  * No React, no Electron, no editor singletons — so `tests-unit/` can grade it
  * without starting a renderer. The docs *origin* is deliberately not resolved
  * here: {@link nodeDocsPath} returns a site-relative path and the renderer call
- * sites join it to `getDocsEndpoint()`. That also keeps the legacy
- * `docs.noodl.net` literal out of this file — the path is derived from the URL,
- * not string-replaced onto it.
+ * sites join it to `getDocsEndpoint()`. That also keeps the legacy Noodl docs
+ * host out of this file as a literal — the path is derived from whatever URL
+ * the catalog holds, not string-replaced onto it.
  *
  * @module noodl-editor/utils/nodeDocs
  */
