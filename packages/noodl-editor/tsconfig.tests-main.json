@@ -31,6 +31,12 @@
     "src/editor/src/models/nodelibrary/dynamicPortRules.ts",
     "src/editor/src/models/nodelibrary/cloud-node-library.json",
     "src/editor/src/utils/import-engine/legacy",
-    "src/editor/src/validation"
+    "src/editor/src/validation",
+    // ALPHA-006 §1: `utils/nodeDocs.ts` is the same shape again — it renders the
+    // bundled enriched catalog into help HTML and imports nothing but
+    // `validation/enrichedCatalog` (already here). The docs *origin* is
+    // deliberately resolved by its renderer call sites rather than inside it,
+    // which is exactly what keeps `@electron/remote` out of this runner.
+    "src/editor/src/utils/nodeDocs.ts"
   ]
 }
