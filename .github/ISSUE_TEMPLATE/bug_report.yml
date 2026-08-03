@@ -38,6 +38,30 @@ body:
     validations:
       required: true
 
+  # ALPHA-007 §4 (F72): there was no severity anywhere — not a field, not a
+  # label — so the queue could only be ranked by date, which is the wrong axis.
+  #
+  # It has to be a form field rather than a `labels=` URL parameter: applying a
+  # label needs triage permission on the repository, and a reporter is not a
+  # collaborator. Triage reads this field and applies the label.
+  #
+  # Every option is phrased as a consequence to *you*, because that is the only
+  # question a reporter can answer honestly. Do not reword them without changing
+  # `SEVERITY_OPTIONS` in `utils/report/issueForm.ts` — the editor prefills this
+  # dropdown by matching the option text exactly, and a copy edit here silently
+  # empties the field. A test checks the two agree.
+  - type: dropdown
+    id: severity
+    attributes:
+      label: How bad is it
+      options:
+        - Blocks me — I cannot work around it
+        - Serious — there is a workaround, but it costs me
+        - Annoying — wrong, but I can carry on
+        - Cosmetic — it looks wrong but works
+    validations:
+      required: true
+
   - type: input
     id: version
     attributes:
@@ -96,6 +120,21 @@ body:
         (**View → Toggle Developer Tools**, or ⌥⌘I / Ctrl+Shift+I), reproduce the bug, and
         paste anything red. Screenshots of the editor are just as welcome.
       render: text
+
+  # ALPHA-007 §4. `render: json` fences the content, which makes it a stable
+  # region a human can skim and an agent can locate without parsing prose:
+  # `gh issue view <n> --json body`, then read the first ```json fence.
+  #
+  # This is the join between the editor's "Report a problem" dialog and triage.
+  # The payload is built by an allow-list — counts, booleans and a bucketed node
+  # type histogram — and carries no project content, no parameter values, no
+  # component names and no endpoint. See `utils/report/diagnostics.ts`.
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Filled in automatically by "Report a problem" in the editor. Leave blank if you are filing by hand.
+      render: json
 
   - type: textarea
     id: anything-else
