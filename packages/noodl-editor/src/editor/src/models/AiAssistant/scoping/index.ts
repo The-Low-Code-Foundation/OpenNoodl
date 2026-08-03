@@ -14,6 +14,7 @@
 
 export {
   DOC_INITIAL_SCOPE,
+  PLAN_FENCE_TAG,
   TODO_MARKER,
   emptyScope,
   mergeScope,
@@ -49,3 +50,8 @@ export type { WriteScopeDocsInput, WriteScopeDocsResult } from './scopeDocs';
 
 export { peekPendingScopePlan, setPendingScopePlan, takePendingScopePlan } from './pendingPlan';
 export type { PendingScopePlan } from './pendingPlan';
+
+// AIB-003 — the slow path behind the destructive `take`: the plan is durable in
+// `docs/decisions/000-initial-scope.md` and, until this, nothing read it back.
+export { parseRecordedPlan, parseRecordedTranscript, recoverScopePlan } from './recoverPlan';
+export type { RecoveredScopePlan, RecoverScopePlanOptions } from './recoverPlan';

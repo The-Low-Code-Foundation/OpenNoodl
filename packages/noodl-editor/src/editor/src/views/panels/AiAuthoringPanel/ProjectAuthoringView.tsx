@@ -25,20 +25,27 @@ import {
   pathToLegacyName,
   PlanningSession,
   PlanRun,
+  PlanSessionStore,
+  PLAN_SESSION_CHANGED,
   planExcludedWith,
   planRequiredWith,
   StagingError,
   validateCandidateComponent,
   type AuthoringPlan,
   type ComponentFiles,
+  type PlanApplyFailure,
   type PlanOperationState,
-  type PlanRunState
+  type PlanRunState,
+  type PlanSession
 } from '@noodl-models/AiAssistant/authoring';
 import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
 // Imported from the module rather than the `scoping` barrel: the barrel pulls
 // `ScopingSession` (the AI client) and `scopeDocs` (the platform filesystem),
 // and this seam is a plain-data handover that needs neither.
 import { takePendingScopePlan, type PendingScopePlan } from '@noodl-models/AiAssistant/scoping/pendingPlan';
+// Same reason as the line above — the pure submodule, never the `scoping`
+// barrel, which would drag `ScopingSession` (the AI client) in behind it.
+import { recoverScopePlan, type RecoveredScopePlan } from '@noodl-models/AiAssistant/scoping/recoverPlan';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { createPlanDocWriter, ProjectDocsModel } from '@noodl-models/ProjectDocs';
 import { ProjectModel } from '@noodl-models/projectmodel';
@@ -105,82 +112,179 @@ export interface ProjectAuthoringViewProps {
 }
 
 export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthoringViewProps) {
+  // AIB-003: everything worth more than a re-render lives in `PlanSessionStore`,
+  // keyed by project, because the Build panel CONDITIONALLY RENDERS this view —
+  // switching the scope toggle unmounts it. It used to hold the plan, the run
+  // and every staged candidate in `useState` with a `dispose()` on unmount, so a
+  // tab click destroyed three components' worth of authored, validated output.
+  //
+  // The transaction property is untouched: nothing here reaches a ProjectModel,
+  // and `applyAuthoredPlan` is still the only code that does.
+  const projectId = ProjectModel.instance?.id;
+  const store = PlanSessionStore.instance;
+  const [session, setSession] = useState<PlanSession>(() => store.get(projectId));
+
+  // Re-read on any change, from any mount of this view. The store notifies
+  // rather than the view polling, because a `PlanRun` publishing from a
+  // background turn has no idea whether anyone is looking at it.
+  useEffect(() => {
+    const context = {};
+    store.on(PLAN_SESSION_CHANGED, () => setSession({ ...store.get(ProjectModel.instance?.id) }), context);
+    return () => {
+      store.off(context);
+    };
+  }, [store]);
+
+  const patch = useCallback(
+    (next: Partial<PlanSession>) => setSession({ ...store.update(ProjectModel.instance?.id, next) }),
+    [store]
+  );
+
   // AIX-012 handover: a plan agreed in the launcher's scoping conversation,
   // which created this project minutes ago and deliberately did not build it.
   //
-  // Consumed here rather than in the panel because the plan state lives here,
-  // and taken once at first render — the same one-shot ref the AIX-010 banner
-  // request uses, for the same reason: two consumers of a destructive `take`
-  // would race, and the loser would silently show no plan.
+  // `takePendingScopePlan` is destructive — deliberately, so a plan cannot
+  // reappear against the wrong project — which made the FIRST consumption final
+  // in a component that unmounts on a tab click. Taking it into the store fixes
+  // that at the root: the take still happens exactly once, but what it lands in
+  // now outlives every mount.
   //
   // It arrives as an ordinary proposed plan, not an approved one. Every row is
   // still prunable and nothing reaches the project until Apply, so a plan
   // agreed in a conversation gets exactly the same gate as one typed here.
-  const arrivedWithPlan = useRef<PendingScopePlan | undefined | 'unread'>('unread');
-  if (arrivedWithPlan.current === 'unread') {
-    arrivedWithPlan.current = takePendingScopePlan(ProjectModel.instance?.id);
+  const tookScopePlan = useRef(false);
+  if (!tookScopePlan.current) {
+    tookScopePlan.current = true;
+    if (!session.plan && !session.run) {
+      const scopePlan: PendingScopePlan | undefined = takePendingScopePlan(projectId);
+      if (scopePlan) {
+        store.update(projectId, {
+          plan: scopePlan.plan,
+          note: {
+            text:
+              `From the scoping conversation that created this project — ${scopePlan.plan.operations.length} ` +
+              `operation${scopePlan.plan.operations.length === 1 ? '' : 's'}. Nothing has been built yet. Drop ` +
+              `anything you have changed your mind about, then author it. The conversation is recorded in ` +
+              `${scopePlan.recordPath}.`,
+            type: FeedbackType.Notice
+          }
+        });
+      }
+    }
   }
-  const scopePlan = arrivedWithPlan.current;
 
-  const [description, setDescription] = useState('');
-  const [planBusy, setPlanBusy] = useState(false);
-  const [plan, setPlan] = useState<AuthoringPlan | null>(scopePlan?.plan ?? null);
-  const [note, setNote] = useState<{ text: string; type: FeedbackType } | null>(
-    scopePlan
-      ? {
-          text:
-            `From the scoping conversation that created this project — ${scopePlan.plan.operations.length} ` +
-            `operation${scopePlan.plan.operations.length === 1 ? '' : 's'}. Nothing has been built yet. Drop ` +
-            `anything you have changed your mind about, then author it. The conversation is recorded in ` +
-            `${scopePlan.recordPath}.`,
-          type: FeedbackType.Notice
-        }
-      : null
+  const { description, plan, excluded, applied, applyFailure } = session;
+  // The store spells the three feedback values out rather than importing a view
+  // enum; this is the one place they are narrowed back to it.
+  const note = session.note as { text: string; type: FeedbackType } | null;
+  const setDescription = useCallback((value: string) => patch({ description: value }), [patch]);
+  const setPlan = useCallback((value: AuthoringPlan | null) => patch({ plan: value }), [patch]);
+  const setNote = useCallback(
+    (value: { text: string; type: FeedbackType } | null) => patch({ note: value }),
+    [patch]
   );
-  const [runState, setRunState] = useState<PlanRunState | null>(null);
-  const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
-  const [applied, setApplied] = useState<{ count: number; docs: string[] } | null>(null);
+  const setExcluded = useCallback((value: ReadonlySet<string>) => patch({ excluded: value }), [patch]);
+  const setApplied = useCallback(
+    (value: { count: number; docs: string[] } | null) => patch({ applied: value }),
+    [patch]
+  );
+  const setApplyFailure = useCallback((value: PlanApplyFailure | null) => patch({ applyFailure: value }), [patch]);
+
+  // Transient by design — a dialog that is open, a button that says
+  // "Re-authoring…". Re-derived on mount; keeping them would be one more thing
+  // to hold in sync for no benefit.
+  const [planBusy, setPlanBusy] = useState(false);
   const [reviewingDoc, setReviewingDoc] = useState<string | null>(null);
-  /**
-   * AIB-001 slice 4 — the operation an apply failure was about, and the reason.
-   *
-   * A rollback is correct engineering and terrible product: without this the
-   * user is left holding a red sentence and a dead plan, and the only way
-   * forward is to throw away every other authored component and start again.
-   * With it, the failure is a question — "re-author just that one?" — and the
-   * transaction stays exactly as all-or-nothing as it was.
-   */
-  const [applyFailure, setApplyFailure] = useState<{ id: string; target: string; reason: string } | null>(null);
   const [retrying, setRetrying] = useState(false);
 
-  const runRef = useRef<PlanRun | null>(null);
+  // The run's published state. Seeded from the store's run so a remount shows a
+  // finished run exactly as the user left it, rather than an empty panel with
+  // the candidates still in memory behind it.
+  const [runState, setRunState] = useState<PlanRunState | null>(() => session.run?.state ?? null);
+  const runRef = useRef<PlanRun | null>(session.run);
   const planAbortRef = useRef<AbortController | null>(null);
+
+  // Re-attach to whatever run the store holds, on every mount and whenever it
+  // changes. The old code disposed the run here; disposal is now the user's
+  // explicit Abandon or a successful apply, and nothing else.
+  useEffect(() => {
+    runRef.current = session.run;
+    setRunState(session.run?.state ?? null);
+    if (!session.run) return;
+    return session.run.onChange(setRunState);
+  }, [session.run]);
 
   // Whether doc operations can be applied at all. Recomputed when a run starts:
   // a project saved for the first time mid-session gains a docs folder.
   const [docsAvailable, setDocsAvailable] = useState<boolean>(() => projectDocs() !== undefined);
 
-  useEffect(() => () => runRef.current?.dispose(), []);
+  /**
+   * AIB-003 slice 3 — the plan is durable on disk, and until now nothing read
+   * it back.
+   *
+   * `takePendingScopePlan` is a one-shot module handover that dies with the
+   * window, so opening the project a day later — or simply after the editor
+   * restarted — offered nothing, while `docs/decisions/000-initial-scope.md`
+   * had held the whole thing the entire time. This is the slow path behind that
+   * fast one, and it runs only when the session has nothing: a recovered plan
+   * must never overwrite work in progress.
+   */
+  const [recovered, setRecovered] = useState<RecoveredScopePlan | null>(null);
+  const [showTranscript, setShowTranscript] = useState(false);
+  useEffect(() => {
+    if (session.plan || session.run || session.applied) return;
+    const docs = projectDocs();
+    const project = ProjectModel.instance;
+    if (!docs || !project) return;
+    let cancelled = false;
+    void recoverScopePlan({
+      readDoc: (relPath) => docs.read(relPath),
+      componentExists: (legacyName) => !!project.getComponentWithName(legacyName),
+      toLegacyName: pathToLegacyName
+    }).then((found) => {
+      if (!cancelled) setRecovered(found ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session.plan, session.run, session.applied]);
+
+  const adoptRecoveredPlan = useCallback(() => {
+    if (!recovered) return;
+    patch({
+      plan: recovered.plan,
+      note: {
+        text:
+          `Recovered from ${recovered.recordPath} — the plan agreed when this project was created, still ` +
+          'unbuilt. Drop anything you have changed your mind about, then author it.',
+        type: 'notice'
+      }
+    });
+    setRecovered(null);
+  }, [recovered, patch]);
 
   const reset = useCallback(() => {
-    runRef.current?.dispose();
+    // The only two things allowed to destroy authored output: an explicit
+    // Abandon, and a successful apply.
+    store.discard(ProjectModel.instance?.id);
     runRef.current = null;
-    setPlan(null);
     setRunState(null);
-    setExcluded(new Set());
     setReviewingDoc(null);
-    setNote(null);
-    setApplyFailure(null);
-  }, []);
+    setSession({ ...store.get(ProjectModel.instance?.id) });
+  }, [store]);
 
   const startPlanning = useCallback(async () => {
     const project = ProjectModel.instance;
-    if (!project || !description.trim()) return;
+    const request = description.trim();
+    if (!project || !request) return;
+    // `reset` discards the whole session, description included — planning a new
+    // request is the user saying they are done with the previous one — so the
+    // request is captured above and put back with the result.
     reset();
-    setApplied(null);
+    patch({ description: request });
     setPlanBusy(true);
     try {
-      const session = new PlanningSession(fromProjectModel(project), description.trim());
+      const session = new PlanningSession(fromProjectModel(project), request);
       planAbortRef.current = new AbortController();
       const outcome = await session.run({ abortController: planAbortRef.current });
       if (outcome.status === 'planned' && outcome.plan) {
@@ -198,7 +302,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
       planAbortRef.current = null;
       setPlanBusy(false);
     }
-  }, [description, reset]);
+  }, [description, reset, patch]);
 
   const dropOperation = useCallback(
     (id: string) => {
@@ -233,23 +337,33 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
       session: styleOptions
     });
     runRef.current = run;
-    run.onChange(setRunState);
-    setRunState(run.state);
+    // Into the store first: the run must outlive this mount, and the effect that
+    // watches `session.run` is what subscribes to it. Doing it here rather than
+    // in the effect keeps a single owner for the subscription.
+    patch({ run });
     await run.run();
-  }, [plan]);
+  }, [plan, patch]);
 
-  const excludeOperation = useCallback((id: string) => {
-    const run = runRef.current;
-    if (!run) return;
-    setExcluded((current) => planExcludedWith(run.requires(), [...current, id]));
-  }, []);
+  const excludeOperation = useCallback(
+    (id: string) => {
+      const run = runRef.current;
+      if (!run) return;
+      const current = store.get(ProjectModel.instance?.id).excluded;
+      setExcluded(planExcludedWith(run.requires(), [...current, id]));
+    },
+    [setExcluded, store]
+  );
 
-  const restoreOperation = useCallback((id: string) => {
-    const run = runRef.current;
-    if (!run) return;
-    const needed = planRequiredWith(run.requires(), [id]);
-    setExcluded((current) => new Set([...current].filter((entry) => !needed.has(entry))));
-  }, []);
+  const restoreOperation = useCallback(
+    (id: string) => {
+      const run = runRef.current;
+      if (!run) return;
+      const needed = planRequiredWith(run.requires(), [id]);
+      const current = store.get(ProjectModel.instance?.id).excluded;
+      setExcluded(new Set([...current].filter((entry) => !needed.has(entry))));
+    },
+    [setExcluded, store]
+  );
 
   const reviewOperation = useCallback((id: string) => {
     const run = runRef.current;
@@ -325,9 +439,11 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
 
     try {
       const result = await applyAuthoredPlan(project, operations, { docWriter });
-      setApplied({ count: result.components.size, docs: result.docs });
+      // Discard first, then record the outcome: the applied summary is the one
+      // thing that must survive the reset, and `reset` now clears the whole
+      // session rather than a hand-picked list of fields.
       reset();
-      setDescription('');
+      setApplied({ count: result.components.size, docs: result.docs });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setNote({ text: message, type: FeedbackType.Danger });
@@ -337,7 +453,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
       const failed = e instanceof StagingError ? e.operation : undefined;
       setApplyFailure(failed && failed.kind !== 'doc' ? { ...failed, reason: message } : null);
     }
-  }, [excluded, reset]);
+  }, [excluded, reset, setApplied, setApplyFailure, setNote]);
 
   const retryFailedOperation = useCallback(async () => {
     const run = runRef.current;
@@ -440,7 +556,58 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
               </HStack>
             )}
 
-            {!plan && !runState && !note && !applied && (
+            {/*
+              AIB-003 slice 3: a plan agreed in the launcher, recovered from the
+              project's own decision record. Offered rather than adopted — it may
+              be weeks old and the project may have moved on, so the user decides.
+              This is also the answer to "I don't see any conversation history":
+              the transcript was written to disk at creation and nothing ever
+              showed it.
+            */}
+            {recovered && !plan && !runState && (
+              <VStack UNSAFE_style={{ gap: 8 }}>
+                <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
+                  <Icon icon={IconName.File} variant={FeedbackType.Notice} size={IconSize.Small} />
+                  <Text textType={TextType.Secondary}>
+                    This project was scoped in a conversation and its plan — {recovered.plan.operations.length}{' '}
+                    operation{recovered.plan.operations.length === 1 ? '' : 's'} — has never been built. It is
+                    recorded in {recovered.recordPath}.
+                  </Text>
+                </HStack>
+                {recovered.transcript.length > 0 && (
+                  <>
+                    <PrimaryButton
+                      label={
+                        showTranscript
+                          ? 'Hide the conversation'
+                          : `Show the conversation (${recovered.transcript.length} messages)`
+                      }
+                      variant={PrimaryButtonVariant.Ghost}
+                      isGrowing
+                      onClick={() => setShowTranscript((shown) => !shown)}
+                    />
+                    {showTranscript && (
+                      <VStack UNSAFE_style={{ gap: 6 }}>
+                        {recovered.transcript.map((entry, index) => (
+                          <VStack key={index} UNSAFE_style={{ gap: 2 }}>
+                            <Text textType={TextType.Proud}>{entry.role === 'user' ? 'You' : 'Assistant'}</Text>
+                            <Text textType={TextType.Shy}>{entry.text}</Text>
+                          </VStack>
+                        ))}
+                      </VStack>
+                    )}
+                  </>
+                )}
+                <PrimaryButton
+                  label="Load this plan"
+                  icon={IconName.MagicWand}
+                  isGrowing
+                  onClick={adoptRecoveredPlan}
+                />
+              </VStack>
+            )}
+
+            {!plan && !runState && !note && !applied && !recovered && (
               <Text textType={TextType.Shy}>
                 Describe a change that spans components — the agent proposes a plan first, you approve or prune it,
                 and nothing is authored until you do. Deleting components cannot be planned. After authoring, the

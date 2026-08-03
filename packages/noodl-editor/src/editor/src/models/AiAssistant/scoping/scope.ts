@@ -34,6 +34,15 @@ import { DOC_TEMPLATES } from '../../ProjectDocs/templates';
 export const DOC_INITIAL_SCOPE = `${DOC_DECISIONS_DIR}/000-initial-scope.md`;
 
 /**
+ * AIB-003 — the info string that marks the machine-readable plan block.
+ *
+ * A tag rather than a bare ```json fence, because the record is a document a
+ * person edits and may well paste other JSON into. The parser looks for this
+ * exact tag, so a user's own example can never be mistaken for the plan.
+ */
+export const PLAN_FENCE_TAG = 'nodegx-plan';
+
+/**
  * The marker AIX-010 established for "this was not actually agreed". Every
  * renderer below uses it instead of inventing a plausible sentence — confident
  * invented scope is this feature's failure mode, and a reader who cannot tell
@@ -515,6 +524,20 @@ export function renderScopeRecord(input: ScopeRecordInput): string {
       lines.push(`${index + 1}. **${op.kind} \`${op.target}\`** — ${op.intent}`);
     });
     lines.push('');
+    // AIB-003 slice 3: the same plan, exactly, in a form the editor can read
+    // back. This module's own note has always said the record makes the plan
+    // "durable and readable without [the handover] seam" — and nothing read it,
+    // so closing the launcher before opening the Build panel lost the plan for
+    // good. A fenced block keeps the file one human-readable document, which is
+    // its entire purpose, and gives the parser exactly one thing to look for.
+    lines.push(
+      '<!-- The same plan, for the editor to read back if it is offered again. Safe to delete. -->',
+      '',
+      '```json ' + PLAN_FENCE_TAG,
+      JSON.stringify({ version: 1, plan: input.plan }, null, 2),
+      '```',
+      ''
+    );
   } else {
     lines.push('No pages were agreed, so no plan was produced.', '');
   }

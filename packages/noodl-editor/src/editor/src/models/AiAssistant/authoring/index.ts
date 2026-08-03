@@ -63,6 +63,10 @@ export { PlanningSession } from './PlanningSession';
 export type { PlanningOptions, PlanningOutcome, PlanningStatus } from './PlanningSession';
 export { PlanRun } from './PlanRun';
 export type { PlanOperationState, PlanOperationStatus, PlanRunOptions, PlanRunState, StagedDoc } from './PlanRun';
+// AIB-003 — the plan, the run and every staged candidate outlive the view that
+// renders them, because the Build panel unmounts it on a scope-tab click.
+export { PlanSessionStore, PLAN_SESSION_CHANGED } from './PlanSessionStore';
+export type { PlanApplyFailure, PlanSession, PlanSessionNote } from './PlanSessionStore';
 // AIX-011 criterion 7 — the doc-authoring turn and its graph-restatement lint.
 export { DocSession, MAX_DOC_CHARS } from './DocSession';
 export type { DocSessionOptions, DocSessionOutcome, DocSessionRequest, DocSessionStatus } from './DocSession';
