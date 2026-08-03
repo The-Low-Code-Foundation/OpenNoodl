@@ -174,6 +174,30 @@ export class PlanSessionStore extends Model {
   private readonly runSubscriptions = new Map<string, () => void>();
 
   /**
+   * AIB-003 slice 4 — projects whose saved build has already been looked for,
+   * by the promise that looked.
+   *
+   * Live QA found the defect this exists to close, and it made `Discard plan` do
+   * nothing at all. Discarding empties the session, the panel's restore effect
+   * watches exactly that emptiness, and it re-read the file and put the whole
+   * build back — same plan, same note, same staged candidate. The file was then
+   * deleted by the discard's own (debounced) removal, so disk and memory
+   * disagreed and the next keystroke wrote it back out. From the user's side:
+   * they pressed Discard and the plan did not go away.
+   *
+   * A boolean would have been enough for that, but not for the mount: a promise
+   * makes the check happen **once** even when two mounts race it, and means a
+   * view that unmounts mid-read does not leave a project permanently marked
+   * "checked" with nothing restored.
+   *
+   * Deliberately **not** cleared by `discard`. That is the fix. It is also not
+   * cleared when a project closes: the user's "no" outlives the panel, and a
+   * build they threw away must not reappear because they switched projects and
+   * came back.
+   */
+  private readonly savedBuildChecks = new Map<string, Promise<void>>();
+
+  /**
    * The session for a project, created empty on first ask.
    *
    * Returns the live object rather than a copy: the panel reads it during
@@ -219,6 +243,28 @@ export class PlanSessionStore extends Model {
     // saying so. Recovering a build that is already in the project would offer
     // to re-apply work that has been applied.
     this.persistence?.remove(projectId);
+  }
+
+  /**
+   * AIB-003 slice 4 — run `check` for a saved build at most once per project.
+   *
+   * The caller supplies the check because reading the sidecar needs a project
+   * directory and restoring needs a graph, and this store has neither. What it
+   * owns is the *question of whether to ask again*, because that outlives every
+   * mount — see {@link savedBuildChecks} for the defect that proves it has to.
+   */
+  consultSavedBuild(projectId: string | undefined, check: () => Promise<void>): Promise<void> {
+    const key = projectId ?? UNSAVED;
+    let pending = this.savedBuildChecks.get(key);
+    if (!pending) {
+      // A failed check counts as asked. Retrying it on every re-render would
+      // mean a project with an unreadable sidecar re-reading it forever.
+      pending = check().catch((error) => {
+        console.warn('Could not consult the saved AI build:', error);
+      });
+      this.savedBuildChecks.set(key, pending);
+    }
+    return pending;
   }
 
   /** AIB-003 slice 4 — the editor's disk-backed persistence, attached at boot. */

@@ -415,13 +415,29 @@ async function verify(client, args, report) {
   );
 
   // The other half of the rule: the user saying so IS allowed to destroy it.
-  await clickButtonWithText(client, 'Abandon').catch(() => undefined);
-  await sleep(1500);
+  //
+  // The verb is "Discard plan" (AIB-004's one vocabulary), not "Abandon" — which
+  // is what the code calls the handler, and what this driver asked for first. A
+  // swallowed miss then reported the defect below as a pass-by-accident and hid
+  // the real one, so this no longer catches: no button, no result.
+  await clickButtonWithText(client, 'Discard plan');
+  await sleep(2500);
   check(
     steps(report),
-    'AIB-003 §4: Abandon deletes the file — the user can still throw it away',
+    'AIB-003 §4: Discard deletes the file — the user can still throw it away',
     !fs.existsSync(sidecarPath(projectDir)),
     sidecarPath(projectDir)
+  );
+  // The defect live QA found: discarding empties the session, the panel's
+  // restore effect watches for exactly that, and it read the build straight back
+  // in. The file was gone and the plan was not.
+  const afterDiscard = await evaluate(client, SESSION_STATE);
+  report.afterDiscard = afterDiscard;
+  check(
+    steps(report),
+    'AIB-003 §4: the discarded plan stays discarded — the restore does not undo it',
+    afterDiscard.plan === null && afterDiscard.run === null,
+    JSON.stringify({ plan: afterDiscard.plan, note: afterDiscard.note })
   );
 }
 

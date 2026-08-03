@@ -132,6 +132,72 @@ describe('what reaches the disk', () => {
   });
 });
 
+describe('asking the disk whether there is a saved build', () => {
+  it('asks once per project, however many mounts ask', async () => {
+    let asked = 0;
+    const check = async () => {
+      asked++;
+    };
+
+    await Promise.all([
+      store.consultSavedBuild('project-a', check),
+      store.consultSavedBuild('project-a', check),
+      store.consultSavedBuild('project-a', check)
+    ]);
+    await store.consultSavedBuild('project-a', check);
+
+    expect(asked).toBe(1);
+  });
+
+  it('does not ask again after a discard — this is what makes Discard work', async () => {
+    let asked = 0;
+    const restoreOnce = async () => {
+      asked++;
+      store.restore('project-a', { ...store.get('project-a'), plan: PLAN });
+    };
+
+    await store.consultSavedBuild('project-a', restoreOnce);
+    expect(store.get('project-a').plan).toEqual(PLAN);
+
+    store.discard('project-a');
+    await store.consultSavedBuild('project-a', restoreOnce);
+
+    // Live QA: the panel's restore effect watches for an empty session, which is
+    // exactly what discarding produces. Without this, Discard emptied the
+    // session, the effect read the file straight back, and the plan reappeared —
+    // the button visibly did nothing.
+    expect(asked).toBe(1);
+    expect(store.get('project-a').plan).toBeNull();
+  });
+
+  it('keeps the answer per project', async () => {
+    let asked = 0;
+    const check = async () => {
+      asked++;
+    };
+
+    await store.consultSavedBuild('project-a', check);
+    await store.consultSavedBuild('project-b', check);
+
+    expect(asked).toBe(2);
+  });
+
+  it('counts a failed check as asked', async () => {
+    let asked = 0;
+    const failing = async () => {
+      asked++;
+      throw new Error('unreadable sidecar');
+    };
+
+    await store.consultSavedBuild('project-a', failing);
+    await store.consultSavedBuild('project-a', failing);
+
+    // A project whose sidecar cannot be read must not re-read it on every
+    // re-render for the life of the session.
+    expect(asked).toBe(1);
+  });
+});
+
 describe('a store with no persistence attached', () => {
   it('behaves exactly as it did after slices 1 to 3', () => {
     const bare = new PlanSessionStore();

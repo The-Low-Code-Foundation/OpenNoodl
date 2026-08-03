@@ -467,7 +467,19 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     if (!project) return;
     let cancelled = false;
 
-    void (async () => {
+    /**
+     * Asked **once per project**, through the store, and never again — not on a
+     * remount, and pointedly not after a Discard.
+     *
+     * Live QA caught what happens without that. Discarding empties the session,
+     * this effect watches exactly that emptiness, and it read the file straight
+     * back and restored the whole build — same plan, same note, same staged
+     * candidate. `Discard plan` visibly did nothing. The guard belongs in the
+     * store rather than in a ref here for the reason everything else in AIB-003
+     * moved there: this component unmounts on a tab click, and a decision the
+     * user made has to outlive that.
+     */
+    void store.consultSavedBuild(ProjectModel.instance?.id, async () => {
       /**
        * AIB-003 slice 4 — the sidecar is tried first, and if it answers, slice 3
        * is not consulted at all.
@@ -483,12 +495,14 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
        * They also present differently, and deliberately. The decision record is
        * *offered* — it may be weeks old and the project may have moved on. The
        * sidecar is *restored* — it is the work the user was in the middle of,
-       * nothing in it has touched the project, and Abandon is one click away.
+       * nothing in it has touched the project, and Discard is one click away.
        */
       const directory = project._retainedProjectDirectory;
       const snapshot = directory ? await PlanSessionSidecar.instance.read(directory) : null;
-      if (cancelled) return;
       if (snapshot?.plan) {
+        // Not gated on `cancelled`: this lands in the store, not in this
+        // component's state, and a user who switched tabs while the file was
+        // being read should still find their build when they switch back.
         restoreSnapshot(project, snapshot);
         return;
       }
@@ -500,13 +514,14 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
         componentExists: (legacyName) => !!project.getComponentWithName(legacyName),
         toLegacyName: pathToLegacyName
       });
+      // This one IS local state, so an unmounted view must not set it.
       if (!cancelled) setRecovered(found ?? null);
-    })();
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [session.plan, session.run, session.applied, restoreSnapshot]);
+  }, [session.plan, session.run, session.applied, restoreSnapshot, store]);
 
   const adoptRecoveredPlan = useCallback(() => {
     if (!recovered) return;
