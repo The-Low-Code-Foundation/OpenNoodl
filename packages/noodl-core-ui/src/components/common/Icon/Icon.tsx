@@ -71,10 +71,14 @@ export enum IconName {
   ExternalLink = 'external_link',
   File = 'file',
   FileFill = 'file_fill',
+  /** Lucide `fold-horizontal` — POL-003. Narrow the side panel. */
+  FoldHorizontal = 'fold_horizontal',
   FolderOpen = 'folder_open',
   FolderClosed = 'folder_closed',
   GitBranch = 'git_branch',
   GitPullRequest = 'git_pull_request',
+  /** Lucide `hammer` — POL-003. The AI Build panel. */
+  Hammer = 'hammer',
   History = 'history',
   Home = 'home',
   HomeFill = 'home_fill',
@@ -88,6 +92,8 @@ export enum IconName {
   Lightning = 'lightning',
   Logo = 'logo',
   MagicWand = 'magic_wand',
+  /** Lucide `message-circle-question-mark` — POL-003. The Explain panel. */
+  MessageCircleQuestion = 'message_circle_question',
   Minus = 'minus',
   NestedComponent = 'nested_component',
   NotePencil = 'note_pencil',
@@ -124,6 +130,10 @@ export enum IconName {
   SettingFill = 'setting_fill',
   Sliders = 'sliders',
   SlidersHorizontal = 'sliders_horizontal',
+  /** Lucide `spline-pointer` — POL-003. The Provenance panel: a curve traced
+      back to a point, which is what the walk does. Was a magnifier, which is
+      Search's mark and said "find" rather than "trace". */
+  SplinePointer = 'spline_pointer',
   Stash = 'stash',
   StructureCircle = 'structure_circle',
   Square = 'square',
@@ -133,6 +143,8 @@ export enum IconName {
   TextAlignLeft = 'text_align_left',
   TextAlignRight = 'text_align_right',
   Trash = 'trash',
+  /** Lucide `unfold-horizontal` — POL-003. Widen the side panel. */
+  UnfoldHorizontal = 'unfold_horizontal',
   User = 'user',
   UI = 'ui',
   VerticalSplit = 'vertical_split',

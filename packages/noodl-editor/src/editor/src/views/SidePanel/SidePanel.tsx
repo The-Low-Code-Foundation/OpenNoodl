@@ -201,7 +201,7 @@ export function SidePanel() {
       <Tooltip content={layout.mode === 'wide' ? 'Narrow panel' : 'Widen panel'} fineType="⌘\" showAfterMs={300}>
         <IconButton
           variant={IconButtonVariant.Transparent}
-          icon={layout.mode === 'wide' ? IconName.ArrowsInLineHorizontal : IconName.ViewportHorizontalArrow}
+          icon={layout.mode === 'wide' ? IconName.FoldHorizontal : IconName.UnfoldHorizontal}
           testId="side-panel-wide-toggle"
           onClick={layout.toggleWide}
         />
@@ -245,14 +245,24 @@ export function SidePanel() {
           />
         </Tooltip>
       </span>
-      <Tooltip content="Hide panel" fineType="⌘B" showAfterMs={300}>
-        <IconButton
-          variant={IconButtonVariant.Transparent}
-          icon={IconName.ArrowLineLeft}
-          testId="side-panel-hide-toggle"
-          onClick={layout.toggleHidden}
-        />
-      </Tooltip>
+      {/* POL-003: the wrapper is not decoration. It is where the glyph gets its
+          size, because `size={IconSize.Large}` does nothing — `Icon.module.scss`
+          declares no `is-size-*` rules, so every IconSize in the codebase is an
+          inert class name (UIX-010, confirmed at the CSS level). The wrapper also
+          gives this control the same `display: flex; align-items: center` box
+          that `.ModeControl` gives float and full, which is what actually
+          centres it against them: `Tooltip` renders a block-level trigger div in
+          between, and only two of the four controls had a flex wrapper. */}
+      <span className={css['HideControl']}>
+        <Tooltip content="Hide panel" fineType="⌘B" showAfterMs={300}>
+          <IconButton
+            variant={IconButtonVariant.Transparent}
+            icon={IconName.ArrowLineLeft}
+            testId="side-panel-hide-toggle"
+            onClick={layout.toggleHidden}
+          />
+        </Tooltip>
+      </span>
     </>
   ) : null;
 

@@ -18,9 +18,21 @@ $_sidebar-hover-enter-offset: 250ms;
 /* PAR-003: icon rail per the editor mock — 52px wide, bg-1, hairline right
    border, 10px vertical padding, 4px gaps, centered 34px buttons. */
 .Toolbar {
-  /* Idle rail glyphs are fg-3 per the mock (hover fg-1 / active accent come
-     from IconButton state rules). */
-  --icon-button-idle-fg: var(--theme-color-fg-muted);
+  /* POL-003: idle rail glyphs were `fg-muted` "per the mock". Measured, the mock
+     was wrong — and the mock is not the authority on a ratio it did not compute:
+
+       dark   fg-muted   #6b7682 on bg-1 #12161b  =  3.93:1   ← under the floor
+       light  fg-muted   #7c8894 on bg-1 #ffffff  =  3.62:1   ← under the floor
+       dark   fg-default #a6b0bb on bg-1 #12161b  =  8.26:1
+       light  fg-default #4a5663 on bg-1 #ffffff  =  7.49:1
+
+     Both muted values are below the 4.5:1 floor, and they are delivered through
+     a 1.5px stroke, which reads worse than the number. Richard called it "black
+     on black" — not literally true, and fixing what he literally described would
+     have fixed nothing. `fg-default` clears the floor twice over in both themes.
+
+     Hover fg-1 / active accent still come from IconButton's state rules. */
+  --icon-button-idle-fg: var(--theme-color-fg-default);
 
   position: absolute;
   display: flex;

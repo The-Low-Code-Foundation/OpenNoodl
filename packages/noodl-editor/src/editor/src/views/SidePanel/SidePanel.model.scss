@@ -27,9 +27,31 @@
    element from the a11y tree; the editor is Chromium-only, but flex is the
    boring answer and costs nothing. */
 .ModeControl,
-.ModeOverflow {
+.ModeOverflow,
+.HideControl {
   display: flex;
   align-items: center;
+}
+
+/* POL-003 — the hide-panel glyph, sized from its own container.
+ *
+ * Phase 39 deliberately did NOT add the missing `is-size-*` rules to
+ * `Icon.module.scss`: doing so would change icon sizes at ~130 call sites in one
+ * step, and Richard scoped this phase to the one button and filed the sweep.
+ * So this is the honest version of "make it bigger" — an explicit box here,
+ * not a `size` prop that changes no pixels.
+ *
+ * `.HideControl button > span` is specificity (0,1,2), which beats
+ * `Icon.module.scss`'s `.Root` (0,1,0); the glyph's own `svg { width: 100% }`
+ * then fills whatever we set. Nothing outside this one control is affected.
+ *
+ * When the `IconSize` sweep lands, delete this block and pass a size instead.
+ */
+.HideControl {
+  button > span {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 /* The `⋯` is the *replacement* for float and full, so it exists only where they

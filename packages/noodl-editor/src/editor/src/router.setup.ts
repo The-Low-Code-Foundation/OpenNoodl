@@ -166,7 +166,7 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     // Not MagicWand: a wand means "generate", and Explain is read-only. It is also
     // the app-wide AI-action mark (AiAuthoringPanel, NodeContextMenu), so the rail
     // was colliding with it. `Explain` is a node card being asked a question.
-    icon: IconName.Explain,
+    icon: IconName.MessageCircleQuestion,
     panel: ExplainPanel
   });
 
@@ -181,7 +181,7 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     order: 4.7,
     // Was Pencil, which said "edit" and nothing more — this is the panel that
     // actually authors a graph. Explain and Build were effectively swapped.
-    icon: IconName.BuildAi,
+    icon: IconName.Hammer,
     panel: AiAuthoringPanel
   });
 
@@ -313,7 +313,9 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     name: 'Provenance',
     description: 'Walks backwards from a port to show where its value came from, and where it stopped.',
     order: 9.5,
-    icon: IconName.Search,
+    // POL-003: was IconName.Search — the same magnifier the Search panel two
+    // entries up already owns, so the rail carried the mark twice.
+    icon: IconName.SplinePointer,
     panel: ProvenancePanel
   });
 
