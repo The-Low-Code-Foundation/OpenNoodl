@@ -1,7 +1,7 @@
 # Phase 39 — Progress
 
-**Status:** 6 done, 8 not started (2 of those found by the verification pass, not reported).
-**Last updated:** 2026-08-03 (second session)
+**Status:** 8 done, 1 diagnosed-not-fixed, 6 not started.
+**Last updated:** 2026-08-04 (third session)
 
 POL-006 also has a head start nobody had noticed: **`library/modules/lucide-icons/` already ships the
 full Lucide set as a bundled ISC webfont** (1998 glyphs, `lucide.woff2` + a `type: "iconset"`
@@ -20,27 +20,43 @@ both a matter of wiring that module in, not of sourcing an icon set.
 | [POL-004](POL-004-TOKENS-USED-AS-WHAT-THEY-ARE-NOT.md) — token misuse | 9b, 12a | ✅ **done** (2 residuals) | The check found **25** undefined tokens, not 6 — writing it first, per its own trap, is what caught that. `DialogBackground.Secondary` deleted; it was also miscolouring **every tooltip arrow** in the editor, which nobody reported. Gate: `npm run tokens:css`. Residual: the diff modal and a populated walk are unverified live — both need a longer drive, POL-010 owns the walk. `4382cb24` |
 | [POL-005](POL-005-BACKEND-SURFACES-OPEN-DOCKED.md) — backend surfaces | 7 | ✅ **done** (1 open question) | Verified live against a running backend: all seven open at **859px** with **zero** detached-bar elements, close returns to Backend Services, WFA-005's route lands identically. Slice 3's layout pass done in both themes. **Criterion 5's premise was wrong** — a surface has no float/full route at all (1 header button vs Backend Services' 6), so this change removed the only path to full mode. Richard's call whether that matters. Three findings filed, none width-caused: [POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md), the invisible "Save policy" button, Schema's bespoke header. |
 | [POL-009](POL-009-A-PIN-BELONGS-TO-ONE-CANVAS.md) — pinned run | 11 | ✅ **done** | All six criteria verified live. The identity the fix compares **does** exist for a workflow canvas (`/#__workflow__/wf_pol009`) — that was the open risk. Step index survives navigation at a *non-default* value (`Step 2 / 3`), a second pin replaces the first, unpin is permanent. The pin even outlives the workflow document being closed and rebuilt. |
-| [POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md) — `record.id` vs `objectId` | — | ☐ filed, not started | Found doing POL-005 slice 3. Blank id column, React key warning, **one cell click opens editors in all rows**, **delete silently does nothing**. Five consequences, all observed live. |
-| [POL-015](POL-015-THE-FIRST-WORKFLOW-CANNOT-BE-CREATED.md) — first workflow | — | ☐ filed, not started | Found setting up POL-009's fixture. The create form's backend list is derived from *existing workflows*, so with none it passes `''` and fails. A first-run blocker for the whole workflow feature. |
+| [POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md) — `record.id` vs `objectId` | — | ✅ **done** | Option (b): `objectId` is the one name. A **sixth** consequence decided it — the search clause sent `{ id: { contains } }`, which the adapter turns into `"id" LIKE ?` against a table with no such column, so every search failed at the database. The drive found two more defects: **Enter in a cell editor saved the value the cell started with** (a `useCallback` closure captured at mount), and a failed delete was on screen for ~300ms because the realtime refresh clears `error`. All 7 criteria verified live. `5c8c43cf`, `0064d520` |
+| [POL-015](POL-015-THE-FIRST-WORKFLOW-CANNOT-BE-CREATED.md) — first workflow | — | ✅ **done** | Backend list now comes from `listWorkflowDefinitions()` — the call the panel already makes, already scoped to *running* backends with `error` on the unreachable. Better than the spec's `useLocalBackends`, which lists stopped ones. All 5 criteria verified live on a backend with `workflowCount: 0`. `480ade46` |
 | [POL-006](POL-006-A-FONT-AND-AN-ICON-SET.md) — font + icon set | 8 | ☐ not started | `--font-sans` is dangling repo-wide. Recommends Inter + Lucide sprite, bundled not CDN. Touches `LocalProjectsModel.ts` — dirty in another session. |
 | [POL-007](POL-007-THE-BUILD-PANEL-FITS.md) — Build panel layout | 9a | ☐ not started | Mechanism confirmed (row min-width > 400px panel). |
-| [POL-008](POL-008-SAMPLE-DATA-AND-A-THIN-BUILD.md) — sample data + thin build | 10 | ☐ not started | **Part A undiagnosed** — three candidates, pick one before fixing. Part B gated on POL-006. |
+| [POL-008](POL-008-SAMPLE-DATA-AND-A-THIN-BUILD.md) — sample data + thin build | 10 | ◐ **Part A diagnosed, not fixed** | **It is none of the three candidates.** The export always ships a complete signed-in user — `username`, `email` and a `sessionToken`, measured live with `sampleData: undefined` — and its summary is verbatim the string in Richard's screenshot. `installSandbox` intercepts the network and only the network; `UserService` requests `/users/me` only if a session already exists; nothing writes one. **The sandbox serves a signed-in user nobody asks for.** The fix that implies: seed the session where `installSandbox` runs. Part B still gated on POL-006. |
 | [POL-010](POL-010-THE-WALK-DOESNT-WALK.md) — provenance walk | 12b | ◐ **diagnosed, not fixed** | Candidate (1): **the topology only contains what the preview has instantiated**. The engine is fine — measured 4 hops from one edge on real runtime ids. Candidate (2) is wrong: NodeGX node ids are readable by design (`filterCollection`, `btn`, `t1`), so nothing failed to join. Two identical `Node`/`Node id` strings is the signature of a node **absent** from the topology. Also found: `TraceSession` is never reset, so it serves the *previous project's* graph after a switch. |
 | [POL-011](POL-011-FX-ON-MULTILINE-STRINGS.md) — `fx` on multiline | 13 | ☐ not started | Mechanism confirmed: `multiline: true` routes to `TextAreaType`, which has no expression support. |
 | [POL-012](POL-012-SET-ALL-FOUR-SIDES-AT-ONCE.md) — link padding/margin | 14 | ☐ not started | Includes the four-undo-entries defect, worth fixing independently. |
 
 ## What is confirmed vs. what is not
 
-Ten of the twelve tasks have a mechanism established by reading the code, with file and line
-references in each spec. **Two do not**, and their first slice is diagnosis, not repair:
+**Nothing in this phase is undiagnosed any more.** POL-008 Part A and POL-010 were the two whose
+first slice was diagnosis rather than repair; both now have a named mechanism written into their own
+spec, and in both cases the answer was **not** on the candidate list:
 
-- **POL-008 Part A** — why sample data does not reach the preview. Three candidates; the plumbing
-  exists end to end, so it is one of "never emitted", "wrong shape for a `User` node", or "the
-  sandbox drops it".
-- **POL-010** — why the provenance walk stops at one hop. Two candidates; the suspicious signal is a
-  node id that equals the node name, which would break edge lookup entirely.
+- **POL-008 Part A** — not "never emitted", not "wrong shape", not "the sandbox drops it". The export
+  is complete and correct; the sandbox intercepts the network and nothing ever signs in, so the one
+  route that would serve the sample user is never requested.
+- **POL-010** — not a broken edge lookup. The topology describes what the *preview instantiated*, not
+  what the graph contains.
 
-Neither should be estimated or started as a fix.
+Both are diagnosed and unfixed. Neither fix has been started.
+
+### The pattern worth carrying
+
+Both diagnoses died the same way a session earlier died on POL-010: **a candidate built on an
+assumption about what a value looks like.** POL-010 assumed node ids are UUIDs; POL-008's three
+candidates all assumed the sample data was missing. In both cases printing the actual value took two
+minutes and killed the whole branch. Print it before theorising about it.
+
+## Found on the way, and not this phase's
+
+- **`nodegx-backend`'s jest suite is not green at baseline.** `tests/email-flows.test.ts` fails two
+  specs — both 30s timeouts in *"Send Email node (WorkflowRunner integration)"*. Confirmed
+  pre-existing by running that suite against `HEAD`'s copy of the only backend file this session
+  touched: it fails identically. 69 of 70 suites and 743 of 755 specs pass. Nobody owns this; it is
+  recorded here so the next person does not spend the fifteen minutes proving it is not theirs.
 
 ## Answered by Richard — 2026-08-03
 

@@ -53,6 +53,72 @@ Run the flow with the scripted-session / no-provider driver, log `sampleDataFor(
 point `sandboxExport` is called, and log what the sandbox receives. **Do not start fixing until the
 answer is one of the three.** All three are plausible and they need different fixes.
 
+### ANSWERED — 2026-08-04. It is none of the three.
+
+**The sandbox serves a signed-in user that nobody ever asks for. Nothing signs the preview in.**
+
+Measured in the running editor with the no-provider driver, replaying the recorded `account-card`
+candidate — which contains a real `net.noodl.user.User` node and the wire
+`Connected User.email → Text.text`, the same shape Richard reported. `buildSandboxExport` was called
+exactly as `SandboxPreview` calls it, with `sampleData: undefined` (his case: a profile page reads
+the signed-in user, not a collection, and the tool schema tells the model `sample_data` is *"only
+for components that read a backend"*, keyed by collection):
+
+```
+summary:  "Sample data — signed in as a sample user"     ← verbatim the string in his screenshot
+classes:  []
+user:     objectId, id, createdAt, updatedAt, __sandbox, username, email, emailVerified,
+          name, firstName, lastName, sessionToken, profileImage, dob
+username: "sample.user@example.com"
+email:    "sample.user@example.com"
+sessionToken: "r:sandbox-session"
+```
+
+So the data is **there, complete, and correctly shaped** — including a session token. Each candidate
+in turn:
+
+- **(1) never emitted** — wrong. `buildSandboxDataset` does not need the model:
+  `sandboxUser()` hardcodes `username`/`email`, and its docstring already says the dataset is "never
+  empty: a graph that queries nothing still gets a signed-in user".
+- **(2) wrong shape for a `User` node** — wrong. The record carries exactly the fields the node's
+  `username`/`email` getters read.
+- **(3) the sandbox drops it** — the right family, but not the mechanism. Nothing is dropped.
+
+The actual gap is between the two halves:
+
+1. `installSandbox` intercepts **the network and only the network** — it patches `window.fetch` and
+   `XMLHttpRequest.prototype`, and that is the entire file
+   ([`install.ts`](../../../packages/noodl-runtime/src/sandbox/install.ts)). The dataset is consulted
+   only when a request arrives.
+2. `UserService` issues that request **only if a session already exists**:
+   `getUserFromLocalStorage()` → and only `if (currentUser)` does it set `this.current` and call
+   `fetchCurrentUser`
+   ([`userservice.ts:141-160`](../../../packages/noodl-viewer-react/src/nodes/std-library/user/userservice.ts#L141-L160)).
+3. Nothing writes one. `grep -rn localStorage` over `noodl-runtime/src/sandbox/`, the authoring
+   models and `AuthoringPreviewDocument/` returns **nothing**.
+
+A fresh sandbox window therefore has no session → `UserService.current` is `undefined` → the `User`
+node's `_internal.model` is unset → `username`/`email` return `undefined` → the bound Texts keep
+their design-time parameters. That is "Text" and "Email placeholder", exactly as reported, under a
+strip that says *"signed in as a sample user"*. The strip is not lying about the data; it is
+describing an export the runtime never consumed.
+
+`GET /users/me` — the one route that would have served this record — is never requested. (Confirmed
+structurally rather than by call-count: `responder.ts`, `store.ts` and `install.ts` are not in the
+editor bundle at all, only the viewer's, which is the separation itself.)
+
+### The fix this implies
+
+Not "ship sample data" — it already ships. **Sign the sandbox in.** The dataset already carries a
+`sessionToken`, so the seam is the one place `installSandbox` runs: seed the session the same
+adapter would have written, before the runtime is constructed, so `getUserFromLocalStorage()`
+answers and the existing `/users/me` interception does the rest. That keeps the mechanism the
+sandbox already has and adds no branch to any node.
+
+Criterion 2 still binds independently: with the session seeded, a `User`-node preview shows sample
+values; a component that queries a collection the dataset cannot describe must still say so rather
+than present placeholders as data.
+
 ### Then, whichever it is
 
 The non-negotiable outcome: **"Sample data" must never silently show placeholders.** If there is no

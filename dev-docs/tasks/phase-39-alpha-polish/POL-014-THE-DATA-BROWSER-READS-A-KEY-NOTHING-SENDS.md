@@ -71,6 +71,36 @@ returns for a missing id and make a non-delete visible, because the fix in slice
 none of them needs a backend: `DataGrid` takes `records` and `columns` as props. A test that renders
 two rows and asserts one `CellEditor` after one cell click would have caught this.
 
+## BUILT AND VERIFIED — 2026-08-04
+
+Option **(b)**, on evidence the spec did not have: the search path settles it. `{ id: { contains } }`
+reaches the adapter as `"id" LIKE ?` against a table with no such column, so **every search failed at
+the database** — a sixth consequence, and one option (a) would have left in place. `objectId` is now
+the one name in the renderer, as it already was in the IPC layer, the backend and the Parse wire.
+
+Two things the drive found that reading could not:
+
+- **Enter in a cell editor saved the value the cell started with.** `handleKeyDown` was memoised on
+  `[type, onCancel]` above `handleSave`, so it captured the mount-time closure. Typing and pressing
+  Enter moved the record's `updatedAt` and left the field unchanged; blur — an inline arrow — wrote
+  correctly. Criterion 3 cannot pass without this, so it is fixed here.
+- **A failed delete was visible for ~300ms.** `loadData` clears `error` on every run and the realtime
+  subscription runs `loadData` on every change to the collection, including the change that made the
+  row stale. Write failures now have their own state and survive the refresh.
+
+All seven criteria verified in the running editor against a real local backend, two records, and the
+real native confirm. The route half of slice 2 also has a jest test
+(`nodegx-backend/tests/service-http.test.ts`), and criterion 7's test is
+`noodl-editor/tests/databrowser/recordIdentity.spec.ts` — two pure functions, because this suite has
+no React test infra.
+
+**Harness note, and it cost most of an hour.** The grid scrolls horizontally inside the 860px
+surface, so a delete button's `getBoundingClientRect()` reports `x: 1006` — a real viewport
+coordinate *outside the panel*. `dispatchClick` there lands on something else and reports success.
+Three separate "the confirm must be answering Cancel" theories died to this. Always
+`scrollIntoView({ inline: 'center' })` first and assert `btn.contains(document.elementFromPoint(x,y))`
+before clicking. The native-confirm-plus-`keystroke return` recipe was correct the whole time.
+
 ## Criteria
 
 1. The `id` (or `objectId`) column shows a value for every row.

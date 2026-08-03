@@ -61,6 +61,34 @@ creating. Decide, do not leave it to the error.
 successful Refresh and through the workflow appearing in the list. Clear `status` when the next
 action succeeds.
 
+## BUILT AND VERIFIED — 2026-08-04
+
+The source is **`listWorkflowDefinitions()`**, not `useLocalBackends` as slice 1 suggested. It is the
+call the panel already makes, it returns one entry per *running* backend with `error` set on the ones
+that did not answer, and it therefore satisfies slices 1 and 2 together: a stopped backend simply is
+not in the list, and an unreachable one is marked and never offered. `useLocalBackends` lists stopped
+backends too, so it would have needed slice 2 bolted back on, and it would have dragged
+`CloudFunctionDeployer` into this panel.
+
+All five criteria verified in the running editor, on `BCN009 QA` — a real local backend with **zero**
+workflow definitions (`workflowCount: 0` from its own status):
+
+1. `+` → "POL015 First Workflow" → **Create** → *"POL015 First Workflow — unsaved / On BCN009 QA."*
+   No error. This is the gesture that had never once worked.
+2. With `SQLite backend` (5 workflows) also running, the picker offers **both** — `["BCN009 QA",
+   "SQLite backend"]`. Before, `backends` came from the workflows, so the empty one was invisible and
+   `backends.length > 1` was false, meaning no picker rendered at all.
+3. `App backend`, stopped, is offered by nothing. With exactly one running backend the form says
+   *"On BCN009 QA."* instead of a pointless one-option select.
+4. Stopping a backend behind the panel's back and pressing Create produced *"Creating failed. No
+   running backend to create this workflow on. Start one from the Backend Services panel, then
+   Refresh."* — and **Refresh cleared it**. `refresh` clears `error` only, never `status`, because the
+   save handler sets `status` and then calls `refresh`.
+5. Driven from a project that has never had a workflow.
+
+The failure message is also now the panel's own sentence rather than
+`Error invoking remote method 'backend:workflow-step-kinds': …`.
+
 ## Criteria
 
 1. On a project with a running local backend and **zero** workflows, `+` → name → Create makes a
