@@ -163,6 +163,20 @@ everything else is.
 5. The raw/edit view still shows the comments.
 6. **Live**: run the wizard, then open Docs → CONVENTIONS.md.
 
+### Criteria 1, 2 and 6 — closed live, 2026-08-03
+
+Not testable offline (core-ui has jest but no jsdom), so they were driven in the running app with
+`scripts/aib38-live/scripted-scoping.js`, which scripts `AiClient.chatStream` and touches nothing
+else.
+
+1. ✅ The finished reply rendered `h2`, `strong`, `ul`/`li` and `code`, with no `##` or `**` left in
+   the text. Rendered **while streaming**, too — heading and bold were already markup at 39 of 140
+   characters, which is AIB-009 F7's fix and this criterion holding at the same time.
+2. ✅ The user's own `**Signup**` was shown verbatim, with no `strong` in that bubble.
+6. ✅ The wizard created a real project (`--create`), and `docs/CONVENTIONS.md` in the Docs panel
+   rendered all eight headings through to its last line — 1386 characters, no `<!--` in the emitted
+   HTML. That is the exact document from the report, whose preview was a blank page.
+
 ## Traps
 
 - Two `Markdown` consumers exist; changing the shared component affects the Docs panel. Test both.

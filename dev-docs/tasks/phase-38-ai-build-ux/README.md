@@ -207,16 +207,52 @@ says which. Where something is still a hypothesis, it says that instead.
 >   the same claim had already been qualified on the screen that merely **explains**. That is now
 >   **five** of this phase's defects that came from a mount rather than a diff.
 
+> **✅ AIB-009's register is closed** (2026-08-03) — F4, F6, F7 and F11 built, F12 found and fixed,
+> F5 downgraded. Carry forward:
+>
+> - **The launcher was telling users AI was off, over a working key.** F12: `EditorSettings` loads
+>   from disk asynchronously, `AiConfigStore` answers `'disabled'` until it lands, and the launcher
+>   cached that answer in a `useMemo` whose only other trigger was the settings dialog closing. It
+>   was found by a driver that could not get *into* the wizard, which means **exit criterion 1 was
+>   unreachable on a cold launch and nothing in the phase knew**. A cached read of an
+>   asynchronously-loaded store is the shape; the store is not.
+> - **Seven of this phase's defects have now come from a mount.** The two this batch added were both
+>   prose the fix had just written — a count interpolated into a sentence whose verb was not (*"The 1
+>   document are written last"*), and two "it"s meaning different things. Neither is visible in a
+>   diff.
+> - **A deadline has to distinguish a stall from a cancellation, or it makes things worse.** F11's
+>   deadline aborts its own inner controller so `signal.aborted` still means "the user stopped this";
+>   the first version aborted the caller's and turned every stall into a cancellation, which inside a
+>   plan run silently skips every remaining operation.
+> - **An entry's "either/or" can be a false choice.** F4 asked for a way back *or* a warning. A user
+>   told what stopping costs still needs the way back, and a way back nobody mentions is not offered.
+> - **The register's own fix suggestion was again not the one taken** (F6 wanted our logging demoted;
+>   the line that mattered was Chromium's, emitted before our code runs) — the third time in this
+>   phase. Read the mechanism, including this README's.
+
 ## Where the phase stands (2026-08-03)
 
 | Task | State |
 |---|---|
-| AIB-001 | built; criterion 6 (live replay) still owed |
+| AIB-001 | built; criterion 6 (live, real provider) still owed |
 | AIB-002 | **built, live QA green** |
-| AIB-003 | slices 1–3 built; slice 4 (persist under `.nodegx/plan/`) optional, not done; live QA owed |
+| AIB-003 | slices 1–3 built, **criterion 6 live QA green**; slice 4 (persist under `.nodegx/plan/`) optional, not done |
 | AIB-004 | **built, live QA green** |
-| AIB-005 | **built, live QA green** (slice 3's wizard label not driven live) |
-| AIB-006 | built; criteria 1–2 not testable offline, live QA owed |
+| AIB-005 | **built, live QA green** — slice 3's wizard label now driven through the real wizard |
+| AIB-006 | **built, criteria 1, 2 and 6 live QA green** |
 | AIB-007 | **built** (all four slices); criterion 6 (live, against a real provider) owed |
-| AIB-008 | **built** (all four slices); criterion 7 (live connect + push) owed |
-| AIB-009 | F1, F2, F8, F9, F10 closed; F6 half closed; F11 open |
+| AIB-008 | **built** (all four slices); criterion 7 (live connect + push) owed — needs a GitHub account |
+| AIB-009 | **register closed** — F1, F2, F4, F6, F7, F8, F9, F10, F11, F12; F5 open at low priority |
+
+### What the exit criteria still owe
+
+Criteria 1 and 2 have been replayed end to end against a **scripted** provider: the wizard in AI
+mode, a streamed markdown conversation, a real project created on disk with its four documents, the
+editor opening it, and the Build panel announcing the waiting plan unprompted. Criterion 6's second
+half is green the same way — `docs/CONVENTIONS.md` renders all eight of its headings in the Docs
+panel, with no comment leaking into the HTML.
+
+What no scripted driver can stand in for is a **model**: criteria 3, 4, 5 and 7 are about what a real
+plan run does with real output, and AIB-001 criterion 6 (Richard's own three-page plan with a
+`PageInputs` node) is the one that matters. That, AIB-007 criterion 6 and AIB-008 criterion 3/7 are
+the whole of what is left, and all of it needs either provider credit or a GitHub account.

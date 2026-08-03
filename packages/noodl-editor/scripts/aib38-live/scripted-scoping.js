@@ -222,7 +222,26 @@ async function main() {
     if (!installed.ok) throw new Error(installed.error);
 
     // ── Into the wizard, in AI mode ─────────────────────────────────────────
-    await clickWithText(client, 'New project');
+    // A wizard left open by an earlier run starts on whatever step it reached,
+    // and clicking "New project" behind it lands on the backdrop.
+    if (await evaluate(client, `(() => /Create New Project|What are we building/.test(document.body.innerText || ''))()`)) {
+      await evaluate(
+        client,
+        `(() => {
+           const b = Array.from(document.querySelectorAll('div')).find((d) => /Backdrop/.test(d.className || ''));
+           if (b) b.click();
+           return true;
+         })()`
+      );
+      await sleep(1500);
+    }
+    // Retried once: a click that lands while the launcher is still settling
+    // after a close is swallowed, and the second one always takes.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await clickWithText(client, 'New project');
+      await sleep(1200);
+      if (await evaluate(client, `(() => /Create New Project/.test(document.body.innerText || ''))()`)) break;
+    }
     await waitFor(client, `(() => /Create New Project/.test(document.body.innerText || ''))()`, {
       what: 'the wizard to open'
     });
@@ -260,7 +279,7 @@ async function main() {
        })()`
     );
     await sleep(200);
-    await clickWithText(client, 'Choose', { exact: false });
+    await clickWithText(client, 'Browse', { exact: false });
     await sleep(400);
     await clickWithText(client, 'Next', { exact: true });
     await sleep(300);
@@ -311,15 +330,14 @@ async function main() {
       midStream.thinking === false,
       `thinking row present: ${midStream.thinking}`
     );
+    // Only what has actually arrived by the first hold: the heading and the
+    // bold. Asserting the list here failed against correct code — the list is in
+    // a later chunk, and a check that demands the whole document is not checking
+    // the partial render at all.
     check(
       steps,
-      'AIB-006 §1: the partial reply is rendered markdown — heading, bold, list',
-      Boolean(
-        streamed[0] &&
-          streamed[0].tags.includes('h2') &&
-          streamed[0].tags.includes('strong') &&
-          streamed[0].tags.includes('li')
-      ),
+      'AIB-006 §1: the partial reply is already rendered markdown — heading and bold',
+      Boolean(streamed[0] && streamed[0].tags.includes('h2') && streamed[0].tags.includes('strong')),
       streamed[0] ? [...new Set(streamed[0].tags)].join(',') : 'no assistant bubble'
     );
     check(
@@ -346,6 +364,15 @@ async function main() {
       'AIB-009 F7: the streamed copy is replaced by the transcript, not added to it',
       finalAssistant.length === 1 && finalAssistant[0].text.includes('One conversation'),
       `${finalAssistant.length} assistant bubble(s) after the turn`
+    );
+    check(
+      steps,
+      'AIB-006 §1: the finished reply renders every construct — heading, bold, list, code',
+      Boolean(
+        finalAssistant[0] &&
+          ['h2', 'strong', 'li', 'code'].every((tag) => finalAssistant[0].tags.includes(tag))
+      ),
+      finalAssistant[0] ? [...new Set(finalAssistant[0].tags)].join(',') : 'no assistant bubble'
     );
     check(
       steps,

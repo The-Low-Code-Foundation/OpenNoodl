@@ -113,7 +113,17 @@ replace, which is a collision AIB-001's preflight would refuse.
 ## What was built (2026-08-03)
 
 All four slices, with slice 4 answered by slice 2 as the task recommends. Criteria 1–5 are built
-and 2–5 are tested; criterion 6 is the live replay.
+and 2–5 are tested.
+
+**Criterion 6 is now green through the real wizard** (2026-08-03). The AIB-005 live pass drove the
+handover *seam* — `setPendingScopePlan`, which is what the wizard's confirm path calls — because a
+real conversation meant a real provider. `scripts/aib38-live/scripted-scoping.js --create` now drives
+the conversation too, against a scripted `AiClient`: entry card → basics → preset → a streamed
+conversation → **Create project — the plan waits in Build** → the editor opens the new project with
+the Build panel already showing *"From the scoping conversation that created this project — 3
+operations. Nothing has been built yet."* and `Open the plan` / `Not now` beside it. Nothing touched
+the sidebar. That is slice 3's wizard label and slices 1–2's announcement, in one run, from the
+screen a user actually starts on.
 
 ### AIB-003 moved the fact this task announces
 

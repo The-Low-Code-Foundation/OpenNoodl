@@ -866,12 +866,18 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                 that the documents are written in a second pass, after the
                 components, so stopping skips all of them. Said here, before the
                 click, because afterwards it is a fact rather than a choice.
+
+                "The 1 document are written last" is what the first version of
+                this said on screen, because the count was interpolated and the
+                verb was not.
               */}
               {docsPending.length > 0 && !writingDocs && (
                 <Text textType={TextType.Shy}>
-                  Stopping keeps everything built so far. The {docsPending.length} document
-                  {docsPending.length === 1 ? '' : 's'} are written last, so they will be skipped — you can write
-                  them afterwards without re-running the build.
+                  Stopping keeps everything built so far.{' '}
+                  {docsPending.length === 1
+                    ? 'The document is written last, so it will be skipped — you can write it'
+                    : `The ${docsPending.length} documents are written last, so they will be skipped — you can write them`}{' '}
+                  afterwards without re-running the build.
                 </Text>
               )}
             </>
@@ -1224,8 +1230,9 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                       <VStack UNSAFE_style={{ gap: 6 }}>
                         <Text textType={TextType.Secondary}>
                           Stopping skipped {docsSkippedByStop.length} document
-                          {docsSkippedByStop.length === 1 ? '' : 's'}. What was built is still staged — the
-                          documents can be written against it now, without authoring anything again.
+                          {docsSkippedByStop.length === 1 ? '' : 's'}. What was built is still staged, and the
+                          {docsSkippedByStop.length === 1 ? ' document can' : ' documents can'} be written
+                          against it now, without authoring anything again.
                         </Text>
                         <PrimaryButton
                           label={writingDocs ? 'Writing…' : `Write the documentation (${docsSkippedByStop.length})`}

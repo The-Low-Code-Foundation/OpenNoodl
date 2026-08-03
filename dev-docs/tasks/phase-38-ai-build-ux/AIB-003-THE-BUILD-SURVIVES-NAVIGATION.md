@@ -178,7 +178,12 @@ authored-but-unapplied set across a restart.
    `renderScopeRecord` rather than a fixture — the transcript is recovered by
    parsing the rendered form, and a fixture would let the two drift while the
    parser kept passing.
-6. ⏳ **Owed.**
+6. ✅ **Live, 2026-08-03**, via `scripts/aib38-live/scripted-stop.js`. With operation 1 staged and
+   operation 2 still authoring: scope tab to *This component* and back, then the Build panel closed
+   (switched to Docs) and reopened — the plan, the run and the staged candidate all intact each
+   time, and the panel came back reading `Building 2 of 3 · 13s · $0.01` rather than an empty
+   panel with the candidates still in memory behind it. The driver holds each turn on a promise it
+   resolves over CDP, so "navigate away mid-run" is a step rather than a race.
 
 ## Traps
 

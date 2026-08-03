@@ -57,6 +57,8 @@ import { IRouteProps } from '../../pages/AppRoute';
 import { AiConfigStore } from '../../store/AiAssistantStore';
 import { GitHubOAuthService, GitHubClient } from '../../services/github';
 import { ProjectOrganizationService } from '../../services/ProjectOrganizationService';
+// Relative for the same reason `AiConfigStore` above is.
+import { EditorSettings } from '../../utils/editorsettings';
 import getDocsEndpoint from '../../utils/getDocsEndpoint';
 import { LocalProjectsModel, ProjectItemWithRuntime } from '../../utils/LocalProjectsModel';
 import { tracker } from '../../utils/tracker';
@@ -494,6 +496,33 @@ export function ProjectsPage(props: ProjectsPageProps) {
 
   /** The route out of "AI is not configured", from the entry card. */
   const handleConfigureAi = useCallback(() => openSettingsDialog('ai'), [openSettingsDialog]);
+
+  /**
+   * AIB-009 F12 — read it again once the settings exist.
+   *
+   * `EditorSettings` loads from disk asynchronously and `get()` returns
+   * `undefined` until it lands, so `AiConfigStore.getProvider()` answers
+   * `'disabled'` for the first moments of a launch. This memo runs in the first
+   * render and its only other trigger is the settings dialog closing — so a
+   * launcher that lost that race told the user **"AI is turned off"** on the
+   * first screen of the product, over a perfectly good API key, for the rest of
+   * the session. Found live: the card was disabled while
+   * `AiConfigStore.getProvider()` returned `anthropic` in the same renderer, and
+   * opening and closing Settings — changing nothing — enabled it.
+   *
+   * `ready` is the seam `EditorSettings` documents for exactly this. Bumping the
+   * version once it resolves costs one re-read and is a no-op when the race was
+   * won.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    void EditorSettings.instance.ready.then(() => {
+      if (!cancelled) setAiConfigVersion((n) => n + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const aiAvailability = useMemo(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- aiConfigVersion is the re-read trigger
