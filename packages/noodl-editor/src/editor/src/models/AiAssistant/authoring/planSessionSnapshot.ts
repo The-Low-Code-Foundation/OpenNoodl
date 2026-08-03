@@ -219,9 +219,12 @@ export function describeRestore(snapshot: PlanSessionSnapshot): string {
     parts.push(`${staged} operation${staged === 1 ? '' : 's'} still staged — nothing has reached your project.`);
   }
   if (interrupted > 0) {
-    parts.push(
-      `${interrupted} was cut off when the editor closed and ${interrupted === 1 ? 'is' : 'are'} waiting to be retried.`
-    );
+    // Both verbs agree with the count. This phase has now filed the same defect
+    // twice — a number interpolated into a sentence whose verb was not ("The 1
+    // document are written last") — and it is invisible in a diff.
+    const was = interrupted === 1 ? 'was' : 'were';
+    const is = interrupted === 1 ? 'is' : 'are';
+    parts.push(`${interrupted} ${was} cut off when the editor closed and ${is} waiting to be retried.`);
   }
   if (staged === 0 && interrupted === 0) {
     parts.push('Nothing was authored yet — the plan is as you left it.');

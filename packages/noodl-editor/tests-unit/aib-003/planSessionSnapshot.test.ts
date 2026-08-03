@@ -215,7 +215,19 @@ describe('what the panel says about a restore', () => {
 
     expect(text).toContain('1 operation still staged');
     expect(text).toContain('nothing has reached your project');
-    expect(text).toContain('2 was cut off');
+    expect(text).toContain('2 were cut off');
+  });
+
+  it('agrees every verb with the count', () => {
+    // The phase has filed this exact defect twice — a number interpolated into a
+    // sentence whose verb was not — and no diff shows it.
+    const one = describeRestore(
+      sessionSnapshot({ run: runSnapshot({ operations: [operation('op-2', 'authoring')], files: {} }) })
+    );
+
+    expect(one).toContain('1 was cut off');
+    expect(one).toContain('is waiting to be retried');
+    expect(describeRestore(sessionSnapshot())).toContain('are waiting to be retried');
   });
 
   it('says so when a plan was never authored', () => {
