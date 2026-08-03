@@ -19,7 +19,6 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { MenuDialogItem, MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
-import { useSidePanelLayoutContext } from '../../../../pages/EditorPage/useSidePanelLayout';
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
 import { LocalBackendInfo } from '../hooks/useLocalBackends';
 import { SecurityDisclosure } from '../SecurityDisclosure/SecurityDisclosure';
@@ -74,11 +73,10 @@ export function LocalBackendCard({
 }: LocalBackendCardProps) {
   const [isOperating, setIsOperating] = useState(false);
   const statusDisplay = getStatusDisplay(backend);
-  const layout = useSidePanelLayoutContext();
   const dataBrowser = dataBrowserAvailability('nodegx', 'managed');
 
   /**
-   * PNL-009: open a backend surface as a full panel.
+   * PNL-009: open a backend surface as a panel.
    *
    * This replaces seven `createPortal(…, document.body)` calls into a
    * `position: fixed` overlay with an 85%-black scrim. The surface is now a
@@ -86,27 +84,39 @@ export function LocalBackendCard({
    * header, `Escape`, and a remembered width — see `backendSurfaces.tsx` for why
    * registration was chosen over an ad-hoc child of full mode.
    *
-   * `onClose` is built here rather than in the surfaces module because the panel
-   * mode lives in React context: `dock()` is a stable callback, so capturing it
-   * for the surface's lifetime is safe.
+   * POL-005: this used to follow the open with `layout.openFull()`, which
+   * stretched an 860px-designed layout across the whole editor. All seven
+   * surfaces declare `defaultWidth: SURFACE_DEFAULT_WIDTH` (860) because that is
+   * the width the 900px modals they came from were laid out at, and full mode
+   * threw that away on every open.
+   *
+   * Richard reported it as "an extra X in the top right that just collapses the
+   * view", and then diagnosed it correctly himself: "the collapsed version looks
+   * perfect — maybe just make that the default and take away that weird
+   * collapsing X." The X was never an extra button. It is PNL-009's
+   * detached-panel bar, which renders only when `isDetached`, and it calls
+   * `dock()` — i.e. it took the panel back to the 860px the surfaces were built
+   * for. Dropping `openFull()` fixes both halves at once: the surfaces open at
+   * their designed width, and the bar stops existing because nothing on this
+   * path detaches any more.
+   *
+   * Float and full are still reachable from the panel header for a user who
+   * chooses them, and that path still gets the detached bar. That is coherent —
+   * what was wrong was arriving there without asking.
    */
   const openSurface = useCallback(
     (kind: BackendSurfaceKind) => {
-      const dock = layout?.dock;
-      const opened = openBackendSurface(kind, {
+      openBackendSurface(kind, {
         backendId: backend.id,
         backendName: backend.name,
         isRunning: backend.running,
-        onClose: () => {
-          SidebarModel.instance.switch(BACKEND_SERVICES_PANEL_ID);
-          dock?.();
-        }
+        // No `dock()` here any more: this path never detaches, so docking on
+        // close was returning the panel to the mode it was already in. A user
+        // who chose full from the header keeps it, which is what they asked for.
+        onClose: () => SidebarModel.instance.switch(BACKEND_SERVICES_PANEL_ID)
       });
-      // Full mode only if the surface actually opened — otherwise the editor
-      // would go full-screen on whatever panel happened to be showing.
-      if (opened) layout?.openFull();
     },
-    [backend.id, backend.name, backend.running, layout]
+    [backend.id, backend.name, backend.running]
   );
 
   const isEphemeral = backend.running && backend.persistence?.mode === 'ephemeral';

@@ -17,6 +17,7 @@ import React, { useMemo, useState } from 'react';
 
 import type { ExecutionStep, ExecutionWithSteps } from '@noodl-viewer-cloud/execution-history';
 
+import { NodeGraphContextTmp } from '../../../contexts/NodeGraphContext/NodeGraphContext';
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import { ExecutionDataPopup } from './ExecutionDataPopup';
 import { ExecutionNodeBadge, type NodeBounds } from './ExecutionNodeBadge';
@@ -52,9 +53,39 @@ export function ExecutionOverlay({ viewport, getNodeBounds }: ExecutionOverlayPr
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
 
+  /**
+   * POL-009: a pin belongs to ONE canvas — the one it was made on.
+   *
+   * Two events used to set this state and clear it, and nothing else touched it.
+   * The overlay is mounted over the canvas generally rather than over a
+   * particular graph, so navigating to another component left the header and the
+   * step timeline sitting over a graph the run has nothing to do with. The
+   * comment further down this file already said a pin over the wrong graph
+   * "looks exactly like a broken canvas" — the reasoning was written down and
+   * the guard was never built.
+   *
+   * Hide rather than clear. Richard's words were "stays visible … until you
+   * click unpin", which is a complaint about visibility, not about the pin's
+   * lifetime: navigating away and back should bring it back, and the Unpin
+   * button stays the only thing that ends a pin.
+   *
+   * The identity is the component that was open at pin time, matched by
+   * `fullName` — the same rule and the same comparison `explainTarget.ts` uses
+   * for a remembered selection, for the same reason.
+   */
+  const [pinnedComponentName, setPinnedComponentName] = useState<string | null>(null);
+  const [activeComponentName, setActiveComponentName] = useState<string | null>(
+    () => NodeGraphContextTmp.nodeGraph?.activeComponent?.fullName ?? null
+  );
+
+  useEventListener(EventDispatcher.instance, 'activeComponentChanged', () => {
+    setActiveComponentName(NodeGraphContextTmp.nodeGraph?.activeComponent?.fullName ?? null);
+  });
+
   // Listen for pin requests from ExecutionHistoryPanel
   useEventListener(EventDispatcher.instance, 'execution:pinToCanvas', (data: { execution: ExecutionWithSteps }) => {
     setPinnedExecution(data.execution);
+    setPinnedComponentName(NodeGraphContextTmp.nodeGraph?.activeComponent?.fullName ?? null);
     setSelectedNodeId(null);
     // Start at the last step so all completed steps are visible
     setCurrentStepIndex(data.execution.steps.length > 0 ? data.execution.steps.length - 1 : 0);
@@ -63,6 +94,7 @@ export function ExecutionOverlay({ viewport, getNodeBounds }: ExecutionOverlayPr
   // Listen for unpin requests
   useEventListener(EventDispatcher.instance, 'execution:unpinFromCanvas', () => {
     setPinnedExecution(null);
+    setPinnedComponentName(null);
     setSelectedNodeId(null);
   });
 
@@ -86,6 +118,19 @@ export function ExecutionOverlay({ viewport, getNodeBounds }: ExecutionOverlayPr
   if (!pinnedExecution) return null;
 
   /**
+   * POL-009: not this canvas — render nothing, keep the pin.
+   *
+   * Deliberately a render-time comparison of two strings rather than an effect:
+   * this component re-renders on every pan and zoom (see below), so the check
+   * has to be free, and clearing state in an effect would make the pin's
+   * lifetime depend on navigation, which is exactly what this task rejects.
+   *
+   * `selectedNodeId` and `currentStepIndex` ride along untouched, so coming back
+   * restores the step the user was on rather than resetting to the end.
+   */
+  if (pinnedComponentName !== activeComponentName) return null;
+
+  /**
    * WFA-002: `getNodeBounds` resolves against the CURRENTLY OPEN graph, and the
    * overlay used to render nothing for a step it could not place — no badge, no
    * message, just a header and a timeline over an untouched canvas. Pinning a
@@ -95,6 +140,13 @@ export function ExecutionOverlay({ viewport, getNodeBounds }: ExecutionOverlayPr
    * Deliberately computed in render rather than memoised on the execution: the
    * open graph changes underneath us (this component re-renders on every pan,
    * zoom and graph switch), and a stale "nothing matches" would be its own lie.
+   *
+   * POL-009 slice 3 — kept, not deleted. The component guard above removes the
+   * "pinned on a different canvas" case this was written for, but not the case
+   * it now covers alone: the run's own canvas, edited since the run, so a step's
+   * `nodeId` no longer exists. That is a different and still-reachable
+   * condition, and it is one where saying "3 of its 5 steps are not on this
+   * canvas" is more useful than silence.
    */
   const totalSteps = pinnedExecution.steps.length;
   const resolvedCount = pinnedExecution.steps.filter((step) => getNodeBounds(step.nodeId)).length;
