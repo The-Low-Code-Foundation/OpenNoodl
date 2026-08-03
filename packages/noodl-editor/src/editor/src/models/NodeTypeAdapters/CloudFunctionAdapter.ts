@@ -1,6 +1,7 @@
 import { ComponentModel } from '@noodl-models/componentmodel';
 
 import { ProjectModel } from '../projectmodel';
+import { readNameList } from './nameListParameter.warnings';
 import NodeTypeAdapter from './NodeTypeAdapter';
 
 export class CloudFunctionAdapter extends NodeTypeAdapter {
@@ -84,8 +85,8 @@ export class CloudFunctionAdapter extends NodeTypeAdapter {
           const uniqueNames = {};
 
           functionRequests.forEach((pi) => {
-            if (pi.parameters['params'] !== undefined)
-              pi.parameters['params'].split(',').forEach((p) => (uniqueNames[p] = true));
+            // AIB-001: `.split(',')` on the raw parameter — see `readNameList`.
+            for (const p of readNameList(pi, 'params')) uniqueNames[p] = true;
           });
 
           Object.keys(uniqueNames).forEach((inputName) => {
@@ -104,8 +105,8 @@ export class CloudFunctionAdapter extends NodeTypeAdapter {
         const uniqueNames = {};
 
         functionResponses.forEach((pi) => {
-          if (pi.parameters['params'] !== undefined)
-            pi.parameters['params'].split(',').forEach((p) => (uniqueNames[p] = true));
+          // AIB-001: `.split(',')` on the raw parameter — see `readNameList`.
+          for (const p of readNameList(pi, 'params')) uniqueNames[p] = true;
         });
 
         Object.keys(uniqueNames).forEach((inputName) => {

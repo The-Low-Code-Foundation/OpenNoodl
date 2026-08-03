@@ -556,13 +556,36 @@ function addPrimitiveOutputPropHandler(node: ReactNodeInstance, name: string, ou
   addOutputPropHandler(node, { [name]: prop }, output.propPath);
 }
 
+/**
+ * AIB-001 — is this value a design-token reference rather than a magnitude?
+ *
+ * A units-typed input normally carries `{ value, unit }` and is rendered as
+ * `value + unit`. A `var(--token)` string is already a complete CSS value and
+ * must reach the style untouched: fitting it with a unit produces
+ * `var(--space-4)px`, and reading `.value` off it produces `undefined`. Both
+ * failures are silent, which is why they survived — and the authoring prompt
+ * asks the model for this exact form on every spacing, radius and font-size
+ * port it sets.
+ *
+ * Provably inert for existing projects: no units-typed parameter in any of the
+ * 35 projects in this repository is a `var(` string.
+ */
+function isTokenReference(value: unknown): value is string {
+  return typeof value === 'string' && value.startsWith('var(');
+}
+
 function defineRegularInputProp(input: ReactInputPropDefinition, name: string) {
   if (!input.type) throw new Error(`input ${name} is missing a type`);
 
   if ((input.type as PortType).units) {
     input.set = function (value) {
       const props = input.propPath ? this.props[input.propPath] : this.props;
-      if (value && value.value !== undefined) {
+      // AIB-001: see the matching guard in the inputCss loop below. Here the
+      // failure was quieter still — a token reference has no `.value`, so the
+      // prop was DELETED and the property fell back to its default.
+      if (isTokenReference(value)) {
+        props[name] = value;
+      } else if (value && value.value !== undefined) {
         props[name] = value.value + value.unit;
       } else {
         delete props[name];
@@ -1812,6 +1835,18 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
 
     if (type.units) {
       input.set = function (value) {
+        // AIB-001: a design-token reference is already a complete CSS value.
+        // Without this it fell into the line below, was fitted with the port's
+        // default unit and emitted as `var(--space-4)px` — invalid CSS, dropped
+        // by the browser with no error anywhere. The authoring prompt instructs
+        // the model to write exactly this form for spacing and radius, so every
+        // on-system value it produced for a units port silently did nothing.
+        if (isTokenReference(value)) {
+          this.setStyle({ [styleTargetName]: value }, input.styleTag);
+          if (input.onChange) input.onChange.call(this, value);
+          return;
+        }
+
         if (typeof value !== 'object' && type.defaultUnit) {
           value = { value, unit: type.defaultUnit };
         }

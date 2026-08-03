@@ -1,3 +1,4 @@
+import { readNameList } from './nameListParameter.warnings';
 import NodeTypeAdapter from './NodeTypeAdapter';
 
 export class PageInputsAdapter extends NodeTypeAdapter {
@@ -19,17 +20,12 @@ export class PageInputsAdapter extends NodeTypeAdapter {
 
     const uniqueNames = {};
 
-    if (node.parameters['pathParams'] !== undefined) {
-      node.parameters['pathParams'].split(',').forEach((p) => {
-        uniqueNames[p] = true;
-      });
-    }
-
-    if (node.parameters['queryParams'] !== undefined) {
-      node.parameters['queryParams'].split(',').forEach((p) => {
-        uniqueNames[p] = true;
-      });
-    }
+    // AIB-001: this ran `.split(',')` on the raw parameter. Both of these fire
+    // from `nodeAdded` — inside the AI plan's apply transaction, among other
+    // places — so a value of the wrong shape did not produce wrong ports, it
+    // rolled the whole transaction back.
+    for (const p of readNameList(node, 'pathParams')) uniqueNames[p] = true;
+    for (const p of readNameList(node, 'queryParams')) uniqueNames[p] = true;
 
     Object.keys(uniqueNames).forEach((outputName) => {
       ports.push({
