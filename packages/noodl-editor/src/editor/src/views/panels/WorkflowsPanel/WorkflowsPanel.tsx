@@ -9,7 +9,12 @@ import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
 import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 
 import { SidebarModel, SidebarModelEvent } from '@noodl-models/sidebar/sidebarmodel';
-import { listWorkflows, runWorkflow, deleteWorkflow } from '@noodl-models/workflow/WorkflowBackendClient';
+import {
+  listWorkflows,
+  runWorkflow,
+  deleteWorkflow,
+  type WorkflowBackend
+} from '@noodl-models/workflow/WorkflowBackendClient';
 import { WorkflowDocument } from '@noodl-models/workflow/WorkflowDocument';
 import { WorkflowEditorEvent, WorkflowEditorService } from '@noodl-models/workflow/WorkflowEditorService';
 import {
@@ -46,6 +51,8 @@ export function WorkflowsPanel() {
   const [proposals, setProposals] = useState<BackendProposals[]>([]);
   const [unreachable, setUnreachable] = useState<string[]>([]);
   const [backendCount, setBackendCount] = useState(0);
+  /** POL-015: the running backends, from the backends — not from their workflows. */
+  const [backends, setBackends] = useState<WorkflowBackend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -65,6 +72,12 @@ export function WorkflowsPanel() {
     setWorkflows(result.workflows);
     setUnreachable(result.unreachable);
     setBackendCount(result.backendCount);
+    setBackends(result.backends);
+    // POL-015 slice 3: a failure banner used to survive a successful Refresh and
+    // even the workflow it complained about appearing in the list. A refresh that
+    // worked is evidence the last failure is over. `status` is left alone — the
+    // save handler sets it and then calls refresh.
+    setError(null);
     // WFA-007: a proposal is staged by another PROCESS, so there is no event to
     // listen for — this panel's existing refresh points (open, become active,
     // backend status change, the Refresh button) are the moments it can learn
@@ -209,11 +222,33 @@ export function WorkflowsPanel() {
     [guard, refresh]
   );
 
+  /**
+   * The backends a workflow can actually be created on, in offer order.
+   *
+   * POL-015: running and answering. A backend that is running but unreachable
+   * cannot serve its step-kind catalog, so offering it only moves the failure
+   * to after the Create click.
+   */
+  const creatable = backends.filter((b) => b.reachable);
+  const defaultBackendId = creatable[0]?.id ?? '';
+
   const create = useCallback(
     () =>
       guard('Creating', async () => {
-        const backendId = newBackendId || workflows[0]?.backendId || '';
-        const backendName = workflows.find((w) => w.backendId === backendId)?.backendName || 'backend';
+        // Was `newBackendId || workflows[0]?.backendId || ''` — three sources that
+        // are all empty on a backend with no workflows yet, which passed `''` to
+        // `WorkflowDocument.create` and failed with "Backend must be running".
+        const backendId = newBackendId || defaultBackendId;
+        const backend = backends.find((b) => b.id === backendId);
+        if (!backendId || !backend) {
+          throw new Error(
+            'No running backend to create this workflow on. Start one from the Backend Services panel, then Refresh.'
+          );
+        }
+        if (!backend.reachable) {
+          throw new Error(`${backend.name} is running but not answering, so it cannot say which steps it supports.`);
+        }
+        const backendName = backend.name;
         const name = newName.trim() || 'New workflow';
         const id = `wf_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'new'}`;
 
@@ -223,11 +258,13 @@ export function WorkflowsPanel() {
         setNewName('');
         setStatus('Created on the canvas. It is not on the backend until you save it.');
       }),
-    [guard, newBackendId, newName, service, workflows]
+    [guard, newBackendId, newName, service, backends, defaultBackendId]
   );
 
-  const backends = [...new Map(workflows.map((w) => [w.backendId, w.backendName])).entries()];
-  const grouped = backends.map(([id, name]) => ({
+  // Grouping the LIST is still a question about the workflows — a backend with
+  // none of them needs no heading. Only the create form asks the other question,
+  // "which backends exist", and that is what POL-015 stopped answering from here.
+  const grouped = [...new Map(workflows.map((w) => [w.backendId, w.backendName])).entries()].map(([id, name]) => ({
     id,
     name,
     items: workflows.filter((w) => w.backendId === id)
@@ -240,12 +277,18 @@ export function WorkflowsPanel() {
       UNSAFE_content_style={{ paddingInline: 0, paddingTop: 0 }}
       headerSlot={
         <>
-          <Tooltip content="New workflow" showAfterMs={300}>
+          <Tooltip
+            content={creatable.length === 0 ? 'No running backend to create a workflow on' : 'New workflow'}
+            showAfterMs={300}
+          >
+            {/* POL-015 slice 2: gated on a backend that can ANSWER, not merely on
+                one being up. A running-but-unreachable backend cannot serve a
+                step-kind catalog, and offering the create only defers the error. */}
             <IconButton
               icon={IconName.Plus}
               variant={IconButtonVariant.Transparent}
               onClick={() => setCreating((c) => !c)}
-              isDisabled={backendCount === 0}
+              isDisabled={creatable.length === 0}
               testId="workflows-new"
             />
           </Tooltip>
@@ -334,20 +377,21 @@ export function WorkflowsPanel() {
               onChange={(e) => setNewName(e.target.value)}
               aria-label="Workflow name"
             />
-            {backends.length > 1 && (
+            {creatable.length > 1 && (
               <select
                 className={styles.Select}
-                value={newBackendId || backends[0][0]}
+                value={newBackendId || defaultBackendId}
                 onChange={(e) => setNewBackendId(e.target.value)}
                 aria-label="Backend"
               >
-                {backends.map(([id, name]) => (
-                  <option key={id} value={id}>
-                    {name}
+                {creatable.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
                   </option>
                 ))}
               </select>
             )}
+            {creatable.length === 1 && <div className={styles.OpenMeta}>On {creatable[0].name}.</div>}
             <div className={styles.Actions}>
               <button className={`${styles.Button} ${styles.Primary}`} onClick={create} disabled={busy}>
                 Create

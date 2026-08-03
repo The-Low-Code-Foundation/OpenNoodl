@@ -43,12 +43,33 @@ export async function listWorkflowDefinitions(): Promise<BackendWorkflowDefs[]> 
   }
 }
 
+/**
+ * A backend a workflow can be authored against.
+ *
+ * POL-015: this list comes from the running backends themselves, NOT from the
+ * workflows they hold. Deriving it from the workflows meant the set of backends
+ * you could create a workflow on was the set you had already created one on —
+ * so the first workflow on any backend could never be made.
+ */
+export interface WorkflowBackend {
+  id: string;
+  name: string;
+  /**
+   * False when the backend is running but did not answer. Such a backend cannot
+   * serve a step-kind catalog either, so it must not be offered as a create
+   * target — the failure would arrive as "Backend must be running".
+   */
+  reachable: boolean;
+}
+
 export interface WorkflowListResult {
   workflows: WorkflowRef[];
   /** Running backends that could not be asked, by name. */
   unreachable: string[];
   /** How many backends were running at all — 0 is "start a backend", not "none exist". */
   backendCount: number;
+  /** Every running backend, whether or not it holds any workflows. */
+  backends: WorkflowBackend[];
 }
 
 /**
@@ -56,12 +77,21 @@ export interface WorkflowListResult {
  * keeps the backend it came from.
  */
 export async function listWorkflows(): Promise<WorkflowListResult> {
-  const result = await listWorkflowDefinitions();
+  return reduceWorkflowDefs(await listWorkflowDefinitions());
+}
 
+/**
+ * The reduction `listWorkflows` performs, separated from the IPC so it can be
+ * tested (POL-015). The property that matters and had no test: `backends` is
+ * derived from the *backends*, so a backend with no workflows is still in it.
+ */
+export function reduceWorkflowDefs(result: BackendWorkflowDefs[]): WorkflowListResult {
   const workflows: WorkflowRef[] = [];
   const unreachable: string[] = [];
+  const backends: WorkflowBackend[] = [];
   for (const backend of result) {
     if (backend.error) unreachable.push(backend.backendName);
+    backends.push({ id: backend.backendId, name: backend.backendName, reachable: !backend.error });
     for (const def of backend.workflows || []) {
       workflows.push({
         backendId: backend.backendId,
@@ -72,7 +102,7 @@ export async function listWorkflows(): Promise<WorkflowListResult> {
       });
     }
   }
-  return { workflows, unreachable, backendCount: result.length };
+  return { workflows, unreachable, backendCount: result.length, backends };
 }
 
 /** The step vocabulary of ONE backend. Throws when that backend is not running. */

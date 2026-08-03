@@ -5,3 +5,4 @@ export * from './functionrefresolution.test';
 export * from './functiondescent.test';
 export * from './triggerediting.test';
 export * from './workflowproposal.test';
+export * from './workflowbackendlist.test';
