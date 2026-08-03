@@ -122,7 +122,47 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
   // and `applyAuthoredPlan` is still the only code that does.
   const projectId = ProjectModel.instance?.id;
   const store = PlanSessionStore.instance;
-  const [session, setSession] = useState<PlanSession>(() => store.get(projectId));
+
+  /**
+   * The session, seeded once — and, on the very first mount for a project, the
+   * AIX-012 handover taken into it.
+   *
+   * The take happens **inside the initialiser** rather than in the body or an
+   * effect, and both alternatives are worse. In the body it would notify the
+   * store's subscribers during render; in an effect the panel would paint its
+   * empty state for a frame before the plan appeared, which reads as "the thing
+   * I just agreed to was lost" — the exact impression this task exists to
+   * remove. An initialiser runs before anything is subscribed, so it can write
+   * to the store freely, and it runs at most once per mount.
+   *
+   * `takePendingScopePlan` is destructive on purpose — a plan that survived
+   * consumption would reappear against the wrong project — which is what made
+   * the FIRST consumption final in a component that unmounts on a tab click.
+   * Landing it in the store fixes that at the root: still taken exactly once,
+   * but into something that outlives every mount. The guard is the store's own
+   * content, so a remount (or React's double-invoked initialiser) finds the plan
+   * already there and does not take again.
+   *
+   * It arrives as an ordinary proposed plan, not an approved one: every row is
+   * prunable and nothing reaches the project until Apply.
+   */
+  const [session, setSession] = useState<PlanSession>(() => {
+    const existing = store.get(projectId);
+    if (existing.plan || existing.run || existing.applied) return existing;
+    const scopePlan: PendingScopePlan | undefined = takePendingScopePlan(projectId);
+    if (!scopePlan) return existing;
+    return store.update(projectId, {
+      plan: scopePlan.plan,
+      note: {
+        text:
+          `From the scoping conversation that created this project — ${scopePlan.plan.operations.length} ` +
+          `operation${scopePlan.plan.operations.length === 1 ? '' : 's'}. Nothing has been built yet. Drop ` +
+          `anything you have changed your mind about, then author it. The conversation is recorded in ` +
+          `${scopePlan.recordPath}.`,
+        type: 'notice'
+      }
+    });
+  });
 
   // Re-read on any change, from any mount of this view. The store notifies
   // rather than the view polling, because a `PlanRun` publishing from a
@@ -135,43 +175,15 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     };
   }, [store]);
 
+  // Write to the store; the subscription above is what puts it on screen. One
+  // path in and one path out — a handler that also called `setSession` would
+  // give this view a private copy that any other subscriber could disagree with.
   const patch = useCallback(
-    (next: Partial<PlanSession>) => setSession({ ...store.update(ProjectModel.instance?.id, next) }),
+    (next: Partial<PlanSession>) => {
+      store.update(ProjectModel.instance?.id, next);
+    },
     [store]
   );
-
-  // AIX-012 handover: a plan agreed in the launcher's scoping conversation,
-  // which created this project minutes ago and deliberately did not build it.
-  //
-  // `takePendingScopePlan` is destructive — deliberately, so a plan cannot
-  // reappear against the wrong project — which made the FIRST consumption final
-  // in a component that unmounts on a tab click. Taking it into the store fixes
-  // that at the root: the take still happens exactly once, but what it lands in
-  // now outlives every mount.
-  //
-  // It arrives as an ordinary proposed plan, not an approved one. Every row is
-  // still prunable and nothing reaches the project until Apply, so a plan
-  // agreed in a conversation gets exactly the same gate as one typed here.
-  const tookScopePlan = useRef(false);
-  if (!tookScopePlan.current) {
-    tookScopePlan.current = true;
-    if (!session.plan && !session.run) {
-      const scopePlan: PendingScopePlan | undefined = takePendingScopePlan(projectId);
-      if (scopePlan) {
-        store.update(projectId, {
-          plan: scopePlan.plan,
-          note: {
-            text:
-              `From the scoping conversation that created this project — ${scopePlan.plan.operations.length} ` +
-              `operation${scopePlan.plan.operations.length === 1 ? '' : 's'}. Nothing has been built yet. Drop ` +
-              `anything you have changed your mind about, then author it. The conversation is recorded in ` +
-              `${scopePlan.recordPath}.`,
-            type: FeedbackType.Notice
-          }
-        });
-      }
-    }
-  }
 
   const { description, plan, excluded, applied, applyFailure } = session;
   // The store spells the three feedback values out rather than importing a view

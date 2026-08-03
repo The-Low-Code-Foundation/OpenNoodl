@@ -470,7 +470,13 @@ describe('AIX-012 — writing the documents into a real project folder', () => {
     // The example that would actively contradict a multi-page plan.
     expect(handout).toContain('(example) Do not add a Router');
     // …and, in the same text, the statement that it is not a rule here.
-    expect(handout).toContain('are NOT rules for this project and must not be followed');
+    //
+    // AIB-006 moved this sentence out of a leading HTML comment and into a
+    // visible "How this file is used" section. It reaches the agent either way —
+    // the handout has never stripped comments — but it now reaches the *human*
+    // too, which it did not before: Remarkable ended the comment at its first
+    // blank line, so the whole file previewed as a lone <h1>.
+    expect(handout).toContain('ignore every line marked (example)');
   });
 });
 
