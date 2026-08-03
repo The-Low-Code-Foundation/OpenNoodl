@@ -7,6 +7,34 @@
 | **Difficulty** | 🟢 Easy |
 | **Recommended executor** | 🟢 Sonnet |
 | **Prerequisites** | none |
+| **Status** | ✅ **BUILT 2026-08-03** — both defects, both halves of defect 2. Criteria 3–5 tested; 1, 2 and 6 owed to live QA (core-ui has no jsdom). |
+
+## What was built, and one thing the task did not anticipate
+
+Defect 1: assistant turns render through `Markdown`; user turns stay plain text.
+Chat-bubble proportions are a local `--markdown` modifier, **not** an edit to the
+sheet the Docs panel shares, as the task asked.
+
+Defect 2, both halves: `stripHtmlComments` runs before Remarkable, and the
+template's 14-line comment becomes a visible `## How this file is used` section.
+
+**Not anticipated: stripping cannot be unconditional.** `Markdown` has three
+consumers, and one of them is `AiChatMessage` — the editor's AI chat. A model
+explaining an HTML comment inside a code fence would have had its own example
+silently removed, which is the same defect class the task exists to close,
+introduced by the fix. Stripping therefore skips fenced blocks and inline code
+spans.
+
+**Streaming was not done.** The task offers it as "related and worth doing here";
+it needs `ScopingSession` to emit partial text, which is a change to the session's
+contract rather than to this step, and it belongs with AIB-002's work on making a
+run legible.
+
+### The trap the task listed that is real, and unaddressed
+
+`dangerouslySetInnerHTML` with `html: true` over model-authored content is an XSS
+surface, and doc bodies are model-authored now. Stripping comments does not touch
+it. It belongs in AIB-009 and is not fixed here.
 
 ## Objective
 

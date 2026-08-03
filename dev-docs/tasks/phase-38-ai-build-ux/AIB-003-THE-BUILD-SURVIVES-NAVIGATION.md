@@ -7,6 +7,43 @@
 | **Difficulty** | 🟠 Medium-hard (a lifetime change, not a bug fix) |
 | **Recommended executor** | 🔵 Fable for the lifetime decision, 🟠 Opus to build it |
 | **Prerequisites** | none |
+| **Status** | ✅ **BUILT 2026-08-03** — slices 1–3. Slice 4 (persist candidates to disk) not done. Criteria 1–5 covered; criterion 6 (live) owed. |
+
+## What was built
+
+**Slice 1 — the lifetime decision: B, as recommended.** `PlanSessionStore`, a
+`Model` singleton keyed by project id, the same shape as `ProjectReviewStore`.
+
+Criteria 3 and 4 pull against each other — a plan must survive switching projects
+and back, and a run must not leak past a project close — and they resolve once
+the two things a run *is* are separated. On `ProjectModel.instanceWillChange` the
+departing run is **cancelled** (nothing keeps authoring against a project nobody
+has open) and its staged output is **kept** (it is expensive, it is valid, and
+the user did not ask to lose it). A cancelled `PlanRun` keeps everything it
+already staged, so this is the phase's own rule applied to its machinery.
+
+**Slice 2 — the state moved.** `plan`, `note`, `excluded`, `applied`,
+`applyFailure`, the description and the `PlanRun` live in the store;
+`ProjectAuthoringView` subscribes. The unmount cleanup no longer disposes the
+run — disposal is now the user's explicit Abandon or a successful apply, and
+nothing else. Transient UI (which dialog is open, whether a button says
+"Re-authoring…") stays local on purpose.
+
+**Slice 3 — the plan is read back off disk.** `renderScopeRecord` appends the
+plan as a fenced block tagged `nodegx-plan`; `recoverScopePlan` parses it, and
+recovers the **transcript** by parsing the rendered form — which is the
+conversation history the report asked for and which had been written to disk and
+never shown. Offered, never adopted: the plan may be weeks old.
+
+Two judgement calls worth recording:
+
+- **A tag, not a bare ` ```json ` fence.** The record is a document a person
+  edits, and documents acquire code samples. A user's own JSON must never be
+  mistaken for the plan.
+- **"Was it already applied?" is asked of the graph, not of a flag.** The record
+  is written once and never updated — deliberately: it is a decision document,
+  not a status file. So the plan is re-offered only while at least one `create`
+  it proposes does not yet exist.
 
 ## Objective
 
@@ -128,6 +165,20 @@ authored-but-unapplied set across a restart.
 5. A project created by the scoping wizard, opened *after* an editor restart, offers its plan and
    shows the scoping transcript.
 6. **Live**: the exact navigation Richard performed, with three staged components in flight.
+
+### Where each landed
+
+1–3. ✅ `tests-unit/aib-003/planSessionStore.test.ts`. The view is React and the
+   plain-Node runner has no DOM, so what is asserted is the thing the view was
+   getting wrong — **who owns the state and what may destroy it**. Once the answer
+   is "not the component", mount and unmount are structural.
+4. ✅ Same file: firing `ProjectModel.instanceWillChange` cancels the run and
+   keeps its staged output.
+5. ✅ `tests-unit/aib-003/recoverPlan.test.ts`, round-tripped through the **real**
+   `renderScopeRecord` rather than a fixture — the transcript is recovered by
+   parsing the rendered form, and a fixture would let the two drift while the
+   parser kept passing.
+6. ⏳ **Owed.**
 
 ## Traps
 
