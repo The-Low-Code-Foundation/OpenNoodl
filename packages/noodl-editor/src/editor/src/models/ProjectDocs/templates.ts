@@ -65,19 +65,22 @@ Significant choices and their reasoning. Longer ones get their own file under
 
 const CONVENTIONS = `# Conventions
 
-<!--
-  The rules the assistant must follow in this project. This file is read on
-  every authoring turn and outranks the assistant's own defaults.
+## How this file is used
 
-  Write rules that are checkable. "Make it nice" is not a rule; "every page's
-  outermost node is a Group named Page Root" is.
+The rules below are read by the assistant on **every authoring turn**, and they
+outrank its own defaults. Editing this file changes what gets built.
 
-  Lines starting "(example)" are placeholders showing the shape of a good rule.
-  They are NOT rules for this project and must not be followed — replace them or
-  delete them. This matters because the file goes to the assistant verbatim: a
-  project created from a scoping conversation that agreed three pages ships with
-  "(example) Do not add a Router; this app is a single page" still in it.
--->
+Write rules that are checkable. "Make it nice" is not a rule; "every page's
+outermost node is a Group named \`Page Root\`" is.
+
+Lines marked **(example)** are placeholders showing the shape of a good rule.
+They are *not* rules for this project: **ignore every line marked (example)** —
+this instruction is addressed to the assistant as much as to you. Replace them
+with your own rules, or delete them.
+
+That matters because this file reaches the assistant verbatim. A project created
+from a scoping conversation that agreed three pages would otherwise ship
+carrying "(example) Do not add a Router; this app is a single page".
 
 ## Structure
 

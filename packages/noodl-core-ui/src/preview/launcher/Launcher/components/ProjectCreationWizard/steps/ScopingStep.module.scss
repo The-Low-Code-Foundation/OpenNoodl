@@ -47,6 +47,54 @@
     color: var(--theme-color-fg-default-shy);
     font-style: italic;
   }
+
+  // AIB-006: an assistant turn rendered through `Markdown`.
+  //
+  // Scoped here rather than in Markdown.module.scss on purpose — that sheet is
+  // shared with the Docs panel, where a document pane genuinely wants document
+  // proportions. What a chat bubble needs is the opposite: headings that read
+  // as emphasis rather than as sections, and no `pre-wrap`, which would add a
+  // blank line for every newline the renderer has already turned into a <p>.
+  &--markdown {
+    white-space: normal;
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      font-size: 13px;
+      line-height: 1.6;
+      margin: var(--spacing-2) 0 var(--spacing-1) 0;
+
+      &:first-child {
+        margin-top: 0;
+      }
+    }
+
+    p,
+    li {
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    li {
+      padding-bottom: var(--spacing-1);
+    }
+
+    ul,
+    ol {
+      margin: var(--spacing-1) 0;
+      padding-left: var(--spacing-4);
+    }
+
+    // A wide code block must scroll inside the bubble, never widen the feed.
+    pre {
+      overflow-x: auto;
+      max-width: 100%;
+    }
+  }
 }
 
 .Error {

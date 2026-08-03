@@ -15,6 +15,8 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 
+import { Markdown } from '@noodl-core-ui/components/common/Markdown';
+
 import css from './ScopingStep.module.scss';
 
 export interface ScopingMessage {
@@ -66,16 +68,28 @@ export function ScopingStep({ messages, isBusy, outline, isAgreed, error, onSend
           </p>
         )}
 
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`${css['Message']} ${
-              message.role === 'user' ? css['Message--user'] : css['Message--assistant']
-            }`}
-          >
-            {message.text}
-          </div>
-        ))}
+        {messages.map((message, index) =>
+          // AIB-006: the assistant writes markdown — `## Pages`, `- **Login**` —
+          // and this rendered it as a raw text node, so the first thing a new
+          // user ever saw of the product was its own formatting syntax. The
+          // editor's own AI chat has always rendered through `Markdown`; only
+          // the launcher's wizard did not.
+          //
+          // A user's message stays plain text: someone who types an asterisk
+          // means an asterisk, and re-interpreting what they wrote back at them
+          // is a worse error than showing it verbatim.
+          message.role === 'assistant' ? (
+            <Markdown
+              key={index}
+              content={message.text}
+              UNSAFE_className={`${css['Message']} ${css['Message--assistant']} ${css['Message--markdown']}`}
+            />
+          ) : (
+            <div key={index} className={`${css['Message']} ${css['Message--user']}`}>
+              {message.text}
+            </div>
+          )
+        )}
 
         {isBusy && <div className={`${css['Message']} ${css['Message--pending']}`}>Thinking…</div>}
 
