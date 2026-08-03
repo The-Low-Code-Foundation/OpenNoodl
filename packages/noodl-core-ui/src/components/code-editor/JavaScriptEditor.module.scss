@@ -121,7 +121,7 @@
   /* CodeMirror will fill this container */
   :global(.cm-editor) {
     height: 100%;
-    font-family: var(--theme-font-mono, 'Monaco', 'Menlo', 'Courier New', monospace);
+    font-family: var(--font-family-code);
   }
 
   :global(.cm-scroller) {
@@ -158,7 +158,7 @@
   font-size: 13px;
   color: var(--theme-color-fg-default);
   line-height: 1.5;
-  font-family: var(--theme-font-mono, 'Monaco', 'Menlo', 'Courier New', monospace);
+  font-family: var(--font-family-code);
   padding: 8px 12px;
   background-color: var(--theme-color-bg-2);
   border: 1px solid color-mix(in srgb, var(--theme-color-danger) 30%, transparent);
@@ -184,7 +184,7 @@
 .ErrorLocation {
   font-size: 11px;
   color: var(--theme-color-fg-muted);
-  font-family: var(--theme-font-mono, 'Monaco', 'Menlo', 'Courier New', monospace);
+  font-family: var(--font-family-code);
   font-weight: 500;
 }
 

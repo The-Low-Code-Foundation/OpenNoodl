@@ -11,7 +11,7 @@
 }
 
 .SizePicker-label {
-  font-size: var(--font-size-xsmall, 11px);
+  font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--theme-color-fg-default-shy);
   text-transform: uppercase;
@@ -25,7 +25,7 @@
   gap: 2px;
   background: var(--theme-color-bg-3);
   border: 1px solid var(--theme-color-border-default);
-  border-radius: var(--border-radius-small, 4px);
+  border-radius: var(--radius-default);
   padding: 2px;
 }
 
@@ -36,7 +36,7 @@
   color: var(--theme-color-fg-default-shy);
   border: none;
   border-radius: 2px;
-  font-size: var(--font-size-xsmall, 11px);
+  font-size: var(--font-size-sm);
   font-weight: 500;
   cursor: pointer;
   text-transform: lowercase;

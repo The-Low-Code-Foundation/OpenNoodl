@@ -25,7 +25,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  font-size: var(--font-size-xsmall, 11px);
+  font-size: var(--font-size-sm);
   font-weight: 500;
   transition: background-color 150ms ease, color 150ms ease;
 
@@ -50,7 +50,7 @@
 }
 
 .StepLabel {
-  font-size: var(--font-size-small, 12px);
+  font-size: var(--font-size-base);
   color: var(--theme-color-fg-default-shy);
 
   &.is-active {

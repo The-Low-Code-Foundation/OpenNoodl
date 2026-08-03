@@ -39,7 +39,8 @@ export interface PlanDocReviewDialogProps {
 export function PlanDocReviewDialog({ doc, onKeep, onExclude, onClose }: PlanDocReviewDialogProps) {
   return (
     <BaseDialog
-      background={DialogBackground.Secondary}
+      // POL-004: see CodeDiffDialog — `Secondary` is an action colour, not a surface.
+      background={DialogBackground.Bg1}
       isVisible
       hasBackdrop
       onClose={onClose}

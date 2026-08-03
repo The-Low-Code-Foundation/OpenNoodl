@@ -10,14 +10,14 @@
 }
 
 .StepTitle {
-  font-size: var(--font-size-large, 16px);
+  font-size: var(--font-size-lg);
   font-weight: 600;
   color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
   margin: 0;
 }
 
 .StepDescription {
-  font-size: var(--font-size-default, 13px);
+  font-size: var(--font-size-md);
   color: var(--theme-color-fg-default-shy);
   line-height: 1.6;
 }
@@ -32,7 +32,7 @@
   background-color: var(--theme-color-bg-3);
   border: 1px solid var(--theme-color-border-default);
   padding: var(--spacing-3, 12px);
-  border-radius: var(--border-radius-small, 4px);
+  border-radius: var(--radius-default);
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -57,14 +57,14 @@
 // Issue list
 .IssueList {
   border: 1px solid var(--theme-color-border-default);
-  border-radius: var(--border-radius-small, 4px);
+  border-radius: var(--radius-default);
   overflow: hidden;
 }
 
 .IssueListEmpty {
   padding: var(--spacing-4, 16px);
   text-align: center;
-  font-size: var(--font-size-small, 12px);
+  font-size: var(--font-size-base);
   color: var(--theme-color-fg-default-shy);
 }
 
@@ -112,8 +112,8 @@
 }
 
 .IssuePath {
-  font-family: var(--font-family-mono, monospace);
-  font-size: var(--font-size-small, 12px);
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-base);
   color: var(--theme-color-fg-default-shy);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -121,7 +121,7 @@
 }
 
 .IssueMessage {
-  font-size: var(--font-size-small, 12px);
+  font-size: var(--font-size-base);
   color: var(--theme-color-fg-default);
   line-height: 1.4;
 }

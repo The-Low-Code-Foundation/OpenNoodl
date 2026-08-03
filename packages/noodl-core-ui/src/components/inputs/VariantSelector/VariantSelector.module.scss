@@ -13,7 +13,7 @@
 
 // Label above the trigger
 .VariantSelector-label {
-  font-size: var(--font-size-xsmall, 11px);
+  font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--theme-color-fg-default-shy);
   text-transform: uppercase;
@@ -32,8 +32,8 @@
   background: var(--theme-color-bg-3);
   color: var(--theme-color-fg-default);
   border: 1px solid var(--theme-color-border-default);
-  border-radius: var(--border-radius-small, 4px);
-  font-size: var(--font-size-small, 12px);
+  border-radius: var(--radius-default);
+  font-size: var(--font-size-base);
   cursor: pointer;
   text-align: left;
   transition: border-color 100ms ease, background 100ms ease;
@@ -78,7 +78,7 @@
   z-index: 200;
   background: var(--theme-color-bg-2);
   border: 1px solid var(--theme-color-border-default);
-  border-radius: var(--border-radius-small, 4px);
+  border-radius: var(--radius-default);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   display: flex;
@@ -97,7 +97,7 @@
   background: transparent;
   color: var(--theme-color-fg-default);
   border: none;
-  font-size: var(--font-size-small, 12px);
+  font-size: var(--font-size-base);
   cursor: pointer;
   text-align: left;
   width: 100%;

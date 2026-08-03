@@ -12,7 +12,8 @@ export interface ImageDiffDialogProps {
 export function ImageDiffDialog({ diff, onClose }: ImageDiffDialogProps) {
   return (
     <BaseDialog
-      background={DialogBackground.Secondary}
+      // POL-004: see CodeDiffDialog — `Secondary` is an action colour, not a surface.
+      background={DialogBackground.Bg1}
       isVisible={diff !== null}
       hasBackdrop
       onClose={onClose}

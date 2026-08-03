@@ -14,7 +14,7 @@
 // ── Label ────────────────────────────────────────────────────────────────────
 
 .TokenPicker-label {
-  font-size: var(--font-size-xsmall, 11px);
+  font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--theme-color-fg-default-shy);
   text-transform: uppercase;
@@ -33,8 +33,8 @@
   background: var(--theme-color-bg-3);
   color: var(--theme-color-fg-default);
   border: 1px solid var(--theme-color-border-default);
-  border-radius: var(--border-radius-small, 4px);
-  font-size: var(--font-size-small, 12px);
+  border-radius: var(--radius-default);
+  font-size: var(--font-size-base);
   cursor: pointer;
   text-align: left;
   transition: border-color 100ms ease, background 100ms ease;
@@ -118,7 +118,7 @@
   z-index: 300;
   background: var(--theme-color-bg-2);
   border: 1px solid var(--theme-color-border-default);
-  border-radius: var(--border-radius-small, 4px);
+  border-radius: var(--radius-default);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
@@ -142,7 +142,7 @@
   color: var(--theme-color-fg-default);
   border: 1px solid var(--theme-color-border-default);
   border-radius: 3px;
-  font-size: var(--font-size-small, 12px);
+  font-size: var(--font-size-base);
   outline: none;
 
   &::placeholder {
@@ -163,7 +163,7 @@
 
 .TokenPicker-empty {
   padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
-  font-size: var(--font-size-small, 12px);
+  font-size: var(--font-size-base);
   color: var(--theme-color-fg-default-shy);
   text-align: center;
 }
@@ -201,7 +201,7 @@
   background: transparent;
   color: var(--theme-color-fg-default);
   border: none;
-  font-size: var(--font-size-small, 12px);
+  font-size: var(--font-size-base);
   cursor: pointer;
   text-align: left;
   width: 100%;
@@ -271,7 +271,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--font-size-small, 12px);
+  font-size: var(--font-size-base);
   line-height: 1.3;
 }
 

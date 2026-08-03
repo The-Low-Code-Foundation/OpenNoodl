@@ -110,7 +110,7 @@
   border: 1px solid var(--theme-color-border-default);
   border-radius: 4px;
   color: var(--theme-color-fg-default);
-  font-family: var(--theme-font-family-mono, monospace);
+  font-family: var(--font-family-code);
   font-size: 11px;
   user-select: all;
   word-break: break-all;
@@ -144,7 +144,7 @@
 
 .Textarea {
   min-height: 64px;
-  font-family: var(--theme-font-family-mono, monospace);
+  font-family: var(--font-family-code);
   resize: vertical;
 }
 

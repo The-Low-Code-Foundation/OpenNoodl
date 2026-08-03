@@ -46,7 +46,7 @@
 .TokenName {
   font-size: 11px;
   color: var(--theme-color-fg-default);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-family-code);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -55,7 +55,7 @@
 .TokenValue {
   font-size: 10px;
   color: var(--theme-color-fg-default-shy);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-family-code);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -61,6 +61,12 @@ jobs:
       # so it silently breaks the light theme. There is no legacy tail left to
       # burn down, so any reintroduction is a straight regression.
       - run: npm run icons:css
+      # A gate at zero for the same reason (POL-004). `var(--theme-color-fg-subtle,
+      # #7c7c7c)` names nothing, renders its fallback, and is the most reviewable
+      # way to ship a hardcoded colour — CSS has no undefined-custom-property
+      # error, so nothing anywhere fails. 25 names were in this state when the
+      # check was first run, against the 6 a manual pass had found.
+      - run: npm run tokens:css
 
   test-editor:
     name: Test (editor)

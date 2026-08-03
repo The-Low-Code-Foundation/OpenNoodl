@@ -23,7 +23,7 @@
 }
 
 .Title {
-  font-size: var(--font-size-large, 16px);
+  font-size: var(--font-size-lg);
   font-weight: 600;
   color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
   margin: 0;
@@ -56,14 +56,14 @@
 }
 
 .StepTitle {
-  font-size: var(--font-size-large, 16px);
+  font-size: var(--font-size-lg);
   font-weight: 600;
   color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
   margin: 0;
 }
 
 .StepDescription {
-  font-size: var(--font-size-default, 13px);
+  font-size: var(--font-size-md);
   color: var(--theme-color-fg-default-shy);
   line-height: 1.6;
 }

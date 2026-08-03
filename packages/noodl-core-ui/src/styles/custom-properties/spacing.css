@@ -96,6 +96,11 @@
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-card-hover: 0 10px 28px rgba(0, 0, 0, 0.38);
   --shadow-toast: 0 12px 44px rgba(0, 0, 0, 0.6);
+  /* POL-004: the rail's lift when a panel floats over the canvas. It was in use
+     with an inline fallback and had never been defined, so it was a hardcoded
+     dark-only shadow wearing a token's clothes — it would have stayed pitch
+     black on a white light-theme rail. Value is the one the fallback carried. */
+  --shadow-float: 0 18px 48px rgba(0, 0, 0, 0.38);
 
   /* ---------------------------------------------------------------------------
      TRANSITIONS
@@ -119,6 +124,16 @@
   --z-modal: 500;
   --z-popover: 600;
   --z-tooltip: 700;
+
+  /* ---------------------------------------------------------------------------
+     LAYOUT CONSTANTS
+     Chrome dimensions that more than one surface has to agree on. A banner that
+     positions itself under the top bar has to know how tall the top bar is, and
+     the only alternative to a shared name is two copies of a number that drift.
+     --------------------------------------------------------------------------- */
+  /* POL-004: EditorBanner read this with a `40px` fallback and nothing defined
+     it, so the value was the fallback and the token was decoration. */
+  --topbar-height: 40px;
 }
 
 /* =============================================================================
@@ -140,4 +155,5 @@
   --shadow-card: 0 1px 2px rgba(23, 32, 43, 0.05);
   --shadow-card-hover: 0 8px 24px rgba(23, 32, 43, 0.1);
   --shadow-toast: 0 12px 40px rgba(23, 32, 43, 0.22);
+  --shadow-float: 0 16px 40px rgba(23, 32, 43, 0.16);
 }

@@ -53,7 +53,7 @@
 }
 
 .TabLabel {
-  font-size: var(--theme-font-size-default);
+  font-size: var(--font-size-base);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -71,7 +71,7 @@
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-sm);
   transition: all 0.15s ease;
 
   &:hover {

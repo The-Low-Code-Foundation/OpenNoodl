@@ -11,7 +11,7 @@
 }
 
 .StepTitle {
-  font-size: var(--font-size-large, 16px);
+  font-size: var(--font-size-lg);
   font-weight: 600;
   color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
   margin: 0;
@@ -43,16 +43,16 @@
 }
 
 .LoadingText {
-  font-size: var(--font-size-default, 13px);
+  font-size: var(--font-size-md);
   color: var(--theme-color-fg-default-shy);
   text-align: center;
   line-height: 1.5;
 }
 
 .CurrentFile {
-  font-size: var(--font-size-small, 12px);
+  font-size: var(--font-size-base);
   color: var(--theme-color-fg-default-shy);
-  font-family: var(--font-family-mono, monospace);
+  font-family: var(--font-family-code);
   text-align: center;
   max-width: 400px;
   overflow: hidden;
@@ -82,10 +82,10 @@
   overflow-y: auto;
   background-color: var(--theme-color-bg-1);
   border: 1px solid var(--theme-color-border-default);
-  border-radius: var(--border-radius-small, 4px);
+  border-radius: var(--radius-default);
   padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
-  font-family: var(--font-family-mono, monospace);
-  font-size: var(--font-size-small, 12px);
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-base);
   color: var(--theme-color-fg-default-shy);
   line-height: 1.6;
 }

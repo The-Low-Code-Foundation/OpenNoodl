@@ -37,7 +37,7 @@
 
   .blocklyTreeLabel {
     color: var(--theme-color-fg-default) !important;
-    font-family: var(--theme-font-family) !important;
+    font-family: var(--font-family) !important;
     font-size: 13px !important;
   }
 
@@ -82,7 +82,7 @@
 
   .blocklyContextMenu .blocklyMenuItem {
     color: var(--theme-color-fg-default) !important;
-    font-family: var(--theme-font-family) !important;
+    font-family: var(--font-family) !important;
     font-size: 13px !important;
     padding: 6px 12px !important;
 
@@ -139,7 +139,7 @@
     border: 1px solid var(--theme-color-border-default) !important;
     border-radius: 4px !important;
     padding: 4px 8px !important;
-    font-family: var(--theme-font-family) !important;
+    font-family: var(--font-family) !important;
   }
 
   /* Dropdown menus - DARK BACKGROUND with WHITE TEXT (matches Noodl theme) */
@@ -164,7 +164,7 @@
     background-color: transparent !important;
     padding: 6px 12px !important;
     cursor: pointer !important;
-    font-family: var(--theme-font-family) !important;
+    font-family: var(--font-family) !important;
     font-size: 13px !important;
 
     /* ALL children white */
@@ -217,7 +217,7 @@
     color: var(--theme-color-fg-highlight) !important;
     background-color: transparent !important;
     padding: 6px 12px !important;
-    font-family: var(--theme-font-family) !important;
+    font-family: var(--font-family) !important;
     font-size: 13px !important;
 
     & *,

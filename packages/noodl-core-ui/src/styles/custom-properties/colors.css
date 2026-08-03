@@ -97,7 +97,12 @@
   /* Transparent variants */
   --base-color-black-transparent-90: rgba(0, 0, 0, 0.9);
   --base-color-black-transparent-80: rgba(0, 0, 0, 0.8);
+  /* POL-004: -70 and -30 were already in use by popuplayer.css and had never
+     been defined, so both scrims rendered as nothing at all — the var() had no
+     fallback either. */
+  --base-color-black-transparent-70: rgba(0, 0, 0, 0.7);
   --base-color-black-transparent-50: rgba(0, 0, 0, 0.5);
+  --base-color-black-transparent-30: rgba(0, 0, 0, 0.3);
   --base-color-white-transparent-10: rgba(255, 255, 255, 0.1);
   --base-color-white-transparent-15: rgba(255, 255, 255, 0.15);
   --base-color-white-transparent-16: rgba(255, 255, 255, 0.16); /* PAR-001: card ghost initial */
@@ -369,6 +374,12 @@
   --theme-color-notice: var(--theme-color-warning);
   --theme-color-notice-dim: var(--theme-color-warning-dim);
   --theme-color-notice-bg: var(--theme-color-warning-bg);
+  /* POL-004: the hover step for a notice-tinted row. `notice-bg` existed and
+     this did not, so the Provenance panel's hover state painted a hardcoded
+     amber that neither theme could reach. Derived from the same amber so the
+     pair moves together; the light block below overrides it alongside its
+     partner. */
+  --theme-color-notice-bg-hover: rgba(253, 176, 34, 0.2);
 
   --theme-color-danger: var(--base-color-red-400);
   --theme-color-danger-light: var(--base-color-red-300);
@@ -519,6 +530,10 @@
   --theme-color-warning: #b54708;
   --theme-color-warning-dim: #93370d;
   --theme-color-warning-bg: rgba(247, 144, 9, 0.13);
+  /* POL-004: partner of the dark-block definition. `notice-bg` reaches its light
+     value through `warning-bg`; this one has to be restated because it is not an
+     alias. */
+  --theme-color-notice-bg-hover: rgba(247, 144, 9, 0.22);
 
   --theme-color-danger: #d92d20;
   --theme-color-danger-light: #f04438;

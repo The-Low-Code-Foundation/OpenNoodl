@@ -34,7 +34,11 @@ export function CodeDiffDialog({ diff, onClose }: CodeDiffDialogProps) {
 
   return (
     <BaseDialog
-      background={DialogBackground.Secondary}
+      // POL-004: was DialogBackground.Secondary, which is the neutral ACTION
+      // colour (#eef2f6 dark / #18212b light) — inverted relative to a surface
+      // by construction, so it produced a white sheet in dark mode and a black
+      // one in light. This is the modal Richard reported. Bg1 is a real surface.
+      background={DialogBackground.Bg1}
       isVisible
       hasBackdrop
       onClose={onClose}
