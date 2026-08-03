@@ -35,6 +35,7 @@ const { initializeGitHubOAuthHandlers } = require('./github-oauth-handler');
 
 const { handleProjectMerge } = require('./src/merge-driver');
 const { openLegalWindow } = require('./src/legal-window');
+const { setupReportIPC } = require('./src/report-window');
 
 //fixes problem with reloading the viewer when it's
 //running in a separate browser window (file:// cross origin warning)
@@ -568,6 +569,28 @@ function launchApp() {
 
   const buildNumber = JSON.parse(fs.readFileSync(appPath + '/package.json')).buildNumber;
 
+  /**
+   * ALPHA-007 §1. Assigned by `setupReportIpc()` before the menu is built.
+   *
+   * A function rather than a direct call because the *capture must happen in
+   * the click handler* — before the composer renders, or the dialog is all the
+   * screenshot shows.
+   */
+  let openReportComposer = () => {};
+
+  function setupReportIpc() {
+    openReportComposer = setupReportIPC({
+      ipcMain,
+      clipboard: electron.clipboard,
+      nativeImage: electron.nativeImage,
+      shell,
+      app,
+      // Looked up on each call: the editor window is recreated when a project
+      // opens and closes, so a captured reference goes stale.
+      getWindow: () => win
+    });
+  }
+
   let submenu = [
     {
       label: 'About NodeGX',
@@ -650,9 +673,15 @@ function launchApp() {
 
     // ALPHA-005: on Windows and Linux the Application menu is not where anyone
     // looks, so the legal documents get a Help menu of their own too.
+    //
+    // ALPHA-007 §1 puts "Report a problem…" at the top of it. No accelerator in
+    // v1: every convenient key is taken in an editor, and picking a bad one is
+    // worse than a menu item.
     template.push({
       label: 'Help',
       submenu: [
+        { label: 'Report a problem…', click: () => openReportComposer() },
+        { type: 'separator' },
         { label: 'Privacy Policy', click: () => openLegalWindow('privacy', resolveStartupTheme().resolved) },
         { label: 'Alpha Terms', click: () => openLegalWindow('terms', resolveStartupTheme().resolved) }
       ]
@@ -824,6 +853,9 @@ function launchApp() {
     initializeGitHubOAuthHandlers(app);
 
     setupMainWindowControlIpc();
+
+    // Before setupMenu: it is what gives the Help menu item something to call.
+    setupReportIpc();
 
     setupMenu();
 
