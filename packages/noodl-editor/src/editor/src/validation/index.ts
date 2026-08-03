@@ -15,6 +15,14 @@ export type { NodeCatalog, CatalogNode, CatalogPort, Plug } from './CatalogIndex
 export { defaultCatalog, loadDefaultCatalog } from './catalog';
 export { fromLegacyProject, normalizeV2Component } from './normalize';
 export type { LegacyProjectLike } from './normalize';
+export {
+  checkParameterValues,
+  portTypeShape,
+  wireFormatFor,
+  wireFormatHint,
+  WIRE_FORMAT_LEGEND
+} from './parameterValues';
+export type { ParameterizedNode, PortTypeShape, WireFormat } from './parameterValues';
 export { SemanticValidator, validateProject } from './SemanticValidator';
 export { ALL_RULES } from './rules';
 export type { Rule, RuleContext, ValidatorOptions } from './rules';

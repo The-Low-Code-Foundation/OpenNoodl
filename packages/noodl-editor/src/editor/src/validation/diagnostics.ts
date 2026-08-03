@@ -68,6 +68,20 @@ export enum DiagnosticCode {
   /** Info-level: a port check was skipped because the node determines the port at runtime. */
   DynamicPortSkipped = 'dynamic-port-skipped',
   /**
+   * AIB-001: a parameter carries a value of a shape the port's type cannot
+   * consume — an array where the wire format is a comma-separated string, a
+   * number where the port wants `{ value, unit }`, an enum value that is not
+   * one of the declared options.
+   */
+  InvalidParameterValue = 'invalid-parameter-value',
+  /**
+   * AIB-001: a parameter names a port the node type does not declare. A
+   * warning, never an error — a node whose ports are runtime-determined
+   * legitimately carries parameters for ports the catalog cannot see, and this
+   * rule skips those entirely (see `checkParameterValues`).
+   */
+  UnknownParameter = 'unknown-parameter',
+  /**
    * LIB-006: a legacy import could not convert this construct and left it in
    * place, marked. Always an error — see `rules/legacyImportPlaceholder.ts` for
    * why this is not folded into `unknown-node-type`.

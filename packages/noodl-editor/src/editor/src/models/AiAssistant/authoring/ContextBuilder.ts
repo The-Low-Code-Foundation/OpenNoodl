@@ -16,7 +16,14 @@
 import type { NodeV2 } from '../../../schemas';
 import { renderReportForAssistant } from '../../../utils/import-engine/legacy/report';
 import type { ImportReport } from '../../../utils/import-engine/legacy/types';
-import { CatalogIndex, loadDefaultCatalog, type CatalogNode, type CatalogPort } from '../../../validation';
+import {
+  CatalogIndex,
+  loadDefaultCatalog,
+  wireFormatHint,
+  WIRE_FORMAT_LEGEND,
+  type CatalogNode,
+  type CatalogPort
+} from '../../../validation';
 import { enrichedNode, portDescription } from '../../../validation/enrichedCatalog';
 // Pure ProjectDocs submodule, for the same reason as StyleVocabulary above —
 // the barrel would drag ProjectModel and the platform filesystem in.
@@ -46,15 +53,34 @@ const BUDGET_REFUSAL =
 const MAX_PORTS_PER_PLUG = 40;
 const MAX_INTERFACE_PORTS = 12;
 
+/**
+ * One port, as the agent is shown it.
+ *
+ * AIB-001 slice 2: the line carries the port's **wire format**, not only its
+ * type name. A model reading `pathParams (stringlist)` emits a JSON array —
+ * which is the correct reading of the words it was given, and which threw a
+ * `TypeError` out of an adapter mid-apply and cost a user 44 authored nodes.
+ * The format comes from the same table the validator enforces
+ * (`wireFormatHint`), so what the agent is told and what the gate demands
+ * cannot drift apart.
+ *
+ * Only the types whose format a name does not imply carry a hint, so `string`,
+ * `boolean` and the rest pay no prompt bytes for this — the 249 `enum` ports,
+ * whose legal options were previously pure guesswork, pay the most and are
+ * worth the most.
+ */
 function portLine(typeName: string, port: CatalogPort): string {
   const type = CatalogIndex.portTypeName(port) ?? '*';
   const signal = port.isSignal ? ', signal' : '';
+  const format = wireFormatHint(port);
   const description = port.description ?? portDescription(typeName, port.name);
   const defaultValue =
     port.default !== undefined && port.default !== null && port.default !== ''
       ? ` [default: ${JSON.stringify(port.default)}]`
       : '';
-  return `  - ${port.name} (${type}${signal})${description ? `: ${description}` : ''}${defaultValue}`;
+  return `  - ${port.name} (${type}${format ? ` — ${format}` : ''}${signal})${
+    description ? `: ${description}` : ''
+  }${defaultValue}`;
 }
 
 function portSection(typeName: string, heading: string, ports: CatalogPort[]): string[] {
@@ -267,10 +293,17 @@ export class AuthoringContextBuilder {
     return this.charge(source, renderDocForPrompt(doc, body));
   }
 
-  /** Full documentation for a batch of node types, in one charged handout. */
+  /**
+   * Full documentation for a batch of node types, in one charged handout.
+   *
+   * AIB-001 slice 2: led by the wire-format legend. It sits here rather than in
+   * the system prompt because this is the handout the agent reads *immediately
+   * before* writing parameters — the rules are adjacent to the ports they
+   * govern, and a project whose agent never fetches a type never pays for them.
+   */
   nodeTypeDetails(typeNames: string[]): string {
     const sections = typeNames.map((name) => this.renderNodeType(name));
-    return this.charge(`types:${typeNames.join(',')}`, sections.join('\n\n'));
+    return this.charge(`types:${typeNames.join(',')}`, [WIRE_FORMAT_LEGEND, ...sections].join('\n\n'));
   }
 
   private renderNodeType(typeName: string): string {

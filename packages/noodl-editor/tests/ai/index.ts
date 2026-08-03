@@ -17,6 +17,9 @@ export * from './explain-session.test';
 // the validation gate runs against the real project corpus.
 export * from './authoring-candidate.test';
 export * from './authoring-validate.test';
+// AIB-001: the parameter-value contract — the gate rejects a value the editor
+// cannot consume, and the repair loop fixes it inside the session.
+export * from './authoring-parameter-values.test';
 export * from './authoring-session.test';
 export * from './authoring-staging.test';
 export * from './authoring-partial.test';

@@ -14,9 +14,12 @@
  * @module AiAssistant/authoring/validate
  */
 
+import type { NodeV2 } from '../../../schemas';
 import { SCHEMA_IDS, SchemaValidator } from '../../../schemas';
 import {
   buildComponentRefs,
+  checkParameterValues,
+  loadDefaultCatalog,
   normalizeV2Component,
   SemanticValidator,
   sortDiagnostics
@@ -139,7 +142,13 @@ export function validateCandidateComponent(
   };
 
   const report: ValidationReport = validator().validateComponent(project, legacyName, { strict: true });
-  const allErrors: Diagnostic[] = report.diagnostics.filter((d) => d.severity === 'error');
+  // AIB-001: the semantic validator reasons about types and connectivity and
+  // has no view of parameter VALUES — its normalized model does not carry them.
+  // The value check runs over the candidate's own v2 nodes and its diagnostics
+  // join the report's, so they flow through the repair loop, the baseline
+  // exemption and the summary by exactly the same paths.
+  const diagnostics = [...report.diagnostics, ...parameterDiagnostics(legacyName, files)];
+  const allErrors: Diagnostic[] = diagnostics.filter((d) => d.severity === 'error');
 
   const inherited = options.baseline ? baselineErrorKeys(graph, legacyName, options.baseline) : undefined;
   const preExisting = inherited ? allErrors.filter((d) => inherited.has(diagnosticKey(d))) : [];
@@ -147,15 +156,37 @@ export function validateCandidateComponent(
 
   return {
     ok: errors.length === 0,
-    diagnostics: sortDiagnostics(report.diagnostics),
+    diagnostics: sortDiagnostics(diagnostics),
     errors,
     ...(preExisting.length > 0 ? { preExisting } : {}),
     summary: {
-      errors: report.summary.errors,
-      warnings: report.summary.warnings,
-      infos: report.summary.infos
+      errors: diagnostics.filter((d) => d.severity === 'error').length,
+      warnings: diagnostics.filter((d) => d.severity === 'warning').length,
+      infos: diagnostics.filter((d) => d.severity === 'info').length
     }
   };
+}
+
+/**
+ * AIB-001 — parameter values, checked against the wire format the catalog's
+ * port type implies.
+ *
+ * Runs on the v2 nodes rather than the normalized model because the normalized
+ * model deliberately does not carry parameters: SUB-006 reasons about the graph
+ * (types, ports, wires), and a value's *shape* is a different question asked of
+ * different data. Keeping it here rather than as a validator rule also keeps it
+ * off every existing project — the crash class this closes is authored output
+ * reaching a live adapter, and `validate:project` gaining a new error class
+ * across the corpus is a separate decision from fixing it.
+ */
+function parameterDiagnostics(legacyName: string, files: ComponentFiles): Diagnostic[] {
+  const nodes = files.nodes.nodes.map((n: NodeV2) => ({
+    id: n.id,
+    type: n.type,
+    ...(n.label !== undefined ? { label: n.label } : {}),
+    parameters: (n.parameters ?? null) as Record<string, unknown> | null
+  }));
+  return checkParameterValues(nodes, loadDefaultCatalog(), { component: legacyName });
 }
 
 /**
@@ -189,5 +220,11 @@ function baselineErrorKeys(graph: ExplainGraph, legacyName: string, base: Compon
     componentRefs: buildComponentRefs(components.map((c) => c.name))
   };
   const report = validator().validateComponent(project, legacyName, { strict: true });
-  return new Set(report.diagnostics.filter((d) => d.severity === 'error').map(diagnosticKey));
+  // Parameter-value errors are baselined for the same reason type errors are,
+  // and this one bites harder: a component saved years ago carrying
+  // `sizeMode: "childSize"` — an enum option that no longer exists — would
+  // otherwise be unrevisable, because every submission inherits the parameter
+  // and the agent is told never to argue with a diagnostic.
+  const diagnostics = [...report.diagnostics, ...parameterDiagnostics(legacyName, normalised)];
+  return new Set(diagnostics.filter((d) => d.severity === 'error').map(diagnosticKey));
 }
