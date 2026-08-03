@@ -52,19 +52,6 @@ export function CellEditor({ value, type, onSave, onCancel, error }: CellEditorP
     return () => clearTimeout(timer);
   }, []);
 
-  // Handle keyboard events
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey && type !== 'Object' && type !== 'Array') {
-        e.preventDefault();
-        handleSave();
-      } else if (e.key === 'Escape') {
-        onCancel();
-      }
-    },
-    [type, onCancel]
-  );
-
   // Handle save with type conversion
   const handleSave = useCallback(() => {
     let finalValue: unknown = editValue;
@@ -116,6 +103,32 @@ export function CellEditor({ value, type, onSave, onCancel, error }: CellEditorP
       setJsonError('Invalid JSON');
     }
   }, [editValue, type, onSave]);
+
+  /**
+   * Keyboard commit.
+   *
+   * ⚠️ `handleSave` is in the dependency list, and it has to be. This was
+   * declared ABOVE `handleSave` and memoised on `[type, onCancel]`, so it
+   * captured the very first `handleSave` — the one closing over `editValue` as
+   * it was at mount. Pressing Enter therefore saved the value the cell **started
+   * with**, discarding everything typed, while `onBlur` (an inline arrow, so
+   * re-created every render) saved correctly. Both paths report success, so the
+   * only visible symptom was the typing vanishing.
+   *
+   * Found driving POL-014 criterion 3: an edit committed with Enter moved
+   * `updatedAt` on the record and left `author` on its old value.
+   */
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey && type !== 'Object' && type !== 'Array') {
+        e.preventDefault();
+        handleSave();
+      } else if (e.key === 'Escape') {
+        onCancel();
+      }
+    },
+    [type, onCancel, handleSave]
+  );
 
   // Boolean - render checkbox
   if (type === 'Boolean') {

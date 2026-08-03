@@ -66,6 +66,16 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
   const [showNewRecord, setShowNewRecord] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * A failed write, kept apart from `error` (a failed read) on purpose.
+   *
+   * POL-014 slice 2: `loadData` clears `error` on every run, and the realtime
+   * subscription runs `loadData` on every change to this collection — including
+   * the change that made the row stale in the first place. A delete failure
+   * written into `error` was therefore on screen for about 300ms. It survives
+   * here until the next write succeeds, or the table changes.
+   */
+  const [writeError, setWriteError] = useState<string | null>(null);
 
   // System columns shown for all tables
   const systemColumns: ColumnDef[] = useMemo(
@@ -177,6 +187,7 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
   useEffect(() => {
     setPage(0);
     setSelectedRecords(new Set());
+    setWriteError(null); // a failure about another table's row is not news here
   }, [selectedTable, searchQuery]);
 
   // Live updates (BAK-001): ride the backend's realtime SSE stream so the grid
@@ -237,18 +248,18 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
       // A row with no id cannot be deleted, and must not look as if it was
       // (POL-014, consequence 4 — the confirm was accepted and nothing happened).
       if (!recordId) {
-        setError('Cannot delete: this row has no objectId.');
+        setWriteError('Cannot delete: this row has no objectId.');
         return;
       }
       if (!window.confirm('Delete this record?')) return;
 
       try {
         await ipcRenderer.invoke('backend:deleteRecord', backendId, selectedTable, recordId);
-        setError(null);
+        setWriteError(null);
         loadData();
       } catch (err) {
         console.error('Failed to delete record:', err);
-        setError(`Failed to delete record: ${err instanceof Error ? err.message : String(err)}`);
+        setWriteError(`Failed to delete record: ${err instanceof Error ? err.message : String(err)}`);
       }
     },
     [backendId, selectedTable, loadData]
@@ -264,11 +275,11 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
         await ipcRenderer.invoke('backend:deleteRecord', backendId, selectedTable, recordId);
       }
       setSelectedRecords(new Set());
-      setError(null);
+      setWriteError(null);
       loadData();
     } catch (err) {
       console.error('Failed to bulk delete:', err);
-      setError(`Failed to delete some records: ${err instanceof Error ? err.message : String(err)}`);
+      setWriteError(`Failed to delete some records: ${err instanceof Error ? err.message : String(err)}`);
     }
   }, [backendId, selectedTable, selectedRecords, loadData]);
 
@@ -426,10 +437,15 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
         </div>
       )}
 
-      {/* Error message */}
+      {/* Error messages — a failed read and a failed write are different news. */}
       {error && (
         <div className={css.Error}>
           <Text textType={TextType.Default}>{error}</Text>
+        </div>
+      )}
+      {writeError && (
+        <div className={css.Error}>
+          <Text textType={TextType.Default}>{writeError}</Text>
         </div>
       )}
 
