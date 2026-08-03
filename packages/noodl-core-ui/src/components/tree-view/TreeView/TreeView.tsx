@@ -40,13 +40,13 @@ export function useTreeViewContext() {
 export interface TreeViewChildProps<TNode extends TreeViewItem<TNode>> {
   depth: number;
   item: TNode;
-  children: JSX.Element[];
+  children: React.JSX.Element[];
   onClick: () => void;
 }
 
 export interface TreeViewProps<TNode extends TreeViewItem<TNode>> {
   items: TNode[];
-  node?: (args: TreeViewChildProps<TNode>) => JSX.Element;
+  node?: (args: TreeViewChildProps<TNode>) => React.JSX.Element;
 
   onChanged?: (items: TNode[]) => void;
   onItemClick?: (item: TNode) => void;
@@ -56,7 +56,7 @@ export interface TreeViewProps<TNode extends TreeViewItem<TNode>> {
 // NOTE: This is required to be able to use the context inside the nodes.
 interface TreeViewVisualProps<TNode extends TreeViewItem<TNode>> {
   items: TNode[];
-  node?: (args: TreeViewChildProps<TNode>) => JSX.Element;
+  node?: (args: TreeViewChildProps<TNode>) => React.JSX.Element;
   onItemClick?: (item: TNode) => void;
 }
 function TreeViewVisual<TNode extends TreeViewItem<TNode>>({

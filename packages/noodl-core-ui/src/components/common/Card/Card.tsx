@@ -19,7 +19,7 @@ export enum CardBackground {
 }
 
 export interface CardProps extends UnsafeStyleProps {
-  children: JSX.Element | JSX.Element[];
+  children: React.JSX.Element | React.JSX.Element[];
   padding?: CardPadding;
   background?: CardBackground;
   hoverBackground?: CardBackground;

@@ -104,7 +104,7 @@ export function SelectStage({
   // query the user's own collapse choices stand.
   const isOpen = (path: string) => query.trim() !== '' || !closedFolders.has(path);
 
-  function renderNode(node: TreeNode): JSX.Element {
+  function renderNode(node: TreeNode): React.JSX.Element {
     if (node.type === 'item') {
       const state = rowState(node.key, selection, index);
       const planned = index.get(node.key);

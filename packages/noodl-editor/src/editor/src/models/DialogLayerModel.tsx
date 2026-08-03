@@ -15,7 +15,7 @@ export type DialogLayerModelEvents = {
 
 type DialogEntry = {
   id: string;
-  slot: () => JSX.Element;
+  slot: () => React.JSX.Element;
 };
 
 export type DialogLayerOptions = {
@@ -99,7 +99,7 @@ export class DialogLayerModel extends Model<DialogLayerModelEvent, DialogLayerMo
    * @returns A function to close the dialog
    */
   public showDialog(
-    render: (close: () => void) => JSX.Element,
+    render: (close: () => void) => React.JSX.Element,
     options: ShowDialogOptions = {}
   ): () => void {
     const id = options.id ?? guid();
