@@ -7,6 +7,28 @@
 | **Difficulty** | 🟠 Medium-hard (the fix is clear; the surface is 24 port types) |
 | **Recommended executor** | 🟠 Opus — the repair is specified, but deciding the coercion-vs-reject policy per type is judgement |
 | **Prerequisites** | none |
+| **Status** | ✅ **BUILT 2026-08-03** — all four slices. Criteria 1–5 met and tested; criterion 6 (live replay) is owed. |
+
+> ## ⚠️ Two wire formats in this task were wrong
+> **`dimension` is not `"100px"` and a units-typed `number` is not a bare number.** Both are
+> `{ value, unit }` objects — in all 3,589 occurrences across the 35 `project.json` in this repo, with
+> `value` sometimes a string (`{"value":"8","unit":"px"}`) and sometimes a number. A `"16px"` string is
+> not merely wrong, it is *dropped silently*: `defineRegularInputProp` reads `.value` off it, finds
+> `undefined` and deletes the property.
+>
+> A validator written from the table below would have rejected 3,589 legitimate values and made every
+> visual component in the corpus unrevisable. The shipped rules were derived from the corpus instead,
+> and the corpus is pinned as a test (`tests-unit/aib-001/parameterValuesCorpus.test.ts`).
+>
+> Also corrected: there are **six** `.split(',')` sites, not five — `CloudFunctionAdapter` has two.
+>
+> **A third defect, found while deciding what the validator should ACCEPT.** The authoring prompt
+> instructs the model to write `paddingTop: "var(--space-4)"` for on-system spacing. The runtime could
+> not consume it: the `inputCss` path fitted the token with the port's default unit and emitted
+> `var(--space-4)px` (invalid CSS, dropped by the browser); the prop path deleted the property. So
+> every on-system spacing, radius and font-size value the AI produced for a units port did nothing at
+> all — silently, in both instruments. Fixed in slice 3, and provably inert for existing projects: no
+> units-typed parameter anywhere in the corpus is a `var(` string.
 
 ## Objective
 
@@ -154,6 +176,20 @@ no path forward from it. Add:
 
 This is what turns AIB-001 from "the crash is fixed" into "the class is survivable."
 
+## What was built
+
+| Slice | Where | Note |
+|---|---|---|
+| 1 — the gate | `validation/parameterValues.ts`, wired into `authoring/validate.ts` | Diagnostics join the semantic report, so they flow through the repair loop, the update baseline exemption and the summary unchanged. Baselined on update, or a component carrying legacy `sizeMode: "childSize"` would be permanently unrevisable. |
+| 2 — tell the model | `ContextBuilder.portLine` + `WIRE_FORMAT_LEGEND` | Same table as the gate, so the two cannot drift. Per-port hints carry only what *varies* (a port's units, an enum's options); the rules true of a whole type are stated once per handout — the first draft cost ~3KB per node type against a 120,000-char budget. |
+| 3 — adapters | `NodeTypeAdapters/nameListParameter.ts` (+`.warnings.ts`), 6 call sites, `react-component-node.ts` | The rule is pure so it is testable without an editor; the `WarningsModel` wiring is the separate module the adapters import. |
+| 4 — recovery | `StagingError.operation`, `PlanRun.retryOperation`, `ProjectAuthoringView` | The transaction stays all-or-nothing. A failed retry restores the previous candidate. |
+
+**Deliberately not done: this is not a `SemanticValidator` rule.** It could be — and then `validate:project`,
+the MCP write-gate and the Problems panel would all get it — but the normalized model does not carry
+parameters, and turning a new error class loose on every existing project is a separate decision from
+fixing the crash. The module is pure and catalog-only, so promoting it later is one import.
+
 ## Acceptance criteria
 
 1. A candidate whose `pathParams` is `["id","slug"]` is rejected by the gate with a diagnostic
@@ -165,6 +201,19 @@ This is what turns AIB-001 from "the crash is fixed" into "the class is survivab
    warnings channel.
 5. An apply failure names the operation and offers a retry that re-authors only that operation.
 6. **Live**: Richard's session replayed — a three-page plan with a `PageInputs` node applies clean.
+
+### Where each landed
+
+1. ✅ `tests-unit/aib-001/parameterValues.test.ts` — "rejects the exact candidate that was thrown away".
+2. ✅ `tests/ai/authoring-parameter-values.test.ts` — the scripted provider returns the array, then the
+   string, and the second submission stages. Its sibling spec asserts the other half: a model that reads
+   `get_node_types` is told the format and needs no repair round at all.
+3. ✅ Same file — one legal and one illegal value for each of `stringlist`, `proplist`, `enum`,
+   units-`number`, `dimension`, `color` and `boolean`.
+4. ✅ `tests-unit/aib-001/nameListParameter.test.ts` over the pure rule; the six call sites are one line
+   each.
+5. ✅ `tests/ai/authoring-plan.test.ts`, "AIB-001 — retrying one operation of a plan".
+6. ⏳ **Owed.** Needs a live provider and a real project; everything below it is offline.
 
 ## Traps
 

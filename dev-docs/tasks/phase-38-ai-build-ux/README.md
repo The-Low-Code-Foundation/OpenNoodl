@@ -96,6 +96,21 @@ operation's status and the panel throws it away behind one `done` gate.
 build path destroys your work," and every other task is polish on a road that currently ends in a
 wall.
 
+> **✅ AIB-001 is built** (2026-08-03) — all four slices, criteria 1–5 tested, criterion 6 (the live
+> replay) owed. Three things worth carrying into the rest of the phase:
+>
+> - **Two of AIB-001's stated wire formats were wrong**, and a validator written from its own table
+>   would have rejected 3,589 legitimate values. The rules were derived from the corpus instead. The
+>   pattern is now familiar enough to expect (see the phase-30 memory): *read the mechanism before
+>   trusting a task's stated facts, including this README's.*
+> - **A third defect fell out of it**: the authoring prompt tells the model to write
+>   `paddingTop: "var(--space-4)"` and the runtime silently discarded it — so every on-system spacing
+>   value the AI ever produced for a units port did nothing. Same family as the headline, one layer
+>   down, and invisible from the symptom.
+> - **The recovery shape AIB-001 landed on is the one the rest of the phase should copy**: the
+>   transaction stays all-or-nothing, the *repair* becomes incremental. AIB-009's "a failed operation's
+>   output is unrecoverable" is the same fix applied to a different failure.
+
 Then, in parallel: **AIB-003** (stop losing state) and **AIB-006** (two small rendering fixes with
 outsized credibility effect — a wizard that renders `**bold**` literally reads as unfinished before
 the user has judged anything else).
