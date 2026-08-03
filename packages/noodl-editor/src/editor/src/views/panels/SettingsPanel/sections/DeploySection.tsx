@@ -11,9 +11,10 @@ import { PanelRow, PanelRowVariant } from '@noodl-core-ui/components/sidebar/Pan
 import { Text } from '@noodl-core-ui/components/typography/Text';
 
 export function DeploySection() {
-  const [enabledDeployDate, setEnabledDeployDate] = useState(!!ProjectModel.instance.settings['deployEnvDate']);
-  const [enabledGitStats, setEnabledGitStats] = useState(!!ProjectModel.instance.settings['deployEnvGitStats']);
-  const [baseUrl, setBaseUrl] = useState<string>(ProjectModel.instance.settings['baseUrl']);
+  const settings = ProjectModel.instance.getSettings();
+  const [enabledDeployDate, setEnabledDeployDate] = useState(!!settings['deployEnvDate']);
+  const [enabledGitStats, setEnabledGitStats] = useState(!!settings['deployEnvGitStats']);
+  const [baseUrl, setBaseUrl] = useState<string>(settings['baseUrl']);
 
   function handleBaseUrl(value: string) {
     setBaseUrl(value);

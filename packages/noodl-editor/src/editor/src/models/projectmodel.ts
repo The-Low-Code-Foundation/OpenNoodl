@@ -147,7 +147,9 @@ export class ProjectModel extends Model {
     this.settings = {};
     if (args) {
       this.name = args.name;
-      this.settings = args.settings;
+      // A project.json with no `settings` block must still leave this an object —
+      // four read sites index it directly and the panel crashes on undefined (POL-001).
+      this.settings = args.settings ?? {};
       // this.thumbnailURI = args.thumbnailURI;
       this.version = args.version;
       this.runtimeVersion = args.runtimeVersion;
@@ -588,7 +590,7 @@ export class ProjectModel extends Model {
   }
 
   setSettings(settings) {
-    this.settings = settings;
+    this.settings = settings ?? {};
     this.notifyListeners('settingsChanged');
   }
 

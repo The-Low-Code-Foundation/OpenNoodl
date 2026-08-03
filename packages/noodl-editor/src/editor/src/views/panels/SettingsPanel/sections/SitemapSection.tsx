@@ -7,7 +7,7 @@ import { CollapsableSection } from '@noodl-core-ui/components/sidebar/Collapsabl
 import { PanelRow, PanelRowVariant } from '@noodl-core-ui/components/sidebar/PanelRow';
 
 export function SitemapSection() {
-  const [enabled, setEnabled] = useState(!!ProjectModel.instance.settings['sitemap.enabled']);
+  const [enabled, setEnabled] = useState(!!ProjectModel.instance.getSettings()['sitemap.enabled']);
 
   function handleEnable(value: boolean) {
     setEnabled(value);
