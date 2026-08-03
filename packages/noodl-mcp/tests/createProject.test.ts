@@ -50,7 +50,7 @@ const SCOPE_ARGS = {
 
 function scopeFromArgs(): ProjectScope {
   const { name, request, ...rest } = SCOPE_ARGS;
-  return mergeScope(emptyScope(request), rest as Partial<ProjectScope>);
+  return mergeScope(emptyScope(request), rest as Parameters<typeof mergeScope>[1]);
 }
 
 describe('AIX-012 create_project', () => {

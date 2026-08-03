@@ -23,15 +23,21 @@ import {
 import { StagingError } from '../../src/editor/src/models/AiAssistant/authoring/staging';
 import type { AuthoringRequest, ComponentFiles } from '../../src/editor/src/models/AiAssistant/authoring/types';
 import { ProjectModel } from '../../src/editor/src/models/projectmodel';
+import { getCloudServices, setCloudServices } from '../../src/editor/src/models/projectmodel.editor';
 import { expectRejection } from './helpers';
-import { UndoQueue } from '../../src/editor/src/models/undo-queue-model';
+import { UndoActionGroup, UndoQueue } from '../../src/editor/src/models/undo-queue-model';
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 const gitRepoUtf8 = require('../testfs/git-repo-utf8/project.json');
 /* eslint-enable @typescript-eslint/no-var-requires */
 
 function loadProject(): ProjectModel {
-  return ProjectModel.fromJSON(JSON.parse(JSON.stringify(gitRepoUtf8)));
+  const project = ProjectModel.fromJSON(JSON.parse(JSON.stringify(gitRepoUtf8)));
+  // AIB-007: the fake provisioner binds whichever project the spec loaded. The
+  // real one takes it as an option; a module-level handle keeps the fake from
+  // needing a factory the other specs would have to know about.
+  currentProject = project;
+  return project;
 }
 
 /** Save through the product's own path; resolves to the project.json bytes. */
@@ -165,9 +171,87 @@ function fakeDocWriter(): FakeDocs {
   return state;
 }
 
+/** AIB-007 — the provision operation the specs below apply. */
+function provisionOperation(): AppliedPlanOperation {
+  return {
+    kind: 'provision',
+    operation: {
+      id: 'op-0',
+      kind: 'provision',
+      target: 'App backend',
+      intent: 'Give this project a built-in backend that runs on this computer.',
+      provision: {
+        name: 'App backend',
+        collections: [{ name: 'Message', columns: [{ name: 'body', type: 'String' }] }],
+        needsAuth: true
+      }
+    },
+    provision: {
+      name: 'App backend',
+      collections: [{ name: 'Message', columns: [{ name: 'body', type: 'String' }] }],
+      needsAuth: true
+    }
+  };
+}
+
+/**
+ * A stand-in for the editor's `editorBackendProvisioner`, with the two
+ * behaviours the transaction depends on and the one it must NOT have.
+ *
+ * `created` and `deleted` are tracked separately on purpose: the whole point of
+ * AIB-007's undo boundary is that an undo sets `deleted` to *nothing*, and a
+ * spec that only checked the project would pass either way.
+ */
+function fakeProvisioner(options: { refuse?: string } = {}) {
+  const tracker = {
+    created: false,
+    deleted: false,
+    provisioner: {
+      preflight() {
+        if (options.refuse) throw new Error(options.refuse);
+      },
+      apply(op: Extract<AppliedPlanOperation, { kind: 'provision' }>, undoGroup: UndoActionGroup) {
+        tracker.created = true;
+        // ⚠️ The RAW metadata, exactly as `editorBackendProvisioner` does — see
+        // the note there. Snapshotting through `getCloudServices` loses any
+        // field that projection does not read, and the corpus fixture has one
+        // (`workspaceId`). This fake mirrors the real one so that the
+        // byte-for-byte assertion below is testing the same property.
+        const before = currentProject!.getMetaData('cloudservices');
+        setCloudServices(currentProject!, {
+          id: 'backend-fake',
+          endpoint: 'http://localhost:9999',
+          appId: 'backend-fake',
+          type: 'nodegx'
+        });
+        const after = currentProject!.getMetaData('cloudservices');
+        const restore = (value: unknown) => {
+          currentProject!.setMetaData('cloudservices', value);
+          currentProject!.notifyListeners('cloudServicesChanged');
+        };
+        // ONLY the binding. Deleting the backend is deliberately not an inverse
+        // — see `PlanBackendProvisioner`.
+        undoGroup.push({ do: () => restore(after), undo: () => restore(before) });
+        return Promise.resolve({
+          backendId: 'backend-fake',
+          name: op.provision.name,
+          endpoint: 'http://localhost:9999',
+          collections: op.provision.collections.map((c) => c.name),
+          warnings: []
+        });
+      }
+    }
+  };
+  return tracker;
+}
+
+/** The project the fake provisioner binds. Set by `loadProject` below. */
+let currentProject: ProjectModel | undefined;
+
 describe('AIX-011 plan staging (the transaction)', () => {
   beforeEach(() => {
     UndoQueue.instance.clear();
+    currentProject = undefined;
   });
 
   it('criterion 4: apply a 3-component plan, undo ONCE, and the saved project files are byte-identical', async () => {
@@ -292,5 +376,113 @@ describe('AIX-011 plan staging (the transaction)', () => {
     const project = loadProject();
     const error = await expectRejection(() => applyAuthoredPlan(project, []));
     expect(error instanceof StagingError).toBe(true);
+  });
+
+  // ── AIB-007 — the provision, and the undo boundary it introduces ───────────
+
+  it('criterion 4 with a backend: one undo restores the project byte-for-byte, and the backend survives', async () => {
+    const project = loadProject();
+    // ⚠️ The corpus fixture is a Noodl Cloud project and already HAS an
+    // endpoint. That is what makes it the right fixture for this: the assertion
+    // is that undo restores what was there, not that it clears the field, and
+    // the two only look the same on a project that had nothing.
+    const originalEndpoint = getCloudServices(project).endpoint;
+    expect(originalEndpoint).toBeDefined();
+    const before = await saveProjectFiles(project, 'before-provision');
+    const provisioner = fakeProvisioner();
+
+    const operations: AppliedPlanOperation[] = [provisionOperation(), ...threeComponentPlan(project)];
+    const result = await applyAuthoredPlan(project, operations, { provisioner: provisioner.provisioner });
+
+    // The binding landed on the project…
+    expect(getCloudServices(project).endpoint).toBe('http://localhost:9999');
+    expect(result.backend?.collections).toEqual(['Message']);
+    // …and the machine-level resource exists.
+    expect(provisioner.created).toBe(true);
+    expect(UndoQueue.instance.getHistory().length).toBe(1);
+
+    UndoQueue.instance.undo();
+
+    // The PROJECT is restored exactly — the binding is in the group.
+    const afterUndo = await saveProjectFiles(project, 'after-undo-provision');
+    expect(afterUndo.equals(before)).toBe(true);
+    expect(getCloudServices(project).endpoint).toBe(originalEndpoint);
+    // ⚠️ The backend is NOT deleted, and that is the design rather than a gap:
+    // an undo that destroyed a database would be phase 38's own headline defect
+    // pointed the other way. `describeSideEffects` is what makes it honest, and
+    // the panel shows it before Apply.
+    expect(provisioner.deleted).toBe(false);
+
+    UndoQueue.instance.redo();
+    expect(getCloudServices(project).endpoint).toBe('http://localhost:9999');
+  });
+
+  it('a plan carrying a provision with no provisioner refuses loudly, before any mutation', async () => {
+    const project = loadProject();
+    const before = JSON.stringify(project.toJSON());
+    const operations: AppliedPlanOperation[] = [provisionOperation(), ...threeComponentPlan(project)];
+
+    const error = await expectRejection(() => applyAuthoredPlan(project, operations));
+    expect(error.message).toContain('no way to create a backend');
+    expect(JSON.stringify(project.toJSON())).toBe(before);
+    expect(UndoQueue.instance.getHistory().length).toBe(0);
+  });
+
+  it('a provision that refuses in preflight leaves the components unapplied', async () => {
+    const project = loadProject();
+    const before = JSON.stringify(project.toJSON());
+    const provisioner = fakeProvisioner({ refuse: 'this project already points at somewhere else' });
+    const operations: AppliedPlanOperation[] = [provisionOperation(), ...threeComponentPlan(project)];
+
+    const error = await expectRejection(() =>
+      applyAuthoredPlan(project, operations, { provisioner: provisioner.provisioner })
+    );
+    expect(error.message).toContain('already points at');
+    expect(provisioner.created).toBe(false);
+    expect(JSON.stringify(project.toJSON())).toBe(before);
+    expect(project.getComponentWithName('/Pages/Checkout')).toBeUndefined();
+  });
+
+  it('two provisions in one plan are refused rather than applied in whatever order they arrived', async () => {
+    const project = loadProject();
+    const provisioner = fakeProvisioner();
+    const second = { ...provisionOperation() };
+    second.operation = { ...second.operation, id: 'op-9' };
+    const error = await expectRejection(() =>
+      applyAuthoredPlan(project, [provisionOperation(), second], { provisioner: provisioner.provisioner })
+    );
+    expect(error.message).toContain('two backends');
+    expect(provisioner.created).toBe(false);
+  });
+
+  it('a component that fails after the provision rolls the project back, and says the backend stayed', async () => {
+    const project = loadProject();
+    const originalEndpoint = getCloudServices(project).endpoint;
+    const provisioner = fakeProvisioner();
+    const operations = [provisionOperation(), ...threeComponentPlan(project)];
+    // Sabotage the create AFTER preflight has passed, so the failure happens
+    // inside the mutation phase — the one path where a provision has already run.
+    // `AppliedPlanComponentOperation` carries `kind: 'create' | 'update'`, so
+    // `Extract` cannot narrow it — the cast is on the field we actually touch.
+    const create = operations[1] as { files: { nodes: unknown } };
+    const originalNodes = create.files.nodes;
+    create.files.nodes = {
+      get nodes(): never {
+        throw new Error('sabotage');
+      }
+    };
+
+    const error = await expectRejection(() =>
+      applyAuthoredPlan(project, operations, { provisioner: provisioner.provisioner })
+    );
+    create.files.nodes = originalNodes;
+
+    expect(error instanceof StagingError).toBe(true);
+    // The project is clean: the binding's inverse ran with everything else.
+    expect(getCloudServices(project).endpoint).toBe(originalEndpoint);
+    expect(project.getComponentWithName('/Pages/Checkout')).toBeUndefined();
+    // The backend is still on the machine. Nothing here pretends otherwise.
+    expect(provisioner.created).toBe(true);
+    expect(provisioner.deleted).toBe(false);
   });
 });

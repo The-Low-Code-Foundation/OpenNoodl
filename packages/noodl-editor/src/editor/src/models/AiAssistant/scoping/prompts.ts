@@ -87,9 +87,63 @@ export const SCOPING_TOOLS: AiToolDefinition[] = [
             'drop anything the conversation has since decided the app WILL do.',
           items: { type: 'string' }
         },
+        // AIB-007: this was a bare string, and prose is where it ended — recorded
+        // into ARCHITECTURE.md and read by nothing. The prose stays (as
+        // `description`, still rendered verbatim); what is new is the structure
+        // beside it, which is what lets the plan offer to actually create one.
         backend: {
-          type: 'string',
-          description: 'What the app stores data in, or the word "None" when it was agreed there is no backend.'
+          type: 'object',
+          description:
+            'What the app stores data in. Record this as soon as the conversation settles it — a plan can offer ' +
+            'to create the backend, but only from what is recorded here.',
+          properties: {
+            kind: {
+              type: 'string',
+              enum: ['none', 'nodegx', 'external'],
+              description:
+                '"none" when you agreed the app stores nothing on a server. "nodegx" when it needs a backend and ' +
+                'the user has not named a particular one — a built-in backend will be offered in the plan. ' +
+                '"external" when they told you they are using something they already run (Supabase, Directus, ' +
+                'their own API). Leave it out if you genuinely do not know yet.'
+            },
+            description: {
+              type: 'string',
+              description:
+                'What was actually said, in prose. This is written into the project docs verbatim, so it should ' +
+                'read as a sentence and include the reason if there was one.'
+            },
+            collections: {
+              type: 'array',
+              description:
+                'The collections this app stores, with the fields the conversation named. Omit it and the ' +
+                'records you recorded in "objects" are used instead — do not repeat them here just to fill it in.',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: 'Singular, matching the object name: "Book"' },
+                  fields: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        type: {
+                          type: 'string',
+                          description: 'text, number, yes/no, or date. Omit when the conversation did not say.'
+                        }
+                      },
+                      required: ['name']
+                    }
+                  }
+                },
+                required: ['name']
+              }
+            },
+            needsAuth: {
+              type: 'boolean',
+              description: 'True only when you agreed that people sign in to this app.'
+            }
+          }
         },
         conventions: {
           type: 'array',
@@ -147,7 +201,11 @@ WHAT TO ESTABLISH
 - The core objects and how they relate. Keep the names plain: Book, Shelf, Note.
 - What the pages are. Every page you agree is a page someone has to build and maintain.
 - What the app deliberately will NOT do. Push for this — it is the single most useful thing you can record.
-- Whether there is a backend, and if so what kind.
+- Whether the app stores data on a server, and whether people sign in. This one has consequences: record
+  backend.kind "nodegx" and the plan will OFFER to create a backend, which the user approves or drops like any
+  other step. So ask before you record it. "Does this need to remember things between visits, or between
+  people?" settles it faster than the word "backend" does. If they already run something — Supabase, their own
+  API — that is "external" and nothing gets created.
 
 HOW TO RUN THE CONVERSATION
 - Ask about ONE thing at a time. Two questions in a message is the limit and one is better.

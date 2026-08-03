@@ -36,7 +36,29 @@ import type { ScopeTranscriptEntry } from './scope';
 /** A ```json nodegx-plan fenced block and its body. */
 const PLAN_FENCE = new RegExp('```json\\s+' + PLAN_FENCE_TAG + '\\s*\\n([\\s\\S]*?)\\n```');
 
-const VALID_KINDS = new Set(['create', 'update', 'doc']);
+const VALID_KINDS = new Set(['create', 'update', 'doc', 'provision']);
+
+/**
+ * AIB-007 — a recorded provision's payload, checked rather than trusted.
+ *
+ * The record is a markdown file a person can edit, and this is the one operation
+ * whose payload has an effect outside the project. A malformed one is dropped
+ * from the plan (which then fails the length check below and offers nothing)
+ * rather than reaching `applyAuthoredPlan` as a backend with no name.
+ */
+function isValidProvision(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const spec = value as { name?: unknown; collections?: unknown; needsAuth?: unknown };
+  if (typeof spec.name !== 'string' || !spec.name.trim()) return false;
+  if (!Array.isArray(spec.collections)) return false;
+  return spec.collections.every(
+    (c) =>
+      c &&
+      typeof c === 'object' &&
+      typeof (c as { name?: unknown }).name === 'string' &&
+      Array.isArray((c as { columns?: unknown }).columns)
+  );
+}
 
 /**
  * The plan recorded in a scope document, or `undefined` if it has none, the
@@ -67,7 +89,9 @@ export function parseRecordedPlan(markdown: string): AuthoringPlan | undefined {
       typeof op.id === 'string' &&
       typeof op.target === 'string' &&
       typeof op.intent === 'string' &&
-      VALID_KINDS.has(op.kind as string)
+      VALID_KINDS.has(op.kind as string) &&
+      // A provision must carry its spec; anything else must not carry one.
+      (op.kind === 'provision' ? isValidProvision(op.provision) : op.provision === undefined)
   );
   if (operations.length !== plan.operations.length || operations.length === 0) return undefined;
 

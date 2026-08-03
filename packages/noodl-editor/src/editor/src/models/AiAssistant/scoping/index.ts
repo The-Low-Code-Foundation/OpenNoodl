@@ -13,18 +13,22 @@
  */
 
 export {
+  DEFAULT_PROVISIONED_BACKEND_NAME,
   DOC_INITIAL_SCOPE,
   PLAN_FENCE_TAG,
   TODO_MARKER,
   emptyScope,
   mergeScope,
+  normalizeScopeBackend,
   pageComponentPath,
   pageLegacyCandidates,
   planFromScope,
+  provisionFromScope,
   renderArchitecture,
   renderBrief,
   renderConventions,
   renderScopeRecord,
+  scopeBackendDescription,
   scopeDocuments,
   scopeHasContent,
   scopeOutline
@@ -32,6 +36,8 @@ export {
 export type {
   PlanFromScopeOptions,
   ProjectScope,
+  ScopeBackend,
+  ScopeCollection,
   ScopeDocument,
   ScopeObject,
   ScopePage,

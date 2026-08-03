@@ -31,6 +31,7 @@ import type { ConnectionV2 } from '../../../schemas';
 // platform filesystem into the headless measurement bundle.
 import { currentImportReport } from '../../../utils/import-engine/legacy/currentReport';
 import type { ImportReport } from '../../../utils/import-engine/legacy/types';
+import type { ProjectBackendFacts } from '../../../validation';
 import { formatDiagnosticLine } from '../../../validation';
 import { currentProjectDocs } from '../../ProjectDocs/currentDocs';
 import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
@@ -148,6 +149,16 @@ export interface AuthoringSessionOptions {
    * been imported — the control arm, and every headless spec that does not care.
    */
   importReport?: ImportReport | null;
+  /**
+   * AIB-007: what the project can offer a Cloud Data or User node, and whether
+   * a plan operation is about to provision one.
+   *
+   * ⚠️ **Omitted means "do not check"**, not "there is no backend" — see
+   * `ValidateCandidateOptions.backend`. There is deliberately no live default
+   * here, unlike `projectDocs`: the true answer depends on whether the *plan*
+   * provisions a backend, which a session has no way to know and the panel does.
+   */
+  backend?: ProjectBackendFacts;
 }
 
 const DEFAULT_MAX_TURNS = 12;
@@ -276,6 +287,8 @@ export class AuthoringSession {
   private readonly effort: AiEffort;
   /** AIX-011: rendered sibling-intent block when part of a plan, else undefined. */
   private readonly planContext?: string;
+  /** AIB-007: what the project can offer a Cloud Data or User node. Undefined ⇒ do not check. */
+  private readonly backend?: ProjectBackendFacts;
   readonly context: AuthoringContextBuilder;
   readonly legacyName: string;
   /** AIX-009: `get_project_doc`, present only when the project has an ARCHITECTURE.md. */
@@ -325,6 +338,7 @@ export class AuthoringSession {
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
     this.effort = options.effort ?? AUTHORING_EFFORT;
     this.planContext = options.planContext;
+    this.backend = options.backend;
     this.styleGuidance = options.styleGuidance ?? true;
     this.styleTokenRecords = options.styleTokenRecords;
     const projectDocs = options.projectDocs ?? currentProjectDocs();
@@ -832,7 +846,8 @@ export class AuthoringSession {
       // Update mode: whatever the component already fails on is not this
       // submission's fault, and rejecting over it makes the agent "fix" the
       // user's own graph — see `ValidateCandidateOptions.baseline`.
-      ...(this.baseFiles ? { baseline: this.baseFiles } : {})
+      ...(this.baseFiles ? { baseline: this.baseFiles } : {}),
+      ...(this.backend ? { backend: this.backend } : {})
     });
     if (validation.ok) {
       const warnings = validation.diagnostics.filter((d) => d.severity === 'warning');

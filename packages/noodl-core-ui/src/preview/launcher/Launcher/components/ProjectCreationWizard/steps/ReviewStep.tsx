@@ -15,6 +15,12 @@ export interface ReviewPlanRow {
   kind: string;
   target: string;
   intent: string;
+  /**
+   * AIB-007 — a short parenthetical after the target: "3 collections, sign-in".
+   * Only the provision row uses it today; a page's shape is not knowable before
+   * it is authored, which is why every other row is intent alone.
+   */
+  detail?: string;
 }
 
 export interface ReviewStepProps {
@@ -120,6 +126,7 @@ export function ReviewStep({ presets, scopeOutline, planRows }: ReviewStepProps)
                 <li key={index}>
                   <strong>
                     {row.kind} {row.target}
+                    {row.detail ? ` (${row.detail})` : ''}
                   </strong>
                   <span className={css['Plan-intent']}>{row.intent}</span>
                 </li>
@@ -133,6 +140,12 @@ export function ReviewStep({ presets, scopeOutline, planRows }: ReviewStepProps)
           <p className={css['Plan-note']}>
             Creating the project writes the brief, the architecture notes, the conventions and the full scoping
             record into <code>docs/</code>. The plan is saved with them and waits for you — nothing is built now.
+            {/* AIB-007: the backend is the one step with an effect outside the
+                project folder, so the note names it here rather than letting the
+                user meet it for the first time at apply. */}
+            {planRows.some((row) => row.kind === 'provision')
+              ? ' That includes the backend — it is created when you run the plan, not now.'
+              : ''}
           </p>
         </div>
       )}

@@ -32,6 +32,7 @@ import { LauncherLessonData } from '@noodl-core-ui/preview/launcher/Launcher/Lau
 
 import { useEventListener } from '../../hooks/useEventListener';
 import type { AuthoringPlan } from '../../models/AiAssistant/authoring/plan';
+import { provisionSummary } from '../../models/AiAssistant/authoring/plan';
 import {
   DOC_INITIAL_SCOPE,
   ProjectScope,
@@ -85,7 +86,13 @@ const NEW_PROJECT_COMPONENTS: ReadonlySet<string> = new Set(['/App', '/#__page__
 
 /** The plan as the review step lists it. */
 function toPlanRows(plan: AuthoringPlan): ReviewPlanRow[] {
-  return plan.operations.map((op) => ({ kind: op.kind, target: op.target, intent: op.intent }));
+  return plan.operations.map((op) => ({
+    kind: op.kind,
+    target: op.target,
+    intent: op.intent,
+    // AIB-007 slice 4 — "provision App backend (3 collections, sign-in)".
+    ...(op.provision ? { detail: provisionSummary(op.provision) } : {})
+  }));
 }
 
 /**

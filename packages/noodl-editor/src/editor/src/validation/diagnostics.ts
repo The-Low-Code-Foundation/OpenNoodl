@@ -86,7 +86,14 @@ export enum DiagnosticCode {
    * place, marked. Always an error — see `rules/legacyImportPlaceholder.ts` for
    * why this is not folded into `unknown-node-type`.
    */
-  LegacyImportPlaceholder = 'legacy-import-placeholder'
+  LegacyImportPlaceholder = 'legacy-import-placeholder',
+  /**
+   * AIB-007: a node reads or writes on the project's backend, and the project
+   * has none. Error when the scope explicitly agreed there is no backend,
+   * warning otherwise — see `backendRequirement.ts`, which also explains why
+   * this is a precondition check rather than a catalog fact.
+   */
+  MissingBackend = 'missing-backend'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────

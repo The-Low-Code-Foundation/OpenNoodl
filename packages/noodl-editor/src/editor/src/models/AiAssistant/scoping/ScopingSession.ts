@@ -28,8 +28,15 @@
 import { AiClient } from '../client';
 import type { AiChatRequest, AiChatResponse, AiEffort, AiMessage, AiStreamCallbacks } from '../client/types';
 import { RECORD_SCOPE, SCOPING_TOOLS, scopingOpeningMessage, scopingSystemPrompt, unknownToolMessage } from './prompts';
-import type { ProjectScope, ScopeTranscriptEntry } from './scope';
+import type { ProjectScope, ScopeBackendInput, ScopeTranscriptEntry } from './scope';
 import { emptyScope, mergeScope } from './scope';
+
+/**
+ * What `toScopePatch` produces. AIB-007 widened `backend` to the union
+ * `mergeScope` accepts, so that a model answering the pre-AIB-007 schema is
+ * normalised rather than dropped.
+ */
+export type ScopePatch = Partial<Omit<ProjectScope, 'backend'>> & { backend?: ScopeBackendInput };
 
 /** Same injection seam as every other session here: specs bind a script. */
 export type ScopingChatFn = (request: AiChatRequest, callbacks?: AiStreamCallbacks) => Promise<AiChatResponse>;
@@ -208,11 +215,18 @@ export class ScopingSession {
  * an extra key has not built anything, and failing the turn over it would cost
  * the user their conversation to teach the model nothing.
  */
-export function toScopePatch(args: Record<string, unknown>): Partial<ProjectScope> {
-  const patch: Partial<ProjectScope> = {};
+export function toScopePatch(args: Record<string, unknown>): ScopePatch {
+  const patch: ScopePatch = {};
   if (typeof args.summary === 'string') patch.summary = args.summary;
   if (typeof args.audience === 'string') patch.audience = args.audience;
-  if (typeof args.backend === 'string') patch.backend = args.backend;
+  // AIB-007: the schema asks for an object now, but a model that answers the
+  // *old* schema — or answers this one carelessly — sends a string. Both are
+  // passed through to `normalizeScopeBackend`, which is the one place that
+  // decides what an un-classifiable answer means, and which never reads prose as
+  // permission to create a backend.
+  if (typeof args.backend === 'string' || (args.backend && typeof args.backend === 'object')) {
+    patch.backend = args.backend as ScopeBackendInput;
+  }
   if (typeof args.agreed === 'boolean') patch.agreed = args.agreed;
 
   const strings = (value: unknown): string[] | undefined =>

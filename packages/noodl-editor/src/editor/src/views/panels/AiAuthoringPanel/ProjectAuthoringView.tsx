@@ -37,6 +37,7 @@ import {
   type ComponentFiles,
   type PlanApplyFailure,
   type PlanOperationState,
+  type AppliedPlanOperation,
   type PlanRunState,
   type PlanSession
 } from '@noodl-models/AiAssistant/authoring';
@@ -49,12 +50,15 @@ import { takePendingScopePlan, type PendingScopePlan } from '@noodl-models/AiAss
 // barrel, which would drag `ScopingSession` (the AI client) in behind it.
 import { recoverScopePlan, type RecoveredScopePlan } from '@noodl-models/AiAssistant/scoping/recoverPlan';
 import { AppRegistry } from '@noodl-models/app_registry';
+// AIB-007 — the provisioner and the project's current backend pointer.
+import { editorBackendProvisioner } from '@noodl-models/BackendServices/provisionBackend';
 import { createPlanDocWriter, ProjectDocsModel } from '@noodl-models/ProjectDocs';
 import { ProjectModel } from '@noodl-models/projectmodel';
+import { getCloudServices } from '@noodl-models/projectmodel.editor';
 import { buildEffectiveTokens, buildStyleVocabulary, readStoredTokens } from '@noodl-models/StyleTokensModel';
 
 import { buildComponentV2Files } from '../../../io/ProjectExporter';
-import { formatDiagnosticLine } from '../../../validation';
+import { DiagnosticCode, formatDiagnosticLine, type Diagnostic, type ProjectBackendFacts } from '../../../validation';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -84,6 +88,12 @@ function statusIcon(state: PlanOperationState): { icon: IconName; variant?: Feed
   if (state.status === 'staged' && state.operation.kind === 'doc') {
     return { icon: IconName.File, variant: FeedbackType.Success };
   }
+  // AIB-007: a staged provision has not created anything — it is the one row
+  // whose tick would be a lie. The cloud icon says "this is about the backend"
+  // without claiming the backend exists.
+  if (state.status === 'staged' && state.operation.kind === 'provision') {
+    return { icon: IconName.CloudData, variant: FeedbackType.Notice };
+  }
   switch (state.status) {
     case 'staged':
       return { icon: IconName.Check, variant: FeedbackType.Success };
@@ -105,6 +115,19 @@ function operationDetail(state: PlanOperationState): string | undefined {
     const { chars, created, summary } = state.stagedDoc;
     const size = `${created ? 'New file' : 'Rewritten'}, ${chars} characters`;
     return summary ? `${size} — ${summary}` : size;
+  }
+  // AIB-007. Present tense on purpose: every other staged row describes
+  // something that exists in memory, and this one describes something that does
+  // not exist at all yet.
+  if (state.status === 'staged' && state.stagedProvision) {
+    const { collections, needsAuth } = state.stagedProvision;
+    const what = [
+      collections.length > 0 ? `${collections.length} collection${collections.length === 1 ? '' : 's'}` : undefined,
+      needsAuth ? 'user accounts' : undefined
+    ]
+      .filter(Boolean)
+      .join(' and ');
+    return `Will be created when you apply${what ? `, with ${what}` : ''}`;
   }
   return undefined;
 }
@@ -128,6 +151,45 @@ export function formatCost(costUsd: number | null): string {
   if (costUsd === null) return 'cost unknown';
   // Sub-cent totals are real during testing; $0.00 reads as "nothing happened".
   return costUsd > 0 && costUsd < 0.01 ? `$${costUsd.toFixed(4)}` : `$${costUsd.toFixed(2)}`;
+}
+
+/**
+ * AIB-007 — what a Cloud Data or User node can count on, as the *run* sees it.
+ *
+ * Two inputs, because the honest answer needs both: what the project has now,
+ * and what this plan is about to give it. A run that provisions a backend must
+ * not warn about the very pages it is provisioning it for — the agent is told to
+ * take diagnostics literally, so a spurious warning here is a page that comes
+ * back without its Sign Up button.
+ *
+ * `hasAuth` is deliberately left to default to `hasBackend`. Whether an existing
+ * backend has sign-in switched on is not readable from `cloudservices`, and
+ * claiming to know would report a problem we cannot see.
+ */
+function planBackendFacts(project: ProjectModel, plan: AuthoringPlan): ProjectBackendFacts {
+  const provision = plan.operations.find((op) => op.kind === 'provision')?.provision;
+  return {
+    hasBackend: Boolean(getCloudServices(project).endpoint),
+    ...(provision
+      ? { plannedProvision: { collections: provision.collections.map((c) => c.name), needsAuth: provision.needsAuth } }
+      : {})
+  };
+}
+
+/** The same facts at apply time, from the *accepted* set rather than the plan. */
+function appliedBackendFacts(project: ProjectModel, operations: readonly AppliedPlanOperation[]): ProjectBackendFacts {
+  const provision = operations.find((op) => op.kind === 'provision');
+  return {
+    hasBackend: Boolean(getCloudServices(project).endpoint),
+    ...(provision && provision.kind === 'provision'
+      ? {
+          plannedProvision: {
+            collections: provision.provision.collections.map((c) => c.name),
+            needsAuth: provision.provision.needsAuth
+          }
+        }
+      : {})
+  };
 }
 
 /**
@@ -421,7 +483,15 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
       // become the write path's drift baseline. `PlanRun` never touches a
       // filesystem itself — this is the only seam through which it sees one.
       docBaselineFor: docs ? (relPath: string) => docs.read(relPath) : undefined,
-      session: styleOptions
+      session: {
+        ...styleOptions,
+        // AIB-007 criterion 2 and 5. Bound here rather than defaulted inside the
+        // session, because the true answer needs the *plan*: a run that
+        // provisions a backend must not warn about the Sign Up nodes it is
+        // building for the backend it is about to create. Nothing else in the
+        // product knows both halves.
+        backend: planBackendFacts(project, plan)
+      }
     });
     runRef.current = run;
     // Into the store first: the run must outlive this mount, and the effect that
@@ -529,8 +599,13 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     // with earlier accepted operations visible to later ones.
     const graph = fromProjectModel(project);
     let components = [...graph.components];
+    const backendWarnings: Diagnostic[] = [];
     for (const op of operations) {
-      if (op.kind === 'doc') continue;
+      // AIB-007: a provision is skipped here for the same reason a doc is — it
+      // has no graph to re-validate. What it *does* change is whether the
+      // components that follow it have a backend, and that is fed into the
+      // validation below rather than checked here.
+      if (op.kind === 'doc' || op.kind === 'provision') continue;
       const legacyName = pathToLegacyName(op.operation.target);
       // An update re-validates against its own base, exactly as its session did
       // — otherwise a revision that correctly preserved a pre-existing problem
@@ -539,7 +614,12 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
       const validation = validateCandidateComponent({ components }, legacyName, op.files, {
         ...(existing
           ? { baseline: buildComponentV2Files(existing.toJSON(), new Date().toISOString()) as ComponentFiles }
-          : {})
+          : {}),
+        // AIB-007: the same facts the run authored against. `operations` is the
+        // *accepted* set, so an excluded provision correctly makes this the
+        // stricter check — dropping the backend and keeping the pages that need
+        // it is exactly the combination worth catching here.
+        backend: appliedBackendFacts(project, operations)
       });
       if (!validation.ok) {
         // AIB-001: after slice 1 this is where a bad parameter value surfaces if
@@ -554,18 +634,59 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
         setApplyFailure({ id: op.operation.id, target: op.operation.target, reason });
         return;
       }
+      // AIB-007: a Cloud Data or User node with nowhere to go is a WARNING, not
+      // an error, so `validation.ok` is true and the loop above says nothing.
+      // That is the right severity — the graph is valid and the user's decision
+      // to drop the provision stands — but silence is not. This is precisely the
+      // combination the plan lets you build: keep the Sign Up page, drop the
+      // backend it needs.
+      for (const diagnostic of validation.diagnostics) {
+        if (diagnostic.code === DiagnosticCode.MissingBackend) backendWarnings.push(diagnostic);
+      }
       // Extend with the accepted candidate so later operations validate
       // against it (the same working-copy trick as the run itself).
       components = [...components.filter((c) => c.name !== legacyName), graphComponentFromFiles(legacyName, op.files)];
     }
 
     try {
-      const result = await applyAuthoredPlan(project, operations, { docWriter });
+      const result = await applyAuthoredPlan(project, operations, {
+        docWriter,
+        // AIB-007. Always passed: the transaction refuses a plan carrying a
+        // provision when there is none, and the editor always can.
+        provisioner: editorBackendProvisioner({ project })
+      });
       // Discard first, then record the outcome: the applied summary is the one
       // thing that must survive the reset, and `reset` now clears the whole
       // session rather than a hand-picked list of fields.
       reset();
-      setApplied({ count: result.components.size, docs: result.docs });
+      setApplied({
+        count: result.components.size,
+        docs: result.docs,
+        // AIB-007: the provision's own outcome, including collections it could
+        // not create. A warning that only reached the console is a warning that
+        // did not happen.
+        ...(result.backend
+          ? {
+              backend: {
+                name: result.backend.name,
+                endpoint: result.backend.endpoint,
+                collections: result.backend.collections,
+                warnings: result.backend.warnings
+              }
+            }
+          : {}),
+        // AIB-007: carried on `applied` rather than raised as a note before the
+        // apply, because a successful apply calls `reset()` and `reset` clears
+        // the note — the warning would have existed for exactly as long as it
+        // took to succeed.
+        ...(backendWarnings.length > 0
+          ? {
+              missingBackend: [
+                ...new Set(backendWarnings.map((d) => d.message))
+              ]
+            }
+          : {})
+      });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setNote({ text: message, type: FeedbackType.Danger });
@@ -722,14 +843,57 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
             )}
 
             {applied && (
-              <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
-                <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
-                <Text textType={TextType.Secondary}>
-                  Applied the plan — {applied.count} component{applied.count === 1 ? '' : 's'} changed
-                  {applied.docs.length > 0 ? `, ${applied.docs.join(' and ')} written` : ''}. This was one edit: a
-                  single undo reverts all of it.
-                </Text>
-              </HStack>
+              <VStack UNSAFE_style={{ gap: 6 }}>
+                <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
+                  <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
+                  <Text textType={TextType.Secondary}>
+                    Applied the plan — {applied.count} component{applied.count === 1 ? '' : 's'} changed
+                    {applied.docs.length > 0 ? `, ${applied.docs.join(' and ')} written` : ''}.
+                    {/* AIB-007: the undo sentence is qualified when a backend
+                        was created, because it is no longer true unqualified —
+                        one undo still restores the PROJECT, and the backend is
+                        not part of the project. Saying "a single undo reverts
+                        all of it" over a database would be the phase's own rule
+                        broken in a status line. */}
+                    {applied.backend
+                      ? ' One undo reverts every change to the project; the backend stays, in Backend Services.'
+                      : ' This was one edit: a single undo reverts all of it.'}
+                  </Text>
+                </HStack>
+                {applied.backend && (
+                  <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
+                    <Icon icon={IconName.CloudCheck} variant={FeedbackType.Success} size={IconSize.Small} />
+                    <Text textType={TextType.Secondary}>
+                      Backend "{applied.backend.name}" is running at {applied.backend.endpoint}
+                      {applied.backend.collections.length > 0
+                        ? ` with ${applied.backend.collections.join(', ')}`
+                        : ''}
+                      .
+                    </Text>
+                  </HStack>
+                )}
+                {applied.backend?.warnings.map((warning, index) => (
+                  <HStack key={index} UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
+                    <Icon icon={IconName.WarningTriangle} variant={FeedbackType.Notice} size={IconSize.Small} />
+                    <Text textType={TextType.Shy}>{warning}</Text>
+                  </HStack>
+                ))}
+                {/*
+                  AIB-007 — applied, and pointing at nothing. Reachable by
+                  dropping the provision and keeping the pages that needed it,
+                  which is a choice the plan deliberately allows.
+                */}
+                {applied.missingBackend && (
+                  <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
+                    <Icon icon={IconName.WarningTriangle} variant={FeedbackType.Notice} size={IconSize.Small} />
+                    <Text textType={TextType.Shy}>
+                      {applied.missingBackend.slice(0, 2).join(' ')}
+                      {applied.missingBackend.length > 2 ? ` (+${applied.missingBackend.length - 2} more)` : ''} Add a
+                      backend in Backend Services and these will start working.
+                    </Text>
+                  </HStack>
+                )}
+              </VStack>
             )}
 
             {/*
@@ -811,6 +975,18 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                           applied.
                         </Text>
                       )}
+                      {/*
+                        AIB-007 — the one operation in a plan with an effect
+                        outside the project folder, and the one an undo does not
+                        take back. Said here, at the moment the user can still
+                        drop it, rather than in a toast after it has happened.
+                      */}
+                      {op.kind === 'provision' && (
+                        <Text textType={TextType.Shy}>
+                          Creates a backend on this computer and starts it. Undoing the plan stops using it but does
+                          not delete it or its data — remove it in Backend Services.
+                        </Text>
+                      )}
                     </VStack>
                     <PrimaryButton
                       label="Drop"
@@ -859,6 +1035,11 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                   const { icon, variant } = statusIcon(op);
                   const isExcluded = excluded.has(op.operation.id);
                   const isDoc = op.operation.kind === 'doc';
+                  // AIB-007: nothing to open. A provision has no candidate
+                  // graph and no proposed file — the row's own detail line IS
+                  // the review, which is why it says what it will create rather
+                  // than what it did.
+                  const isProvision = op.operation.kind === 'provision';
                   const detail = operationDetail(op);
                   const isAuthoring = op.status === 'authoring';
                   // AIB-002 slice 2 — this operation's own elapsed time, live
@@ -876,6 +1057,9 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                           {op.staged
                             ? ` — ${op.staged.nodeCount} node${op.staged.nodeCount === 1 ? '' : 's'}`
                             : ''}
+                          {op.stagedProvision && op.stagedProvision.collections.length > 0
+                            ? ` — ${op.stagedProvision.collections.join(', ')}`
+                            : ''}
                         </Text>
                         {elapsed !== undefined && <Text textType={TextType.Shy}>{formatDuration(elapsed)}</Text>}
                         {/*
@@ -889,13 +1073,15 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                         */}
                         {op.status === 'staged' && (
                           <>
-                            <PrimaryButton
-                              label="Review"
-                              variant={PrimaryButtonVariant.Ghost}
-                              onClick={() =>
-                                isDoc ? setReviewingDoc(op.operation.id) : reviewOperation(op.operation.id)
-                              }
-                            />
+                            {!isProvision && (
+                              <PrimaryButton
+                                label="Review"
+                                variant={PrimaryButtonVariant.Ghost}
+                                onClick={() =>
+                                  isDoc ? setReviewingDoc(op.operation.id) : reviewOperation(op.operation.id)
+                                }
+                              />
+                            )}
                             <PrimaryButton
                               label={isExcluded ? 'Restore to plan' : 'Drop from plan'}
                               variant={PrimaryButtonVariant.Ghost}
@@ -912,7 +1098,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                           re-authored by re-running the plan, since its whole
                           value is seeing what the plan built.
                         */}
-                        {done && op.status === 'failed' && !isDoc && (
+                        {done && op.status === 'failed' && !isDoc && !isProvision && (
                           <PrimaryButton
                             label={retrying ? 'Re-authoring…' : 'Retry'}
                             variant={PrimaryButtonVariant.Ghost}

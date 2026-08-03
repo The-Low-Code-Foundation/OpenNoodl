@@ -36,7 +36,7 @@ import { AuthoringSession, AuthoringSetupError } from './AuthoringSession';
 import { pathToLegacyName } from './candidate';
 import type { DocSessionOptions } from './DocSession';
 import { DocSession } from './DocSession';
-import type { AuthoringPlan, PlanOperation, PlanOutcomeEntry } from './plan';
+import type { AuthoringPlan, PlanOperation, PlanOutcomeEntry, PlanProvisionSpec } from './plan';
 import { graphComponentFromFiles, planExcludedWith, planOperationRequires, renderPlanContext } from './plan';
 import type { AppliedPlanOperation } from './planStaging';
 import type { AgentSampleData, AuthoringMode, ComponentFiles } from './types';
@@ -76,6 +76,15 @@ export interface PlanOperationState {
   staged?: { nodeCount: number; connectionCount: number };
   /** Doc operations: the authored body's size and headline, for the plan list. */
   stagedDoc?: { chars: number; summary?: string; created: boolean; lintFindings: string[] };
+  /**
+   * AIB-007 — a provision operation's staged summary.
+   *
+   * "Staged" here means what it means everywhere else in this class: computed,
+   * held in memory, and nothing has happened. The difference is that computing
+   * it costs no model call, so a provision goes from `pending` to `staged` in
+   * one synchronous step — see {@link PlanRun.stageProvisionOperation}.
+   */
+  stagedProvision?: { name: string; collections: string[]; needsAuth: boolean };
   /**
    * AIB-002 — when this operation's session started and finished, in wall-clock
    * milliseconds. A row can then say *how long* it has been authoring rather
@@ -308,7 +317,15 @@ export class PlanRun {
     for (const s of this.states) {
       if (closure.has(s.operation.id)) continue;
       if (s.status !== 'staged') continue;
-      if (s.operation.kind === 'doc') {
+      if (s.operation.kind === 'provision') {
+        // AIB-007. No `includeDocs`-style escape hatch: a provision has no
+        // precondition the panel could fail to satisfy (the doc case exists
+        // because an unsaved project has no folder), and one that silently
+        // dropped out would leave the plan's Cloud Data nodes pointing at
+        // nothing with nobody having said so.
+        if (!s.operation.provision) continue;
+        operations.push({ kind: 'provision', operation: s.operation, provision: s.operation.provision });
+      } else if (s.operation.kind === 'doc') {
         const doc = this.docsById.get(s.operation.id);
         if (!doc || !includeDocs) continue;
         operations.push({
@@ -352,6 +369,15 @@ export class PlanRun {
     if (!state) throw new AuthoringSetupError(`No operation "${operationId}" in this plan.`);
     if (state.operation.kind === 'doc') {
       throw new AuthoringSetupError('A doc operation is re-authored by re-running the plan, not retried alone.');
+    }
+    if (state.operation.kind === 'provision') {
+      // AIB-007. Retry means "author it again"; a provision authors nothing, so
+      // there is nothing a retry could produce differently. An apply that failed
+      // on the provision failed against the machine, and is repaired by fixing
+      // that (a port, a disk) and applying again.
+      throw new AuthoringSetupError(
+        'A backend provision has nothing to re-author — fix what the failure named and apply the plan again.'
+      );
     }
     if (this.phase === 'running') {
       throw new AuthoringSetupError('The plan is still running — wait for it to finish before retrying an operation.');
@@ -411,8 +437,24 @@ export class PlanRun {
     this.runStartedAt = this.now();
     this.publish();
 
+    // ── AIB-007: the provision, first and free. ───────────────────────────────
+    // Ahead of the component pass rather than inside it, because every
+    // authoring turn's plan context says whether a backend is coming, and
+    // `renderPlanContext` reads the *operation*, not this state — so the order
+    // is about what the user sees, not about a dependency. It stages
+    // synchronously: there is no model call, which also means there is no turn
+    // for AIB-009 F11's "a turn that never returns" to happen in.
     for (const state of this.states) {
-      if (state.operation.kind === 'doc') continue; // second pass — see below
+      if (state.operation.kind !== 'provision') continue;
+      if (this.cancelled) {
+        state.status = 'skipped';
+        continue;
+      }
+      this.stageProvisionOperation(state);
+    }
+
+    for (const state of this.states) {
+      if (state.operation.kind === 'doc' || state.operation.kind === 'provision') continue; // passes above and below
       if (this.cancelled) {
         state.status = 'skipped';
         continue;
@@ -544,6 +586,44 @@ export class PlanRun {
     }
     this.activeSession = undefined;
     this.publish();
+  }
+
+  /**
+   * AIB-007 — a provision operation, staged.
+   *
+   * Synchronous and infallible on purpose. Everything that can go wrong with a
+   * provision goes wrong at *apply*, against a real machine: a port in use, a
+   * native SQLite engine that will not load, a collection the schema manager
+   * refuses. None of that is knowable from here, and pretending otherwise would
+   * mean either a spurious failure or a check that has to be run twice. What
+   * this stage is for is the same thing every other staged operation is for —
+   * something reviewable that has changed nothing.
+   */
+  private stageProvisionOperation(state: PlanOperationState): void {
+    const spec = state.operation.provision;
+    state.startedAt = this.now();
+    if (!spec) {
+      // `validatePlan` rejects this at plan time, so reaching it means a plan
+      // was built by hand. Failing loudly beats provisioning a default.
+      state.status = 'failed';
+      state.error = 'This operation provisions a backend but says nothing about what it would create.';
+      state.endedAt = this.now();
+      this.publish();
+      return;
+    }
+    state.status = 'staged';
+    state.stagedProvision = {
+      name: spec.name,
+      collections: spec.collections.map((c) => c.name),
+      needsAuth: spec.needsAuth
+    };
+    state.endedAt = this.now();
+    this.publish();
+  }
+
+  /** AIB-007 — the backend this plan would create, if any operation would. */
+  provisionSpec(): PlanProvisionSpec | undefined {
+    return this.states.find((s) => s.operation.kind === 'provision' && s.status === 'staged')?.operation.provision;
   }
 
   /** What the fan-out achieved, as the doc turn is told it. */

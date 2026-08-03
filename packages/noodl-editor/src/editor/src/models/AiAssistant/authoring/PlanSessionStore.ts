@@ -83,7 +83,21 @@ export interface PlanSession {
   note: PlanSessionNote | null;
   /** Operations the user excluded, dependency-closed. */
   excluded: ReadonlySet<string>;
-  applied: { count: number; docs: string[] } | null;
+  applied: {
+    count: number;
+    docs: string[];
+    /** AIB-007 — the backend this apply provisioned, when it provisioned one. */
+    backend?: { name: string; endpoint: string; collections: string[]; warnings: string[] };
+    /**
+     * AIB-007 — nodes that were applied and have no backend to talk to.
+     *
+     * The reachable case is a user who dropped the provision operation and kept
+     * the pages that needed it. That is a decision to respect (the graphs are
+     * valid, and the diagnostic is a warning for exactly that reason) — but not
+     * one to make silently.
+     */
+    missingBackend?: string[];
+  } | null;
   applyFailure: PlanApplyFailure | null;
   /**
    * The live run, holding every staged `ComponentFiles`. Null before authoring

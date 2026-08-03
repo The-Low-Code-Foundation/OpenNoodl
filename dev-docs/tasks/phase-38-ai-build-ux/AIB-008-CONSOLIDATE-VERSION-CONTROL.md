@@ -34,6 +34,64 @@ A user forming a mental model of "my project's version control" has to hold two 
 question goes to which. There is no case where a user wants *only* the remote or *only* the local
 half; a commit is followed by a push.
 
+### ✅ Slice 1, done 2026-08-03 — and the line above is wrong about the GitHub panel
+
+**`GitHubPanel` is an Issues and Pull Requests panel.** Remote, auth and repo creation are its
+*empty state* (`ConnectToGitHubView`, reached only when there is no git, no remote, or a non-GitHub
+remote). What it renders once connected is `SyncToolbar` + two tabs of `IssuesList` / `PRsList`, with
+`IssueDetail` and `PRDetail` behind them — roughly 1,000 of its 1,900 lines.
+
+That matters because **the proposed four-section shape has nowhere to put them**, and criterion 2
+("every action available in either panel before is available after") cannot be met by
+Repository/Changes/History/Branches alone. Resolved below.
+
+**They do not share a git model — and the GitHub panel does not share one with itself.**
+
+| | Git instance |
+|---|---|
+| `VersionControlPanel` | **one**, created in the panel, held in `VersionControlProvider` context |
+| `GitHubPanel` | **seven** `new Git(…)` + `openRepository(…)` pairs across three files — one per operation in `useGitSyncStatus` (status, push, pull), one in `useGitHubRepository`, two in `ConnectToGitHubView` |
+
+Slice 1 asks "whichever exists, the merged panel should have exactly one." The context one exists and
+the merged panel adopts it.
+
+**Four duplications, enumerated:**
+
+| Duplicated | Version control | GitHub |
+|---|---|---|
+| **ahead / behind** | `fetch.localCommitCount` / `fetch.remoteCommitCount` (context) | `useGitSyncStatus`'s own `ahead` / `behind` |
+| **push / pull** | `GitStatusButton` | `SyncToolbar` |
+| **connect a remote** | `GitProviderPopout` → `CredentialsSection` | `ConnectToGitHubView` + `CreateRepoModal` / `SelectRepoModal` |
+| **"is this a git project"** | `LocalProjectsModel.isGitProject` | `useGitHubRepository`'s `gitState` |
+
+The ahead/behind row is the one criterion 3 asks to surface, and it is currently computed twice by
+two different code paths — which is the product argument for the merge stated in mechanism rather
+than in principle.
+
+**Also found:** `GitHubPanel.tsx` logs on every mount and every render — `🔧 [GitHubPanel] useEffect
+running`, `🎧 … Setting up useEventListener`, `🔔 … AUTH STATE CHANGED` — same family as
+[AIB-009](AIB-009-FOUND-ALONG-THE-WAY.md) F6, and deleted with the shell.
+
+### The shape that survives the audit
+
+Sections top to bottom, under the `versioncontrol` id:
+
+| Section | Contents | Comes from |
+|---|---|---|
+| **Repository** | remote, branch, **ahead/behind**, push/pull, connect-or-create when there is no remote | `GitStatusButton` + `BranchStatusButton` (kept) and `ConnectToGitHubView` (moved) |
+| **Changes / History** | the existing two tabs | unchanged |
+| **Issues & Pull Requests** | collapsed by default; rendered only when the remote is GitHub *and* the account is connected | `IssuesList` / `PRsList` (moved verbatim) |
+
+`SyncToolbar` and `useGitSyncStatus` are **deleted**: every action they offer is already on
+`GitStatusButton`, driven by the context's single `Git`. That is the whole of the duplication removal
+— the rest is relocation.
+
+Issues and PRs stay a *section* rather than becoming a fourth tab, but they are the one part of this
+panel where the design position's argument ("tabs would hide exactly the state that matters most")
+does not apply: they are not local-vs-remote state, they are a long scrolling list of somebody else's
+work. Collapsed-by-default is the compromise — present, findable, and not occupying the panel a user
+opened to commit.
+
 ## The design position
 
 **One panel, sections within it — not tabs.** The relationship between local and remote is

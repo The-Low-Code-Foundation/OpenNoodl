@@ -38,7 +38,7 @@
 import type { ComponentModel } from '../../componentmodel';
 import type { ProjectModel } from '../../projectmodel';
 import { UndoActionGroup, UndoQueue } from '../../undo-queue-model';
-import type { PlanOperation } from './plan';
+import type { PlanOperation, PlanProvisionSpec } from './plan';
 import {
   addAuthoredComponentToGroup,
   stagedLegacyName,
@@ -76,7 +76,22 @@ export interface AppliedPlanDocOperation {
   summary?: string;
 }
 
-export type AppliedPlanOperation = AppliedPlanComponentOperation | AppliedPlanDocOperation;
+/**
+ * AIB-007 — the provision in the accepted set.
+ *
+ * `provision` is required for the same reason `files` and `proposed` are: an
+ * operation with nothing to create cannot be expressed here.
+ */
+export interface AppliedPlanProvisionOperation {
+  kind: 'provision';
+  operation: PlanOperation;
+  provision: PlanProvisionSpec;
+}
+
+export type AppliedPlanOperation =
+  | AppliedPlanComponentOperation
+  | AppliedPlanDocOperation
+  | AppliedPlanProvisionOperation;
 
 /**
  * The doc write path, injected.
@@ -104,6 +119,72 @@ export interface PlanDocWriter {
   apply(op: AppliedPlanDocOperation, undoGroup: UndoActionGroup): Promise<void> | void;
 }
 
+/**
+ * AIB-007 — the backend provisioner, injected, on the same seam as
+ * {@link PlanDocWriter} and for the same reason: this module belongs to AIX-011
+ * and knows nothing about IPC, child processes or `cloudservices`.
+ *
+ * ## The undo boundary, which is the whole design of this interface
+ *
+ * `UndoActionGroup`'s actions are **synchronous** `() => void`, and
+ * `applyAuthoredPlan` calls `undo.undo()` synchronously in its rollback path.
+ * Creating a backend is asynchronous IPC and creating a collection is an HTTP
+ * request to a child process; neither can be a synchronous inverse.
+ *
+ * That is the mechanical objection. The stronger one is that **it should not
+ * be**: undoing "apply plan" by deleting a database destroys durable output the
+ * user never asked to destroy, which is the defect this whole phase exists to
+ * fix, pointed the other way. And a backend is machine-level — `backends/<id>/`
+ * in userData, with a `projectIds` array — not part of the project at all.
+ *
+ * So the transaction splits where the product already splits:
+ *
+ * - **`apply` records the project's *binding* into `undoGroup`** — the
+ *   `cloudservices` pointer, synchronously, exactly. One undo puts the project
+ *   back.
+ * - **The backend itself survives the undo**, idempotently, visible and
+ *   deletable in Backend Services.
+ *
+ * `describeSideEffects` is what makes that honest rather than silent: the panel
+ * shows it *before* apply. A step that cannot be undone must be declared in
+ * preflight, which is what the task's rule actually asks for.
+ */
+export interface PlanBackendProvisioner {
+  /**
+   * Refuse before anything is mutated. Throw with a sentence the user can act
+   * on — a port in use, no room on disk, an existing backend of that name that
+   * this would not be allowed to reuse.
+   */
+  preflight?(op: AppliedPlanProvisionOperation): Promise<void> | void;
+  /**
+   * Create the backend and bind the project to it, recording **the binding's**
+   * inverse into `undoGroup`. Must throw on failure, never swallow.
+   *
+   * Returns what actually happened, including the collections it could not
+   * create — which are a warning, not a failure: `nodegx-backend` creates a
+   * collection on first write, so a missing one costs a typed column, not the
+   * ability to run.
+   */
+  apply(op: AppliedPlanProvisionOperation, undoGroup: UndoActionGroup): Promise<ProvisionedBackend>;
+  /**
+   * One or more sentences naming what this apply does that an undo will not
+   * reverse. Shown before the user presses Apply.
+   */
+  describeSideEffects?(op: AppliedPlanProvisionOperation): string[];
+}
+
+/** What a provision actually did. */
+export interface ProvisionedBackend {
+  /** The local backend id, as `backend:list` reports it. */
+  backendId: string;
+  name: string;
+  endpoint: string;
+  /** Collections that now exist. */
+  collections: string[];
+  /** Collections that did not get created, with why. Never fatal — see {@link PlanBackendProvisioner}. */
+  warnings: string[];
+}
+
 export interface ApplyPlanOptions {
   label?: string;
   /**
@@ -112,6 +193,13 @@ export interface ApplyPlanOptions {
    * rather than silently applied without them.
    */
   docWriter?: PlanDocWriter;
+  /**
+   * AIB-007. Absent means a plan carrying a provision is **refused in
+   * preflight**, the same shape as a missing `docWriter` — a headless caller
+   * with no IPC must not silently apply the pages and leave them pointing at
+   * nothing.
+   */
+  provisioner?: PlanBackendProvisioner;
 }
 
 export interface AppliedPlanResult {
@@ -119,6 +207,8 @@ export interface AppliedPlanResult {
   components: Map<string, ComponentModel>;
   /** Doc paths written, in apply order. */
   docs: string[];
+  /** AIB-007 — the backend this apply provisioned, when it provisioned one. */
+  backend?: ProvisionedBackend;
   undoLabel: string;
 }
 
@@ -139,9 +229,37 @@ export async function applyAuthoredPlan(
   }
 
   const docOps = operations.filter((op): op is AppliedPlanDocOperation => op.kind === 'doc');
-  const componentOps = operations.filter((op): op is AppliedPlanComponentOperation => op.kind !== 'doc');
+  const provisionOps = operations.filter((op): op is AppliedPlanProvisionOperation => op.kind === 'provision');
+  const componentOps = operations.filter(
+    (op): op is AppliedPlanComponentOperation => op.kind !== 'doc' && op.kind !== 'provision'
+  );
 
   // ── Preflight: every refusal happens here, before any mutation. ────────────
+  // AIB-007 first, because it is the only refusal that can be answered by
+  // "drop that operation and apply the rest" without re-authoring anything.
+  if (provisionOps.length > 1) {
+    throw new StagingError(
+      'This plan provisions two backends. A project has one, so fold them into a single operation.'
+    );
+  }
+  for (const op of provisionOps) {
+    if (!options.provisioner) {
+      throw new StagingError(
+        `"${op.operation.target}" cannot be provisioned here: this caller has no way to create a backend. ` +
+          'Exclude the provision operation to apply the rest, and add a backend in Backend Services.'
+      );
+    }
+    try {
+      await options.provisioner.preflight?.(op);
+    } catch (error) {
+      throw new StagingError(
+        `"${op.operation.target}" cannot be provisioned: ${
+          error instanceof Error ? error.message : String(error)
+        } Nothing was created.`
+      );
+    }
+  }
+
   const seenDocs = new Set<string>();
   for (const op of docOps) {
     if (!options.docWriter) {
@@ -192,10 +310,11 @@ export async function applyAuthoredPlan(
     options.label ??
     `apply AI plan (${componentOps.length} component${componentOps.length === 1 ? '' : 's'}${
       docOps.length > 0 ? ` + ${docOps.length} doc${docOps.length === 1 ? '' : 's'}` : ''
-    })`;
+    }${provisionOps.length > 0 ? ' + backend' : ''})`;
   const undo = new UndoActionGroup({ label: undoLabel });
   const components = new Map<string, ComponentModel>();
   const docs: string[] = [];
+  let backend: ProvisionedBackend | undefined;
 
   // AIB-001 slice 4: which operation the transaction is inside. A mutation that
   // throws is nearly always about ONE operation's candidate — the crash this
@@ -203,7 +322,17 @@ export async function applyAuthoredPlan(
   // the user needs ("re-author that one") is unreachable without knowing which.
   let applying: AppliedPlanOperation | undefined;
   try {
-    // Disk first — see the module note. Preflight guaranteed the writer exists.
+    // AIB-007: the backend before the docs, because the docs describe it and
+    // because it is the operation with a side effect outside the project — if
+    // anything is going to refuse, the cheapest moment is before a file has
+    // been rewritten. Its own failure still rolls the group back; what does
+    // *not* roll back is a backend that was created before the failure, which
+    // is stated on the interface and shown before apply rather than discovered.
+    for (const op of provisionOps) {
+      applying = op;
+      backend = await options.provisioner!.apply(op, undo);
+    }
+    // Disk next — see the module note. Preflight guaranteed the writer exists.
     for (const op of docOps) {
       applying = op;
       await options.docWriter!.apply(op, undo);
@@ -239,5 +368,5 @@ export async function applyAuthoredPlan(
   }
 
   UndoQueue.instance.push(undo);
-  return { components, docs, undoLabel };
+  return { components, docs, ...(backend ? { backend } : {}), undoLabel };
 }

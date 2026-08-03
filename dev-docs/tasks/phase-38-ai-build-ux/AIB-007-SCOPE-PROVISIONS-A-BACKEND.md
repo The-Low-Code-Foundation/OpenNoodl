@@ -76,6 +76,71 @@ handles a second operation kind with its own pass.
 Whichever is chosen, **C's diagnostic is needed regardless** as the backstop: authoring a
 backend-dependent node into a project with no backend must not pass silently.
 
+---
+
+### ✅ Settled 2026-08-03: **B**, with three corrections the question could not have known
+
+The recommendation stands. Reading the mechanism first changed *how*, in three ways — each of which
+contradicts something written above.
+
+**1. Slice 2's mechanism is stale. The reviewed table already exists.**
+BCN-010 built [`nodeCapabilities.ts`](../../../packages/nodegx-backend-contract/src/nodeCapabilities.ts):
+a frozen `NODE_CAPABILITIES` table binding node types to contract capabilities, plus a
+`DELIBERATELY_UNBOUND` record so the next reader does not re-derive the omissions. Its module note
+gives three reasons for a table over a per-node catalog field, and the first two apply here verbatim
+(*"thirty claims spread across twenty-two files cannot be reviewed the way one table can"*).
+
+So there is **no `catalog:*` generator change and no committed snapshot** — which also means the
+trap this task warns about (`catalog:merge:check` blind on dynamic nodes) is not reached at all.
+
+What `NODE_CAPABILITIES` does *not* answer is the coarser question. It binds *which capability of a
+backend* a node needs; a node bound to `auth.password` obviously needs a backend, but `DbModel2` is
+in `DELIBERATELY_UNBOUND` — *"fetch and save are supported on every backend"* — and still does not
+work in a project with none. "Requires a backend at all" is a second, coarser fact, and it gets its
+own small table, guarded by a test that fails when a new cloud node is added unclassified.
+
+**2. Slice 3's single-undo cannot include the machine half — and must not.**
+`UndoActionGroup`'s actions are **synchronous** `() => void`
+([undo-queue-model.ts:67-70](../../../packages/noodl-editor/src/editor/src/models/undo-queue-model.ts#L67-L70)),
+and `applyAuthoredPlan` calls `undo.undo()` synchronously in its rollback path. Creating a backend is
+`ipcRenderer.invoke('backend:create')`, starting it is a supervised child process, and creating a
+collection is an HTTP request to that process. None of it can ride a synchronous inverse.
+
+And the stronger objection is not mechanical. Even if it could, **undoing "apply plan" by deleting a
+database is this phase's headline defect inverted** — destroying durable output the user did not ask
+to destroy. A backend is also machine-level, not project-level: `backends/<id>/` in userData, with a
+`projectIds` array, shared across projects.
+
+So the transaction splits at the seam the product already has:
+
+| Half | Where it lives | Undo |
+|---|---|---|
+| The project's **binding** — `cloudservices` `{endpoint, appId, type: 'nodegx'}` | project metadata | in the group, synchronous, exact |
+| The **machine resource** — the backend dir, its process, its collections | userData + a child process | survives; idempotent; deletable in Backend Services |
+
+Criterion 4 is met for everything that is *in the project*, which is what "one undo restores the
+project" means. The rest is stated **before** apply, not apologised for after — which is the actual
+content of the task's rule that a step which cannot be undone "must be refused in preflight, not
+applied and apologised for."
+
+**3. The provision operation costs no tokens, and collections are pre-seeding, not a prerequisite.**
+It is derived from the structured scope, so `PlanRun` stages it synchronously — no `AuthoringSession`,
+no budget, and none of F11's "a turn that never returns". And `nodegx-backend` creates a collection on
+first write
+([HttpServer.ts:1578](../../../packages/nodegx-backend/src/server/HttpServer.ts#L1578),
+[AdapterFacade.ts:383](../../../packages/nodegx-backend/src/persistence/AdapterFacade.ts#L383)), so
+creating them up front buys the Data Browser something to show and typed columns — not the ability to
+run. A collection that fails to create is therefore a **warning on a succeeded provision**, not a
+failed apply.
+
+**Trap 4 checked and clear.** The export allow-list is on `backendServices.backends[].auth`
+([json.ts:73](../../../packages/noodl-editor/src/editor/src/utils/exporter/json.ts#L73)); a provision
+writes `cloudservices` (endpoint + appId, no credential) and adds no field to it. `exportToJSON`
+already *overrides* `cloudservices` from the chosen deploy environment, so a provisioned
+`http://localhost:8578` does not reach a deploy that names one. The WF-003 constraint is unchanged,
+because the provision writes exactly what pressing **Start** on a local backend has written since
+WF-004.
+
 ## Scope
 
 ### Slice 1 — the scope carries structure, not prose

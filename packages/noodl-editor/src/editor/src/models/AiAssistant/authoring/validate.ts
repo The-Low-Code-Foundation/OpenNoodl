@@ -18,13 +18,14 @@ import type { NodeV2 } from '../../../schemas';
 import { SCHEMA_IDS, SchemaValidator } from '../../../schemas';
 import {
   buildComponentRefs,
+  checkBackendRequirements,
   checkParameterValues,
   loadDefaultCatalog,
   normalizeV2Component,
   SemanticValidator,
   sortDiagnostics
 } from '../../../validation';
-import type { Diagnostic, NormComponent, NormProject, ValidationReport } from '../../../validation';
+import type { Diagnostic, NormComponent, NormProject, ProjectBackendFacts, ValidationReport } from '../../../validation';
 import type { GraphComponent, ExplainGraph } from '../explain/types';
 import type { CandidateValidation, ComponentFiles, StructuralFailure } from './types';
 
@@ -107,6 +108,17 @@ export interface ValidateCandidateOptions {
    * `diagnostics` — it just does not reject the submission.
    */
   baseline?: ComponentFiles;
+  /**
+   * AIB-007 — what the project can offer a Cloud Data or User node.
+   *
+   * **Omitted means "do not check"**, not "there is no backend". A caller that
+   * does not know cannot produce a true answer, and defaulting to
+   * `hasBackend: false` would make every existing caller — the MCP write gate,
+   * every spec, `reviewComponent` — start reporting a missing backend on
+   * projects that have one. The editor's authoring panel binds it; nothing else
+   * has to.
+   */
+  backend?: ProjectBackendFacts;
 }
 
 /**
@@ -147,10 +159,16 @@ export function validateCandidateComponent(
   // The value check runs over the candidate's own v2 nodes and its diagnostics
   // join the report's, so they flow through the repair loop, the baseline
   // exemption and the summary by exactly the same paths.
-  const diagnostics = [...report.diagnostics, ...parameterDiagnostics(legacyName, files)];
+  const diagnostics = [
+    ...report.diagnostics,
+    ...parameterDiagnostics(legacyName, files),
+    ...backendDiagnostics(legacyName, files, options.backend)
+  ];
   const allErrors: Diagnostic[] = diagnostics.filter((d) => d.severity === 'error');
 
-  const inherited = options.baseline ? baselineErrorKeys(graph, legacyName, options.baseline) : undefined;
+  const inherited = options.baseline
+    ? baselineErrorKeys(graph, legacyName, options.baseline, options.backend)
+    : undefined;
   const preExisting = inherited ? allErrors.filter((d) => inherited.has(diagnosticKey(d))) : [];
   const errors = inherited ? allErrors.filter((d) => !inherited.has(diagnosticKey(d))) : allErrors;
 
@@ -190,6 +208,33 @@ function parameterDiagnostics(legacyName: string, files: ComponentFiles): Diagno
 }
 
 /**
+ * AIB-007 — Cloud Data and User nodes against a project that may have nowhere
+ * to put them.
+ *
+ * Runs on the v2 nodes for the same reason `parameterDiagnostics` does, and it
+ * is a *precondition* check rather than a catalog rule for a sharper reason: the
+ * answer depends on the project's configuration, not on the graph. Two identical
+ * candidates are correct in one project and broken in another, which is not
+ * something the semantic validator's model can express — it has no view of
+ * `cloudservices` and should not gain one.
+ */
+function backendDiagnostics(
+  legacyName: string,
+  files: ComponentFiles,
+  backend: ProjectBackendFacts | undefined
+): Diagnostic[] {
+  if (!backend) return [];
+  return checkBackendRequirements(
+    files.nodes.nodes.map((n: NodeV2) => ({
+      id: n.id,
+      type: n.type,
+      ...(typeof n.label === 'string' && n.label ? { label: n.label } : {})
+    })),
+    { ...backend, component: legacyName }
+  );
+}
+
+/**
  * The error keys the component ALREADY has, validated the same way and in the
  * same project context as the candidate.
  *
@@ -203,7 +248,12 @@ function parameterDiagnostics(legacyName: string, files: ComponentFiles): Diagno
  * A base that is broken for any *other* reason yields no keys, deliberately:
  * that is a judgement we genuinely cannot make.
  */
-function baselineErrorKeys(graph: ExplainGraph, legacyName: string, base: ComponentFiles): Set<string> {
+function baselineErrorKeys(
+  graph: ExplainGraph,
+  legacyName: string,
+  base: ComponentFiles,
+  backend?: ProjectBackendFacts
+): Set<string> {
   const id = base.component.id ?? base.nodes.componentId ?? 'baseline-identity';
   const normalised: ComponentFiles = {
     component: { ...base.component, id },
@@ -225,6 +275,15 @@ function baselineErrorKeys(graph: ExplainGraph, legacyName: string, base: Compon
   // `sizeMode: "childSize"` — an enum option that no longer exists — would
   // otherwise be unrevisable, because every submission inherits the parameter
   // and the agent is told never to argue with a diagnostic.
-  const diagnostics = [...report.diagnostics, ...parameterDiagnostics(legacyName, normalised)];
+  // AIB-007: baselined for the same reason, and this one is the likeliest of the
+  // three to bite. The very scenario this task exists for — a project full of
+  // Sign Up and Log In nodes and no backend — makes every one of those
+  // components unrevisable otherwise: the agent inherits the nodes, is told
+  // never to argue with a diagnostic, and can only satisfy it by deleting them.
+  const diagnostics = [
+    ...report.diagnostics,
+    ...parameterDiagnostics(legacyName, normalised),
+    ...backendDiagnostics(legacyName, normalised, backend)
+  ];
   return new Set(diagnostics.filter((d) => d.severity === 'error').map(diagnosticKey));
 }

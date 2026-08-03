@@ -48,6 +48,7 @@ export {
   planExcludedWith,
   planOperationRequires,
   planRequiredWith,
+  provisionSummary,
   renderPlanContext,
   renderPlanOutcome,
   validatePlan
@@ -57,6 +58,9 @@ export type {
   PlanOperation,
   PlanOperationKind,
   PlanOutcomeEntry,
+  PlanProvisionCollection,
+  PlanProvisionColumn,
+  PlanProvisionSpec,
   StagedOperationLike
 } from './plan';
 export { PlanningSession } from './PlanningSession';
@@ -86,9 +90,12 @@ export type {
   AppliedPlanComponentOperation,
   AppliedPlanDocOperation,
   AppliedPlanOperation,
+  AppliedPlanProvisionOperation,
   AppliedPlanResult,
   ApplyPlanOptions,
-  PlanDocWriter
+  PlanBackendProvisioner,
+  PlanDocWriter,
+  ProvisionedBackend
 } from './planStaging';
 export { PLANNING_TOOLS, planningSystemPrompt, planningUserMessage, planRepairMessage, SUBMIT_PLAN } from './prompts/planning';
 export { buildChangeSet, requiredWith, excludedWith } from './ChangeSet';

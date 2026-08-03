@@ -16,6 +16,18 @@ export { defaultCatalog, loadDefaultCatalog } from './catalog';
 export { fromLegacyProject, normalizeV2Component } from './normalize';
 export type { LegacyProjectLike } from './normalize';
 export {
+  DELIBERATELY_BACKEND_FREE,
+  NODES_REQUIRING_BACKEND,
+  backendRequirementFor,
+  checkBackendRequirements
+} from './backendRequirement';
+export type {
+  BackendRequirement,
+  BackendRequiringNode,
+  CheckBackendRequirementsOptions,
+  ProjectBackendFacts
+} from './backendRequirement';
+export {
   checkParameterValues,
   portTypeShape,
   wireFormatFor,

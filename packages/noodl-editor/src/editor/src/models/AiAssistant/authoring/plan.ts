@@ -33,8 +33,52 @@ import type { ComponentFiles } from './types';
  * What one plan operation does. Deletion is deliberately absent — the
  * destructive case deserves its own thinking (spec: out of scope) — and the
  * UI says so rather than silently lacking it.
+ *
+ * AIB-007 adds `provision`: give this project a backend. It is the one kind
+ * that authors nothing — see {@link PlanProvisionSpec}.
  */
-export type PlanOperationKind = 'create' | 'update' | 'doc';
+export type PlanOperationKind = 'create' | 'update' | 'doc' | 'provision';
+
+/**
+ * AIB-007 — what a `provision` operation would create.
+ *
+ * Carried on the operation rather than derived at apply time, for the reason
+ * every other operation carries its intent: the plan is a thing a person reads
+ * and edits before it runs, and "3 collections, sign-in enabled" is only
+ * reviewable if it is *in* the plan.
+ *
+ * This shape is the scope's `ScopeBackend` minus its prose. It lives here rather
+ * than in `scoping/scope.ts` because `scope.ts` imports *this* module, and the
+ * plan is the artefact that crosses to `PlanRun`, `planStaging` and the MCP
+ * server — the scope does not.
+ */
+export interface PlanProvisionSpec {
+  /** Display name for the backend the apply creates. */
+  name: string;
+  /**
+   * Collections to pre-seed, with the columns the conversation named.
+   *
+   * ⚠️ Pre-seeding, not a prerequisite. `nodegx-backend` creates a collection on
+   * first write, so a collection that fails to create is a **warning on a
+   * succeeded provision**, never a failed apply. What creating them up front
+   * buys is a Data Browser with something in it and columns with the types the
+   * conversation stated rather than the types the first record implies.
+   */
+  collections: PlanProvisionCollection[];
+  /** The conversation agreed people sign in. Drives the auth diagnostic's severity. */
+  needsAuth: boolean;
+}
+
+export interface PlanProvisionCollection {
+  name: string;
+  columns: PlanProvisionColumn[];
+}
+
+export interface PlanProvisionColumn {
+  name: string;
+  /** A `nodegx-backend` column type: String, Number, Boolean, Date, Pointer… */
+  type: string;
+}
 
 export interface PlanOperation {
   /** Stable within the plan; assigned when the plan is built ("op-1"…). */
@@ -42,7 +86,8 @@ export interface PlanOperation {
   kind: PlanOperationKind;
   /**
    * What the operation touches: a component path ("Pages/Checkout") for
-   * create/update, a doc path ("docs/ARCHITECTURE.md") for doc operations.
+   * create/update, a doc path ("docs/ARCHITECTURE.md") for doc operations, and
+   * the backend's display name for a provision.
    */
   target: string;
   /**
@@ -50,6 +95,8 @@ export interface PlanOperation {
    * see (never each other's graphs), and what the user edits the plan by.
    */
   intent: string;
+  /** Present exactly on `provision` operations. */
+  provision?: PlanProvisionSpec;
 }
 
 export interface AuthoringPlan {
@@ -80,6 +127,7 @@ export function validatePlan(plan: AuthoringPlan, input: PlanValidationInput): s
   if (plan.operations.length === 0) errors.push('The plan has no operations.');
 
   const componentTargets = new Set<string>();
+  let provisions = 0;
   for (const op of plan.operations) {
     if (!op.target.trim()) {
       errors.push(`Operation ${op.id} has no target.`);
@@ -87,6 +135,26 @@ export function validatePlan(plan: AuthoringPlan, input: PlanValidationInput): s
     }
     if (!op.intent.trim()) {
       errors.push(`Operation ${op.id} (${op.kind} ${op.target}) has no intent — say what it should do.`);
+    }
+    if (op.kind === 'provision') {
+      // AIB-007. Both checks are here rather than at apply for the reason the
+      // whole function is: a plan that cannot work should cost nothing to
+      // discover. A second provision is rejected rather than folded, because
+      // "which of these two is the project's backend" is a question the plan has
+      // no way to answer and the apply would answer by whichever ran last.
+      provisions += 1;
+      if (provisions > 1) {
+        errors.push(
+          `Operation ${op.id} is a second "provision" — a project has one backend, so fold them into one operation.`
+        );
+      }
+      if (!op.provision) {
+        errors.push(`Operation ${op.id} provisions a backend but says nothing about what it would create.`);
+      }
+      continue;
+    }
+    if (op.provision) {
+      errors.push(`Operation ${op.id} is a ${op.kind}, so it cannot carry a backend to provision.`);
     }
     if (op.kind === 'doc') continue;
 
@@ -114,7 +182,8 @@ export function validatePlan(plan: AuthoringPlan, input: PlanValidationInput): s
 }
 
 /**
- * Authoring order: creates first (in plan order), then updates, then docs.
+ * Authoring order: the provision first, then creates (in plan order), then
+ * updates, then docs.
  *
  * This is the ordering fact the spec asks to settle: an update may instantiate
  * a component a create produces, so every create's candidate must exist —
@@ -124,9 +193,14 @@ export function validatePlan(plan: AuthoringPlan, input: PlanValidationInput): s
  * `validatePlan` has already rejected the plans that could not be
  * (an update of a component nothing provides). Docs go last: they record what
  * the plan did.
+ *
+ * AIB-007 puts `provision` in front. Not because anything downstream *waits* on
+ * it — staging a provision costs nothing and touches nothing — but because it is
+ * the operation the user is most likely to want to drop, and a row that decides
+ * whether the rest of the plan can work belongs above the rest of the plan.
  */
 export function orderPlanOperations(operations: readonly PlanOperation[]): PlanOperation[] {
-  const rank: Record<PlanOperationKind, number> = { create: 0, update: 1, doc: 2 };
+  const rank: Record<PlanOperationKind, number> = { provision: 0, create: 1, update: 2, doc: 3 };
   return [...operations].sort((a, b) => rank[a.kind] - rank[b.kind]);
 }
 
@@ -220,7 +294,7 @@ export function renderPlanContext(plan: AuthoringPlan, currentOpId: string): str
   ];
   plan.operations.forEach((op, index) => {
     const marker = op.id === currentOpId ? '➤' : ' ';
-    lines.push(`${marker} ${index + 1}. ${op.kind}  ${op.target} — ${op.intent}`);
+    lines.push(`${marker} ${index + 1}. ${op.kind}  ${op.target} — ${op.intent}${provisionSuffix(op)}`);
   });
   lines.push(
     '',
@@ -228,7 +302,36 @@ export function renderPlanContext(plan: AuthoringPlan, currentOpId: string): str
     'overview and can be instantiated by name. Keep names, routes and events consistent with the sibling',
     'intents above — they are the contract between operations.'
   );
+  // AIB-007: the one line that changes what an authoring turn is allowed to
+  // assume. Cloud Data and User nodes need a backend, and until this plan is
+  // applied the project does not have one — so the sentence is about what *will*
+  // be true, stated as a fact the operation may rely on rather than left for the
+  // model to infer from a row it has no reason to read as a promise.
+  const provision = plan.operations.find((op) => op.kind === 'provision');
+  if (provision?.provision) {
+    const { collections, needsAuth } = provision.provision;
+    lines.push(
+      '',
+      'This plan provisions a backend, so Cloud Data nodes will have somewhere to read and write when it is' +
+        ' applied.' +
+        (collections.length > 0 ? ` Collections: ${collections.map((c) => c.name).join(', ')}.` : '') +
+        (needsAuth ? ' Sign-in is part of this app, so the User nodes are available too.' : '')
+    );
+  }
   return lines.join('\n');
+}
+
+/** "(3 collections, sign-in)" — the review-legible summary of a provision. */
+export function provisionSummary(spec: PlanProvisionSpec): string {
+  const parts: string[] = [
+    `${spec.collections.length} collection${spec.collections.length === 1 ? '' : 's'}`
+  ];
+  if (spec.needsAuth) parts.push('sign-in');
+  return parts.join(', ');
+}
+
+function provisionSuffix(op: PlanOperation): string {
+  return op.provision ? ` (${provisionSummary(op.provision)})` : '';
 }
 
 /**
@@ -253,9 +356,21 @@ export interface PlanOutcomeEntry {
 }
 
 export function renderPlanOutcome(entries: readonly PlanOutcomeEntry[]): string {
-  const components = entries.filter((e) => e.operation.kind !== 'doc');
+  // AIB-007: a provision is not a component and must not be counted as one, or
+  // a docs-only plan that happens to add a backend reads to the doc turn as
+  // "one component was built" and gets documented as such.
+  const provision = entries.find((e) => e.operation.kind === 'provision');
+  const provisionLine =
+    provision && provision.operation.provision
+      ? `This plan also gives the project a backend called "${provision.operation.target}" (${provisionSummary(
+          provision.operation.provision
+        )}). It is worth one sentence, not a section.`
+      : undefined;
+
+  const components = entries.filter((e) => e.operation.kind !== 'doc' && e.operation.kind !== 'provision');
   if (components.length === 0) {
-    return 'This plan changed no components — it is a documentation-only change.';
+    const none = 'This plan changed no components — it is a documentation-only change.';
+    return provisionLine ? `${none}\n\n${provisionLine}` : none;
   }
   const lines = ['What the plan built:', ''];
   for (const entry of components) {
@@ -276,6 +391,7 @@ export function renderPlanOutcome(entries: readonly PlanOutcomeEntry[]): string 
       'leave that text alone; it is not yours to correct here.'
     );
   }
+  if (provisionLine) lines.push('', provisionLine);
   return lines.join('\n');
 }
 

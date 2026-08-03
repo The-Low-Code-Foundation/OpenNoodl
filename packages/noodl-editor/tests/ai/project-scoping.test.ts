@@ -117,7 +117,10 @@ const READING_LIST = {
 function agreedScope(): ProjectScope {
   return mergeScope(
     emptyScope('a reading list app where I track books and mark them finished'),
-    READING_LIST as Partial<ProjectScope>
+    // AIB-007 widened `backend` to `ScopeBackend | string`; this fixture holds
+    // the prose form, which is still what a pre-AIB-007 model sends and is
+    // normalised on the way in.
+    READING_LIST as Parameters<typeof mergeScope>[1]
   );
 }
 

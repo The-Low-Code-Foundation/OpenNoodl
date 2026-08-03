@@ -45,6 +45,7 @@ import type { AuthoringPlan } from '../../../noodl-editor/src/editor/src/models/
 import { validatePlan } from '../../../noodl-editor/src/editor/src/models/AiAssistant/authoring/plan';
 import type {
   ProjectScope,
+  ScopeBackendInput,
   ScopeTranscriptEntry
 } from '../../../noodl-editor/src/editor/src/models/AiAssistant/scoping/scope';
 import {
@@ -279,7 +280,31 @@ const scopeSchema = {
     .optional()
     .describe('The pages agreed. Each becomes ONE plan operation — and nothing more, until the plan is run.'),
   outOfScope: z.array(z.string()).optional().describe('What this app deliberately will NOT do.'),
-  backend: z.string().optional().describe('What it stores data in, or "None".'),
+  // AIB-007: structured, with the bare string still accepted. `mergeScope`
+  // normalises either — a string becomes `kind: 'unspecified'` unless it plainly
+  // says there is none, and never `'nodegx'`, so prose can never provision.
+  backend: z
+    .union([
+      z.string(),
+      z.object({
+        kind: z.enum(['none', 'nodegx', 'external']).optional(),
+        description: z.string().optional(),
+        collections: z
+          .array(
+            z.object({
+              name: z.string(),
+              fields: z.array(z.object({ name: z.string(), type: z.string().optional() })).optional()
+            })
+          )
+          .optional(),
+        needsAuth: z.boolean().optional()
+      })
+    ])
+    .optional()
+    .describe(
+      'What it stores data in. Either prose, or {kind, description, collections, needsAuth} — "nodegx" means ' +
+        'the returned plan will include an operation offering to create a built-in backend.'
+    ),
   conventions: z
     .array(z.string())
     .optional()
@@ -304,7 +329,9 @@ type CreateProjectArgs = {
   name: string;
   request: string;
   transcript?: ScopeTranscriptEntry[];
-} & Partial<Omit<ProjectScope, 'request'>>;
+  /** AIB-007: prose or structure — `mergeScope` normalises either. */
+  backend?: ScopeBackendInput;
+} & Partial<Omit<ProjectScope, 'request' | 'backend'>>;
 
 export interface CreateProjectResponse {
   ok: true;

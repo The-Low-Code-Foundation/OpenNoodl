@@ -25,7 +25,13 @@
  * @module AiAssistant/scoping/scope
  */
 
-import type { AuthoringPlan, PlanOperation } from '../authoring/plan';
+import type {
+  AuthoringPlan,
+  PlanOperation,
+  PlanProvisionCollection,
+  PlanProvisionColumn,
+  PlanProvisionSpec
+} from '../authoring/plan';
 import { orderPlanOperations } from '../authoring/plan';
 import { DOC_ARCHITECTURE, DOC_BRIEF, DOC_CONVENTIONS, DOC_DECISIONS_DIR } from '../../ProjectDocs/docsText';
 import { DOC_TEMPLATES } from '../../ProjectDocs/templates';
@@ -79,6 +85,51 @@ export interface ScopeRejection {
   reason: string;
 }
 
+/**
+ * AIB-007 — what the conversation settled about storing data.
+ *
+ * `description` is the field that was here before, unchanged in meaning and
+ * still the only thing any document renders: ARCHITECTURE.md's `## Backend
+ * contracts` section is prose the conversation wrote, and turning it into a
+ * generated table would lose the sentence that says *why* — which is the part
+ * with the shelf life. The structure beside it exists so that something other
+ * than a reader can act on it.
+ *
+ * ⚠️ `kind: 'nodegx'` is the only value that provisions. `'external'` records
+ * that the app talks to a backend somebody else runs — the scope knows about it,
+ * nothing here creates it, and the AIB-007 diagnostic stays a warning rather than
+ * an error because the user is expected to point the project at it themselves.
+ */
+export interface ScopeBackend {
+  /**
+   * ⚠️ **Four values, where AIB-007's task doc named three.** The fourth,
+   * `'unspecified'`, is what a conversation that only produced *prose* becomes —
+   * and that is not a hypothetical legacy case: this field was a bare `string`
+   * until this task, `noodl-mcp`'s `create_project` accepts one, and a model
+   * given a schema does not always fill it in.
+   *
+   * The alternative was to classify prose as `'external'`, which reads as "the
+   * conversation agreed there is a backend somewhere else". Nobody said that.
+   * `'unspecified'` provisions nothing (like `'external'`) and diagnoses as a
+   * warning rather than an error (like `'external'`), so it costs one union
+   * member and no behaviour — and it is the difference between recording an
+   * agreement and inventing one, which is the rule this whole module is built
+   * around.
+   */
+  kind: 'none' | 'nodegx' | 'external' | 'unspecified';
+  /** What the conversation actually said. Written to ARCHITECTURE.md verbatim. */
+  description: string;
+  /** Collections the conversation named, with the fields it named. */
+  collections?: ScopeCollection[];
+  /** Set when the conversation agreed users log in. */
+  needsAuth?: boolean;
+}
+
+export interface ScopeCollection {
+  name: string;
+  fields?: Array<{ name: string; type?: string }>;
+}
+
 export interface ProjectScope {
   /** The user's opening description, verbatim. Never paraphrased. */
   request: string;
@@ -90,8 +141,13 @@ export interface ProjectScope {
   pages: ScopePage[];
   /** What the app deliberately will not do. */
   outOfScope: string[];
-  /** A description of the backend, or an explicit "none". */
-  backend?: string;
+  /**
+   * What the app stores data in. AIB-007 made this structured; a bare string is
+   * still accepted by {@link mergeScope} and normalised, because the model writes
+   * this field and a schema change does not retroactively change what a model
+   * that has already been asked will send.
+   */
+  backend?: ScopeBackend;
   /** Checkable rules the conversation established — seeds CONVENTIONS.md. */
   conventions: string[];
   rejected: ScopeRejection[];
@@ -121,11 +177,18 @@ export function emptyScope(request = ''): ProjectScope {
  * Shelves page" inexpressible, and dropping things is precisely what a scoping
  * conversation must be able to do.
  */
-export function mergeScope(previous: ProjectScope, patch: Partial<ProjectScope>): ProjectScope {
+export function mergeScope(
+  previous: ProjectScope,
+  // AIB-007: `backend` widened to accept the prose a pre-AIB-007 caller sends.
+  // `Partial<ProjectScope>` alone would reject it at the type level and the
+  // *callers that send it are the ones we do not control* — a model's tool call,
+  // and `noodl-mcp`'s `create_project` args.
+  patch: Partial<Omit<ProjectScope, 'backend'>> & { backend?: ScopeBackendInput }
+): ProjectScope {
   const next: ProjectScope = { ...previous };
   if (typeof patch.summary === 'string') next.summary = patch.summary.trim() || undefined;
   if (typeof patch.audience === 'string') next.audience = patch.audience.trim() || undefined;
-  if (typeof patch.backend === 'string') next.backend = patch.backend.trim() || undefined;
+  if (patch.backend !== undefined) next.backend = normalizeScopeBackend(patch.backend);
   if (Array.isArray(patch.objects)) next.objects = patch.objects.filter((o) => o && o.name?.trim());
   if (Array.isArray(patch.pages)) next.pages = patch.pages.filter((p) => p && p.name?.trim() && p.purpose?.trim());
   if (Array.isArray(patch.outOfScope)) next.outOfScope = patch.outOfScope.filter((s) => s?.trim());
@@ -139,6 +202,95 @@ export function mergeScope(previous: ProjectScope, patch: Partial<ProjectScope>)
     next.request = patch.request.trim();
   }
   return next;
+}
+
+/**
+ * What may arrive claiming to be a backend.
+ *
+ * Deliberately looser than {@link ScopeBackend}: `kind` is optional and
+ * `description` may be missing, because the two callers are a model's tool call
+ * and `noodl-mcp`'s zod-inferred args, neither of which the type system can make
+ * honest. The looseness is the *point* — a required `kind` here would be a cast
+ * at every call site, which is a type that lies rather than a type that checks.
+ */
+export type ScopeBackendInput = string | (Partial<Omit<ScopeBackend, 'collections'>> & { collections?: unknown });
+
+/** Prose a person writes to mean "there isn't one". Matched whole, never as a substring. */
+const NO_BACKEND_PROSE = new Set(['none', 'no', 'no backend', 'none.', 'n/a', 'na', 'nothing', 'local only']);
+
+/**
+ * AIB-007 — whatever arrived, as a {@link ScopeBackend}, or `undefined`.
+ *
+ * Two shapes reach this: the object the tool schema now asks for, and the bare
+ * string it asked for before (still what `noodl-mcp`'s `create_project` accepts,
+ * and still what a model may send). Neither is trusted: `kind` is validated
+ * against the union rather than cast, because it arrives from a model and an
+ * unrecognised value silently satisfying `'nodegx'` would provision a backend
+ * nobody agreed to.
+ */
+export function normalizeScopeBackend(value: ScopeBackendInput | undefined | null): ScopeBackend | undefined {
+  if (value === undefined || value === null) return undefined;
+
+  if (typeof value === 'string') {
+    const description = value.trim();
+    if (!description) return undefined;
+    // Prose only. `'unspecified'` unless it plainly says there is none — see the
+    // note on `ScopeBackend.kind` for why this does not guess any harder.
+    return {
+      kind: NO_BACKEND_PROSE.has(description.toLowerCase()) ? 'none' : 'unspecified',
+      description
+    };
+  }
+
+  if (typeof value !== 'object') return undefined;
+
+  const description = typeof value.description === 'string' ? value.description.trim() : '';
+  const kind: ScopeBackend['kind'] =
+    value.kind === 'none' || value.kind === 'nodegx' || value.kind === 'external'
+      ? value.kind
+      : // An absent or unrecognised kind is not an error and not a guess. If the
+        // prose plainly says there is none, take that; otherwise say we do not
+        // know. Note the asymmetry: we will conclude "no backend" from prose, and
+        // never "provision one" — the two mistakes do not cost the same.
+        NO_BACKEND_PROSE.has(description.toLowerCase())
+        ? 'none'
+        : 'unspecified';
+
+  const collections = Array.isArray(value.collections)
+    ? (value.collections as unknown[])
+        .filter((c): c is ScopeCollection => {
+          const entry = c as ScopeCollection | undefined;
+          return Boolean(entry && typeof entry.name === 'string' && entry.name.trim());
+        })
+        .map((c) => ({
+          name: c.name.trim(),
+          ...(Array.isArray(c.fields)
+            ? {
+                fields: c.fields
+                  .filter((f) => f && typeof f.name === 'string' && f.name.trim())
+                  .map((f) => ({
+                    name: f.name.trim(),
+                    ...(typeof f.type === 'string' && f.type.trim() ? { type: f.type.trim() } : {})
+                  }))
+              }
+            : {})
+        }))
+    : undefined;
+
+  if (!description && !collections?.length && kind === 'unspecified') return undefined;
+
+  return {
+    kind,
+    description,
+    ...(collections && collections.length > 0 ? { collections } : {}),
+    ...(value.needsAuth === true ? { needsAuth: true } : {})
+  };
+}
+
+/** The prose half, for every renderer that used to read `scope.backend` directly. */
+export function scopeBackendDescription(scope: ProjectScope): string | undefined {
+  const description = scope.backend?.description?.trim();
+  return description || undefined;
 }
 
 /** True once the conversation has established anything worth writing down. */
@@ -165,7 +317,8 @@ export function scopeOutline(scope: ProjectScope): string[] {
     );
   }
   if (scope.objects.length) lines.push(`Data: ${scope.objects.map((o) => o.name).join(', ')}`);
-  if (scope.backend) lines.push(`Backend: ${scope.backend}`);
+  const backend = scopeBackendDescription(scope);
+  if (backend) lines.push(`Backend: ${backend}`);
   if (scope.outOfScope.length) lines.push(`Out of scope: ${scope.outOfScope.length} item(s)`);
   if (scope.rejected.length) lines.push(`Considered and rejected: ${scope.rejected.length}`);
   if (scope.openQuestions.length) lines.push(`Open questions: ${scope.openQuestions.length}`);
@@ -211,6 +364,102 @@ export interface PlanFromScopeOptions {
    * other way round, and this is the only place that knows which is which.
    */
   existingComponents?: ReadonlySet<string>;
+  /**
+   * AIB-007 — set when the project already has a backend configured.
+   *
+   * A plan does not offer to provision a second one. This is passed rather than
+   * read because this module is pure and shared with `noodl-mcp`; the editor
+   * binds it from `cloudservices`, the MCP server from the project it just wrote
+   * (which has none).
+   */
+  hasBackend?: boolean;
+  /** Display name for a provisioned backend. Defaults to the project's own idea of one. */
+  backendName?: string;
+}
+
+/** What a backend gets called when nobody named one. */
+export const DEFAULT_PROVISIONED_BACKEND_NAME = 'App backend';
+
+/**
+ * AIB-007 — the `PlanProvisionSpec` this scope implies, or `undefined`.
+ *
+ * Only `kind: 'nodegx'` provisions. `'external'` and `'unspecified'` describe a
+ * backend this editor does not run and must not create, and `'none'` is an
+ * agreement that there isn't one — which is a decision to respect, not a gap to
+ * fill.
+ *
+ * Collections come from `backend.collections` when the conversation named them,
+ * and otherwise from `scope.objects` — which is the same list said a different
+ * way, and is the field the scoping prompt has always pushed hardest on. A
+ * scope with three objects and no explicit collections is the common case, not
+ * the degenerate one.
+ */
+export function provisionFromScope(scope: ProjectScope, options: PlanFromScopeOptions = {}): PlanProvisionSpec | undefined {
+  const backend = scope.backend;
+  if (!backend || backend.kind !== 'nodegx') return undefined;
+  if (options.hasBackend) return undefined;
+
+  const named = backend.collections?.length
+    ? backend.collections.map((c) => ({ name: c.name, fields: c.fields }))
+    : scope.objects.map((o) => ({ name: o.name, fields: undefined }));
+
+  const collections: PlanProvisionCollection[] = [];
+  const seen = new Set<string>();
+  for (const entry of named) {
+    const name = collectionName(entry.name);
+    if (!name || seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    collections.push({ name, columns: (entry.fields ?? []).map(toColumn).filter((c): c is PlanProvisionColumn => Boolean(c)) });
+  }
+
+  return {
+    name: options.backendName?.trim() || DEFAULT_PROVISIONED_BACKEND_NAME,
+    collections,
+    needsAuth: backend.needsAuth === true
+  };
+}
+
+/**
+ * A scope object name as a collection name.
+ *
+ * Deliberately conservative: spaces and punctuation out, the rest left exactly
+ * as the conversation said it. Pluralising "Book" to "Books" was considered and
+ * rejected — the collection name appears in every Query Records node the plan
+ * authors, and the authoring turns are told the object names from
+ * ARCHITECTURE.md. A collection called something the docs never mention is a
+ * plan whose nodes point at nothing.
+ */
+function collectionName(name: string): string {
+  return name.replace(/[^A-Za-z0-9_]+/g, '').trim();
+}
+
+/**
+ * A prose field description as a typed column, or `undefined` when it is not
+ * one.
+ *
+ * `ScopeCollection.fields[].type` is a hint from a model, not a `nodegx-backend`
+ * column type, so it is *mapped* rather than passed through — an unmapped type
+ * yields no column at all rather than a column the schema manager will refuse.
+ * The backend infers the type from the first record written either way, so the
+ * cost of dropping one is a column typed later instead of now.
+ */
+function toColumn(field: { name: string; type?: string }): PlanProvisionColumn | undefined {
+  const name = field.name.replace(/[^A-Za-z0-9_]+/g, '').trim();
+  // `objectId`, `createdAt` and `updatedAt` are the backend's own; a column of
+  // that name is refused by the schema manager, not merged.
+  if (!name || ['objectId', 'createdAt', 'updatedAt', 'ACL', 'id'].includes(name)) return undefined;
+  const type = columnType(field.type);
+  return type ? { name, type } : undefined;
+}
+
+function columnType(hint: string | undefined): string | undefined {
+  if (!hint) return undefined;
+  const h = hint.toLowerCase();
+  if (/\b(number|int|integer|float|decimal|count|amount)\b/.test(h)) return 'Number';
+  if (/\b(bool|boolean|yes\/no|yes or no|flag|true\/false)\b/.test(h)) return 'Boolean';
+  if (/\b(date|datetime|timestamp|time)\b/.test(h)) return 'Date';
+  if (/\b(text|string|str|name|title|email|url)\b/.test(h)) return 'String';
+  return undefined;
 }
 
 /**
@@ -232,6 +481,20 @@ export function planFromScope(scope: ProjectScope, options: PlanFromScopeOptions
   const existing = options.existingComponents ?? new Set<string>();
   const seen = new Set<string>();
   const operations: PlanOperation[] = [];
+
+  // AIB-007. First in the list because `orderPlanOperations` puts it first
+  // anyway, and because the id sequence reads better when it matches the order
+  // the user sees.
+  const provision = provisionFromScope(scope, options);
+  if (provision) {
+    operations.push({
+      id: `op-${operations.length + 1}`,
+      kind: 'provision',
+      target: provision.name,
+      intent: provisionIntent(scope, provision),
+      provision
+    });
+  }
 
   for (const page of scope.pages) {
     const candidates = pageLegacyCandidates(page.name);
@@ -280,6 +543,27 @@ function pageIntent(scope: ProjectScope, page: ScopePage): string {
 
 function mentions(haystack: string, needle: string): boolean {
   return haystack.toLowerCase().includes(needle.toLowerCase());
+}
+
+/**
+ * What the provision row says it will do — the sentence the user reads before
+ * approving it, and the only description of a side effect this plan has outside
+ * the project folder.
+ *
+ * It says where the backend lives on purpose. "A backend appears" is the version
+ * of this that produces the next AIB-007: a user who does not know the backend
+ * is a process on their own machine cannot reason about what happens when they
+ * deploy, or when they open the project somewhere else.
+ */
+function provisionIntent(scope: ProjectScope, provision: PlanProvisionSpec): string {
+  const parts = ['Give this project a built-in backend that runs on this computer.'];
+  if (provision.collections.length > 0) {
+    parts.push(`Collections: ${provision.collections.map((c) => c.name).join(', ')}.`);
+  }
+  if (provision.needsAuth) parts.push('People sign in, so it keeps user accounts.');
+  const said = scopeBackendDescription(scope);
+  if (said) parts.push(`The conversation said: ${said}`);
+  return parts.join(' ');
 }
 
 // ── The documents ─────────────────────────────────────────────────────────────
@@ -364,8 +648,13 @@ export function renderArchitecture(scope: ProjectScope): string {
     lines.push(todo('No records were agreed during scoping.'), '');
   }
 
+  // AIB-007 criterion 1: unchanged in character. The section is still the
+  // conversation's own prose and nothing else — the structure the scope now
+  // carries beside it drives the *plan*, and a generated collection table here
+  // would displace the sentence that says why, which is the part with the shelf
+  // life.
   lines.push('## Backend contracts', '');
-  lines.push(scope.backend ?? todo('Whether this app has a backend was not settled.'));
+  lines.push(scopeBackendDescription(scope) ?? todo('Whether this app has a backend was not settled.'));
   lines.push('');
 
   lines.push('## Decisions', '');
@@ -478,7 +767,8 @@ export function renderScopeRecord(input: ScopeRecordInput): string {
     }
     lines.push('');
   }
-  if (scope.backend) lines.push(`**Backend.** ${scope.backend.trim()}`, '');
+  const backendProse = scopeBackendDescription(scope);
+  if (backendProse) lines.push(`**Backend.** ${backendProse}`, '');
   if (scope.conventions.length > 0) {
     lines.push('**Rules for this project.**', '', ...bullets(scope.conventions), '');
   }
