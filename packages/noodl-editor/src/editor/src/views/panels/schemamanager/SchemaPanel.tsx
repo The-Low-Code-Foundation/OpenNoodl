@@ -11,6 +11,8 @@
 import { ipcInvoke } from '@noodl-utils/ipc';
 import React, { useCallback, useEffect, useState } from 'react';
 
+import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
+import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
@@ -32,6 +34,45 @@ export interface SchemaPanelProps {
 
 interface SchemaData {
   tables: TableInfo[];
+}
+
+/**
+ * The header the other six backend surfaces share: icon, title, backend
+ * subtitle, close X (POL-016).
+ *
+ * Schema had a bespoke one — a plain `Schema: {backendName}` title with a
+ * `+ New Table / Refresh / Close` button group where the X belongs — which was
+ * pre-existing and became conspicuous once POL-005 made a surface the only thing
+ * in the panel. Its two real actions do not disappear; they move to a `.Toolbar`
+ * row beneath, which is exactly what `DataBrowser` already does with its own
+ * table selector, so this brings Schema onto the family rather than inventing a
+ * third shape.
+ *
+ * Declared here rather than in all three returns because the loading and error
+ * states rendered the bespoke header too, and a shared header that only two of
+ * three states use is how they drifted apart in the first place.
+ */
+function SurfaceHeader({ backendName, subtitle, onClose }: {
+  backendName: string;
+  subtitle?: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className={css.Header}>
+      <HStack hasSpacing>
+        <div className={css.HeaderIcon}>
+          <Icon icon={IconName.Database} size={IconSize.Small} />
+        </div>
+        <VStack>
+          <Text textType={TextType.DefaultContrast}>Schema</Text>
+          <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
+            {subtitle ? `${backendName} — ${subtitle}` : backendName}
+          </Text>
+        </VStack>
+      </HStack>
+      <IconButton icon={IconName.Close} onClick={onClose} />
+    </div>
+  );
 }
 
 /**
@@ -135,15 +176,7 @@ export function SchemaPanel({ backendId, backendName, isRunning, onClose }: Sche
   if (loading) {
     return (
       <div className={css.Root}>
-        <div className={css.Header}>
-          <Text textType={TextType.Proud}>Schema: {backendName}</Text>
-          <PrimaryButton
-            label="Close"
-            size={PrimaryButtonSize.Small}
-            variant={PrimaryButtonVariant.Muted}
-            onClick={onClose}
-          />
-        </div>
+        <SurfaceHeader backendName={backendName} onClose={onClose} />
         <div className={css.Loading}>
           <Text textType={TextType.Shy}>Loading schema...</Text>
         </div>
@@ -155,15 +188,7 @@ export function SchemaPanel({ backendId, backendName, isRunning, onClose }: Sche
   if (error) {
     return (
       <div className={css.Root}>
-        <div className={css.Header}>
-          <Text textType={TextType.Proud}>Schema: {backendName}</Text>
-          <PrimaryButton
-            label="Close"
-            size={PrimaryButtonSize.Small}
-            variant={PrimaryButtonVariant.Muted}
-            onClick={onClose}
-          />
-        </div>
+        <SurfaceHeader backendName={backendName} onClose={onClose} />
         <div className={css.Error}>
           <Text textType={TextType.Shy}>{error}</Text>
           <PrimaryButton
@@ -181,14 +206,15 @@ export function SchemaPanel({ backendId, backendName, isRunning, onClose }: Sche
 
   return (
     <div className={css.Root}>
-      {/* Header */}
-      <div className={css.Header}>
-        <VStack>
-          <Text textType={TextType.Proud}>Schema: {backendName}</Text>
-          <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
-            {tables.length} {tables.length === 1 ? 'table' : 'tables'}
-          </Text>
-        </VStack>
+      {/* Header — the shared surface header; the actions live in the toolbar below. */}
+      <SurfaceHeader
+        backendName={backendName}
+        subtitle={`${tables.length} ${tables.length === 1 ? 'table' : 'tables'}`}
+        onClose={onClose}
+      />
+
+      {/* Toolbar */}
+      <div className={css.Toolbar}>
         <HStack hasSpacing>
           <PrimaryButton
             label="+ New Table"
@@ -201,12 +227,6 @@ export function SchemaPanel({ backendId, backendName, isRunning, onClose }: Sche
             size={PrimaryButtonSize.Small}
             variant={PrimaryButtonVariant.Muted}
             onClick={loadSchema}
-          />
-          <PrimaryButton
-            label="Close"
-            size={PrimaryButtonSize.Small}
-            variant={PrimaryButtonVariant.Muted}
-            onClick={onClose}
           />
         </HStack>
       </div>

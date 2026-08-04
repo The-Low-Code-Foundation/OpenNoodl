@@ -49,9 +49,21 @@
     }
   }
 
-  &.is-variant-muted {
+  // POL-016. Both muted variants paint a background token off the same ladder
+  // the surfaces beneath them use, so each one lands on a panel painted bg-1,
+  // bg-2 or bg-3 and measures 1.00–1.24:1 against it — `muted` on a bg-2 panel
+  // is the *same token*, exactly 1.00:1. Only the label had contrast, so a muted
+  // button read as a line of text rather than as a control, everywhere, in both
+  // themes. The ring is what makes it a control; see `--theme-color-border-control`.
+  //
+  // An inset shadow rather than `border`, deliberately: nothing in this repo sets
+  // a global `box-sizing`, so a 1px border would grow all 143 call sites by 2px
+  // in each dimension — the trap `BasePanel.module.scss` already records. An
+  // inset ring paints on the same edge and costs no layout.
+  &.is-variant-muted,
+  &.is-variant-muted-on-low-bg {
     color: var(--theme-color-fg-default);
-    background-color: var(--theme-color-bg-2);
+    box-shadow: inset 0 0 0 1px var(--theme-color-border-control);
 
     path {
       fill: var(--theme-color-fg-default);
@@ -67,22 +79,12 @@
     }
   }
 
+  &.is-variant-muted {
+    background-color: var(--theme-color-bg-2);
+  }
+
   &.is-variant-muted-on-low-bg {
-    color: var(--theme-color-fg-default);
     background-color: var(--theme-color-bg-3);
-
-    path {
-      fill: var(--theme-color-fg-default);
-    }
-
-    &:hover {
-      color: var(--theme-color-fg-highlight);
-      background-color: var(--theme-color-bg-1);
-
-      path {
-        fill: var(--theme-color-fg-highlight);
-      }
-    }
   }
 
   &.is-variant-ghost {
@@ -128,6 +130,15 @@
     path {
       fill: var(--theme-color-fg-muted);
     }
+  }
+
+  // The rule above kills the CTA drop shadow on a disabled button, and would take
+  // the muted ring with it — leaving `Save policy` to vanish for as long as it
+  // reads `Saving…`, which is the one moment a user is looking at it. Restate it,
+  // dimmed by the inherited 0.5 opacity rather than by a second colour.
+  &:disabled.is-variant-muted,
+  &:disabled.is-variant-muted-on-low-bg {
+    box-shadow: inset 0 0 0 1px var(--theme-color-border-control) !important;
   }
 
   &:focus-visible {

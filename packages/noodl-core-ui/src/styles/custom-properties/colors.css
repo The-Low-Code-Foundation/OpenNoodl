@@ -398,6 +398,13 @@
   --theme-color-border-default: #232a33;
   --theme-color-border-subtle: #1a2029;
   --theme-color-border-strong: #37404c;
+  /* POL-016. The three above are DIVIDER tones: against bg-1/2/3 they measure
+     1.01–1.73:1, which is right for a hairline between two regions and far under
+     the 3:1 WCAG 1.4.11 asks of anything that has to be identified as a control.
+     A muted button's fill is 1.00–1.16:1 against every surface it lands on, so
+     without a ring at THIS weight it reads as a label, not a button. Partner of
+     the light-block definition; both measure >=3.17:1 on bg-1, bg-2 and bg-3. */
+  --theme-color-border-control: var(--base-color-neutral-600);
 
   /* ---------------------------------------------------------------------------
      FOCUS - azure ring, visible on every bg step
@@ -543,6 +550,10 @@
   --theme-color-border-default: #e0e5eb;
   --theme-color-border-subtle: #eaeef3;
   --theme-color-border-strong: #c9d2dc;
+  /* POL-016: partner of the dark-block definition. Not an alias, so it has to be
+     restated. Same value as this theme's `fg-muted` — the lightest tone that
+     still clears 3:1 on bg-1 (3.62), bg-2 (3.43) and bg-3 (3.16). */
+  --theme-color-border-control: #7c8894;
 
   --theme-color-focus-ring: #1570ef;
   --theme-color-focus-ring-offset: #ffffff;

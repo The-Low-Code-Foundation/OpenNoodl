@@ -15,10 +15,34 @@
 .Header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   padding: 16px;
   border-bottom: 1px solid var(--theme-color-border-default);
   background-color: var(--theme-color-bg-3);
+}
+
+/* POL-016: the shared surface header's icon chip — same 32px primary tile the
+   other six use, so the family reads as one design. */
+.HeaderIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: var(--theme-color-primary);
+  border-radius: 6px;
+  color: var(--theme-color-fg-on-primary);
+}
+
+/* Where `+ New Table` and `Refresh` went when the header became the shared one.
+   Same row `DataBrowser` puts its table selector in. */
+.Toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  gap: 12px;
 }
 
 .TableList {
