@@ -18,7 +18,8 @@ import { ENDPOINT_BACKEND_ID } from '../../src/editor/src/models/BackendServices
 import {
   buildBackendList,
   dataBrowserAvailability,
-  endpointBackendType
+  endpointBackendType,
+  matchEndpointToManaged
 } from '../../src/editor/src/models/BackendServices/backendList';
 import {
   backendPresets,
@@ -234,9 +235,14 @@ describe('BCN-009 — one list from three mechanisms', () => {
       activeBackendId: ENDPOINT_BACKEND_ID
     });
 
-    expect(entries.length).toBe(3);
+    // AAQ-002: TWO entries, not three. The endpoint and the managed process are
+    // one backend — this spec used to assert the duplicate, and the duplicate is
+    // what a user saw as a "Built-in backend" card that could only be edited or
+    // disconnected, next to the card that could open its data.
+    expect(entries.length).toBe(2);
     expect(entries[0].isActive).toBe(true);
-    expect(entries[0].kind).toBe('endpoint');
+    expect(entries[0].kind).toBe('managed');
+    expect(entries[0].isProjectEndpoint).toBe(true);
     expect(entries.map((entry) => entry.type)).toContain('directus' as BackendType);
   });
 
@@ -279,5 +285,81 @@ describe('BCN-009 — one list from three mechanisms', () => {
     const external = dataBrowserAvailability('directus', 'external');
     expect(external.isAvailable).toBe(false);
     expect(external.reason.length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * AAQ-002 — one backend, one card.
+ *
+ * `provisionBackend` creates a managed process and then binds the project to it
+ * by writing `cloudservices`, so the same server had two entries: the endpoint
+ * one, which wore ACTIVE and could only be edited or disconnected, and the
+ * managed one, which could open the schema and the data and looked like a
+ * different backend entirely. Disconnecting removed the first and read as
+ * deletion.
+ */
+describe('AAQ-002 — the provisioned backend is one entry', () => {
+  const local = { id: 'backend_abc', name: 'App backend', port: 8577, running: true };
+
+  it('matches the endpoint to the managed process by the id the provisioner wrote', () => {
+    // `setCloudServices(project, { id: meta.id, … })` stores the managed id as
+    // `instanceId` — exact, and the reason this is not guesswork. The port here
+    // deliberately does NOT match, so only the id can be doing the work.
+    expect(
+      matchEndpointToManaged({ id: 'backend_abc', endpoint: 'http://localhost:9999' }, [local])?.id
+    ).toBe('backend_abc');
+  });
+
+  it('falls back to a localhost port, for a binding written before the id was carried', () => {
+    expect(matchEndpointToManaged({ endpoint: 'http://localhost:8577' }, [local])?.id).toBe('backend_abc');
+    // Someone else's server on a familiar port is not this machine's backend.
+    expect(matchEndpointToManaged({ endpoint: 'https://api.example.com:8577' }, [local])).toBeUndefined();
+    expect(matchEndpointToManaged({ endpoint: 'http://localhost:9999' }, [local])).toBeUndefined();
+    expect(matchEndpointToManaged(undefined, [local])).toBeUndefined();
+  });
+
+  it('gives the surviving entry the badge, and the Data Browser with it', () => {
+    const entries = buildBackendList({
+      managed: [local],
+      endpoint: { id: 'backend_abc', endpoint: 'http://localhost:8577', appId: 'backend_abc', type: 'nodegx' },
+      external: [],
+      activeBackendId: ENDPOINT_BACKEND_ID
+    });
+
+    expect(entries.length).toBe(1);
+    expect(entries[0].kind).toBe('managed');
+    expect(entries[0].isActive).toBe(true);
+    expect(entries[0].isProjectEndpoint).toBe(true);
+    // The point of folding them: this is the gate the crippled card failed, with
+    // a reason written for foreign Parse servers.
+    expect(dataBrowserAvailability(entries[0].type, entries[0].kind).isAvailable).toBe(true);
+  });
+
+  it('leaves a deployed or foreign endpoint its own entry — there is no process here to fold it into', () => {
+    const entries = buildBackendList({
+      managed: [local],
+      endpoint: { endpoint: 'https://api.example.com', appId: 'app', type: 'external' },
+      external: [],
+      activeBackendId: ENDPOINT_BACKEND_ID
+    });
+
+    expect(entries.length).toBe(2);
+    expect(entries.filter((entry) => entry.kind === 'endpoint').length).toBe(1);
+    // And the managed one is not wearing a badge it did not earn.
+    expect(entries.find((entry) => entry.kind === 'managed')!.isActive).toBe(false);
+    expect(entries.find((entry) => entry.kind === 'managed')!.isProjectEndpoint).toBeUndefined();
+  });
+
+  it('still has at most one active entry once they are folded', () => {
+    const sources = {
+      managed: [local, { id: 'other', name: 'Other', port: 8578, running: true }],
+      endpoint: { id: 'backend_abc', endpoint: 'http://localhost:8577', appId: 'backend_abc', type: 'nodegx' },
+      external: [backendFixture({ type: 'directus', id: 'ext1', name: 'Directus' })]
+    };
+
+    for (const activeBackendId of [undefined, ENDPOINT_BACKEND_ID, 'ext1', 'gone']) {
+      const active = buildBackendList({ ...sources, activeBackendId }).filter((entry) => entry.isActive);
+      expect(active.length).toBeLessThan(2);
+    }
   });
 });

@@ -46,7 +46,11 @@ import {
   describeBackendSwitch,
   describeSelectionConflict
 } from '@noodl-models/BackendServices';
-import { endpointBackendType, endpointDisplayName } from '@noodl-models/BackendServices/backendList';
+import {
+  endpointBackendType,
+  endpointDisplayName,
+  matchEndpointToManaged
+} from '@noodl-models/BackendServices/backendList';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { getCloudServices, setCloudServices } from '@noodl-models/projectmodel.editor';
 
@@ -274,11 +278,28 @@ export function BackendServicesPanel() {
   })();
 
   /**
+   * AAQ-002 — the managed backend the project's endpoint points at, when it
+   * points at one of ours.
+   *
+   * This pair is the "one backend, two identities" defect: the endpoint card
+   * wore ACTIVE and offered nothing but Edit and Disconnect, while the card that
+   * could open the same backend's schema and data sat underneath it looking like
+   * a different server. Matched by `instanceId` first — the provisioner writes
+   * it — and by localhost port second, for the bindings that predate it.
+   */
+  const boundLocalBackend = (() => {
+    const project = ProjectModel.instance;
+    if (!project) return undefined;
+    return matchEndpointToManaged(getCloudServices(project), localBackends);
+  })();
+
+  /**
    * Is the project's endpoint a backend this editor runs, and is it up?
    *
-   * Matched on the port, which is how the endpoint was written in the first place
-   * (`onStart` below). Live-QA 3.2: without this the card draws a green tick for
-   * a port with nothing listening on it.
+   * Live-QA 3.2: without this the card draws a green tick for a port with
+   * nothing listening on it. Only reachable now for an endpoint that is NOT one
+   * of ours — see the render, where a bound one has no endpoint card at all —
+   * so in practice it stays for the case a match cannot be made.
    */
   const endpointLocalStatus = (() => {
     const endpoint = getCloudServicesEndpoint();
@@ -288,10 +309,40 @@ export function BackendServicesPanel() {
     return match.running ? ('running' as const) : ('stopped' as const);
   })();
 
+  /**
+   * AAQ-002 slice 2 — disconnecting says what actually happens.
+   *
+   * "Disconnect" on the endpoint card removed the pointer and the card vanished,
+   * which from the outside is indistinguishable from the backend being deleted:
+   * Richard's *"disconnect just disappeared"*. The process and every row in it
+   * survive. Now the card survives too — it is the managed one — and the
+   * sentence says so before anything happens.
+   */
+  const [DisconnectDialog, confirmDisconnect] = useConfirmationDialog({
+    title: 'Disconnect this backend',
+    message:
+      'This project stops using this backend. The backend keeps running on this computer and none of its ' +
+      'data is deleted — it stays in this list, and you can connect the project to it again at any time.',
+    confirmButtonLabel: 'Disconnect'
+  });
+
+  const handleDisconnectEndpoint = useCallback(async () => {
+    const project = ProjectModel.instance;
+    if (!project) return;
+    try {
+      await confirmDisconnect();
+    } catch {
+      return; // cancelled
+    }
+    setCloudServices(project, { id: undefined, endpoint: undefined, appId: undefined, type: undefined });
+    BackendServices.instance.endpointRemoved();
+  }, [confirmDisconnect]);
+
   return (
     <BasePanel title="Backend Services" hasActivityBlocker={hasActivity} hasContentScroll>
       <DeleteDialog />
       <DeleteLocalDialog />
+      <DisconnectDialog />
 
       {isLoading || isLoadingLocal ? (
         <Container hasLeftSpacing hasTopSpacing>
@@ -364,21 +415,45 @@ export function BackendServicesPanel() {
           <Container hasLeftSpacing hasRightSpacing hasTopSpacing>
             <VStack>
               {/* The project's endpoint pointer — a deployed built-in backend, or
-                  a Parse server. Renders nothing when there is neither. */}
-              <CloudServicesEndpointSection
-                isEditingRequested={isEndpointEditRequested}
-                onEditingClosed={() => setIsEndpointEditRequested(false)}
-                isActive={activeBackendId === ENDPOINT_BACKEND_ID}
-                onSetActive={() => handleSetActive(ENDPOINT_BACKEND_ID)}
-                onDisconnected={() => BackendServices.instance.endpointRemoved()}
-                conflictNote={activeBackendId === ENDPOINT_BACKEND_ID ? conflictNote : undefined}
-                localStatus={endpointLocalStatus}
-              />
+                  a Parse server. Renders nothing when there is neither.
+
+                  AAQ-002: and nothing when the pointer names a backend this
+                  editor runs. That pair is one backend, and its card is the
+                  managed one below, which is the only one that can open its
+                  schema and its data. */}
+              {!boundLocalBackend && (
+                <CloudServicesEndpointSection
+                  isEditingRequested={isEndpointEditRequested}
+                  onEditingClosed={() => setIsEndpointEditRequested(false)}
+                  isActive={activeBackendId === ENDPOINT_BACKEND_ID}
+                  onSetActive={() => handleSetActive(ENDPOINT_BACKEND_ID)}
+                  onDisconnected={() => BackendServices.instance.endpointRemoved()}
+                  conflictNote={activeBackendId === ENDPOINT_BACKEND_ID ? conflictNote : undefined}
+                  localStatus={endpointLocalStatus}
+                />
+              )}
 
               {localBackends.map((backend) => (
                 <LocalBackendCard
                   key={backend.id}
                   backend={backend}
+                  // AAQ-002: the badge, and the endpoint's own actions, on the
+                  // card that can actually do things with the backend.
+                  isProjectEndpoint={boundLocalBackend?.id === backend.id}
+                  isActive={boundLocalBackend?.id === backend.id && activeBackendId === ENDPOINT_BACKEND_ID}
+                  conflictNote={
+                    boundLocalBackend?.id === backend.id && activeBackendId === ENDPOINT_BACKEND_ID
+                      ? conflictNote
+                      : undefined
+                  }
+                  onSetActive={
+                    boundLocalBackend?.id === backend.id && activeBackendId !== ENDPOINT_BACKEND_ID
+                      ? () => handleSetActive(ENDPOINT_BACKEND_ID)
+                      : undefined
+                  }
+                  onDisconnect={
+                    boundLocalBackend?.id === backend.id ? () => void handleDisconnectEndpoint() : undefined
+                  }
                   onDeployCloudFunctions={() => deployCloudFunctions(backend.id)}
                   onStart={async (options) => {
                     const ok = await startLocalBackend(backend.id, options);

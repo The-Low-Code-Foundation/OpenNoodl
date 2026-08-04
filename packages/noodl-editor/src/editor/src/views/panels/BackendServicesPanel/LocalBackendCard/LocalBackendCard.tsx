@@ -39,6 +39,23 @@ export interface LocalBackendCardProps {
   onExport?: () => void;
   /** WFA-001: push the project's cloud functions to this backend now. */
   onDeployCloudFunctions: () => Promise<boolean>;
+  /**
+   * AAQ-002 — the project's `cloudservices` pointer names this backend.
+   *
+   * Before this, that fact lived on a *second* card (the endpoint one) which
+   * wore the ACTIVE badge and offered nothing but Edit and Disconnect, while
+   * this card — the one that can open the schema and the data — looked like an
+   * unrelated server. One backend, two cards, and the crippled one on top.
+   */
+  isProjectEndpoint?: boolean;
+  /** Is this backend the project's active selection? Only meaningful with {@link isProjectEndpoint}. */
+  isActive?: boolean;
+  /** Make this backend the project's active selection. Absent when it already is. */
+  onSetActive?: () => void;
+  /** Stop this project pointing at this backend. The backend and its data stay. */
+  onDisconnect?: () => void;
+  /** BCN-009's sentence for a project that still has a second bound backend. */
+  conflictNote?: string;
 }
 
 /**
@@ -69,7 +86,12 @@ export function LocalBackendCard({
   onStop,
   onDelete,
   onExport,
-  onDeployCloudFunctions
+  onDeployCloudFunctions,
+  isProjectEndpoint = false,
+  isActive = false,
+  onSetActive,
+  onDisconnect,
+  conflictNote
 }: LocalBackendCardProps) {
   const [isOperating, setIsOperating] = useState(false);
   const statusDisplay = getStatusDisplay(backend);
@@ -184,6 +206,20 @@ export function LocalBackendCard({
       }
     }
 
+    // AAQ-002: the endpoint card's own action, on the card that now stands for
+    // the endpoint. Behind `⋯` with the other rarely-used ones, and never
+    // labelled in a way that could read as deleting the backend — the dialog it
+    // opens says what survives.
+    if (onDisconnect) {
+      if (items.length) items.push('divider');
+      items.push({
+        label: 'Disconnect from this project',
+        icon: IconName.Link,
+        onClick: onDisconnect,
+        testId: `disconnect-local-backend-${backend.id}`
+      });
+    }
+
     if (items.length) items.push('divider');
     items.push({
       label: 'Delete backend',
@@ -197,7 +233,7 @@ export function LocalBackendCard({
     });
 
     showContextMenuInPopup({ items, width: MenuDialogWidth.Default });
-  }, [backend.running, backend.id, onDelete, onExport, openSurface]);
+  }, [backend.running, backend.id, onDelete, onDisconnect, onExport, openSurface]);
 
   return (
     <div className={css.Root} data-test={`local-backend-card-${backend.id}`}>
@@ -220,12 +256,37 @@ export function LocalBackendCard({
         </div>
 
         <div className={css.StatusBadge} style={{ color: statusDisplay.color }}>
+          {/* AAQ-002: the ACTIVE badge belongs to the card that can open the
+              backend it is a badge for. It used to sit on a second card that
+              could only be edited or disconnected. */}
+          {isActive && (
+            <Text textType={TextType.Shy} style={{ fontSize: '10px', marginRight: '8px' }} testId="local-active-badge">
+              ACTIVE
+            </Text>
+          )}
           <Icon icon={statusDisplay.icon} size={IconSize.Tiny} UNSAFE_style={{ color: statusDisplay.color }} />
           <Text textType={TextType.Shy} style={{ fontSize: '10px', marginLeft: '4px' }}>
             {statusDisplay.text}
           </Text>
         </div>
       </div>
+
+      {/* AAQ-002: which project this backend is serving, said on the card
+          itself — the fact that used to be the whole content of a second one. */}
+      {isProjectEndpoint && (
+        <div className={css.Endpoint} style={{ cursor: 'default' }}>
+          <Text textType={TextType.Shy} style={{ fontSize: '11px' }} testId="local-backend-project-endpoint">
+            This project uses this backend.
+          </Text>
+        </div>
+      )}
+      {conflictNote && (
+        <div className={css.Endpoint} style={{ cursor: 'default' }}>
+          <Text textType={TextType.Shy} style={{ fontSize: '11px' }} testId="backend-selection-conflict">
+            {conflictNote}
+          </Text>
+        </div>
+      )}
 
       {/* Endpoint (when running) */}
       {backend.running && backend.endpoint && (
@@ -309,6 +370,22 @@ export function LocalBackendCard({
             testId={`toggle-local-backend-${backend.id}`}
           />
         </div>
+
+        {/* AAQ-002: the affordance every other card has, on the card that now
+            stands for the endpoint too. Present only when this backend IS the
+            project's endpoint and something else holds the selection. */}
+        {isProjectEndpoint && onSetActive && (
+          <div className={css.PrimaryAction}>
+            <PrimaryButton
+              label="Set active"
+              size={PrimaryButtonSize.Small}
+              variant={PrimaryButtonVariant.Muted}
+              onClick={onSetActive}
+              isGrowing
+              testId={`set-active-local-backend-${backend.id}`}
+            />
+          </div>
+        )}
 
         {hasFailed && (
           <div className={css.PrimaryAction}>

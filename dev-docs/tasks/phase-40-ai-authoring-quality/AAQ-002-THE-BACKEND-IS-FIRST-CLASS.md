@@ -2,7 +2,72 @@
 
 **Findings:** #4 (a "Built-in backend" card that can only edit/disconnect; disconnect makes it
 vanish), #7 (`prop-age` / `prop-bio` port errors on Create Record)
-**Status:** open
+**Status:** slices 1–3 built (2026-08-04); slice 4 open. Criterion 5 is **settled below, and the
+hypothesis was wrong** — read that first. Criteria 1–3 need the live pass.
+
+## ⚠️ Criterion 5 — the hypothesis was wrong, and it mattered
+
+This file said the `prop-*` ports come from a schema cache that *something else* fills, so the agent's
+parameters land before it happens — a **timing** problem, with the trigger to be identified live.
+
+There is no trigger. `SchemaHandler._fetch()` — the only writer of the `dbCollections` metadata the
+Record family's port generator falls back to — had been a **stub since WF-007**: it set
+`dbCollections = []`, `haveCloudServices = false`, and `_store()` then wrote `undefined`, on **every
+`window-focused` and every `cloudServicesChanged`**. The other source, `backendServices.backends[]`,
+only ever holds BYOB configs, and the synthetic entry the runtime builds for a `cloudservices` pointer
+(`endpointBackendEntry`) carries no `schema` at all.
+
+So `prop-*` ports for a built-in backend could not exist **at any point**, for any project, no matter
+what order anything happened in. Provisioning was never late; the cache was never written, and was
+actively cleared twice a minute.
+
+Chain, for the next reader: `record-ports.ts` → `resolveSchemaPortContext` (`schema-ports.ts:477`) →
+`selectedBackend?.schema?.collections` (empty for an endpoint) → `dbCollections` fallback →
+`schemahandler.ts`.
+
+## What was built
+
+**Slice 1 — one card per backend.** `matchEndpointToManaged` (pure, in `backendList.ts`) resolves the
+endpoint pointer to the managed process it names: by `instanceId` first — `provisionBackend` writes it,
+so the match is exact — and by **localhost** port second, for bindings that predate it. `buildBackendList`
+folds the pair into the managed entry, which carries `isProjectEndpoint` and the ACTIVE badge; the
+endpoint entry survives only for a deployed or foreign server, where there is no process to fold into.
+
+The panel does the same, and this is where the *user-visible* defect actually lived: the endpoint card
+and the local card are **two different components**, not two entries of one list. `LocalBackendCard`
+gained the badge, the "This project uses this backend" line, Set active, and Disconnect;
+`CloudServicesEndpointSection` is not rendered when the endpoint is one of ours.
+
+**Slice 2 — disconnect tells the truth.** A confirmation dialog that says the backend keeps running,
+none of its data is deleted, it stays in the list, and the project can be reconnected. The card does not
+vanish, because the card is now the managed one.
+
+**Slice 3 — the schema cache is written.** `SchemaHandler._fetch()` introspects the built-in backend the
+project points at, over the same IPC the Data Browser uses (`backend:list` → `backend:status` →
+`backend:getSchema`), and caches `{ tables }` — the shape `collectionsFromParseClasses` already
+normalises. A foreign Parse server still yields nothing, for WF-007's reason: no master key is stored and
+we must not pretend to have one. **No provision-time write was needed**: `setCloudServices` raises
+`cloudServicesChanged`, which is one of this handler's two triggers, so the cache fills the moment the
+binding lands.
+
+### Corrections to this file's stated mechanisms
+
+- **`dataBrowserAvailability`'s `kind !== 'managed'` refusal is not what Richard hit.** That function has
+  exactly one production caller — `LocalBackendCard`, which always passes `'managed'` — and
+  `buildBackendList` has **no production caller at all**. The panel composes three separate card
+  components. The model seam and the view are now consistent, but the fix that a user will see is the
+  panel's.
+- `endpointLocalStatus`'s port match is left in place for the case where an endpoint cannot be resolved
+  to a managed process.
+
+### Still open
+
+- **Slice 4 — the agent knows the schema.** The authoring context carries no backend schema block at all
+  (`ContextBuilder` has none), so the agent still writes `prop-*` names from the scope's prose rather
+  than from the collections that exist. With slice 3 in place the ports now *exist*, so a wrong name is
+  a caught diagnostic rather than a phantom port — which is why this is the remainder rather than the
+  blocker.
+- Criteria 1–3 are live-QA criteria and have not been driven.
 
 ## The mechanisms
 

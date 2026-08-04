@@ -68,13 +68,29 @@ export interface BackendListEntry {
    * endpoint, so the entry that goes active is the endpoint one.
    */
   backendId?: string;
+  /**
+   * AAQ-002 — this managed process IS the project's `cloudservices` endpoint.
+   *
+   * Set only on the `managed` entry that the endpoint pointer resolves to, and
+   * the reason the endpoint entry is then absent: one backend, one card. It is
+   * distinct from `isActive`, which asks whether the project's *selection* names
+   * it — a project can point at a backend and have chosen a different one.
+   */
+  isProjectEndpoint?: boolean;
 }
 
 export interface BackendListSources {
   /** Local `nodegx-backend` processes, from `useLocalBackends`. */
   managed: readonly { id: string; name: string; port: number; running: boolean }[];
-  /** The project's `cloudservices` metadata, if anything is configured. */
-  endpoint?: { endpoint?: string; appId?: string; type?: string };
+  /**
+   * The project's `cloudservices` metadata, if anything is configured.
+   *
+   * `id` is `getCloudServices`'s reading of `instanceId` — the managed backend
+   * id when a provision (or a local backend's auto-bind) wrote this pointer,
+   * absent when a person typed the endpoint in. AAQ-002 uses it to recognise
+   * that this pointer and one of the managed processes are the same backend.
+   */
+  endpoint?: { endpoint?: string; appId?: string; type?: string; id?: string };
   /** `backendServices` metadata. */
   external: readonly BackendConfig[];
   /**
@@ -141,6 +157,37 @@ function isEndpointActive(sources: BackendListSources): boolean {
 }
 
 /**
+ * AAQ-002 — the managed backend an endpoint pointer *is*, when it is one.
+ *
+ * One backend, two identities: `provisionBackend` creates a managed process and
+ * then binds the project by writing `cloudservices`, so the same server appears
+ * twice — as the endpoint the project points at, and as the process this editor
+ * runs. Richard saw the endpoint one: *"'built in backend'… only edit or
+ * disconnect"*, with the card that can open the Data Browser sitting beneath it
+ * looking like a different backend, and "Disconnect" reading as deletion.
+ *
+ * Two matches, in this order:
+ *
+ * 1. **The id.** `setCloudServices(project, { id: meta.id, … })` stores the
+ *    managed id as `instanceId` — exact, and the reason this is not guesswork.
+ * 2. **The port**, for a binding written before the id was carried, or typed in
+ *    by hand against a local backend. Only ever `localhost`: a `:8577` on
+ *    someone else's host is not this machine's backend.
+ */
+export function matchEndpointToManaged<T extends { id: string; port: number }>(
+  endpoint: { endpoint?: string; id?: string } | undefined,
+  managed: readonly T[]
+): T | undefined {
+  if (!endpoint?.endpoint) return undefined;
+  if (endpoint.id) {
+    const byId = managed.find((backend) => backend.id === endpoint.id);
+    if (byId) return byId;
+  }
+  if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(endpoint.endpoint)) return undefined;
+  return managed.find((backend) => endpoint.endpoint!.includes(`:${backend.port}`));
+}
+
+/**
  * Every backend this project can see, in one list, in one order.
  *
  * Order is deliberate and not alphabetical: the backend the project is talking
@@ -149,30 +196,41 @@ function isEndpointActive(sources: BackendListSources): boolean {
  */
 export function buildBackendList(sources: BackendListSources): BackendListEntry[] {
   const entries: BackendListEntry[] = [];
+  // AAQ-002: the managed process the endpoint pointer names, if it names one.
+  // That pair is ONE backend and gets one entry — the managed one, which is the
+  // one that can open its own data.
+  const bound = matchEndpointToManaged(sources.endpoint, sources.managed);
 
   for (const backend of sources.managed) {
+    const isBound = bound?.id === backend.id;
     entries.push({
       key: `managed:${backend.id}`,
       kind: 'managed',
       type: 'nodegx',
       name: backend.name,
       detail: backend.running ? `Built-in • Port ${backend.port}` : 'Built-in • Stopped',
-      // ⚠️ Never active, and that is the fix rather than a gap. A managed
-      // backend is a *process on this machine*; it becomes the project's backend
-      // by writing the endpoint, and the endpoint entry is what the selection
-      // names. This used to match on the port, which meant a running local
-      // backend and the endpoint pointing at it were two active entries for one
-      // server — half of the two-ACTIVE-badges defect, in the model rather than
-      // in the view. `LocalBackendCard` has never drawn a badge, so this is also
-      // what the panel already looked like.
-      isActive: false,
+      // A managed backend is a *process on this machine*; it becomes the
+      // project's backend by writing the endpoint, and the selection names the
+      // endpoint. So it is active only when the endpoint that IS this process is
+      // the selection — never by merely running on a port that looks familiar,
+      // which was the original two-ACTIVE-badges defect (AAQ-002 restores the
+      // badge to the surviving entry, on the exact `instanceId` match rather
+      // than on the port coincidence).
+      isActive: isBound && isEndpointActive(sources),
       preset: getPreset('nodegx'),
       security: securityFor('nodegx'),
-      backendId: backend.id
+      backendId: backend.id,
+      // AAQ-002: the project points at this one. What the panel needs in order
+      // to show ONE card with both the badge and the Data Browser on it.
+      ...(isBound ? { isProjectEndpoint: true } : {})
     });
   }
 
-  if (sources.endpoint?.endpoint) {
+  // AAQ-002: suppressed when it is one of ours — the managed entry above is the
+  // same backend, and it is the one that can open its schema and its data. An
+  // endpoint that is a deployed backend or somebody's Parse server still gets
+  // its own entry, because there is no process here to fold it into.
+  if (sources.endpoint?.endpoint && !bound) {
     const type = endpointBackendType(sources.endpoint.type);
     entries.push({
       key: 'endpoint',
