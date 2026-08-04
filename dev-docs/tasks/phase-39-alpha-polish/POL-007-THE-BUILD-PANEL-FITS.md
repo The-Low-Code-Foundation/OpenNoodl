@@ -1,6 +1,7 @@
 # POL-007 — The Build panel fits inside the Build panel
 
-Covers reported item **9a**.
+Covers reported item **9a**. **Status: done.** All six criteria measured in the running editor, in
+both themes. See [What was built](#what-was-built) at the bottom.
 
 ## What was reported
 
@@ -92,3 +93,72 @@ only if that costs nothing; a single well-behaved layout beats two.
 - HMR does not re-apply a changed effect to a mounted panel, and a later effect in the same mount
   wins. Restart the editor between layout iterations.
 - Do not fix this by widening `defaultWidth`. The panel's width is the user's; the layout is ours.
+
+## What was built
+
+`scripts/pol39-live/pol007-layout.js` — a no-provider driver that runs a four-operation plan and
+measures the panel at every state, in either theme. It is the artifact worth keeping: the fix itself
+is 130 lines of stylesheet.
+
+**Written before the fix, and it caught the defect.** Against `HEAD` it reported the ScrollArea
+scrolling `506 > 352`, and `Drop from plan` laid out at `[461..576]` against a panel ending at `451`
+— 125px outside the panel it lives in. The screenshot it took is Richard's screenshot: the
+horizontal scrollbar along the bottom, `Rev…` clipped at the right edge.
+
+### What the measurement is
+
+`getBoundingClientRect()` reports layout, not paint — a child clipped by `overflow: hidden` still
+reports its real position outside the clip. So the sweep ("does any descendant cross the panel's own
+edges?") proves the layout genuinely *fits*, not merely that the overflow was hidden. That
+distinction is the whole difference between criterion 1 and criterion 3, and it is why slice 2's
+`overflow-x: hidden` was not on its own an answer.
+
+`text-overflow: ellipsis` also produces `scrollWidth > clientWidth`, which is what a working ellipsis
+looks like — so the scrollbar check only counts an element that is *also* `overflow-x: auto|scroll`.
+
+### The mechanism, confirmed and then extended
+
+The spec's arithmetic was right. `PrimaryButton` is `min-width: 70px; flex-shrink: 0`, so "Review" +
+"Drop from plan" claimed ~190px of a 398px row before the target was considered. Two things the spec
+did not name:
+
+- **`ScrollArea` is where the scrollbar came from.** Its root sets `overflow-y: auto` and leaves
+  `overflow-x` at `visible` — which CSS *computes to `auto`*. Nothing had to opt into a horizontal
+  scrollbar; leaving overflow-x alone was opting in.
+- **A component path has no spaces**, so its min-content width is the whole string. That is why the
+  plan-preview column pushed "Drop" out too, and why `overflow-wrap: anywhere` (which shrinks the
+  measured min-content, unlike `break-word`) is on every paragraph in the panel body.
+
+### Slice 4 answered: one layout, not two
+
+Two lines at 400, 700 and full. The spec allowed collapsing back to one row at wide widths "only if
+that costs nothing" — it costs a second layout to keep correct, and the two-line row reads fine at
+1315px. Measured at all three.
+
+### Found on the way — the scope tabs
+
+`isGrowing` is `flex: 1`, whose basis is **0**, so the three scope tabs split the row into equal
+thirds at *any* width. At the 400px default that gave "This component" 106px for a 120px label — it
+wrapped onto a second line and stood twice as tall as its neighbours — while "Docs" kept 36px it had
+no use for. They now grow from their own widths (`flex: 1 1 auto`) and share only the slack: 146 /
+90 / 80 on one row. F20's `flex-wrap` is untouched and still fires when the natural widths genuinely
+stop fitting.
+
+⚠️ **The first version of that fix changed nothing on screen.** `.is-growing` is a second class on
+the same element, so it outranked a `.ScopeTabs button` rule; the buttons had to stop carrying
+`isGrowing` at all. A stylesheet that compiles is not a stylesheet that applies — this was caught by
+looking at the screenshot, not by any check.
+
+### Criterion 4 — the screenshots
+
+Seven per theme, written by `--shots=<dir>`: empty, plan proposed, running-with-one-staged,
+failed-with-retry, wide, full, applied. The failed state is a *real* failure — one plan operation
+submits an unknown node type on every repair attempt, so the SUB-006 gate rejects it four times and
+the session gives up. Nothing is written into the run state to fake it.
+
+### Also fixed
+
+- The actions line renders only when there are actions; an empty flex row is still its own padding,
+  down every row of a finished run.
+- "Show activity (N)" and the detail lines are indented with their operation rather than sitting at
+  the panel edge, where the disclosure read as a panel-level control.

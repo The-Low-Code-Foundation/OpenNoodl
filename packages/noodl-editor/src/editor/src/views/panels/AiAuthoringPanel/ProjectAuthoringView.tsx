@@ -78,6 +78,9 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 import { SandboxPreview } from '../../documents/AuthoringPreviewDocument/SandboxPreview';
 import { ChangeReviewDocumentProvider } from '../../documents/ChangeReviewDocument';
 import { ActivityRow } from './AiAuthoringPanel';
+// POL-007 — the panel's layout at the 400px it is actually given. See the
+// comment block in the stylesheet for what each rule is holding back.
+import css from './AiAuthoringPanel.module.scss';
 import { PlanDocReviewDialog } from './PlanDocReviewDialog';
 
 /**
@@ -992,7 +995,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
         </VStack>
       </Section>
 
-      <ScrollArea>
+      <ScrollArea UNSAFE_className={css['Body']}>
         <Box hasXSpacing hasYSpacing UNSAFE_style={{ width: '100%' }}>
           <VStack UNSAFE_style={{ gap: 10 }}>
             {note && (
@@ -1127,10 +1130,13 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                 </Text>
                 {plan.operations.map((op) => (
                   <HStack key={op.id} UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
-                    <Text textType={TextType.Proud} style={{ minWidth: 44 }}>
+                    <Text textType={TextType.Proud} className={css['PlanRowKind']}>
                       {op.kind}
                     </Text>
-                    <VStack UNSAFE_style={{ gap: 2, flex: 1 }}>
+                    {/* POL-007: `min-width: 0`, in the stylesheet. `op.target` is a
+                        path with no spaces, so this column's min-content was the
+                        whole path and it pushed "Drop" out of the panel. */}
+                    <VStack UNSAFE_className={css['PlanRowBody']}>
                       <Text textType={TextType.Default}>{op.target}</Text>
                       <Text textType={TextType.Shy}>{op.intent}</Text>
                       {op.kind === 'doc' && !docsAvailable && (
@@ -1212,11 +1218,24 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                     op.startedAt !== undefined ? (op.endedAt ?? clockNow) - op.startedAt : undefined;
                   const activities = op.session?.activities ?? [];
                   const feedOpen = isAuthoring || openFeeds.has(op.operation.id);
+                  // POL-007: the actions line exists only when there are
+                  // actions. An empty flex row is still its own padding, down
+                  // every row of a finished run.
+                  const hasActions =
+                    op.status === 'staged' || (done && op.status === 'failed' && !isDoc && !isProvision);
                   return (
                     <VStack key={op.operation.id} UNSAFE_style={{ gap: 2, opacity: isExcluded ? 0.5 : 1 }}>
-                      <HStack UNSAFE_style={{ alignItems: 'center', gap: 6 }}>
+                      {/*
+                        POL-007 — two lines at 400px, not one. Status, target and
+                        elapsed here; the actions on their own line below.
+                        `PrimaryButton` is `min-width: 70px; flex-shrink: 0`, so
+                        "Review" + "Drop from plan" claimed ~190px of this row
+                        before the target was considered, and what did not fit
+                        scrolled the whole panel sideways.
+                      */}
+                      <div className={css['OperationHead']}>
                         <Icon icon={icon} variant={variant} size={IconSize.Small} />
-                        <Text textType={TextType.Default} style={{ flex: 1 }}>
+                        <Text textType={TextType.Default} className={css['OperationTarget']}>
                           {op.operation.kind} {op.operation.target}
                           {op.staged
                             ? ` — ${op.staged.nodeCount} node${op.staged.nodeCount === 1 ? '' : 's'}`
@@ -1225,62 +1244,79 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                             ? ` — ${op.stagedProvision.collections.join(', ')}`
                             : ''}
                         </Text>
-                        {elapsed !== undefined && <Text textType={TextType.Shy}>{formatDuration(elapsed)}</Text>}
-                        {/*
-                          AIB-002 slice 1 — reviewable the moment it stages, not
-                          when the whole run finishes. The candidate has been in
-                          `filesFor(id)` all along; the gate was `done &&`, and
-                          removing it is most of what Richard asked for. A
-                          partial accept taken now IS seen by the operations
-                          still to run: `PlanRun.workingGraph` is recomputed from
-                          the staged files at the start of each one.
-                        */}
-                        {op.status === 'staged' && (
-                          <>
-                            {!isProvision && (
+                        {elapsed !== undefined && (
+                          <Text textType={TextType.Shy} className={css['OperationElapsed']}>
+                            {formatDuration(elapsed)}
+                          </Text>
+                        )}
+                      </div>
+                      {hasActions && (
+                        <div className={css['OperationActions']}>
+                          {/*
+                            AIB-002 slice 1 — reviewable the moment it stages,
+                            not when the whole run finishes. The candidate has
+                            been in `filesFor(id)` all along; the gate was
+                            `done &&`, and removing it is most of what Richard
+                            asked for. A partial accept taken now IS seen by the
+                            operations still to run: `PlanRun.workingGraph` is
+                            recomputed from the staged files at the start of
+                            each one.
+                          */}
+                          {op.status === 'staged' && (
+                            <>
+                              {!isProvision && (
+                                <PrimaryButton
+                                  label="Review"
+                                  variant={PrimaryButtonVariant.Ghost}
+                                  onClick={() =>
+                                    isDoc ? setReviewingDoc(op.operation.id) : reviewOperation(op.operation.id)
+                                  }
+                                />
+                              )}
                               <PrimaryButton
-                                label="Review"
+                                label={isExcluded ? 'Restore to plan' : 'Drop from plan'}
                                 variant={PrimaryButtonVariant.Ghost}
                                 onClick={() =>
-                                  isDoc ? setReviewingDoc(op.operation.id) : reviewOperation(op.operation.id)
+                                  isExcluded ? restoreOperation(op.operation.id) : excludeOperation(op.operation.id)
                                 }
                               />
-                            )}
+                            </>
+                          )}
+                          {/*
+                            AIB-009 F1 — the authoring failure gets the same
+                            recovery as the apply failure. Docs are excluded
+                            because `retryOperation` refuses them: a doc is
+                            re-authored by re-running the plan, since its whole
+                            value is seeing what the plan built.
+                          */}
+                          {done && op.status === 'failed' && !isDoc && !isProvision && (
                             <PrimaryButton
-                              label={isExcluded ? 'Restore to plan' : 'Drop from plan'}
+                              label={retrying ? 'Re-authoring…' : 'Retry'}
                               variant={PrimaryButtonVariant.Ghost}
+                              isDisabled={retrying}
                               onClick={() =>
-                                isExcluded ? restoreOperation(op.operation.id) : excludeOperation(op.operation.id)
+                                void retryOperation(
+                                  op.operation.id,
+                                  op.operation.target,
+                                  op.error ?? 'The agent could not produce a valid component.'
+                                )
                               }
                             />
-                          </>
-                        )}
-                        {/*
-                          AIB-009 F1 — the authoring failure gets the same
-                          recovery as the apply failure. Docs are excluded
-                          because `retryOperation` refuses them: a doc is
-                          re-authored by re-running the plan, since its whole
-                          value is seeing what the plan built.
-                        */}
-                        {done && op.status === 'failed' && !isDoc && !isProvision && (
-                          <PrimaryButton
-                            label={retrying ? 'Re-authoring…' : 'Retry'}
-                            variant={PrimaryButtonVariant.Ghost}
-                            isDisabled={retrying}
-                            onClick={() =>
-                              void retryOperation(
-                                op.operation.id,
-                                op.operation.target,
-                                op.error ?? 'The agent could not produce a valid component.'
-                              )
-                            }
-                          />
-                        )}
-                      </HStack>
-                      {isAuthoring && <Text textType={TextType.Shy}>{authoringDetail(op.session)}</Text>}
-                      {detail && <Text textType={TextType.Shy}>{detail}</Text>}
+                          )}
+                        </div>
+                      )}
+                      {isAuthoring && (
+                        <Text textType={TextType.Shy} className={css['OperationDetail']}>
+                          {authoringDetail(op.session)}
+                        </Text>
+                      )}
+                      {detail && (
+                        <Text textType={TextType.Shy} className={css['OperationDetail']}>
+                          {detail}
+                        </Text>
+                      )}
                       {isDoc && op.status === 'staged' && done && !docsAvailable && (
-                        <Text textType={TextType.Shy}>
+                        <Text textType={TextType.Shy} className={css['OperationDetail']}>
                           Not applied — this project has never been saved, so it has no docs folder.
                         </Text>
                       )}
@@ -1294,18 +1330,23 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                         expanded is a wall nobody reads.
                       */}
                       {!isAuthoring && activities.length > 0 && (
-                        <PrimaryButton
-                          label={feedOpen ? 'Hide activity' : `Show activity (${activities.length})`}
-                          variant={PrimaryButtonVariant.Ghost}
-                          // Live QA: a stretched, outlined button per operation
-                          // row reads as three primary actions stacked down the
-                          // panel. It is a disclosure toggle; it should hug.
-                          isFitContent
-                          onClick={() => toggleFeed(op.operation.id)}
-                        />
+                        // POL-007: indented with the rest of the row. Left at
+                        // the panel edge it read as a control belonging to the
+                        // panel rather than to the operation above it.
+                        <div className={css['OperationDetail']}>
+                          <PrimaryButton
+                            label={feedOpen ? 'Hide activity' : `Show activity (${activities.length})`}
+                            variant={PrimaryButtonVariant.Ghost}
+                            // Live QA: a stretched, outlined button per operation
+                            // row reads as three primary actions stacked down the
+                            // panel. It is a disclosure toggle; it should hug.
+                            isFitContent
+                            onClick={() => toggleFeed(op.operation.id)}
+                          />
+                        </div>
                       )}
                       {feedOpen && activities.length > 0 && (
-                        <VStack UNSAFE_style={{ gap: 8, paddingLeft: 20 }}>
+                        <VStack UNSAFE_style={{ gap: 8, paddingLeft: 22 }}>
                           {activities.map((activity, index) => (
                             <ActivityRow key={index} activity={activity} />
                           ))}

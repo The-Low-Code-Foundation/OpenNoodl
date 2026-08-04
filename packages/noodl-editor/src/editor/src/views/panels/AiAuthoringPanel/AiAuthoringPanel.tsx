@@ -436,24 +436,30 @@ export function AiAuthoringPanel() {
             content-box was quietly giving the Section 38px more than its CSS
             asked for; with the box-sizing reset adopted the shortfall is real.
             Wrapping (as ProjectReviewBanner already does) keeps the labels
-            readable, where shrinking would ellipsize them to nothing. */}
-        <HStack UNSAFE_style={{ gap: 8, flexWrap: 'wrap' }}>
+            readable, where shrinking would ellipsize them to nothing.
+
+            POL-007: `isGrowing` also split the row into equal thirds at *any*
+            width — its flex-basis is 0, so the labels have no say — and at the
+            400px default that gave "This component" 106px for a 120px label,
+            wrapping it onto a second line, while "Docs" kept 36px it had no use
+            for. The growth now comes from `ScopeTabs` rather than `isGrowing`,
+            starting each button at its own width and sharing only the slack.
+            The wrap above still fires when the natural widths genuinely stop
+            fitting, which is what F20 was about. */}
+        <HStack UNSAFE_className={css['ScopeTabs']} UNSAFE_style={{ gap: 8, flexWrap: 'wrap' }}>
           <PrimaryButton
             label="This component"
             variant={scope === 'component' ? PrimaryButtonVariant.Muted : PrimaryButtonVariant.Ghost}
-            isGrowing
             onClick={() => setScope('component')}
           />
           <PrimaryButton
             label="Project"
             variant={scope === 'project' ? PrimaryButtonVariant.Muted : PrimaryButtonVariant.Ghost}
-            isGrowing
             onClick={() => setScope('project')}
           />
           <PrimaryButton
             label="Docs"
             variant={scope === 'review' ? PrimaryButtonVariant.Muted : PrimaryButtonVariant.Ghost}
-            isGrowing
             onClick={() => {
               setReviewFromBanner(false);
               setScope('review');

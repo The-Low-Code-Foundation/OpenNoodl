@@ -1,7 +1,7 @@
 # Phase 39 — Progress
 
-**Status:** 8 done, 1 diagnosed-not-fixed, 6 not started.
-**Last updated:** 2026-08-04 (third session)
+**Status:** 9 done, 2 diagnosed-not-fixed, 4 not started (POL-006, POL-011, POL-012, POL-013).
+**Last updated:** 2026-08-04 (fourth session)
 
 POL-006 also has a head start nobody had noticed: **`library/modules/lucide-icons/` already ships the
 full Lucide set as a bundled ISC webfont** (1998 glyphs, `lucide.woff2` + a `type: "iconset"`
@@ -23,7 +23,7 @@ both a matter of wiring that module in, not of sourcing an icon set.
 | [POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md) — `record.id` vs `objectId` | — | ✅ **done** | Option (b): `objectId` is the one name. A **sixth** consequence decided it — the search clause sent `{ id: { contains } }`, which the adapter turns into `"id" LIKE ?` against a table with no such column, so every search failed at the database. The drive found two more defects: **Enter in a cell editor saved the value the cell started with** (a `useCallback` closure captured at mount), and a failed delete was on screen for ~300ms because the realtime refresh clears `error`. All 7 criteria verified live. `5c8c43cf`, `0064d520` |
 | [POL-015](POL-015-THE-FIRST-WORKFLOW-CANNOT-BE-CREATED.md) — first workflow | — | ✅ **done** | Backend list now comes from `listWorkflowDefinitions()` — the call the panel already makes, already scoped to *running* backends with `error` on the unreachable. Better than the spec's `useLocalBackends`, which lists stopped ones. All 5 criteria verified live on a backend with `workflowCount: 0`. `480ade46` |
 | [POL-006](POL-006-A-FONT-AND-AN-ICON-SET.md) — font + icon set | 8 | ☐ not started | `--font-sans` is dangling repo-wide. Recommends Inter + Lucide sprite, bundled not CDN. Touches `LocalProjectsModel.ts` — dirty in another session. |
-| [POL-007](POL-007-THE-BUILD-PANEL-FITS.md) — Build panel layout | 9a | ☐ not started | Mechanism confirmed (row min-width > 400px panel). |
+| [POL-007](POL-007-THE-BUILD-PANEL-FITS.md) — Build panel layout | 9a | ✅ **done** | All 6 criteria measured live, both themes. The driver was written **before** the fix and caught it: `Drop from plan` laid out at `[461..576]` against a panel ending at `451`. The scrollbar's own source was not in the spec — `ScrollArea` sets `overflow-y: auto` and leaves `overflow-x` at `visible`, **which CSS computes to `auto`**. Slice 4 answered: one two-line layout at 400/750/1315, not two. Found on the way: the scope tabs' `isGrowing` (flex-basis 0) split the row into equal thirds at any width, wrapping "This component" onto a second line. |
 | [POL-008](POL-008-SAMPLE-DATA-AND-A-THIN-BUILD.md) — sample data + thin build | 10 | ◐ **Part A diagnosed, not fixed** | **It is none of the three candidates.** The export always ships a complete signed-in user — `username`, `email` and a `sessionToken`, measured live with `sampleData: undefined` — and its summary is verbatim the string in Richard's screenshot. `installSandbox` intercepts the network and only the network; `UserService` requests `/users/me` only if a session already exists; nothing writes one. **The sandbox serves a signed-in user nobody asks for.** The fix that implies: seed the session where `installSandbox` runs. Part B still gated on POL-006. |
 | [POL-010](POL-010-THE-WALK-DOESNT-WALK.md) — provenance walk | 12b | ◐ **diagnosed, not fixed** | Candidate (1): **the topology only contains what the preview has instantiated**. The engine is fine — measured 4 hops from one edge on real runtime ids. Candidate (2) is wrong: NodeGX node ids are readable by design (`filterCollection`, `btn`, `t1`), so nothing failed to join. Two identical `Node`/`Node id` strings is the signature of a node **absent** from the topology. Also found: `TraceSession` is never reset, so it serves the *previous project's* graph after a switch. |
 | [POL-011](POL-011-FX-ON-MULTILINE-STRINGS.md) — `fx` on multiline | 13 | ☐ not started | Mechanism confirmed: `multiline: true` routes to `TextAreaType`, which has no expression support. |
@@ -49,6 +49,17 @@ Both diagnoses died the same way a session earlier died on POL-010: **a candidat
 assumption about what a value looks like.** POL-010 assumed node ids are UUIDs; POL-008's three
 candidates all assumed the sample data was missing. In both cases printing the actual value took two
 minutes and killed the whole branch. Print it before theorising about it.
+
+POL-007 is the same pattern applied *before* the fix rather than after. Its driver was written and
+run against `HEAD` first, so the mechanism was a measurement (`Drop from plan` at `[461..576]`,
+panel ending at `451`) rather than an inference — and the measurement immediately found something
+the spec's own arithmetic had not: the scrollbar came from `ScrollArea` leaving `overflow-x` at
+`visible`, which **CSS computes to `auto`**. Nothing had to opt into a horizontal scrollbar.
+
+The counterexample is in the same task, and it is worth as much: the first attempt at the scope-tab
+fix compiled, passed the token gate, and **changed nothing on screen**, because `.is-growing` is a
+second class on the same element and outranked it. Only the screenshot caught that. A measurement
+proves what it measures; it does not prove the CSS you wrote is the CSS that won.
 
 ## Found on the way, and not this phase's
 
