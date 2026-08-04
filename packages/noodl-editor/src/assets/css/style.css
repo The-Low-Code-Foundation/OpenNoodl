@@ -1368,6 +1368,38 @@ div.lesson-content::-webkit-scrollbar-thumb {
   border-color: var(--theme-color-primary);
 }
 
+/* POL-012: the per-group "set all four at once" lock. Sits beside its own
+   group's tag, so which group it locks is a matter of position rather than of
+   a label the box has no room for. */
+.marginpadding-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 16px;
+  border-radius: var(--radius-default);
+  color: var(--theme-color-fg-muted);
+  cursor: pointer;
+  transition: color var(--speed-turbo), background-color var(--speed-turbo);
+}
+
+.marginpadding-link:hover {
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-bg-2);
+}
+
+/* ⚠️ Colour is not the only signal: the linked state also carries a filled
+   background, so the control still reads as on under a colour-vision
+   difference and at the 12px the glyph actually renders at. */
+.marginpadding-link.is-linked {
+  color: var(--theme-color-fg-on-primary);
+  background-color: var(--theme-color-primary);
+}
+
+.marginpadding-link.is-linked:hover {
+  background-color: var(--theme-color-primary-hover);
+}
+
 .marginpadding-dim {
   background-color: var(--theme-color-bg-1-transparent-2);
 }
