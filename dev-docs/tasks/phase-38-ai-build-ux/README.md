@@ -38,6 +38,7 @@ happy path does not file a bug; they leave.
 | 7 | *"making nodes with backend stuff, but it doesn't appear to have actually added a backend"* | The scoping conversation records the backend as **prose** (`ProjectScope.backend?: string`) into ARCHITECTURE.md. No code path provisions one. Verified: `ai-test/project.json` has an empty `settings` and no `cloudServices`, while the plan authored `Create User Account` and `Log In Existing User` nodes. | [AIB-007](AIB-007-SCOPE-PROVISIONS-A-BACKEND.md) |
 | 8 | *"we should consolidate the version control and github panels"* | Two separate sidebar panels over one repository. Not a defect — an accepted IA proposal. | [AIB-008](AIB-008-CONSOLIDATE-VERSION-CONTROL.md) |
 | — | found along the way | Six further defects and gaps, including a Settings dialog that opens over the launcher unprompted and a failed operation whose authored output is unrecoverable. | [AIB-009](AIB-009-FOUND-ALONG-THE-WAY.md) |
+| — | filed later, from phase 39 (2026-08-04) | A name-typed parameter is checked for being a *string* and never for **resolving**: `textStyle: "heading-3"` in a project whose styles are `Body Text`/`Button Label`/`Label Text` reports *"Submitted — passed validation."* And the agent is never told the names — the style vocabulary carries tokens, not `styles.text`, and no tool lists project assets. | [AIB-010](AIB-010-NAMED-REFERENCES-RESOLVE.md) |
 
 ## The design position
 
@@ -82,6 +83,12 @@ and the ones with non-obvious wire formats are not rare —
 
 Nothing checks any of them. `pathParams` is the one that happened to reach an adapter that calls
 `.split`. The other 1,235 ports are the same bug waiting for a different plan.
+
+> **The heading has a second reading AIB-001 did not cover, found in phase 39 (2026-08-04).** AIB-001
+> validates what a value *is shaped like*. It does not validate what a value *refers to* — and five
+> port types (`color`, `font`, `textStyle`, `component`, `image`) carry a name looked up in a project
+> table. A name that resolves to nothing is a string, so it passes. Worse, the agent has never been
+> shown those tables, so inventing a name is the only move available to it. [AIB-010](AIB-010-NAMED-REFERENCES-RESOLVE.md).
 
 ### Progress is a promise about time, not an animation.
 

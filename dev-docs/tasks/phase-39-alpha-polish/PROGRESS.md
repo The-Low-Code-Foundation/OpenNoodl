@@ -1,9 +1,9 @@
 # Phase 39 — Progress
 
-**Status:** 14 done, POL-008 Part B re-judged with an open question, 1 not started (POL-013 — the
-`IconSize` sweep, filed last on purpose and not alpha-blocking).
+**Status:** 15 done, nothing open, 1 in progress (POL-013 — the `IconSize` sweep, filed last on
+purpose and not alpha-blocking).
 
-**Last updated:** 2026-08-04 (fifth session)
+**Last updated:** 2026-08-04 (sixth session)
 
 POL-006 also has a head start nobody had noticed: **`library/modules/lucide-icons/` already ships the
 full Lucide set as a bundled ISC webfont** (1998 glyphs, `lucide.woff2` + a `type: "iconset"`
@@ -26,7 +26,7 @@ both a matter of wiring that module in, not of sourcing an icon set.
 | [POL-015](POL-015-THE-FIRST-WORKFLOW-CANNOT-BE-CREATED.md) — first workflow | — | ✅ **done** | Backend list now comes from `listWorkflowDefinitions()` — the call the panel already makes, already scoped to *running* backends with `error` on the unreachable. Better than the spec's `useLocalBackends`, which lists stopped ones. All 5 criteria verified live on a backend with `workflowCount: 0`. `480ade46` |
 | [POL-006](POL-006-A-FONT-AND-AN-ICON-SET.md) — font + icon set | 8 | ✅ **done** | All 7 criteria measured live and in a real deploy build. **The font half of the spec was stale** — `--font-sans` was never dangling (REV-009 stamps `:root` into both surfaces), so criterion 5 was met before the task started. The real defect was one nothing predicted: with the token right and all four Inter faces loaded, a Text node still rendered in **Times**, because a declared `default` never runs its setter and both viewer templates style `body` without a font. Fixed in `TokenResolver.generateCss` — the one artifact preview, deploy and SSR all come through. Inter (4 weights, TTF) + Lucide (212 curated of 1998, woff2) as `noodl_modules/`. New gate: `starter-iconset:check`. |
 | [POL-007](POL-007-THE-BUILD-PANEL-FITS.md) — Build panel layout | 9a | ✅ **done** | All 6 criteria measured live, both themes. The driver was written **before** the fix and caught it: `Drop from plan` laid out at `[461..576]` against a panel ending at `451`. The scrollbar's own source was not in the spec — `ScrollArea` sets `overflow-y: auto` and leaves `overflow-x` at `visible`, **which CSS computes to `auto`**. Slice 4 answered: one two-line layout at 400/750/1315, not two. Found on the way: the scope tabs' `isGrowing` (flex-basis 0) split the row into equal thirds at any width, wrapping "This component" onto a second line. |
-| [POL-008](POL-008-SAMPLE-DATA-AND-A-THIN-BUILD.md) — sample data + thin build | 10 | ◐ **Part A done; Part B re-judged, open question** | Part A verified live, **9/9**, on Richard's own graph: signed in renders `sample.user@example.com`, signed out renders `Text Email placeholder` — the strings from his screenshot, now reachable only when he asks for them and under a strip that says *"signed out"*. The seam is a new `sandbox/session.ts` hung off `metadataChanged`, because the session key comes from the *export's* metadata and the shim installs before the runtime exists. It writes **every** candidate key rather than mirroring `_handle()`'s resolution rule — a drifting copy of that would fail silently, straight back into placeholders. **Part B re-judged against the real provider and its premise moved**: the agent now produces 7 styled nodes with a spacing scale, a card and a type hierarchy, rendering in Inter. What is still poor is two *invented names* — a `textStyle` and an image `src` the project does not have, both passed by the gate in silence. Open question 1 below. |
+| [POL-008](POL-008-SAMPLE-DATA-AND-A-THIN-BUILD.md) — sample data + thin build | 10 | ✅ **done** (Part B closed, residual filed as [AIB-010](../phase-38-ai-build-ux/AIB-010-NAMED-REFERENCES-RESOLVE.md)) | Part A verified live, **9/9**, on Richard's own graph: signed in renders `sample.user@example.com`, signed out renders `Text Email placeholder` — the strings from his screenshot, now reachable only when he asks for them and under a strip that says *"signed out"*. The seam is a new `sandbox/session.ts` hung off `metadataChanged`, because the session key comes from the *export's* metadata and the shim installs before the runtime exists. It writes **every** candidate key rather than mirroring `_handle()`'s resolution rule — a drifting copy of that would fail silently, straight back into placeholders. **Part B re-judged against the real provider and its premise moved**: the agent now produces 7 styled nodes with a spacing scale, a card and a type hierarchy, rendering in Inter. What is still poor is two *invented names* — a `textStyle` and an image `src` the project does not have, both passed by the gate in silence — **filed as [AIB-010](../phase-38-ai-build-ux/AIB-010-NAMED-REFERENCES-RESOLVE.md)** and closed here (answer 8 below). |
 | [POL-010](POL-010-THE-WALK-DOESNT-WALK.md) — provenance walk | 12b | ✅ **done** (slice 2 deferred, as decided) | All 6 criteria. The driver was written **before** the fix and run against `HEAD`: **5/14**, and the baseline is worse than the spec said — four situations, **two** sentences, differing only by a row count. Now 15/15, four sentences, verified live on Richard's chat project. `WalkResult.foundation` (`no-graph`/`node-absent`/`port-unwired`/`walkable`) lives in the engine so OBS-004 gets it too. Two things the spec did not have: state A needed the **"no viewer"** half to be reachable at all (a held topology outlives its viewer, which is 2b's lie one scope smaller), and the in-editor preview **cannot be closed on its own** — it is a `<webview>` guest and killing it white-screens the editor. Slice 2b in. |
 | [POL-011](POL-011-FX-ON-MULTILINE-STRINGS.md) — `fx` on multiline | 13 | ✅ **done** | All 6 criteria, **8/8 in both themes**. The check that matters is the one the panel cannot answer: with the expression set to `Noodl.Variables.pol011Greeting`, the **running preview rendered `Hello from a variable`**. `TextAreaType` now renders the same row every other string does (new `PropertyPanelInputType.TextArea`) rather than a bare `PropertyPanelRow` — which was the whole defect — and the value↔expression conversion moved into `expressionProps.ts` so there is one copy. Slice 3 decided in `Ports.ts` as a table: `codeeditor` and `identifierOf` get **no**, and structurally cannot offer it, so a flag would be dead code. Two harness facts worth keeping: `node.parameters[name]` vs `getParameter(name)` (three false failures), and `data-identifier` **disappears in expression mode** — the row needed a `data-property` that survives the switch. |
 | [POL-012](POL-012-SET-ALL-FOUR-SIDES-AT-ONCE.md) — link padding/margin | 14 | ✅ **done** | All 7 criteria, **12/12 in both themes** on a real node, values read off `NodeGraphNode.parameters` rather than the screen. One undo step (`change padding`), and one undo press restores all four including the side that was on `%`. Slice 4's survey: corner radius already has "all four at once" (a single `borderRadius` plus per-corner overrides) so it needs nothing. Two lessons: *"link on only if all four agree"* means it starts **on** (four untouched sides agree), which cost the driver five false failures; and **12/12 said nothing about where the control sits** — the first placement covered the group tags and the padding-top field, and only a screenshot caught it. The overlap is a measurement now. |
@@ -43,7 +43,8 @@ spec, and in both cases the answer was **not** on the candidate list:
 - **POL-010** — not a broken edge lookup. The topology describes what the *preview instantiated*, not
   what the graph contains.
 
-Both are diagnosed and unfixed. Neither fix has been started.
+Both were fixed in the fifth session and verified live; the paragraphs above are kept because the
+diagnoses are the reusable part.
 
 ### The pattern worth carrying
 
@@ -71,42 +72,23 @@ proves what it measures; it does not prove the CSS you wrote is the CSS that won
   touched: it fails identically. 69 of 70 suites and 743 of 755 specs pass. Nobody owns this; it is
   recorded here so the next person does not spend the fifteen minutes proving it is not theirs.
 
-## Open — needs Richard, 2026-08-04 (fifth session)
-
-**1. POL-008 Part B's premise moved, and the fix the spec prescribes would answer the wrong
-question.** The re-judge is done — real provider, same brief, Build panel — and the agent produced
-**seven styled nodes**, not "a div and a couple of texts": a spacing scale (`var(--space-8)`,
-`var(--space-4)`), a card with `var(--surface)`, `var(--radius-2xl)` and a shadow, a 140px avatar,
-and a declared type hierarchy. It renders in Inter. Causes 1–3 in the spec are answered.
-
-What is still poor on screen is two invented names:
-
-- `textStyle: "heading-3"` and `textStyle: "muted"` — this project's styles are `Body Text`,
-  `Button Label`, `Label Text`. Both Texts render identical 16px black; there is **no type hierarchy
-  at all**, and nothing said so.
-- `src: "profileIcon.svg"` — no such file. A broken-image box.
-
-Both passed the SUB-006 gate under *"Submitted — passed validation."* This is phase 38's finding
-exactly: **nothing validates parameter VALUES.**
-
-So the choice is:
-
-- **(a)** a value check for named references (`textStyle`, `colorStyle`, image `src`) that fails or
-  reports rather than passing silently, **plus** telling the agent what this project's style names
-  are — it cannot use `Body Text` if it has never been told the project has one;
-- **(b)** the spec's original plan — a visual section in the `CONVENTIONS.md` template. **Rejected
-  by the evidence**: the model already produces spacing, colour and a type hierarchy unprompted. A
-  styling floor would tell it to do what it is doing, and would not stop it naming a style that does
-  not exist.
-
-(a) is bigger than a polish slot and touches the authoring context, so it is not being started
-without a decision. Part B is otherwise closed: the font criterion is met and the re-judge is
-recorded in the spec with the node-by-node inventory and the screenshot.
+## Nothing open.
 
 ## Answered by Richard — 2026-08-04
 
 These close the three questions the third session left open. **Do not re-ask them**, and do not
 re-derive the options — each is written into its own spec with the alternatives that were rejected.
+
+8. **POL-008 Part B — file (a) as its own task and close Part B.** Not alpha-blocking: an invented
+   style name is ugly output, not a crash. Filed as
+   [AIB-010 — A named reference must resolve](../phase-38-ai-build-ux/AIB-010-NAMED-REFERENCES-RESOLVE.md),
+   next to AIB-001 whose table it extends. The mechanism was traced before filing and it is two
+   halves, neither of them a styling problem: `nameTypeFormat` checks `typeof value === 'string'` and
+   stops (deliberately — that module is pure and has no project to look a name up in), and **nothing
+   in the agent's context carries the names** (the AIX-006 style vocabulary renders design *tokens*,
+   not `styles.text`, which is exactly why `var(--surface)` resolved and `heading-3` did not; and
+   the three read tools list no project styles or assets, so it cannot even ask). Option (b) stays
+   rejected on the evidence.
 
 5. **POL-005 — a backend surface stays at 860, with no route to full.** *"Leave it for now, 860 is
    enough and we can launch and survey users about it."* POL-005 is closed. If feedback after launch

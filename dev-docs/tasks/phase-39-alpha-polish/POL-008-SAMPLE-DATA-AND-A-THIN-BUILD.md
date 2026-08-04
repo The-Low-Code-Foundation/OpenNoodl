@@ -212,7 +212,7 @@ sample data for an operation, the strip says so — "No sample data for this com
 presenting an unfed preview as a fed one. That is the same rule phase 38 adopted about silent
 discarding, applied to a preview.
 
-## Part B — RE-JUDGED, 2026-08-04. **It is not thin any more, and the premise has moved.**
+## Part B — ✅ CLOSED 2026-08-04. **It is not thin any more, and the premise moved.**
 
 Richard's instruction was *"genuinely rebuild the same Profile page and look at it before doing
 anything else — the re-judge is the first slice, not a formality."* Done, against the **real
@@ -271,6 +271,29 @@ That reframes Part B. The remaining work is not "teach the agent to style"; it i
 Both are bigger than a polish slot and neither is what the spec below prescribes, so **this needs
 Richard's call before anything is built.** Recorded in `PROGRESS.md` under an open question.
 
+### ✅ Answered 2026-08-04 — filed as AIB-010, and Part B closes here
+
+Richard: **file (a) as its own task and close Part B.** It is not alpha-blocking — an invented style
+name is ugly output, not a crash — and it belongs next to AIB-001, whose table it extends.
+
+[**AIB-010 — A named reference must resolve**](../phase-38-ai-build-ux/AIB-010-NAMED-REFERENCES-RESOLVE.md).
+The mechanism was traced before filing, and it is two independent halves, neither of which is a
+styling problem:
+
+1. `nameTypeFormat` in `validation/parameterValues.ts:159-174` checks `typeof value === 'string'`
+   and nothing else — deliberately, because that module is **pure** and has no project in scope to
+   look a name up in. The lookup has to be a separate check taking the tables as an argument.
+2. **Nothing in the agent's context carries the names.** `projectOverview()` lists components only;
+   the AIX-006 style vocabulary carries design *tokens*, element variants and presets — which is
+   exactly why `var(--space-8)` and `var(--surface)` resolved and `heading-3` did not, because
+   `styles.text` / `styles.colors` are a different table it does not render; and the three read
+   tools (`get_node_types`, `get_component`, `submit_component`) include nothing that lists project
+   styles or assets, so the agent cannot even ask.
+
+Option (b) stays rejected on the evidence above. Criterion 5 is closed as **moot, not deferred**: a
+styling floor in `CONVENTIONS.md` would instruct the model to do what the re-judge shows it already
+doing, and would not have stopped either invented name.
+
 ### The original Part B analysis, kept because its causes are now answered
 
 Six nodes for a profile page: Page Root, Current User, Profile Card, Avatar Placeholder, User Name,
@@ -322,8 +345,10 @@ Not a model-quality project — that is a phase, not a task. Scope here:
    produce one would measure a build we no longer ship. The node count and the styling inventory
    are the comparison that can honestly be made against his description ("a div and a couple of
    texts"), and they contradict it.
-5. Open — and probably moot: see the re-judge. The convention change the spec prescribes would
-   answer a question the model is already answering.
+5. ✅ Closed as **moot**, not deferred. The convention change the spec prescribes would answer a
+   question the model is already answering. The real residual — two names that resolve to nothing,
+   passed by the gate in silence — is filed as
+   [AIB-010](../phase-38-ai-build-ux/AIB-010-NAMED-REFERENCES-RESOLVE.md) with its mechanism traced.
 
 ## Traps
 
