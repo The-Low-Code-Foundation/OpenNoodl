@@ -54,6 +54,16 @@ Preview/verify (AAQ-007 consumes these): `render_preview`, `get_render_report`.
 4. **One dialect**: `noodl-mcp`'s existing tools either become re-exports of this contract or are
    migrated to it with deprecation shims. Grep for drift the way BCN-003b did; a snapshot test pins
    the two surfaces to one schema source.
+5. **One gate policy** (verified 2026-08-04): the twin already exists. `noodl-mcp` shares the
+   validation *rules* via `editor-deps.ts` but gates on `severity === 'error'` only
+   (`packages/noodl-mcp/src/validate.ts:72`) — the editor's `BLOCKING_WARNINGS` policy has no MCP
+   counterpart, so a bare `width: 228` blocks the embedded agent and ships through Claude Code
+   today. The blocking policy moves into the substrate so both clients get one gate.
+6. **The guidance surface**: the internal system prompt has no external twin — Claude Code sees
+   only tool descriptions, `get_node_types`, and diagnostics. Doctrine (AAQ-008/009/010) that must
+   reach external authors lands in catalog enrichment, tool descriptions, and an MCP
+   server-instructions block or shippable NodeGX authoring skill — not only in
+   `prompts/authoring.ts`. This is what the README's parity exit criterion actually tests.
 
 ## What this replaces
 
