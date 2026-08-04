@@ -67,7 +67,20 @@ export function ProjectSettingsTab() {
     const group = {};
     ProjectModel.instance.on('settingsChanged', () => forceUpdate((prev) => prev + 1), group);
     return () => {
-      ProjectModel.instance.off(group);
+      // `?.` because by unmount time the singleton may be gone. Leaving a
+      // project routes to 'projects' and `router.tsx` nulls
+      // `ProjectModel.instance` from a `setTimeout(…, 0)` — a deliberate HACK
+      // meant to let React unmount first. This panel loses that race: an
+      // unguarded `.off` here threw `Cannot read properties of undefined`
+      // *inside a cleanup*, uncaught, which tore down the tree and left the
+      // window blank. Measured: with the Settings panel open, closing the
+      // project white-screened the editor every time; with only the Components
+      // panel open it did not, because this component was not mounted.
+      //
+      // The guard is correct rather than defensive — the listener is registered
+      // on the model that is being disposed, so there is nothing to detach once
+      // it is gone.
+      ProjectModel.instance?.off(group);
     };
   }, []);
 
