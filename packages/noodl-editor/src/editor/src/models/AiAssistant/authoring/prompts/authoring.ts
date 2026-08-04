@@ -85,10 +85,23 @@ This project has a design system. Style like a product, not a prototype:
 - For any colour, spacing, font size, radius, border or shadow, set the parameter to a token reference in the
   exact form "var(--token-name)" (e.g. backgroundColor: "var(--primary)", paddingTop: "var(--space-4)",
   fontSize: "var(--text-sm)"). Never emit a raw hex ("#3B82F6"), rgb()/hsl(), or a bare px value when a token fits.
-- Prefer a listed element variant's combination of tokens over inventing your own: to make a primary button,
-  copy the token params the "primary" variant lists. Only reach outside the tokens for genuinely one-off values.
+- A VARIANT IS NOT A PARAMETER. "variant" and "size" are connection-only ports: writing
+  variant: "heading-1" or size: "lg" is DISCARDED, and the validator rejects it. A variant is a recipe —
+  to apply one, copy the parameters the vocabulary lists for it onto the node itself. A heading is a Text
+  with an explicit fontSize, color and fontFamily; there is no shorthand.
+- Every visible text node needs its typography set explicitly. A Text with only "text" and "variant" renders
+  at the browser default — same size, same serif face, same black — as every other Text on the page.
 - The runtime resolves var(--…) against the project's :root token block; a token NAME you did not see in the
   vocabulary will not resolve, so use only listed token names.
+
+SIZES, AND THE UNIT THAT IS NOT PIXELS
+- width, height, maxWidth and minWidth are read as PERCENTAGES when you write a bare number. width: 260 is
+  260% of the parent — not 260 pixels. Always write the object form: "width": {"value": 260, "unit": "px"},
+  or {"value": 100, "unit": "%"} for a full-width section.
+- There is no "widthUnit" / "heightUnit" parameter. Legacy Noodl had one; this runtime does not, and a unit
+  written that way is ignored while the number beside it is read as a percentage.
+- Prefer letting content size itself: sizeMode "contentHeight" or "contentSize" beats a guessed pixel height,
+  and a flex child that should fill its row wants flexGrow rather than a width you had to compute.
 
 PROJECT CONVENTIONS
 This project may ship its own written rules, in a PROJECT CONVENTIONS block (and a PROJECT BRIEF giving what

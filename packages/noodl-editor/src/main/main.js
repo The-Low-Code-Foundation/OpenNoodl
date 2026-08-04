@@ -292,6 +292,10 @@ function launchApp() {
     makeEditorAPIRequest('projectGetComponentBundleExport', { name }, callback);
   }
 
+  function projectGetDesignTokenCss(callback) {
+    makeEditorAPIRequest('projectGetDesignTokenCss', undefined, callback);
+  }
+
   process.env.exePath = app.getPath('exe');
   let reopenWindow = false;
 
@@ -829,7 +833,13 @@ function launchApp() {
 
     showFirstRunLegalNotice();
 
-    startServer(app, projectGetSettings, projectGetInfo, projectGetComponentBundleExport);
+    startServer(
+      app,
+      projectGetSettings,
+      projectGetInfo,
+      projectGetComponentBundleExport,
+      projectGetDesignTokenCss
+    );
 
     // Initialize local backend IPC handlers
     setupBackendIPC();

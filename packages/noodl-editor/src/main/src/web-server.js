@@ -41,7 +41,13 @@ function parseRangeHeader(range, length) {
   return result;
 }
 
-function startServer(app, projectGetSettings, projectGetInfo, projectGetComponentBundleExport) {
+function startServer(
+  app,
+  projectGetSettings,
+  projectGetInfo,
+  projectGetComponentBundleExport,
+  projectGetDesignTokenCss
+) {
   const appPath = app.getAppPath();
 
   //accept any certificate from localhost (e.g. self signed)
@@ -66,25 +72,42 @@ function startServer(app, projectGetSettings, projectGetInfo, projectGetComponen
 
       projectGetInfo((info) => {
         ProjectModules.instance.injectIntoHtml(info.projectDirectory, data, '/', function (injected) {
-          projectGetSettings((settings) => {
-            settings = settings || {};
-            injected = injected.replace('{{#title#}}', settings.htmlTitle || 'Noodl Viewer');
-            injected = injected.replace('{{#customHeadCode#}}', settings.headCode || '');
+          // Optional so an older caller — or a harness that starts the server
+          // with the original four arguments — degrades to the previous
+          // behaviour rather than hanging on a callback nobody will fire.
+          const withTokenCss = projectGetDesignTokenCss
+            ? projectGetDesignTokenCss
+            : (callback) => callback('');
 
-            //RUN-001: projects on the React 19 runtime load the react19/ pair instead of the
-            //vendored 18.3.1 default; distinct URLs keep the browser cache honest when switching
-            if (info.runtimeVersion === 'react19') {
-              injected = injected
-                .replace('src="/react.production.min.js"', 'src="/react19/react.production.min.js"')
-                .replace('src="/react-dom.production.min.js"', 'src="/react19/react-dom.production.min.js"');
-            }
+          withTokenCss((tokenCss) => {
+            projectGetSettings((settings) => {
+              settings = settings || {};
+              injected = injected.replace('{{#title#}}', settings.htmlTitle || 'Noodl Viewer');
 
-            injected = injectRelayToken(injected, getRelayToken(app));
+              // Everything served here must resolve the same `var(--token)`
+              // vocabulary the canvas webview and an exported build do. Ahead of
+              // the project's own head code, so a hand-written override still
+              // wins — the same ordering `html-processor` uses for exports.
+              const headCode = tokenCss
+                ? `<style id="noodl-design-tokens">\n${tokenCss}\n</style>\n` + (settings.headCode || '')
+                : settings.headCode || '';
+              injected = injected.replace('{{#customHeadCode#}}', headCode);
 
-            response.writeHead(200, {
-              'Content-Type': 'text/html'
+              //RUN-001: projects on the React 19 runtime load the react19/ pair instead of the
+              //vendored 18.3.1 default; distinct URLs keep the browser cache honest when switching
+              if (info.runtimeVersion === 'react19') {
+                injected = injected
+                  .replace('src="/react.production.min.js"', 'src="/react19/react.production.min.js"')
+                  .replace('src="/react-dom.production.min.js"', 'src="/react19/react-dom.production.min.js"');
+              }
+
+              injected = injectRelayToken(injected, getRelayToken(app));
+
+              response.writeHead(200, {
+                'Content-Type': 'text/html'
+              });
+              response.end(injected);
             });
-            response.end(injected);
           });
         });
       });

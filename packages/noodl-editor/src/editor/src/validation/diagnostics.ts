@@ -82,6 +82,37 @@ export enum DiagnosticCode {
    */
   UnknownParameter = 'unknown-parameter',
   /**
+   * A parameter sets a port the catalog marks `allowConnectionsOnly` — a port
+   * that only ever takes a wired connection and silently discards a statically
+   * authored value.
+   *
+   * Always an **error**, and the reason it needs a code of its own is that it is
+   * invisible to every check around it: the port genuinely exists, so
+   * `UnknownParameter` cannot see it, and the value is a perfectly well-formed
+   * string, so `InvalidParameterValue` cannot either. The canonical case is
+   * `variant` on Text/Group/Button. An agent told to style "on-system" writes
+   * `variant: "heading-1"` and nothing else — no `fontSize`, no `color` — and
+   * every word on the page then renders at browser default with no diagnostic
+   * anywhere. A statically-set variant must be expanded into the concrete token
+   * parameters it implies.
+   */
+  ConnectionOnlyParameter = 'connection-only-parameter',
+  /**
+   * A bare number on a units-typed port that is read as a **percentage** —
+   * `width`, `height`, `maxWidth`, `minWidth`. `{ value, unit }` is the form
+   * real content uses: across the whole repository these ports are written in
+   * object form 3,589 times and as a bare number **zero** times, while bare
+   * numbers on `px`-defaulting ports (`borderRadius`, `fontSize`) are common and
+   * harmless. So the rule keys on the unit the port defaults to, not on the
+   * value's shape.
+   *
+   * A warning rather than an error, because a bare number is genuinely legal —
+   * `setInputValue` merges it into the port's current unit. It is nonetheless
+   * blocking for *authored* output, where `width: 228` meaning 228px produced an
+   * image 228% wide.
+   */
+  UnitlessDimension = 'unitless-dimension',
+  /**
    * LIB-006: a legacy import could not convert this construct and left it in
    * place, marked. Always an error — see `rules/legacyImportPlaceholder.ts` for
    * why this is not folded into `unknown-node-type`.

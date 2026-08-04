@@ -20,6 +20,7 @@ import {
   buildComponentRefs,
   checkBackendRequirements,
   checkParameterValues,
+  DiagnosticCode,
   loadDefaultCatalog,
   normalizeV2Component,
   SemanticValidator,
@@ -164,7 +165,23 @@ export function validateCandidateComponent(
     ...parameterDiagnostics(legacyName, files),
     ...backendDiagnostics(legacyName, files, options.backend)
   ];
-  const allErrors: Diagnostic[] = diagnostics.filter((d) => d.severity === 'error');
+  // A parameter naming no port is a warning project-wide, and must stay one:
+  // the corpus is full of imported nodes carrying settings the catalog cannot
+  // see, and `validate:project` gaining a new error class across it is a
+  // separate decision. For *authored* output it is a different thing entirely.
+  // Nothing in the graph is legacy, every type was fetched from the catalog
+  // moments earlier, and a parameter that names no port is simply a value the
+  // agent believes it set and did not — `Page.title`, `Page.urlPath`,
+  // `button.size` and `button.boxShadow` all shipped in one build under a clean
+  // report. Blocking here rather than raising the severity keeps the two
+  // audiences separate: the loop gets one cheap repair round, the corpus is
+  // untouched.
+  const BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
+    DiagnosticCode.UnknownParameter,
+    DiagnosticCode.UnitlessDimension
+  ]);
+  const blocking = (d: Diagnostic) => d.severity === 'error' || BLOCKING_WARNINGS.has(d.code);
+  const allErrors: Diagnostic[] = diagnostics.filter(blocking);
 
   const inherited = options.baseline
     ? baselineErrorKeys(graph, legacyName, options.baseline, options.backend)

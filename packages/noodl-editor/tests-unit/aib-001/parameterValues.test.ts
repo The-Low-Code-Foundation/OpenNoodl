@@ -214,3 +214,127 @@ describe('the hint the model is given is the rule the gate enforces', () => {
     expect(WIRE_FORMAT_LEGEND).toContain('var(--token)');
   });
 });
+
+/**
+ * The two ways an AI-authored page rendered as an unstyled column while the
+ * validator reported it clean.
+ *
+ * Both are asserted against the real catalog and against the exact parameters a
+ * live build actually emitted, because both were invisible to every rule above:
+ * one sets a port that genuinely exists, the other writes a value that is
+ * genuinely legal.
+ */
+describe('the styling a candidate believes it set', () => {
+  describe('a connection-only port', () => {
+    // The agent expressed ALL typography this way — `variant` and nothing
+    // else, no fontSize, no color — so every word rendered at browser default.
+    it('is an error, not the silence a real-but-unsettable port used to get', () => {
+      const found = errors('Text', { variant: 'heading-1' });
+      expect(found).toHaveLength(1);
+      expect(found[0].code).toBe(DiagnosticCode.ConnectionOnlyParameter);
+      expect(found[0].message).toContain('only accepts a wired connection');
+    });
+
+    it('says what to do instead, since dropping the parameter styles nothing', () => {
+      expect(errors('Text', { variant: 'lead' })[0].message).toContain('STYLE VOCABULARY');
+    });
+
+    it('catches it on every element that carries a variant, not just Text', () => {
+      for (const type of ['Group', 'net.noodl.controls.button']) {
+        expect(errors(type, { variant: 'primary' }).map((d) => d.code)).toEqual([
+          DiagnosticCode.ConnectionOnlyParameter
+        ]);
+      }
+    });
+
+    it('leaves a port that merely looks similar alone', () => {
+      expect(errors('Text', { text: 'heading-1' })).toEqual([]);
+    });
+  });
+
+  describe('the width/widthUnit pairing legacy Noodl taught every model', () => {
+    // Verbatim from the build: an Image card that rendered 228% wide.
+    const AS_AUTHORED = { width: 228, widthUnit: 'px', height: 180, heightUnit: 'px' };
+
+    it('is an error, because the bare number is legal and means percent', () => {
+      const found = errors('Image', AS_AUTHORED);
+      expect(found.map((d) => d.location.port).sort()).toEqual(['height', 'width']);
+    });
+
+    it('names the size the node actually renders at, not just the mistake', () => {
+      const width = errors('Image', AS_AUTHORED).find((d) => d.location.port === 'width');
+      expect(width.message).toContain('"228%"');
+      expect(width.message).toContain('"228px"');
+      expect(width.suggestion).toBe(JSON.stringify({ value: 228, unit: 'px' }));
+    });
+
+    it('stays quiet when the author already used the object form', () => {
+      // The unit is already right, so the stray sibling costs nothing and
+      // erroring would spend a repair round making the candidate no better.
+      // (Image has dynamic ports, so it does not even draw the unknown-parameter
+      // warning — the trap fires ahead of that exemption on purpose, because the
+      // port it pairs with is statically declared.)
+      expect(one('Image', { width: { value: 228, unit: 'px' }, widthUnit: 'px' })).toEqual([]);
+    });
+
+    it('fires on a node with dynamic ports, whose static ports are still static', () => {
+      expect(errors('Image', { width: 228, widthUnit: 'px' })).toHaveLength(1);
+    });
+
+    it('stays quiet on a bare number with no unit claimed alongside it', () => {
+      // `width: 100` meaning 100% is idiomatic and correct.
+      expect(errors('Group', { width: 100 })).toEqual([]);
+    });
+
+    it('ignores a suffix that pairs with no units-typed port', () => {
+      expect(errors('Text', { textUnit: 'px' })).toEqual([]);
+    });
+  });
+
+  describe('a bare number on a port that is read as a percentage', () => {
+    // The Image in the generated page carried no `widthUnit` at all — just
+    // `width: 228, height: 180` — so the pairing trap above could not see it,
+    // and it rendered 228% wide. Real content writes these in object form
+    // 3,589 times and as a bare number zero times.
+    it('is reported even with no unit sibling to give the intent away', () => {
+      const found = one('Image', { width: 228, height: 180 }).filter(
+        (d) => d.code === DiagnosticCode.UnitlessDimension
+      );
+      expect(found.map((d) => d.location.port).sort()).toEqual(['height', 'width']);
+      expect(found[0].message).toContain('"228%"');
+    });
+
+    it('offers both units rather than guessing, since the loop applies a suggestion', () => {
+      // `width: 100` meaning 100% is as likely as `width: 228` meaning 228px.
+      const found = one('Group', { width: 100 })[0];
+      expect(found.suggestion).toBeUndefined();
+      expect(found.alternatives).toEqual([
+        JSON.stringify({ value: 100, unit: 'px' }),
+        JSON.stringify({ value: 100, unit: '%' })
+      ]);
+    });
+
+    it('leaves px-defaulting ports alone, where a bare number is idiomatic', () => {
+      // 70 borderRadius, 11 fontSize and 6 letterSpacing values in the corpus
+      // are bare numbers and all of them are correct.
+      expect(one('Group', { borderRadius: 8 })).toEqual([]);
+      expect(one('Text', { fontSize: 14 })).toEqual([]);
+    });
+
+    it('does not double-report when the unit sibling already explains it', () => {
+      const codes = one('Image', { width: 228, widthUnit: 'px' }).map((d) => d.code);
+      expect(codes).toEqual([DiagnosticCode.InvalidParameterValue]);
+    });
+
+    it('blocks an authored candidate even though it is only a warning', () => {
+      // The severity is right for the corpus and wrong for the loop; see the
+      // BLOCKING_WARNINGS note in authoring/validate.ts.
+      expect(one('Image', { width: 228 })[0].severity).toBe('warning');
+    });
+  });
+
+  it('warns the model in the legend that a bare number is not pixels', () => {
+    expect(WIRE_FORMAT_LEGEND).toContain('260% wide');
+    expect(WIRE_FORMAT_LEGEND).toContain('widthUnit');
+  });
+});

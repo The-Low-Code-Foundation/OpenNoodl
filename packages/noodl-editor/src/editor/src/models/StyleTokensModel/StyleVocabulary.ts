@@ -202,7 +202,18 @@ export function renderStyleVocabulary(vocab: StyleVocabulary, options: RenderVoc
 
   if (vocab.elements.length > 0) {
     lines.push('');
-    lines.push('ELEMENT VARIANTS & SIZES — set the element type via the marker param, or copy the styles it implies:');
+    // The old wording offered two routes — "set the element type via the marker
+    // param, or copy the styles it implies" — and the marker route does not
+    // work: `variant` is `allowConnectionsOnly`, so a statically authored value
+    // is discarded. An agent that took the shorter-looking option wrote
+    // `variant: "heading-1"` on every Text, set no font size or colour, and
+    // shipped a page that rendered entirely at browser defaults. There is only
+    // one route now, and the validator errors on the other.
+    lines.push(
+      'ELEMENT VARIANTS & SIZES — a catalogue of coherent styles, NOT settable parameters. ' +
+        '"variant" and "size" are connection-only ports: setting either as a parameter is discarded and is a ' +
+        'validation error. To use one, copy the parameters it lists onto the node:'
+    );
     const spellOut = options.elementTypes ? new Set(options.elementTypes) : null;
     for (const el of vocab.elements) {
       const head = `- ${el.nodeType}: variants [${el.variants.join(', ') || 'none'}], sizes [${

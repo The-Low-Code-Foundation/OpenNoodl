@@ -64,6 +64,12 @@ export interface PortTypeShape {
   units?: string[];
   defaultUnit?: string;
   enums?: Array<{ label?: string; value: unknown } | string>;
+  /**
+   * The port accepts a wired connection and nothing else. A value written into
+   * `parameters` for such a port is discarded without complaint — see
+   * `DiagnosticCode.ConnectionOnlyParameter`.
+   */
+  allowConnectionsOnly?: boolean;
 }
 
 /** A node as this rule needs to see it: identity plus its parameter bag. */
@@ -398,6 +404,9 @@ export const WIRE_FORMAT_LEGEND = [
   '- Write numbers as numbers and booleans as true/false. A quoted "12" or "false" is not the same value.',
   '- A port shown as {value, unit} takes that object (e.g. {"value":16,"unit":"px"}), a bare number, or a',
   '  var(--token) reference. A CSS string like "16px" is DROPPED silently.',
+  '- A bare number on such a port means the FIRST unit listed for it, which for width/height/maxWidth is',
+  '  "%" and NOT px. Write {"value":260,"unit":"px"} for 260 pixels; a bare 260 renders at 260% wide.',
+  '  There is no "widthUnit"/"heightUnit" parameter — the unit goes inside the object.',
   '- An enum takes one of its listed options, spelled exactly — not the label, not a synonym.',
   '- color/font/textStyle/image/component take a NAME (a token, a project style, or a component path).'
 ].join('\n');
@@ -414,6 +423,65 @@ export function wireFormatHint(port: CatalogPort | undefined): string {
 }
 
 // ─── The rule ────────────────────────────────────────────────────────────────
+
+/**
+ * The `width: 260, widthUnit: "px"` trap.
+ *
+ * Legacy Noodl stored a dimension as a number plus a sibling `<port>Unit`
+ * string, and that pairing is all over the training data — so it is what a model
+ * writes when it means "260 pixels". Nothing here is loud enough to stop it:
+ * `widthUnit` is not a port, so it is a mere warning, and the bare `260` is
+ * explicitly *legal* (`unitsFormat` merges a bare number into the port's current
+ * unit). The port's `defaultUnit` is `%`, so the node silently renders at
+ * **260% wide**. That is how an authored image card became a full-bleed
+ * overflowing block with a clean validation report.
+ *
+ * Reported as an error rather than folded into `UnknownParameter` because the
+ * fix is not "drop this parameter" — dropping it leaves the 260% behind. The
+ * suggestion carries the whole repair: the object form, with the unit the
+ * author already told us they wanted.
+ */
+function unitSuffixTrap(
+  catalog: CatalogIndex,
+  component: string,
+  node: ParameterizedNode,
+  name: string,
+  value: unknown,
+  parameters: Record<string, unknown>
+): Diagnostic | undefined {
+  if (!name.endsWith('Unit') || name.length <= 4) return undefined;
+
+  const base = name.slice(0, -4);
+  const type = portTypeShape(catalog.getPort(node.type, 'input', base));
+  if (!type?.units?.length) return undefined;
+
+  const unit = String(value);
+  if (!type.units.includes(unit)) return undefined;
+
+  const paired = parameters[base];
+  // Only a bare number is silently mis-united. An author who already wrote the
+  // object form has the unit right and merely left a stray sibling behind —
+  // that is the plain unknown-parameter warning, not this.
+  if (!isNumberLike(paired)) return undefined;
+
+  const effective = type.defaultUnit || type.units[0];
+  // The unit the author asked for is the one they were going to get anyway.
+  // `width: 100, widthUnit: "%"` renders at exactly 100% — the sibling is
+  // redundant, not harmful, and an error here would spend a repair round
+  // producing a byte-identical result.
+  if (unit === effective) return undefined;
+
+  return {
+    code: DiagnosticCode.InvalidParameterValue,
+    severity: 'error',
+    message:
+      `"${base}" is a bare number, so it is read in this port's default unit — ${JSON.stringify(
+        `${paired}${effective}`
+      )}, not ${JSON.stringify(`${paired}${unit}`)}. "${name}" is not a port and is ignored.`,
+    location: locate(component, node, base),
+    suggestion: JSON.stringify({ value: Number(paired), unit })
+  };
+}
 
 /**
  * Check every node's parameter values against the wire format its port type
@@ -456,6 +524,14 @@ export function checkParameterValues(
 
       const port = catalog.getPort(node.type, 'input', name);
       if (!port) {
+        // Checked ahead of the dynamic-node exemption: the port it pairs with
+        // must be statically declared for the trap to fire at all, and a
+        // dynamic node's static ports are as static as anyone's.
+        const unitTrap = unitSuffixTrap(catalog, component, node, name, value, parameters);
+        if (unitTrap) {
+          diagnostics.push(unitTrap);
+          continue;
+        }
         if (!reportUnknownParameters || dynamic) continue;
         const suggestion = catalog.suggestPort(node.type, 'input', name);
         diagnostics.push({
@@ -464,6 +540,57 @@ export function checkParameterValues(
           message: `${node.type} has no input port "${name}", so this parameter is never read.`,
           location: locate(component, node, name),
           ...(suggestion ? { suggestion } : {})
+        });
+        continue;
+      }
+
+      // Before the value is examined at all: a connection-only port discards
+      // whatever is written here, so the *shape* of the value is beside the
+      // point. Checking it first also keeps the diagnostic singular — a
+      // statically-set `variant` should say "this port cannot be set", not
+      // "this string is not a valid string".
+      if (portTypeShape(port)?.allowConnectionsOnly) {
+        diagnostics.push({
+          code: DiagnosticCode.ConnectionOnlyParameter,
+          severity: 'error',
+          message:
+            `"${name}" on ${node.type} only accepts a wired connection, so this value is discarded and the ` +
+            'node renders as if it were never set.' +
+            (name === 'variant'
+              ? ' Set the concrete style parameters the variant implies instead — the STYLE VOCABULARY ' +
+                'lists them for every variant.'
+              : ' Drive it with a connection, or set the concrete parameters it would have applied.'),
+          location: locate(component, node, name)
+        });
+        continue;
+      }
+
+      // A bare number on a port that is read as a percentage. Skipped when a
+      // `<name>Unit` sibling is present: `unitSuffixTrap` already owns that
+      // case and says something sharper about it, and one mistake should not
+      // draw two diagnostics.
+      const shape = portTypeShape(port);
+      if (
+        shape?.units?.length &&
+        (shape.defaultUnit || shape.units[0]) === '%' &&
+        isNumberLike(value) &&
+        parameters[`${name}Unit`] === undefined
+      ) {
+        diagnostics.push({
+          code: DiagnosticCode.UnitlessDimension,
+          severity: 'warning',
+          message:
+            `"${name}" is a bare number, so it renders at ${JSON.stringify(`${value}%`)} — this port is read ` +
+            'as a percentage. Write the object form to say which unit you mean.',
+          location: locate(component, node, name),
+          // Alternatives rather than a suggestion: `width: 100` meaning 100% is
+          // as likely as `width: 228` meaning 228px, and the agent is told never
+          // to argue with a diagnostic — so a confident guess here would be
+          // auto-applied and would be wrong half the time.
+          alternatives: [
+            JSON.stringify({ value: Number(value), unit: 'px' }),
+            JSON.stringify({ value: Number(value), unit: '%' })
+          ]
         });
         continue;
       }
