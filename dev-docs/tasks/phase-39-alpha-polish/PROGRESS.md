@@ -1,7 +1,6 @@
 # Phase 39 — Progress
 
-**Status:** 15 done, nothing open, 1 in progress (POL-013 — the `IconSize` sweep, filed last on
-purpose and not alpha-blocking).
+**Status:** ✅ **16 of 16 done. Nothing open, nothing in progress.**
 
 **Last updated:** 2026-08-04 (sixth session)
 
@@ -18,7 +17,7 @@ both a matter of wiring that module in, not of sourcing an icon set.
 | [POL-001](POL-001-SETTINGS-PANEL-CRASH.md) — settings panel crash | 15 | ✅ **done** | All 5 criteria. Slice 2 answered: the key is not lost — v2 elides an empty `settings: {}` by design on both sides. Verified live on "AIB38 Live Chat", the project that actually crashed. `c6d5f9f8` |
 | [POL-002](POL-002-LINKS-AND-THE-LEARN-TAB.md) — links + Learn tab | 1, 2, 5 | ✅ **done** (1 residual) | Removing `react-instantsearch` broke 18 unrelated files: it was the only thing in the tree still declaring a **global `JSX` namespace**, typed for *Preact's* VNode. All 22 annotations moved to `React.JSX`. Criterion 6 (packaged build) not run — human-gated. `d9c0f37c` |
 | [POL-003](POL-003-THE-LEFT-RAIL.md) — the left rail | 3, 4, 6 | ✅ **done** (slice 2 deferred) | Contrast now 8.26:1 dark / 7.49:1 light, measured live. 5 Lucide glyphs in. `IconSize` sweep deferred per Richard → [POL-013](POL-013-ICONSIZE-SWEEP.md). `d32b3d13`, `fc10449a` |
-| [POL-013](POL-013-ICONSIZE-SWEEP.md) — make `IconSize` real | — | ☐ filed, not started | Split out of POL-003 slice 2 on Richard's call. ~130 call sites. |
+| [POL-013](POL-013-ICONSIZE-SWEEP.md) — make `IconSize` real | — | ✅ **done** | All 4 criteria, both themes, measured. The scale is **12/14/16/20**, defined by this task because nothing had numbers attached to these names. Three things the spec did not have: the call-site count is **441, not ~130, and 319 declare nothing**; **47 visible glyphs were not the wrong size but destroyed** (0.48–8px — `Icon`'s span is an ordinary flex item and an overflowing row crushed it, so `.Root` now carries `flex: 0 0 auto`); and criterion 5's 169-file SVG rewrite is **unnecessary**, because `svg { width: 100% }` already outranks a presentation attribute — the attributes only mattered while the span had no size. `flex: 0 0 auto` then broke three hosts that had been holding a glyph in by shrinking it; the diff caught all three and each declares a size now. **0 of 894** icons off-scale afterwards. `51beed24` |
 | [POL-004](POL-004-TOKENS-USED-AS-WHAT-THEY-ARE-NOT.md) — token misuse | 9b, 12a | ✅ **done** (2 residuals) | The check found **25** undefined tokens, not 6 — writing it first, per its own trap, is what caught that. `DialogBackground.Secondary` deleted; it was also miscolouring **every tooltip arrow** in the editor, which nobody reported. Gate: `npm run tokens:css`. Residual: the diff modal and a populated walk are unverified live — both need a longer drive, POL-010 owns the walk. `4382cb24` |
 | [POL-005](POL-005-BACKEND-SURFACES-OPEN-DOCKED.md) — backend surfaces | 7 | ✅ **done** (1 open question) | Verified live against a running backend: all seven open at **859px** with **zero** detached-bar elements, close returns to Backend Services, WFA-005's route lands identically. Slice 3's layout pass done in both themes. **Criterion 5's premise was wrong** — a surface has no float/full route at all (1 header button vs Backend Services' 6), so this change removed the only path to full mode. Richard's call whether that matters. Three findings filed, none width-caused: [POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md), the invisible "Save policy" button, Schema's bespoke header. |
 | [POL-009](POL-009-A-PIN-BELONGS-TO-ONE-CANVAS.md) — pinned run | 11 | ✅ **done** | All six criteria verified live. The identity the fix compares **does** exist for a workflow canvas (`/#__workflow__/wf_pol009`) — that was the open risk. Step index survives navigation at a *non-default* value (`Step 2 / 3`), a second pin replaces the first, unpin is permanent. The pin even outlives the workflow document being closed and rebuilt. |
@@ -63,6 +62,37 @@ The counterexample is in the same task, and it is worth as much: the first attem
 fix compiled, passed the token gate, and **changed nothing on screen**, because `.is-growing` is a
 second class on the same element and outranked it. Only the screenshot caught that. A measurement
 proves what it measures; it does not prove the CSS you wrote is the CSS that won.
+
+POL-013 is the pattern at its most useful, and it added a step: **the instrument has to be shown
+trustworthy before its output is evidence.** Two runs of the *same build* disagreed by 47 icons,
+because the side panel keeps whatever width the previous run left it and a flex-shrunk glyph is a
+correct measurement of a different layout. Pinning the viewport and adding a 0.5px floor took
+same-build churn to zero, and only then did a 307-icon diff mean anything. The other half of the
+same lesson: the first before/after diff reported `1354 appeared / 1355 vanished / 0 unchanged`,
+because the census keyed each icon by a DOM path containing its class list — and the change adds a
+class. **A key must not contain the thing the change changes**; total churn is that bug's signature,
+not a big result.
+
+## Found on the way, and fixed — 2026-08-04 (sixth session)
+
+**Closing a project with the Settings panel open white-screened the editor.** `3462ee00`. Found
+because POL-013's census has to leave a project to census the launcher, and the exit killed the app
+every time.
+
+`router.tsx` nulls `ProjectModel.instance` from a `setTimeout(…, 0)` — a deliberate HACK, commented
+as such, meant to let React unmount everything first. `ProjectSettingsTab` loses that race: its
+cleanup called `ProjectModel.instance.off(group)` on an undefined singleton, which threw *inside a
+cleanup*, uncaught, and tore the tree down.
+
+Isolated rather than inferred: with the Settings panel open, `exitProject()` left `rootChildren: 0`
+and zero body text every time; with only the Components panel open it did not, because the component
+was not mounted. The other two call sites of the same shape — `nodegrapheditor.ts` and
+`useComponentsPanel.ts` — already guard, so the guarded form is the house pattern and this was the
+one site that missed it.
+
+Worth noticing for the alpha: this is the **third** defect in this phase whose whole mechanism is
+"the Settings surface throws" ([POL-001](POL-001-SETTINGS-PANEL-CRASH.md), POL-004's tooltip token,
+this). It is the surface a user reaches for first when something looks wrong.
 
 ## Found on the way, and not this phase's
 
