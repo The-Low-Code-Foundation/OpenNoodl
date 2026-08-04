@@ -1,6 +1,15 @@
 # Phase 39 — Progress
 
-**Status:** ✅ **16 of 16 done. Nothing open, nothing in progress.**
+**Status:** **15 of 16 done.** POL-001 … POL-015 are all done. One task is open —
+[POL-016](POL-016-THE-TWO-FINDINGS-POL-005-FILED.md), created 2026-08-04 — plus **three loose ends**
+listed under *"Open — the tail"* below. Nothing is alpha-blocking.
+
+> **The sixth session first reported this phase as "16 of 16, nothing open", and both halves of that
+> were wrong.** There are **15** numbered tasks, not 16 — a miscount. And "nothing open" was only
+> true of the table: POL-005 filed **three** findings, one became POL-014 and the other two were
+> recorded as prose in a done task's notes cell, where nothing tracked them again. Richard caught it.
+> They now have a task file. **Anything filed-not-fixed gets a row**, or it is invisible in the
+> status line, in the count, and in every handover after it.
 
 **Last updated:** 2026-08-04 (sixth session)
 
@@ -17,9 +26,10 @@ both a matter of wiring that module in, not of sourcing an icon set.
 | [POL-001](POL-001-SETTINGS-PANEL-CRASH.md) — settings panel crash | 15 | ✅ **done** | All 5 criteria. Slice 2 answered: the key is not lost — v2 elides an empty `settings: {}` by design on both sides. Verified live on "AIB38 Live Chat", the project that actually crashed. `c6d5f9f8` |
 | [POL-002](POL-002-LINKS-AND-THE-LEARN-TAB.md) — links + Learn tab | 1, 2, 5 | ✅ **done** (1 residual) | Removing `react-instantsearch` broke 18 unrelated files: it was the only thing in the tree still declaring a **global `JSX` namespace**, typed for *Preact's* VNode. All 22 annotations moved to `React.JSX`. Criterion 6 (packaged build) not run — human-gated. `d9c0f37c` |
 | [POL-003](POL-003-THE-LEFT-RAIL.md) — the left rail | 3, 4, 6 | ✅ **done** (slice 2 deferred) | Contrast now 8.26:1 dark / 7.49:1 light, measured live. 5 Lucide glyphs in. `IconSize` sweep deferred per Richard → [POL-013](POL-013-ICONSIZE-SWEEP.md). `d32b3d13`, `fc10449a` |
+| [POL-016](POL-016-THE-TWO-FINDINGS-POL-005-FILED.md) — POL-005's other two findings | — | ☐ **filed, not started** | Created 2026-08-04 because these had been carried as prose in POL-005's notes cell since the third session and nothing tracked them. The "Save policy" half needs a decision first — `muted` wrong here, or wrong generally. Not alpha-blocking. |
 | [POL-013](POL-013-ICONSIZE-SWEEP.md) — make `IconSize` real | — | ✅ **done** | All 4 criteria, both themes, measured. The scale is **12/14/16/20**, defined by this task because nothing had numbers attached to these names. Three things the spec did not have: the call-site count is **441, not ~130, and 319 declare nothing**; **47 visible glyphs were not the wrong size but destroyed** (0.48–8px — `Icon`'s span is an ordinary flex item and an overflowing row crushed it, so `.Root` now carries `flex: 0 0 auto`); and criterion 5's 169-file SVG rewrite is **unnecessary**, because `svg { width: 100% }` already outranks a presentation attribute — the attributes only mattered while the span had no size. `flex: 0 0 auto` then broke three hosts that had been holding a glyph in by shrinking it; the diff caught all three and each declares a size now. **0 of 894** icons off-scale afterwards. `51beed24` |
 | [POL-004](POL-004-TOKENS-USED-AS-WHAT-THEY-ARE-NOT.md) — token misuse | 9b, 12a | ✅ **done** (2 residuals) | The check found **25** undefined tokens, not 6 — writing it first, per its own trap, is what caught that. `DialogBackground.Secondary` deleted; it was also miscolouring **every tooltip arrow** in the editor, which nobody reported. Gate: `npm run tokens:css`. Residual: the diff modal and a populated walk are unverified live — both need a longer drive, POL-010 owns the walk. `4382cb24` |
-| [POL-005](POL-005-BACKEND-SURFACES-OPEN-DOCKED.md) — backend surfaces | 7 | ✅ **done** (1 open question) | Verified live against a running backend: all seven open at **859px** with **zero** detached-bar elements, close returns to Backend Services, WFA-005's route lands identically. Slice 3's layout pass done in both themes. **Criterion 5's premise was wrong** — a surface has no float/full route at all (1 header button vs Backend Services' 6), so this change removed the only path to full mode. Richard's call whether that matters. Three findings filed, none width-caused: [POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md), the invisible "Save policy" button, Schema's bespoke header. |
+| [POL-005](POL-005-BACKEND-SURFACES-OPEN-DOCKED.md) — backend surfaces | 7 | ✅ **done** (1 open question) | Verified live against a running backend: all seven open at **859px** with **zero** detached-bar elements, close returns to Backend Services, WFA-005's route lands identically. Slice 3's layout pass done in both themes. **Criterion 5's premise was wrong** — a surface has no float/full route at all (1 header button vs Backend Services' 6), so this change removed the only path to full mode. Richard's call whether that matters. Three findings filed, none width-caused: [POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md) (done), and the invisible "Save policy" button + Schema's bespoke header — **which lived only in this cell for three sessions and are now [POL-016](POL-016-THE-TWO-FINDINGS-POL-005-FILED.md)**. |
 | [POL-009](POL-009-A-PIN-BELONGS-TO-ONE-CANVAS.md) — pinned run | 11 | ✅ **done** | All six criteria verified live. The identity the fix compares **does** exist for a workflow canvas (`/#__workflow__/wf_pol009`) — that was the open risk. Step index survives navigation at a *non-default* value (`Step 2 / 3`), a second pin replaces the first, unpin is permanent. The pin even outlives the workflow document being closed and rebuilt. |
 | [POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md) — `record.id` vs `objectId` | — | ✅ **done** | Option (b): `objectId` is the one name. A **sixth** consequence decided it — the search clause sent `{ id: { contains } }`, which the adapter turns into `"id" LIKE ?` against a table with no such column, so every search failed at the database. The drive found two more defects: **Enter in a cell editor saved the value the cell started with** (a `useCallback` closure captured at mount), and a failed delete was on screen for ~300ms because the realtime refresh clears `error`. All 7 criteria verified live. `5c8c43cf`, `0064d520` |
 | [POL-015](POL-015-THE-FIRST-WORKFLOW-CANNOT-BE-CREATED.md) — first workflow | — | ✅ **done** | Backend list now comes from `listWorkflowDefinitions()` — the call the panel already makes, already scoped to *running* backends with `error` on the unreachable. Better than the spec's `useLocalBackends`, which lists stopped ones. All 5 criteria verified live on a backend with `workflowCount: 0`. `480ade46` |
@@ -102,7 +112,29 @@ this). It is the surface a user reaches for first when something looks wrong.
   touched: it fails identically. 69 of 70 suites and 743 of 755 specs pass. Nobody owns this; it is
   recorded here so the next person does not spend the fifteen minutes proving it is not theirs.
 
-## Nothing open.
+## Open — the tail
+
+**One task and three loose ends.** None alpha-blocking; all of them were being carried invisibly
+until the sixth session's register audit.
+
+1. **[POL-016](POL-016-THE-TWO-FINDINGS-POL-005-FILED.md) — the two findings POL-005 filed.** The
+   Sign-in surface's "Save policy" button reads as plain text (a real `PrimaryButton`, 90×30,
+   `is-variant-muted`, background `rgb(247,249,251)` on a panel of nearly the same colour, no
+   border), and Schema's header is bespoke against six siblings. **The first needs a decision** —
+   whether `muted` is wrong *here* (one line) or wrong *generally* (a `PrimaryButton` fix plus a
+   call-site sweep). See the task; do not answer it from this button alone.
+
+2. **POL-002 criterion 6 — the packaged build has never been run since Algolia was removed.**
+   Recorded as "human-gated", and that is worth re-testing rather than inheriting: *signing and
+   publishing* are human-gated (REV-007), but a packaged **build** may not be. Removing a dependency
+   is the one change in POL-002 that can break packaging without breaking dev, and POL-002's own
+   trap says so. If it can be run headlessly, run it; if it genuinely cannot, say which step needs a
+   human and put it on [HUMAN-GATED-ITEMS](../phase-33-alpha-launch/HUMAN-GATED-ITEMS.md).
+
+3. **POL-004 criterion 1 — the doc-review diff modal is still unverified live.** The other half of
+   that residual (a populated provenance walk) was closed by POL-010. The modal was fixed by the
+   token work and screenshotted in neither theme. It needs a drive that opens a doc review with a
+   real diff in it.
 
 ## Answered by Richard — 2026-08-04
 
