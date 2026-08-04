@@ -652,7 +652,15 @@ export class PlanRun {
       };
       const sessionOptions: AuthoringSessionOptions = {
         ...this.options.session,
-        planContext: renderPlanContext(this.plan, operation.id)
+        planContext: renderPlanContext(this.plan, operation.id),
+        // AAQ-001: every component this plan touches resolves, whether or not it
+        // has been authored yet. Without it the navigation check turns the
+        // fan-out's authoring ORDER into a diagnostic — the first page's link to
+        // the second is "unresolved" purely because the second has not been
+        // built, and the agent is told never to argue with a diagnostic.
+        plannedComponents: this.plan.operations
+          .filter((op) => op.kind === 'create' || op.kind === 'update')
+          .map((op) => pathToLegacyName(op.target))
       };
       if (operation.kind === 'update') {
         const base = this.options.baseFilesFor?.(legacyName);

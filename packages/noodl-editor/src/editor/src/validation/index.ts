@@ -27,6 +27,9 @@ export type {
   CheckBackendRequirementsOptions,
   ProjectBackendFacts
 } from './backendRequirement';
+// AAQ-001 — a navigation that lands somewhere.
+export { checkNavigation } from './navigation';
+export type { CheckNavigationOptions, NavigatingNode } from './navigation';
 export {
   checkParameterValues,
   portTypeShape,

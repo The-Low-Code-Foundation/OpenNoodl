@@ -38,9 +38,12 @@
 import type { ComponentModel } from '../../componentmodel';
 import type { ProjectModel } from '../../projectmodel';
 import { UndoActionGroup, UndoQueue } from '../../undo-queue-model';
+import type { PageRegistration } from './pageRegistration';
 import type { PlanOperation, PlanProvisionSpec } from './plan';
 import {
   addAuthoredComponentToGroup,
+  registerAuthoredPagesInGroup,
+  stagedComponentIsPage,
   stagedLegacyName,
   StagingError,
   updateAuthoredComponentInGroup
@@ -201,6 +204,20 @@ export interface ApplyPlanOptions {
    * nothing.
    */
   provisioner?: PlanBackendProvisioner;
+  /**
+   * AAQ-003 — project settings this plan agreed, applied inside the same undo
+   * group as everything else.
+   *
+   * The only one so far is `bodyScroll`, and the defect it closes is that
+   * nothing in the AI path ever set it: the default is off, an app root is then
+   * `position: fixed` with `overflow: clip`, and every page the agent built was
+   * clipped at the viewport with no scrollbar — deployed as well as in preview.
+   *
+   * A setting the project has ALREADY set is never overwritten (see
+   * `applySettings`): the plan states what a new app needs, not what an existing
+   * one should have chosen.
+   */
+  settings?: Record<string, unknown>;
 }
 
 export interface AppliedPlanResult {
@@ -210,6 +227,14 @@ export interface AppliedPlanResult {
   docs: string[];
   /** AIB-007 — the backend this apply provisioned, when it provisioned one. */
   backend?: ProvisionedBackend;
+  /**
+   * AAQ-001 — the pages this apply registered in the project's router, when it
+   * registered any. Absent when the plan created no pages, when they were
+   * already listed, or when the project has no router.
+   */
+  registration?: PageRegistration;
+  /** AAQ-003 — project settings this apply wrote, by name. Absent when it wrote none. */
+  settings?: string[];
   undoLabel: string;
 }
 
@@ -316,6 +341,8 @@ export async function applyAuthoredPlan(
   const components = new Map<string, ComponentModel>();
   const docs: string[] = [];
   let backend: ProvisionedBackend | undefined;
+  let registration: PageRegistration | undefined;
+  let settingsWritten: string[] = [];
 
   // AIB-001 slice 4: which operation the transaction is inside. A mutation that
   // throws is nearly always about ONE operation's candidate — the crash this
@@ -348,6 +375,19 @@ export async function applyAuthoredPlan(
           : updateAuthoredComponentInGroup(project, op.files, undo)
       );
     }
+    // AAQ-001, last: a page component is not a page until a Router lists it, and
+    // nothing in the AI stack knew that — so a plan that created three pages
+    // produced three components the app could not reach. This runs after the
+    // components are in, because "is the current start page an empty
+    // placeholder" is a question about the project as it now stands, and because
+    // a registration pointing at a component that failed to apply would be a
+    // route to nowhere. It is inside the same group and the same try: one undo
+    // takes the pages and their registration back together.
+    applying = undefined;
+    registration = registerAuthoredPagesInGroup(project, pageTargets(componentOps), undo);
+    // AAQ-003, in the same group and for the same reason: a page that cannot
+    // scroll is as unreachable as a page nobody routed.
+    settingsWritten = applySettings(project, options.settings, undo);
   } catch (error) {
     // Roll back through the inverses recorded so far. This is not a
     // partial-apply path — it is the absence of one.
@@ -369,5 +409,54 @@ export async function applyAuthoredPlan(
   }
 
   UndoQueue.instance.push(undo);
-  return { components, docs, ...(backend ? { backend } : {}), undoLabel };
+  return {
+    components,
+    docs,
+    ...(backend ? { backend } : {}),
+    ...(registration ? { registration } : {}),
+    ...(settingsWritten.length > 0 ? { settings: settingsWritten } : {}),
+    undoLabel
+  };
+}
+
+/**
+ * AAQ-003 — write the project settings this plan agreed, undoably, and answer
+ * which ones actually changed.
+ *
+ * **Only settings the project has no value for.** A project where someone has
+ * been through Project Settings and switched Body Scroll off has decided; a plan
+ * that overrode that would be the AI stack reaching past the user, which is the
+ * failure this whole phase is about, pointed the other way. `undefined` — the
+ * state every project starts in — is the absence of a decision, not a decision.
+ */
+function applySettings(
+  project: ProjectModel,
+  settings: Record<string, unknown> | undefined,
+  undo: UndoActionGroup
+): string[] {
+  if (!settings) return [];
+  const written: string[] = [];
+  for (const [name, value] of Object.entries(settings)) {
+    if (value === undefined) continue;
+    const before = project.getSettings()[name];
+    if (before !== undefined) continue;
+    undo.pushAndDo({
+      do: () => project.setSetting(name, value),
+      undo: () => project.setSetting(name, before)
+    });
+    written.push(name);
+  }
+  return written;
+}
+
+/**
+ * AAQ-001 — the page components this apply puts into the project, in plan order.
+ *
+ * Updates count as well as creates: a page that exists but was never registered
+ * is exactly the state this task is about, and re-listing one that is already
+ * listed is a no-op. Plan order matters — the first page is the one that becomes
+ * home when home is up for grabs — and it is the order the user approved.
+ */
+function pageTargets(componentOps: readonly AppliedPlanComponentOperation[]): string[] {
+  return componentOps.filter((op) => stagedComponentIsPage(op.files)).map((op) => stagedLegacyName(op.files));
 }

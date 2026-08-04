@@ -52,6 +52,35 @@ export const SCOPING_EFFORT: AiEffort = 'low';
 /** Tool-call round trips inside ONE user turn before we stop and answer. */
 const MAX_TOOL_ROUNDS = 4;
 
+/**
+ * AAQ-004. What separates two prose rounds of one user turn when they are shown
+ * as a single reply. A blank line, because they are separate model turns that
+ * happen to belong to the same answer — never a joiner that implies a sentence
+ * continues across the seam.
+ */
+const TURN_SEPARATOR = '\n\n';
+
+/**
+ * Shift a round's streamed text by everything already said this turn.
+ *
+ * `onText` hands back the accumulated text of the round in flight, which is the
+ * right contract for a single round and the wrong one for a turn made of
+ * several: the second round starts at an empty string and the bubble drops the
+ * long answer the user is reading. The delta is passed through untouched — only
+ * the accumulated view moves.
+ */
+function withProsePrefix(callbacks: AiStreamCallbacks, before: () => string): AiStreamCallbacks {
+  const { onText } = callbacks;
+  if (!onText) return callbacks;
+  return {
+    ...callbacks,
+    onText: (fullText, delta) => {
+      const prefix = before();
+      onText(prefix ? prefix + TURN_SEPARATOR + fullText : fullText, delta);
+    }
+  };
+}
+
 export interface ScopingOptions {
   chat?: ScopingChatFn;
   effort?: AiEffort;
@@ -146,7 +175,31 @@ export class ScopingSession {
 
     try {
       let rounds = 0;
-      let lastProse = '';
+      /**
+       * AAQ-004 mechanism A. This used to be `lastProse` — one string, each
+       * round overwriting the one before, and only the survivor entered into
+       * the transcript. The characteristic shape of a scoping turn is: a long,
+       * useful answer with follow-up questions; a `record_scope` call; then the
+       * short recap the tool result asks for. Keeping only the last round meant
+       * the long answer **streamed to the user and then visibly vanished** when
+       * the run resolved and the UI re-rendered from `entries`.
+       *
+       * Every non-empty prose round is kept, in order. Joined with a blank line
+       * because these are separate model turns, not fragments of one.
+       */
+      const prose: string[] = [];
+      const proseSoFar = () => prose.join(TURN_SEPARATOR);
+      /**
+       * Enter what was said into the transcript and answer it. Every exit from
+       * this turn goes through here — including the failure ones, because prose
+       * the user watched arrive is theirs whether or not the round after it
+       * reached the provider.
+       */
+      const keep = () => {
+        const text = proseSoFar();
+        if (text) this.entries.push({ role: 'assistant', text });
+        return text;
+      };
 
       while (rounds <= this.maxToolRounds) {
         rounds++;
@@ -160,19 +213,21 @@ export class ScopingSession {
               effort: this.effort,
               abortController
             },
-            callbacks
+            // `onText` reports the accumulated text of the round in flight, so
+            // a second round would restart the bubble at the recap and drop the
+            // long answer from under the user mid-turn — the same collapse as
+            // above, one layer up. Prefixing with the rounds already spoken
+            // keeps the streamed text monotonic and byte-equal to what the
+            // transcript ends up holding.
+            withProsePrefix(callbacks, proseSoFar)
           );
         } catch (error) {
           if (abortController.signal.aborted) {
-            return { status: 'cancelled', reply: lastProse, scope: this.current, costUsd: this.cost };
+            return { status: 'cancelled', reply: keep(), scope: this.current, costUsd: this.cost };
           }
-          return {
-            status: 'error',
-            reply: '',
-            scope: this.current,
-            note: error instanceof Error ? error.message : String(error),
-            costUsd: this.cost
-          };
+          const note = error instanceof Error ? error.message : String(error);
+          keep();
+          return { status: 'error', reply: '', scope: this.current, note, costUsd: this.cost };
         }
 
         this.cost = this.cost === null || response.usage.costUsd === null ? null : this.cost + response.usage.costUsd;
@@ -181,11 +236,10 @@ export class ScopingSession {
           content: response.text ?? '',
           ...(response.toolCalls.length > 0 ? { toolCalls: response.toolCalls } : {})
         });
-        if (response.text?.trim()) lastProse = response.text.trim();
+        if (response.text?.trim()) prose.push(response.text.trim());
 
         if (response.stopReason === 'aborted') {
-          if (lastProse) this.entries.push({ role: 'assistant', text: lastProse });
-          return { status: 'cancelled', reply: lastProse, scope: this.current, costUsd: this.cost };
+          return { status: 'cancelled', reply: keep(), scope: this.current, costUsd: this.cost };
         }
 
         if (response.toolCalls.length === 0) break;
@@ -212,8 +266,7 @@ export class ScopingSession {
         }
       }
 
-      if (lastProse) this.entries.push({ role: 'assistant', text: lastProse });
-      return { status: 'ok', reply: lastProse, scope: this.current, costUsd: this.cost };
+      return { status: 'ok', reply: keep(), scope: this.current, costUsd: this.cost };
     } finally {
       if (this.abortController === abortController) this.abortController = undefined;
     }

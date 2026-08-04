@@ -33,12 +33,33 @@ export type { RevealItem } from './preview';
 export {
   acceptAuthoredComponent,
   addAuthoredComponentToGroup,
+  findProjectRouters,
+  isPlaceholderPage,
+  prospectivePageRegistration,
+  registerAuthoredPagesInGroup,
+  stagedComponentIsPage,
   stagedLegacyName,
   StagingError,
   updateAuthoredComponent,
   updateAuthoredComponentInGroup
 } from './staging';
 export type { AcceptOptions } from './staging';
+// AAQ-001 — a page component is not a page until a Router lists it.
+export {
+  chooseRouter,
+  describePageRegistration,
+  looksLikePageComponent,
+  PAGE_NODE_TYPE,
+  pageDisplayName,
+  planPageRegistration,
+  ROUTER_NODE_TYPES
+} from './pageRegistration';
+export type {
+  PageRegistration,
+  PageRegistrationOptions,
+  RouterLocation,
+  RouterPagesValue
+} from './pageRegistration';
 // AIX-011 — project-scope authoring: one plan model (shared with noodl-mcp),
 // the planning session, the fan-out orchestrator, and the all-or-nothing apply.
 export {

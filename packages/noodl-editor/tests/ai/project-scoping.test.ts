@@ -53,7 +53,11 @@ import {
   takePendingScopePlan
 } from '../../src/editor/src/models/AiAssistant/scoping/pendingPlan';
 import { ProjectDocsModel } from '../../src/editor/src/models/ProjectDocs/ProjectDocsModel';
-import type { AiChatRequest, AiChatResponse } from '../../src/editor/src/models/AiAssistant/client/types';
+import type {
+  AiChatRequest,
+  AiChatResponse,
+  AiStreamCallbacks
+} from '../../src/editor/src/models/AiAssistant/client/types';
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 const gitRepoUtf8 = require('../testfs/git-repo-utf8/project.json');
@@ -86,6 +90,31 @@ function scriptedChat(responses: AiChatResponse[]) {
     return next;
   };
   return { chat, requests };
+}
+
+/**
+ * AAQ-004. The same script, delivered the way a provider delivers it: word by
+ * word through `onText`, accumulating **within a round** — which is the whole
+ * point, because a turn can be several rounds and the round-local view is what
+ * used to drop the user's long answer.
+ *
+ * What the specs observe is the `onText` handed to `send`, never this one: the
+ * session wraps the callbacks, and the wrapping is the thing under test.
+ */
+function streamingScriptedChat(responses: AiChatResponse[]) {
+  const queue = [...responses];
+  const chat = async (_request: AiChatRequest, callbacks?: AiStreamCallbacks): Promise<AiChatResponse> => {
+    const next = queue.shift();
+    if (!next) throw new Error('The scoping script ran out of responses.');
+    let accumulated = '';
+    for (const word of (next.text ?? '').split(' ').filter(Boolean)) {
+      const delta = accumulated ? ` ${word}` : word;
+      accumulated += delta;
+      callbacks?.onText?.(accumulated, delta);
+    }
+    return next;
+  };
+  return { chat };
 }
 
 const READING_LIST = {
@@ -229,6 +258,82 @@ describe('AIX-012 — the scoping conversation', () => {
     expect(turn.scope.request).toBe('a reading list app');
   });
 
+  it('AAQ-004: the long answer that streamed is the answer that is kept', async () => {
+    // Richard's finding #2 — "long form answer… reduces to a one sentence
+    // version". The shape that produced it: a long first answer, a
+    // `record_scope` call whose tool result says "Now answer the user in
+    // prose", and a short recap. Only the recap used to reach `entries`, so the
+    // long answer vanished in front of the user when the run resolved.
+    const long =
+      'A Library page lists every book with its author and whether it is finished, ' +
+      'and an Add page is the only place a Book record is created. ' +
+      'Two questions before we go further: does a finished book stay in the main list, and do you want covers?';
+    const recap = 'So: Library and Add, one Book record.';
+    const { chat } = streamingScriptedChat([
+      toolThen(RECORD_SCOPE, { summary: READING_LIST.summary, pages: READING_LIST.pages }, long),
+      prose(recap)
+    ]);
+    const session = new ScopingSession({ chat });
+
+    const streamedToTheUser: string[] = [];
+    const turn = await session.send('a reading list app', { onText: (fullText) => streamedToTheUser.push(fullText) });
+
+    expect(turn.status).toBe('ok');
+    expect(turn.reply).toContain('do you want covers?');
+    expect(turn.reply).toContain(recap);
+
+    // The transcript is what the UI re-renders from. It must hold both rounds.
+    const kept = session.transcript.filter((entry) => entry.role === 'assistant');
+    expect(kept.length).toBe(1);
+    expect(kept[0].text).toBe(`${long}\n\n${recap}`);
+
+    // ...and it must equal the last thing the user was shown, so nothing
+    // appears, changes or disappears when the turn resolves.
+    expect(streamedToTheUser[streamedToTheUser.length - 1]).toBe(kept[0].text);
+    // Monotonic: the bubble only ever grows through the turn.
+    for (let i = 1; i < streamedToTheUser.length; i++) {
+      expect(streamedToTheUser[i].startsWith(streamedToTheUser[i - 1])).toBe(true);
+    }
+  });
+
+  it('AAQ-004: a one-round turn keeps exactly what streamed, with nothing duplicated', async () => {
+    // The inverse failure the fix must not introduce: text shown once and then
+    // entered twice.
+    const only = 'Right — what is the app for?';
+    const { chat } = streamingScriptedChat([prose(only)]);
+    const session = new ScopingSession({ chat });
+
+    const streamedToTheUser: string[] = [];
+    const turn = await session.send('build me something', { onText: (fullText) => streamedToTheUser.push(fullText) });
+
+    expect(turn.reply).toBe(only);
+    expect(streamedToTheUser[streamedToTheUser.length - 1]).toBe(only);
+    const kept = session.transcript.filter((entry) => entry.role === 'assistant');
+    expect(kept.length).toBe(1);
+    expect(kept[0].text).toBe(only);
+  });
+
+  it('AAQ-004: a turn that fails after speaking keeps what was already said', async () => {
+    // The prose the user watched arrive is theirs whether or not the round
+    // after it reached the provider.
+    const spoken = 'Two pages then — Library and Add.';
+    const queue: AiChatResponse[] = [toolThen(RECORD_SCOPE, { pages: READING_LIST.pages }, spoken)];
+    const chat = async (): Promise<AiChatResponse> => {
+      const next = queue.shift();
+      if (!next) throw new Error('the provider is unreachable');
+      return next;
+    };
+    const session = new ScopingSession({ chat });
+
+    const turn = await session.send('a reading list app');
+
+    expect(turn.status).toBe('error');
+    expect(turn.note).toContain('unreachable');
+    const kept = session.transcript.filter((entry) => entry.role === 'assistant');
+    expect(kept.length).toBe(1);
+    expect(kept[0].text).toBe(spoken);
+  });
+
   it('AIB-009 F11: a turn that never returns ends, and the scope so far survives it', async () => {
     // The first AI interaction anyone has with the product. Without a deadline
     // the composer stayed disabled behind `Thinking…` with no way out except
@@ -256,6 +361,27 @@ describe('AIX-012 — the plan derived from an agreed scope', () => {
     // Docs are written at creation, from the transcript. Re-authoring them
     // through the plan would summarise a summary.
     expect(plan.operations.some((op) => op.kind === 'doc')).toBe(false);
+  });
+
+  it('AAQ-003: a plan that builds pages says how the app scrolls, defaulting to page-like', () => {
+    // The default `bodyScroll` is OFF — app root `position: fixed`, `overflow:
+    // clip` — and nothing in the AI path ever chose otherwise, so every page it
+    // built was clipped at the viewport with no scrollbar.
+    expect(planFromScope(agreedScope(), { existingComponents: NEW_PROJECT }).scroll).toBe('page');
+
+    const dashboard = mergeScope(agreedScope(), { scroll: 'app' });
+    expect(planFromScope(dashboard, { existingComponents: NEW_PROJECT }).scroll).toBe('app');
+
+    // A model that sends nonsense does not get a shape. `mergeScope` validates
+    // rather than casts, so the default stands.
+    const nonsense = mergeScope(agreedScope(), { scroll: 'sideways' } as unknown as Parameters<typeof mergeScope>[1]);
+    expect(nonsense.scroll).toBeUndefined();
+  });
+
+  it('AAQ-003: a scope with no pages states nothing about scrolling', () => {
+    const noPages = mergeScope(emptyScope('a thing'), { pages: [] });
+
+    expect(planFromScope(noPages, { existingComponents: NEW_PROJECT }).scroll).toBeUndefined();
   });
 
   it('plans an update, not a create, for a page the new project already has', () => {

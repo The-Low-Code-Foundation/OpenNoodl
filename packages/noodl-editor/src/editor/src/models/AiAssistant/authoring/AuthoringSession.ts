@@ -143,6 +143,17 @@ export interface AuthoringSessionOptions {
    */
   planContext?: string;
   /**
+   * AAQ-001: component names the plan in flight is going to create, which do
+   * not exist yet.
+   *
+   * The navigation check needs them or it reports the plan's own cross-page
+   * links as broken: a page authored before its sibling exists links to a
+   * component the working graph has never seen, and the agent — told to take a
+   * diagnostic literally — would "fix" a correct link. Absent for standalone
+   * sessions, where the only components that resolve are the ones that exist.
+   */
+  plannedComponents?: readonly string[];
+  /**
    * LIB-006: the open project's import report, so a session authoring against a
    * legacy import knows what the importer could not convert. Defaults to
    * whatever the installed provider holds (same seam as `projectDocs`), so the
@@ -294,6 +305,8 @@ export class AuthoringSession {
   private readonly effort: AiEffort;
   /** AIX-011: rendered sibling-intent block when part of a plan, else undefined. */
   private readonly planContext?: string;
+  /** AAQ-001: components the plan will create, so a link to one is not "unresolved". */
+  private readonly plannedComponents?: readonly string[];
   /** AIB-007: what the project can offer a Cloud Data or User node. Undefined ⇒ do not check. */
   private readonly backend?: ProjectBackendFacts;
   readonly context: AuthoringContextBuilder;
@@ -350,6 +363,7 @@ export class AuthoringSession {
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
     this.effort = options.effort ?? AUTHORING_EFFORT;
     this.planContext = options.planContext;
+    this.plannedComponents = options.plannedComponents;
     this.backend = options.backend;
     this.styleGuidance = options.styleGuidance ?? true;
     this.styleTokenRecords = options.styleTokenRecords;
@@ -868,7 +882,10 @@ export class AuthoringSession {
       // submission's fault, and rejecting over it makes the agent "fix" the
       // user's own graph — see `ValidateCandidateOptions.baseline`.
       ...(this.baseFiles ? { baseline: this.baseFiles } : {}),
-      ...(this.backend ? { backend: this.backend } : {})
+      ...(this.backend ? { backend: this.backend } : {}),
+      // AAQ-001: the pages this plan is about to create resolve too, or the
+      // first page authored is told its link to the second is broken.
+      ...(this.plannedComponents ? { plannedComponents: this.plannedComponents } : {})
     });
     if (validation.ok) {
       const warnings = validation.diagnostics.filter((d) => d.severity === 'warning');

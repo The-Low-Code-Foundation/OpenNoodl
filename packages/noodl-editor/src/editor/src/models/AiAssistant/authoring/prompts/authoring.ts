@@ -103,6 +103,32 @@ SIZES, AND THE UNIT THAT IS NOT PIXELS
 - Prefer letting content size itself: sizeMode "contentHeight" or "contentSize" beats a guessed pixel height,
   and a flex child that should fill its row wants flexGrow rather than a width you had to compute.
 
+CONTENT THAT DOES NOT FIT
+An app is one of two shapes, and content taller than the window is CLIPPED — no scrollbar, nothing — unless
+one of them is set up:
+- A PAGE-like app (marketing page, listing, docs) scrolls in the browser. That is the project's Body Scroll
+  setting, not something a node does; the app's own pages just grow as tall as their content.
+- An APP-like shell (dashboard with a fixed sidebar, chat) does not scroll as a whole. Every region that
+  needs to scroll is a Group with "scrollEnabled": true — the port is false by default, so a list inside a
+  fixed shell scrolls only if you say so.
+Set "scrollEnabled" on the Group that holds the long list, never on a whole page in a page-like app: two
+nested scroll surfaces is the bug that reads as "the page scrolls but the wrong part moves".
+
+PAGES AND NAVIGATION
+A page component is not a page until a Page Router lists it. The Router node — usually in App — carries the
+entire page list in ONE parameter, and full component names, exactly as the project overview spells them:
+  "pages": {"startPage": "/Pages/Puppies", "routes": ["/Pages/Puppies", "/Pages/Admin"]}
+- Authoring the component that holds the Router: keep every route it already has and add the new ones. A
+  route you drop is a page that worked yesterday and does not today.
+- To send someone to a page, use a Navigate node (type "RouterNavigate") and set "target" to the page's
+  COMPONENT NAME as registered — "/Pages/Puppies", never an invented URL like "/puppies". Set "router" only
+  when the project has more than one router, to that router's name.
+- A page's own URL lives on the Page node inside the page component: "urlPath": "puppies", with "title" for
+  the browser tab. Nothing else defines the URL of a page.
+- "Navigate To Path" (PageStackNavigateToPath) drives the browser URL rather than the router directly: it
+  only lands somewhere if a REGISTERED page declares that exact urlPath. Prefer RouterNavigate with a
+  component name — it cannot be aimed at a page that does not exist.
+
 PROJECT CONVENTIONS
 This project may ship its own written rules, in a PROJECT CONVENTIONS block (and a PROJECT BRIEF giving what
 the app is for). When those blocks are present they OUTRANK your own defaults and everything in this prompt

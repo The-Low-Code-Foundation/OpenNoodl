@@ -19,6 +19,7 @@ import { SCHEMA_IDS, SchemaValidator } from '../../../schemas';
 import {
   buildComponentRefs,
   checkBackendRequirements,
+  checkNavigation,
   checkParameterValues,
   DiagnosticCode,
   loadDefaultCatalog,
@@ -120,6 +121,15 @@ export interface ValidateCandidateOptions {
    * has to.
    */
   backend?: ProjectBackendFacts;
+  /**
+   * AAQ-001 — component names a plan in flight will create, on top of the ones
+   * the graph already has.
+   *
+   * Only the navigation check reads them, and only to avoid charging the agent
+   * for the order the fan-out ran in. Omitted is correct for a standalone
+   * session: nothing is coming, so nothing extra resolves.
+   */
+  plannedComponents?: readonly string[];
 }
 
 /**
@@ -163,7 +173,8 @@ export function validateCandidateComponent(
   const diagnostics = [
     ...report.diagnostics,
     ...parameterDiagnostics(legacyName, files),
-    ...backendDiagnostics(legacyName, files, options.backend)
+    ...backendDiagnostics(legacyName, files, options.backend),
+    ...navigationDiagnostics(graph, legacyName, files, options.plannedComponents)
   ];
   // A parameter naming no port is a warning project-wide, and must stay one:
   // the corpus is full of imported nodes carrying settings the catalog cannot
@@ -176,9 +187,16 @@ export function validateCandidateComponent(
   // report. Blocking here rather than raising the severity keeps the two
   // audiences separate: the loop gets one cheap repair round, the corpus is
   // untouched.
+  // AAQ-001 joins them: a navigation that lands nowhere is the same class of
+  // defect as a parameter that is never read — the graph is well formed, the
+  // gate is green, and the button does nothing. Blocking here rather than by
+  // severity for the identical reason: a component library may legitimately
+  // navigate to a page its host supplies, and `validate:project` gaining an
+  // error class across the corpus is a separate decision.
   const BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
     DiagnosticCode.UnknownParameter,
-    DiagnosticCode.UnitlessDimension
+    DiagnosticCode.UnitlessDimension,
+    DiagnosticCode.UnresolvedNavigation
   ]);
   const blocking = (d: Diagnostic) => d.severity === 'error' || BLOCKING_WARNINGS.has(d.code);
   const allErrors: Diagnostic[] = diagnostics.filter(blocking);
@@ -249,6 +267,59 @@ function backendDiagnostics(
     })),
     { ...backend, component: legacyName }
   );
+}
+
+/**
+ * AAQ-001 — navigations that cannot land, given what this project has.
+ *
+ * The component names that resolve are the project's, plus the candidate's own
+ * (a page may link to itself), plus whatever the plan in flight will create. The
+ * url paths come from every `Page` node the project declares plus the
+ * candidate's, which is exactly what the router resolves a browser URL against.
+ *
+ * Runs on the v2 nodes, like the other two precondition checks, and for the same
+ * reason: the normalized model carries no parameters, and `target` is a
+ * runtime-discovered port the catalog cannot see at all.
+ */
+function navigationDiagnostics(
+  graph: ExplainGraph,
+  legacyName: string,
+  files: ComponentFiles,
+  plannedComponents: readonly string[] | undefined
+): Diagnostic[] {
+  const components = [
+    ...graph.components.map((c) => c.name),
+    legacyName,
+    ...(plannedComponents ?? [])
+  ];
+  return checkNavigation(
+    files.nodes.nodes.map((n: NodeV2) => ({
+      id: n.id,
+      type: n.type,
+      ...(typeof n.label === 'string' && n.label ? { label: n.label } : {}),
+      parameters: (n.parameters ?? null) as Record<string, unknown> | null
+    })),
+    { component: legacyName, components, urlPaths: declaredUrlPaths(graph, legacyName, files) }
+  );
+}
+
+/** Every `urlPath` this project declares, the candidate's own included. */
+function declaredUrlPaths(graph: ExplainGraph, legacyName: string, files: ComponentFiles): string[] {
+  const paths: string[] = [];
+  for (const component of graph.components) {
+    if (component.name === legacyName) continue; // the candidate replaces it
+    for (const node of component.nodes) {
+      if (node.type !== 'Page') continue;
+      const path = node.parameters['urlPath'];
+      if (typeof path === 'string' && path.trim()) paths.push(path.trim());
+    }
+  }
+  for (const node of files.nodes.nodes as NodeV2[]) {
+    if (node.type !== 'Page') continue;
+    const path = (node.parameters as Record<string, unknown> | undefined)?.['urlPath'];
+    if (typeof path === 'string' && path.trim()) paths.push(path.trim());
+  }
+  return paths;
 }
 
 /**

@@ -153,9 +153,30 @@ export interface ProjectScope {
   rejected: ScopeRejection[];
   /** Things raised and left open. Rendered as `> TODO:` lines, never guessed at. */
   openQuestions: string[];
+  /** AAQ-003 — how this app scrolls. Absent means page-like, the safe default. */
+  scroll?: ScopeScroll;
   /** Set when both parties have agreed the scope is done. */
   agreed: boolean;
 }
+
+/**
+ * AAQ-003 — the two shapes an app has, and the one project setting that decides
+ * which one it is.
+ *
+ * `'page'`: the browser scrolls, as on any web page. Marketing sites, listings,
+ * docs. `bodyScroll` on.
+ *
+ * `'app'`: a fixed shell with its own scrolling regions — a dashboard with a
+ * sidebar, a chat. `bodyScroll` off, and each scrolling region is a Group with
+ * `scrollEnabled`.
+ *
+ * The default (`bodyScroll` unset, which is falsy) is `'app'`, and **nothing in
+ * the AI path ever chose it** — so every AI-built page was born clipped at the
+ * viewport with no scrollbar, in this app and the one before it. Richard:
+ * *"any page created by AI isn't scrollable"*. It was never a preview bug; the
+ * deployed app clipped identically.
+ */
+export type ScopeScroll = 'page' | 'app';
 
 export function emptyScope(request = ''): ProjectScope {
   return {
@@ -197,6 +218,10 @@ export function mergeScope(
     next.rejected = patch.rejected.filter((r) => r && r.option?.trim() && r.reason?.trim());
   }
   if (Array.isArray(patch.openQuestions)) next.openQuestions = patch.openQuestions.filter((s) => s?.trim());
+  // AAQ-003. Validated against the union rather than cast: it arrives from a
+  // model, and an unrecognised value quietly becoming 'app' would ship the
+  // clipped page this field exists to stop.
+  if (patch.scroll === 'page' || patch.scroll === 'app') next.scroll = patch.scroll;
   if (typeof patch.agreed === 'boolean') next.agreed = patch.agreed;
   if (typeof patch.request === 'string' && patch.request.trim() && !previous.request.trim()) {
     next.request = patch.request.trim();
@@ -513,7 +538,14 @@ export function planFromScope(scope: ProjectScope, options: PlanFromScopeOptions
     });
   }
 
-  return { request: scope.request, operations: orderPlanOperations(operations) };
+  return {
+    request: scope.request,
+    operations: orderPlanOperations(operations),
+    // AAQ-003: only when this plan builds pages. A scope with no pages has no
+    // opinion about how the app scrolls, and a plan that states one anyway would
+    // change a project setting nobody discussed.
+    ...(scope.pages.length > 0 ? { scroll: scope.scroll ?? 'page' } : {})
+  };
 }
 
 /**

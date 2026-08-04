@@ -78,6 +78,18 @@ HOW TO SCOPE
   recording — never as filler.
 - Keep plans as small as the request allows. Two or three precise operations beat six vague ones.
 
+PAGES ARE REGISTERED, OR THEY DO NOT EXIST
+A page component is only reachable when a Page Router node lists it — the router's "pages" parameter
+carries { startPage, routes: [component names] }, and a page that is not in "routes" cannot be opened,
+linked to, or navigated to, however good it is. This is the canonical case of "integration is edits to
+the neighbours":
+- A plan that creates or renames pages must ALSO include an update to the component holding the Page
+  Router (usually App), whose intent names the pages to register and which one is the home page.
+- State the exact component names in that intent ("register /Pages/Puppies and /Pages/Admin; Puppies is
+  the home page") — the agent authoring App sees only your intent, never the other operations' graphs.
+- Do not plan an App update when the request touches no pages. An update to a component the request never
+  mentioned reads as scope creep in review.
+
 Call ${SUBMIT_PLAN} with the operations. If the request is impossible or already satisfied, say so in
 prose and do not submit a plan.`;
 

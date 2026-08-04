@@ -124,7 +124,20 @@ export enum DiagnosticCode {
    * warning otherwise — see `backendRequirement.ts`, which also explains why
    * this is a precondition check rather than a catalog fact.
    */
-  MissingBackend = 'missing-backend'
+  MissingBackend = 'missing-backend',
+  /**
+   * AAQ-001: a navigation that lands nowhere — a Navigate node with no target,
+   * or one naming a component this project does not have.
+   *
+   * A warning project-wide (a component library can legitimately carry a
+   * Navigate aimed at a page the *host* project supplies) and blocking for
+   * authored output, where every name the agent used came from an overview it
+   * was given moments earlier. The mechanism it closes: the AI stack had never
+   * heard of the Router, so it aimed navigation at URL paths it invented —
+   * *"'navigate to path' /puppies but there is no such page"* — and nothing
+   * anywhere checked that a navigation target resolved.
+   */
+  UnresolvedNavigation = 'unresolved-navigation'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────

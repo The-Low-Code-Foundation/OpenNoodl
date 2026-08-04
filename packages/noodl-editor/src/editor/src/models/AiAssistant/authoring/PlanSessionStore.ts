@@ -118,6 +118,19 @@ export interface PlanSession {
      * one to make silently.
      */
     missingBackend?: string[];
+    /**
+     * AAQ-001 — what the apply registered in the project's page router, in the
+     * one sentence the user needs: which pages, in whose router, and which page
+     * the app now opens on. A registration the user cannot see is a
+     * modification to their App component that arrived unannounced.
+     */
+    registeredPages?: string;
+    /**
+     * AAQ-003 — project settings this apply wrote, in one sentence. A project
+     * setting that changed without being mentioned is indistinguishable from a
+     * bug the next time somebody opens Project Settings.
+     */
+    settingsNote?: string;
   } | null;
   applyFailure: PlanApplyFailure | null;
   /**

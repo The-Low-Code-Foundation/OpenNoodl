@@ -95,7 +95,11 @@ export function parseRecordedPlan(markdown: string): AuthoringPlan | undefined {
   );
   if (operations.length !== plan.operations.length || operations.length === 0) return undefined;
 
-  return { request: plan.request, operations };
+  // AAQ-003: carried through recovery, validated rather than trusted — this
+  // block is a file a person can edit. A plan whose `scroll` is lost here is a
+  // recovered app that silently goes back to being clipped at the viewport.
+  const scroll = plan.scroll === 'page' || plan.scroll === 'app' ? plan.scroll : undefined;
+  return { request: plan.request, operations, ...(scroll ? { scroll } : {}) };
 }
 
 /**

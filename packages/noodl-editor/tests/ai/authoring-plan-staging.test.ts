@@ -20,6 +20,7 @@ import {
   type AppliedPlanOperation,
   type PlanDocWriter
 } from '../../src/editor/src/models/AiAssistant/authoring/planStaging';
+import { describePageRegistration } from '../../src/editor/src/models/AiAssistant/authoring/pageRegistration';
 import { StagingError } from '../../src/editor/src/models/AiAssistant/authoring/staging';
 import type { AuthoringRequest, ComponentFiles } from '../../src/editor/src/models/AiAssistant/authoring/types';
 import { ProjectModel } from '../../src/editor/src/models/projectmodel';
@@ -484,5 +485,156 @@ describe('AIX-011 plan staging (the transaction)', () => {
     // The backend is still on the machine. Nothing here pretends otherwise.
     expect(provisioner.created).toBe(true);
     expect(provisioner.deleted).toBe(false);
+  });
+});
+
+/**
+ * AAQ-001 — a created page is reachable.
+ *
+ * Richard applied a whole plan and got *"page router has no pages"*: a page
+ * component is not a page until a Router lists it, and nothing in the AI stack
+ * had ever heard of the Router. These specs assert the apply closes it, in the
+ * same undo step as everything else, without ever touching a router the plan had
+ * no business touching.
+ *
+ * The corpus fixture's App holds `Router { routes: [/Pages/Article,
+ * /Pages/Profile], startPage: /Pages/Article }`, so it exercises the case that
+ * matters most: a project whose home page is real work, which an apply must
+ * never move.
+ */
+function routerPages(project: ProjectModel): { startPage?: string; routes: string[] } {
+  const app = project.getComponentWithName('/App')!;
+  let value: { startPage?: string; routes: string[] } | undefined;
+  app.graph.forEachNode((node) => {
+    if (node.typename === 'Router') value = node.parameters['pages'];
+  });
+  return value!;
+}
+
+describe('AAQ-001 — the apply registers the pages it created', () => {
+  beforeEach(() => {
+    UndoQueue.instance.clear();
+    currentProject = undefined;
+  });
+
+  it('lists a created page in the router, and one undo takes both back', async () => {
+    const project = loadProject();
+    const before = await saveProjectFiles(project, 'aaq001-before');
+    expect(routerPages(project).routes).toEqual(['/Pages/Article', '/Pages/Profile']);
+
+    const result = await applyAuthoredPlan(project, threeComponentPlan(project));
+
+    expect(routerPages(project).routes).toEqual(['/Pages/Article', '/Pages/Profile', '/Pages/Checkout']);
+    expect(result.registration?.added).toEqual(['/Pages/Checkout']);
+    // The fixture's start page is a page someone built. It is not up for grabs.
+    expect(routerPages(project).startPage).toBe('/Pages/Article');
+    expect(result.registration?.startPage).toBeUndefined();
+
+    // Still ONE undo step for the whole plan, registration included — and the
+    // saved bytes are the proof, not the model's own idea of its state.
+    expect(UndoQueue.instance.getHistory().length).toBe(1);
+    UndoQueue.instance.undo();
+    expect(routerPages(project).routes).toEqual(['/Pages/Article', '/Pages/Profile']);
+    expect((await saveProjectFiles(project, 'aaq001-undo')).equals(before)).toBe(true);
+  });
+
+  it('registers nothing when the page is already routed — an agent that wrote the router update loses nothing', async () => {
+    const project = loadProject();
+    // The plan updates two pages the router already lists, and creates nothing.
+    const operations: AppliedPlanOperation[] = [
+      {
+        kind: 'update',
+        operation: { id: 'op-1', kind: 'update', target: 'Pages/Article', intent: 'restyle' },
+        files: updateFiles(project, '/Pages/Article')
+      }
+    ];
+    const before = JSON.stringify(routerPages(project));
+
+    const result = await applyAuthoredPlan(project, operations);
+
+    expect(result.registration).toBeUndefined();
+    expect(JSON.stringify(routerPages(project))).toBe(before);
+  });
+
+  it('does not touch the router for a component that is not a page', async () => {
+    const project = loadProject();
+    const operations: AppliedPlanOperation[] = [
+      {
+        kind: 'create',
+        operation: { id: 'op-1', kind: 'create', target: 'Visual Components/Badge', intent: 'a badge' },
+        files: createFiles('Visual Components/Badge')
+      }
+    ];
+    const before = JSON.stringify(routerPages(project));
+
+    const result = await applyAuthoredPlan(project, operations);
+
+    expect(project.getComponentWithName('/Visual Components/Badge')).toBeDefined();
+    expect(result.registration).toBeUndefined();
+    expect(JSON.stringify(routerPages(project))).toBe(before);
+  });
+
+  it('moves the start page off an EMPTY placeholder home — the freshly created project case', async () => {
+    const project = loadProject();
+    // Make the fixture's start page what a new project's Home actually is: a
+    // page component with nothing built in it. `/Pages/Article` keeps its name
+    // and its registration; only its content goes.
+    const article = project.getComponentWithName('/Pages/Article')!;
+    for (const root of [...article.graph.roots]) article.graph.removeNode(root);
+
+    const result = await applyAuthoredPlan(project, [
+      {
+        kind: 'create',
+        operation: { id: 'op-1', kind: 'create', target: 'Pages/Checkout', intent: 'the real first page' },
+        files: createFiles('Pages/Checkout')
+      }
+    ]);
+
+    expect(routerPages(project).startPage).toBe('/Pages/Checkout');
+    expect(result.registration?.startPage).toBe('/Pages/Checkout');
+    // The placeholder is still routed — unregistering a component is a
+    // destructive decision this apply does not make.
+    expect(routerPages(project).routes).toContain('/Pages/Article');
+  });
+
+  it('AAQ-003: writes the scroll setting the plan agreed, and one undo takes it back with the rest', async () => {
+    const project = loadProject();
+    expect(project.getSettings().bodyScroll).toBeUndefined();
+
+    const result = await applyAuthoredPlan(project, threeComponentPlan(project), {
+      settings: { bodyScroll: true }
+    });
+
+    expect(result.settings).toEqual(['bodyScroll']);
+    expect(project.getSettings().bodyScroll).toBe(true);
+
+    expect(UndoQueue.instance.getHistory().length).toBe(1);
+    UndoQueue.instance.undo();
+    expect(project.getSettings().bodyScroll).toBeUndefined();
+    UndoQueue.instance.redo();
+    expect(project.getSettings().bodyScroll).toBe(true);
+  });
+
+  it('AAQ-003: never overrides a setting the project already has a value for', async () => {
+    const project = loadProject();
+    // Someone went to Project Settings and switched it off. That is a decision.
+    project.setSetting('bodyScroll', false);
+
+    const result = await applyAuthoredPlan(project, threeComponentPlan(project), {
+      settings: { bodyScroll: true }
+    });
+
+    expect(result.settings).toBeUndefined();
+    expect(project.getSettings().bodyScroll).toBe(false);
+  });
+
+  it('says what it did, in the sentence the panel shows', async () => {
+    const project = loadProject();
+    const result = await applyAuthoredPlan(project, threeComponentPlan(project));
+    const sentence = describePageRegistration(result.registration!, { applied: true });
+
+    expect(sentence).toContain('Checkout');
+    expect(sentence).toContain('Main');
+    expect(sentence.indexOf('will be')).toBe(-1);
   });
 });

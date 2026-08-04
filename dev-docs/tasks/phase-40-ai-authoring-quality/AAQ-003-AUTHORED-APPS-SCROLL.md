@@ -2,7 +2,42 @@
 
 **Finding:** #8 — every AI-created page is stuck at the top of the viewport, in this app and the
 previous test app.
-**Status:** open
+**Status:** built (2026-08-04) for the scope→setting path and the prompt doctrine. Criteria 1 and 2 need
+the live pass; criterion 3 is under test.
+
+## What was built
+
+**The scope carries the choice.** `ProjectScope.scroll: 'page' | 'app'` (validated against the union in
+`mergeScope`, never cast — an unrecognised value from a model must not silently become `'app'`, which is
+the clipped shape). `record_scope` gains the field with the two definitions in it, and the scoping prompt
+tells the model to *infer* it rather than ask: "a question about scrolling is not a question anyone came
+here to answer."
+
+**The plan carries it to the apply.** `AuthoringPlan.scroll`, set by `planFromScope` **only when the plan
+builds pages** — defaulting to `'page'`, so a scope that never discussed it still produces an app that
+scrolls. `recoverPlan` validates and carries it too, or a recovered plan would silently go back to being
+clipped.
+
+**The apply writes it, undoably.** `ApplyPlanOptions.settings`, applied inside the same undo group as the
+components, and **only for settings the project has no value for**: a user who has been to Project Settings
+and switched Body Scroll off has decided, and a plan overriding that would be this phase's own failure
+pointed the other way. A Build-panel plan against an existing project carries no `scroll` and therefore
+changes no setting at all. The panel states what it wrote, in Project Settings' own words.
+
+**The doctrine is in the authoring prompt** ("CONTENT THAT DOES NOT FIT"): the two shapes, and
+`scrollEnabled` on the Group that holds the long list — the port name was read out of the catalog
+(`scrollEnabled`, boolean, default false), not from this file's memory, per the instruction above.
+
+### Decisions taken
+
+- **The validation rule in step 3 was dropped**, as this file allows. A static "can this overflow with no
+  scroll surface" analysis over authored output is not reliable enough to block on — content height depends
+  on data, fonts and viewport — and the honest check is the rendered one AAQ-007 builds, where a clipped
+  page is visible in a screenshot. The setting being *chosen* rather than left at its default is what
+  actually closes the finding.
+- Note for whoever does the live pass: `bodyScroll` sits under **"Experimental features"** in
+  `project-settings.ts`, which is where a user would least expect to find the switch that decides whether
+  their app scrolls. Worth moving; filed as a remark here rather than changed inside this task.
 
 ## The mechanism, verified
 

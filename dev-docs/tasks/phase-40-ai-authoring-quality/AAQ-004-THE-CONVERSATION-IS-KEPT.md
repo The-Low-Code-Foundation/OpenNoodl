@@ -4,7 +4,23 @@
 complaint from the diagnosis handover: *no conversation history for in-editor builds* —
 `lib21-qa/.nodegx/` is empty, and "Show the conversation" appears only for a launcher-scoped plan
 when `recovered && !plan && !runState` (`ProjectAuthoringView.tsx` ~1084).
-**Status:** open
+**Status:** Mechanism A built and under test (2026-08-04). Mechanism B remains with AAQ-006, as this file
+already directs.
+
+## What was built (Mechanism A)
+
+`ScopingSession.run()` now keeps **every** non-empty prose round of a turn, joined by a blank line, instead
+of only the last. Three details beyond the obvious fix:
+
+- **The streamed text was collapsing too.** `onText` reports the accumulated text *of the round in flight*,
+  so round 2 restarted the bubble at the recap and dropped the long answer from under the user before the
+  transcript ever got involved. `withProsePrefix` shifts each round's accumulated view by what has already
+  been said, so the bubble only grows and ends byte-equal to the transcript entry. The spec asserts exactly
+  that, and asserts monotonicity.
+- **Every exit keeps what was said**, failures included: prose the user watched arrive is theirs whether or
+  not the round after it reached the provider. Previously an error returned `reply: ''` and pushed nothing.
+- The one-round case is byte-identical to before — the inverse failure this file warns about (text shown
+  once, entered twice) has its own spec.
 
 ## Mechanism A — the collapse (verified)
 

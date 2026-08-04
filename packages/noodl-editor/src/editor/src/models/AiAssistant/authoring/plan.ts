@@ -104,6 +104,17 @@ export interface AuthoringPlan {
   request: string;
   /** In authoring order once `orderPlanOperations` has run. */
   operations: PlanOperation[];
+  /**
+   * AAQ-003 — how the app this plan builds scrolls: `'page'` (the browser
+   * scrolls) or `'app'` (a fixed shell with its own scrolling regions).
+   *
+   * Carried on the plan rather than decided at apply for the same reason
+   * `provision` is: it is a project-level side effect a person should be able to
+   * read before approving it. Present only on a plan derived from an agreed
+   * scope — a plan the Build panel produced for an existing project says nothing
+   * about scrolling, and an apply must therefore change nothing.
+   */
+  scroll?: 'page' | 'app';
 }
 
 // ── Plan validation ───────────────────────────────────────────────────────────

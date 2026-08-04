@@ -15,12 +15,13 @@
  * @module noodl-editor/views/panels/AiAuthoringPanel/ProjectAuthoringView
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   applyAuthoredPlan,
   buildChangeSet,
   candidateIsRenderable,
+  describePageRegistration,
   describeRestore,
   graphComponentFromFiles,
   materializeSelection,
@@ -32,6 +33,9 @@ import {
   PLAN_SESSION_CHANGED,
   planExcludedWith,
   planRequiredWith,
+  prospectivePageRegistration,
+  stagedComponentIsPage,
+  stagedLegacyName,
   StagingError,
   validateCandidateComponent,
   type AuthoringPlan,
@@ -371,10 +375,10 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     [patch]
   );
   const setExcluded = useCallback((value: ReadonlySet<string>) => patch({ excluded: value }), [patch]);
-  const setApplied = useCallback(
-    (value: { count: number; docs: string[] } | null) => patch({ applied: value }),
-    [patch]
-  );
+  // Typed off the store rather than restated: this summary has grown a backend
+  // (AIB-007) and a page registration (AAQ-001), and a hand-copied shape here is
+  // one that silently stops matching.
+  const setApplied = useCallback((value: PlanSession['applied']) => patch({ applied: value }), [patch]);
   const setApplyFailure = useCallback((value: PlanApplyFailure | null) => patch({ applyFailure: value }), [patch]);
 
   // Transient by design — a dialog that is open, a button that says
@@ -763,7 +767,11 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
         docWriter,
         // AIB-007. Always passed: the transaction refuses a plan carrying a
         // provision when there is none, and the editor always can.
-        provisioner: editorBackendProvisioner({ project })
+        provisioner: editorBackendProvisioner({ project }),
+        // AAQ-003. Present only on a plan derived from an agreed scope, and
+        // applied only where the project has not already decided — so a Build
+        // panel plan against an existing project changes no setting at all.
+        ...(plan?.scroll ? { settings: { bodyScroll: plan.scroll === 'page' } } : {})
       });
       // Discard first, then record the outcome: the applied summary is the one
       // thing that must survive the reset, and `reset` now clears the whole
@@ -795,6 +803,23 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                 ...new Set(backendWarnings.map((d) => d.message))
               ]
             }
+          : {}),
+        // AAQ-001: the apply edited a component the plan did not list — the one
+        // holding the page router — so it says so, in the same breath as the
+        // rest of what it did.
+        ...(result.registration
+          ? { registeredPages: describePageRegistration(result.registration, { applied: true }) }
+          : {}),
+        // AAQ-003: named in the terms of Project Settings, where the user will
+        // find it, rather than in the terms of the plan that set it.
+        ...(result.settings?.includes('bodyScroll')
+          ? {
+              settingsNote:
+                plan?.scroll === 'app'
+                  ? 'Body Scroll is off in Project Settings: this app fills the window, and each region that ' +
+                    'scrolls does so on its own.'
+                  : 'Body Scroll is on in Project Settings, so a page taller than the window scrolls.'
+            }
           : {})
       });
     } catch (e) {
@@ -806,7 +831,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
       const failed = e instanceof StagingError ? e.operation : undefined;
       setApplyFailure(failed && failed.kind !== 'doc' ? { ...failed, reason: message } : null);
     }
-  }, [excluded, reset, setApplied, setApplyFailure, setNote]);
+  }, [excluded, plan, reset, setApplied, setApplyFailure, setNote]);
 
   /**
    * Re-author one operation with the reason it went wrong as repair context.
@@ -893,6 +918,26 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
   const applyCount = done
     ? runRef.current?.acceptedOperations(excluded, { includeDocs: docsAvailable }).operations.length ?? 0
     : 0;
+  /**
+   * AAQ-001 — what Apply will do to the page router, in the sentence it will do
+   * it in. Derived from the same accepted set and the same function the
+   * transaction uses, so this cannot promise a registration the apply then
+   * declines to make. Absent when the plan creates no pages, when they are
+   * already routed, or when the project has no router at all.
+   */
+  const pendingRegistration = useMemo(() => {
+    const project = ProjectModel.instance;
+    const run = runRef.current;
+    if (!done || !project || !run) return undefined;
+    const { operations } = run.acceptedOperations(excluded, { includeDocs: false });
+    const pages = operations
+      .filter((op): op is AppliedPlanOperation & { kind: 'create' | 'update' } => op.kind === 'create' || op.kind === 'update')
+      .filter((op) => stagedComponentIsPage(op.files))
+      .map((op) => stagedLegacyName(op.files));
+    const registration = prospectivePageRegistration(project, pages);
+    return registration ? describePageRegistration(registration) : undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runState is the render trigger; the run itself is a ref
+  }, [done, excluded, runState]);
   const totalComponentOps = runState ? runState.operations.filter((op) => op.operation.kind !== 'doc').length : 0;
   const totalOps = runState?.operations.length ?? 0;
   const reviewedDoc = reviewingDoc ? runRef.current?.docFor(reviewingDoc) : undefined;
@@ -1037,6 +1082,24 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                         : ''}
                       .
                     </Text>
+                  </HStack>
+                )}
+                {/*
+                  AAQ-001 — the pages are in the router, so the app can reach
+                  them. Stated because the apply edited a component the plan did
+                  not list, and because "the router has no pages" is what this
+                  looked like from the outside when nothing did it.
+                */}
+                {applied.registeredPages && (
+                  <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
+                    <Icon icon={IconName.PageRouter} variant={FeedbackType.Success} size={IconSize.Small} />
+                    <Text textType={TextType.Secondary}>{applied.registeredPages}</Text>
+                  </HStack>
+                )}
+                {applied.settingsNote && (
+                  <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
+                    <Icon icon={IconName.Setting} variant={FeedbackType.Success} size={IconSize.Small} />
+                    <Text textType={TextType.Secondary}>{applied.settingsNote}</Text>
                   </HStack>
                 )}
                 {applied.backend?.warnings.map((warning, index) => (
@@ -1419,6 +1482,14 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
                     ) : (
                       <Text textType={TextType.Secondary}>No operation produced anything to apply.</Text>
                     )}
+                    {/*
+                      AAQ-001 — the registration is a change to a component the
+                      plan does not list, so it is declared before it happens,
+                      exactly as the provision's side effects are. "The page
+                      router has no pages" was what the silent version of this
+                      looked like from the outside.
+                    */}
+                    {pendingRegistration && <Text textType={TextType.Secondary}>{pendingRegistration}</Text>}
                     {applyFailure && (
                       <Text textType={TextType.Secondary}>
                         Nothing was applied and nothing was lost — every other component is still staged. Re-author

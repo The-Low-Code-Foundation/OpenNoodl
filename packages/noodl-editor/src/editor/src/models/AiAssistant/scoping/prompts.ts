@@ -173,6 +173,15 @@ export const SCOPING_TOOLS: AiToolDefinition[] = [
             'otherwise have guessed at here instead.',
           items: { type: 'string' }
         },
+        scroll: {
+          type: 'string',
+          enum: ['page', 'app'],
+          description:
+            '"page" for anything that reads like a web page — a marketing site, a listing, docs — where the ' +
+            'browser scrolls the whole page. "app" for a shell that fills the window and scrolls inside itself: ' +
+            'a dashboard with a fixed sidebar, a chat. Almost everything is "page". Leave it out only if the ' +
+            'conversation genuinely has not said what kind of app this is.'
+        },
         agreed: {
           type: 'boolean',
           description:
@@ -206,6 +215,10 @@ WHAT TO ESTABLISH
   other step. So ask before you record it. "Does this need to remember things between visits, or between
   people?" settles it faster than the word "backend" does. If they already run something — Supabase, their own
   API — that is "external" and nothing gets created.
+- Whether this is a PAGE or an APP, and record it as "scroll". A page scrolls in the browser like any web
+  page; an app fills the window with a fixed shell and scrolls inside its own regions. You will almost
+  always know this from what they have already said, so infer it rather than asking — a question about
+  scrolling is not a question anyone came here to answer.
 
 HOW TO RUN THE CONVERSATION
 - Ask about ONE thing at a time. Two questions in a message is the limit and one is better.
