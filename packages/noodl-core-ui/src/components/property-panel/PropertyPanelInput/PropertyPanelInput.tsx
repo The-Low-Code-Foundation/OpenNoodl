@@ -24,6 +24,7 @@ import {
   PropertyPanelSliderInput,
   PropertyPanelSliderInputProps
 } from '@noodl-core-ui/components/property-panel/PropertyPanelSliderInput';
+import { PropertyPanelTextArea } from '@noodl-core-ui/components/property-panel/PropertyPanelTextArea';
 import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextInput';
 import {
   PropertyPanelTextRadioInput,
@@ -35,6 +36,16 @@ import css from './PropertyPanelInput.module.scss';
 
 export enum PropertyPanelInputType {
   Text = 'text',
+  /**
+   * A multiline string — POL-011.
+   *
+   * Here rather than in a view of its own so a multiline property gets the same
+   * row as every other string: the reset dot, the binding chip, and the `fx`
+   * toggle. `TextAreaType` used to render a bare `PropertyPanelRow`, which is
+   * the entire reason the Text node's `text` had no expression support while
+   * Button's `label` did.
+   */
+  TextArea = 'text-area',
   Number = 'number',
   LengthUnit = 'length-unit',
   Slider = 'slider',
@@ -115,6 +126,8 @@ export function PropertyPanelInput({
     switch (inputType) {
       case PropertyPanelInputType.Text:
         return PropertyPanelTextInput;
+      case PropertyPanelInputType.TextArea:
+        return PropertyPanelTextArea;
       case PropertyPanelInputType.Number:
         return PropertyPanelNumberInput;
       case PropertyPanelInputType.LengthUnit:
@@ -200,7 +213,15 @@ export function PropertyPanelInput({
   const isToggleRow = inputType === PropertyPanelInputType.Checkbox;
 
   return (
-    <div className={classNames(css['Root'], isToggleRow && css['is-toggle-row'])}>
+    // ⚠️ `data-property` names the row, not just its input. `data-identifier`
+    // is on the input and therefore **disappears in expression mode**, where
+    // the input is replaced by an `ExpressionInput` — so anything outside React
+    // that wanted "this port's fx toggle" had to guess by position across
+    // dozens of identical toggles. Naming the row survives the mode switch.
+    <div
+      className={classNames(css['Root'], isToggleRow && css['is-toggle-row'])}
+      data-property={dataIdentifier}
+    >
       <div className={classNames(css['Label'], isChanged && css['is-changed'])}>
         {label}
         {isChanged && onReset && <span className={css['ResetDot']} title="Reset to default" onClick={onReset} />}

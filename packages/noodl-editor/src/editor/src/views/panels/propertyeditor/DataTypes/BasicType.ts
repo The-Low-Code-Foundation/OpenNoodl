@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
-import { isExpressionParameter, createExpressionParameter } from '@noodl-models/ExpressionParameter';
+import { isExpressionParameter } from '@noodl-models/ExpressionParameter';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { ParameterValueResolver } from '@noodl-utils/ParameterValueResolver';
 
@@ -10,6 +10,7 @@ import { PropertyPanelInputType } from '@noodl-core-ui/components/property-panel
 import { PropertyPanelInputWithExpressionModal } from '../components/PropertyPanelInputWithExpressionModal';
 import { TypeView } from '../TypeView';
 import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../utils';
+import { expressionProps } from './expressionProps';
 
 function firstType(type) {
   return NodeLibrary.nameForPortType(type);
@@ -113,61 +114,10 @@ export class BasicType extends TypeView {
         this.isDefault = false;
       },
 
-      // Expression support
-      supportsExpression: true,
-      expressionMode: isExprMode ? ('expression' as const) : ('fixed' as const),
-      expression: isExprMode ? paramValue.expression : '',
-
-      onExpressionModeChange: (mode: 'fixed' | 'expression') => {
-        const currentParam = this.parent.model.getParameter(this.name);
-
-        if (mode === 'expression') {
-          // Convert to expression parameter
-          const currentValue = isExpressionParameter(currentParam) ? currentParam.fallback : currentParam;
-
-          const exprParam = createExpressionParameter(String(currentValue || ''), currentValue, 1);
-
-          this.parent.setParameter(this.name, exprParam, {
-            undo: true,
-            label: `enable expression for ${this.displayName}`
-          });
-        } else {
-          // Convert back to fixed value
-          const fixedValue = isExpressionParameter(currentParam) ? currentParam.fallback : currentParam;
-
-          this.parent.setParameter(this.name, fixedValue, {
-            undo: true,
-            label: `disable expression for ${this.displayName}`
-          });
-        }
-
-        this.isDefault = false;
-        // Re-render to update UI
-        setTimeout(() => this.renderReact(), 0);
-      },
-
-      onExpressionChange: (expression: string) => {
-        const currentParam = this.parent.model.getParameter(this.name);
-
-        if (isExpressionParameter(currentParam)) {
-          // Update the expression
-          this.parent.setParameter(
-            this.name,
-            {
-              ...currentParam,
-              expression
-            },
-            {
-              undo: true,
-              label: `change ${this.displayName} expression`
-            }
-          );
-        }
-
-        this.isDefault = false;
-        // Re-render to update UI and sync modal with inline input
-        setTimeout(() => this.renderReact(), 0);
-      }
+      // Expression support — POL-011 lifted this into `expressionProps` so
+      // `TextAreaType` can offer the same `fx` without a second copy of the
+      // value↔expression conversion.
+      ...expressionProps(this)
     };
 
     this.root.render(React.createElement(PropertyPanelInputWithExpressionModal, props));

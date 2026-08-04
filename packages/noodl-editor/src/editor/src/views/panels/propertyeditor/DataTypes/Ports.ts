@@ -356,7 +356,29 @@ export class Ports extends View {
       return name === 'string' || name === 'number';
     }
 
-    // Is of text area type
+    /**
+     * ## Which string ports get `fx` — POL-011, decided rather than inherited
+     *
+     * A `string` port can reach four different views, and until POL-011 **only
+     * `BasicType` had heard of expressions**. So Button's `label` offered `fx`
+     * and the Text node's `text` did not, purely because the latter is declared
+     * `multiline` and multiline had its own view. That was never a decision.
+     *
+     * It is one now, per route:
+     *
+     * | Route | `fx` | Why |
+     * |---|---|---|
+     * | `BasicType` — plain `string`/`number` | **yes** | the original, unchanged |
+     * | `TextAreaType` — `multiline` | **yes** | the reported gap; the literal is multiline, the expression is one line |
+     * | `CodeEditorType` — `codeeditor` | **no** | the value already *is* code; an expression producing code is a second language in one field, and nothing asked for it |
+     * | `IdentifierType` — `identifierOf` | **no** | a name chosen from a set the project holds. An expression could name something that does not exist, and the picker could not show it. Same reasoning as `EnumType` |
+     *
+     * The two `no`s are structural rather than a flag: neither view renders
+     * `PropertyPanelInput`, so neither can offer the toggle — `CodeEditorType`
+     * is its own editor and `IdentifierType` is a `PickerTypeView`. A
+     * `supportsExpression: false` on them would be a prop nothing reads. The
+     * decision is recorded here, at the one place that routes them.
+     */
     function isOfTextAreaType() {
       return NodeLibrary.nameForPortType(type) === 'string' && typeof type === 'object' && type.multiline;
     }

@@ -9,6 +9,57 @@ Covers reported item **13**.
 > Lots of the nodes have an fx option, for example the Button node 'label' field. You click fx and
 > you can type like `Noodl.Variables.foo`.
 
+## Status: DONE — 2026-08-04
+
+`scripts/pol39-live/pol011-fx-multiline.js` reports **8/8 in both themes**, on a real Text node on a
+mounted page. The check that matters is the one a panel screenshot cannot give you: with the
+expression set to `Noodl.Variables.pol011Greeting` and that variable set through the runtime's own
+API, **the running preview rendered `Hello from a variable`**. This task's own traps list demanded
+that — *check the rendered result in the preview, not the property panel's display* — and it is why
+the driver reads the viewer rather than the row.
+
+### What shipped
+
+- **`expressionProps.ts`** — the value↔expression conversion, once. `BasicType` now spreads it
+  instead of owning it.
+- **`PropertyPanelInputType.TextArea`** — so a multiline property gets the *same row* as every other
+  string rather than a bare `PropertyPanelRow`. That was the whole defect: the reset dot, the
+  binding chip and the `fx` toggle all come from `PropertyPanelInput`, and `TextAreaType` was not
+  using it. In expression mode the row shows the expression input, not a textarea, because
+  `PropertyPanelInput` already does that for every type.
+- **`data-property` on the row** — see the harness note below.
+- Slice 3's decisions written into `Ports.ts` at the routing, as a table.
+
+### Slice 3, answered
+
+`CodeEditorType` (`codeeditor`) and `IdentifierType` (`identifierOf`) both get **no**, and the
+reasoning is in `Ports.ts`: a `codeeditor` value already *is* code, and an identifier is a name
+chosen from a set the project holds — an expression could name something that does not exist and the
+picker could not show it, which is `EnumType`'s reasoning exactly.
+
+They get no `supportsExpression: false` flag, and that is deliberate rather than an omission:
+neither view renders `PropertyPanelInput` at all — `CodeEditorType` is its own editor and
+`IdentifierType` is a `PickerTypeView` — so the prop would be one nothing reads. The decision is
+recorded at the routing, which is the one place that makes it.
+
+### Two harness facts
+
+- **`node.parameters[name]` and `getParameter(name)` are different questions**, and the difference
+  cost three false failures. The first is what is *stored* — `undefined` when the port sits at its
+  declared default. The second resolves the default, and it is what the conversion reads when it
+  captures the fallback. So a port at its default converts to an expression whose fallback is the
+  default's text, and a check comparing that against the stored `undefined` reports a correct
+  conversion as broken. Worth knowing beyond this task: it is the same distinction behind *a
+  declared `default` never runs its setter*.
+
+- **`data-identifier` disappears in expression mode**, because the input it is on is replaced by an
+  `ExpressionInput`. So anything outside React that wanted "this port's `fx` toggle" had to pick one
+  of six identical toggles by position — the "a click can land outside the panel that owns the
+  button" trap with the panel right. `data-property` on the row survives the mode switch, and a
+  panel-wide query had already produced one false pass: it reported an expression input present
+  while this row was still a textarea, because a *different* row on the same node was in expression
+  mode holding `1 + 1`.
+
 ## The mechanism — confirmed, and small
 
 The expression affordance is real and complete: `ExpressionToggle` renders the `fx` button,
@@ -84,13 +135,15 @@ expression path already exist; confirm they do not assume single-line.
 
 ## Criteria
 
-1. The Text node's `text` row shows `fx`, in both themes.
-2. Clicking it switches to expression mode; `Noodl.Variables.foo` there renders that variable's
-   value in the preview.
-3. Switching back to fixed restores the literal, and both directions are one undo step.
-4. A saved project round-trips an expression on a multiline port.
-5. Every string-ish DataType declares `supportsExpression` explicitly, true or false.
-6. The value↔expression conversion exists once.
+1. ✅ The Text node's `text` row shows `fx` in both themes — and still renders a textarea in fixed
+   mode.
+2. ✅ Clicking it switches to expression mode, keeping the literal as the fallback, and
+   `Noodl.Variables.pol011Greeting` **rendered `Hello from a variable` in the running preview**.
+3. ✅ Switching back restores the literal, and each direction is one undo step (`0→1`, `2→3`).
+4. ✅ A save round-trips `{ mode, expression, fallback, version }` on the multiline port.
+5. ✅ Decided per route and written into `Ports.ts` as a table. The two `no`s are structural — see
+   above for why a flag would be dead code.
+6. ✅ `expressionProps.ts`; `BasicType` and `TextAreaType` both spread it.
 
 ## Traps
 
