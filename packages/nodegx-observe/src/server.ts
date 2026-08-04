@@ -29,6 +29,7 @@ import { z } from 'zod';
 import {
   backwardWalk,
   buildIndex,
+  describeFoundation,
   explainTerminus,
   forEachRow,
   forwardWalk,
@@ -214,7 +215,20 @@ export function createObserveServer(client: RelayClient): McpServer {
       const result = backwardWalk(full, target);
       annotateWarnings(client, result);
 
+      // POL-010. An agent handed "1 row" draws the same wrong conclusion a person does, and has
+      // less to check it against — it cannot see the canvas with the wire drawn on it. When the
+      // walk could not run, say so first and instead of the row count, not after it.
+      const foundation = describeFoundation(full, result.foundation);
+      if (foundation && result.foundation.kind !== 'port-unwired') {
+        return text(
+          `Cannot walk back from ${nodeId}.${port}: ${foundation}\n\n` +
+            'The topology comes from the running preview, so it holds only what the runtime has ' +
+            'instantiated. Use list_nodes to see what is currently reachable.'
+        );
+      }
+
       const header = [
+        foundation ? `${foundation}\n` : '',
         `Walk back from ${labelFor(full, target)} — ${result.mode} mode, ${result.rowCount} row(s).`,
         client.recording
           ? client.events.length

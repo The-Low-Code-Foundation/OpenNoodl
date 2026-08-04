@@ -123,8 +123,45 @@ export interface WalkRow {
   depth: number;
 }
 
+/**
+ * Whether a walk from a given port can mean anything at all — POL-010.
+ *
+ * ⚠️ **A walk that produces one row is four different situations, and only one of them is an
+ * answer.** The topology describes what the *runtime has instantiated*, not what the project
+ * contains, so a perfectly correct walk over a perfectly correct topology can be about a graph
+ * the user is not looking at. Observed live: `filterCollection.items` on a chat project whose
+ * preview sat on `/Pages/Signup`, with the wire the user wanted drawn two inches from a panel
+ * reporting one row. The walk was truthful and useless.
+ *
+ * The distinction is free to compute — `topology.nodes[id]` is there or it is not — and it is
+ * the difference between a debugger that says "there is nothing feeding this" and one that says
+ * "I cannot see this node from here". Those are opposite claims.
+ *
+ * - `no-graph` — nothing has reported a graph, or the preview that reported the one we hold has
+ *   gone away. Both are the same answer: there is no *live* graph, so no walk over it can be a
+ *   claim about anything running. A held topology outliving its viewer is the 2b bug one scope
+ *   smaller — the values are frozen and the graph may already be wrong, and saying nothing about
+ *   that is how the panel came to present four situations as one.
+ * - `node-absent` — a graph is present and this node is not in it. The preview never
+ *   instantiated the component it lives in.
+ * - `port-unwired` — node and graph are both there, and nothing is wired to this port. A real
+ *   and useful answer, and the only one of the three where rendering the root row is honest.
+ * - `walkable` — there is at least one incoming edge, so the rows below mean what they say.
+ */
+export type WalkFoundation =
+  | { kind: 'no-graph'; previewRunning: boolean }
+  | { kind: 'node-absent'; node: string }
+  | { kind: 'port-unwired'; node: string; port: string }
+  | { kind: 'walkable' };
+
 export interface WalkResult {
   root: WalkRow;
+  /**
+   * Whether the rows describe the user's graph at all. See {@link WalkFoundation} — anything
+   * but `walkable` and `port-unwired` means the row tree is not a result and must not be
+   * rendered as one.
+   */
+  foundation: WalkFoundation;
   /** `causal` followed the trace's `cause` chain; `structural` followed declared wires. */
   mode: 'causal' | 'structural';
   /** Total rows produced, so a caller can say "resolved in N rows" without walking it again. */
@@ -145,6 +182,15 @@ export interface WalkOptions {
    * wall of rows. Rows beyond it are dropped and the parent is marked truncated.
    */
   maxFanOut?: number;
+  /**
+   * Whether a preview is attached, for {@link WalkFoundation}.
+   *
+   * The engine holds a topology, never a connection, so it cannot tell a graph that is current
+   * from one whose viewer closed ten minutes ago — and the difference decides whether the rows
+   * are an answer or an archive. Defaults to `true`: a caller that has a topology and says
+   * nothing is the OBS-004 case, where the client is connected by construction.
+   */
+  previewRunning?: boolean;
 }
 
 const DEFAULT_MAX_DEPTH = 24;
@@ -304,6 +350,90 @@ export function labelFor(index: WalkIndex, ref: EdgeRef): string {
 }
 
 // ---------------------------------------------------------------------------
+// Whether the question can be answered at all — POL-010
+// ---------------------------------------------------------------------------
+
+/**
+ * Classify a walk before it is read as a result. See {@link WalkFoundation}.
+ *
+ * The order of the three tests is the order in which they subsume one another: an empty
+ * topology also has the node absent, and an absent node also has the port unwired, so the most
+ * general cause must win or the panel names a symptom instead of a cause.
+ */
+export function foundationOf(index: WalkIndex, target: EdgeRef, previewRunning = true): WalkFoundation {
+  if (!previewRunning || Object.keys(index.topology.nodes).length === 0) {
+    return { kind: 'no-graph', previewRunning };
+  }
+  if (!index.topology.nodes[target.node]) return { kind: 'node-absent', node: target.node };
+  if ((index.byTarget.get(portKey(target)) || []).length === 0) {
+    return { kind: 'port-unwired', node: target.node, port: target.port };
+  }
+  return { kind: 'walkable' };
+}
+
+/** Which components the runtime has actually instantiated, in dictionary order. */
+function runningComponents(index: WalkIndex): string[] {
+  const seen: string[] = [];
+  for (const id of Object.keys(index.topology.nodes)) {
+    const component = index.topology.nodes[id].component;
+    if (component && seen.indexOf(component) === -1) seen.push(component);
+  }
+  return seen;
+}
+
+export interface FoundationContext {
+  /**
+   * The editor's label for the queried node.
+   *
+   * Needed only for `node-absent`, and needed *because* of it: the runtime dictionary is the
+   * engine's only naming source, and the whole point of that state is that the node is not in
+   * it. Without this the sentence names the node by its raw id — which is precisely the
+   * `Node`/`Node id` duplication that made this state invisible in the first place.
+   */
+  nodeLabel?: string;
+}
+
+/**
+ * The sentence for a foundation that is not `walkable`, or `undefined` when it is.
+ *
+ * Here rather than in the panel because OBS-004 serves the same walk to an agent over MCP with
+ * no renderer, and an agent told "1 row" draws the same wrong conclusion a person does.
+ */
+export function describeFoundation(
+  index: WalkIndex,
+  foundation: WalkFoundation,
+  context: FoundationContext = {}
+): string | undefined {
+  if (foundation.kind === 'walkable') return undefined;
+
+  if (foundation.kind === 'no-graph') {
+    // Two different instructions, which is why they are two sentences: one says "start it", the
+    // other says "wait". Collapsing them would leave the user pressing Refresh at nothing.
+    return foundation.previewRunning
+      ? 'The preview has not reported its graph yet — there is nothing to walk.'
+      : 'No preview is running, so there is no live graph to walk. Start the preview and ask again.';
+  }
+
+  if (foundation.kind === 'node-absent') {
+    const name = context.nodeLabel || foundation.node;
+    const running = runningComponents(index);
+    const where = running.length
+      ? ` The preview has instantiated ${running.slice(0, 3).join(', ')}${running.length > 3 ? ' and others' : ''}.`
+      : '';
+    // ⚠️ Says what the walk *can* see, not what the project contains. The engine has no access
+    // to the project and must not imply it does: "the node does not exist" and "the runtime has
+    // not built it" are opposite claims, and only the second is known here.
+    return (
+      `${name} is not running in the preview, so there is nothing to walk back from.${where} ` +
+      'The walk follows wires the runtime has instantiated — open the page this node is on and ask again.'
+    );
+  }
+
+  const name = context.nodeLabel || describeNode(index, foundation.node).name || foundation.node;
+  return `${name}.${foundation.port} has no incoming connection — nothing feeds it.`;
+}
+
+// ---------------------------------------------------------------------------
 // The backward walk — "why is this empty?"
 // ---------------------------------------------------------------------------
 
@@ -363,7 +493,13 @@ export function backwardWalk(index: WalkIndex, target: EdgeRef, options: WalkOpt
     if (isBoundary(row)) boundary.push(row);
   });
 
-  return { root, mode, rowCount, boundary };
+  return {
+    root,
+    foundation: foundationOf(index, target, options.previewRunning),
+    mode,
+    rowCount,
+    boundary
+  };
 }
 
 /**
@@ -665,7 +801,9 @@ export function forwardWalk(index: WalkIndex, from: TraceEventLike, options: Wal
     if (row.children.length === 0) boundary.push(row);
   });
 
-  return { root, mode: 'causal', rowCount, boundary };
+  // A forward walk starts from an event that is in the buffer, so the thing it is about
+  // demonstrably ran. There is no foundation question to ask.
+  return { root, foundation: { kind: 'walkable' }, mode: 'causal', rowCount, boundary };
 }
 
 /**

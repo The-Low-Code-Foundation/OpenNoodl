@@ -1,0 +1,176 @@
+{
+  "nodes": {
+    "f6ed466d-7a4b-4cc3-89a2-9984894d168e": {
+      "name": "Page Router",
+      "type": "Router",
+      "component": "App"
+    },
+    "bd7898c7-b2d0-32ea-2a5b-4618d8bcd542": {
+      "name": "/Pages/Chat",
+      "type": "/Pages/Chat",
+      "component": "/Pages/Chat"
+    },
+    "d701e24a-83b0-8fcc-3ebb-29addfdcdf8d": {
+      "name": "Group",
+      "type": "Group",
+      "component": "App"
+    },
+    "page": {
+      "name": "Page Root",
+      "type": "Page",
+      "component": "/Pages/Chat"
+    },
+    "headerGroup": {
+      "name": "Header",
+      "type": "Group",
+      "component": "/Pages/Chat"
+    },
+    "titleText": {
+      "name": "Conversation Title",
+      "type": "Text",
+      "component": "/Pages/Chat"
+    },
+    "messagesGroup": {
+      "name": "Messages List",
+      "type": "Group",
+      "component": "/Pages/Chat"
+    },
+    "messagesText": {
+      "name": "Messages Text",
+      "type": "Text",
+      "component": "/Pages/Chat"
+    },
+    "composerGroup": {
+      "name": "Composer",
+      "type": "Group",
+      "component": "/Pages/Chat"
+    },
+    "messageInput": {
+      "name": "Message Field",
+      "type": "net.noodl.controls.textinput",
+      "component": "/Pages/Chat"
+    },
+    "sendButton": {
+      "name": "Send Button",
+      "type": "net.noodl.controls.button",
+      "component": "/Pages/Chat"
+    },
+    "pageInputs": {
+      "name": "URL Conversation Id",
+      "type": "PageInputs",
+      "component": "/Pages/Chat"
+    },
+    "messagesQuery": {
+      "name": "Query Messages",
+      "type": "DbCollection2",
+      "component": "/Pages/Chat"
+    },
+    "filterCollection": {
+      "name": "Filter Messages By Conversation",
+      "type": "Filter Collection",
+      "component": "/Pages/Chat"
+    },
+    "currentUser": {
+      "name": "Current User",
+      "type": "net.noodl.user.User",
+      "component": "/Pages/Chat"
+    },
+    "formatMessages": {
+      "name": "Format Messages",
+      "type": "JavaScriptFunction",
+      "component": "/Pages/Chat"
+    },
+    "nowFn": {
+      "name": "Now Timestamp",
+      "type": "JavaScriptFunction",
+      "component": "/Pages/Chat"
+    },
+    "createMessage": {
+      "name": "Create Message",
+      "type": "NewDbModelProperties",
+      "component": "/Pages/Chat"
+    }
+  },
+  "edges": [
+    {
+      "from": {
+        "node": "messageInput",
+        "port": "onTextChanged"
+      },
+      "to": {
+        "node": "createMessage",
+        "port": "prop-text"
+      }
+    },
+    {
+      "from": {
+        "node": "sendButton",
+        "port": "onClick"
+      },
+      "to": {
+        "node": "nowFn",
+        "port": "run"
+      }
+    },
+    {
+      "from": {
+        "node": "pageInputs",
+        "port": "pm-conversationId"
+      },
+      "to": {
+        "node": "filterCollection",
+        "port": "filterFilterValue-conversation"
+      }
+    },
+    {
+      "from": {
+        "node": "pageInputs",
+        "port": "pm-conversationId"
+      },
+      "to": {
+        "node": "createMessage",
+        "port": "prop-conversation"
+      }
+    },
+    {
+      "from": {
+        "node": "messagesQuery",
+        "port": "items"
+      },
+      "to": {
+        "node": "filterCollection",
+        "port": "items"
+      }
+    },
+    {
+      "from": {
+        "node": "currentUser",
+        "port": "id"
+      },
+      "to": {
+        "node": "createMessage",
+        "port": "prop-sender"
+      }
+    },
+    {
+      "from": {
+        "node": "nowFn",
+        "port": "done"
+      },
+      "to": {
+        "node": "createMessage",
+        "port": "store"
+      }
+    },
+    {
+      "from": {
+        "node": "createMessage",
+        "port": "done"
+      },
+      "to": {
+        "node": "messageInput",
+        "port": "clear"
+      }
+    }
+  ]
+}

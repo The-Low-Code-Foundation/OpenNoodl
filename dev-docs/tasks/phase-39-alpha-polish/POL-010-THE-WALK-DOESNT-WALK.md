@@ -27,6 +27,65 @@ And on the canvas, plainly visible: `Query Messages` → `Items` output, wired t
 `Filter Messages By Conversation` → `Items` input. The wire the walk should have followed is drawn
 two inches to the right of the panel saying there is one row.
 
+## Status: DONE — 2026-08-04 (slices 3, 2b and 4; slice 2 deferred as decided)
+
+All six criteria met and verified live on Richard's chat project. `scripts/pol39-live/pol010-walk.js`
+reports **15/15**; the same driver against `HEAD` reported **5/14**, which is the mechanism stated as
+a measurement rather than as an inference.
+
+The baseline is worth keeping, because it is more damning than the spec's own description. Four
+situations, **two sentences**, and the two differed only by a row count:
+
+```
+A: "No recording. Showing each hop's current value; press Record…  2 rows · declared wires"
+B: "No recording. Showing each hop's current value; press Record…  1 row  · declared wires"
+C: "No recording. Showing each hop's current value; press Record…  1 row  · declared wires"
+D: "No recording. Showing each hop's current value; press Record…  2 rows · declared wires"
+```
+
+After:
+
+```
+A: "No preview is running, so there is no live graph to walk. Start the preview and ask again."
+B: "Filter Messages By Conversation is not running in the preview, so there is nothing to walk
+    back from. The preview has instantiated App. The walk follows wires the runtime has
+    instantiated — open the page this node is on and ask again."
+C: "Conversation Title.text has no incoming connection — nothing feeds it.  1 row · declared wires"
+D: "No recording. Showing each hop's current value; press Record…      2 rows · declared wires"
+```
+
+### What the fix is
+
+`WalkResult` now carries a `foundation` — `no-graph` / `node-absent` / `port-unwired` / `walkable` —
+computed by `foundationOf` and worded by `describeFoundation`, both in the engine so OBS-004 gets
+them too (an agent handed "1 row" draws the same wrong conclusion a person does, and cannot see the
+canvas to check it against). The panel renders the sentence, and for `no-graph` and `node-absent`
+renders **no rows and no row count**: those are the two where a row is not a result.
+
+`TraceSession` gained a private `forget()` on `ProjectModel.instanceHasChanged` — slice 2b.
+
+### Two things the spec did not have
+
+- **State A had a second half that made it reachable.** The spec's state A was "no viewer / no
+  topology", and only the second was implemented at first — which left A unreachable in practice,
+  because the topology is *held* and outlives its viewer. So a walk over a preview that closed ten
+  minutes ago rendered identically to a live one: same rows, same values, all frozen. That is slice
+  2b's lie one scope smaller. `foundationOf` now takes `previewRunning`, and the panel passes
+  `session.isPreviewRunning`. Verified live with a **full** 1-node topology still held.
+
+- **The in-editor preview cannot be closed on its own.** The obvious way to reach "no preview" —
+  closing the viewer's CDP target — takes the editor down with it: the preview is a `<webview>`, a
+  guest of the editor's window, and destroying it throws `Invalid guestInstanceId` out of
+  `GUEST_VIEW_MANAGER_CALL`, uncaught, inside React. White screen. Not a state any user can produce,
+  so not one worth measuring against. Navigating the preview away *is* one — same relay disconnect
+  as a preview that crashes on boot, editor untouched — and that is what the driver does.
+
+### What was NOT done, and is unchanged
+
+Slice 2 (project-sourced topology) stays deferred, per Richard's decision. So walking back to
+`Query Messages` from `messagesText.text` still needs the Chat page mounted — with it mounted the
+walk works and is in the test; without it, the panel now says why instead of showing one row.
+
 ## Status: DIAGNOSED — 2026-08-04
 
 **It is candidate (1), and candidate (2) is wrong.** The walk engine is correct, the ids join fine,
@@ -226,13 +285,30 @@ criterion 2 — with a preview-sourced topology, a node the preview never mounte
 walked, and saying so precisely *is* the fix.
 
 1. ✅ The mechanism is named in this file with the evidence for it.
-2. Asking why `Filter Messages By Conversation.items` is empty **truthfully says why it cannot walk**
-   — naming the node and the reason — rather than rendering one row as a result.
-3. All **four** states in slice 3 are distinguishable in the panel.
-4. A test covering a multi-hop walk built from real ids. *(Still worth it: it pins the engine, which
-   is the part that is correct, so a later slice-2 attempt starts from a green baseline.)*
-5. Verified live with the preview running, on Richard's chat project.
-6. `TraceSession` no longer serves the previous project's topology after a project switch (slice 2b).
+2. ✅ Asking why `Filter Messages By Conversation.items` is empty **truthfully says why it cannot
+   walk** — naming the node and the reason — rather than rendering one row as a result. The sentence
+   names the node by its *editor* label ("Filter Messages By Conversation"), which only the project
+   can supply: the whole meaning of `node-absent` is that the runtime dictionary has no entry, and
+   falling back to the id is what produced the identical `Node` / `Node id` pair in the first place.
+3. ✅ All **four** states are distinguishable in the panel — four sentences, measured live, in one
+   run, from a baseline of two.
+4. ✅ `tests-unit/provenance/realProjectWalk.test.ts`, over
+   `fixtures/chat-topology.json` — 18 nodes and 8 edges **captured verbatim from the running viewer
+   by the same driver that verified the fix**, not typed out afterwards. Multi-hop:
+   `Create Message.store ← Now Timestamp.done ← Now Timestamp.run ← Send Button.onClick`, four rows
+   across two nodes on the runtime's own ids.
+5. ✅ Verified live with the preview running, on Richard's chat project (a copy).
+6. ✅ `TraceSession` no longer serves the previous project's topology after a project switch. The
+   pre-fix run measured `hasTopology=true, nodes=1, components=["App"]` immediately after switching
+   to a different project; it now reports `hasTopology=false, nodes=0`.
+
+**A note on the fixture that is worth keeping.** The captured topology has **8** edges where
+`connections.json` declares **12**. The four missing ones all touch a `JavaScriptFunction`'s dynamic
+ports (`formatMessages`, `nowFn.now`), which the runtime did not register — so the chain from
+`messagesText.text` back to `Query Messages` does not exist in the runtime *even with the page
+mounted*. That is a property of this project, not of the walk, and it is exactly the sort of thing a
+hand-written fixture would have hidden. It is also the strongest argument for slice 2 that has been
+made so far.
 
 **Deferred with slice 2:** walking back to `Query Messages` and reporting what it emitted. That
 needs a project-sourced topology and is a separate task.

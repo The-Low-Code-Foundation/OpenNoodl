@@ -20,10 +20,12 @@ import {
 import {
   EdgeRef,
   RootEvent,
+  WalkFoundation,
   WalkResult,
   WalkRow,
   backwardWalk,
   buildIndex,
+  describeFoundation,
   describeNode,
   explainTerminus,
   forwardWalk,
@@ -216,7 +218,14 @@ export function ProvenancePanel() {
   }, [load]);
 
   const walk: WalkResult | undefined = useMemo(() => {
-    const result = focusedRoot ? forwardWalk(index, focusedRoot.event) : target ? backwardWalk(index, target) : undefined;
+    // ⚠️ `previewRunning` is not decoration. The engine holds a topology and never a connection,
+    // so without this a walk over the graph a since-closed preview reported reads exactly like a
+    // walk over a live one — same rows, same values, all frozen. Only the editor knows.
+    const result = focusedRoot
+      ? forwardWalk(index, focusedRoot.event)
+      : target
+        ? backwardWalk(index, target, { previewRunning: session.isPreviewRunning })
+        : undefined;
     // Layer 3, after the engine and never inside it — `walkEngine` stays import-free so it can
     // be bundled into `nodegx-observe` unchanged, and it cannot reach the editor's models.
     if (result) annotateWarnings(index.topology, result, editorDiagnoses);
@@ -225,6 +234,28 @@ export function ProvenancePanel() {
   }, [index, target, focusedRoot, warningsRevision]);
 
   const roots = useMemo(() => (session.traceEvents.length ? rootEvents(index) : []), [index, session.traceEvents.length]);
+
+  /**
+   * The editor's own label for the node that was asked about.
+   *
+   * ⚠️ Only the editor can supply this, and only in the one state where it matters. The engine
+   * names nodes from the runtime dictionary, and `node-absent` means the dictionary has no
+   * entry — so `labelFor` falls back to the raw id, which is what made `Node: filterCollection`
+   * and `Node id: filterCollection` the sole, unexplained tell of a walk that could not run.
+   * The project has the label whether or not the runtime instantiated the node.
+   */
+  const targetLabel = useMemo(() => {
+    if (!target) return undefined;
+    try {
+      return ProjectModel.instance?.findNodeWithId(target.node)?.label || undefined;
+    } catch (e) {
+      return undefined;
+    }
+  }, [target, revision]);
+
+  // States A and B are not results, so their row tree is not one either — a single row under a
+  // sentence saying the walk could not run reads as "and here is what it found".
+  const blocked = walk ? isBlocked(walk.foundation) : false;
 
   const handleRecord = useCallback(() => {
     if (session.recording) {
@@ -311,17 +342,19 @@ export function ProvenancePanel() {
 
         {walk && (
           <>
-            <WalkSummary walk={walk} index={index} />
-            <div className={css.Rows}>
-              <RowTree
-                row={walk.root}
-                index={index}
-                boundary={new Set(walk.boundary.map((b) => b.id))}
-                selectedKey={selectedKey}
-                onClick={handleRowClick}
-                onReveal={reveal}
-              />
-            </div>
+            <WalkSummary walk={walk} index={index} targetLabel={targetLabel} />
+            {!blocked && (
+              <div className={css.Rows}>
+                <RowTree
+                  row={walk.root}
+                  index={index}
+                  boundary={new Set(walk.boundary.map((b) => b.id))}
+                  selectedKey={selectedKey}
+                  onClick={handleRowClick}
+                  onReveal={reveal}
+                />
+              </div>
+            )}
           </>
         )}
       </div>
@@ -330,16 +363,49 @@ export function ProvenancePanel() {
 }
 
 /**
+ * Whether the walk's rows describe the user's graph at all — POL-010.
+ *
+ * `port-unwired` is deliberately *not* blocked: the root row is the port that was asked about,
+ * and showing it beside "nothing feeds it" is the answer. The other two have nothing truthful
+ * to render.
+ */
+function isBlocked(foundation: WalkFoundation): boolean {
+  return foundation.kind === 'no-graph' || foundation.kind === 'node-absent';
+}
+
+/**
  * The one-line answer, above the rows.
  *
  * Stated in words rather than left for the user to infer from glyphs, because "the ✓/✕ boundary
  * is the bug" is only true if the user does not have to find the boundary.
+ *
+ * ⚠️ **The foundation is checked before anything else, and it has to be.** The `!hasTrace`
+ * branch below is correct about the trace and blind to everything else, so on a cold editor it
+ * swallowed all four of POL-010's states into one sentence — measured live before the fix: four
+ * states, two sentences, and the two differed only by a row count. A summary that is true of
+ * the walk and false about the graph is the failure this whole panel exists to avoid.
  */
-function WalkSummary({ walk, index }: { walk: WalkResult; index: ReturnType<typeof buildIndex> }) {
+function WalkSummary({
+  walk,
+  index,
+  targetLabel
+}: {
+  walk: WalkResult;
+  index: ReturnType<typeof buildIndex>;
+  targetLabel?: string;
+}) {
   const boundary = walk.boundary[0];
+  const foundation = describeFoundation(index, walk.foundation, { nodeLabel: targetLabel });
 
   let message: string;
-  if (!index.hasTrace) {
+  if (foundation && isBlocked(walk.foundation)) {
+    // States A and B. There is no walk to summarise, and saying so *is* the summary.
+    message = foundation;
+  } else if (foundation && !index.hasTrace) {
+    // State C on a cold editor. "No recording" is true here too, but "nothing is wired to this
+    // port" is what the user came to find out, and no recording will ever reveal it.
+    message = foundation;
+  } else if (!index.hasTrace) {
     // ⚠️ Do not say "every hop carried a value" here. With no recording, no hop has a firing
     // status at all — every row is `unknown` — and claiming they all carried something is a
     // confident wrong answer of exactly the kind that got the last panel retired. Observed
@@ -361,10 +427,15 @@ function WalkSummary({ walk, index }: { walk: WalkResult; index: ReturnType<type
   return (
     <div className={css.Summary}>
       <Text>{message}</Text>
-      <Text textType={TextType.Shy}>
-        {walk.rowCount} row{walk.rowCount === 1 ? '' : 's'} ·{' '}
-        {walk.mode === 'causal' ? 'cause chain' : 'declared wires'}
-      </Text>
+      {/* ⚠️ Not printed when the walk was blocked. "1 row · declared wires" under a sentence
+          saying the walk could not run is the exact contradiction this task is about — and it
+          was the *only* difference between three of the four states before the fix. */}
+      {!isBlocked(walk.foundation) && (
+        <Text textType={TextType.Shy}>
+          {walk.rowCount} row{walk.rowCount === 1 ? '' : 's'} ·{' '}
+          {walk.mode === 'causal' ? 'cause chain' : 'declared wires'}
+        </Text>
+      )}
     </div>
   );
 }

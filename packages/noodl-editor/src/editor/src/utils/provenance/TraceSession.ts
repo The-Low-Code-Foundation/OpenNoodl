@@ -101,6 +101,19 @@ export class TraceSession extends Model {
     if (this.listening) return;
     this.listening = true;
 
+    // ⚠️ **POL-010 slice 2b — the graph belongs to a project, and this object outlives them.**
+    // `hasTopology` was set `true` once and never back, and `topology` was only ever replaced
+    // by a newly arrived dictionary, so opening a second project left the first one's graph in
+    // place *claiming to be current*. Observed live: the panel reported 12 nodes of `/erg-rig`
+    // while the editor showed a chat project, and every walk it served was about a graph that
+    // was no longer on screen. A stale answer delivered confidently is worse than no answer,
+    // and this surface exists to not do that.
+    //
+    // Registered here rather than in the constructor so every subscription this object makes
+    // is in one place, and because nothing can be stale before the first `listen()`: the
+    // dictionary arrives on the very listener below.
+    EventDispatcher.instance.on('ProjectModel.instanceHasChanged', () => this.forget(), this);
+
     EventDispatcher.instance.on(
       'TraceDictionary',
       ({ dictionary }) => {
@@ -245,6 +258,30 @@ export class TraceSession extends Model {
     this.portValues = {};
     this.lastSeq = 0;
     this.notifyListeners('eventsChanged');
+  }
+
+  /**
+   * Forget the graph as well as the trace — the project this session was about has gone.
+   *
+   * Stronger than {@link clear}, which keeps the topology deliberately: clearing the buffer is
+   * something a user asks for mid-session, and the graph is still the graph. Here it is not.
+   *
+   * `recording` is reset too, and that is not tidiness. `hasTrace` is derived from it, and it
+   * decides whether a silent edge reads as `never fired` or as `unknown` — so a session left
+   * "recording" against a viewer that has gone away would stamp confident ✕ glyphs on a graph
+   * nothing was ever asked to trace. Nothing is sent to the runtime: the client this flag was
+   * about is the one that just went.
+   */
+  private forget() {
+    this.topology = { nodes: {}, edges: [] };
+    this.hasTopology = false;
+    this.traceEvents = [];
+    this.portValues = {};
+    this.lastSeq = 0;
+    this.recording = false;
+    this.notifyListeners('topologyChanged');
+    this.notifyListeners('eventsChanged');
+    this.notifyListeners('recordingChanged');
   }
 
   /**
