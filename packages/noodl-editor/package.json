@@ -4,6 +4,7 @@
   "description": "Full stack low code React app builder",
   "author": "The Low Code Foundation <contact@thelowcodefoundation.com>",
   "homepage": "https://thelowcodefoundation.com",
+  "license": "GPL-3.0-only",
   "version": "0.1.0",
   "main": "src/main/main.bundle.js",
   "scripts": {

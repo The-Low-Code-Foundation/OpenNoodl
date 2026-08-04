@@ -118,8 +118,31 @@ dispatch):
    - Windows: signs the NSIS installer (`WIN_CSC_LINK`).
    - Linux: builds AppImage + deb (unsigned).
 3. electron-builder publishes every artifact **plus the update manifests**
-   (`latest.yml`, `latest-mac.yml`, `latest-linux.yml`) to a **draft** GitHub
-   Release named for the package version.
+   (`latest.yml` for Windows, `latest-mac.yml` for both mac arches) to a
+   **draft** GitHub Release named for the package version.
+
+### Linux is install-only, deliberately
+
+There is **no `latest-linux.yml`, and there is not meant to be.**
+`src/main/src/autoupdater.js` returns early on `process.platform === 'linux'`,
+so the Linux build never asks for an update feed and would not read one if it
+were published: electron-updater cannot replace an AppImage it did not itself
+launch, and a `.deb` belongs to the package manager. Linux users update by
+downloading the next AppImage.
+
+This is written down because an absent feed and a broken feed look identical
+from the outside — the v0.1.0 draft had no `latest-linux.yml` and it was read as
+a bug for over a week. It was a bug, but a different one: see below.
+
+> **What actually happened to Linux in v0.1.0.** The leg is recorded as
+> "succeeded, no update feed". It did not succeed — it **failed**, after the
+> AppImage had already uploaded. electron-builder built the AppImage, uploaded
+> it, then aborted building the `.deb` with *"Please specify author 'email' in
+> the application package.json"*, because `author` was the bare string
+> `"The Low Code Foundation"` with no address. So the release carries an
+> AppImage, no `.deb`, and a red job. Fixed: `author` now carries an email, and
+> `.deb` builds. The lesson worth keeping is that **a published artifact is not
+> evidence of a green job** — electron-builder uploads as it goes.
 
 Because the release is a **draft**, it is invisible to the public and to
 electron-updater until a human clicks Publish. An unsigned or broken build
