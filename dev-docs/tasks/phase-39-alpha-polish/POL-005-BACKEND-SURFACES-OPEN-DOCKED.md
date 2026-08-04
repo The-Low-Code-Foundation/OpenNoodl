@@ -95,8 +95,25 @@ far above the 357px threshold. `Escape` on a docked surface correctly does nothi
 
 So this change removed the only route to full mode that these surfaces had, because that route was
 `openFull()` firing unasked. Nothing was lost that anyone chose, all seven are usable at 860, and
-Richard's report was that 860 is where they belong — but it is a real reduction and it is **Richard's
-call** whether a surface should be able to reach full deliberately.
+Richard's report was that 860 is where they belong — but it is a real reduction and it was Richard's
+call whether a surface should be able to reach full deliberately.
+
+#### ANSWERED — Richard, 2026-08-04: leave it
+
+> *"Leave it for now, 860 is enough and we can launch and survey users about it."*
+
+**POL-005 is closed with no further work.** The three options that were on the table, recorded so
+nobody re-derives them:
+
+- give the surfaces `PanelHeader`'s mode slot — seven bespoke headers to rework, and it brings back
+  the detached bar and its X, which is the thing that was reported;
+- give the Data browser alone a larger `defaultWidth` — one number, no new UI, and it is the only
+  surface with a real appetite for width (its grid is 1550px and shows five of twelve columns at
+  860, scrolling rather than clipping);
+- leave it. **Chosen.**
+
+If user feedback after launch says a surface needs more room, the cheap option is the second one —
+per-panel `defaultWidth` is already supported and PNL-003 already remembers what a user drags to.
 
 ### Three findings from the layout pass — filed, not fixed
 

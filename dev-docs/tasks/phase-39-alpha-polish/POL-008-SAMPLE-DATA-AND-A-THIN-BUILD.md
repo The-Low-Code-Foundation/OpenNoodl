@@ -119,6 +119,30 @@ Criterion 2 still binds independently: with the session seeded, a `User`-node pr
 values; a component that queries a collection the dataset cannot describe must still say so rather
 than present placeholders as data.
 
+#### DECIDED — Richard, 2026-08-04: signed in by default, **with a toggle**
+
+> *"I think C is the only one that makes sense."*
+
+The question was what seeding a session costs. The `User` node has a boolean output `authenticated`
+whose getter is literally `this._internal.model !== undefined`
+([`user.ts:227-234`](../../../packages/noodl-runtime/src/nodes/std-library/user/user.ts#L227-L234)),
+so seeding makes it **`true` in every sandbox preview** — the logged-in branch of every graph becomes
+the default, and *signed out* stops being a state the preview can show. Today the reverse is true:
+signed-out is the only state it can show, which is the defect.
+
+Right for a profile page, wrong for a login page, a signup flow or a "sign in to continue" gate. So:
+
+- **Signed in is the default.** Richard's case works with no clicks, and the strip's existing promise
+  — *"Sample data — signed in as a sample user"* — becomes true instead of aspirational.
+- **The sandbox strip gets a control to sign out**, so the other branch is reachable. It is preview
+  state, not project state: nothing about it belongs in `project.json`.
+- The strip must say which state it is in. A preview whose `authenticated` is false while the strip
+  says "signed in as a sample user" would be the same class of defect one layer down.
+
+Options (a) *signed in, no toggle* and (b) *signed out with a toggle* were both rejected — recorded
+so they are not re-proposed. (b) in particular means clicking a control before a profile page shows
+anything, under a strip that already promised data.
+
 ### Then, whichever it is
 
 The non-negotiable outcome: **"Sample data" must never silently show placeholders.** If there is no

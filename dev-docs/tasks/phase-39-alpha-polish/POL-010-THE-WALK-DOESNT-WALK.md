@@ -148,7 +148,22 @@ ids, that is the defect, and it is upstream of the walk engine entirely.
 
 **Slice 1 — diagnose.** ✅ Done, above.
 
-**Slice 2 — the structure should come from the project, not from the preview.**
+### SCOPE DECIDED — Richard, 2026-08-04: slice 3 (+ 2b). Slice 2 is deferred.
+
+> *"I like option B."*
+
+**Build slices 3 and 2b. Do not build slice 2 in this phase.** Slice 2 stays written down below
+because it is the right destination, and because the reasoning for it should not have to be
+rediscovered — but it carries two genuine design decisions (component scoping, and what a hop
+*means* across a component instantiated three times) that deserve their own task rather than a
+polish slot.
+
+What that means concretely: the panel keeps sourcing its topology from the running preview, and
+stops presenting one row as though it were a result. The fourth state in slice 3 — *the queried node
+is not in the topology at all* — is the one Richard actually hit, is free to detect, and is the
+whole of the visible fix.
+
+**Slice 2 — the structure should come from the project, not from the preview. DEFERRED.**
 
 The walk makes a claim about *the user's graph*. The graph is the editor's artefact and the editor
 has all of it, mounted or not: every component, every declared connection, at all times. The runtime
@@ -206,12 +221,21 @@ project's ids, not from hand-written fixtures.
 
 ## Criteria
 
+Re-scoped 2026-08-04 to Richard's decision above. Criterion 2's second clause is now the whole of
+criterion 2 — with a preview-sourced topology, a node the preview never mounted genuinely cannot be
+walked, and saying so precisely *is* the fix.
+
 1. ✅ The mechanism is named in this file with the evidence for it.
-2. Asking why `Filter Messages By Conversation.items` is empty walks back to `Query Messages` and
-   reports what that node emitted, or truthfully says why it cannot.
-3. The three states in slice 3 are distinguishable in the panel.
-4. A test covering a multi-hop walk built from real ids.
+2. Asking why `Filter Messages By Conversation.items` is empty **truthfully says why it cannot walk**
+   — naming the node and the reason — rather than rendering one row as a result.
+3. All **four** states in slice 3 are distinguishable in the panel.
+4. A test covering a multi-hop walk built from real ids. *(Still worth it: it pins the engine, which
+   is the part that is correct, so a later slice-2 attempt starts from a green baseline.)*
 5. Verified live with the preview running, on Richard's chat project.
+6. `TraceSession` no longer serves the previous project's topology after a project switch (slice 2b).
+
+**Deferred with slice 2:** walking back to `Query Messages` and reporting what it emitted. That
+needs a project-sourced topology and is a separate task.
 
 ## Traps
 

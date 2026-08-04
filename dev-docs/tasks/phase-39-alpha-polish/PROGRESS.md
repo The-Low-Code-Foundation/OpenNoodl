@@ -72,6 +72,25 @@ proves what it measures; it does not prove the CSS you wrote is the CSS that won
   touched: it fails identically. 69 of 70 suites and 743 of 755 specs pass. Nobody owns this; it is
   recorded here so the next person does not spend the fifteen minutes proving it is not theirs.
 
+## Answered by Richard — 2026-08-04
+
+These close the three questions the third session left open. **Do not re-ask them**, and do not
+re-derive the options — each is written into its own spec with the alternatives that were rejected.
+
+5. **POL-005 — a backend surface stays at 860, with no route to full.** *"Leave it for now, 860 is
+   enough and we can launch and survey users about it."* POL-005 is closed. If feedback after launch
+   says a surface needs room, the cheap move is a larger `defaultWidth` on that one surface — the
+   model already supports per-panel widths.
+6. **POL-010 — build slice 3 and slice 2b. Slice 2 is deferred.** *"I like option B."* The panel
+   keeps its preview-sourced topology and stops presenting one row as a result; the four states
+   become distinguishable, and `TraceSession` stops serving the previous project's graph. Sourcing
+   the topology from `ProjectModel` is the right destination and its own task — it carries component
+   scoping and a decision about component instances.
+7. **POL-008 Part A — the sandbox is signed in by default, with a toggle to sign out.** *"I think C
+   is the only one that makes sense."* Seeding the session makes the `User` node's `authenticated`
+   output true in every preview, so the other branch has to stay reachable. The toggle is preview
+   state, never project state.
+
 ## Answered by Richard — 2026-08-03
 
 1. **Font: Inter.**
