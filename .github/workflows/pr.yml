@@ -164,6 +164,10 @@ jobs:
       # the SUB-006 semantic validator reports zero errors. Warnings are
       # reported but not gated — seeded content is LIB-002/003's to repair.
       - run: npm run library:check
+      # POL-006: the icon set every new project starts with is generated from the
+      # library module above, so it goes stale the moment that one is updated —
+      # and the only symptom would be a picker quietly showing the old glyph list.
+      - run: npm run starter-iconset:check
 
   artefacts:
     name: Check build artefacts

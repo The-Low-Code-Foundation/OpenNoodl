@@ -65,9 +65,50 @@ class IconPicker extends React.Component {
     );
   }
 
-  renderIconSets() {
+  /**
+   * POL-006 — the way past the curated set, said where a person meets the limit.
+   *
+   * A new project ships 212 of Lucide's 1998 glyphs in its manifest, and a stylesheet with a rule
+   * for all 1998 — so adding one really is a single line in one JSON file, with no new asset and no
+   * network. That is worth saying out loud; without it the picker is simply a dead end and the
+   * bundled font's other 1786 glyphs are invisible.
+   *
+   * The Lucide sentence is conditional because Lucide is a *default*, not a guarantee: a project
+   * that removed the module, or one created before this shipped, would otherwise be told to edit a
+   * file it does not have.
+   */
+  renderFooter() {
+    const lucide = this.state.iconSets.find((set) => set.moduleName === 'lucide-icons');
     return (
-      <div style={{ overflowY: 'overlay' }}>
+      <div className="iconpicker-footer">
+        Need a different icon? A set&rsquo;s glyph list is <code>noodl_modules/&lt;set&gt;/manifest.json</code>.
+        {lucide && (
+          <>
+            {' '}
+            The bundled Lucide font has all 1998 glyphs, so any name from <code>lucide.dev/icons</code> works — add
+            it to <code>noodl_modules/lucide-icons/manifest.json</code> as <code>icon-&lt;name&gt;</code>.
+          </>
+        )}
+      </div>
+    );
+  }
+
+  renderIconSets() {
+    if (this.state.iconSets.length === 0) {
+      // Before POL-006 this was an empty box with no explanation, which is
+      // indistinguishable from a picker that failed to load.
+      return (
+        <div className="iconpicker-empty">
+          This project has no icon sets installed. Add one from the Library panel, or put a folder with a{' '}
+          <code>manifest.json</code> of <code>&quot;type&quot;: &quot;iconset&quot;</code> under{' '}
+          <code>noodl_modules/</code>.
+        </div>
+      );
+    }
+    // `flex: 1; min-height: 0` so the list scrolls inside the picker rather than pushing the
+    // footer off the bottom of it — an unbounded flex child does not shrink to its container.
+    return (
+      <div style={{ overflowY: 'overlay', flex: 1, minHeight: 0 }}>
         {this.state.iconSets.map((set) => (
           <div
             key={set.moduleName}
@@ -121,7 +162,10 @@ class IconPicker extends React.Component {
           ></input>
         </div>
 
-        {this.renderIconSets()}
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {this.renderIconSets()}
+        </div>
+        {this.renderFooter()}
       </div>
     );
   }

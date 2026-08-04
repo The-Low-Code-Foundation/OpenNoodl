@@ -1,6 +1,9 @@
 # POL-006 — New projects ship a font and an icon set
 
-Covers reported item **8**.
+Covers reported item **8**. **Status: done.** All seven criteria measured in the running editor and
+in a real deploy build. See [What was built](#what-was-built) at the bottom — and read
+[the stale-premise note](#️-the-font-half-of-this-spec-is-stale--measured-2026-08-04) below before
+the mechanism section, which is wrong about fonts.
 
 ## What was reported
 
@@ -8,6 +11,52 @@ Covers reported item **8**.
 > nice basic Google Font by default to all new projects? Manually created or AI created. And add an
 > icon pack so the icon node works. I really like Lucide icons for example, but you tell me if
 > there's a better one.
+
+## ⚠️ The font half of this spec is stale — measured 2026-08-04
+
+**`--font-sans` is not dangling.** It is defined in
+[`DefaultTokens.ts:357`](../../../packages/noodl-editor/src/editor/src/models/StyleTokensModel/DefaultTokens.ts#L357)
+as the system stack, and REV-009 stamps the whole `:root` block into **both** surfaces:
+`html-processor.ts:57` for a deploy, `PreviewTokenInjector` for the preview. Measured in the running
+editor:
+
+```
+generateProjectTokenCss({ getMetaData: () => undefined })
+  → "  --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';"
+```
+
+So **criterion 5 was already met before this task started**, and the section below claiming the
+family "resolves to nothing and the browser falls back to its default serif/sans" is wrong — it
+resolves to the platform UI font (San Francisco on macOS). Whatever made Richard's component look
+basic in POL-008, it was not a missing font family.
+
+That does not make the task empty; it changes what it is. Richard asked for *"a really nice basic
+Google Font by default"* — that is an improvement over the system stack, not the repair of a
+dangling token. Slice 2 below is rewritten accordingly.
+
+**Also measured:** a brand-new project (created through `LocalProjectsModel.newProject`, which is the
+single path *both* the manual and the AI wizard take — so criterion 7 is one hook, not two) contains
+exactly this and nothing else:
+
+```
+nodegx.project.json
+components/_registry.json
+components/App/{component,connections,nodes}.json
+components/__page__/Home/{component,connections,nodes}.json
+```
+
+No fonts, no `noodl_modules/`, no assets of any kind. That half of the report stands.
+
+**And two things the repo already has, which the spec did not know about:**
+
+- **Inter is already vendored** — `packages/noodl-editor/src/assets/Inter/`, nine weights, with
+  `LICENSE.txt` (SIL OFL). It is the editor's own UI font. TTF, not woff2, and there is no woff2
+  encoder in the repo or on the machine (`woff2_compress`, `fonttools`, `pyftsubset` all absent), so
+  TTF is what ships. `src/assets` is inside electron-builder's `files` allow-list, so it is on disk
+  in a packaged build.
+- **Lucide is already vendored** — `library/modules/lucide-icons/`, the full 1998-glyph ISC webfont,
+  imported 2026-07-25 as an installable *library module*. Neither the icon set nor the font needs
+  sourcing; both need wiring.
 
 ## The mechanism — confirmed, and worse than reported
 
@@ -117,3 +166,77 @@ before.
 - Sprite URLs are stored **project-relative**; they must resolve in the editor preview and in a
   deploy, which share neither origin nor path prefix. `iconsets.ts` documents this — read it before
   choosing a URL shape.
+
+## What was built
+
+Two `noodl_modules/` installed into every new project by
+[`starterAssets.ts`](../../../packages/noodl-editor/src/editor/src/models/template/starterAssets.ts),
+called from the two branches of `LocalProjectsModel.newProject`. Verified end to end by
+`scripts/pol39-live/pol006-starter-assets.js`, which creates a project, opens it, reads the running
+preview and then runs a real deploy build — twelve checks, all green.
+
+### The defect this task actually had, which nothing predicted
+
+With the modules installed, the token resolving to Inter, and all four Inter faces registered in the
+preview document, the Hello World text still rendered in **Times**.
+
+```
+el: { tag: "DIV", inlineFont: "", computed: "Times" }
+rootFontSans: "Inter, ui-sans-serif, system-ui, sans-serif, …"
+```
+
+`TextConfig` *declares* `fontFamily: 'var(--font-sans)'` as a default, and **a declared default never
+runs its setter** — the phase-30 class, hit here for the third time. The element reaches the DOM with
+no font-family at all, and both viewer templates style `body` without setting one, so it inherits the
+browser's serif.
+
+So a font token needs an inherited floor, and there is exactly one artifact that reaches every
+surface: `TokenResolver.generateCss`, which both `StyleTokensModel.generateCss` (preview, via
+`PreviewTokenInjector`) and `generateProjectTokenCss` (deploy, via `html-processor`, shared with
+SSR/SSG per RUN-002) come through. It now emits `body { font-family: var(--font-sans) }` after the
+`:root` block. `body` is the weakest place to say it, so any node that sets its own family still
+wins.
+
+**Editing the two HTML templates instead would have been two copies of one decision** — which is
+this spec's own first trap, and it would have been three copies once the cloud viewer was counted.
+
+### The measurement that would have lied
+
+`document.fonts.check('16px Inter')` returned **false** for four faces that were perfectly present.
+A webface nothing has rendered yet sits at status `unloaded`, and `check()` answers false for it.
+`await document.fonts.load(...)` first, then check. The first version of the driver reported a
+missing font and a broken layout where there was neither.
+
+Equally: `getComputedStyle(el).fontFamily` returns the *declared* stack, so it says `Inter, …`
+whether or not a byte was fetched. Both are recorded by the driver; only the pair of them is
+evidence.
+
+### The two deliverables Richard asked for
+
+**A curated set.** 212 glyphs, grouped by what a person is looking for, generated by
+`scripts/library/make-starter-iconset.js` (`npm run starter-iconset:check` gates it in CI). Every
+name is validated against the font, so a typo fails the build rather than shipping a blank box.
+
+**And a way past it.** The manifest lists 212; the **stylesheet carries a rule for all 1998**. So
+adding any glyph from lucide.dev is one line in one JSON file — no new asset, no regeneration, no
+network. That split is the whole point, and it is why the stylesheet was *not* trimmed to the
+curated set: 80KB saved would have made the expand story false. The icon picker says so in a footer,
+which is where a person meets the limit, and it now has an empty state — before this it rendered a
+blank box when a project had no sets, indistinguishable from a picker that failed to load.
+
+### Decisions taken
+
+- **Inter as TTF, four weights** (400/500/600/700 — exactly the four the shipped Text/Button defaults
+  reference through `--font-normal`/`--font-medium`/`--font-semibold`/`--font-bold`). No woff2:
+  `woff2_compress`, `fonttools` and `pyftsubset` are all absent from the repo and the machine, and a
+  font nobody can regenerate is worse than a larger one. woff2 would take the 1.25MB to roughly
+  400KB whenever that tooling lands.
+- **Lucide as woff2 only.** The library module also ships an 844KB TTF for browser support no NodeGX
+  target needs; the starter set drops it and the generator strips the matching `src:` entry, because
+  a stylesheet naming a file that is not there is a 404 in every app anyone builds.
+- **A new project is now 1.7MB**, up from ~30KB. That is the cost of rendering its own defaults
+  correctly and working offline.
+- **The Inter TTFs are not duplicated in the repo** — `starterAssets.ts` copies them from
+  `src/assets/Inter/`, the editor's own UI font, which electron-builder already packages.
+- **`--font-sans` names Inter for every project, not just new ones.** A project without the module
+  simply falls through to the next name in the stack; nothing has to know whether it is there.

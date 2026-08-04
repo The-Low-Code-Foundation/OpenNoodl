@@ -354,11 +354,24 @@ export const DEFAULT_TOKENS: StyleTokenRecord[] = [
   // ─── Typography: Font Families ────────────────────────────────────────────────
 
   {
+    /*
+     * POL-006 — Inter first, the platform stack behind it.
+     *
+     * Inter is bundled into every new project as `noodl_modules/inter/`, whose stylesheet the
+     * module scanner injects into the preview and into a deploy alike, so this resolves to a real
+     * face offline and with no request to fonts.googleapis.com. Naming it here rather than in the
+     * three ElementConfigs keeps one place to change a project's font — which is the whole point
+     * of the token.
+     *
+     * The rest of the stack is not decoration. A project that predates POL-006 has no Inter
+     * module, and a browser that cannot find the family simply moves on to the next name; nothing
+     * has to know whether the module is there.
+     */
     name: '--font-sans',
-    value: "ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'",
+    value: "Inter, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'",
     category: 'typography-family',
     isCustom: false,
-    description: 'System sans-serif stack'
+    description: 'Inter, falling back to the system sans-serif stack'
   },
   {
     name: '--font-serif',

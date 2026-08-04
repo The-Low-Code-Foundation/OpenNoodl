@@ -13,6 +13,7 @@ import Model from '../../../shared/model';
 import { detectRuntimeVersion } from '../models/migration/ProjectScanner';
 import { RuntimeVersionInfo } from '../models/migration/types';
 import { projectFromDirectory, unzipIntoDirectory } from '../models/projectmodel.editor';
+import { installStarterAssets } from '../models/template/starterAssets';
 import { GitHubOAuthService } from '../services/GitHubOAuthService';
 import FileSystem from './filesystem';
 import { tracker } from './tracker';
@@ -244,6 +245,11 @@ export class LocalProjectsModel extends Model {
         }
       });
 
+      // POL-006. After the template, so a template that ships its own font or icon set keeps it —
+      // `installStarterAssets` never overwrites — and before the load, so the module scanner sees
+      // them on its first scan rather than one nobody triggers.
+      await installStarterAssets(dirEntry);
+
       // Project extracted successfully, load it
       projectFromDirectory(dirEntry, (project) => {
         if (!project) {
@@ -276,6 +282,10 @@ export class LocalProjectsModel extends Model {
       const embeddedProvider = new EmbeddedTemplateProvider();
 
       await embeddedProvider.download(defaultTemplate, dirEntry);
+
+      // POL-006 — see the note in the template branch above. Both branches are covered because both
+      // the manual wizard and the AI scoping wizard reach the project through this one method.
+      await installStarterAssets(dirEntry);
 
       // Load the newly created project
       projectFromDirectory(dirEntry, (project) => {

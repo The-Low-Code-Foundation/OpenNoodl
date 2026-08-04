@@ -1,0 +1,46 @@
+/*!
+ * Inter — https://rsms.me/inter/
+ * SIL Open Font License 1.1. Full text in LICENSE.txt beside this file.
+ *
+ * POL-006. Four weights, because those are exactly the four the shipped Text, Button and Text Input
+ * defaults reference through --font-normal (400), --font-medium (500), --font-semibold (600) and
+ * --font-bold (700). Shipping fewer would leave the browser to synthesise or substitute a weight the
+ * project's own defaults ask for.
+ *
+ * TTF rather than woff2 (which would be roughly a third of the size) because there is no woff2
+ * encoder in this repo, and a font nobody can regenerate is worse than a larger one.
+ *
+ * `font-display: swap` so text is readable while the faces load. A project's first paint should not
+ * be blank.
+ */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./Inter-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./Inter-Medium.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./Inter-SemiBold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./Inter-Bold.ttf') format('truetype');
+}

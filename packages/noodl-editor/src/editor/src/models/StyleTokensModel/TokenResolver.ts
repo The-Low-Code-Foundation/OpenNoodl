@@ -106,12 +106,34 @@ export class TokenResolver {
   /**
    * Generate CSS :root { ... } block from the full token map.
    * Resolves semantic tokens that reference palettes inline.
+   *
+   * ## POL-006: and the one rule that applies a token rather than declaring it
+   *
+   * Measured in the running preview of a brand-new project: `:root` carried
+   * `--font-sans` correctly, the Inter faces were all registered from the
+   * project's own module — and the Hello World text still rendered in **Times**,
+   * because nothing put a font-family on it. `TextConfig` *declares*
+   * `fontFamily: 'var(--font-sans)'` as a default, and a declared default never
+   * runs its setter, so the element reaches the DOM with no family at all and
+   * inherits the browser's serif. Both viewer templates style `body` and neither
+   * sets a font.
+   *
+   * So the token needs an inherited floor, and this is the one place that has it
+   * on **every** surface: `StyleTokensModel.generateCss` (the editor preview,
+   * via PreviewTokenInjector) and `generateProjectTokenCss` (a deploy, via
+   * html-processor, which RUN-002 shares with SSR/SSG) both come through here.
+   * Putting it in the two HTML templates instead would be two copies of one
+   * decision, which is exactly the trap this task's spec warns about.
+   *
+   * It is a floor, not an override: `body` is the weakest place to say it, so
+   * any node that sets its own family — every Text node whose author picked one
+   * writes an inline style — still wins.
    */
   generateCss(tokens: Map<string, StyleTokenRecord>): string {
     const lines: string[] = [];
     for (const [, token] of tokens) {
       lines.push(`  ${token.name}: ${token.value};`);
     }
-    return `:root {\n${lines.join('\n')}\n}`;
+    return `:root {\n${lines.join('\n')}\n}\n\nbody {\n  font-family: var(--font-sans);\n}`;
   }
 }

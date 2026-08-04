@@ -1,0 +1,7 @@
+{
+  "name": "Inter",
+  "browser": {
+    "stylesheets": ["noodl_modules/inter/styles.css"]
+  },
+  "_note": "The project's UI font, bundled rather than fetched — an app built here renders correctly offline and asks nothing of fonts.googleapis.com. styles.css declares the four weights the shipped Text/Button defaults reference (400/500/600/700) and is what makes var(--font-sans) resolve to Inter. Delete this folder and the design token falls back to the platform UI font; nothing breaks."
+}
