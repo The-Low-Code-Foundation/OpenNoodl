@@ -86,6 +86,20 @@ export function SandboxPreview({ files, siblings, sampleData, revision, unrender
   const webviewRef = useRef<Electron.WebviewTag>(null);
 
   const [useSampleData, setUseSampleData] = useState(true);
+  /**
+   * POL-008 — signed in by default.
+   *
+   * The `User` node's `authenticated` output is literally
+   * `this._internal.model !== undefined`, so a seeded session makes it **true in
+   * every preview** and the signed-out branch of a graph stops being something
+   * the preview can show. Before this it was the other way round — signed-out
+   * was the only state reachable — which is the reported defect. Both are states
+   * worth seeing, so it is a toggle; the default is the one a profile page needs
+   * with no clicks.
+   *
+   * Preview state, never project state. Nothing here is written anywhere.
+   */
+  const [signedIn, setSignedIn] = useState(true);
   const [result, setResult] = useState<SandboxExport | undefined>(undefined);
 
   // The provider is called whenever the client (re)connects, which is not when
@@ -105,8 +119,10 @@ export function SandboxPreview({ files, siblings, sampleData, revision, unrender
       setResult(undefined);
       return;
     }
-    setResult(buildSandboxExport({ project: ProjectModel.instance, files, siblings, sampleData, useSampleData }));
-  }, [files, siblings, sampleData, revision, useSampleData]);
+    setResult(
+      buildSandboxExport({ project: ProjectModel.instance, files, siblings, sampleData, useSampleData, signedIn })
+    );
+  }, [files, siblings, sampleData, revision, useSampleData, signedIn]);
 
   useEffect(() => {
     if (result?.json) ViewerConnection.instance.exportSandbox(clientId);
@@ -129,7 +145,15 @@ export function SandboxPreview({ files, siblings, sampleData, revision, unrender
 
   // The network shim is installed from the URL before the runtime exists, so
   // switching data sources reloads the window rather than toggling in place.
-  const src = `${viewerOrigin()}/?noodl-sandbox=${sessionId}&noodl-sandbox-data=${useSampleData ? 'sample' : 'real'}`;
+  //
+  // ⚠️ The auth state rides in the URL for the same reason, and it must: the
+  // session is read once, in `UserService`'s constructor, and that service is a
+  // singleton that is never rebuilt. Clearing the key under a running preview
+  // would change storage and change nothing on screen.
+  const src =
+    `${viewerOrigin()}/?noodl-sandbox=${sessionId}` +
+    `&noodl-sandbox-data=${useSampleData ? 'sample' : 'real'}` +
+    `&noodl-sandbox-auth=${signedIn ? 'in' : 'out'}`;
 
   const message = !files
     ? 'Nothing staged yet — the preview appears as soon as the agent submits.'
@@ -156,6 +180,21 @@ export function SandboxPreview({ files, siblings, sampleData, revision, unrender
             <Text textType={FeedbackType.Notice}>Fields unknown</Text>
           </div>
         ) : null}
+        {/*
+          POL-008: one button, not a second pair. It is a toggle between two
+          states of the same thing, and it only exists while the sandbox is
+          serving sample data — "signed out" against a real backend is whatever
+          the real backend says, and offering to change it there would be a
+          claim this preview cannot honour.
+        */}
+        {useSampleData && (
+          <PrimaryButton
+            label={signedIn ? 'Sign out' : 'Sign in'}
+            size={PrimaryButtonSize.Small}
+            variant={PrimaryButtonVariant.MutedOnLowBg}
+            onClick={() => setSignedIn((current) => !current)}
+          />
+        )}
         <div className={css.Modes}>
           <PrimaryButton
             label="Sample data"

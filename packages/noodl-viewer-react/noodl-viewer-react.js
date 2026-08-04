@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import NoodlRuntime from '@noodl/runtime';
 
 import registerPolyfills from './src/polyfills';
-import { readSandboxSession, startSandbox } from './src/sandbox';
+import { attachSandboxSession, readSandboxSession, startSandbox } from './src/sandbox';
 import Viewer, { ssrSetupRuntime } from './src/viewer.jsx';
 import { settle, createPageReadyGate, createFetchTracker, createXhrTracker } from './static/ssr/render-gate';
 
@@ -67,6 +67,14 @@ export default {
     }
 
     const noodlRuntime = new NoodlRuntime(runtimeArgs);
+
+    // POL-008: and the session, which the network shim could not do on its own.
+    // It intercepts requests; `UserService` only *makes* the one that would have
+    // served the sample user if a session already exists, so a sandbox that
+    // shipped a complete signed-in user still rendered every bound Text as its
+    // design-time placeholder. Attached after construction because the key is
+    // derived from the export's metadata, which arrives later.
+    if (sandbox && sandbox.useSampleData) attachSandboxSession(noodlRuntime, sandbox.signedIn);
 
     // React 19: Use createRoot instead of ReactDOM.render
     if (currentRoot) {

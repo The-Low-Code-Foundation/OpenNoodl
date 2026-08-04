@@ -21,7 +21,69 @@ Connected User 'Current User'.email    → Text 'User Email'.text
 So the preview *is* rendering and the wires *are* there. The bound Texts are showing their design-
 time placeholder strings, not sample values.
 
-## Part A — sample data does not reach the node
+## Part A — DONE, 2026-08-04
+
+Verified live end to end by `scripts/pol39-live/pol008-sandbox-session.js` — **9/9**. It builds
+Richard's graph (a Group, a `net.noodl.user.User`, and two Texts whose `text` parameters are the
+literal strings *"Text"* and *"Email placeholder"* from his screenshot), registers the export on
+`ViewerConnection` exactly as `SandboxPreview` does, points the running preview at the sandbox URL,
+and reads **what the viewer rendered**. Not the export's return value — the previous session already
+proved that was complete, and proving it again would have proved nothing.
+
+| | Rendered |
+|---|---|
+| signed in (default) | `sample.user@example.com sample.user@example.com` |
+| signed out (toggle) | `Text Email placeholder` |
+
+The second row is the bug report, verbatim, now reachable only when the user asks for it and under a
+strip that says *"Sample data — signed out"*.
+
+### What shipped
+
+- **`noodl-runtime/src/sandbox/session.ts`** — writes the session the sandbox's own dataset already
+  described, so `UserService`'s constructor finds one and issues the `GET /users/me` the network
+  shim has always been able to answer. The dataset, the responder and every node are unchanged.
+- **`attachSandboxSession`** in the viewer's sandbox entry, hung off `metadataChanged` rather than
+  called beside `startSandbox()`. It has to be: the session key is
+  `Parse/<publicToken>/currentUser` and the token comes out of the *export's* metadata, which has
+  not arrived when the shim is installed — the shim goes in before the runtime is constructed,
+  deliberately. `UserService` is a lazy singleton built on the first `User` node, so
+  `metadataChanged` is early enough.
+- **A `Sign out` / `Sign in` button on the strip**, and the strip's own sentence now names the auth
+  state in both directions. Preview state; nothing is written to `project.json`.
+
+### The one design decision inside the fix
+
+**Every candidate key is written, not the one right key.** `UserService._handle()` resolves the
+token from `cloudservices`, *or* from a `backendServices` entry when the project has no endpoint,
+*or* to `undefined` — a rule already rewritten twice (BCN-006, BCN-009). Mirroring that if/else here
+would be a second copy that fails **silently** when it drifts: the preview simply goes back to
+showing placeholders, which is the defect being removed. Writing all of them is exact for whichever
+branch wins and harmless for the rest, because the sandbox has its own Electron storage partition
+whose only inhabitant is this fake user.
+
+`Parse/undefined/currentUser` is in that set deliberately and is the *common* case: a project with no
+backend resolves the token to `undefined` and `parseSessionKey` renders it literally. Leaving it out
+would have fixed the rare case and missed every AI-authored preview.
+
+### Two harness facts from the drive
+
+- **Setting `webview.src` starts a navigation; the old document keeps answering CDP until it lands.**
+  A fixed sleep read the signed-*in* page while asking about the signed-*out* one and reported the
+  fix as broken. The two states are one query parameter apart and their DOM is identical until the
+  session differs, so a stale read is indistinguishable from a failure to clear.
+- **Connecting to a target that is mid-navigation hangs forever.** The CDP session detaches with the
+  document and `evaluate` has no deadline. Wait from the *host* side — `webview.getURL()` and
+  `webview.isLoading()` are on the element and survive the guest reloading.
+
+### Still open in Part A
+
+Criterion 2's second half — *"if there is no sample data for an operation, the strip says so"* — is
+served today by `unknownShapeNotice` ("Fields unknown") for a class whose shape could not be
+inferred. There is no case left where the dataset is *absent*: `buildSandboxDataset` is documented as
+never empty, and with the session seeded the user half of it now actually reaches the graph.
+
+## Part A — the original diagnosis (kept)
 
 ### What is known
 
@@ -186,9 +248,12 @@ Not a model-quality project — that is a phase, not a task. Scope here:
 
 ## Criteria
 
-1. The mechanism behind the empty sample data is **named and written down here** before any fix.
-2. "Sample data" either shows real sample values or says explicitly that there are none. Never
-   placeholders presented as data.
+1. ✅ The mechanism behind the empty sample data is **named and written down here** before any fix.
+2. ✅ "Sample data" either shows real sample values or says explicitly that there are none. Never
+   placeholders presented as data. Measured live: signed in renders
+   `sample.user@example.com`, signed out renders `Text Email placeholder` under a strip reading
+   *"Sample data — signed out"*. A class whose shape could not be inferred still raises "Fields
+   unknown".
 3. A Profile page built after POL-006 renders in the project font.
 4. A before/after comparison of the same brief, with the node counts and a screenshot of each.
 5. Any convention change lands in the template, not in the prompt only, so an author can edit it.

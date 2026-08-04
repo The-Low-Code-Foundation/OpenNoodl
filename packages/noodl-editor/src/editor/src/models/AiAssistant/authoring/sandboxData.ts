@@ -408,6 +408,14 @@ export interface BuildSandboxDatasetOptions {
   components: ComponentModel[];
   /** `sample_data` from the authoring model, when it supplied any. */
   sampleData?: AgentSampleData;
+  /**
+   * POL-008 — whether the preview runs as the sample user or signed out.
+   *
+   * The dataset is built either way; only the summary and the seeded session
+   * change. Defaults to `true`, which is the decision: a profile page has to
+   * work with no clicks, and signed-out is the branch you go and ask for.
+   */
+  signedIn?: boolean;
 }
 
 /**
@@ -416,7 +424,11 @@ export interface BuildSandboxDatasetOptions {
  * Never empty: a graph that queries nothing still gets a signed-in user, and a
  * class the graph names but nothing describes still gets five records.
  */
-export function buildSandboxDataset({ components, sampleData }: BuildSandboxDatasetOptions): SandboxDataset {
+export function buildSandboxDataset({
+  components,
+  sampleData,
+  signedIn = true
+}: BuildSandboxDatasetOptions): SandboxDataset {
   const discovery = discoverDataShape(components);
 
   const classNames = new Set<string>([...discovery.byClass.keys(), ...Object.keys(sampleData ?? {})]);
@@ -450,8 +462,13 @@ export function buildSandboxDataset({ components, sampleData }: BuildSandboxData
   const suppliedUser = sampleData?._User?.[0] ?? sampleData?.User?.[0];
   if (suppliedUser) Object.assign(user, suppliedUser);
 
+  // ⚠️ **The strip must say which auth state the preview is in.** POL-008's
+  // whole finding was a toolbar promising "signed in as a sample user" over a
+  // preview that was not signed in; a strip that keeps saying it while the user
+  // has *asked* to be signed out is the same defect with the sign reversed.
   const counts = Object.entries(classes).map(([name, klass]) => `${klass.records.length} ${name}`);
-  const summary = counts.length > 0 ? `Sample data — ${counts.join(', ')}` : 'Sample data — signed in as a sample user';
+  const who = signedIn ? 'signed in as a sample user' : 'signed out';
+  const summary = counts.length > 0 ? `Sample data — ${counts.join(', ')}, ${who}` : `Sample data — ${who}`;
 
   return { classes, user, summary, unknownShape };
 }

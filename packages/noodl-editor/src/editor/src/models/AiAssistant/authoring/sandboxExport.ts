@@ -47,6 +47,13 @@ export interface SandboxExportOptions {
   sampleData?: AgentSampleData;
   /** False for the "Real backend" toggle: ship no dataset, so nothing is faked. */
   useSampleData?: boolean;
+  /**
+   * POL-008 — whether the sandbox runs signed in as the sample user.
+   *
+   * Preview state, never project state: nothing about it belongs in
+   * `project.json`. Defaults to `true`.
+   */
+  signedIn?: boolean;
 }
 
 /**
@@ -154,7 +161,8 @@ export function buildSandboxExport({
   files,
   siblings = [],
   sampleData,
-  useSampleData = true
+  useSampleData = true,
+  signedIn = true
 }: SandboxExportOptions): SandboxExport {
   const { component, legacyName } = candidateComponent(files);
 
@@ -204,7 +212,8 @@ export function buildSandboxExport({
 
   const dataset = buildSandboxDataset({
     components: componentClosure(project, component, [...siblingsByName.values()]),
-    sampleData
+    sampleData,
+    signedIn
   });
   json.metadata[SANDBOX_METADATA_KEY] = dataset;
 
