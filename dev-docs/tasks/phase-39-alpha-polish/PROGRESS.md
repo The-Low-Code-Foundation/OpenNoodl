@@ -28,7 +28,7 @@ both a matter of wiring that module in, not of sourcing an icon set.
 | [POL-015](POL-015-THE-FIRST-WORKFLOW-CANNOT-BE-CREATED.md) — first workflow | — | ✅ **done** | Backend list now comes from `listWorkflowDefinitions()` — the call the panel already makes, already scoped to *running* backends with `error` on the unreachable. Better than the spec's `useLocalBackends`, which lists stopped ones. All 5 criteria verified live on a backend with `workflowCount: 0`. `480ade46` |
 | [POL-006](POL-006-A-FONT-AND-AN-ICON-SET.md) — font + icon set | 8 | ✅ **done** | All 7 criteria measured live and in a real deploy build. **The font half of the spec was stale** — `--font-sans` was never dangling (REV-009 stamps `:root` into both surfaces), so criterion 5 was met before the task started. The real defect was one nothing predicted: with the token right and all four Inter faces loaded, a Text node still rendered in **Times**, because a declared `default` never runs its setter and both viewer templates style `body` without a font. Fixed in `TokenResolver.generateCss` — the one artifact preview, deploy and SSR all come through. Inter (4 weights, TTF) + Lucide (212 curated of 1998, woff2) as `noodl_modules/`. New gate: `starter-iconset:check`. |
 | [POL-007](POL-007-THE-BUILD-PANEL-FITS.md) — Build panel layout | 9a | ✅ **done** | All 6 criteria measured live, both themes. The driver was written **before** the fix and caught it: `Drop from plan` laid out at `[461..576]` against a panel ending at `451`. The scrollbar's own source was not in the spec — `ScrollArea` sets `overflow-y: auto` and leaves `overflow-x` at `visible`, **which CSS computes to `auto`**. Slice 4 answered: one two-line layout at 400/750/1315, not two. Found on the way: the scope tabs' `isGrowing` (flex-basis 0) split the row into equal thirds at any width, wrapping "This component" onto a second line. |
-| [POL-008](POL-008-SAMPLE-DATA-AND-A-THIN-BUILD.md) — sample data + thin build | 10 | ◐ **Part A done; Part B not started** | Part A verified live, **9/9**, on Richard's own graph: signed in renders `sample.user@example.com`, signed out renders `Text Email placeholder` — the strings from his screenshot, now reachable only when he asks for them and under a strip that says *"signed out"*. The seam is a new `sandbox/session.ts` hung off `metadataChanged`, because the session key comes from the *export's* metadata and the shim installs before the runtime exists. It writes **every** candidate key rather than mirroring `_handle()`'s resolution rule — a drifting copy of that would fail silently, straight back into placeholders. Part B is no longer gated (POL-006 landed) and is not started. |
+| [POL-008](POL-008-SAMPLE-DATA-AND-A-THIN-BUILD.md) — sample data + thin build | 10 | ◐ **Part A done; Part B not started** | Part A verified live, **9/9**, on Richard's own graph: signed in renders `sample.user@example.com`, signed out renders `Text Email placeholder` — the strings from his screenshot, now reachable only when he asks for them and under a strip that says *"signed out"*. The seam is a new `sandbox/session.ts` hung off `metadataChanged`, because the session key comes from the *export's* metadata and the shim installs before the runtime exists. It writes **every** candidate key rather than mirroring `_handle()`'s resolution rule — a drifting copy of that would fail silently, straight back into placeholders. **Part B re-judged against the real provider and its premise moved**: the agent now produces 7 styled nodes with a spacing scale, a card and a type hierarchy, rendering in Inter. What is still poor is two *invented names* — a `textStyle` and an image `src` the project does not have, both passed by the gate in silence. Open question 1 below. |
 | [POL-010](POL-010-THE-WALK-DOESNT-WALK.md) — provenance walk | 12b | ✅ **done** (slice 2 deferred, as decided) | All 6 criteria. The driver was written **before** the fix and run against `HEAD`: **5/14**, and the baseline is worse than the spec said — four situations, **two** sentences, differing only by a row count. Now 15/15, four sentences, verified live on Richard's chat project. `WalkResult.foundation` (`no-graph`/`node-absent`/`port-unwired`/`walkable`) lives in the engine so OBS-004 gets it too. Two things the spec did not have: state A needed the **"no viewer"** half to be reachable at all (a held topology outlives its viewer, which is 2b's lie one scope smaller), and the in-editor preview **cannot be closed on its own** — it is a `<webview>` guest and killing it white-screens the editor. Slice 2b in. |
 | [POL-011](POL-011-FX-ON-MULTILINE-STRINGS.md) — `fx` on multiline | 13 | ☐ not started | Mechanism confirmed: `multiline: true` routes to `TextAreaType`, which has no expression support. |
 | [POL-012](POL-012-SET-ALL-FOUR-SIDES-AT-ONCE.md) — link padding/margin | 14 | ☐ not started | Includes the four-undo-entries defect, worth fixing independently. |
@@ -72,6 +72,38 @@ proves what it measures; it does not prove the CSS you wrote is the CSS that won
   pre-existing by running that suite against `HEAD`'s copy of the only backend file this session
   touched: it fails identically. 69 of 70 suites and 743 of 755 specs pass. Nobody owns this; it is
   recorded here so the next person does not spend the fifteen minutes proving it is not theirs.
+
+## Open — needs Richard, 2026-08-04 (fifth session)
+
+**1. POL-008 Part B's premise moved, and the fix the spec prescribes would answer the wrong
+question.** The re-judge is done — real provider, same brief, Build panel — and the agent produced
+**seven styled nodes**, not "a div and a couple of texts": a spacing scale (`var(--space-8)`,
+`var(--space-4)`), a card with `var(--surface)`, `var(--radius-2xl)` and a shadow, a 140px avatar,
+and a declared type hierarchy. It renders in Inter. Causes 1–3 in the spec are answered.
+
+What is still poor on screen is two invented names:
+
+- `textStyle: "heading-3"` and `textStyle: "muted"` — this project's styles are `Body Text`,
+  `Button Label`, `Label Text`. Both Texts render identical 16px black; there is **no type hierarchy
+  at all**, and nothing said so.
+- `src: "profileIcon.svg"` — no such file. A broken-image box.
+
+Both passed the SUB-006 gate under *"Submitted — passed validation."* This is phase 38's finding
+exactly: **nothing validates parameter VALUES.**
+
+So the choice is:
+
+- **(a)** a value check for named references (`textStyle`, `colorStyle`, image `src`) that fails or
+  reports rather than passing silently, **plus** telling the agent what this project's style names
+  are — it cannot use `Body Text` if it has never been told the project has one;
+- **(b)** the spec's original plan — a visual section in the `CONVENTIONS.md` template. **Rejected
+  by the evidence**: the model already produces spacing, colour and a type hierarchy unprompted. A
+  styling floor would tell it to do what it is doing, and would not stop it naming a style that does
+  not exist.
+
+(a) is bigger than a polish slot and touches the authoring context, so it is not being started
+without a decision. Part B is otherwise closed: the font criterion is met and the re-judge is
+recorded in the spec with the node-by-node inventory and the screenshot.
 
 ## Answered by Richard — 2026-08-04
 

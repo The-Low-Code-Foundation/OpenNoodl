@@ -212,7 +212,66 @@ sample data for an operation, the strip says so — "No sample data for this com
 presenting an unfed preview as a fed one. That is the same rule phase 38 adopted about silent
 discarding, applied to a preview.
 
-## Part B — the component is thin
+## Part B — RE-JUDGED, 2026-08-04. **It is not thin any more, and the premise has moved.**
+
+Richard's instruction was *"genuinely rebuild the same Profile page and look at it before doing
+anything else — the re-judge is the first slice, not a formality."* Done, against the **real
+provider**, through the Build panel's single-component loop, on the same brief:
+`scripts/pol39-live/pol008b-rejudge.js`.
+
+### What the agent produced
+
+**Seven nodes, not six, and every one of them styled.** Accepted into a throwaway copy and read back
+off `project.json`:
+
+```
+Page   "Member Profile"      title, urlPath
+ Group root                  alignItems/alignX center,
+                             paddingTop/Bottom var(--space-8), paddingLeft/Right var(--space-4)
+  Group card                 backgroundColor var(--surface), borderRadius var(--radius-2xl),
+                             boxShadowEnabled, padding var(--space-8)/var(--space-6)
+   Image  avatar             src "profileIcon.svg", 140×140 explicit, marginBottom var(--space-6)
+   Text   nameText           textStyle "heading-3"
+   Text   emailText          textStyle "muted", marginTop var(--space-2)
+ User                        (wired username → nameText.text, email → emailText.text)
+```
+
+That is a spacing scale, a card with a background and a radius and a shadow, an avatar, and a
+declared type hierarchy. **Cause 1 is closed and causes 2 and 3 are not what is wrong.** Writing a
+styling floor into `CONVENTIONS.md` would be answering a question the model is already answering.
+
+The font half is closed too: the preview renders in **Inter**, `document.fonts.check('400 16px
+Inter')` true after an explicit load, computed family
+`Inter, ui-sans-serif, system-ui, sans-serif, …`. POL-006 reached the AI sandbox.
+
+### What is actually wrong, and it is a different defect
+
+The rendered page ([measurements/pol008b-preview-after-build.png](measurements/pol008b-preview-after-build.png)) is still poor, and now for reasons that are visible
+and nameable rather than "basic AF":
+
+1. **`textStyle: "heading-3"` and `textStyle: "muted"` name styles this project does not have.**
+   Its text styles are `Body Text`, `Button Label`, `Label Text`. Both Texts render at an identical
+   16px black — **there is no type hierarchy on screen at all**, and nothing anywhere said so.
+2. **`src: "profileIcon.svg"` names a file this project does not have.** It renders as a broken-image
+   box, which is most of what the screenshot's emptiness is.
+
+The spacing and colour tokens *did* resolve — the card has its background, its radius and its
+padding. So this is not a token-plumbing failure. It is the phase-38 finding, exactly: **nothing
+validates parameter VALUES.** The SUB-006 gate accepted a `textStyle` naming a style that does not
+exist and an `src` naming an asset that does not exist, and reported *"Submitted — passed
+validation."*
+
+That reframes Part B. The remaining work is not "teach the agent to style"; it is:
+
+- **a value check for named references** — `textStyle`, `colorStyle`, image `src` — that either
+  fails the gate or reports the miss, so an invented name cannot pass silently;
+- **telling the agent what this project's style names are**, which is a context question, not a
+  conventions-prose question. It cannot use `Body Text` if it has never been told the project has one.
+
+Both are bigger than a polish slot and neither is what the spec below prescribes, so **this needs
+Richard's call before anything is built.** Recorded in `PROGRESS.md` under an open question.
+
+### The original Part B analysis, kept because its causes are now answered
 
 Six nodes for a profile page: Page Root, Current User, Profile Card, Avatar Placeholder, User Name,
 User Email. Structurally correct, visually nothing — no spacing, no type scale, no colour, no
@@ -254,9 +313,17 @@ Not a model-quality project — that is a phase, not a task. Scope here:
    `sample.user@example.com`, signed out renders `Text Email placeholder` under a strip reading
    *"Sample data — signed out"*. A class whose shape could not be inferred still raises "Fields
    unknown".
-3. A Profile page built after POL-006 renders in the project font.
-4. A before/after comparison of the same brief, with the node counts and a screenshot of each.
-5. Any convention change lands in the template, not in the prompt only, so an author can edit it.
+3. ✅ A Profile page built after POL-006 renders in the project font. Measured in the sandbox
+   preview: computed family `Inter, ui-sans-serif, …` and `document.fonts.check('400 16px Inter')`
+   true after an explicit load.
+4. ◐ The "after" is measured and screenshotted (7 nodes, listed above,
+   `measurements/pol008b-preview-after-build.png`). There is no "before" to pair it with — the
+   reported build was Richard's, not a recorded run, and re-creating a pre-POL-006 editor to
+   produce one would measure a build we no longer ship. The node count and the styling inventory
+   are the comparison that can honestly be made against his description ("a div and a couple of
+   texts"), and they contradict it.
+5. Open — and probably moot: see the re-judge. The convention change the spec prescribes would
+   answer a question the model is already answering.
 
 ## Traps
 
