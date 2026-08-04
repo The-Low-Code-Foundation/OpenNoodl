@@ -102,6 +102,28 @@ biggest lever on the bar Richard set.
    choice over preset-picking), designed in the scoping conversation, guarded by a contrast lint —
    a lint, not a preset floor.
 
+## Layer 1 is built (2026-08-04, commits `4a0fdd4f`, `83647de9`)
+
+All four seam tasks landed in one session, with the editor suite at **2165 specs, 0 failures** and both
+typecheck gates clean. Each task file carries what was built and the decisions taken; three things belong
+here because they change what a later reader should believe:
+
+1. **AAQ-002's stated mechanism was wrong, in a way that matters.** `prop-*` ports were filed as a
+   *timing* problem. They are not: `SchemaHandler._fetch()` has been a stub since WF-007, clearing the
+   only cache those ports read on every window focus. There was no trigger to be late. Fixed by
+   introspecting the built-in backend over the IPC the Data Browser already uses.
+2. **`RouterNavigate.target` and `Page.urlPath` are not in the node catalog** — both are
+   runtime-discovered ports. That is very likely *why* the model reached for "navigate to path": it is
+   the only navigation target the catalog declares statically. It also means nothing could have caught a
+   wrong target, because `checkParameterValues` skips dynamic-port nodes entirely.
+3. **`buildBackendList` has no production caller.** The Backend Services panel composes three separate
+   card components. A model-level seam being right is not the same as the panel being right.
+
+Outstanding from Layer 1, all of it live-QA or explicitly deferred: AAQ-001 criterion 5 (the router's
+`pages`, written by the apply, seen rendering in a real preview), AAQ-002 criteria 1–3 and slice 4 (the
+agent is still not told the collections), AAQ-003 criteria 1–2 (scrolls in a detached preview and on a
+phone; a dashboard brief's regions scroll independently), AAQ-004 mechanism B (with AAQ-006).
+
 ## Order of work
 
 **First, the seams — AAQ-001 through AAQ-004.** Small, mechanism-verified, and nothing above them
