@@ -1,163 +1,152 @@
 # Phase 39 — handover prompt
 
-Written 2026-08-04 at the end of the **fourth** build session (`4c837e70`…`e50a3f92`).
+Written 2026-08-04 at the end of the **fifth** build session (`f3e7f4a2`…`4e6bbc5f`).
 Paste the block below into a fresh session.
 
 ---
 
 Continue `dev-docs/tasks/phase-39-alpha-polish` (Track X — the twelve things I hit driving the editor
-for an hour as an alpha user). Read `PROGRESS.md` first; it is current as of commit `e50a3f92` on
+for an hour as an alpha user). Read `PROGRESS.md` first; it is current as of commit `4e6bbc5f` on
 `cline-dev`.
 
 ## Where it stands
 
-**10 done, 2 diagnosed-and-scoped, 3 not started.** Nothing is "built but unwatched" — every done
-item has been driven in the running editor.
+**14 done, 1 not started, 1 open question.** Nothing is "built but unwatched" — every done item has
+been driven in the running editor with a committed driver.
 
-Done: **POL-001** (the settings crash — the alpha blocker), **POL-002** (links + Learn tab),
-**POL-003** (rail contrast + Lucide glyphs), **POL-004** (undefined CSS tokens + a new gate),
-**POL-005** (backend surfaces at 860 — now closed, see below), **POL-009** (a pin belongs to one
-canvas), **POL-014** (the Data Browser), **POL-015** (the first workflow), and this session's
-**POL-007** (the Build panel fits) and **POL-006** (a font and an icon set).
+Done: **POL-001** (the settings crash — the alpha blocker), **POL-002**, **POL-003**, **POL-004**,
+**POL-005**, **POL-006**, **POL-007**, **POL-009**, **POL-014**, **POL-015**, and this session's
+**POL-010** (the provenance walk), **POL-008 Part A** (the sandbox signs in), **POL-012** (set all
+four sides at once) and **POL-011** (`fx` on multiline strings).
 
-**All my open questions are now answered** and written into the specs with the rejected alternatives.
-`PROGRESS.md` has them as items 5–7 under *Answered by Richard — 2026-08-04*. **Do not re-ask them
-and do not re-derive the options.**
-
-Not started: **POL-011**, **POL-012**, **POL-013**.
+**Not started: POL-013 only.** **One open question, and it is the first thing to read.**
 
 ## Do these, in this order
 
-1. **POL-010 — now scoped, and smaller than it was.** I chose **slice 3 + slice 2b; slice 2 is
-   deferred.** The panel keeps its preview-sourced topology and stops presenting one row as a
-   result: four distinguishable states, of which the fourth — *the queried node is not in the
-   topology at all* — is the one I actually hit, is free to detect (`topology.nodes[id]` is there or
-   it is not), and is currently **visible but unexplained** (it is the only state where `Node` and
-   `Node id` print the same string). `explainTerminus` returns `undefined` for an unwired root today,
-   so there is nowhere for any of this to render yet — *that*, not the wording, is the work.
+1. **Answer the POL-008 Part B question — it is mine to answer and nothing else is blocked on it.**
+   Written up in `PROGRESS.md` under *"Open — needs Richard, 2026-08-04 (fifth session)"* and in the
+   spec. Short version: I re-judged Part B against the **real provider**, and the premise moved. The
+   agent no longer produces "a div and a couple of texts" — it produced **seven styled nodes**: a
+   spacing scale (`var(--space-8)`, `var(--space-4)`), a card with `var(--surface)`,
+   `var(--radius-2xl)` and a shadow, a 140px avatar, and a declared type hierarchy. It renders in
+   Inter. Causes 1–3 in the spec are answered, and the spec's prescribed fix — a visual section in
+   the `CONVENTIONS.md` template — would tell the model to do what it is already doing.
 
-   Slice 2b is a few lines and is a correctness bug in its own right: `TraceSession` is a singleton
-   with **no reset path**, so after a project switch it reports `hasTopology: true` and serves the
-   *previous* project's graph. Observed live.
+   What is still poor on screen is **two invented names**: `textStyle: "heading-3"` and
+   `textStyle: "muted"` (this project's styles are `Body Text`, `Button Label`, `Label Text`, so both
+   Texts render identical 16px black with *no type hierarchy at all*), and `src: "profileIcon.svg"`,
+   which is no file, so the avatar is a broken-image box. Both passed the SUB-006 gate under
+   *"Submitted — passed validation."*
 
-   Do not build slice 2 (project-sourced topology). It is the right destination and it is written up
-   in the spec, but it carries component scoping and a decision about component instances, and it is
-   its own task.
+   That is phase 38's finding exactly: **nothing validates parameter VALUES.** The option I would
+   take is (a) — a value check for named references (`textStyle`, `colorStyle`, image `src`) that
+   fails or reports rather than passing silently, **plus** telling the agent what this project's
+   style names are, because it cannot use `Body Text` if it has never been told the project has one.
+   It is bigger than a polish slot and touches the authoring context, so it is not started.
 
-2. **POL-008 Part A — signed in by default, with a toggle to sign out.** Diagnosed already; do not
-   re-diagnose. The sandbox ships a complete signed-in user with a `sessionToken` and nothing ever
-   signs in, because `installSandbox` intercepts the network and only the network while `UserService`
-   asks for `/users/me` only if a session already exists. **The fix is to seed the session where
-   `installSandbox` runs** and let the existing interception do the rest.
+2. **POL-013 — the `IconSize` sweep.** The only task left, and the only reason it is last is the one
+   you gave: *"it is a ~130-call-site change the moment the CSS rules exist, with no incremental
+   landing, and it is not alpha-blocking."* That is still true and it is the whole shape of the task
+   — the first commit changes every icon in the editor at once, so criterion 2 (a both-theme
+   screenshot sweep against the UIX-009 corpus, and fixing what moved) is not padding, it **is** the
+   task. Budget for the sweep before writing the four `is-size-*` rules, not after.
 
-   The reason it needs a toggle: the `User` node's `authenticated` output is literally
-   `this._internal.model !== undefined`, so seeding makes it true in *every* preview and the
-   signed-out branch of every graph becomes unreachable. The toggle is preview state, never project
-   state, and the strip has to say which state it is in — a preview whose `authenticated` is false
-   under a strip reading "signed in as a sample user" is the same defect one layer down.
-
-   Criterion 2 binds independently and is the non-negotiable: **"Sample data" must never silently
-   show placeholders.**
-
-3. **POL-008 Part B is no longer gated.** It was waiting on POL-006 ("re-judge after POL-006"). The
-   font has landed, so genuinely rebuild the same Profile page and look at it before doing anything
-   else — the re-judge is the first slice, not a formality.
-
-4. Then **POL-012**, **POL-011**, **POL-013**. POL-013 is last on purpose: it is a ~130-call-site
-   change *the moment the CSS rules exist*, with no incremental landing, and it is not
-   alpha-blocking.
+   Criterion 5 is worth deciding early: stripping intrinsic `width`/`height` from the SVG files so
+   the component is the only thing that sizes a glyph. Without it the two mechanisms stay in
+   competition and the sweep has to be re-run every time someone adds an icon.
 
 ## What this session found that the specs did not
 
-- **POL-006's font half was stale, and the real defect was not on anyone's list.** `--font-sans` was
-  never dangling — REV-009 stamps `:root` into both surfaces, so criterion 5 was met before the task
-  started. But with the token resolving to Inter and all four Inter faces registered in the preview,
-  the Hello World text still rendered in **Times**: `TextConfig` *declares*
-  `fontFamily: 'var(--font-sans)'`, and **a declared default never runs its setter** — the phase-30
-  class, third time. The element reaches the DOM with no family and both viewer templates style
-  `body` without one. Fixed in `TokenResolver.generateCss`, the one artifact the preview, a deploy
-  and SSR/SSG all come through.
+- **POL-010's state A had a second half, and without it the state was unreachable.** The spec said
+  "no viewer / no topology"; only the second was implemented at first. But a topology is **held**
+  and outlives its viewer, so a walk over a preview that closed ten minutes ago rendered identically
+  to a live one — same rows, same values, all frozen. That is slice 2b's lie one scope smaller.
+  `foundationOf` takes `previewRunning` now.
 
-- **Inter and Lucide were both already in the repo.** `src/assets/Inter/` (nine weights, SIL OFL) is
-  the editor's own UI font; `library/modules/lucide-icons/` is the full 1998-glyph ISC webfont,
-  imported 2026-07-25. POL-006 was wiring, not sourcing. Check what the repo already has before
-  sourcing anything.
+- **The in-editor preview cannot be closed on its own.** It is a `<webview>`, a guest of the
+  editor's window: `/json/close` on its CDP target throws `Invalid guestInstanceId` out of
+  `GUEST_VIEW_MANAGER_CALL`, uncaught, inside React, and **white-screens the editor**. Not a state
+  any user can produce, so not one worth measuring against. Navigating it away is.
 
-- **POL-007's scrollbar came from `ScrollArea`**, not from the rows the spec measured. It sets
-  `overflow-y: auto` and leaves `overflow-x` at `visible` — **which CSS computes to `auto`**. Nothing
-  had to opt into a horizontal scrollbar; leaving overflow-x alone *was* opting in.
+- **POL-008 Part A: writing one session key would have been a copy of a rule already rewritten
+  twice.** `UserService._handle()` resolves the token from `cloudservices`, or from a
+  `backendServices` entry, or to `undefined` (BCN-006, BCN-009). A mirror of that if/else would fail
+  **silently** when it drifted — straight back to placeholders, which is the defect. It writes every
+  candidate key instead; the sandbox has its own storage partition, so the extras are inert.
+  `Parse/undefined/currentUser` is in that set deliberately and is the *common* case.
 
-- **`isGrowing` is `flex: 1`, and its basis is 0.** So three `isGrowing` buttons split a row into
-  equal thirds at *any* width regardless of their labels — which is why "This component" got 106px
-  for a 120px label and wrapped onto a second line while "Docs" kept 36px it had no use for.
-  `flex: 1 1 auto` starts from each label's own width and shares only the slack.
+- **POL-012: "link on only if all four already agree" means it starts ON.** Four untouched sides
+  *do* agree. The rule the spec is protecting is the other one — never flatten four values that
+  differ — and that is a separate case. The driver's first version assumed the opposite and reported
+  five failures against correct behaviour.
+
+- **POL-011: `TextAreaType` was rendering a bare `PropertyPanelRow`, and that was the whole defect.**
+  The reset dot, the binding chip and the `fx` toggle all come from `PropertyPanelInput`, which it
+  was not using. A new `PropertyPanelInputType.TextArea` gives a multiline property the same row as
+  every other string, and expression mode then shows the expression input rather than a textarea for
+  free.
 
 ## Harness facts worth keeping
 
-- **Write the measurement before the fix, and run it against `HEAD`.** POL-007's driver did, and
-  reported `Drop from plan` laid out at `[461..576]` against a panel ending at `451`. That is the
-  difference between "the check passes" and "the check catches the defect", and it took one extra
-  stack restart.
+- **Connecting to a CDP target that is mid-navigation hangs forever.** The session detaches with the
+  document and `cdp.js`'s `evaluate` has no deadline. Wait from the **host** side —
+  `webview.getURL()` and `webview.isLoading()` are on the element and survive the guest reloading.
+  And setting `webview.src` *starts* a navigation and returns: a fixed sleep read the signed-in page
+  while asking about the signed-out one and reported a working fix as broken.
 
-- **`getBoundingClientRect()` reports layout, not paint.** A child clipped by `overflow: hidden`
-  still reports its real position outside the clip — so "does any descendant cross the panel's own
-  edges?" proves the layout genuinely *fits*, rather than that the overflow was hidden. That
-  distinction is the whole difference between "no scrollbar" and "the row ellipsises".
+- **`node.parameters[name]` and `getParameter(name)` are different questions**, and the difference
+  cost three false failures in one run. The first is what is *stored* (`undefined` at the declared
+  default); the second resolves the default, and it is what the property editor reads. A check
+  comparing a captured fallback against the stored `undefined` calls a correct conversion broken.
 
-- **`document.fonts.check()` answers false for a webface nothing has rendered yet.** It sits at
-  status `unloaded`. The first version of POL-006's driver reported four perfectly good Inter faces
-  as missing. `await document.fonts.load(...)` first, *then* check. And
-  `getComputedStyle(el).fontFamily` returns the *declared* stack whether or not a byte was fetched —
-  only the pair of them is evidence.
+- **`data-identifier` disappears in expression mode** — it is on the input, which is replaced by an
+  `ExpressionInput`. A panel-wide query had already produced a false pass (an expression input was
+  present, belonging to a *different* row). POL-011 added `data-property` on the row, which survives
+  the mode switch. Use it.
 
-- **A stylesheet that compiles is not a stylesheet that applies.** The first scope-tab fix passed
-  `tokens:css`, typechecked, and changed nothing on screen, because `.is-growing` is a second class
-  on the same element and outranked it. Only the screenshot caught that.
+- **`setParameter` already batches undo.** It takes an `UndoActionGroup` as `args.undo` and only
+  creates-and-pushes its own when handed a boolean. Build one group, pass it to every write, push it
+  once — and **`push`, never `pushAndDo` and never the constructor's `do`/`undo` form**, which
+  leaves `ptr` at 0 and yields a group that cannot be undone at all. During a drag the model already
+  holds the dragged value, so the commit must carry `oldValue`s captured at mousedown.
 
-- **`LocalProjectsModel.openProjectFromFolder` loads the model but does not route the editor to it**,
-  so `ProjectModel.instance` stays null. Drive the launcher's own "Open project" button with
-  `filesystem.openDialog` stubbed — and note it returns the directory **string**, not
-  `{ filePaths: [...] }`.
+- **A green check count says nothing about where a control sits.** POL-012 was 12/12 with both new
+  toggles covering their group tags and one of them sitting on a value field. Only a screenshot
+  caught it. The overlap is a measurement now — every toggle's box against every tag and label.
 
-- **A backtick inside a comment inside a CDP template literal terminates the literal.** Cost one
-  confusing `SyntaxError`. Don't quote code with backticks inside an evaluated string.
-
-- **`git hash-object -w` + `git update-index --cacheinfo` stages part of a file without touching the
-  working tree.** That is how this session committed two hunks of `LocalProjectsModel.ts` while
-  another session's uncommitted work sat in the same file, with no checkout window at all. Better
-  than any patch arithmetic.
-
-- Two reusable drivers, both no-provider and both offline:
-  `scripts/pol39-live/pol007-layout.js` (a four-operation plan, one of which fails for real through
-  the SUB-006 gate; measures seven panel states in either theme and writes a PNG per state) and
-  `scripts/pol39-live/pol006-starter-assets.js` (creates a project, opens it, reads the running
-  preview, runs a real deploy build; 12 checks).
+- Five reusable drivers, all committed under `packages/noodl-editor/scripts/pol39-live/`:
+  `pol010-walk.js` (four walk states + the project-switch reset; `--capture` writes the jest
+  fixture), `pol008-sandbox-session.js` (signed in / out / back, reading the rendered pixel),
+  `pol008b-rejudge.js` (**spends provider money** — one authoring session through the Build panel),
+  `pol012-linked-sides.js` and `pol011-fx-multiline.js`.
 
 ## Working rules
 
 - Commit straight to `cline-dev`. No branches, no PRs.
 - **Another session still has uncommitted work** in `projectmodel.ts`, `projectmodel.editor.ts`,
-  `LocalProjectsModel.ts` (a `_adoptV2Format` conversion), `ProjectImporter.ts`, `analyze.ts`,
-  `featureFlags.ts`, `VersionControlPanel/**` and `nodegx-observe`. Untouched across **four**
+  `LocalProjectsModel.ts`, `ProjectImporter.ts`, `analyze.ts`, `featureFlags.ts`,
+  `VersionControlPanel/**`, `tests-unit/erg-005/` and `nodegx-observe/bin`. Untouched across **five**
   sessions now — re-check whether it is still there and still theirs. **Never `git add -A`, never
   stash**, and pathspec-scope every commit.
+- **`tests-unit/erg-005/` fails 3 jest specs and they are not yours** — that is the other session's
+  untracked work. Confirmed twice this session. Do not spend time proving it.
 - The editor suite is `npm run test:ci` from `packages/noodl-editor`. **Only the `Jasmine:` line
   counts.** Baseline is **2148 specs, 0 failures** — unchanged this session.
-- **`nodegx-backend`'s jest suite is NOT green at baseline** — `tests/email-flows.test.ts` fails two
-  specs on 30s timeouts. Confirmed pre-existing. Do not spend time proving it is not yours.
-- Gates to keep green: `npx tsc --noEmit -p tsconfig.json` (in both `noodl-editor` and
-  `nodegx-backend`), `npm run tokens:css` **from the repo root**, and new this session
-  `npm run starter-iconset:check` (also from the root — it regenerates the starter icon set from the
-  library module and fails if the committed output has drifted).
+- Gates to keep green: `npx tsc --noEmit -p tsconfig.json` (in `noodl-editor`, `noodl-runtime`,
+  `noodl-viewer-react` and `nodegx-backend`), `npm run tokens:css` and
+  `npm run starter-iconset:check`, both **from the repo root**. Note that `noodl-core-ui`'s own tsc
+  has pre-existing alias failures (`@noodl-store`, `@noodl-versioning`) — it is not a gate.
+- `nodegx-backend`'s jest suite is **not green at baseline** (`tests/email-flows.test.ts`, two 30s
+  timeouts). Pre-existing, nobody owns it, do not chase it.
 - Verify in the running editor, not only in jest. The `run-editor` skill has the recipe. **HMR will
-  not apply a change to an already-mounted panel; restart the stack before concluding a fix did
-  nothing.** Stop the stack when you are done (`npm run dev:stop`, from the repo root).
-- **Work on a copy of any project you drive.** This session drove temp copies throughout and left no
-  tracked project modified.
-- Ask me if a decision is genuinely mine. My seven answers are recorded in `PROGRESS.md` — don't
+  not apply a change to an already-mounted panel, and the viewer is a second bundle** — restart the
+  stack before concluding a fix did nothing. Stop the stack when you are done (`npm run dev:stop`,
+  from the repo root).
+- **Work on a copy of any project you drive.** Every driver this session copies first.
+- Ask me if a decision is genuinely mine. My seven earlier answers are in `PROGRESS.md` — don't
   re-ask them.
 
-## No open questions
+## One open question
 
-For the first time in this phase there are none. If one appears, it goes in `PROGRESS.md` under a
-new dated heading with the alternatives you rejected, not just the one you took.
+The POL-008 Part B question above. The alternative that was rejected and why is already written into
+`PROGRESS.md` and the spec — read it before proposing anything.
