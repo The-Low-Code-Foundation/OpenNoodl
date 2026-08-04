@@ -215,6 +215,35 @@ export function orderPlanOperations(operations: readonly PlanOperation[]): PlanO
   return [...operations].sort((a, b) => rank[a.kind] - rank[b.kind]);
 }
 
+/**
+ * AAQ-001 — the legacy names of every component this plan puts into the project.
+ *
+ * Two places need this and they need the *same* answer: each authoring session,
+ * so a page linking to a sibling that has not been authored yet is not told its
+ * correct link is broken; and the apply's pre-check, so the same page is not
+ * refused at the last step for the same reason. The second was missed, and the
+ * consequence was that a plan whose first page linked to its second could pass
+ * every session and then be **unappliable** — the most ordinary two-page app
+ * there is. Nothing was wrong with either piece of code in isolation, which is
+ * why it survived a green suite; the fact simply existed twice, and once.
+ *
+ * Deliberately order-independent and deliberately not the same list as the
+ * apply's incremental `components`: which components will exist when this
+ * transaction finishes is known before any of them do.
+ *
+ * Takes the shape both callers share rather than either's own type — `PlanRun`
+ * holds `PlanOperation`s and the panel holds `AppliedPlanOperation`s wrapping
+ * them.
+ */
+export function plannedComponentNames(
+  operations: readonly { kind: PlanOperationKind; target: string }[],
+  toLegacyName: (target: string) => string
+): string[] {
+  return operations
+    .filter((op) => op.kind === 'create' || op.kind === 'update')
+    .map((op) => toLegacyName(op.target));
+}
+
 // ── Cross-operation dependencies ──────────────────────────────────────────────
 
 /** Legacy names of the components a candidate's nodes instantiate. */

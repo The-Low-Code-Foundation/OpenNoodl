@@ -123,8 +123,11 @@ entire page list in ONE parameter, and full component names, exactly as the proj
 - To send someone to a page, use a Navigate node (type "RouterNavigate") and set "target" to the page's
   COMPONENT NAME as registered — "/Pages/Puppies", never an invented URL like "/puppies". Set "router" only
   when the project has more than one router, to that router's name.
-- A page's own URL lives on the Page node inside the page component: "urlPath": "puppies", with "title" for
-  the browser tab. Nothing else defines the URL of a page.
+- EVERY page component must have a "Page" node as its root, with the page's content inside it. This is not
+  decoration: the runtime builds its whole page index from Page nodes, so a component the router lists
+  without one is a route to a BLANK SCREEN — the router finds nothing to show and reports no error.
+- A page's own URL lives on that same Page node: "urlPath": "puppies", with "title" for the browser tab.
+  Nothing else defines the URL of a page.
 - "Navigate To Path" (PageStackNavigateToPath) drives the browser URL rather than the router directly: it
   only lands somewhere if a REGISTERED page declares that exact urlPath. Prefer RouterNavigate with a
   component name — it cannot be aimed at a page that does not exist.

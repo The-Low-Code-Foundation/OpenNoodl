@@ -20,6 +20,7 @@ import {
   buildComponentRefs,
   checkBackendRequirements,
   checkNavigation,
+  checkPageShape,
   checkParameterValues,
   DiagnosticCode,
   loadDefaultCatalog,
@@ -29,6 +30,7 @@ import {
 } from '../../../validation';
 import type { Diagnostic, NormComponent, NormProject, ProjectBackendFacts, ValidationReport } from '../../../validation';
 import type { GraphComponent, ExplainGraph } from '../explain/types';
+import { looksLikePageComponent } from './pageRegistration';
 import type { CandidateValidation, ComponentFiles, StructuralFailure } from './types';
 
 let semanticValidator: SemanticValidator | undefined;
@@ -174,7 +176,8 @@ export function validateCandidateComponent(
     ...report.diagnostics,
     ...parameterDiagnostics(legacyName, files),
     ...backendDiagnostics(legacyName, files, options.backend),
-    ...navigationDiagnostics(graph, legacyName, files, options.plannedComponents)
+    ...navigationDiagnostics(graph, legacyName, files, options.plannedComponents),
+    ...pageShapeDiagnostics(legacyName, files)
   ];
   // A parameter naming no port is a warning project-wide, and must stay one:
   // the corpus is full of imported nodes carrying settings the catalog cannot
@@ -197,6 +200,23 @@ export function validateCandidateComponent(
     DiagnosticCode.UnknownParameter,
     DiagnosticCode.UnitlessDimension,
     DiagnosticCode.UnresolvedNavigation
+    // ⚠️ `PageWithoutPageNode` is deliberately NOT here yet, and the reason is
+    // worth reading before adding it.
+    //
+    // The rule is right: a routed component with no Page node renders a blank
+    // screen (see the code's docblock), and it was calibrated on the 96-project
+    // corpus at 6 hits, all inside synthetic node-id fixtures. But the population
+    // that actually flows through THIS gate is the authored one, and there it
+    // fires on 57 fixture sites across 15 spec files — every one of which builds
+    // a `/Pages/...` component out of a bare Group, because that is what everyone
+    // believed a page was until the launcher was driven end to end.
+    //
+    // Promoting it means correcting those fixtures, which is a real change to
+    // what a large part of the AI suite asserts and deserves its own read — not a
+    // sweep tacked onto the session that found the defect. Until then it is a
+    // warning, which still reaches the agent in the accepted-component report,
+    // and the contract it enforces is stated outright in the authoring prompt,
+    // which is what actually changes what a model builds.
   ]);
   const blocking = (d: Diagnostic) => d.severity === 'error' || BLOCKING_WARNINGS.has(d.code);
   const allErrors: Diagnostic[] = diagnostics.filter(blocking);
@@ -300,6 +320,24 @@ function navigationDiagnostics(
       parameters: (n.parameters ?? null) as Record<string, unknown> | null
     })),
     { component: legacyName, components, urlPaths: declaredUrlPaths(graph, legacyName, files) }
+  );
+}
+
+/**
+ * AAQ-001 — a page the runtime will refuse to render.
+ *
+ * The apply's authority on "will this be registered as a page" is
+ * `stagedComponentIsPage`, which is `looksLikePageComponent(name) || has a Page
+ * node`. Only the name half is used here — deliberately, and it is exactly
+ * equivalent: the rule returns nothing the moment a Page node exists, so the
+ * other half of that OR can never change this answer. It also keeps this module
+ * pure, which the name half is and `staging.ts` (it reaches for `ProjectModel`)
+ * is not.
+ */
+function pageShapeDiagnostics(legacyName: string, files: ComponentFiles): Diagnostic[] {
+  return checkPageShape(
+    files.nodes.nodes.map((n: NodeV2) => ({ id: n.id, type: n.type })),
+    { component: legacyName, isRoutedPage: looksLikePageComponent(legacyName) }
   );
 }
 

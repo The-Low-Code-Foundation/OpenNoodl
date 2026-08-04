@@ -79,6 +79,92 @@ function str(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
+/** The offered names, deduplicated on the identity {@link normalizeComponent} defines. */
+function uniqueComponents(components: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const name of components) {
+    const key = normalizeComponent(name);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(name);
+  }
+  return unique;
+}
+
+/** How many names a suggestion lists before it stops. */
+const MAX_OFFERED = 8;
+
+/**
+ * What to navigate to instead.
+ *
+ * Two things this deliberately does NOT say. It does not call these "pages":
+ * the list is every component the target could name, and `PageStackNavigate`
+ * legitimately pushes a component that is not a page — telling a repairing agent
+ * that `App` is a page it may navigate to is how a second wrong target gets
+ * written. And when the list is cut short it says so, because a truncated list
+ * read as complete is the same failure one layer down: the name the agent needed
+ * was there, off the end, and nothing said so.
+ */
+function offerComponents(offered: readonly string[]): string {
+  const shown = offered.slice(0, MAX_OFFERED);
+  const rest = offered.length - shown.length;
+  return (
+    `Set "target" to one of these component names: ${shown.join(', ')}` +
+    (rest > 0 ? ` (and ${rest} more).` : '.')
+  );
+}
+
+/** The node type that makes a component a page, as far as the runtime is concerned. */
+const PAGE_NODE_TYPE = 'Page';
+
+export interface CheckPageShapeOptions {
+  /** Component identifier for the diagnostic's location. */
+  component: string;
+  /**
+   * Whether this component is one the project will route as a page. The caller
+   * decides — it is the same question `stagedComponentIsPage` answers for the
+   * apply, and this module holds no view of the naming convention.
+   */
+  isRoutedPage: boolean;
+  /** Severity for the finding. Defaults to `warning` — blocking for authored output. */
+  severity?: Severity;
+}
+
+/**
+ * A page component the runtime will refuse to render.
+ *
+ * See {@link DiagnosticCode.PageWithoutPageNode}. In one sentence: a Router
+ * route is resolved through the page index, the page index is built from `Page`
+ * nodes and nothing else, so a routed component without one is a route to a
+ * blank screen — reported by nobody, because every layer above it is working.
+ *
+ * Takes the node list rather than the component so it is the same shape the
+ * other value checks take, and stays pure.
+ */
+export function checkPageShape(
+  nodes: readonly NavigatingNode[],
+  options: CheckPageShapeOptions
+): Diagnostic[] {
+  const { component, isRoutedPage, severity = 'warning' } = options;
+  if (!isRoutedPage) return [];
+  if (nodes.some((node) => node.type === PAGE_NODE_TYPE)) return [];
+
+  return [
+    {
+      code: DiagnosticCode.PageWithoutPageNode,
+      severity,
+      message:
+        `"${component}" will be registered as a page, but it has no Page node — so the router has ` +
+        'nothing to show and the app renders a blank screen where this page should be.',
+      location: { component },
+      suggestion:
+        'Make a Page node the root of this component and put the content inside it. Its "title" and ' +
+        '"urlPath" are what give the page its browser tab and its URL.'
+    }
+  ];
+}
+
 /**
  * Navigations that cannot land, given what this project has.
  *
@@ -92,6 +178,13 @@ export function checkNavigation(
 ): Diagnostic[] {
   const { component, components, urlPaths, severity = 'warning' } = options;
   const known = new Set(components.map(normalizeComponent));
+  // The caller assembles this list from three sources that overlap — the
+  // project's components, the candidate's own name, and the plan's other
+  // targets — so the component being authored appears twice in every fan-out.
+  // It is only ever *read* through `known` above, except in the suggestion,
+  // where a duplicate is the first thing a reader notices and the last thing
+  // they can explain. Deduplicated on normalized identity, first spelling kept.
+  const offered = uniqueComponents(components);
   const paths = urlPaths ? new Set(urlPaths.map(normalizePath)) : undefined;
   const diagnostics: Diagnostic[] = [];
 
@@ -126,9 +219,7 @@ export function checkNavigation(
           `${where} navigates to "${target}", which is not a component in this project` +
           (looksLikePath ? ' — this looks like a URL path, and Target Page takes a component name.' : '.'),
         location: { component, nodeId: node.id, port: 'target' },
-        ...(components.length > 0
-          ? { suggestion: `Pages in this project: ${components.slice(0, 8).join(', ')}` }
-          : {})
+        ...(offered.length > 0 ? { suggestion: offerComponents(offered) } : {})
       });
       continue;
     }

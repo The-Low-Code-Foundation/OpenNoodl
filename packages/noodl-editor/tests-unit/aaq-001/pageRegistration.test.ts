@@ -19,7 +19,7 @@ import {
   planPageRegistration,
   type RouterLocation
 } from '../../src/editor/src/models/AiAssistant/authoring/pageRegistration';
-import { checkNavigation } from '../../src/editor/src/validation/navigation';
+import { checkNavigation, checkPageShape } from '../../src/editor/src/validation/navigation';
 import { DiagnosticCode } from '../../src/editor/src/validation/diagnostics';
 
 function router(overrides: Partial<RouterLocation> = {}): RouterLocation {
@@ -123,6 +123,39 @@ describe('AAQ-001 — planPageRegistration', () => {
   });
 });
 
+/**
+ * The live pass's headline finding. Registration worked, the panel truthfully
+ * said "The app opens on Puppies", and the app rendered a blank screen: the
+ * runtime's page index comes only from `Page` nodes, so a routed component
+ * without one resolves to nothing and the Router mounts nothing.
+ */
+describe('AAQ-001 — checkPageShape', () => {
+  const pageNode = { id: 'page', type: 'Page' };
+  const group = { id: 'root', type: 'Group' };
+
+  it('reports a page component with no Page node — the blank-screen case', () => {
+    const diagnostics = checkPageShape([group, { id: 't', type: 'Text' }], {
+      component: '/Pages/Puppies',
+      isRoutedPage: true
+    });
+
+    expect(diagnostics.length).toBe(1);
+    expect(diagnostics[0].code).toBe(DiagnosticCode.PageWithoutPageNode);
+    expect(diagnostics[0].message).toContain('blank screen');
+    expect(diagnostics[0].suggestion).toContain('Page node');
+  });
+
+  it('says nothing when the component has a Page node', () => {
+    expect(checkPageShape([pageNode, group], { component: '/Pages/Puppies', isRoutedPage: true })).toEqual([]);
+  });
+
+  it('says nothing about a component the project will not route as a page', () => {
+    expect(
+      checkPageShape([group], { component: '/Visual Components/Badge', isRoutedPage: false })
+    ).toEqual([]);
+  });
+});
+
 describe('AAQ-001 — checkNavigation', () => {
   const components = ['/App', '/Pages/Puppies', '/Pages/Admin'];
 
@@ -146,6 +179,43 @@ describe('AAQ-001 — checkNavigation', () => {
     expect(diagnostics[0].message).toContain('"/puppies"');
     expect(diagnostics[0].message).toContain('URL path');
     expect(diagnostics[0].suggestion).toContain('/Pages/Puppies');
+  });
+
+  /**
+   * Found in the AAQ live pass, not by reading the code. `validate.ts` builds the
+   * offered list from three overlapping sources — the project's components, the
+   * candidate's own name, and the plan's other targets — so the component being
+   * authored was in it twice, and the repair message the agent read said
+   * `/Pages/Admin` twice in one sentence.
+   */
+  it('offers each component once, however many sources the caller assembled it from', () => {
+    const diagnostics = checkNavigation(
+      [{ id: 'nav', type: 'RouterNavigate', parameters: { target: 'Admin' } }],
+      // Exactly the shape `navigationDiagnostics` produces while authoring
+      // /Pages/Admin as part of a plan that also creates /Pages/Puppies.
+      { component: '/Pages/Admin', components: [...components, '/Pages/Admin', '/Pages/Puppies'] }
+    );
+
+    expect(diagnostics.length).toBe(1);
+    const occurrences = diagnostics[0].suggestion.split('/Pages/Admin').length - 1;
+    expect(occurrences).toBe(1);
+  });
+
+  /**
+   * The same message used to open "Pages in this project:" over a list whose
+   * first entry was `/App`. A repairing agent that believes that is one wrong
+   * target away from a second failed round.
+   */
+  it('does not call the offered components pages, and says when the list is cut short', () => {
+    const many = Array.from({ length: 11 }, (_, i) => `/Pages/P${i}`);
+    const diagnostics = checkNavigation(
+      [{ id: 'nav', type: 'RouterNavigate', parameters: { target: 'nowhere' } }],
+      { component: '/Pages/Home', components: ['/App', ...many] }
+    );
+
+    expect(diagnostics[0].suggestion).toContain('component names');
+    expect(diagnostics[0].suggestion).not.toContain('Pages in this project');
+    expect(diagnostics[0].suggestion).toContain('4 more');
   });
 
   it('reports a Navigate with no target at all — the dead button', () => {

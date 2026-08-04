@@ -67,6 +67,7 @@ export {
   graphComponentFromFiles,
   orderPlanOperations,
   planExcludedWith,
+  plannedComponentNames,
   planOperationRequires,
   planRequiredWith,
   provisionSummary,

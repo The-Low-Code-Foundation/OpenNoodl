@@ -32,6 +32,7 @@ import {
   PlanSessionStore,
   PLAN_SESSION_CHANGED,
   planExcludedWith,
+  plannedComponentNames,
   planRequiredWith,
   prospectivePageRegistration,
   stagedComponentIsPage,
@@ -714,6 +715,24 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     const graph = fromProjectModel(project);
     let components = [...graph.components];
     const backendWarnings: Diagnostic[] = [];
+    /**
+     * AAQ-001. The `components` list below grows FORWARD — each operation sees
+     * the ones before it — which is right for content (a later component may
+     * instantiate an earlier one and needs its ports) and wrong for existence.
+     * A plan whose first page links to its second was refused here, at the last
+     * step, having passed the authoring gate minutes earlier: `/Pages/Admin` was
+     * simply not in the list yet, and the message offered the user a set of
+     * targets that did not include the page they were applying alongside it.
+     *
+     * This is the same fact the run threads into every session, computed the same
+     * way, and it is order-independent for the same reason: which components this
+     * transaction is about to put into the project is known before any of them
+     * are, and it does not depend on where in the list we have got to.
+     */
+    const plannedComponents = plannedComponentNames(
+      operations.map((op) => ({ kind: op.kind, target: op.operation.target })),
+      pathToLegacyName
+    );
     for (const op of operations) {
       // AIB-007: a provision is skipped here for the same reason a doc is — it
       // has no graph to re-validate. What it *does* change is whether the
@@ -733,7 +752,8 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
         // *accepted* set, so an excluded provision correctly makes this the
         // stricter check — dropping the backend and keeping the pages that need
         // it is exactly the combination worth catching here.
-        backend: appliedBackendFacts(project, operations)
+        backend: appliedBackendFacts(project, operations),
+        plannedComponents
       });
       if (!validation.ok) {
         // AIB-001: after slice 1 this is where a bad parameter value surfaces if

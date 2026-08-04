@@ -1,8 +1,61 @@
 # AAQ-001 — A created page is reachable
 
 **Findings:** #5 (router has no pages after apply), #6 (`navigate to path /puppies` with no such page)
-**Status:** built (2026-08-04). Criteria 1–4 are closed in code and under test; criterion 5 (proven live
-in a preview window) is outstanding — see *What was built* below.
+**Status:** criteria 1, 3, 4, 5 **closed live** (2026-08-05). Criterion 2 remains closed-by-construction.
+The live pass found **three defects that 2165 green specs could not see**, all now fixed, plus one
+contract nobody had written down. Read the next section before anything else in this file.
+
+## ⚠️ The live pass, 2026-08-05 — what was actually wrong
+
+Layer 1 was mechanism-verified and spec-covered and had never been seen running. Driving the launcher
+wizard end to end (`packages/noodl-editor/scripts/aaq40-live/`) found this, in the order it bit:
+
+1. **A plan whose first page linked to its second was UNAPPLIABLE.** The apply's pre-check
+   (`ProjectAuthoringView.applyPlan`) builds its component list **forward** — each operation sees the
+   ones before it — so `/Pages/Puppies` was refused for navigating to `/Pages/Admin`, a page staged in
+   the same transaction and about to be applied alongside it. `plannedComponents` had been threaded into
+   every authoring *session* and not into the apply. Both now call one function,
+   `plannedComponentNames`, because the failure was never bad code — it was one fact existing twice, and
+   once. The most ordinary two-page app there is could not be applied.
+2. **The start page never moved, so every wizard-built app opened on "Hello World!".**
+   `isPlaceholderPage` measured "empty" as *the root having no children*, on the stated belief that "the
+   template's Home is one `Page` node". It is not: `hello-world.template.ts` gives Home a `Page` node
+   **with a Text child**. The one case the whole start-page mechanism exists for could never match. Now
+   measured as the template's real shape — a single root with at most one leaf `Text` under it.
+3. **A registered page still rendered a blank screen.** The headline. Listing a component in a Router's
+   `pages.routes` does not make it a page: the runtime's page index is built **exclusively from `Page`
+   nodes** (`exporter/router.ts::_getPageInfo`), `getPagesForRouter` drops every route it cannot resolve
+   to one, and the Router then mounts nothing. Verified against the live `routerIndex`: three routes
+   listed, one page indexed. Nothing anywhere said a page component needs a `Page` node —
+   `stagedComponentIsPage` accepts the `/Pages/…` *name*, which is right for deciding what to register
+   and was never a claim about what renders. Now `DiagnosticCode.PageWithoutPageNode` plus an explicit
+   sentence in the authoring prompt. **The diagnostic is a warning, not blocking, and that is a
+   deliberate half-measure with a bill attached — see the note in `validate.ts`.**
+4. The repair message the agent reads offered `/Pages/Admin` **twice** and called `App` a page. Both
+   fixed in `checkNavigation`; it now dedupes and says "component names", and states when the list is
+   truncated.
+
+### What the live pass proved
+
+Against a real preview window, with the fixes in:
+
+- The router lists all three pages, `startPage` is `/Pages/Puppies`, and the app **opens on it**
+  (`document.title` = "Puppies"). Criterion 5. ✅
+- The panel says, before Apply: *"2 pages (Puppies, Admin) will be registered in the "Main" router in
+  App"*, and after: *"…The app opens on Puppies."* Same function, so they cannot disagree. ✅
+- Both navigation targets resolve to real components. Criterion 3. ✅
+- `validate:project` is untouched; the rules are wired into the authored gate only. Criterion 4. ✅
+
+Gates at the end of the pass: editor suite **2168 specs, 0 failures**; `typecheck:editor` and
+`typecheck:editor-tests` clean.
+
+### Still owed
+
+- **Promote `PageWithoutPageNode` to `BLOCKING_WARNINGS`.** It fires on **57 fixture sites across 15 AI
+  spec files**, every one of which builds a `/Pages/…` component out of a bare Group — the belief the
+  product itself held until this pass. Correcting them changes what a large part of the suite asserts and
+  deserves its own read; it was not tacked onto the session that found the defect. Until then a blank
+  page is a warning the agent is shown and a contract the prompt states, not a refusal.
 
 ## What was built
 

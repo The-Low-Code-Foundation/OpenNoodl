@@ -2,10 +2,46 @@
 
 **Findings:** #4 (a "Built-in backend" card that can only edit/disconnect; disconnect makes it
 vanish), #7 (`prop-age` / `prop-bio` port errors on Create Record)
-**Status:** slices 1–3 built (2026-08-04); slice 4 open. Criterion 5 is **settled below, and the
-hypothesis was wrong** — read that first. Criteria 1–3 need the live pass.
+**Status:** slices 1–3 built (2026-08-04); slice 4 open. Criterion 5 has now been answered **three
+times, by three different mechanisms**, and the live pass produced the third — read the next section
+first. Criterion 2 **fails live**, for a cause nobody had identified.
 
-## ⚠️ Criterion 5 — the hypothesis was wrong, and it mattered
+## ⚠️ The live pass, 2026-08-05 — `prop-*` still does not exist, and the reason is new
+
+Driven end to end through the launcher (`scripts/aaq40-live/`). Slice 3 works: `dbCollections` is
+populated the moment the binding lands, with `Puppy` in it. The ports still do not appear, and the
+chain — measured, not reasoned — is:
+
+1. **The provision bound the new project to ANOTHER PROJECT'S BACKEND.** `findReusableBackend` matches
+   on **name alone**, and `provisionFromScope` always names it *"App backend"*. So every AI-created
+   project on a machine binds to the first one ever provisioned there. The new puppy project came up
+   pointing at a backend created two days earlier, carrying `Conversation`, `Message` and `Inquiry` from
+   unrelated apps. The docblock justifies name-matching by *idempotence within one plan* — which it
+   achieves — but the lookup is machine-wide and the name is a constant. **Two unrelated apps silently
+   share one datastore.** Verified: `backend:list` shows one "App backend", created 2026-08-03, bound to
+   a project created 2026-08-05.
+2. **`backend:createTable` does not reconcile an existing table.** It returns `created: false` and adds
+   nothing. Proven both ways in one session: a *new* table created with columns comes back with those
+   columns; `Puppy`, which already existed in the reused backend, came back with `columns: []`.
+3. `SchemaHandler` then caches `columns: []` **faithfully** — slice 3 is not at fault — and
+   `recordFieldPorts` iterates a field list that is empty, so no `prop-*` port is generated.
+
+So finding #7's third and actual mechanism is **backend reuse plus a non-reconciling createTable**, not
+timing (the task's original claim) and not the missing cache write (Layer 1's correction, which was real
+and is fixed). Both parts of the new mechanism are **product decisions, not bugs to quietly patch** —
+whether a second project gets its own backend, and whether provisioning may alter an existing schema —
+so they are filed here rather than fixed. They are the top of AAQ-002's remaining work.
+
+### The other thing the live pass found: the parameter is `collectionName`
+
+The Record family passes `collectionParam: 'collectionName'` to `resolveSchemaPortContext`, **whose own
+default is `'collection'`**. Setting `collection` on a Create Record node is completely inert: it is a
+runtime-discovered port, so the catalog does not declare it, `checkParameterValues` skips dynamic-port
+nodes entirely, and nothing diagnoses it. This is AIB-010's lesson again — a name-typed parameter checked
+for being a string and never for resolving — and it is the strongest argument for slice 4 there is: a
+careful reader with the source open got it wrong by reading the resolver instead of the caller.
+
+## ⚠️ Criterion 5 (Layer 1) — the hypothesis was wrong, and it mattered
 
 This file said the `prop-*` ports come from a schema cache that *something else* fills, so the agent's
 parameters land before it happens — a **timing** problem, with the trigger to be identified live.

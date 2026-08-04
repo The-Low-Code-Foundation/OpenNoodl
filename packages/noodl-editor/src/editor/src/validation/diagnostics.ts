@@ -137,7 +137,29 @@ export enum DiagnosticCode {
    * *"'navigate to path' /puppies but there is no such page"* — and nothing
    * anywhere checked that a navigation target resolved.
    */
-  UnresolvedNavigation = 'unresolved-navigation'
+  UnresolvedNavigation = 'unresolved-navigation',
+
+  /**
+   * A component the project will route as a page, with no `Page` node in it.
+   *
+   * Found by driving the launcher end to end, and it is the reason AAQ-001's
+   * criterion 5 could not pass: registration worked perfectly and the app still
+   * rendered **nothing**. Listing a component in a Router's `pages.routes` does
+   * not make it a page. The runtime's page index is built exclusively from
+   * `Page` nodes (`exporter/router.ts::_getPageInfo`), `getPagesForRouter`
+   * drops every route it cannot resolve to one, and the Router then has no start
+   * page to mount. Blank screen, no error, and a panel that truthfully reports
+   * "The app opens on Puppies".
+   *
+   * Nothing said this: the authoring prompt mentioned the `Page` node only as
+   * where `urlPath` lives, and `stagedComponentIsPage` treats a `/Pages/…` name
+   * as sufficient — which is right for deciding what to *register* and was never
+   * a statement about what renders.
+   *
+   * Blocking for authored output. Over the 96-project corpus it fires 6 times,
+   * all inside two synthetic node-id fixtures and none in a real project.
+   */
+  PageWithoutPageNode = 'page-without-page-node'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────

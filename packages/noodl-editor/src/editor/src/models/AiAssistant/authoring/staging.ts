@@ -278,9 +278,22 @@ function readRouterPages(node: NodeGraphNode): RouterPagesValue {
  * A page nobody has built anything in — the shape a freshly created project's
  * Home has, and the only start page an apply is allowed to move away from.
  *
- * "Empty" is measured as the page's own root node having no children, rather
- * than as a node count: the template's Home is one `Page` node with two
- * parameters, and a page someone has started work in has something under it.
+ * ⚠️ **This function's original premise was wrong, and the live pass is how we
+ * found out.** It measured "empty" as the page's own root having **no children**,
+ * on the stated belief that "the template's Home is one `Page` node with two
+ * parameters". It is not: `hello-world.template.ts` builds Home as a `Page` node
+ * with a `Text` child reading *"Hello World!"*. So the one case this whole
+ * mechanism exists for never matched, and every app the wizard built registered
+ * its pages correctly and then **opened on "Hello World!"** — the "nothing
+ * happened" reading of a successful build that the start-page rule was written to
+ * prevent. Registration worked; the thing the user sees did not.
+ *
+ * What is measured now is the template's actual shape, generalised only as far as
+ * it honestly generalises: a single root, and under it at most one leaf `Text`.
+ * The asymmetry the rule is built around is unchanged — taking home from a page
+ * somebody built is worse than opening on the wrong one — and a page that is one
+ * bare line of text with nothing under it is not a page somebody built. Anything
+ * more (a Group, a second child, a nested tree) is left alone as before.
  */
 export function isPlaceholderPage(project: ProjectModel, legacyName: string): boolean {
   const component = project.getComponentWithName(legacyName);
@@ -288,7 +301,12 @@ export function isPlaceholderPage(project: ProjectModel, legacyName: string): bo
   const roots = component.graph.roots ?? [];
   if (roots.length === 0) return true;
   if (roots.length > 1) return false;
-  return (roots[0].children ?? []).length === 0;
+
+  const children = roots[0].children ?? [];
+  if (children.length === 0) return true;
+  if (children.length > 1) return false;
+  const only = children[0];
+  return only.typename === 'Text' && (only.children ?? []).length === 0;
 }
 
 /**

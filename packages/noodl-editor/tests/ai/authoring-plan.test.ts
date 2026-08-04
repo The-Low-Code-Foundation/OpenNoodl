@@ -19,6 +19,7 @@ import {
   graphComponentFromFiles,
   orderPlanOperations,
   planExcludedWith,
+  plannedComponentNames,
   planOperationRequires,
   planRequiredWith,
   validatePlan,
@@ -124,6 +125,32 @@ describe('AIX-011 plan model', () => {
     expect(errors.some((e) => e.includes('more than one operation'))).toBe(true);
     expect(errors.some((e) => e.includes('no intent'))).toBe(true);
     expect(validatePlan(THREE_OP_PLAN, { existingComponents: new Set(['/Pages/Article']) })).toEqual([]);
+  });
+
+  /**
+   * AAQ-001, found in the live pass. `PlanRun` and the panel's apply pre-check
+   * both need "which components will this transaction have put into the
+   * project", and only the first had it — so a plan whose FIRST page linked to
+   * its second passed every authoring session and was then refused at apply,
+   * because the apply's component list grows forward and the second page was not
+   * in it yet. Both now call this, which is the point of it existing.
+   */
+  it('names every component a plan will create or update, whatever the order', () => {
+    const toLegacy = (target: string) => `/${target}`;
+    const operations = [
+      { kind: 'provision' as const, target: 'App backend' },
+      { kind: 'create' as const, target: 'Pages/Puppies' },
+      { kind: 'create' as const, target: 'Pages/Admin' },
+      { kind: 'update' as const, target: 'App' },
+      { kind: 'doc' as const, target: 'docs/ARCHITECTURE.md' }
+    ];
+
+    expect(plannedComponentNames(operations, toLegacy)).toEqual(['/Pages/Puppies', '/Pages/Admin', '/App']);
+    // The first operation must see the last one, which is the whole defect.
+    expect(plannedComponentNames(operations, toLegacy)).toContain('/Pages/Admin');
+    expect(plannedComponentNames([...operations].reverse(), toLegacy).sort()).toEqual(
+      plannedComponentNames(operations, toLegacy).sort()
+    );
   });
 
   it('orders creates before updates before docs, keeping plan order within a kind', () => {

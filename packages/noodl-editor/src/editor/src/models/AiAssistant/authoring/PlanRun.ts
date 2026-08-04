@@ -37,7 +37,13 @@ import { pathToLegacyName } from './candidate';
 import type { DocSessionOptions } from './DocSession';
 import { DocSession } from './DocSession';
 import type { AuthoringPlan, PlanOperation, PlanOutcomeEntry, PlanProvisionSpec } from './plan';
-import { graphComponentFromFiles, planExcludedWith, planOperationRequires, renderPlanContext } from './plan';
+import {
+  graphComponentFromFiles,
+  planExcludedWith,
+  planOperationRequires,
+  plannedComponentNames,
+  renderPlanContext
+} from './plan';
 import type { PlanRunSnapshot } from './planSessionSnapshot';
 import { restoreOperations } from './planSessionSnapshot';
 import type { AppliedPlanOperation } from './planStaging';
@@ -658,9 +664,7 @@ export class PlanRun {
         // fan-out's authoring ORDER into a diagnostic — the first page's link to
         // the second is "unresolved" purely because the second has not been
         // built, and the agent is told never to argue with a diagnostic.
-        plannedComponents: this.plan.operations
-          .filter((op) => op.kind === 'create' || op.kind === 'update')
-          .map((op) => pathToLegacyName(op.target))
+        plannedComponents: plannedComponentNames(this.plan.operations, pathToLegacyName)
       };
       if (operation.kind === 'update') {
         const base = this.options.baseFilesFor?.(legacyName);

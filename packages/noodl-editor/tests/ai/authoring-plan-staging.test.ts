@@ -23,6 +23,7 @@ import {
 import { describePageRegistration } from '../../src/editor/src/models/AiAssistant/authoring/pageRegistration';
 import { StagingError } from '../../src/editor/src/models/AiAssistant/authoring/staging';
 import type { AuthoringRequest, ComponentFiles } from '../../src/editor/src/models/AiAssistant/authoring/types';
+import { NodeGraphNode } from '../../src/editor/src/models/nodegraphmodel/NodeGraphNode';
 import { ProjectModel } from '../../src/editor/src/models/projectmodel';
 import { getCloudServices, setCloudServices } from '../../src/editor/src/models/projectmodel.editor';
 import { expectRejection } from './helpers';
@@ -595,6 +596,72 @@ describe('AAQ-001 — the apply registers the pages it created', () => {
     // The placeholder is still routed — unregistering a component is a
     // destructive decision this apply does not make.
     expect(routerPages(project).routes).toContain('/Pages/Article');
+  });
+
+  /**
+   * The spec above cleared the component's roots entirely, which is a state the
+   * product never produces — and that is why this defect survived it. A freshly
+   * created project's Home is `hello-world.template.ts`'s: a `Page` node with a
+   * `Text` child reading "Hello World!". Against the original "root has no
+   * children" test that is not a placeholder, so the start page never moved and
+   * every app the wizard built opened on Hello World with its real pages
+   * registered and unreachable-by-default behind it. Found by driving the
+   * launcher, not by reading the code.
+   */
+  it("moves the start page off the template's ACTUAL home — one Page node with a Text in it", async () => {
+    const project = loadProject();
+    const article = project.getComponentWithName('/Pages/Article')!;
+    for (const root of [...article.graph.roots]) article.graph.removeNode(root);
+    const page = NodeGraphNode.fromJSON({
+      id: 'tmpl-page',
+      type: 'Page',
+      x: 100,
+      y: 100,
+      parameters: { title: 'Home', urlPath: 'home' },
+      children: [
+        { id: 'tmpl-text', type: 'Text', x: 100, y: 100, parameters: { text: 'Hello World!' }, children: [] }
+      ]
+    });
+    article.graph.addRoot(page);
+
+    const result = await applyAuthoredPlan(project, [
+      {
+        kind: 'create',
+        operation: { id: 'op-1', kind: 'create', target: 'Pages/Checkout', intent: 'the real first page' },
+        files: createFiles('Pages/Checkout')
+      }
+    ]);
+
+    expect(routerPages(project).startPage).toBe('/Pages/Checkout');
+    expect(result.registration?.startPage).toBe('/Pages/Checkout');
+  });
+
+  it('still refuses to take home from a page with anything real in it', async () => {
+    const project = loadProject();
+    const article = project.getComponentWithName('/Pages/Article')!;
+    for (const root of [...article.graph.roots]) article.graph.removeNode(root);
+    // One Group instead of one Text: somebody has started laying this page out.
+    article.graph.addRoot(
+      NodeGraphNode.fromJSON({
+        id: 'built-page',
+        type: 'Page',
+        x: 100,
+        y: 100,
+        parameters: {},
+        children: [{ id: 'built-group', type: 'Group', x: 100, y: 100, parameters: {}, children: [] }]
+      })
+    );
+
+    const result = await applyAuthoredPlan(project, [
+      {
+        kind: 'create',
+        operation: { id: 'op-1', kind: 'create', target: 'Pages/Checkout', intent: 'another page' },
+        files: createFiles('Pages/Checkout')
+      }
+    ]);
+
+    expect(routerPages(project).startPage).toBe('/Pages/Article');
+    expect(result.registration?.startPage).toBeUndefined();
   });
 
   it('AAQ-003: writes the scroll setting the plan agreed, and one undo takes it back with the rest', async () => {

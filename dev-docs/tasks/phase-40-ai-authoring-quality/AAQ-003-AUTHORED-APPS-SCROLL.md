@@ -2,8 +2,25 @@
 
 **Finding:** #8 — every AI-created page is stuck at the top of the viewport, in this app and the
 previous test app.
-**Status:** built (2026-08-04) for the scope→setting path and the prompt doctrine. Criteria 1 and 2 need
-the live pass; criterion 3 is under test.
+**Status:** built (2026-08-04); **criterion 1 closed live (2026-08-05)**, criterion 3 closed in code and
+under test. Criterion 2 (a dashboard brief's regions scrolling independently) is not driven — it needs a
+second brief, and belongs with the engine work.
+
+## The live pass, 2026-08-05
+
+Driven end to end through the launcher wizard (`scripts/aaq40-live/`), against a real preview:
+
+- `bodyScroll: true` in Project Settings after Apply, and the panel says so in Project Settings' own
+  words: *"Body Scroll is on in Project Settings, so a page taller than the window scrolls."*
+- The **viewer's `<body>` carries `body-scroll`** — the setting reached the runtime, which is the thing a
+  green setting cannot prove.
+- The listing page: `scrollHeight` 1832 against a `clientHeight` of 343, `window.scrollTo(0, 900)` lands
+  at 900, and the screenshot shows a live scrollbar with the middle of the list on screen. It scrolls.
+
+Worth stating because it was nearly missed: for the first three runs this criterion could not be tested
+at all, because the app opened on the template's Home rather than the built page (AAQ-001 defect 2) and
+then rendered nothing at all (AAQ-001 defect 3). **A scroll test needs something to scroll**, and this
+one was blocked behind two defects in a different task.
 
 ## What was built
 

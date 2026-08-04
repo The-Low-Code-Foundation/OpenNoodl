@@ -7,6 +7,17 @@ when `recovered && !plan && !runState` (`ProjectAuthoringView.tsx` ~1084).
 **Status:** Mechanism A built and under test (2026-08-04). Mechanism B remains with AAQ-006, as this file
 already directs.
 
+## Mechanism A, verified live (2026-08-05)
+
+Seen in the launcher wizard, driven end to end (`scripts/aaq40-live/`). The scoping turn produces two
+prose rounds — the long answer with the follow-up, then the short recap the tool result asks for — and
+**both stand in the bubble**, joined by a blank line, with the AGREED SCOPE panel beneath them. That is
+the whole of the defect: before this, the long answer streamed to the user and then visibly vanished
+when the run resolved and the UI re-rendered from `entries`.
+
+Screenshot of the state in the session log; nothing was changed for this pass.
+
+
 ## What was built (Mechanism A)
 
 `ScopingSession.run()` now keeps **every** non-empty prose round of a turn, joined by a blank line, instead

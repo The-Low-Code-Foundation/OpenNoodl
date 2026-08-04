@@ -124,6 +124,44 @@ Outstanding from Layer 1, all of it live-QA or explicitly deferred: AAQ-001 crit
 agent is still not told the collections), AAQ-003 criteria 1–2 (scrolls in a detached preview and on a
 phone; a dashboard brief's regions scroll independently), AAQ-004 mechanism B (with AAQ-006).
 
+## The Layer-1 live pass (2026-08-05)
+
+Layer 1 was mechanism-verified, spec-covered, and had never been seen running. It has now been driven end
+to end through the launcher wizard — scoping conversation, project creation, plan, authoring fan-out,
+apply, preview — by `packages/noodl-editor/scripts/aaq40-live/`, which replays a recorded conversation
+into `AiClient.chatStream` and needs no provider. That is not a weaker test than a cold model run for
+what Layer 1 does: registration, the scroll setting and the schema cache are all performed by the apply
+transaction, **downstream of the provider boundary**. What it does not test is authoring quality, which is
+the engine tasks' business.
+
+**It found three defects that 2165 green specs could not see.** All three are fixed:
+
+1. A plan whose first page linked to its second was **unappliable** — `plannedComponents` reached every
+   authoring session and not the apply's pre-check, whose component list grows forward. One fact, two
+   places, present in one. Now one shared function.
+2. The start page never moved, so every wizard-built app **opened on "Hello World!"**. The placeholder
+   test asserted the template's Home has no children; it has a `Text` child. The one case the mechanism
+   existed for could never match.
+3. A registered page still **rendered a blank screen**. The runtime's page index is built exclusively
+   from `Page` nodes, and nothing in the AI stack said a page component needs one. New diagnostic, new
+   prompt contract — the diagnostic is a warning rather than blocking, and AAQ-011 F7 carries the bill.
+
+Afterwards, against a real preview window: the router lists the pages, the app opens on the built page,
+both navigations resolve, and the listing page scrolls (1832px of content in a 343px viewport, with the
+scrollbar in the screenshot). AAQ-004 mechanism A was confirmed the same run, unplanned — both prose
+rounds of the scoping turn stand in the bubble.
+
+**Two Layer-1 criteria still fail, and their cause is new.** `prop-*` ports do not exist, because
+provisioning binds every project on a machine to the *same* backend (name-matched, and the name is always
+"App backend") and `createTable` never reconciles an existing table's columns. That is finding #7's third
+distinct mechanism — after "timing" (wrong) and "the cache was never written" (right, and fixed). Both
+halves are product decisions, filed as AAQ-011 F4/F5 rather than patched.
+
+**And one thing to know before the engine work starts:** authoring a 55-node component cost **6m51s of
+editor main-thread time with a zero-latency provider** (AAQ-011 F6). The model was not what it was waiting
+on. A phase aiming at components far larger than 55 nodes should measure that before it builds on top of
+it.
+
 ## Order of work
 
 **First, the seams — AAQ-001 through AAQ-004.** Small, mechanism-verified, and nothing above them
