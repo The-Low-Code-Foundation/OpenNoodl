@@ -1,8 +1,8 @@
 # Phase 39 — Progress
 
 **Status:** **16 of 16 done.** POL-001 … POL-016 are all done, each verified in the running editor
-with a committed driver. **Two loose ends** remain, listed under *"Open — the tail"* below — POL-002's
-packaged build and POL-004's diff modal. Neither is alpha-blocking.
+with a committed driver. **One loose end** remains, listed under *"Open — the tail"* below —
+POL-004's diff modal. It is not alpha-blocking.
 
 > **The sixth session first reported this phase as "16 of 16, nothing open", and both halves of that
 > were wrong.** There are **15** numbered tasks, not 16 — a miscount. And "nothing open" was only
@@ -24,7 +24,7 @@ both a matter of wiring that module in, not of sourcing an icon set.
 | Task | Reported items | Status | Notes |
 |---|---|---|---|
 | [POL-001](POL-001-SETTINGS-PANEL-CRASH.md) — settings panel crash | 15 | ✅ **done** | All 5 criteria. Slice 2 answered: the key is not lost — v2 elides an empty `settings: {}` by design on both sides. Verified live on "AIB38 Live Chat", the project that actually crashed. `c6d5f9f8` |
-| [POL-002](POL-002-LINKS-AND-THE-LEARN-TAB.md) — links + Learn tab | 1, 2, 5 | ✅ **done** (1 residual) | Removing `react-instantsearch` broke 18 unrelated files: it was the only thing in the tree still declaring a **global `JSX` namespace**, typed for *Preact's* VNode. All 22 annotations moved to `React.JSX`. Criterion 6 (packaged build) not run — human-gated. `d9c0f37c` |
+| [POL-002](POL-002-LINKS-AND-THE-LEARN-TAB.md) — links + Learn tab | 1, 2, 5 | ✅ **done** (1 residual) | Removing `react-instantsearch` broke 18 unrelated files: it was the only thing in the tree still declaring a **global `JSX` namespace**, typed for *Preact's* VNode. All 22 annotations moved to `React.JSX`. **Criterion 6 run in the seventh session and it was never human-gated** — signing/notarisation/publishing need a human, a *build* does not, and `build.ts` has a `DISABLE_SIGNING` path that exists for exactly that. Both production bundles compiled clean (renderer 14.3 MB / 200s — the half the removal could break), `electron-builder --mac --arm64` exited 0 with a 182 MB dmg + zip, and **the packaged app starts**: `reactMounted: true`, launcher rendered. The alarming `duplicate dependency references` list of `@algolia/*` in the builder log is stale hoisted `node_modules` that nothing declares — the packaged app ships **none** of it. Found and fixed on the way: `autoupdater.js` wrapped a **promise-returning** `checkForUpdates()` in a `try/catch`, so every failure rejected past it and the packaged app printed an `UnhandledPromiseRejectionWarning` on **every launch** (the v0.1.0 release has no `latest-mac.yml`, so the first check always 404s). The `.catch` deliberately does not retry — the `error` listener already owns that, and doing both would spawn two checks per failure, compounding. Verified by repackaging: **2 → 0**. `d9c0f37c` |
 | [POL-003](POL-003-THE-LEFT-RAIL.md) — the left rail | 3, 4, 6 | ✅ **done** (slice 2 deferred) | Contrast now 8.26:1 dark / 7.49:1 light, measured live. 5 Lucide glyphs in. `IconSize` sweep deferred per Richard → [POL-013](POL-013-ICONSIZE-SWEEP.md). `d32b3d13`, `fc10449a` |
 | [POL-016](POL-016-THE-TWO-FINDINGS-POL-005-FILED.md) — POL-005's other two findings | — | ✅ **done** | All 4 criteria, both themes, against a backend the driver creates and starts. **The (a)/(b) question this task was written around was the wrong question, and counting the call sites first is what showed it.** "Add provider", "Add role" and "Issue key" — the siblings cited as evidence that `Save policy` was special — are the *identical* `Muted` variant. A muted button paints a background token off the same elevation ladder its surfaces use, so its fill measures **1.00–1.24:1 against every panel it can land on, in both themes**; on a bg-2 panel it is the same token, exactly **1.00:1**. Only the *labels* ever had contrast. So `muted` was wrong **everywhere**, at 143 call sites, and `MutedOnLowBg` fails the same way. Richard's answer 9: give the variant a border. **None of the three `border-*` tokens could carry it** (1.01–1.73:1 — divider tones, against WCAG 1.4.11's 3:1 for a control boundary), so a purpose-named `--theme-color-border-control` does, at 3.16:1 worst. An **inset ring, not `border`**: nothing sets a global `box-sizing`, so a real border would have grown all 143 by 2px — `BasePanel`'s own recorded trap. Restated on `:disabled`, which would otherwise have taken the ring off `Save policy` for exactly as long as it reads "Saving…". Schema is on the shared header, actions moved to a `.Toolbar` like `DataBrowser`'s. Census, both themes: at the matched scope (launcher, editor, 7 backend surfaces) **12 of 12 muted below 3:1 before → 0 after**; widened to 27 surfaces / 61 buttons afterwards, **0 of 20**. The widened scope was never run against `HEAD`, so that 20 is an after-only figure and is reported as one. Eleven invisible buttons beyond `Save policy`, none ever reported. `pol016-button-contrast.js` |
 | [POL-013](POL-013-ICONSIZE-SWEEP.md) — make `IconSize` real | — | ✅ **done** | All 4 criteria, both themes, measured. The scale is **12/14/16/20**, defined by this task because nothing had numbers attached to these names. Three things the spec did not have: the call-site count is **441, not ~130, and 319 declare nothing**; **47 visible glyphs were not the wrong size but destroyed** (0.48–8px — `Icon`'s span is an ordinary flex item and an overflowing row crushed it, so `.Root` now carries `flex: 0 0 auto`); and criterion 5's 169-file SVG rewrite is **unnecessary**, because `svg { width: 100% }` already outranks a presentation attribute — the attributes only mattered while the span had no size. `flex: 0 0 auto` then broke three hosts that had been holding a glyph in by shrinking it; the diff caught all three and each declares a size now. **0 of 894** icons off-scale afterwards. `51beed24` |
@@ -114,16 +114,12 @@ this). It is the surface a user reaches for first when something looks wrong.
 
 ## Open — the tail
 
-**Two loose ends.** Neither is alpha-blocking. POL-016 closed in the seventh session.
+**One loose end.** Not alpha-blocking. POL-016 and POL-002's criterion 6 both closed in the seventh
+session — the latter was **not** human-gated after all, and re-testing the inherited assumption is
+what showed it (see POL-002's notes, and the auto-updater defect that fell out of actually running
+the packaged app).
 
-1. **POL-002 criterion 6 — the packaged build has never been run since Algolia was removed.**
-   Recorded as "human-gated", and that is worth re-testing rather than inheriting: *signing and
-   publishing* are human-gated (REV-007), but a packaged **build** may not be. Removing a dependency
-   is the one change in POL-002 that can break packaging without breaking dev, and POL-002's own
-   trap says so. If it can be run headlessly, run it; if it genuinely cannot, say which step needs a
-   human and put it on [HUMAN-GATED-ITEMS](../phase-33-alpha-launch/HUMAN-GATED-ITEMS.md).
-
-2. **POL-004 criterion 1 — the doc-review diff modal is still unverified live.** The other half of
+1. **POL-004 criterion 1 — the doc-review diff modal is still unverified live.** The other half of
    that residual (a populated provenance walk) was closed by POL-010. The modal was fixed by the
    token work and screenshotted in neither theme. It needs a drive that opens a doc review with a
    real diff in it.

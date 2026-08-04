@@ -138,3 +138,56 @@ over the removed package's tree is the cheap check before believing a dependency
   suspecting the menu.
 - Deleting the Algolia dependency is the one part of this task that can break a packaged build
   without breaking the dev build. See the packaging-traps note.
+
+## Criterion 6 — run, 2026-08-04 (seventh session). It was never human-gated.
+
+It had been carried as *"not run — human-gated"* since this task landed. That was wrong, and the
+distinction matters: **signing, notarisation and publishing need a human; a packaged build does
+not.** `packages/noodl-editor/scripts/build.ts` has an explicit `DISABLE_SIGNING` path that sets
+`CSC_IDENTITY_AUTO_DISCOVERY=false`, precisely so an unsigned build is unsigned *by contract*
+rather than by accident. Nothing in it needs a credential.
+
+Run headlessly, on this session's code:
+
+| step | result |
+|---|---|
+| `webpack.renderer.production` | compiled successfully, 200s, 14.3 MB — **the half the dependency removal could break** |
+| `webpack.main.production` | compiled successfully, 7s |
+| `electron-builder --mac --arm64` | exit 0 → `NodeGX-0.1.0-mac-arm64.dmg` + `.zip`, 182 MB each, both `extraResources` present |
+| **the app starts** | launched with `--remote-debugging-port`; `reactMounted: true`, launcher rendered, 1022 chars of text |
+
+So criterion 6 is **met**. `HUMAN-GATED-ITEMS.md` already covers the part that genuinely is gated
+(A1, Apple Developer ID + notarisation credentials); nothing needed adding to it.
+
+### Do not run `npm run build:editor` in a shared checkout
+
+Its first step is `npx lerna clean --yes`, which deletes `node_modules` across **every** workspace
+package. With another session holding uncommitted work in this checkout that is not an acceptable
+thing to do for a verification run. The three underlying steps above are equivalent for this
+criterion and are non-destructive; run those.
+
+### Algolia is not in the packaged app
+
+`electron-builder` logs a long `duplicate dependency references` list full of `@algolia/*`,
+`algoliasearch`, `instantsearch.js` and `react-instantsearch-core@7.40.0`, which reads like the
+removal having failed. It has not. Those are stale installs still sitting in the hoisted root
+`node_modules` that nobody has pruned; nothing declares them, and
+`NodeGX.app/Contents/Resources/app/node_modules` contains **none** of them. The log line is
+electron-builder reporting what it *found while scanning*, not what it shipped.
+
+### One defect found on the way, and fixed
+
+The packaged app printed an `UnhandledPromiseRejectionWarning` on **every** launch.
+`autoupdater.js` wrapped `autoUpdater.checkForUpdates()` in a `try/catch` — but that call returns a
+**promise**, so the catch could only ever catch a synchronous throw, which it does not do. Every
+failure rejected straight past it. The very first check 404s, because the v0.1.0 release has no
+`latest-mac.yml` (phase 33's known gap), so this fired for every user on every start.
+
+Node has defaulted to `throw` on an unhandled rejection since v15; Electron currently downgrades it
+to a warning, and that downgrade is the only reason this was noise rather than a crash on startup.
+
+The fix attaches a `.catch` that **deliberately does not retry** — the `error` listener below
+already schedules a retry for the same failure, and retrying from both would spawn two checks per
+failure, each failing and spawning two more. Verified by repackaging and relaunching:
+`UnhandledPromiseRejection` count **2 → 0**, with `Error while auto updating, trying again in a
+while...` still logged, so the reporting and retry path is unchanged.
