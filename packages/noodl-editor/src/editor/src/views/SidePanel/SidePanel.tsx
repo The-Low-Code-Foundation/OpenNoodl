@@ -8,7 +8,7 @@ import { SidebarModelEvent } from '@noodl-models/sidebar/sidebarmodel';
 
 import { SideNavigation, SideNavigationButton } from '@noodl-core-ui/components/app/SideNavigation';
 import { ErrorBoundary } from '@noodl-core-ui/components/common/ErrorBoundary';
-import { IconName } from '@noodl-core-ui/components/common/Icon';
+import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
 import { Container, ContainerDirection } from '@noodl-core-ui/components/layout/Container';
 import { MenuDialogItem, MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
@@ -208,6 +208,7 @@ export function SidePanel() {
           <IconButton
             variant={IconButtonVariant.Transparent}
             icon={layout.mode === 'wide' ? IconName.FoldHorizontal : IconName.UnfoldHorizontal}
+            size={IconSize.Large}
             testId="side-panel-wide-toggle"
             onClick={layout.toggleWide}
           />
@@ -225,6 +226,7 @@ export function SidePanel() {
             variant={IconButtonVariant.Transparent}
             icon={IconName.Cards}
             isDisabled={!canDetach}
+            size={IconSize.Large}
             testId="side-panel-float-toggle"
             onClick={layout.toggleFloating}
           />
@@ -236,6 +238,7 @@ export function SidePanel() {
             variant={IconButtonVariant.Transparent}
             icon={IconName.ViewportDiagonalArrow}
             isDisabled={!canDetach}
+            size={IconSize.Large}
             testId="side-panel-full-toggle"
             onClick={layout.toggleFull}
           />
@@ -247,24 +250,26 @@ export function SidePanel() {
             ref={overflowButtonRef}
             variant={IconButtonVariant.Transparent}
             icon={IconName.DotsThreeHorizontal}
+            size={IconSize.Large}
             testId="side-panel-mode-overflow"
             onClick={showModeOverflowMenu}
           />
         </Tooltip>
       </span>
-      {/* POL-003: the wrapper is not decoration. It is where the glyph gets its
-          size, because `size={IconSize.Large}` does nothing — `Icon.module.scss`
-          declares no `is-size-*` rules, so every IconSize in the codebase is an
-          inert class name (UIX-010, confirmed at the CSS level). The wrapper also
-          gives this control the same `display: flex; align-items: center` box
-          that `.ModeControl` gives float and full, which is what actually
-          centres it against them: `Tooltip` renders a block-level trigger div in
-          between, and only two of the four controls had a flex wrapper. */}
+      {/* POL-003 sized this row from the wrapper, because `size` changed no
+          pixels then. POL-013 gave `Icon.module.scss` its `is-size-*` rules, so
+          the size is now the prop above (Large = 20px, the box POL-003 had
+          hardcoded) and the local override in `SidePanel.model.scss` is gone.
+          The wrapper stays for its other job: `display: flex; align-items:
+          center`, which is what centres this control against float and full —
+          `Tooltip` renders a block-level trigger div in between, and only two of
+          the four controls had a flex wrapper. */}
       <span className={css['HideControl']}>
         <Tooltip content="Hide panel" fineType="⌘B" showAfterMs={300}>
           <IconButton
             variant={IconButtonVariant.Transparent}
             icon={IconName.ArrowLineLeft}
+            size={IconSize.Large}
             testId="side-panel-hide-toggle"
             onClick={layout.toggleHidden}
           />

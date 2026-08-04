@@ -7,7 +7,7 @@
 import classNames from 'classnames';
 import React, { useCallback, useRef, useState } from 'react';
 
-import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
+import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
@@ -366,7 +366,7 @@ export function ComponentItem({
             kind === 'home' && css['Kind-home']
           )}
         >
-          <Icon icon={icon} />
+          <Icon icon={icon} size={IconSize.Small} />
         </div>
         <div className={css['Label']}>{component.localName}</div>
         <WarningDot count={component.warningCount} />

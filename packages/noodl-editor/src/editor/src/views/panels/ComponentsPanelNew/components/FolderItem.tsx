@@ -7,7 +7,7 @@
 import classNames from 'classnames';
 import React, { useCallback, useRef, useState } from 'react';
 
-import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
+import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
@@ -370,7 +370,7 @@ export function FolderItem({
             onCaretClick();
           }}
         >
-          <Icon icon={IconName.CaretRight} />
+          <Icon icon={IconName.CaretRight} size={IconSize.Tiny} />
         </div>
         <div className={css['ItemContent']} onClick={onClick}>
           <div
@@ -380,7 +380,7 @@ export function FolderItem({
               kind === 'home' && css['Kind-home']
             )}
           >
-            <Icon icon={icon} />
+            <Icon icon={icon} size={IconSize.Small} />
           </div>
           <div className={css['Label']}>{folder.name}</div>
           <WarningDot count={folder.warningCount} />

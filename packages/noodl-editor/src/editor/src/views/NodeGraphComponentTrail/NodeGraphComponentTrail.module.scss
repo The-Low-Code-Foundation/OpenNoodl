@@ -91,10 +91,12 @@
   font-weight: 400;
 }
 
+/* POL-013: the size is `IconSize.Tiny` (12px) on the component now, not an 11px
+   override here. This class sits on the Icon's own root via `UNSAFE_className`,
+   so `width: 11px` (0,1,0) was a straight specificity loss to `.Root.is-size-*`
+   (0,2,0) the moment those rules existed — the census measured it going 11 → 16.
+   One pixel wider, and the trail no longer has a size of its own to drift. */
 .Icon {
-  width: 11px;
-  height: 11px;
-  flex-shrink: 0;
 
   /* UIX-007 convention: glyphs paint with currentColor, so color is enough. */
   .Item.is-current & {

@@ -5,7 +5,7 @@ import { getComponentIconType } from '@noodl-models/nodelibrary/ComponentIcon';
 import { RuntimeType } from '@noodl-models/nodelibrary/NodeLibraryData';
 import { getDefaultComponent } from '@noodl-models/projectmodel.utils';
 
-import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
+import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
@@ -261,7 +261,7 @@ function Item({ item, onSwitchToComponent }: ItemProps) {
     >
       {/* Mock: only the current tab carries the component glyph. */}
       {icon && !isSheet && item.isCurrent && (
-        <Icon icon={isRootComponent ? IconName.Home : icon} UNSAFE_className={css['Icon']} />
+        <Icon icon={isRootComponent ? IconName.Home : icon} size={IconSize.Tiny} UNSAFE_className={css['Icon']} />
       )}
       <span className={css['Label']}>{name}</span>
       {item.component && Boolean(item.stateText) && <span className={css['StateText']}>({item.stateText})</span>}
