@@ -106,6 +106,41 @@ necessarily all of them.
 4. `catalog`-style check script exists, fails on an undefined token, and is in the gate.
 5. Screenshots of both surfaces in both themes.
 
+## Criterion 1 — verified live, 2026-08-04 (seventh session)
+
+The last unverified criterion in the phase. Driven by
+`scripts/pol39-live/pol004-doc-diff.js`, which scripts a plan whose single operation is a **doc**
+operation against a project it gives a real `docs/BRIEF.md` first — so the modal opens on an actual
+diff (additions, removals and context), not a whole-file creation. No provider money: `chatStream`
+is a scripted responder returning `submit_plan` then `submit_doc`.
+
+Measured on the open dialog, both themes:
+
+| | dark | light |
+|---|---|---|
+| sheet | `#12161b` | `#ffffff` |
+| `--theme-color-bg-1` | `#12161b` ✅ same | `#ffffff` ✅ same |
+| `--theme-color-secondary` | `#eef2f6` — **not used** | `#18212b` — **not used** |
+
+So the sheet is surface-toned in both themes and the inverted-sheet defect is gone. **Criterion 1
+passes**, and criterion 5's screenshots exist for this surface now.
+
+### It found something else, which has its own row
+
+Ten text nodes in the same dialog sit below WCAG 1.4.3's 4.5:1 — the diff gutter's line numbers at
+**3.17:1 / 3.16:1**, and the change-summary line at 3.93:1 / 3.62:1. That is **not** this task's
+defect and not caused by its fix: it is `codemirror-theme.ts` styling every code editor's gutter with
+`fg-muted`, which `colors.css` documents as *"large/secondary text only"*. Filed as
+[POL-017](POL-017-CODE-GUTTER-LINE-NUMBERS.md), with the replacement token already measured.
+
+### One trap the driver had to learn
+
+`getComputedStyle(el).getPropertyValue('--theme-color-bg-1')` returns the **declared** value, and in
+the dark theme these tokens are declared as aliases (`var(--base-color-neutral-100)`). So the first
+run scored every token `null` and reported a failure that was entirely the instrument's. A custom
+property only resolves by being *painted* — the driver now sets `background-color: var(--token)` on a
+probe element and reads the computed colour back.
+
 ## Traps
 
 - Adding the check *after* fixing only the six known names will green a gate that was never run
