@@ -1,182 +1,160 @@
 # Phase 40 — AI authoring quality: the handover prompt
 
-Written 2026-08-04 at the end of the diagnosis session. **Nothing is committed.** The phase number is
-provisional — this is the direct successor to Phase 38 (Track W) and can be folded into it if that
-reads better.
+Rewritten 2026-08-04 at the end of the **Layer-1 session**. The previous version of this file was the
+*diagnosis* session's handover — it said "nothing is committed" and framed the next session as
+pair-building with Richard. Both are out of date; what it knew that is still true has been folded in
+below.
 
 Paste the block below into a fresh session.
 
 ---
 
-You are starting **Phase 40 — AI authoring quality**. This is a *pair-building* session, not a task
-list. Richard is going to teach you how a Noodl/NodeGX graph should actually be architected, by
-building something with you in the running editor's AI Build panel. Your job is to learn it, then
-encode what you learned into the prompts and the node library so the built-in agent and Claude Code
-externally both author like an expert.
+You are continuing **Phase 40 — AI authoring quality**. Read
+`dev-docs/tasks/phase-40-ai-authoring-quality/README.md` and this file before doing anything, then the
+task file for whatever you pick up. The phase's own rule applies to its documents as well as to the
+code: **read the mechanism in source before trusting a stated fact, including the README's and this
+file's.** Three premises written by the people who opened this phase did not survive that check — they
+are listed below, and finding them was most of the value of the last session.
 
-Read `dev-docs/tasks/phase-40-ai-authoring-quality/HANDOVER.md` (this file) and
-`dev-docs/tasks/phase-38-ai-build-ux/README.md` before doing anything. Phase 38 is the same lineage:
-Richard drove the whole AI stack end to end and it destroyed 44 nodes on apply. This phase begins the
-same way — he drove it end to end again and got a page with no styling and no layout.
+## Where the phase stands
 
-## What triggered this, and the thing you must not get wrong
+**Layer 1 (the seams) is built.** Commits `4a0fdd4f`, `83647de9`, `c0bf8b5b` on `cline-dev`.
+Editor suite **2165 specs, 0 failures**; `typecheck:editor` and `typecheck:editor-tests` clean.
 
-Richard built a puppy-adoption page through the Build panel. It rendered as an unstyled serif column
-with a puppy photo overflowing the viewport. His reading was *"the AI produced nodes with zero
-styling or any sense of layout."*
+| Task | State |
+|---|---|
+| AAQ-001 — a created page is reachable | Built. Criteria 1–4 closed in code and under test; **criterion 5 (proven live in a preview window) outstanding**. |
+| AAQ-002 — the backend is first-class | Slices 1–3 built. **Slice 4 open** (the agent is still not told the collections). Criteria 1–3 are live-QA. |
+| AAQ-003 — authored apps scroll | Scope→setting and prompt doctrine built; criterion 3 under test. **Criteria 1–2 are live-QA.** The static validation rule was deliberately dropped — the reason is in the task file. |
+| AAQ-004 — the conversation is kept | Mechanism A built and under test. Mechanism B stays with AAQ-006, as that file directs. |
+| AAQ-005 → 007 (the engine) | Not started. This is the next substantial work. |
+| AAQ-008/009/010 (doctrine) | Not started. Prompt-encodable parts can land early; acceptance runs against the new engine. |
+| AAQ-011 | Register, worked opportunistically. Nothing added this session. |
 
-**That reading was wrong, and it is the most important fact in this phase.** The agent's submission
-was good. It set `flexDirection`, `columnGap`, padding on all four sides, `backgroundColor`,
-`borderRadius`, `boxShadow`, `sizeMode`, `objectFit`, real Unsplash images and plausible copy, on
-every node, and it grouped the page into named sections. Then **four separate mechanisms threw the
-styling away, and not one of them raised an error.**
+## The three corrections. Do not re-derive these the hard way
 
-Do not start this session believing the model is bad at design. Start it believing the seams lie.
-When something looks wrong in the render, your first question is *"did this reach the runtime?"* —
-not *"why did the model not do this?"* That instinct is the phase's whole lesson.
+1. **`prop-age` / `prop-bio` was never a timing problem, and AAQ-002 said it was.**
+   `SchemaHandler._fetch()` (`utils/schemahandler.ts`) had been a **stub since WF-007**: it set
+   `dbCollections = []`, `haveCloudServices = false`, and `_store()` then wrote `undefined` — on *every*
+   `window-focused` and *every* `cloudServicesChanged`. The only other source
+   (`backendServices.backends[]`) holds BYOB configs only, and `endpointBackendEntry` — the synthetic
+   entry the runtime builds for a `cloudservices` pointer — carries no `schema` at all. So those ports
+   could not exist for a built-in backend **at any point, in any order**. Now fixed by introspecting over
+   `backend:list` → `backend:status` → `backend:getSchema`.
+   The chain, for anyone debugging a missing data port: `record-ports.ts` → `resolveSchemaPortContext`
+   (`schema-ports.ts:477`) → `selectedBackend?.schema?.collections` → `dbCollections` fallback →
+   `schemahandler.ts`.
 
-## Already done — do not redo it
+2. **`RouterNavigate.target` and `Page.urlPath` are not in the node catalog.** Both are
+   runtime-discovered ports (`registerInputIfNeeded`, `_updatePorts`), and `checkParameterValues`
+   **skips dynamic-port nodes entirely** — so any string passed and nothing could ever have caught a
+   wrong navigation target. This is very likely *why* the model reached for "navigate to path":
+   `PageStackNavigateToPath.path` is the only navigation target the catalog declares statically. The
+   model picked the one it had been shown.
+   Corollary: the old version of this file said `Page.title`/`Page.urlPath` were caught as phantom
+   parameters. **They are not** — `catalog.isDynamicNode('Page')` is true and they are exempt. Verified
+   by probe. If you need to know whether a parameter is checked, write the four-line probe; do not
+   reason about it.
 
-Four seams were found and closed. All of it is **uncommitted** on `cline-dev`. Typecheck is clean and
-`npx jest tests-unit/aib-001` is **63 passing**.
+3. **`buildBackendList` has no production caller.** The Backend Services panel composes three separate
+   card components (`CloudServicesEndpointSection`, `LocalBackendCard`, `BackendCard`). The model-level
+   list seam and `dataBrowserAvailability` are both reachable only from specs and from one caller that
+   always passes `'managed'`. A right model seam is not a right panel — check which one a user actually
+   looks at before fixing either.
 
-1. **`variant` is a connection-only port.** `Text`, `Group` and `net.noodl.controls.button` all
-   declare `variant` as `{"name":"string","allowConnectionsOnly":true}`. The port *exists*, so the
-   unknown-parameter rule never saw it; the value is a well-formed string, so the value rule never
-   saw it either. The agent expressed **all** typography as `variant: "heading-1" | "lead" | "muted"`
-   and set no `fontSize`, `color` or `fontFamily` at all — which is why every word rendered at the
-   browser default. New `DiagnosticCode.ConnectionOnlyParameter`, severity **error**.
+## What was built, in one paragraph each
 
-2. **`width: 260, widthUnit: "px"` renders at 260%.** `width`/`height`/`maxWidth`/`minWidth` are
-   `dimension` ports with `defaultUnit: "%"`. `widthUnit` is not a port and is ignored; a bare number
-   is explicitly legal and is merged into the port's default unit. So the puppy `Image` at
-   `width: 228, height: 180` was **228% × 180%**. Two new rules: `unitSuffixTrap` (**error**, for the
-   legacy pairing) and `DiagnosticCode.UnitlessDimension` (**warning**, for a bare number on any
-   `%`-defaulting port — this is the one that catches the `Image`, which had no unit sibling to give
-   the intent away).
+**AAQ-001.** Registration is performed by the **plan transaction**, not asked of the model:
+`authoring/pageRegistration.ts` (pure) computes it, `staging.ts` writes it into the live project, and
+`planStaging.ts` runs it inside the plan's one undo group after the components land. The reasoning is
+the provision row's — which components the plan created and which of them are pages is something the
+apply *knows* exactly. Idempotent, so an agent that writes the router update itself collides with
+nothing. The start page moves only off an **empty placeholder** page (a freshly created project's Home),
+never off a page someone built, and the placeholder stays routed. `prospectivePageRegistration` is the
+same function the plan review shows a sentence from, so the promise and the act cannot disagree. Both
+prompts gained the contract, and `validation/navigation.ts` + `DiagnosticCode.UnresolvedNavigation`
+close finding #6 — blocking for authored output, with `plannedComponents` threaded through
+`AuthoringSession`/`PlanRun` so the fan-out's *authoring order* never becomes a diagnostic. Calibrated
+over all 96 `project.json` in the repo: 3 findings, all true positives.
 
-3. **`var(--token)` did not resolve in the preview window Richard was looking at.**
-   `PreviewTokenInjector` injects the `:root` block only into Electron `<webview>` tags it is handed;
-   `html-processor` stamps it only into *built* HTML. `static/viewer/index.html` carries none, so
-   anything served over the preview web server — a detached preview window, a phone on the LAN, a
-   browser tab — lost every colour, space, radius and shadow. Added `projectGetDesignTokenCss` to
-   `editorapi.js` and wired it through `main.js` into `web-server.js`, ahead of the project's own head
-   code, matching the export path.
+**AAQ-002.** `matchEndpointToManaged` resolves the endpoint pointer to the managed process it names — by
+`instanceId` (the provisioner writes it, so the match is exact) and by localhost port for older
+bindings. The pair folds into one entry, the managed one, which is the one that can open its own schema
+and data; it now carries the ACTIVE badge, "This project uses this backend", Set active and Disconnect.
+Disconnect asks first and says what survives. Plus the schema-cache fix in correction 1 — which needed
+no provision-time write, because `setCloudServices` already raises `cloudServicesChanged`.
 
-4. **Warnings never blocked the gate.** `authoring/validate.ts` was `ok: errors.length === 0`.
-   `UnknownParameter` and `UnitlessDimension` are now blocking **for authored output only**, via a
-   `BLOCKING_WARNINGS` set — deliberately *not* by raising severity, because the corpus is full of
-   imported nodes carrying settings the catalog cannot see and `validate:project` gaining a new error
-   class across it is a separate decision.
+**AAQ-003.** `ProjectScope.scroll` (`'page' | 'app'`, validated against the union, never cast) →
+`AuthoringPlan.scroll` (set only when the plan builds pages, defaulting to `'page'`) →
+`ApplyPlanOptions.settings`, applied undoably in the same group and **only where the project has no
+value of its own**. `recoverPlan` carries it too. The authoring prompt gained "CONTENT THAT DOES NOT
+FIT", with `scrollEnabled` read out of the catalog rather than remembered.
 
-Both new rules were calibrated against real content, not guessed. Across every `project.json` in the
-repo, units-typed ports appear in `{value, unit}` form **3,589 times** and as a bare number on a
-`%`-defaulting port **zero times** — while bare numbers on `px`-defaulting ports (`borderRadius` ×70,
-`fontSize` ×11, `letterSpacing` ×6) are common and correct. That is why the rule keys on the port's
-default unit rather than the value's shape. `parameterValuesCorpus.test.ts` asserts the corpus error
-set is *exactly* `['Text.sizeMode']` and still passes: **zero false positives.**
+**AAQ-004 A.** Every prose round of a scoping turn is kept, joined by a blank line. The streamed view is
+shifted by what has already been said (`withProsePrefix`), so the bubble only ever grows and ends
+byte-equal to the transcript entry — the round-local `onText` was collapsing the long answer one layer
+above the transcript bug. Failures keep what was said too.
 
-Replayed over Richard's actual page, the validator now produces **31 findings where it previously
-reported clean** — 19 dead `variant`s, 6 mis-united widths, 6 percentage-sized images.
+## What to do next
 
-Two prompt changes followed directly and are also done: `StyleVocabulary.ts` no longer offers the
-marker-param route (it used to read *"set the element type via the marker param, or copy the styles
-it implies"* — the agent took the shorter-looking option, which does not work), and
-`prompts/authoring.ts` now carries an "A VARIANT IS NOT A PARAMETER" block and a units block.
+**The live pass is the cheapest high-value work, and nobody has done it.** Everything in Layer 1 is
+mechanism-verified and spec-covered, and *none of it has been seen running*. The phase's own doctrine
+says a green suite proves nothing about the editor. Suggested order:
 
-### The nine files that are yours
+1. Cold-replay the puppy brief through the launcher wizard. Watch for: the router listing the created
+   pages after Apply (AAQ-001 criterion 5), the app opening on a real page, one backend card with Data
+   and Schema openable (AAQ-002 criteria 1–2), `prop-*` ports live at first load, and the page scrolling
+   in a **detached** preview window (AAQ-003 criterion 1 — which doubles as a regression check on the
+   diagnosis session's token-injection fix).
+2. Then AAQ-002 slice 4 — the authoring context carries no backend schema block at all
+   (`ContextBuilder` has none). With slice 3 in place the ports now exist, so a wrong `prop-*` name is a
+   caught diagnostic rather than a phantom port; that is why it was left.
+3. Then the engine: **AAQ-005 (substrate) → AAQ-006 (harness) → AAQ-007 (self-review)**. AAQ-005 is the
+   risk-bearing task and the others depend on it in order.
 
-```
-packages/noodl-editor/src/editor/src/validation/diagnostics.ts
-packages/noodl-editor/src/editor/src/validation/parameterValues.ts
-packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/validate.ts
-packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/authoring.ts
-packages/noodl-editor/src/editor/src/models/StyleTokensModel/StyleVocabulary.ts
-packages/noodl-editor/src/editor/src/utils/editorapi.js
-packages/noodl-editor/src/main/main.js
-packages/noodl-editor/src/main/src/web-server.js
-packages/noodl-editor/tests-unit/aib-001/parameterValues.test.ts
-```
-
-**Every other modified file in `git status` was already dirty before this work started** —
-`ProjectImporter.ts`, `projectmodel*.ts`, `featureFlags.ts`, `LocalProjectsModel.ts`, `analyze.ts`,
-the whole `VersionControlPanel/` set, `package-lock.json`, `nodegx-observe`. Do not attribute them,
-do not commit them, and **never `git add -A`** — this is a shared checkout.
-
-## What this session is actually for
-
-**Richard teaches; you build and then encode.** Expect the session to run roughly like this, but let
-him lead — he may reorder it.
-
-1. **He teaches you the architecture.** When a repeated block earns its own component. When a
-   Repeater over a data source beats three hand-duplicated siblings. How a page should be factored
-   into sections, what belongs in a component's interface, when to reach for Component Inputs/Outputs
-   versus a shared variable. Ask about the cases you cannot infer from the catalog.
-2. **You build it with him in the running editor**, through the AI Build panel where that is the
-   point, and by hand where the panel gets in the way. Both are informative — the places you have to
-   go around the panel are findings.
-3. **You encode it.** Into `prompts/authoring.ts`, `prompts/planning.ts`, the style vocabulary, the
-   catalog enrichment, and wherever else it belongs. A lesson that only lives in this conversation is
-   a lesson that is lost.
-
-**The bar is Claude-artifact quality.** Richard's words: *"we want Claude artifact quality output or
-nobody is going to accept it."* A page that merely validates is not the goal.
-
-## The two known-open problems
-
-**1. Decomposition — the planning prompt argues against it.**
-`prompts/planning.ts` line ~79 says *"Keep plans as small as the request allows. Two or three precise
-operations beat six vague ones."* There is no instruction anywhere to factor repeated UI into a
-reusable component. That is why three identical puppy cards became three hand-duplicated `Group`
-subtrees rather than one component instantiated three times, or a Repeater. **Do not rewrite this
-prompt from your own taste — this is exactly what Richard is going to teach you.** Get the teaching
-first, then write it.
-
-**2. There is no conversation history for in-editor builds.**
-`lib21-qa/.nodegx/` is **empty**. Nothing is written at all. The "Show the conversation" affordance
-in `ProjectAuthoringView.tsx` (~line 1084) only ever appears for a plan scoped in the *launcher*, and
-only when `recovered && !plan && !runState`. Richard cannot reopen a past build conversation to
-correct it, which is his third complaint and is a build, not a prompt fix. Scope it after you have
-seen what a good session looks like — you will know better then what needs to persist.
-
-## Running it
-
-A dev server was already up in the previous session (`node scripts/start.ts`, webpack watchers, the
-Electron editor with `lib21-qa` open). **Check whether it is still running before starting another** —
-`ps aux | grep -iE "electron|webpack"`. Two sessions on this checkout fight; a sibling `dev:stop`
-kills a `test:ci` silently, and the editor is a queue, not a resource to seize.
-
-**Seam 3's fix needs a full Electron restart.** It touches `main.js` and `web-server.js`, so HMR will
-not reach it. Ask Richard before restarting — his editor may have unsaved work.
-
-To verify seam 3 after a restart, with a project open:
-
-```
-curl -s http://localhost:8574/ | grep -c "noodl-design-tokens"   # 0 before the fix, 1 after
-```
-
-The `run-editor` skill drives the editor headlessly (CDP, screenshots, console). Read its traps
-first — `--target=editor` attaches to the **preview**, and closing a webview CDP target white-screens
-the editor.
+Richard's bar has not moved: *"legendary creations rivaling the best Opus landing page artifacts."* A
+page that validates is not the goal, and the exit criteria are three briefs judged side by side against
+Claude artifacts — see the README.
 
 ## Traps that will bite you in this specific work
 
-- **A declared `default` never runs its setter.** The most repeated trap in this repo. A port with a
-  declared default is not initialised by its `set()` function.
-- **A saved project applies a parameter before the port exists.** Jest never reproduces this; only a
-  real load does. Anything that looks like an ordering bug in the runtime probably is one.
-- **`registerOutputIfNeeded` has two callers**, and a signal/undefined-value port is late forever.
-- **HMR will not reach a mounted panel.** Sidebar panels are hidden, not unmounted — restart before
-  concluding a UI change did not work.
-- **The editor test suite lies three ways.** Only the `Jasmine:` line counts. Editor specs under
-  `tests/` are **jasmine, not jest**; `tests-unit/` is jest.
-- **A green build proves nothing about packaging** (externals hoisting, `DefinePlugin` folding), and
-  a green catalog proves nothing about the editor.
+Still true from the diagnosis session:
+
+- **The seams lie before the model fails.** When something looks wrong in the render, the first question
+  is *"did this reach the runtime?"*, never *"why did the model not do this?"*
+- **A declared `default` never runs its setter.** The most repeated trap in this repo.
+- **A saved project applies a parameter before the port exists.** Jest never reproduces it; only a real
+  load does.
+- **HMR will not reach a mounted panel** — sidebar panels are hidden, not unmounted. Restart before
+  concluding a UI change did not work. Anything in `main.js` / `web-server.js` needs a full Electron
+  restart.
+- **The editor test suite lies three ways. Only the `Jasmine:` line counts.**
 - **Launching the dev editor rewrites the example project.** Revert it after killing the editor.
+- **The `run-editor` skill's traps**: `--target=editor` attaches to the *preview*, and closing a webview
+  CDP target white-screens the editor.
 
-## How to know you have actually finished
+Learned this session:
 
-Not "the tests pass". The measure is: **build a page with Richard, look at it rendered in a real
-preview window, and have him say it looks good.** Then re-run the same brief through the Build panel
-cold, with your prompt changes in place, and see whether the agent gets close on its own. If it does
-not, the lesson is not encoded yet — it is still in the conversation.
+- ⚠️ **Run jest from `packages/noodl-editor`, never from the repo root.** The root config is babel-based
+  and fails on TypeScript `import { type X }` with a parser error that looks like a syntax error in your
+  spec. `npx jest tests-unit/...` from the package directory is the working invocation.
+- ⚠️ **Editor specs under `tests/` are registered by hand.** `tests/index.ts` re-exports directory
+  barrels and `tests/ai/index.ts` lists each file. A *new* spec file that nobody adds to the barrel
+  compiles, typechecks and **silently never runs**. Adding cases to an existing file avoids it; adding a
+  file does not.
+- `tsconfig.tests-main.json` (the jest one) has pre-existing unrelated errors from `.module.scss`
+  imports. It is **not** a gate — the gates are `typecheck:editor` and `typecheck:editor-tests`.
+- The corpus calibration pattern is cheap and worth repeating for any new rule: `git ls-files
+  '*project.json'` is 96 real projects, and a rule that fires on them is a rule that needs a reason.
+
+## The shared checkout
+
+Fourteen files were modified and uncommitted before this session started and were **not touched** —
+`package-lock.json`, `nodegx-observe`, `ProjectImporter.ts`, `projectmodel*.ts`, `featureFlags.ts`,
+`LocalProjectsModel.ts`, `analyze.ts`, the whole `VersionControlPanel/` set, `tests/versioning/index.ts`.
+They belong to another session's work and have been idle for days. **Do not attribute them, do not commit
+them, never `git add -A`, and never `git stash`.** Commit with explicit pathspecs on *both* `git add` and
+`git commit`.
+
+No second session was live during this one (checked: no foreign commits, no Electron running, dirty-file
+mtimes all a day or more old). **Check again yourself** — it is a per-session fact, not a standing one.
