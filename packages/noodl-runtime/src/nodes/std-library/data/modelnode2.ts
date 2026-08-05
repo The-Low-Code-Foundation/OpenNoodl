@@ -129,9 +129,44 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Id',
       group: 'General',
-      description: 'Id of the object this node is bound to, whether that came from the Id input or from a repeater item',
+      description:
+        'Id of the object this node is bound to, whether that came from the Id input or from a repeater item. This names the object; the Object output carries the object itself, which is what a node that watches or reads it wants',
       getter: function (this: ModelNodeInstance) {
         return this._internal.model ? this._internal.model.getId() : this._internal.modelId;
+      }
+    },
+    /**
+     * ERG-004 §7.4 / FH-004 — the object itself, not its name.
+     *
+     * ✅ Decided by Richard, 2026-08-02. Before this port the whole Data category could only
+     * identify an object by **string id**, and `Object Changed` — whose input wants a live
+     * `Model` — had no producer anywhere in the node library. The obvious wiring
+     * (`Object.Id → Object Changed.Object`) is *permitted* by the `string → object` typecast and
+     * then fails silently-ish: `node.ts` `eval`s the id as a JS literal, the `ReferenceError`
+     * is caught, `{}` is substituted, and the watcher watches nothing for the life of the app.
+     * With this port that wire is a genuine `object → object` connection with no cast at all.
+     *
+     * ⚠️ **A getter, not a setter side effect.** The most-repeated trap in this repo is that a
+     * declared `default` never runs its setter, so anything produced only as a side effect of
+     * an input arriving is absent on a graph that never touches that input. The value is pulled
+     * from `_internal.model`, and the single place that model changes — `setModel` — flags this
+     * port alongside `id`, so the two can never disagree about which object is bound.
+     *
+     * ⚠️ **`null`, never `undefined`, when nothing is bound.** `Node.prototype.sendValue`
+     * returns early on `undefined` (`node.ts:687-689`), so an unbound Object emitting
+     * `undefined` would send *nothing* — and a downstream `Object Changed` would go on watching
+     * the object it was given before, forever, with no way to be told the binding was cleared.
+     * `null` is the Empty-Value Contract's explicit clear and is what "there is no object here"
+     * actually means; `undefined` means "no opinion", which this node always has.
+     */
+    object: {
+      type: 'object',
+      displayName: 'Object',
+      group: 'General',
+      description:
+        'The bound object itself, for Object Changed or anything else that reads or watches the object rather than naming it; empty while nothing is bound',
+      getter: function (this: ModelNodeInstance) {
+        return this._internal.model || null;
       }
     },
     changed: {
@@ -369,6 +404,10 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
 
       this._internal.model = model;
       this.flagOutputDirty('id');
+      // FH-004. The one place the bound object changes, so the one place `object` is sent —
+      // and it is sent here, *before* `setModelID` announces `Fetched`, because a signal
+      // arriving ahead of the value it describes is phase 30's most-repeated defect (NV-ii).
+      this.flagOutputDirty('object');
 
       // In set idSource, we are calling setModel with undefined
       if (model) {

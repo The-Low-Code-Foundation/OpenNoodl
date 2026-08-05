@@ -2221,7 +2221,15 @@
           "plug": "output",
           "group": "General",
           "displayName": "Id",
-          "description": "Id of the object this node is bound to, whether that came from the Id input or from a repeater item"
+          "description": "Id of the object this node is bound to, whether that came from the Id input or from a repeater item. This names the object; the Object output carries the object itself, which is what a node that watches or reads it wants"
+        },
+        {
+          "name": "object",
+          "type": "object",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Object",
+          "description": "The bound object itself, for Object Changed or anything else that reads or watches the object rather than naming it; empty while nothing is bound"
         },
         {
           "name": "changed",
