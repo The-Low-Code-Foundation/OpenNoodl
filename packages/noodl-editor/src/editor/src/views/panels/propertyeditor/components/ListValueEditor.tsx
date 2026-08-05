@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot, Root } from 'react-dom/client';
 
 import { JSONEditor } from '@noodl-core-ui/components/json-editor';
@@ -139,15 +140,21 @@ export function openListValueEditor(args: {
 
   const close = () => args.parent.hidePopout();
 
-  root.render(
-    React.createElement(ListValueEditor, {
-      portType: args.portType,
-      displayName: args.displayName,
-      stored: args.stored,
-      disabled: args.disabled,
-      onCommit: args.onCommit,
-      onRequestClose: close
-    })
+  // Synchronous so showPopout can measure real content (DEBT-010). A React 18
+  // root renders on its own schedule, so without this the popout is measured
+  // as 0×0 and lands with its top edge at the button's Y — off the bottom of
+  // the window for any row in the lower half of the panel (FH-005).
+  flushSync(() =>
+    root.render(
+      React.createElement(ListValueEditor, {
+        portType: args.portType,
+        displayName: args.displayName,
+        stored: args.stored,
+        disabled: args.disabled,
+        onCommit: args.onCommit,
+        onRequestClose: close
+      })
+    )
   );
 
   args.parent.showPopout({

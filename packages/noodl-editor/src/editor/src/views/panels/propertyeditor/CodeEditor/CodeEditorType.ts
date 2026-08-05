@@ -1,4 +1,5 @@
 import React from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot, Root } from 'react-dom/client';
 
 import { CodeHistoryStore } from '@noodl-models/CodeHistory';
@@ -203,23 +204,30 @@ export class CodeEditorType extends TypeView {
         ? CodeHistoryStore.instance.providerFor(nodeId, scope.name)
         : undefined;
 
-    this.popoutRoot.render(
-      React.createElement(JavaScriptEditor, {
-        value: this.value || '',
-        onChange: (newValue) => {
-          this.value = newValue;
-        },
-        onSave: () => {
-          save();
-        },
-        onClose: closeHandler,
-        validationType,
-        // No placeholder: the mode supplies its own (core-ui `utils/modes.ts`).
-        disabled: this.readOnly, // Enable read-only mode if port is marked readOnly
-        width: initialSize?.x || 800,
-        height: initialSize?.y || 500,
-        historyProvider
-      })
+    // Synchronous so showPopout can measure real content (DEBT-010). The editor's
+    // size is an inline width/height on its root, so one flushed commit is the
+    // whole box — CodeMirror's own layout happens inside it and cannot change it.
+    // Without this the popout is measured as 0×0 and opens with its top edge at
+    // the button's Y, i.e. below the fold for any row low in the panel (FH-005).
+    flushSync(() =>
+      this.popoutRoot.render(
+        React.createElement(JavaScriptEditor, {
+          value: this.value || '',
+          onChange: (newValue) => {
+            this.value = newValue;
+          },
+          onSave: () => {
+            save();
+          },
+          onClose: closeHandler,
+          validationType,
+          // No placeholder: the mode supplies its own (core-ui `utils/modes.ts`).
+          disabled: this.readOnly, // Enable read-only mode if port is marked readOnly
+          width: initialSize?.x || 800,
+          height: initialSize?.y || 500,
+          historyProvider
+        })
+      )
     );
 
     const popoutDiv = this.popoutDiv;

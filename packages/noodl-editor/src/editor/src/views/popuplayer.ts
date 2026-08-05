@@ -59,6 +59,11 @@ export interface PopoutArgs {
   /** CSS color for the arrow. @default '313131' */
   arrowColor?: string;
   disableDynamicPositioning?: boolean;
+  /**
+   * @deprecated Never centred anything: its only effect was to skip clearing the
+   * arrow's direction class, which now has to happen so a flipped popout's arrow
+   * points the right way. No caller has ever set it.
+   */
   disableCentering?: boolean;
   offsetX?: number;
   offsetY?: number;
@@ -68,7 +73,12 @@ export interface PopoutArgs {
 export interface Popout {
   el: HTMLElement;
   onClose?: () => void;
+  /** The side that was asked for. */
   position: PopoutPosition;
+  /** The side actually used — differs from `position` when it had to flip to fit. */
+  effectivePosition?: PopoutPosition;
+  /** Remembered so the arrow can be recoloured onto the right border after a flip. */
+  arrowColor?: string;
   animate?: boolean;
   manualClose?: boolean;
   attachToRect: Rect;
@@ -143,6 +153,19 @@ const ARROW_COLOR_CSS_ATTR = {
   top: 'borderTopColor',
   left: 'borderLeftColor',
   right: 'borderRightColor'
+};
+
+/**
+ * The side a popout flips to when the one it asked for does not fit.
+ *
+ * It doubles as the arrow-class map: a popout placed *below* its anchor wears
+ * the `top` arrow, and so on — which is the same table read the other way.
+ */
+const OPPOSITE_POSITION: Record<PopoutPosition, PopoutPosition> = {
+  bottom: 'top',
+  top: 'bottom',
+  left: 'right',
+  right: 'left'
 };
 
 // ---------------------------------------------------------------------
@@ -700,57 +723,119 @@ export class PopupLayer {
 
   private _positionPopout(popout: Popout, args: PopoutArgs) {
     const popoutEl = popout.el;
-    const position = popout.position;
     const attachRect = popout.attachToRect;
 
     const content = popoutEl.querySelector('.popup-layer-popout-content') as HTMLElement;
     const arrow = popoutEl.querySelector('.popup-layer-popout-arrow') as HTMLElement;
 
     const arrowSize = 10;
+    const margin = 10;
 
     const size = outerSize(content, true);
     const contentWidth = size.width;
     const contentHeight = size.height;
 
-    // Figure out the position of the popup
-    let x: number, y: number;
+    // The box the popout has to live in. The window's title bar is off limits —
+    // it is what the OS drags the window by.
+    const minX = margin;
+    const maxX = this.width - margin;
+    const minY = Math.max(margin, windowTitleBarHeight());
+    const maxY = this.height - margin;
 
-    if (!args.disableCentering) {
-      arrow.classList.remove('left', 'right', 'bottom', 'top');
+    const offsetX = args.offsetX || 0;
+    const offsetY = args.offsetY || 0;
+
+    /** Where a popout of this size sits when placed on `side`, before any clamping. */
+    const originFor = (side: PopoutPosition) => {
+      switch (side) {
+        case 'bottom':
+          return {
+            x: attachRect.left + attachRect.width / 2 - contentWidth / 2 + offsetX,
+            y: attachRect.top + attachRect.height + arrowSize + offsetY
+          };
+        case 'top':
+          return {
+            x: attachRect.left + attachRect.width / 2 - contentWidth / 2 + offsetX,
+            y: attachRect.top - contentHeight - arrowSize + offsetY
+          };
+        case 'left':
+          return {
+            x: attachRect.left - contentWidth - arrowSize + offsetX,
+            y: attachRect.top + attachRect.height / 2 - contentHeight / 2 + offsetY
+          };
+        case 'right':
+          return {
+            x: attachRect.left + attachRect.width + arrowSize + offsetX,
+            y: attachRect.top + attachRect.height / 2 - contentHeight / 2 + offsetY
+          };
+        default:
+          return undefined;
+      }
+    };
+
+    /**
+     * How far off screen a side puts the popout, along the axis that side owns.
+     * Only that axis can be improved by flipping — the other one is identical on
+     * both sides and is the clamp's job.
+     */
+    const overflowFor = (side: PopoutPosition, origin: { x: number; y: number }) => {
+      switch (side) {
+        case 'bottom':
+          return Math.max(0, origin.y + contentHeight - maxY);
+        case 'top':
+          return Math.max(0, minY - origin.y);
+        case 'right':
+          return Math.max(0, origin.x + contentWidth - maxX);
+        case 'left':
+          return Math.max(0, minX - origin.x);
+        default:
+          return 0;
+      }
+    };
+
+    let position = popout.position;
+    let origin = originFor(position);
+
+    // Flip to the opposite side when this one hangs off the edge — but only if the
+    // other side is genuinely better. A popout taller than the window overflows
+    // whichever way it faces, and flipping it would only move which end is cut off.
+    if (origin) {
+      const overflow = overflowFor(position, origin);
+      if (overflow > 0) {
+        const flipped = OPPOSITE_POSITION[position];
+        const flippedOrigin = originFor(flipped);
+        if (flippedOrigin && overflowFor(flipped, flippedOrigin) < overflow) {
+          position = flipped;
+          origin = flippedOrigin;
+        }
+      }
     }
 
-    if (position === 'bottom') {
-      x = attachRect.left + attachRect.width / 2 - contentWidth / 2;
-      y = attachRect.height + attachRect.top + arrowSize;
-      arrow.classList.add('top');
-    } else if (position === 'top') {
-      x = attachRect.left + attachRect.width / 2 - contentWidth / 2;
-      y = attachRect.top - contentHeight - arrowSize;
-      arrow.classList.add('bottom');
-    } else if (position === 'left') {
-      x = attachRect.left - contentWidth - arrowSize;
-      y = attachRect.top + attachRect.height / 2 - contentHeight / 2;
-      arrow.classList.add('right');
-    } else if (position === 'right') {
-      x = attachRect.width + attachRect.left + arrowSize;
-      y = attachRect.top + attachRect.height / 2 - contentHeight / 2;
-      arrow.classList.add('left');
+    // The arrow always points back at the anchor, so it follows the side we ended on.
+    if (position) {
+      setArrowDirection(arrow, position);
     }
 
-    // Make sure the popup is not outside of the screen
-    const margin = 10;
-    if (args.offsetX) x += args.offsetX;
-    if (args.offsetY) y += args.offsetY;
+    // Recolour only when the side changed: showPopout colours the arrow before the
+    // first positioning pass, against the side that was asked for.
+    if (popout.effectivePosition !== position) {
+      popout.effectivePosition = position;
+      if (popout.arrowColor) this.setPopoutArrowColor(popout, popout.arrowColor);
+    }
 
-    if (x + contentWidth > this.width - margin) x = this.width - margin - contentWidth;
-    if (y + contentHeight > this.height - margin) y = this.height - margin - contentHeight;
-    if (x < margin) x = margin;
-    if (y < margin) y = margin;
+    // Make sure the popout is not outside of the screen
+    let x = origin?.x;
+    let y = origin?.y;
 
-    // Cannot cover to bar as that is used for moving window
-    const topBarHeight = windowTitleBarHeight();
+    if (x !== undefined) {
+      if (x + contentWidth > maxX) x = maxX - contentWidth;
+      if (x < minX) x = minX;
+    }
 
-    if (y < topBarHeight) y = topBarHeight;
+    if (y !== undefined) {
+      if (y + contentHeight > maxY) y = maxY - contentHeight;
+      if (y < minY) y = minY;
+    }
 
     // Position the popup
     Object.assign(popoutEl.style, {
@@ -831,10 +916,16 @@ export class PopupLayer {
   }
 
   public setPopoutArrowColor(popout: Popout, color: string) {
-    const attr = ARROW_COLOR_CSS_ATTR[popout.position];
+    popout.arrowColor = color;
+
+    const attr = ARROW_COLOR_CSS_ATTR[popout.effectivePosition || popout.position];
     if (!attr) return;
 
     const arrow = popout.el.querySelector('.popup-layer-popout-arrow') as HTMLElement;
+
+    // Clear the other three, or a popout that flipped keeps the old side's colour
+    // painted on a border the arrow no longer draws with.
+    Object.values(ARROW_COLOR_CSS_ATTR).forEach((key) => ((arrow.style as TSFixme)[key] = ''));
     (arrow.style as TSFixme)[attr] = color;
   }
 
