@@ -13,7 +13,7 @@ Three kinds of doc in this folder:
 - **FH-*** — bug-fix task docs. Mechanism confirmed with file:line, slices, criteria, traps.
 - **TALK-*** — brainstorm docs for the conversations Richard asked for. Each states what the code
   actually does, the real options, and a recommendation to argue with.
-- **CWF-*** — the build tasks that came *out* of a TALK conversation once it was had.
+- **CWF-***, **HUD-*** — the build tasks that came *out* of a TALK conversation once it was had.
 
 ## The triage table
 
@@ -30,7 +30,7 @@ Three kinds of doc in this folder:
 | 7 | Explain panel steals focus, loses selection | Panel doesn't steal focus — the property editor does (by design); Explain then pays twice: showing it **deliberately deselects** (missing from an allow-list), and it never re-reads on becoming visible. Both fixes are small; turning it off is a settings toggle, no code. | [FH-008](FH-008-THE-EXPLAIN-PANEL-CANT-HOLD-A-SELECTION.md) |
 | 8, 9b | Docs panel + VC rows dark-on-dark in light mode | One shared bug: `ListItem`'s Active variant paints `--theme-color-secondary` (an **action** colour, inverted by construction) as a surface — POL-004's class. ~1.9:1 in light; broken in dark too. Three call sites, one fix. | [FH-009](FH-009-THE-ACTIVE-LIST-ITEM-IS-UNREADABLE.md) |
 | 9a | Create/Connect Repository: overlay, no dialog | `position: fixed` modals rendered **in-tree** inside `BasePanel`'s CSS container (`container-type` makes the panel the containing block) — violating the contract BasePanel's own comments document. Portal/BaseDialog them; two more instances in the same panel. | [FH-010](FH-010-THE-DIALOG-TRAPPED-IN-THE-PANEL.md) |
-| 10 | Record records nothing | **Structural**: nothing pulls the trace buffer unless a walk is on screen; `stop()` never pulls; preview reload silently disarms with no re-arm; Record arms with no viewer connected. Capture itself works. | [FH-011](FH-011-RECORD-RECORDS-NOTHING.md) + HUD design: [TALK-003](TALK-003-A-RECORDING-HUD.md) |
+| 10 | Record records nothing | **Structural**: nothing pulls the trace buffer unless a walk is on screen; `stop()` never pulls; preview reload silently disarms with no re-arm; Record arms with no viewer connected. Capture itself works. ✅ **Talked 2026-08-05: the HUD is an alpha feature and Record moves to the canvas** — the HUD track below. | [FH-011](FH-011-RECORD-RECORDS-NOTHING.md) + [TALK-003](TALK-003-A-RECORDING-HUD.md) |
 | 11 | The whole cloud-workflow audit | Nine step kinds **by design** ("workflows orchestrate, functions compute"; conditions are data because eval'd strings = RCE behind an admin credential). Real holes: `call-function` **params have engine support and no UI** (you can't pass data into functions at all); workflow output is computed then **dropped** before the caller sees it; modern HTTP node is browser-only so the cloud picker has only deprecated REST2; POL-015 first-workflow still broken. | [TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) |
 | 12 | Pin from another workflow + z-order | POL-009's slice-2 warning ignored: the pin captures identity from the open canvas, not the execution. Auto-navigate + tag from `workflowId`. Overlay bars z=200 vs picker's popup layer z=10 with no intervening stacking context. | [FH-012](FH-012-PIN-NAVIGATION-AND-Z-ORDER.md) |
 | 13 | Where's the MCP server / URL? | **There is no URL and no door**: both servers are stdio (client-spawned), the editor has zero MCP UI, and neither binary ships in the packaged app. Deliverable = copy-pasteable commands in a settings section + packaging. | [TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) |
@@ -59,8 +59,11 @@ Three kinds of doc in this folder:
    placement and packaging.
 4. **[TALK-006](TALK-006-THE-THREE-SIGNALS.md) — the three signals.** One vocabulary decision
    (keep both ports on the 8 degenerate nodes?), one surface decision (where descriptions render).
-5. **[TALK-003](TALK-003-A-RECORDING-HUD.md) — recording HUD.** After FH-011 lands; decide alpha
-   vs fast-follow.
+5. ✅ **[TALK-003](TALK-003-A-RECORDING-HUD.md) — recording HUD. HAD 2026-08-05.** **Alpha, not
+   fast-follow**, and **Record leaves the Provenance panel** for a canvas control. Four build tasks
+   (the HUD track below), all gated on FH-011. Q4 went the expensive way — per-peer trace
+   ownership — and the research for it found a **live data-loss bug**: an agent's `start_trace`
+   destroys a recording a human is in the middle of.
 6. **[TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) — backend realtime.** Mostly assembly on
    existing plumbing; needs your yes on the standalone node.
 
@@ -96,6 +99,21 @@ Build in this order — CWF-001 gates the rest of the track:
 Deferred with reasons in the decisions table: data steps (Q2), an HTTP *step* (Q4), workflow-calls-
 workflow (Q6). Pile 1.4 keeps its existing owners (POL-015, OPEN-WORK F62).
 
+## The HUD track (out of TALK-003, 2026-08-05)
+
+**[FH-011](FH-011-RECORD-RECORDS-NOTHING.md) gates all four** — a HUD over a recorder that records
+nothing is a prettier version of the same defect. FH-011's slice 2 is **amended** by this
+conversation: the poll moves out of `ProvenancePanel` and into `TraceSession`, because a sidebar
+panel is not constructed until it is first opened and Record no longer lives there.
+
+| # | Task | Why |
+|---|---|---|
+| 1 | [HUD-001](HUD-001-THE-RECORDING-OVERLAY.md) — the overlay, the control, the counter | Record becomes one canvas control with two states. The `execution-overlay` slot is already taken, so this gets its own layer. |
+| 2 | [HUD-002](HUD-002-NODE-BADGES.md) — badges as nodes fire | The demo. `getNodeBounds` × the event's `from`/`to` (**not** `fromNode`/`toNode` — no such fields), POL-009-scoped, honest about what is off-canvas. |
+| 3 | [HUD-003](HUD-003-EXPAND-TO-THE-WALK.md) — expand → roots → walk | Joins the halves. Must go through `provenanceRequest`'s stash-then-switch, and is *more* exposed to that trap than the canvas right-click was. |
+| 4 | [HUD-004](HUD-004-THE-TRACE-HAS-OWNERS.md) — per-peer trace ownership | Two peers share one global boolean and **neither editor peer registers a clientId**, so there is no identity to own a switch with. Includes the data-loss fix. |
+| — | replay scrubber | v2. `ExecutionTimeline` is reusable when we want it. |
+
 ## Suggested build order for the FH tasks
 
 Cheap-and-visible first, grouped by shared surface:
@@ -106,7 +124,8 @@ Cheap-and-visible first, grouped by shared surface:
    dialogs), **FH-012** (pin identity + stacking context).
 3. **FH-003** ([object Object]), **FH-004** (Object output — unblocks Object Changed),
    **FH-015** slice 1 (the Button one-liner) then the default-behaviour slices.
-4. **FH-011** (Record), **FH-016** (label drag), **FH-008** (Explain), ~~**FH-017**~~ (code editor —
+4. **FH-011** (Record — now also the gate for the whole HUD track, so it moved up in practice),
+   **FH-016** (label drag), **FH-008** (Explain), ~~**FH-017**~~ (code editor —
    ✅ **DONE 2026-08-05**, all five slices, driven live in both themes), then
    **FH-019** (typed intellisense, same files — sequence them, don't parallelise).
 5. **FH-006** (Roboto — after the one measurement), **FH-007** (blocked on ERG-005 §2 + the

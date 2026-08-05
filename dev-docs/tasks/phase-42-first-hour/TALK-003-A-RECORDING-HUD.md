@@ -77,3 +77,62 @@ the wow.
 2. Node badges from polled events via `getNodeBounds`, POL-009-scoped.
 3. Expand → roots list → hand off to the Provenance walk.
 4. (v2) replay scrubber over a root's causal tree.
+
+---
+
+## ✅ Talked 2026-08-05 — the decisions
+
+Every premise above was re-checked against the code before the conversation. The machinery is
+where the doc said it was; three things it said were wrong or missing, and they are folded into
+the tasks below.
+
+| # | Question | Richard's decision |
+|---|---|---|
+| Q1 | Is the HUD the only face of Record? | **Yes — Record moves to the canvas.** The Provenance panel keeps the walk and a "Recorded interactions" section; it no longer arms anything. |
+| Q2 | How live is live? | **Poll** (not asked — my call, stated and unopposed). The existing 1.5 s pull is invisible at click speed, and "the editor pulls, the runtime never pushes" is the constraint that keeps this out of the failure mode the shelved Data Lineage panel died of. |
+| Q3 | Per component or app-wide? | **Badges for this canvas, counter app-wide and honest.** POL-009's rule, plus "N events on other components" spelled out so a click that fires elsewhere never reads as "nothing happened". |
+| Q4 | The observe MCP shares the trace switch | **Separate the switches** — per-peer trace ownership, the expensive answer. An agent's `stop_trace` must not disarm a human's recording, and an agent's `start_trace` must not *destroy* one. |
+| Q5 | Alpha or fast-follow? | **Alpha. Build it now.** |
+
+### Three corrections to this doc
+
+1. **The `execution-overlay` slot is taken.** `ExecutionOverlay` owns it
+   ([OverlayViews.ts:163-181](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/OverlayViews.ts#L163-L181));
+   a second `renderSlot` on the same name would unmount it. The HUD gets its own layer in
+   [CanvasShell.ts:78-102](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/CanvasShell.ts#L78-L102)
+   and its own render/update pair. ~15 lines, but not the free ride the doc implied.
+
+2. **Q4 had no signal to show, and "separate the switches" is bigger than it sounds.** The editor
+   only handles messages with `type === 'viewer'`
+   ([ViewerConnection.ts:153-219](../../../packages/noodl-editor/src/editor/src/ViewerConnection.ts#L153-L219)),
+   so another peer's `traceEnabled` is invisible to it. Worse, the relay forwards messages
+   **verbatim** without stamping a sender
+   ([relay-server.js:150-164](../../../packages/noodl-editor/src/main/src/relay-server.js#L150-L164)),
+   and **neither editor peer registers a `clientId` at all** — the editor sends
+   `{cmd:'register', type:'editor', token}` ([ViewerConnection.ts:103](../../../packages/noodl-editor/src/editor/src/ViewerConnection.ts#L103))
+   and so does `nodegx-observe` ([relayClient.ts:136](../../../packages/nodegx-observe/src/relayClient.ts#L136)).
+   There is no identity to own a switch with. That is [HUD-004](HUD-004-THE-TRACE-HAS-OWNERS.md),
+   and it turned up a **live data-loss bug** on the way: `setTraceEnabled(true)` replaces the
+   buffer unconditionally ([nodecontext.ts:684-690](../../../packages/noodl-runtime/src/nodecontext.ts#L684-L690)),
+   so an agent calling `start_trace` today silently destroys a recording a human is in the middle of.
+
+3. **Q1's decision moves FH-011's poll.** A sidebar panel's component is created only when the
+   panel is **first opened** ([SidePanel.tsx:57-68](../../../packages/noodl-editor/src/editor/src/views/SidePanel/SidePanel.tsx#L57-L68))
+   — not merely hidden, *never constructed*. With Record on the canvas, a user who has never
+   opened the Provenance panel has nothing pulling the buffer, and the HUD would sit at `0 events`
+   for the whole session while the runtime happily recorded. **The poll must move out of the panel
+   and into `TraceSession`.** FH-011 slice 2 is amended accordingly, and it is the one change in
+   that task this conversation actually alters.
+
+### The HUD track
+
+Build in this order. **[FH-011](FH-011-RECORD-RECORDS-NOTHING.md) gates all four** — a HUD over a
+recorder that records nothing is a prettier version of the same defect.
+
+| # | Task | Why |
+|---|---|---|
+| 1 | [HUD-001](HUD-001-THE-RECORDING-OVERLAY.md) — the overlay, the control, the counter | Record becomes one canvas control with two states (Q1). Kills the "armed but dead" ambiguity visually. |
+| 2 | [HUD-002](HUD-002-NODE-BADGES.md) — badges as nodes fire | The wow. `getNodeBounds` × `TraceEvent.fromNode`, POL-009-scoped, honest about what is off-canvas (Q3). |
+| 3 | [HUD-003](HUD-003-EXPAND-TO-THE-WALK.md) — expand → roots → walk | Joins the two halves: watch it run, then ask why. |
+| 4 | [HUD-004](HUD-004-THE-TRACE-HAS-OWNERS.md) — per-peer trace ownership | Q4. Two peers, one global boolean, no identity — and today the second one to arm wipes the first one's buffer. |
+| — | replay scrubber | Still v2, as the doc had it. `ExecutionTimeline` is reusable when we want it. |

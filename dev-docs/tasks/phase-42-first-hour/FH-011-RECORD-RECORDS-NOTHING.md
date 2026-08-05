@@ -55,10 +55,20 @@ There is no test for `TraceSession.start/stop` at all, and no test drives Record
 **Slice 1 — stop pulls.** `TraceSession.stop()` pulls the buffer (`refreshEvents()`) before
 notifying. Record → click → Stop must populate the root-event list with zero further clicks.
 
-**Slice 2 — the live poll loses its walk gate.** While `recording`, poll on the session (pull
-events) regardless of `target`; keep the *walk refresh* part gated on `target` as today. The
-"Recorded interactions" list should grow live while recording — that is most of what Richard
+**Slice 2 — the live poll loses its walk gate, and moves out of the panel.** While `recording`,
+poll (pull events) regardless of `target`; keep the *walk refresh* part gated on `target` as today.
+The "Recorded interactions" list should grow live while recording — that is most of what Richard
 expected to see.
+
+⚠️ **Amended 2026-08-05 by [TALK-003](TALK-003-A-RECORDING-HUD.md): the poll belongs in
+`TraceSession`, not in `ProvenancePanel`.** The poll lives in the panel today
+(`ProvenancePanel.tsx:170-186`), and a sidebar panel's component is constructed only when the panel
+is **first opened** — `SidePanel.tsx:57-68` creates it on the first `switch`, so "hidden but
+mounted" does not apply to a panel nobody has opened. Once Record moves to the canvas (TALK-003's
+Q1, [HUD-001](HUD-001-THE-RECORDING-OVERLAY.md)), a user can record an entire session without the
+panel ever existing — and a poll that lives there would never run. Owning the timer on the session
+is the same amount of work here and is what the HUD needs; do it in this slice rather than moving
+it later.
 
 **Slice 3 — re-arm on viewer registration.** On the viewer `registered` event, if
 `TraceSession.recording`, re-send `sendTraceEnabled(true)` — same pattern as
