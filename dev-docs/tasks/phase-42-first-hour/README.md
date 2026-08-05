@@ -1,0 +1,107 @@
+# Phase 42 — First Hour, second pass
+
+**Created:** 2026-08-05
+**Origin:** Richard drove the alpha "first hour" again — deeper than phase 39's pass — and wrote
+down 21 items: signal semantics, the props panel, the cloud-workflow surface, MCP onboarding, the
+code editor, provenance Record, pointer events, and a tail of visual defects. Every item was
+researched against the code before a single doc was written; several "bugs" turned out to be
+built-features-behind-broken-affordances, and several "features we built" turned out to be
+decisions still waiting to be made.
+
+Three kinds of doc in this folder:
+
+- **FH-*** — bug-fix task docs. Mechanism confirmed with file:line, slices, criteria, traps.
+- **TALK-*** — brainstorm docs for the conversations Richard asked for. Each states what the code
+  actually does, the real options, and a recommendation to argue with.
+- **CWF-*** — the build tasks that came *out* of a TALK conversation once it was had.
+
+## The triage table
+
+| # | What Richard reported | What research found | Doc |
+|---|---|---|---|
+| 0 | Done/Completed/Unchanged "doubling up" | Semantics are real and your guess was backwards (**Completed** always fires; **Done** = changed something; **Unchanged** = valid no-op). Real problems: signal-port descriptions render **nowhere** in the editor, and on 48/82 nodes the distinction collapses (8 nodes: Done ≡ Completed). | [TALK-006](TALK-006-THE-THREE-SIGNALS.md) |
+| 0.1 | "Didn't we add nodes to watch arrays?" | **Yes — built and shipped.** `Array Changed` + `Object Changed` (category Logic, ERG-004): Item Added/Removed/Changed (in-place edits via per-member subscriptions), Array Replaced, Index/Item/Key/Count. No "choose what to watch" selector **by design** — you choose by which output you wire. Known blocker: no Data node emits a live object → FH-004. Reorders (sort/reverse) deliberately fire no signal. | answer + [FH-004](FH-004-THE-OBJECT-NODE-EMITS-AN-OBJECT.md) |
+| 1 | `[object Object]` as auto-name | Diagnosed in phase 3 (TASK-006B), chosen fix half-applied: `labelForNode` returns the raw expression object; the resolver built for it has zero call sites. Three collateral bugs (cache poisoning, spurious sub-label, latent crash). | [FH-003](FH-003-OBJECT-OBJECT-ON-THE-CANVAS.md) |
+| 2 | WebSocket node bound to the selected backend | Wrong abstraction — the built-in backend is deliberately SSE, and 4/6 backend types don't speak WS. A five-transport realtime layer already exists with exactly **one door** (Query Records' checkbox). Proposal: standalone Subscribe To Changes node. | [TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) |
+| 3 | Object node has no Object output | **Never built — and Richard already decided it should be** (2026-08-02, ERG-004 §7.4, recorded "unowned and not started"). Unblocks `Object Changed`. `Array.Items` may already serve the array side — verify first. | [FH-004](FH-004-THE-OBJECT-NODE-EMITS-AN-OBJECT.md) |
+| 4 | Popout editor opens at the button's Y, off-screen | React-18 measurement race: positioned against a 0×0 box because the two editors skip the `flushSync` five other popouts use (DEBT-010 pattern), **plus** `_positionPopout` genuinely has no flip logic. Same as phase-40 AAQ-011 F2 (open, unowned — superseded here). | [FH-005](FH-005-THE-POPOUT-OPENS-OFFSCREEN.md) |
+| 5 | Roboto Medium in text styles | Appears nowhere in the repo. Comes from **library prefab imports** (16 prefabs ship `Roboto-Medium.ttf`) via the font picker — or from that project's own styles metadata. One measurement in the project settles which. | [FH-006](FH-006-ROBOTO-MEDIUM.md) |
+| 6 | Type selection on Component Inputs/Outputs | **Never built, and ERG-005 explicitly forbade building it yet** — §2 is a decision written up *for Richard*, still unanswered. §1 is mid-flight in another session (untracked tests-first). | [FH-007](FH-007-COMPONENT-IO-TYPES-STATUS.md) |
+| 7 | Explain panel steals focus, loses selection | Panel doesn't steal focus — the property editor does (by design); Explain then pays twice: showing it **deliberately deselects** (missing from an allow-list), and it never re-reads on becoming visible. Both fixes are small; turning it off is a settings toggle, no code. | [FH-008](FH-008-THE-EXPLAIN-PANEL-CANT-HOLD-A-SELECTION.md) |
+| 8, 9b | Docs panel + VC rows dark-on-dark in light mode | One shared bug: `ListItem`'s Active variant paints `--theme-color-secondary` (an **action** colour, inverted by construction) as a surface — POL-004's class. ~1.9:1 in light; broken in dark too. Three call sites, one fix. | [FH-009](FH-009-THE-ACTIVE-LIST-ITEM-IS-UNREADABLE.md) |
+| 9a | Create/Connect Repository: overlay, no dialog | `position: fixed` modals rendered **in-tree** inside `BasePanel`'s CSS container (`container-type` makes the panel the containing block) — violating the contract BasePanel's own comments document. Portal/BaseDialog them; two more instances in the same panel. | [FH-010](FH-010-THE-DIALOG-TRAPPED-IN-THE-PANEL.md) |
+| 10 | Record records nothing | **Structural**: nothing pulls the trace buffer unless a walk is on screen; `stop()` never pulls; preview reload silently disarms with no re-arm; Record arms with no viewer connected. Capture itself works. | [FH-011](FH-011-RECORD-RECORDS-NOTHING.md) + HUD design: [TALK-003](TALK-003-A-RECORDING-HUD.md) |
+| 11 | The whole cloud-workflow audit | Nine step kinds **by design** ("workflows orchestrate, functions compute"; conditions are data because eval'd strings = RCE behind an admin credential). Real holes: `call-function` **params have engine support and no UI** (you can't pass data into functions at all); workflow output is computed then **dropped** before the caller sees it; modern HTTP node is browser-only so the cloud picker has only deprecated REST2; POL-015 first-workflow still broken. | [TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) |
+| 12 | Pin from another workflow + z-order | POL-009's slice-2 warning ignored: the pin captures identity from the open canvas, not the execution. Auto-navigate + tag from `workflowId`. Overlay bars z=200 vs picker's popup layer z=10 with no intervening stacking context. | [FH-012](FH-012-PIN-NAVIGATION-AND-Z-ORDER.md) |
+| 13 | Where's the MCP server / URL? | **There is no URL and no door**: both servers are stdio (client-spawned), the editor has zero MCP UI, and neither binary ships in the packaged app. Deliverable = copy-pasteable commands in a settings section + packaging. | [TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) |
+| 14 | Props labels cut off even when panel widened | Hard **62px** label column in both label implementations (React row + legacy row), `flex-shrink: 0` — panel width is irrelevant. Cloud-workflow steps use the same component; fixed together. | [FH-013](FH-013-PROPS-LABELS-WRAP.md) |
+| 15 | Unit menus open empty | The select **removes the selected option from its own menu**, and ≈27 of 59 unit ports declare exactly one unit → one option, filtered out, empty bordered sliver. | [FH-014](FH-014-THE-EMPTY-UNIT-MENU.md) |
+| 16 | Block pointer events doesn't work | Click-through is the default (handlers installed on every visual node whether connected or not; nothing stops propagation). The blockTouch option **works everywhere except Button** — one JSX line re-assigns `onClick` after the blocking wrapper. Plus a right-default question (auto-stop when Click is connected). | [FH-015](FH-015-BLOCK-POINTER-EVENTS.md) |
+| 17 | Can't drag connection labels | **Built** (CAN-001) — but the grab is gated on the wire-stroke hover, the exact ordering trap the spec warned about; selection-lit chips are fully inert; zero cursor affordance; no drag test. | [FH-016](FH-016-WIRE-LABELS-ARE-DRAGGABLE-IN-THEORY.md) |
+| 18, 19 | Code editor: autocomplete, linting, selection, "DIY mistake?" | **It's not DIY — it's CodeMirror 6**, and all six symptoms are located config gaps (a bad guard, a duplicate un-debounced error system, a hardcoded `dark: true`, a hover-only gutter). ~A day, mostly deletion. The real ask underneath is typed intellisense — reachable on CM6. | [TALK-002](TALK-002-THE-CODE-EDITOR-IS-NOT-DIY.md) + [FH-017](FH-017-CODE-EDITOR-FIXES.md) |
+| 20 | Execution history / data explorer for deployed apps | Noted for the deployment phase as asked: execution history is coupled by *address* (cheap to remote), the Data Browser by *architecture* (needs a BackendHandle route); the admin-credential tier must be decided first; BAK-005's served `/_admin` already exists as the v1 answer. | [phase-26 NOTE-REMOTE-PANELS](../phase-26-deployment/NOTE-REMOTE-PANELS.md) |
+
+## The six conversations, in the order I'd have them
+
+1. ✅ **[TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) — cloud workflows. HAD 2026-08-05.**
+   Decisions recorded at the foot of the doc; seven build tasks written — see the CWF track below.
+2. **[TALK-002](TALK-002-THE-CODE-EDITOR-IS-NOT-DIY.md) — code editor.** Five minutes: confirm
+   no-switch, priority-call typed intellisense. Unblocks FH-017 immediately.
+3. **[TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) — MCP onboarding.** "Main point of attraction"
+   with literally zero UI; the shape is mostly settled by the research, needs your yes on
+   placement and packaging.
+4. **[TALK-006](TALK-006-THE-THREE-SIGNALS.md) — the three signals.** One vocabulary decision
+   (keep both ports on the 8 degenerate nodes?), one surface decision (where descriptions render).
+5. **[TALK-003](TALK-003-A-RECORDING-HUD.md) — recording HUD.** After FH-011 lands; decide alpha
+   vs fast-follow.
+6. **[TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) — backend realtime.** Mostly assembly on
+   existing plumbing; needs your yes on the standalone node.
+
+Plus one embedded decision: **ERG-005 §2** (explicit types on component I/O) inside FH-007.
+
+## The CWF track (out of TALK-001, 2026-08-05)
+
+Build in this order — CWF-001 gates the rest of the track:
+
+| # | Task | Why |
+|---|---|---|
+| 1 | [CWF-001](CWF-001-CALL-FUNCTION-PARAMS.md) — Call Function params | You cannot pass data into a cloud function at all. Engine + `$path` control both exist; the catalog declares nothing, so no UI can author a mapping. |
+| 2 | [CWF-002](CWF-002-THE-WORKFLOW-RETURN.md) — the return | Output is computed then dropped at [dispatcher.ts:217](../../../packages/nodegx-backend/src/triggers/dispatcher.ts#L217). Sync/async per trigger **+** a visible Return step (Q3). |
+| 3 | [CWF-003](CWF-003-HTTP-IN-THE-CLOUD-RUNTIME.md) — HTTP in cloud | The modern node is browser-only; the cloud picker has only deprecated REST2. One line in the cloud viewer's list — plus two checks that could make it not-one-line. |
+| 4 | [CWF-005](CWF-005-RETRY-IS-A-POLICY.md) — Retry folds in | Q7: Retry *is* a call-function with backoff. Fold it as a policy group, delete the kind, migrate on read. Presentation fixes ship first, alone. |
+| 5 | [CWF-004](CWF-004-THE-TRANSFORM-STEP.md) — Transform step | Q1(b): reshape JSON between two calls without a second canvas, in the existing value language. **Blocked on CWF-001** (shares its editor). |
+| 6 | [CWF-006](CWF-006-TRIGGERS-AND-THE-ENTRY-STEP.md) — triggers + entry | Pile 2. Nothing is broken; the picker just never says so. Cheap affordances. |
+| — | [CWF-007](CWF-007-STREAMING-RESPONSES.md) — streaming | Q5: a design doc to argue with, not a build. Answer it together with [TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) — same node family. |
+
+Deferred with reasons in the decisions table: data steps (Q2), an HTTP *step* (Q4), workflow-calls-
+workflow (Q6). Pile 1.4 keeps its existing owners (POL-015, OPEN-WORK F62).
+
+## Suggested build order for the FH tasks
+
+Cheap-and-visible first, grouped by shared surface:
+
+1. **FH-009** (ListItem — one fix, three panels) → **FH-014** (unit menu) → **FH-013** (label
+   wrap). All noodl-core-ui; sequence them, don't parallelise (core-ui worktree trap).
+2. **FH-005** (popout flushSync — two small edits + optional flip), **FH-010** (portal the
+   dialogs), **FH-012** (pin identity + stacking context).
+3. **FH-003** ([object Object]), **FH-004** (Object output — unblocks Object Changed),
+   **FH-015** slice 1 (the Button one-liner) then the default-behaviour slices.
+4. **FH-011** (Record), **FH-016** (label drag), **FH-008** (Explain), **FH-017** (code editor,
+   after TALK-002's five-minute confirm).
+5. **FH-006** (Roboto — after the one measurement), **FH-007** (blocked on ERG-005 §2 + the
+   other session's §1).
+
+## ⚠️ Concurrent-session note
+
+At the time of writing, another session has uncommitted work in `projectmodel*`,
+`ProjectImporter`, `LocalProjectsModel`, `featureFlags.ts` (v2-format flip),
+**`VersionControlPanel/**`** and untracked `tests-unit/erg-005/`. Affected here: **FH-010** must
+not touch `DiffList.tsx` and commits by explicit pathspec; **FH-007** is partly *their* workstream
+— do not start §1/§2 build without checking whether that session is live. Never `git add -A`,
+never stash.
+
+## What this phase deliberately is not
+
+Phase 41 (accessibility) stays the current scheduled phase; this folder is triage + specs so that
+each item can be picked up in a session with full context, the way phase 39's fifteen were. The
+TALK docs are inputs to conversations with Richard, not commitments.
