@@ -295,6 +295,46 @@ Two traps caught before they shipped, both now specced: `graph.roots` is **paren
 `visualRoots` (reading the latter would widen the placeholder rule and let an apply steal the start page
 from a part-built page), and the start-page lookup is **exact**, not the module's tolerant `isSamePage`.
 
+## AAQ-005 slice 3 — one vocabulary, and a port that could not exist (2026-08-05)
+
+Slices 1 and 2 made both clients judge a candidate the same way and then do the same things to the
+project. Slice 3 converged the surface the agent reads *before* it writes: the schema of what it may say
+about a node. Editor suite **2202 specs, 0 failures**; `noodl-mcp` **161 tests / 15 suites** (was
+136/14); runtime **2144**; both typechecks clean.
+
+1. **The two tool schemas were hand-written twins in two schema languages, and had drifted both ways.**
+   MCP accepted `children` and `variant` the editor did not; the editor accepted `sample_data` MCP did
+   not; and MCP's instance-port schema was `{ name }` with `.passthrough()`. Now one table
+   (`validation/authoringVocabulary.ts`) with two renderers, every remaining difference declared with its
+   reason, and a spec that fails on an undeclared one.
+2. **⚠️ One of the differences meant a port could not exist.** `plug` was undeclared on the MCP door, and
+   a declared instance port without it is **inert**, not merely under-specified:
+   `NodeGraphNode.getPorts(filter)` selects on `p.plug`, and `componentmodel` derives a component's
+   interface from `getPorts('input')`/`getPorts('output')`. So a `Component Inputs` node carrying
+   `ports: [{ name: 'Title' }]` gives the component **no inputs** — written to disk, structurally valid,
+   invisible on the canvas, diagnosed by nobody. Now `DiagnosticCode.PortWithoutPlug`, an error in the
+   shared precondition set (**five** checks, not four), refused by both gates.
+3. **The corpus had to be read, not reasoned about.** Real projects use three plug values — `input`,
+   `output` and **`input/output` (92 declared ports)**. A check recognising only the first two would have
+   flagged all 92. All three populations were measured before the diagnostic became an error: 1483 of
+   1483 corpus instance ports carry a plug, and the AI specs and MCP fixtures declare none without one.
+4. **⚠️ Deriving a schema from a table nearly erased the types that keep the write path safe.** A
+   rendered `Record<string, ZodTypeAny>` makes zod infer every tool argument as `{ [x: string]: any }`.
+   It surfaced only because one handler still declared its parameter precisely; without it, the entire
+   authoring write path would have become `any` under a change described as a refactor. The values come
+   from the table, the compile-time shapes are stated, and the parity spec reads each registered schema
+   back to keep them honest.
+5. **A tenth premise-adjacent correction, smaller than the others:** `authoredNodes` — the adapter every
+   precondition check reads its nodes through — was a byte-identical twin in both packages *after* slice 1
+   converged the policy around it. Adding `ports` to one copy and not the other would have made one gate
+   silently stop checking. Converged.
+
+Filed: **AAQ-011 F14** — `variant`, `stateParameters` and the transition fields are authorable only
+through the external door, so a component the *editor's* agent creates can never have a variant or a
+visual state. `CARRIED_NODE_FIELDS` protects them on an update and there is no base on a create. That is
+AAQ-010's subject and it needs the AIB-010 named-reference gap closed first, or the agent will invent
+variant names.
+
 ## Order of work
 
 **First, the seams — AAQ-001 through AAQ-004.** Small, mechanism-verified, and nothing above them

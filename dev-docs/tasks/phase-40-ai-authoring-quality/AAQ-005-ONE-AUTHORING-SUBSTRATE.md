@@ -2,8 +2,107 @@
 
 **Findings:** #11 and Richard's directive on the contract question: *"Hooold the front door… Surely
 we can do better than [one component per session]. Let's not cut corners here."*
-**Status:** open — **slice 1 (one gate) and slice 2 (the apply gap) are built and green**; the toolset
-convergence and criteria 3/4 are not started
+**Status:** open — **slices 1 (one gate), 2 (one apply) and 3 (one vocabulary) are built and green**;
+criteria 3 and 4 are not started, and the multi-component *tool set* is deliberately still two shapes
+
+## ⚠️ Slice 3 landed: one vocabulary, and the field that decides a port exists was on one door only (2026-08-05)
+
+Slices 1 and 2 made both clients judge a candidate identically and then do the same things to the
+project. Slice 3 is about the surface an agent reads *before* it writes anything: **the schema of what
+it may say about a node.** That lived in two hand-written places, in two schema languages —
+`AiAssistant/authoring/tools.ts` (JSON Schema, `submit_component`) and `noodl-mcp/src/tools/author.ts`
+(zod, `create_component`/`update_component`) — and it had drifted in both directions.
+
+| field | editor, before | `noodl-mcp`, before |
+|---|---|---|
+| `children` | absent (derived from `parent`) | accepted and reconciled |
+| `variant` | absent | accepted |
+| `plug` on an instance port | declared, and required | **not declared at all** |
+| `sample_data` | accepted | absent |
+| `stateParameters` and friends | not expressible | reachable via `.passthrough()` |
+
+Four of those are deliberate and are now declared with their reasons. **One had a consequence**, and it
+is the slice's finding: a declared instance port with no `plug` is not merely under-specified, it is
+**inert**. `NodeGraphNode.getPorts(filter)` selects with `p.plug && p.plug.indexOf(filter) !== -1`, and
+`componentmodel` derives a component's interface from `getPorts('input')` / `getPorts('output')` on the
+`haveComponentPorts` nodes — so a `Component Inputs` node carrying `ports: [{ name: 'Title' }]` lands in
+neither map. The port is written, the structural schema passes (`nodes.schema.json` requires only
+`name`), the canvas shows nothing, and the component silently has **no inputs**. The agent believes it
+built a component interface and built nothing. MCP's schema never mentioned the field; the editor's
+declared it required, but that schema is *instruction only* — `toSubmitPayload` casts unchecked — and no
+rule checked it on either door.
+
+### What was built
+
+- **`validation/authoringVocabulary.ts`** — one table for four surfaces (node, instance port,
+  connection, submission payload). Each field carries its kind, its one shared description, which
+  clients expose it, where it is required, and — whenever any of those is partial — **why**.
+  `undeclaredDivergences()` returns the offenders and a spec asserts that list is empty, so a divergence
+  cannot be added quietly. `SURFACE_DIVERGENCES` does the same job for differences that are not about a
+  field (the `operations` delta dialect, `if_revision`, the plan tools as tools, passthrough-vs-carry,
+  and the enforcement asymmetry below).
+- **Two renderers, one declaration.** The editor renders JSON Schema from the table
+  (`jsonSchemasFor('editor')`); `noodl-mcp/src/vocabulary.ts` renders zod. The table cannot render zod
+  itself — `noodl-editor` has no zod dependency and should not grow one to describe a surface it emits
+  as JSON Schema.
+- **`DiagnosticCode.PortWithoutPlug`**, an **error** in the shared precondition set — which is now five
+  checks, not four. Both gates refuse a plug-less port; `gateParity.test.ts` asserts they refuse it
+  identically.
+- **`authoredNodes` converged.** It was a byte-identical twin in `authoring/validate.ts` and
+  `noodl-mcp/src/validate.ts`, and it is the seam a new field travels through to reach the checks —
+  adding `ports` to it would have meant editing two copies, and the forgotten one would have quietly
+  stopped checking. That is precisely how `children` and `variant` drifted in the first place.
+
+### ⚠️ Two traps worth keeping
+
+1. **The two surfaces do not enforce alike.** On the MCP side these schemas are **enforcement**: zod
+   rejects a tool call before the handler runs. On the editor side they are **instruction**:
+   `toSubmitPayload` casts the model's arguments unchecked and `buildCandidate` re-derives the shape
+   errors it needs. So `requiredIn: ['mcp']` hard-rejects external calls that work today, while
+   `requiredIn: ['editor']` only changes a sentence a model reads. This is why `id` and `plug` are
+   required on one door and merely described on the other — converging the *text* is free, converging
+   the *enforcement* is a breaking change to a shipped API. Slice 2's lesson in a new dress.
+2. **Deriving a zod shape from a table erases the types that make the write path safe.** A rendered
+   `Record<string, ZodTypeAny>` makes zod infer every tool argument as `{ [x: string]: any }`, and every
+   write handler in `author.ts` and `planTools.ts` takes its arguments from that inference. Caught by
+   `tsc` on the one handler that still declared its parameter precisely — had that handler not existed,
+   the whole authoring write path would have silently become `any`. The runtime values come from the
+   table; the compile-time shapes are stated in `vocabulary.ts` and checked by the parity spec reading
+   each registered schema back.
+
+### Evidence
+
+- `tests-unit/aaq-005/authoringVocabulary.test.ts` — 16 cases. Pins `submit_component` **byte-for-byte
+  against a verbatim copy of the literal it replaced** (the in-editor loop's prompt surface is not a
+  refactor's to change), the undeclared-divergence invariant, the explicit divergence list as a
+  deliberate-edit gate, and that no node or port field is absent from `nodes.schema.json` — the phantom
+  field class. **Verified non-vacuous: adding one undeclared, unstored field fails 7 of 16.**
+- `noodl-mcp/tests/vocabularyParity.test.ts` — 23 cases reading **both renderings** back: field sets,
+  optionality, descriptions, enum members, and the behaviours the renderer had to preserve (node and
+  port passthrough, connection not, `path` required, `nodes` min 1). **Verified non-vacuous: reinstating
+  the old hand-written schemas fails 8 of 23.**
+- `tests-unit/aaq-005/instancePorts.test.ts` — 14 cases. `gateParity.test.ts` gained 2 (both gates
+  refuse a plug-less port; both accept `input/output`); `tests/ai/authoring-validate.test.ts` gained 2.
+- **Calibrated on all three populations before the check was made an error**, because a rule calibrated
+  on the project corpus is not calibrated on the authored one: the 96 real projects declare **1483
+  instance ports and 1483 carry a plug** — `input` 512, `output` 879, **`input/output` 92**. That third
+  value is why the corpus had to be read rather than reasoned about: a check recognising only
+  `input`/`output` would have flagged 92 legitimate ports. The AI specs and MCP fixtures declare none
+  without a plug. Zero hits in all three.
+- Editor suite **2202 specs, 0 failures**; `noodl-mcp` **161 tests / 15 suites**; runtime **2144
+  passed**; `typecheck:editor` and `typecheck:editor-tests` clean.
+
+Filed rather than fixed: **AAQ-011 F14** — `variant` and the visual-state fields are expressible only
+through the external door, so an editor-authored *create* can never carry either. That is AAQ-010's
+subject and needs the agent told which variants exist (the AIB-010 gap) before the field is worth
+offering.
+
+### What slice 3 leaves
+
+The **tool set** is still two shapes, and the note below on criterion 2 stands: the editor exposes three
+tools and `noodl-mcp` its own larger surface, with two divergences (`operations`, the plan tools) that
+are deliberate. What is converged is the *vocabulary* they speak, which is the half that had drifted
+without anyone deciding to. Criteria 3 and 4 are untouched.
 
 ## ⚠️ Slice 2 landed, and it found the gate was only half the substrate (2026-08-05)
 
@@ -242,6 +341,11 @@ scripted drivers in `scripts/aib38-live/` are the regression harness).
    tests-unit/aib-001` green; scripted plan driver green.
 2. `noodl-mcp` serves the same tool schemas from the same source of truth; a test fails if the two
    surfaces diverge.
+   *(Slice 1 met the second clause for the gate. **Slice 3 met both clauses for the authoring
+   vocabulary** — one table, two renderers, `vocabularyParity.test.ts` as the detector. What remains is
+   the tool **set**: three tools here, a larger surface there, with `operations` and the plan tools
+   deliberately MCP-only. A drift detector over the shared vocabulary now exists; forcing one tool list
+   is a separate decision.)*
 3. A scripted multi-component session (no model) creates a page + two section components + a token
    write in one changeset, applies atomically, and undoes as one group.
 4. Claude Code, pointed at `noodl-mcp` against a scratch project, builds a multi-component page
