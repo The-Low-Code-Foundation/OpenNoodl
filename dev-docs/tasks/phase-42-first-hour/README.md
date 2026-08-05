@@ -63,6 +63,18 @@ Three kinds of doc in this folder:
 
 Plus one embedded decision: **ERG-005 §2** (explicit types on component I/O) inside FH-007.
 
+## ⚠️ Read this before any CWF task
+
+[**BACKEND-AUTHORING-MODEL.md**](../../reference/BACKEND-AUTHORING-MODEL.md) is the canonical
+statement of what a workflow is, what a cloud function is, and why the split exists. It was written
+after half of TALK-001's conversation turned out to rest on a misunderstanding of exactly that.
+Everything below derives from it.
+
+**A workflow orchestrates; a cloud function computes; the workflow calls the function.** Data nodes,
+HTTP and code belong in cloud functions — never as workflow steps. Q2 and Q4 are closed on those
+grounds, and the orientation problem that made the confusion possible is its own phase
+([phase 43](../phase-43-backend-authoring-clarity/README.md)).
+
 ## The CWF track (out of TALK-001, 2026-08-05)
 
 Build in this order — CWF-001 gates the rest of the track:
@@ -71,10 +83,11 @@ Build in this order — CWF-001 gates the rest of the track:
 |---|---|---|
 | 1 | [CWF-001](CWF-001-CALL-FUNCTION-PARAMS.md) — Call Function params | You cannot pass data into a cloud function at all. Engine + `$path` control both exist; the catalog declares nothing, so no UI can author a mapping. |
 | 2 | [CWF-002](CWF-002-THE-WORKFLOW-RETURN.md) — the return | Output is computed then dropped at [dispatcher.ts:217](../../../packages/nodegx-backend/src/triggers/dispatcher.ts#L217). Sync/async per trigger **+** a visible Return step (Q3). |
-| 3 | [CWF-003](CWF-003-HTTP-IN-THE-CLOUD-RUNTIME.md) — HTTP in cloud | The modern node is browser-only; the cloud picker has only deprecated REST2. One line in the cloud viewer's list — plus two checks that could make it not-one-line. |
+| 3 | [CWF-003](CWF-003-HTTP-IN-THE-CLOUD-RUNTIME.md) — HTTP in cloud | **Promoted.** Under the correct model this *is* the answer to "how do I call an API", not an ergonomic nicety. One line in the cloud viewer's list — plus two checks that could make it not-one-line. |
 | 4 | [CWF-005](CWF-005-RETRY-IS-A-POLICY.md) — Retry folds in | Q7: Retry *is* a call-function with backoff. Fold it as a policy group, delete the kind, migrate on read. Presentation fixes ship first, alone. |
-| 5 | [CWF-004](CWF-004-THE-TRANSFORM-STEP.md) — Transform step | Q1(b): reshape JSON between two calls without a second canvas, in the existing value language. **Blocked on CWF-001** (shares its editor). |
-| 6 | [CWF-006](CWF-006-TRIGGERS-AND-THE-ENTRY-STEP.md) — triggers + entry | Pile 2. Nothing is broken; the picker just never says so. Cheap affordances. |
+| 5 | [CWF-004](CWF-004-THE-TRANSFORM-STEP.md) — Transform + data steps | **Rewritten 2026-08-05** on Richard's argument: without a workflow-level reshape, every function carries its caller's mess. Widened to a family (Validate, Filter, Split, Sort, Dedupe, Parse JSON). A free Function step is advised against; the "new function from this step" gesture replaces it. **Blocked on CWF-001.** |
+| 6 | [CWF-006](CWF-006-TRIGGERS-AND-THE-ENTRY-STEP.md) — triggers + entry | Pile 2. Nothing is broken; the picker just never says so. Cheap affordances — and a **subset of [phase 43](../phase-43-backend-authoring-clarity/README.md)**, which supersedes it if that lands first. |
+| — | [FH-018](FH-018-THE-CONFIG-NODE-IS-INERT-AND-ITS-ENDPOINT-IS-PUBLIC.md) — the Config node | Filed 2026-08-05. Inert since WF-007 (`configSchema` declared, never assigned) **and** `GET /config` is public and unfiltered. Needs a decision before slices. |
 | — | [CWF-007](CWF-007-STREAMING-RESPONSES.md) — streaming | Q5: a design doc to argue with, not a build. Answer it together with [TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) — same node family. |
 
 Deferred with reasons in the decisions table: data steps (Q2), an HTTP *step* (Q4), workflow-calls-

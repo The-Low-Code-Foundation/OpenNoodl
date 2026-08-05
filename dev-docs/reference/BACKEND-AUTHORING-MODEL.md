@@ -1,0 +1,92 @@
+# The backend authoring model: workflows and cloud functions
+
+**Status:** canonical. Written 2026-08-05 after Richard — who commissioned both systems — spent an
+hour concluding the wrong thing about them. Every doc, every task and every piece of product wording
+about the backend should derive from this page. If something contradicts it, this page wins or this
+page changes.
+
+## The one sentence
+
+**A workflow orchestrates; a cloud function computes. A workflow calls cloud functions.**
+
+## The two surfaces
+
+| | **Cloud function** | **Workflow** |
+|---|---|---|
+| What it is | A component in your project, named `/#__cloud__/…`, authored with nodes and wires | A JSON definition stored **in the backend**, drawn as step cards |
+| What runs it | The cloud runtime (`noodl-viewer-cloud`), bundled into `nodegx-backend` and executed in-process | The backend's `WorkflowEngine` |
+| Shape | Request in → graph → Response out. Runs once, answers once | A step DAG with branching, retries, waits and a durable execution record |
+| Vocabulary | ~57 general nodes: records, HTTP, strings, Expression, JavaScript, Logic Builder | 9 step kinds: Call Function, Branch, Switch, For Each, Merge, Retry, Stop/Error, Wait, Wait Until |
+| Started by | Your app (Cloud Function node), an HTTP POST, **or a workflow step** | A trigger: webhook, schedule, record change — or run manually |
+| Auth | The Request node's `Allow Unauthenticated` declares it; backend config can override per function | Runs as system, with admin authority |
+| Data it holds | Whatever its graph computes, for one request | The run payload plus each step's output, for the life of the run |
+
+## Which one do I reach for?
+
+- **"Run this now and give the user an answer."** → Cloud function, called from the app. Immediate,
+  returns into the user's session.
+- **"Run this every night / when a record changes / when a supplier POSTs us."** → Workflow, with a
+  trigger, calling a cloud function to do the work.
+- **"Do some real work — read records, call an API, send mail, transform a payload with code."** →
+  Always a cloud function. Never a workflow step.
+- **"Try three times, wait an hour, then take a different path."** → Only a workflow can express
+  this. A function graph has no concept of it.
+
+## Why the split exists — and it is not an accident of history
+
+Two independent reasons, both load-bearing:
+
+1. **Security.** A workflow definition is persisted, deployable, agent-authorable JSON that
+   **executes with admin authority on the server**. An `eval`'d string inside one is a
+   remote-code-execution surface with an admin credential in front of it — which is why a workflow's
+   conditions are declarative data (a 19-operator language served *by the backend*, so the editor
+   can never offer an operator the backend won't evaluate) rather than JavaScript. The code you
+   write runs one level down, inside the function sandbox, where it belongs.
+2. **The separation is the product.** Compare n8n, where orchestration and compute are one melting
+   pot: every flow is part router, part script, and the script is where the security model and the
+   readability both go to die. Richard's framing, 2026-08-05: *"we're separating pure JSON workflow
+   from real cloud compute, whereas an n8n flow mixes everything together"*. The workflow layer
+   stays inspectable, diffable, agent-writable and safe **because** it cannot compute. That is a
+   feature to defend, not a limitation to apologise for.
+
+## What this rules in and out
+
+**In, at the workflow level:** anything that *references, routes or reshapes* data without
+evaluating a string — paths, conditions, branching, iteration, merging, retry policy, waits, and
+declarative transforms (see [CWF-004](../tasks/phase-42-first-hour/CWF-004-THE-TRANSFORM-STEP.md)).
+Reshaping an awkward supplier payload before handing it to a function is workflow work: it is pure
+JSON plumbing, and doing it in the function would mean every function carries its caller's mess.
+
+**Out, at the workflow level, permanently:** a free JavaScript/expression step, an HTTP step, a
+database step. Not because they'd be hard — because each one recreates the melting pot, and each has
+a home one level down that is already better at it. The escape hatch when you genuinely need code is
+a **one-node cloud function** reached by the descent gesture, not an eval in the definition.
+
+## How they join
+
+A `call-function` step invokes a function in the same backend. The function receives, as its request
+body, `{ ...the run payload, ...the step's resolved params, previous: <the last step's output> }`
+and its Request node splits named keys into output ports.
+
+⚠️ Two traps live at this join, both open tasks:
+- The step's `params` — the *mapping* that lets you pass `previous.result.total` as `amount` — is
+  resolved by the engine but **declared by no catalog kind**, so no UI can author it
+  ([CWF-001](../tasks/phase-42-first-hour/CWF-001-CALL-FUNCTION-PARAMS.md)).
+- A workflow invokes functions with **no session token**, so any function whose Request node has
+  `Allow Unauthenticated` unticked — *the default* — fails the step.
+
+## Naming
+
+"Cloud function" is a Noodl-era term; the wire URLs say Parse for compatibility reasons that have
+nothing to do with what the thing is; and neither word tells an author which canvas they are on.
+Whether these names survive is [phase 43](../tasks/phase-43-backend-authoring-clarity/README.md)'s
+to decide. Until it does, use "cloud function" and "workflow" consistently and never abbreviate
+either to "backend thing".
+
+## What has already gone
+
+Parse Server, the Parse Dashboard, the master-key deploy pass, the external-environment management
+UI and the hidden-BrowserWindow function server are all **deleted** (WF-007). There is no Parse
+dependency anywhere in the monorepo. What survives is a ~7-route wire subset that
+`nodegx-backend` implements itself against `node:sqlite`, because that protocol — not the framework
+— is the compatibility contract the record/user/config nodes ride on.

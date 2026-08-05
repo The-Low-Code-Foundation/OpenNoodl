@@ -144,9 +144,9 @@ modern HTTP node really is one commented-out line
 | Q | Decision | Task |
 |---|---|---|
 | **Q1** | **(a)+(b)** — keep the orchestrate/compute split, fix the plumbing, **and** add a Transform step in the existing `$path`/`$literal` value language. No eval at workflow level, ever. | [CWF-004](CWF-004-THE-TRANSFORM-STEP.md) |
-| **Q2** | **Deferred.** Data steps are sugar over `call-function`+params; revisit with usage evidence once CWF-001 lands. | — |
+| **Q2** | ~~Deferred.~~ → **CLOSED, by design** (2026-08-05, second pass). Database access is a cloud function's job. See the closing note below. | — |
 | **Q3** | **Both layers.** Dispatcher returns the output in sync mode (`{executionId, status}` in async — a per-trigger setting) **and** a visible Return step that rhymes with the cloud function `Response` node. | [CWF-002](CWF-002-THE-WORKFLOW-RETURN.md) |
-| **Q4** | **Deferred.** Fix the node registration first; revisit an HTTP *step* after two real apps. | — |
+| **Q4** | ~~Deferred.~~ → **CLOSED, by design** (2026-08-05, second pass). HTTP belongs in a cloud function; the real fix is [CWF-003](CWF-003-HTTP-IN-THE-CLOUD-RUNTIME.md). See the closing note below. | — |
 | **Q5** | **Own design doc now, build after Pile 1.** Shares its shape with TALK-005's Subscribe To Changes. | [CWF-007](CWF-007-STREAMING-RESPONSES.md) |
 | **Q6** | **Not yet.** `run-workflow` multiplies the Q3 answer and the Wait-holds-a-slot debt. | — |
 | **Q7** | **Fold Retry into Call Function as a policy group**; delete the standalone kind, migrate existing steps. Presentation fixes ride along. | [CWF-005](CWF-005-RETRY-IS-A-POLICY.md) |
@@ -180,3 +180,43 @@ filter or reshape a list, and it has no scratch variable. Every one of those nod
 was argued on the cost of "every reshape is a round trip through a second canvas". If the second
 canvas gains arrays cheaply, that cost changes. Richard's call: **keep CWF-004, decide after the
 arrays land.** Every other decision above stands.
+
+## CLOSED — 2026-08-05, third pass: the premise under half this doc was a misunderstanding
+
+Richard, having worked out what the two surfaces actually are:
+
+> *"my whole rambling about 'the workflows don't have enough nodes' is because I'd not understood at
+> all what Workflows do in our backend… if I want to use the data nodes and HTTP nodes and other
+> things I'd asked for, that has no business being in a workflow, that should be in a cloud function
+> called by the workflow… you can belay my panic about not having data nodes etc in the workflows."*
+
+That is the correct model, and it is now written down once, canonically, in
+[BACKEND-AUTHORING-MODEL.md](../../reference/BACKEND-AUTHORING-MODEL.md). Consequences:
+
+**Q2 and Q4 are CLOSED by design, not deferred.** A data step and an HTTP step at workflow level
+were only ever live questions because "the workflow picker looks empty" was read as a gap. It isn't:
+records and HTTP are cloud-function work, and the workflow calls the function. Recorded as closed
+rather than deferred deliberately — a deferred question gets reopened from the original premise by
+whoever reads it next, and that premise was false. Reversing this needs a *new* argument, not a
+re-reading of this one.
+
+**Q1(b) survives, on a better argument.** Not "avoid a second canvas" — that was the weak version.
+The real one is Richard's: a supplier's webhook payload is awkwardly shaped, and without a workflow
+-level reshape **every function carries its caller's mess**, welding a reusable unit of work to one
+caller's format. Reshaping is *referencing*, not computing, so it sits on the workflow side of the
+line. [CWF-004](CWF-004-THE-TRANSFORM-STEP.md) is rewritten around this, and widened into a small
+family of declarative data steps (Validate, Filter, Split, Sort, Deduplicate, Parse JSON).
+
+**A free Function/expression step at workflow level: advised against, and the alternative named.**
+It reintroduces the RCE surface, it collapses the separation that distinguishes this from n8n's
+melting pot, and it already exists one level down. The deliverable that answers the real need is a
+**"new function from this step"** gesture — pre-declare the function's Request parameters from the
+step's input and descend — so reaching down costs one gesture instead of a detour.
+
+**Everything else stands.** CWF-001 (the join) matters *more* under the correct model, not less;
+CWF-003 is promoted from ergonomics to the actual answer for "how do I call an API"; TALK-007's
+missing arrays get worse, because if all compute is in functions then a function that cannot reshape
+a list is the real capability hole.
+
+**And the largest finding is not in this doc's scope at all.** The author of both systems could not
+tell them apart from the product. That is [phase 43](../phase-43-backend-authoring-clarity/README.md).
