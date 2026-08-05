@@ -1,10 +1,11 @@
 # Phase 40 — AI authoring quality: the handover prompt
 
-Rewritten 2026-08-05 at the end of the **AAQ-005 slice-1 session**, which built the one authored-candidate
-gate. The previous version's headline instruction was "Layer 1 is done, so the engine is the work"; the
-engine started, and its first slice found that the divergence AAQ-005 was written to close was not the one
-the task file described. Everything the earlier versions knew and is still true has been folded in below,
-including their seven corrections, all of which survived.
+Rewritten 2026-08-05 at the end of the **AAQ-005 slice-2 session**, which closed the apply gap. The
+previous version's headline was "slice 1 built the one gate, now converge the toolset". Slice 2 found
+something more urgent first: the two clients judged a candidate identically and then did entirely
+different things with it, and slice 1's own gate-sharing had made one of Layer 1's defects *harder* to
+see rather than fixing it. Everything the earlier versions knew and is still true has been folded in
+below, including their eight corrections, all of which survived.
 
 Paste the block below into a fresh session.
 
@@ -14,19 +15,21 @@ You are continuing **Phase 40 — AI authoring quality**. Read
 `dev-docs/tasks/phase-40-ai-authoring-quality/README.md` and this file before doing anything, then the
 task file for whatever you pick up. The phase's own rule applies to its documents as well as to the code:
 **read the mechanism in source before trusting a stated fact, including the README's and this file's.**
-**Eight** premises written by people who opened or built this phase have now failed that check, plus a
-ninth still standing in the review path (AAQ-011 F8). They are listed below. Finding them has been most
-of the value of the last four sessions, and the last two — a defect sitting *underneath* three correct
-fixes to the same report, and a shared-code claim that was really a missing import — are the reason to
-assume a tenth exists.
+**Nine** premises written by people who opened or built this phase have now failed that check, plus a
+tenth still standing in the review path (AAQ-011 F8). They are listed below. Finding them has been most
+of the value of the last five sessions, and the last three — a defect sitting *underneath* three correct
+fixes to the same report, a shared-code claim that was really a missing import, and a module header that
+talked a reader out of looking at the very client it needed to be bound to — are the reason to assume an
+eleventh exists.
 
 ## Where the phase stands
 
-**Layer 1 is COMPLETE. The engine has started: AAQ-005 slice 1 is built and green.** Commits `4a0fdd4f`,
-`83647de9`, `c0bf8b5b` (Layer-1 build), `3ef42833` (Layer-1 live pass), `36ce5669`, `437ec919` (F4/F5 +
-slice 4), `ac853edf` (the fourth `prop-*` mechanism) and `0cfa8640` (AAQ-005 slice 1) on `cline-dev`.
+**Layer 1 is COMPLETE. The engine has started: AAQ-005 slices 1 and 2 are built and green.** Commits
+`4a0fdd4f`, `83647de9`, `c0bf8b5b` (Layer-1 build), `3ef42833` (Layer-1 live pass), `36ce5669`,
+`437ec919` (F4/F5 + slice 4), `ac853edf` (the fourth `prop-*` mechanism), `0cfa8640` (slice 1, one gate)
+and `e8423f8a` (slice 2, one apply) on `cline-dev`.
 
-Gates as of `0cfa8640`: editor suite **2200 specs, 0 failures**; `noodl-mcp` **121 tests / 12 suites,
+Gates as of `e8423f8a`: editor suite **2200 specs, 0 failures**; `noodl-mcp` **136 tests / 14 suites,
 green**; runtime **2144 passed**; `typecheck:editor` and `typecheck:editor-tests` clean.
 
 | Task | State |
@@ -35,7 +38,7 @@ green**; runtime **2144 passed**; `typecheck:editor` and `typecheck:editor-tests
 | AAQ-002 — the backend is first-class | ✅ **CLOSED.** All four slices built, all five criteria driven live. |
 | AAQ-003 — authored apps scroll | **Criterion 1 closed live.** Criterion 3 under test. Criterion 2 (a dashboard brief's regions scrolling independently) needs a second brief — take it with the engine work. |
 | AAQ-004 — the conversation is kept | Mechanism A built, under test, confirmed live. Mechanism B stays with AAQ-006. |
-| AAQ-005 — one substrate | **Slice 1 (one gate) BUILT.** Criteria 1, 2 and 5 met *for the gate*. The toolset convergence and the multi-component contract — the risk-bearing half — are **not started**. See correction 8. |
+| AAQ-005 — one substrate | **Slices 1 (one gate) and 2 (one apply) BUILT.** Criteria 1, 2 and 5 met *for the gate and the apply*. The **toolset convergence** and criteria 3/4 are **not started**. See corrections 8 and 9. |
 | AAQ-006 → 007 (harness, self-review) | Not started. Read the perf warning below before designing either. |
 | AAQ-008/009/010 (doctrine) | Not started. Prompt-encodable parts can land early; acceptance runs against the new engine. |
 | AAQ-011 | Register. F4/F5 closed; F9–F11 from the AAQ-002 drive; **F12 added this session**. F9 and F10 both affect every wizard-built app. |
@@ -117,6 +120,21 @@ seventh from the AAQ-002 criteria drive, and the eighth from the AAQ-005 slice. 
    about a specific export list. A package importing *some* of a module's exports reads exactly like one
    importing all of them. Grep the barrel for the symbol; do not infer it from the pattern.
 
+9. **⚠️⚠️ "`noodl-mcp` has no plan transaction at all" — and it does, and the sentence was in the way.**
+   `pageRegistration.ts`'s own module header said it, as the reason the AI stack's registration floor
+   could only be the editor's. `noodl-mcp` has had `create_plan`/`stage_plan_operation`/`apply_plan`
+   since **AIX-011**, built on *this package's own* `authoring/plan` module. So the premise was already
+   false when it was written, and its effect was to talk every subsequent reader out of asking whether
+   the other client needed binding.
+   ⚠️ **What it hid is the real lesson of slice 2, and it generalises past this repo.** Slice 1 shared
+   `checkNavigation` into `noodl-mcp`. That check resolves a Navigate target against the project's
+   **component names**, not against router registration — which is sound *in the editor* only because
+   the editor's apply registers the page a moment later. Bound to a client whose apply did not, it
+   certified as correct exactly the button that would not work. **Sharing a check moves its unstated
+   preconditions into a client that may not meet them.** Gate parity without apply parity is a gate
+   that lies. When you converge a rule, ask what the *other* code around the original call site was
+   quietly guaranteeing.
+
 ## What AAQ-005 slice 1 built and found
 
 `validation/authoredCandidate.ts` is now the **one** definition of the authored gate's policy and its four
@@ -182,17 +200,55 @@ Phase 40 aims at components far larger than 55 nodes. Measure this and fix it be
 iteration loop (AAQ-007) that republishes a candidate many times per build. Filed as AAQ-011 F6; the
 prime suspect is `AuthoringSession.publish` → the Build panel's re-render, not the scanner.
 
+## What slice 2 built and found
+
+**Layer 1's three project-level effects lived in the editor's apply path and nowhere else**, so an
+external agent got none of them. Page registration (AAQ-001), `bodyScroll` (AAQ-003) and provisioning
+(AAQ-002) were all absent from `noodl-mcp` — `provision` and `scroll` appeared nowhere in the package at
+all, while both packages import `validatePlan` from the *same* `authoring/plan` module, which has handled
+`provision` since AIB-007. See correction 9 for the part that matters.
+
+What exists now:
+
+- **One registration decision, two bindings.** `readRouterPagesValue`, `findRoutersInComponents`,
+  `isPlaceholderPageGraph` and `resolvePageRegistration` moved out of the editor's `staging.ts` into
+  `pageRegistration.ts`, over plain nodes. `staging.ts` feeds it `ProjectModel` nodes; `noodl-mcp`'s new
+  `project/pageRegistration.ts` feeds it `ProjectStore` ones. Neither holds policy.
+- **Registration fires on all three MCP write paths** — `create_component`, `update_component` (updates
+  count, exactly as the editor's apply does) and `apply_plan` in plan order — and is **reported** as
+  `registeredPages`, because a tool that writes a component the caller did not name has to say so.
+- **`create_plan` takes `scroll`**, applied as `bodyScroll` via `ProjectStore.writeProjectSettings`,
+  which never overwrites a setting already present.
+- **Provisioning does not port and says so.** It means starting and supervising a `nodegx-backend` child
+  process — the editor's manager over IPC; `backend/client.ts` only speaks admin HTTP to backends already
+  running. `create_plan` accepts `kind: 'provision'` (one vocabulary) and refuses it with the reason and
+  somewhere to go. Filed as **AAQ-011 F13**, and it is a product question of the F4/F5 class.
+
+Two traps caught before they shipped, both now specced. **`graph.roots` is parentless nodes, not
+`visualRoots`** — the latter is the `allowAsChild` subset, so reading it would have *widened* the
+placeholder rule and let an apply steal the start page from a part-built page. And the **start-page lookup
+is exact**, not the module's tolerant `isSamePage`, because `getComponentWithName` compares verbatim;
+widening it would have been a real behaviour change smuggled in under a refactor.
+
 ## What to do next
 
-The gate is one; the **contract** is not. In order:
+The gate is one and the apply is one; the **toolset** is not. In order:
 
-1. **AAQ-005, the rest of it** — the toolset convergence and the multi-component contract. This is the
-   risk-bearing work the task was opened for, and slice 1 deliberately did not touch it: the editor still
-   exposes **three** tools (`get_node_types`, `get_component`, `submit_component`) while `noodl-mcp`
-   exposes its own much larger surface. Criteria 3 (a scripted multi-component session creating a page,
-   two section components and a token write in one changeset) and 4 (Claude Code driven live against
-   `noodl-mcp`, transcript kept as a fixture) are untouched. Note that criterion 4 is the *only* way to
-   learn what external authoring actually feels like now that the gate finally blocks there.
+1. **AAQ-005, the rest of it** — the toolset convergence, plus criteria 3 and 4. The editor still exposes
+   **three** tools (`get_node_types`, `get_component`, `submit_component`) while `noodl-mcp` exposes its
+   own much larger surface. ⚠️ Before planning a merge, know that **two divergences are deliberate and
+   documented**: the editor's hierarchy contract is `parent`-only with `children` *derived* (MCP accepts
+   both and reconciles), and `variant`/`stateParameters` are deliberately not agent-expressible in the
+   editor — `CARRIED_NODE_FIELDS` in `candidate.ts` carries them over from the base instead. Forcing one
+   schema over those would be the "regression bought with a refactor" slice 1 warned about; a drift
+   *detector* over the shared vocabulary is probably the honest deliverable. (Note the second one is a
+   real gap for AAQ-010: on a **create** there is no base, so an editor-authored component can never have
+   a variant or a visual state.)
+   Criterion 3 (a scripted multi-component session — page + two sections + a token write in one
+   changeset) and criterion 4 (Claude Code driven live against `noodl-mcp`, transcript kept as a fixture)
+   are untouched. **Criterion 4 is now worth driving**: before slice 2 it would have produced an app with
+   unreachable pages and no scrolling and reported success. It is still the only way to learn what
+   external authoring actually feels like.
 2. **AAQ-006 (harness) → AAQ-007 (self-review)**, in that order, on top of it. Read the perf warning
    above first — it is a prerequisite for AAQ-007, not a footnote.
 3. **AAQ-011 F9 and F10**, if you want the Layer-1 apps defensible before the engine lands. F9 is a false
@@ -206,12 +262,15 @@ The gate is one; the **contract** is not. In order:
    AI spec files corrected (every one builds a `/Pages/…` component out of a bare Group). Mechanical, but
    it changes what a large part of the suite asserts, so it wants its own read — and it now changes what
    Claude Code may write too, which is a bigger blast radius than when F7 was filed.
-5. **AAQ-011 F12** — the MCP write gate is **component-scoped**, so a project-wide rule
+5. **AAQ-011 F13** — whether the MCP server may create backends at all. Until it can, a full-stack app
+   cannot be built end to end through the external door; the graph is diagnosed (slice 1 gave the package
+   `checkBackendRequirements`) but nothing offers to fix it. Worth putting to Richard alongside F9/F10.
+6. **AAQ-011 F12** — the MCP write gate is **component-scoped**, so a project-wide rule
    (`duplicate-node-id`) fires only *after* the write: `create_component` returns `errors: 0` and the very
    next `validate_project --strict` returns 3. An external agent can still write a colliding node id and
    be told the write is clean. Making a project-scoped rule reachable from a component-scoped gate is a
    design change, which is why slice 1 filed it rather than patched it.
-6. **AAQ-011 F8** — the review path still calls the built-in backend's collections "unknown, not absent"
+7. **AAQ-011 F8** — the review path still calls the built-in backend's collections "unknown, not absent"
    on a premise Layer 1 made stale. The reader it needs (`projectSchemaCollections`) exists, so this is
    wiring; three specs assert the current four-outcome shape.
 
@@ -244,11 +303,12 @@ Gates and harness:
   cases to an existing file avoids it. (`noodl-mcp`'s jest picks up new files automatically — the two
   packages differ here.)
 - ⚠️ **`packages/noodl-mcp`'s jest suite IS a gate**, via `test:packages --scope @noodl/mcp`. Run it with
-  `npx jest` from that directory. **It had been red for 8 days** before slice 1 (since `7fd3e053`) and
-  nobody noticed. Its own `npm run typecheck` is **also red** from that commit (`duplicateNodeId.ts:86`,
-  an unguarded `Map.get(...)`) and is gated by nothing; its tsconfig additionally pulls **jasmine** types
-  over jest specs, so `tsc --noEmit` there reports dozens of bogus `toHaveLength does not exist` errors.
-  **Do not own either failure.**
+  `npx jest` from that directory; it is at **136 tests / 14 suites** as of `e8423f8a`. **It had been red
+  for 8 days** before slice 1 (since `7fd3e053`) and nobody noticed. Its own `npm run typecheck` is
+  **still red** from that commit (`duplicateNodeId.ts:86`, an unguarded `Map.get(...)`) and is gated by
+  nothing; its tsconfig additionally pulls **jasmine** types over jest specs, so `tsc --noEmit` there
+  reports dozens of bogus `toHaveLength does not exist` errors. **Do not own either failure** — filter for
+  your own files (`npx tsc --noEmit 2>&1 | grep -v jasmine\|toHaveLength\|tests/`).
 - `tsconfig.tests-main.json` is **not** a gate; `typecheck:editor` and `typecheck:editor-tests` are.
 - Corpus calibration is cheap: `git ls-files '*project.json'` is 96 real projects.
 - ⚠️ **A rule calibrated on the project corpus is not calibrated on the authored one.**
@@ -293,11 +353,10 @@ Live driving:
 
 ## The shared checkout
 
-⚠️ **A second session WAS live during the AAQ-005 slice** — it wrote `dev-docs/tasks/phase-41-accessibility/`
-(`README.md`, `NORTH-STAR.md`) at 10:24–10:25 while this session was running. It was doing doc work, not
-driving the editor, so nothing collided. **Check for yourself at the start of every session** — it is a
-per-session fact, not a standing one, and the check that caught it was simply re-running `git status` and
-noticing a directory that had not been there an hour earlier.
+⚠️ **No second session was live during the slice-2 session.** Checked at the start (`ps` showed no
+Electron/jest/webpack for this repo, and nothing under the repo had been written in 90 minutes) and the
+working tree at the end matched the start exactly. The slice before it *did* have one. **Check for
+yourself at the start of every session** — it is a per-session fact, not a standing one.
 
 Fourteen tracked files have been modified and uncommitted since before the last four sessions and are
 **still untouched** — `package-lock.json`, `nodegx-observe`, `ProjectImporter.ts`, `projectmodel*.ts`,
@@ -309,7 +368,7 @@ Fourteen tracked files have been modified and uncommitted since before the last 
 explicit pathspecs on *both* `git add` and `git commit`.
 
 ⚠️ `npx jest` from `packages/noodl-editor` still reports **2 failing suites in `tests-unit/erg-005/`**
-(3 specs, 5 passing). That is another session's in-flight work — `GraphComponent.ports` does not exist
-yet — and it is **not yours**. The gates that matter are `test:ci` (**2200/0**), `npx jest` from
-`packages/noodl-mcp` (**121/121**), `npx jest` from `packages/noodl-runtime` (**2144 passed**), and the
-two typechecks.
+(3 specs; 40 suites / 510 specs pass). That is another session's in-flight work — `GraphComponent.ports`
+does not exist yet — and it is **not yours**. The gates that matter are `test:ci` (**2200/0**), `npx jest`
+from `packages/noodl-mcp` (**136/136**), `npx jest` from `packages/noodl-runtime` (**2144 passed**), and
+the two typechecks.
