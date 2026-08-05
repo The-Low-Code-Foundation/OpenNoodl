@@ -43,8 +43,12 @@ Three kinds of doc in this folder:
 
 ## The six conversations, in the order I'd have them
 
-1. ✅ **[TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) — cloud workflows. HAD 2026-08-05.**
-   Decisions recorded at the foot of the doc; seven build tasks written — see the CWF track below.
+1. 🔄 **[TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) — cloud workflows. HAD 2026-08-05, then
+   REOPENED the same day.** Decisions recorded at the foot of the doc; seven build tasks written
+   (the CWF track below). Reopened because it audited the workflow *steps* and never audited what a
+   cloud *function* can compute with — that is
+   [TALK-007](TALK-007-WHAT-CLOUD-FUNCTIONS-SHOULD-HAVE.md), a working doc awaiting Richard's list.
+   **The cloud picker offers 57 nodes and not one array type.**
 2. **[TALK-002](TALK-002-THE-CODE-EDITOR-IS-NOT-DIY.md) — code editor.** Five minutes: confirm
    no-switch, priority-call typed intellisense. Unblocks FH-017 immediately.
 3. **[TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) — MCP onboarding.** "Main point of attraction"

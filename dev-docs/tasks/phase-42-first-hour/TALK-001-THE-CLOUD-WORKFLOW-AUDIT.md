@@ -162,3 +162,21 @@ doc to write and argue with, not a build.
 **The doctrine, in one sentence you can say to people:** conditions and params are *data, not code*,
 because a workflow definition executes with admin authority on the server — compute lives one level
 down in a sandboxed cloud function, where Expression, Function and Logic Builder already are.
+
+## REOPENED — 2026-08-05, same day
+
+Richard: *"I thought TALK-001 would also work out what nodes we should build for the cloud
+functions."* He is right, and it is the hole in the conversation above: this doc leaned on "cloud
+functions compute" as the answer to every gap **without auditing what a cloud function can compute
+with**. That audit is now [TALK-007](TALK-007-WHAT-CLOUD-FUNCTIONS-SHOULD-HAVE.md) — a working doc
+Richard adds ideas to, which this conversation reopens to decide.
+
+The headline from it, measured and driven live: the cloud picker offers **57 nodes and not one
+array type**. A cloud function can iterate (Run Tasks) and can query records, but it cannot build,
+filter or reshape a list, and it has no scratch variable. Every one of those nodes imports only
+`@noodl/runtime` — they are viewer-registered by history, not by dependency.
+
+**Consequence for the decisions above:** **Q1 is provisional again.** Q1(b) — the Transform step —
+was argued on the cost of "every reshape is a round trip through a second canvas". If the second
+canvas gains arrays cheaply, that cost changes. Richard's call: **keep CWF-004, decide after the
+arrays land.** Every other decision above stands.
