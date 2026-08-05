@@ -22,7 +22,7 @@ Three kinds of doc in this folder:
 | 0 | Done/Completed/Unchanged "doubling up" | Semantics are real and your guess was backwards (**Completed** always fires; **Done** = changed something; **Unchanged** = valid no-op). Real problems: signal-port descriptions render **nowhere** in the editor, and on 48/82 nodes the distinction collapses (8 nodes: Done ≡ Completed). | [TALK-006](TALK-006-THE-THREE-SIGNALS.md) |
 | 0.1 | "Didn't we add nodes to watch arrays?" | **Yes — built and shipped.** `Array Changed` + `Object Changed` (category Logic, ERG-004): Item Added/Removed/Changed (in-place edits via per-member subscriptions), Array Replaced, Index/Item/Key/Count. No "choose what to watch" selector **by design** — you choose by which output you wire. Known blocker: no Data node emits a live object → FH-004. Reorders (sort/reverse) deliberately fire no signal. | answer + [FH-004](FH-004-THE-OBJECT-NODE-EMITS-AN-OBJECT.md) |
 | 1 | `[object Object]` as auto-name | Diagnosed in phase 3 (TASK-006B), chosen fix half-applied: `labelForNode` returns the raw expression object; the resolver built for it has zero call sites. Three collateral bugs (cache poisoning, spurious sub-label, latent crash). | [FH-003](FH-003-OBJECT-OBJECT-ON-THE-CANVAS.md) |
-| 2 | WebSocket node bound to the selected backend | Wrong abstraction — the built-in backend is deliberately SSE, and 4/6 backend types don't speak WS. A five-transport realtime layer already exists with exactly **one door** (Query Records' checkbox). Proposal: standalone Subscribe To Changes node. | [TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) |
+| 2 | WebSocket node bound to the selected backend | Not just the wrong abstraction — **our backend has no WebSocket server at all** (SSE `/realtime` only, per BAK-001), so the mode had nothing to connect to. A five-transport realtime layer already exists with exactly **one door** (Query Records' checkbox). ✅ **Talked 2026-08-05: build the standalone Subscribe To Changes node**, which is `_active_` by default and so *is* the easy path to our backend. | [TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) + [FH-021](FH-021-SUBSCRIBE-TO-CHANGES.md) |
 | 3 | Object node has no Object output | **Never built — and Richard already decided it should be** (2026-08-02, ERG-004 §7.4, recorded "unowned and not started"). Unblocks `Object Changed`. `Array.Items` may already serve the array side — verify first. | [FH-004](FH-004-THE-OBJECT-NODE-EMITS-AN-OBJECT.md) |
 | 4 | Popout editor opens at the button's Y, off-screen | React-18 measurement race: positioned against a 0×0 box because the two editors skip the `flushSync` five other popouts use (DEBT-010 pattern), **plus** `_positionPopout` genuinely has no flip logic. Same as phase-40 AAQ-011 F2 (open, unowned — superseded here). | [FH-005](FH-005-THE-POPOUT-OPENS-OFFSCREEN.md) |
 | 5 | Roboto Medium in text styles | Appears nowhere in the repo. Comes from **library prefab imports** (16 prefabs ship `Roboto-Medium.ttf`) via the font picker — or from that project's own styles metadata. One measurement in the project settles which. | [FH-006](FH-006-ROBOTO-MEDIUM.md) |
@@ -71,8 +71,15 @@ Three kinds of doc in this folder:
    (the HUD track below), all gated on FH-011. Q4 went the expensive way — per-peer trace
    ownership — and the research for it found a **live data-loss bug**: an agent's `start_trace`
    destroys a recording a human is in the middle of.
-6. **[TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) — backend realtime.** Mostly assembly on
-   existing plumbing; needs your yes on the standalone node.
+6. ✅ **[TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) — backend realtime. HAD 2026-08-05.**
+   **Build the standalone node** — [FH-021](FH-021-SUBSCRIBE-TO-CHANGES.md), unblocked. The
+   WebSocket node keeps its raw identity because **our backend has no WebSocket at all**; the
+   "easy path to our backend" is the new node's `_active_` default instead. The filter port ships
+   **nodegx-only and disclosed** (one dialect of five sends `where`). Two of the doc's own
+   proposals were wrong: it asked for `realtimeSupportFor` port *gating*, which is the exact
+   opposite of the shipped decision, and it missed that the code contains an argument against the
+   standalone node. **This also closes [CWF-007](CWF-007-STREAMING-RESPONSES.md) Q3** — two
+   deliberate nodes, one shared subscription layer.
 
 Plus one embedded decision: **ERG-005 §2** (explicit types on component I/O) inside FH-007.
 
@@ -101,7 +108,7 @@ Build in this order — CWF-001 gates the rest of the track:
 | 5 | [CWF-004](CWF-004-THE-TRANSFORM-STEP.md) — Transform + data steps | **Rewritten 2026-08-05** on Richard's argument: without a workflow-level reshape, every function carries its caller's mess. Widened to a family (Validate, Filter, Split, Sort, Dedupe, Parse JSON). A free Function step is advised against; the "new function from this step" gesture replaces it. **Blocked on CWF-001.** |
 | 6 | [CWF-006](CWF-006-TRIGGERS-AND-THE-ENTRY-STEP.md) — triggers + entry | Pile 2. Nothing is broken; the picker just never says so. Cheap affordances — and a **subset of [phase 43](../phase-43-backend-authoring-clarity/README.md)**, which supersedes it if that lands first. |
 | — | [FH-018](FH-018-THE-CONFIG-NODE-IS-INERT-AND-ITS-ENDPOINT-IS-PUBLIC.md) — the Config node | Filed 2026-08-05. Inert since WF-007 (`configSchema` declared, never assigned) **and** `GET /config` is public and unfiltered. Needs a decision before slices. |
-| — | [CWF-007](CWF-007-STREAMING-RESPONSES.md) — streaming | Q5: a design doc to argue with, not a build. Answer it together with [TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) — same node family. |
+| — | [CWF-007](CWF-007-STREAMING-RESPONSES.md) — streaming | Q5: a design doc to argue with, not a build. **Q3 answered 2026-08-05 with [TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md): two deliberate nodes**, sharing `RealtimeSubscription` but not a node definition — different payloads, different auth postures (`GET /realtime` is `public` today). Not a twin, and not a deferral. |
 
 Deferred with reasons in the decisions table: data steps (Q2), an HTTP *step* (Q4), workflow-calls-
 workflow (Q6). Pile 1.4 keeps its existing owners (POL-015, OPEN-WORK F62).

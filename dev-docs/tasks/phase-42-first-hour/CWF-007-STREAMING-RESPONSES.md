@@ -51,7 +51,14 @@ channel. Cheap once layer 1 exists, and it is what makes long workflows watchabl
 1. Channel-based (survives reload, works without a caller) or HTTP-response-based (what an LLM SDK
    looks like)? Or both, and in which order?
 2. Who may read a channel — the authenticated user who started it, an ACL, or anyone with the id?
-3. Does this ship with the Subscribe To Changes node as one family, or separately?
+3. ~~Does this ship with the Subscribe To Changes node as one family, or separately?~~
+   ✅ **Answered 2026-08-05 ([TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md)): separately, and
+   deliberately.** Two nodes sharing `RealtimeSubscription` but not a node definition — a record
+   change carries a row with a primary key, a channel carries an arbitrary chunk, and the auth
+   postures differ (question 2 below is the live one for channels; record changes inherit the
+   query routes' posture). Recorded as a decision so the pair is not later mistaken for a twin and
+   collapsed. [FH-021](FH-021-SUBSCRIBE-TO-CHANGES.md) builds the record-change half now; nothing
+   in it forecloses this doc's shape.
 4. Is streaming alpha-facing, or the first thing after alpha? (Decided: after Pile 1 — confirm that
    still holds once you see the shape.)
 
