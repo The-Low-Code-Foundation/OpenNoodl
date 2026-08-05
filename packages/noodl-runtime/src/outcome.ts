@@ -51,6 +51,77 @@ export function reportOutcomes(
 /** The universal completion signal, which every action emits after its outcome. */
 export const COMPLETED_PORT = 'completed';
 
+/**
+ * Whether an outcome port was asked for.
+ *
+ * `undefined` is "the node never mentioned it"; `false` is "the node said no, explicitly". Both
+ * mean the port is absent, and {@link outcomeOutputs} and {@link outcomeInputs} between them
+ * already spelled this test out three times. It is named here so the *wording* below and the
+ * *port set* can only ever be derived from one predicate — which is the same reason
+ * `outcomeInputs` derives its enum from this options object rather than from the node.
+ */
+function declared(option: string | false | undefined): option is string {
+  return option !== false && option !== undefined;
+}
+
+/** `Completed`'s wording on a node that has somewhere else its outcome could land. */
+export const COMPLETED_WITH_OTHER_OUTCOMES =
+  'Fires after every invocation, whatever the outcome — wire this to carry on regardless. ' +
+  'Failure still fires and still carries its reason, so this cannot hide an error';
+
+/** `Completed`'s wording on a node whose only outcome is `Done`. */
+export const COMPLETED_SOLE_OUTCOME =
+  'Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — ' +
+  'so it always fires together with Done, and wiring either one does the same thing. It is here ' +
+  'on every action so that reaching for it is never a per-node decision';
+
+/**
+ * FH-022 / TALK-006 decision 1 — say when `Completed` is `Done`.
+ *
+ * On the nodes that declare neither `Unchanged` nor `Failure` there is exactly one outcome, so
+ * `Done` and `Completed` fire on the same path every time with nothing between them. Richard hit
+ * this on `Condition` — a Logic node, among the first anyone wires — and read two
+ * identically-behaving ports as the vocabulary doubling up. It is not doubling up; it is the
+ * contract's universality landing on a node with one outcome, which is the price of `Completed`
+ * being the one port with no exemption.
+ *
+ * **Both ports stay, and neither is renamed.** The value of `Completed` is that wiring it is
+ * never a per-node decision. What was missing is that nothing told the author the two are the
+ * same *on this node*: `done` carries 77 distinct descriptions across its 82 nodes and
+ * `completed` carried 1, so on those nodes an author read two different sentences for one pulse.
+ *
+ * ⚠️ **This reads the finished port set, not {@link OutcomePortOptions}, and that is measured
+ * rather than preferred.** Deriving it inside {@link outcomeOutputs} from its own options — the
+ * obvious place, and where FH-022 specified it — produces a *false* sentence on four nodes,
+ * because four callers declare `failure` **beside** the helper rather than through it:
+ * `expression.ts`, `modelcrudbase.ts`'s `addFailure` mixin, `componentutils/base.ts`'s
+ * `canFailToResolve` and `variablenode2.ts`. Three of those really do report a `failure`
+ * outcome, so "it always fires together with Done" would have been untrue on them, and one of
+ * the four is in a package the helper's options cannot reach. Reading the assembled `outputs`
+ * cannot disagree with the port set, because it *is* the port set.
+ *
+ * ⚠️ **Guarded on the exact generic sentence**, so this only ever narrows a `Completed` that
+ * {@link outcomeOutputs} wrote. A node that hand-rolls a port called `completed` — which is what
+ * `GlobalStore.Set` and `ActionDispatcher` did before ERG-001 §4, with a *different* meaning —
+ * is left alone rather than being described by a contract it has not adopted.
+ *
+ * Idempotent: a second call sees the narrowed sentence and returns. `defineNode` runs twice on
+ * the same module object whenever two graphs register the same node.
+ *
+ * ⚠️ **One branch, in one place, zero call sites edited.** Hand-writing the sentence into the
+ * eight definitions is the divergence this whole file exists to prevent — see the module
+ * docstring. The set of nodes it lands on is a *consequence* of the port set, so a node that
+ * gains a `Failure` port later loses the sentence with no edit here, and nothing anywhere can
+ * hold a list of the eight and go stale.
+ */
+export function narrowCompletedDescription(outputs: Record<string, OutputPortDefinition>): void {
+  const completed = outputs[COMPLETED_PORT];
+  if (!completed || completed.description !== COMPLETED_WITH_OTHER_OUTCOMES) return;
+  if (outputs.unchanged || outputs.failure) return;
+
+  completed.description = COMPLETED_SOLE_OUTCOME;
+}
+
 export interface OutcomePortOptions {
   /**
    * Omit when the action genuinely cannot fail. "A node that cannot fail gets no `Failure`
@@ -76,6 +147,13 @@ export interface OutcomePortOptions {
  */
 export function outcomeOutputs(options: OutcomePortOptions = {}): Record<string, OutputPortDefinition> {
   const group = options.group || 'Events';
+  // Read out once so the two port blocks below and {@link narrowCompletedDescription} are
+  // answering the same question about the same values.
+  const unchanged = options.unchanged;
+  const failure = options.failure;
+  const hasUnchanged = declared(unchanged);
+  const hasFailure = declared(failure);
+
   const outputs: Record<string, OutputPortDefinition> = {
     done: {
       type: 'signal',
@@ -87,27 +165,25 @@ export function outcomeOutputs(options: OutcomePortOptions = {}): Record<string,
       type: 'signal',
       displayName: 'Completed',
       group,
-      description:
-        'Fires after every invocation, whatever the outcome — wire this to carry on regardless. ' +
-        'Failure still fires and still carries its reason, so this cannot hide an error'
+      description: COMPLETED_WITH_OTHER_OUTCOMES
     }
   };
 
-  if (options.unchanged !== false && options.unchanged !== undefined) {
+  if (hasUnchanged) {
     outputs.unchanged = {
       type: 'signal',
       displayName: 'Unchanged',
       group,
-      description: options.unchanged
+      description: unchanged
     };
   }
 
-  if (options.failure !== false && options.failure !== undefined) {
+  if (hasFailure) {
     outputs.failure = {
       type: 'signal',
       displayName: 'Failure',
       group,
-      description: options.failure
+      description: failure
     };
   }
 
@@ -153,9 +229,9 @@ export function outcomeInputs(options: OutcomePortOptions = {}): Record<string, 
   // No `Unchanged` port means no `Unchanged` to reinterpret. Most actions always change
   // something, and adding a dead setting to them is exactly the test-surface multiplication
   // Rule 3's first warning is about.
-  if (options.unchanged === false || options.unchanged === undefined) return {};
+  if (!declared(options.unchanged)) return {};
 
-  const hasFailure = options.failure !== false && options.failure !== undefined;
+  const hasFailure = declared(options.failure);
 
   const enums = [
     { label: 'Unchanged', value: 'unchanged' },

@@ -15,6 +15,7 @@ import type { RuntimeNode, RuntimeNodeContext } from './internal';
 
 import Node = require('./node');
 import EdgeTriggeredInput = require('./edgetriggeredinput');
+import { narrowCompletedDescription } from './outcome';
 import { inputNameForRunOnChangePort, runOnChangeInputs } from './run-on-value-change';
 
 /**
@@ -320,6 +321,14 @@ function defineNode(opts: NodeDefinitionOptions): NodeDefinition {
 
     Object.assign(opts.inputs, runOnChangeInputs(governedNames, displayNames));
   }
+
+  // FH-022. The outcome contract's `Completed` says so when it is the node's only outcome, and
+  // this is the first point at which that is knowable: `outcomeOutputs` sees only its own
+  // options, and four nodes declare `failure` beside the helper rather than through it. Applied
+  // to `opts.outputs` rather than to `metadata`, so the definition and the metadata carry the
+  // same sentence. Same shape as the `runOnValueChange` synthesis above — nothing downstream
+  // has to know the wording was narrowed here.
+  narrowCompletedDescription(opts.outputs);
 
   let inputs: SharedInputs = {};
 

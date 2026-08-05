@@ -2466,7 +2466,7 @@
           "plug": "output",
           "group": "Events",
           "displayName": "Completed",
-          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+          "description": "Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — so it always fires together with Done, and wiring either one does the same thing. It is here on every action so that reaching for it is never a per-node decision"
         },
         {
           "name": "id",
@@ -3109,7 +3109,7 @@
           "plug": "output",
           "group": "Events",
           "displayName": "Completed",
-          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+          "description": "Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — so it always fires together with Done, and wiring either one does the same thing. It is here on every action so that reaching for it is never a per-node decision"
         }
       ]
     },
@@ -3523,7 +3523,7 @@
           "plug": "output",
           "group": "Events",
           "displayName": "Completed",
-          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+          "description": "Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — so it always fires together with Done, and wiring either one does the same thing. It is here on every action so that reaching for it is never a per-node decision"
         }
       ]
     },
