@@ -36,20 +36,25 @@
   border-radius: 50%;
 }
 
-/* Field-row grid (UIX-004): a compact 62px label column, left-aligned, giving
-   the value a wide, consistent track — matching the mock. Was a 150px
-   right-aligned column that crowded values in the narrow panel. */
+/* Field-row grid (UIX-004): a compact label column, left-aligned, giving the
+   value a wide, consistent track — matching the mock. Was a 150px
+   right-aligned column that crowded values in the narrow panel.
+
+   FH-013: the label used to be `white-space: nowrap` + ellipsis in an
+   absolutely-positioned 62px box, with `.property-value` pinned at
+   `left: 72px`. That is why "Custom CSS" rendered as "Custom C…" and why
+   widening the panel did not help. The label is now flow text that wraps; the
+   rows that pair a label with a value opt into `.property-row` (below), which
+   is the flex row that used to be faked with two absolutely-positioned boxes.
+   `.property-value` keeps its absolute geometry for the one consumer that
+   positions it itself (MarginPaddingInput's edit box). */
 .property-label {
-  line-height: 35px;
+  line-height: 1.35;
   padding-left: 10px;
   padding-right: 8px;
   color: var(--theme-color-fg-default);
   text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 62px;
-  position: absolute;
+  overflow-wrap: anywhere;
 }
 
 .property-value {
@@ -58,6 +63,42 @@
   right: 10px;
   top: 1px;
   bottom: 1px;
+}
+
+/* FH-013: a legacy label+value row in flow layout. The label column matches the
+   React rows' behaviour — a 62px floor, proportional growth, a 160px ceiling —
+   and the value takes the rest. `position: relative` is kept on the value so
+   the inputs inside it, which are `position: absolute; width/height: 100%`,
+   still resolve against it; the explicit height gives those percentages
+   something definite to resolve against. */
+.property-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+/* `.property-label-col` is for the rows whose label is wrapped in a <Tooltip>,
+   which inserts two divs between the row and the label — the column has to be
+   the flex item, so it cannot always be the label itself. */
+.property-row > .property-label,
+.property-row > .property-label-col {
+  position: static;
+  flex: 0 0 auto;
+  width: 37%;
+  min-width: 62px;
+  max-width: 160px;
+}
+
+.property-row > .property-value {
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+  bottom: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  margin-right: 10px;
 }
 
 /* PAR-002: legacy dropdown lists read as raised cards. */

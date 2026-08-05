@@ -6,17 +6,25 @@
   user-select: none;
 }
 
+/* FH-013: labels wrap, they do not get cut off. This used to carry
+   `text-overflow: ellipsis` + `overflow: hidden` + `line-clamp: 2` +
+   `max-height: 28px` — `line-clamp` (unprefixed) does apply on our Electron, so
+   the second line was clipped by the max-height and the first ellipsised. A
+   property label is short and load-bearing; there is no reason to hide any of
+   it when the row can simply be two lines tall. */
 .Label {
   font-family: var(--font-family);
   color: var(--theme-color-fg-default);
   font-size: 12.5px;
+  line-height: 1.35;
   width: 37%;
   flex-grow: 0;
   flex-shrink: 0;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  max-height: 28px;
-  line-clamp: 2;
+  white-space: normal;
+  // Long unbroken identifiers (`backgroundColorHover`) have no break
+  // opportunity of their own; without this they set the label's min-content
+  // width and push the value input out of the row.
+  overflow-wrap: anywhere;
 
   &.is-changed {
     color: var(--theme-color-secondary-as-fg);
@@ -56,15 +64,25 @@
   }
 }
 
-/* PAR-002 field grid (mock `.field-row`): inside the property editor panel
-   the label column is a flat 62px, giving values a wide consistent track.
-   Other consumers (settings panels) keep the 37% column above. */
+/* PAR-002 field grid (mock `.field-row`): inside the property editor panel the
+   label column is narrow, giving values a wide consistent track.
+
+   FH-013: it used to be a FLAT 62px, which is why widening the panel changed
+   nothing — "Border Radius Bottom Left" had 62px to live in whether the panel
+   was 260px or 600px wide. The column is now proportional with a floor and a
+   ceiling: it still starts at 62px on the narrowest panel, grows as the panel
+   grows, and stops at 160px so the value track always keeps the majority of
+   the row. Every row shares the one column, so inputs stay aligned. */
 :global(.sidebar-property-editor) {
   .Label {
-    width: 62px;
+    width: 37%;
+    min-width: 62px;
+    max-width: 160px;
   }
 
   .Root.is-toggle-row .Label {
     width: auto;
+    min-width: 0;
+    max-width: none;
   }
 }

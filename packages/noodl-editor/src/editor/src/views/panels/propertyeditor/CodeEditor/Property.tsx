@@ -13,10 +13,19 @@ export interface PropertyProps {
 
 export function Property({ isPrimary, displayName, tooltip, isDefault, onClick }: PropertyProps) {
   return (
-    <div data-template="codeeditor" data-primary={isPrimary} style={{ height: '35px', position: 'relative' }}>
-      <Tooltip enabled={!!tooltip} text={tooltip}>
-        <label className="property-label">{displayName}</label>
-      </Tooltip>
+    // FH-013: `property-row` is the flow layout; the label wraps instead of
+    // being ellipsised inside a 62px absolute box ("Custom CSS" -> "Custom C…").
+    <div
+      data-template="codeeditor"
+      data-primary={isPrimary}
+      className="property-row"
+      style={{ minHeight: '35px', position: 'relative' }}
+    >
+      <div className="property-label-col">
+        <Tooltip enabled={!!tooltip} text={tooltip}>
+          <label className="property-label">{displayName}</label>
+        </Tooltip>
+      </div>
 
       <div className="property-value">
         <button
