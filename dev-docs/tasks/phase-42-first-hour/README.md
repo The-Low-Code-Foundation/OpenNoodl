@@ -38,7 +38,7 @@ Three kinds of doc in this folder:
 | 15 | Unit menus open empty | The select **removes the selected option from its own menu**, and ≈27 of 59 unit ports declare exactly one unit → one option, filtered out, empty bordered sliver. | [FH-014](FH-014-THE-EMPTY-UNIT-MENU.md) |
 | 16 | Block pointer events doesn't work | Click-through is the default (handlers installed on every visual node whether connected or not; nothing stops propagation). The blockTouch option **works everywhere except Button** — one JSX line re-assigns `onClick` after the blocking wrapper. Plus a right-default question (auto-stop when Click is connected). | [FH-015](FH-015-BLOCK-POINTER-EVENTS.md) |
 | 17 | Can't drag connection labels | **Built** (CAN-001) — but the grab is gated on the wire-stroke hover, the exact ordering trap the spec warned about; selection-lit chips are fully inert; zero cursor affordance; no drag test. | [FH-016](FH-016-WIRE-LABELS-ARE-DRAGGABLE-IN-THEORY.md) |
-| 18, 19 | Code editor: autocomplete, linting, selection, "DIY mistake?" | **It's not DIY — it's CodeMirror 6**, and all six symptoms are located config gaps (a bad guard, a duplicate un-debounced error system, a hardcoded `dark: true`, a hover-only gutter). ~A day, mostly deletion. The real ask underneath is typed intellisense — reachable on CM6. | [TALK-002](TALK-002-THE-CODE-EDITOR-IS-NOT-DIY.md) + [FH-017](FH-017-CODE-EDITOR-FIXES.md) |
+| 18, 19 | Code editor: autocomplete, linting, selection, "DIY mistake?" | **It's not DIY — it's CodeMirror 6**, and all six symptoms are located config gaps (a bad guard, a duplicate un-debounced error system, a hardcoded `dark: true`, a hover-only gutter). ~A day, mostly deletion. The real ask underneath is typed intellisense — reachable on CM6. ✅ **Talked 2026-08-05: no switch.** | [TALK-002](TALK-002-THE-CODE-EDITOR-IS-NOT-DIY.md) + [FH-017](FH-017-CODE-EDITOR-FIXES.md) + [FH-019](FH-019-TYPED-INTELLISENSE.md) |
 | 20 | Execution history / data explorer for deployed apps | Noted for the deployment phase as asked: execution history is coupled by *address* (cheap to remote), the Data Browser by *architecture* (needs a BackendHandle route); the admin-credential tier must be decided first; BAK-005's served `/_admin` already exists as the v1 answer. | [phase-26 NOTE-REMOTE-PANELS](../phase-26-deployment/NOTE-REMOTE-PANELS.md) |
 
 ## The six conversations, in the order I'd have them
@@ -49,8 +49,11 @@ Three kinds of doc in this folder:
    cloud *function* can compute with — that is
    [TALK-007](TALK-007-WHAT-CLOUD-FUNCTIONS-SHOULD-HAVE.md), a working doc awaiting Richard's list.
    **The cloud picker offers 57 nodes and not one array type.**
-2. **[TALK-002](TALK-002-THE-CODE-EDITOR-IS-NOT-DIY.md) — code editor.** Five minutes: confirm
-   no-switch, priority-call typed intellisense. Unblocks FH-017 immediately.
+2. ✅ **[TALK-002](TALK-002-THE-CODE-EDITOR-IS-NOT-DIY.md) — code editor. HAD 2026-08-05.**
+   **No editor switch** (we are stock CM6 minus six rows of config). Slice 3 **takes the
+   `eslint-linter-browserify` dependency** — the doc had mis-costed it as free, it is installed by
+   nobody. Typed intellisense is promoted out of future-projects into
+   [FH-019](FH-019-TYPED-INTELLISENSE.md). FH-017 unblocked and started.
 3. **[TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) — MCP onboarding.** "Main point of attraction"
    with literally zero UI; the shape is mostly settled by the research, needs your yes on
    placement and packaging.
@@ -103,8 +106,9 @@ Cheap-and-visible first, grouped by shared surface:
    dialogs), **FH-012** (pin identity + stacking context).
 3. **FH-003** ([object Object]), **FH-004** (Object output — unblocks Object Changed),
    **FH-015** slice 1 (the Button one-liner) then the default-behaviour slices.
-4. **FH-011** (Record), **FH-016** (label drag), **FH-008** (Explain), **FH-017** (code editor,
-   after TALK-002's five-minute confirm).
+4. **FH-011** (Record), **FH-016** (label drag), **FH-008** (Explain), ~~**FH-017**~~ (code editor —
+   ✅ **DONE 2026-08-05**, all five slices, driven live in both themes), then
+   **FH-019** (typed intellisense, same files — sequence them, don't parallelise).
 5. **FH-006** (Roboto — after the one measurement), **FH-007** (blocked on ERG-005 §2 + the
    other session's §1).
 

@@ -18,8 +18,9 @@
  *
  * These rows pin the mapping against those declarations. The consequence of
  * the mapping — label, placeholder, and the absence of a JavaScript verdict —
- * is pinned in core-ui's `jsValidator.test.ts`, which runs under jest and can
- * import the component's own helpers.
+ * is pinned in core-ui's `modes.test.ts`, which runs under jest and can import
+ * the component's own helpers. (It was `jsValidator.test.ts` until FH-017
+ * slice 2 deleted that module along with the second error system in it.)
  *
  * describe/it/expect are Jasmine globals here; the editor suite is not jest.
  */

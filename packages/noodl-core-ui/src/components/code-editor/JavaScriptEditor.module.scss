@@ -46,10 +46,42 @@
   color: var(--theme-color-success);
 }
 
-.StatusInvalid {
+/*
+  A verdict with a problem behind it is a button — it opens the diagnostics
+  panel. It reads as text on purpose (the toolbar already has three buttons and
+  this is a status first), so the affordance is the underline on hover and a
+  real focus ring, not a box.
+*/
+.StatusInvalid,
+.StatusWarning {
   font-size: 12px;
   font-weight: 500;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+
+  &:hover {
+    text-decoration-style: solid;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+.StatusInvalid {
   color: var(--theme-color-error);
+}
+
+.StatusWarning {
+  color: var(--theme-color-warning);
 }
 
 .FormatButton,
@@ -129,64 +161,12 @@
   }
 }
 
-/* Error Panel */
-.ErrorPanel {
-  padding: 12px 16px;
-  background-color: var(--theme-color-danger-bg);
-  border-top: 1px solid color-mix(in srgb, var(--theme-color-danger) 30%, transparent);
-}
-
-.ErrorHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.ErrorIcon {
-  font-size: 18px;
-  line-height: 1;
-}
-
-.ErrorTitle {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--theme-color-danger);
-}
-
-.ErrorMessage {
-  font-size: 13px;
-  color: var(--theme-color-fg-default);
-  line-height: 1.5;
-  font-family: var(--font-family-code);
-  padding: 8px 12px;
-  background-color: var(--theme-color-bg-2);
-  border: 1px solid color-mix(in srgb, var(--theme-color-danger) 30%, transparent);
-  border-radius: 4px;
-  margin-bottom: 8px;
-}
-
-.ErrorSuggestion {
-  font-size: 12px;
-  color: var(--theme-color-fg-default);
-  line-height: 1.4;
-  padding: 8px 12px;
-  background-color: var(--theme-color-warning-bg);
-  border: 1px solid color-mix(in srgb, var(--theme-color-warning) 30%, transparent);
-  border-radius: 4px;
-  margin-bottom: 8px;
-
-  strong {
-    font-weight: 600;
-  }
-}
-
-.ErrorLocation {
-  font-size: 11px;
-  color: var(--theme-color-fg-muted);
-  font-family: var(--font-family-code);
-  font-weight: 500;
-}
+/*
+  The bespoke error panel that used to live here is gone (FH-017 slice 2/3). It
+  could only ever show one problem, and CodeMirror's own diagnostics panel —
+  which lists every one and jumps to it — renders inside `.cm-editor`, styled in
+  `codemirror-theme.ts` with the rest of the editor's panels.
+*/
 
 /* Footer with resize grip */
 .Footer {

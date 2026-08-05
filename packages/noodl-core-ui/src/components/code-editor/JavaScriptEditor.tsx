@@ -8,6 +8,7 @@
  */
 
 import { indentRange } from '@codemirror/language';
+import { openLintPanel } from '@codemirror/lint';
 import { EditorView } from '@codemirror/view';
 import { useDragHandler } from '@noodl-hooks/useDragHandler';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -20,15 +21,19 @@ import {
   createExtensions,
   externalValueSync,
   readOnlyCompartment,
-  readOnlyExtensions
+  readOnlyExtensions,
+  type DiagnosticSummary
 } from './codemirror-extensions';
 import css from './JavaScriptEditor.module.scss';
-import { isSameValidation, isValidatedType, validateJavaScript } from './utils/jsValidator';
-import { defaultPlaceholder, modeLabel } from './utils/modes';
+import { defaultPlaceholder, isValidatedType, modeLabel } from './utils/modes';
 import { isPixelSize, parseSizeProp, type CssSize } from './utils/size';
-import { firstErrorPosition } from './utils/syntaxDiagnostics';
 import { minimalChange } from './utils/textChange';
-import { JavaScriptEditorProps, ValidationType } from './utils/types';
+import { JavaScriptEditorProps } from './utils/types';
+
+/** "1 error" / "2 errors" — a count with a noun, not a bare glyph. */
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
 
 /** Shared with {@link useDragHandler} below — the editor cannot usefully go smaller. */
 const MIN_WIDTH = 400;
@@ -58,27 +63,12 @@ export function JavaScriptEditor({
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorViewRef = useRef<EditorView | null>(null);
 
-  // CodeMirror owns the document; this is only the verdict shown in the toolbar and
-  // the panel below it.
-  const [validation, setValidation] = useState(() => validateJavaScript(value || '', validationType));
-
-  const applyValidation = useCallback((code: string, type: ValidationType) => {
-    setValidation((current) => {
-      let next = validateJavaScript(code, type);
-
-      // Neither `new Function` nor most of `JSON.parse`'s errors carry a position, so
-      // the panel used to say only *what* was wrong. The parse tree always knows where.
-      const view = editorViewRef.current;
-      if (!next.valid && next.line === undefined && view) {
-        const position = firstErrorPosition(view.state);
-        if (position) {
-          next = { ...next, ...position };
-        }
-      }
-
-      return isSameValidation(current, next) ? current : next;
-    });
-  }, []);
+  // CodeMirror owns both the document and the verdict. This is an echo of the lint
+  // state for the toolbar, not a second opinion about the same text — the editor
+  // used to run `new Function()` synchronously on every keystroke and could
+  // therefore say "✗ Error" over text with no squiggle in it, or the reverse
+  // (FH-017 slice 2).
+  const [problems, setProblems] = useState<DiagnosticSummary>({ errors: 0, warnings: 0 });
 
   // A number or px string is resizable; every other CSS length passes straight through
   // (CED-001, A6 — `parseInt('100%')` used to yield a 100px editor, clamped up to 400).
@@ -105,10 +95,9 @@ export function JavaScriptEditor({
   // Handle text changes from CodeMirror
   const handleChange = useCallback(
     (newValue: string) => {
-      applyValidation(newValue, validationType);
       onChange?.(newValue);
     },
-    [applyValidation, onChange, validationType]
+    [onChange]
   );
 
   /**
@@ -156,6 +145,7 @@ export function JavaScriptEditor({
           readOnly: disabled,
           onChange: (newValue) => handleChangeRef.current(newValue),
           onSave: onSave ? (newValue) => onSaveRef.current?.(newValue) : undefined,
+          onDiagnostics: setProblems,
           tabSize: 2
         })
       ),
@@ -191,15 +181,9 @@ export function JavaScriptEditor({
       annotations: externalValueSync.of(true)
     });
 
-    applyValidation(next, validationType);
-  }, [applyValidation, value, validationType]);
-
-  // Keep the verdict in step when only the mode changes.
-  useEffect(() => {
-    const view = editorViewRef.current;
-    applyValidation(view ? view.state.doc.toString() : value || '', validationType);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [validationType]);
+    // No re-validation here: the linter is an extension of this editor and runs
+    // itself on any document change, whoever caused it.
+  }, [value]);
 
   // Toggle read-only on the live editor.
   useEffect(() => {
@@ -233,6 +217,30 @@ export function JavaScriptEditor({
   // and an unearned "✓ Valid" is as misleading as the "✗ Error" they used to get.
   const showsVerdict = isValidatedType(validationType);
 
+  /**
+   * Show every problem, not the first one.
+   *
+   * CodeMirror ships a diagnostics panel that lists them all, and its keybinding
+   * (`Mod-Shift-M`) has been in our keymap since CED-001 — with no button, no
+   * label and nothing in the UI that says so, it had zero callers. The verdict
+   * is that button now (FH-017 slice 3).
+   */
+  const showProblems = useCallback(() => {
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    openLintPanel(view);
+    view.focus();
+  }, []);
+
+  const problemCount = problems.errors + problems.warnings;
+  const verdictLabel =
+    problems.errors > 0
+      ? `✗ ${plural(problems.errors, 'error')}`
+      : problems.warnings > 0
+        ? `⚠ ${plural(problems.warnings, 'warning')}`
+        : '✓ Valid';
+
   return (
     <div
       ref={rootRef}
@@ -251,10 +259,17 @@ export function JavaScriptEditor({
         <div className={css['ToolbarLeft']}>
           <span className={css['ModeLabel']}>{modeLabel(validationType)}</span>
           {showsVerdict &&
-            (validation.valid ? (
-              <span className={css['StatusValid']}>✓ Valid</span>
+            (problemCount > 0 ? (
+              <button
+                type="button"
+                onClick={showProblems}
+                className={problems.errors > 0 ? css['StatusInvalid'] : css['StatusWarning']}
+                title="Show all problems (Ctrl+Shift+M)"
+              >
+                {verdictLabel}
+              </button>
             ) : (
-              <span className={css['StatusInvalid']}>✗ Error</span>
+              <span className={css['StatusValid']}>{verdictLabel}</span>
             ))}
         </div>
         <div className={css['ToolbarRight']}>
@@ -299,30 +314,16 @@ export function JavaScriptEditor({
         </div>
       </div>
 
-      {/* CodeMirror Editor Container */}
-      <div ref={editorContainerRef} className={css['EditorContainer']} />
+      {/*
+        CodeMirror Editor Container.
 
-      {/* Validation Errors */}
-      {!validation.valid && (
-        <div className={css['ErrorPanel']}>
-          <div className={css['ErrorHeader']}>
-            <span className={css['ErrorIcon']}>⚠️</span>
-            <span className={css['ErrorTitle']}>Syntax Error</span>
-          </div>
-          <div className={css['ErrorMessage']}>{validation.error}</div>
-          {validation.suggestion && (
-            <div className={css['ErrorSuggestion']}>
-              <strong>💡 Suggestion:</strong> {validation.suggestion}
-            </div>
-          )}
-          {validation.line !== undefined && (
-            <div className={css['ErrorLocation']}>
-              Line {validation.line}
-              {validation.column !== undefined && `, Column ${validation.column}`}
-            </div>
-          )}
-        </div>
-      )}
+        No error panel underneath it: the one that used to live here rendered a
+        single error, because `new Function` throws on the first one it meets and
+        never gets to the second. CodeMirror's own diagnostics panel opens inside
+        this container, lists all of them, and moves the cursor to the one you
+        pick — see `showProblems`.
+      */}
+      <div ref={editorContainerRef} className={css['EditorContainer']} />
 
       {/* Footer with resize grip */}
       <div className={css['Footer']}>

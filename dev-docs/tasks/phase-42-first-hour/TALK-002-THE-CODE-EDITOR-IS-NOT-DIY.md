@@ -67,3 +67,24 @@ tax).
    "autocomplete works" and "autocomplete knows your project". Not alpha-blocking, but it's the
    feature your item 18 is really asking for. Schedule it as its own task or leave it in
    future-projects?
+
+## HAD — 2026-08-05
+
+Every claim above was re-verified against the code before the conversation, and one was wrong.
+
+**One correction: `esLint()` is not free.** `@codemirror/lang-javascript` exports the *wrapper*; the
+linter itself is `eslint-linter-browserify`, which is **not installed and is in no package.json**.
+So Slice 3 was mis-costed as "use what we already have" — it is a new dependency. The mechanism it
+fixes is real regardless: Lezer parks the unclosed-bracket error node at end-of-document and
+`syntaxDiagnostics.ts:42-59` `widen()` then pins the squiggle to whatever character you just typed,
+which is exactly the "it follows me down the file" symptom.
+
+### Decisions
+
+| # | Decision | Consequence |
+|---|---|---|
+| 1 | **No editor switch. Confirmed.** We are stock CodeMirror 6 minus six rows of configuration; the Monaco cost list stands unchallenged. | FH-017 starts now. Reversing this needs a new argument, not a re-reading of this one. |
+| 2 | **Slice 3 takes the dependency**: add `eslint-linter-browserify` rather than hand-rolling Lezer error anchoring. | Real messages, real positions, genuinely plural errors, from a maintained linter — and it keeps the "less code on the same library" principle that the in-house alternative (~40 bespoke lines) would have broken. Bundle cost accepted. |
+| 3 | **Typed intellisense is its own phase-42 task, not a future-project.** | [FH-019](FH-019-TYPED-INTELLISENSE.md) — generated `.d.ts` for Inputs/Outputs/Noodl API + `scopeCompletionSource`. This is what item 18 was really asking for; `TYPED-INTELLISENSE-REVIVAL.md` becomes its input, not its home. |
+
+The hardcoded 25-string completion array survives Slice 1 only as a stopgap. FH-019 deletes it.

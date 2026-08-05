@@ -12,14 +12,36 @@
  */
 
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { Extension } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
+import { Compartment, Extension } from '@codemirror/state';
+import { EditorView, ViewPlugin } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 
 /**
- * Create the OpenNoodl editor theme
+ * Is the app currently in its dark theme?
+ *
+ * `ThemeManager` stamps `data-theme="light" | "dark"` on the document root
+ * (`noodl-editor/src/editor/src/models/ThemeManager.ts:174-175`); reading the
+ * attribute rather than importing the manager keeps this package free of the
+ * editor. Anything unrecognised — Storybook, a jsdom test — reads as dark,
+ * which is the app's own default.
  */
-export function createOpenNoodlTheme(): Extension {
+export function currentThemeIsDark(): boolean {
+  if (typeof document === 'undefined' || !document.documentElement) return true;
+  return document.documentElement.getAttribute('data-theme') !== 'light';
+}
+
+/**
+ * Create the OpenNoodl editor theme
+ *
+ * `dark` is not decoration. CodeMirror keys its own base theme off it, and
+ * `&dark .cm-selectionBackground` (a flat `#233`) beats our token rule on
+ * specificity — so hardcoding `dark: true` painted a near-black selection
+ * behind dark-navy light-mode syntax colours, and selected text in light mode
+ * could not be read at all (FH-017 slice 5). Every colour in the spec below is
+ * a `var()` and flips on its own; this one flag is the only thing that has to
+ * be told.
+ */
+export function createOpenNoodlTheme(isDark: boolean = currentThemeIsDark()): Extension {
   // Editor theme (UI elements)
   const editorTheme = EditorView.theme(
     {
@@ -44,20 +66,34 @@ export function createOpenNoodlTheme(): Extension {
         borderLeftWidth: '2px'
       },
 
-      // Selection
-      '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-        backgroundColor: 'var(--theme-color-primary-25)'
-      },
+      // Selection.
+      //
+      // The long selector is not decoration either: CodeMirror's own base theme
+      // paints a focused selection through
+      // `&dark.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground`
+      // (`@codemirror/view/dist/index.js:6655-6660`), which out-specifies a
+      // two-class rule. Measured in the running editor: our token never once
+      // reached the selection in dark mode — CM's flat `#233` did.
+      '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, &.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
+        {
+          backgroundColor: 'var(--theme-color-primary-25)'
+        },
 
       // Active line
       '.cm-activeLine': {
         backgroundColor: 'var(--theme-color-bg-hover)'
       },
 
-      // Line numbers gutter
+      // Line numbers gutter.
+      //
+      // POL-017: `fg-muted` is a placeholder tone and does not carry text a
+      // reader is expected to use. Line numbers are read — `fg-default-shy` is
+      // the quiet-but-legible step. Only this one: the two other `fg-muted`
+      // uses below (the fold placeholder, the empty-editor placeholder) sit on
+      // different backgrounds and are genuinely muted text.
       '.cm-gutters': {
         backgroundColor: 'var(--theme-color-bg-3)',
-        color: 'var(--theme-color-fg-muted)',
+        color: 'var(--theme-color-fg-default-shy)',
         border: 'none',
         borderRight: '1px solid var(--theme-color-border-default)',
         minWidth: '35px'
@@ -237,7 +273,7 @@ export function createOpenNoodlTheme(): Extension {
         outline: 'none'
       }
     },
-    { dark: true }
+    { dark: isDark }
   );
 
   // Syntax highlighting theme (token colors).
@@ -357,4 +393,54 @@ export function createOpenNoodlTheme(): Extension {
   ]);
 
   return [editorTheme, syntaxHighlighting(syntaxTheme)];
+}
+
+/** Holds the theme so `dark` can be re-decided on a live editor. */
+const themeCompartment = new Compartment();
+
+/**
+ * Reconfigure the theme when the app's theme changes.
+ *
+ * The `var()` colours flip on their own — this exists only for the `dark` flag,
+ * which is a value CodeMirror reads once at configuration time. Watching the
+ * root attribute rather than subscribing to `nodegx:themechanged` means it also
+ * holds for anything else that sets the theme (Storybook, a screenshot harness),
+ * and needs no import from the editor package.
+ */
+const themeSync = ViewPlugin.fromClass(
+  class {
+    private observer: MutationObserver | null = null;
+    private isDark = currentThemeIsDark();
+
+    constructor(private view: EditorView) {
+      if (typeof MutationObserver === 'undefined' || typeof document === 'undefined') return;
+
+      this.observer = new MutationObserver(() => this.sync());
+      this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    }
+
+    private sync() {
+      const next = currentThemeIsDark();
+      if (next === this.isDark) return;
+
+      this.isDark = next;
+      this.view.dispatch({ effects: themeCompartment.reconfigure(createOpenNoodlTheme(next)) });
+    }
+
+    destroy() {
+      this.observer?.disconnect();
+      this.observer = null;
+    }
+  }
+);
+
+/**
+ * The editor theme, and the machinery that keeps it in step with the app's.
+ *
+ * Use this rather than `createOpenNoodlTheme()` directly: an editor configured
+ * with the bare theme is correct at mount and then wrong the moment someone
+ * flips the theme with it open.
+ */
+export function openNoodlTheme(): Extension {
+  return [themeCompartment.of(createOpenNoodlTheme()), themeSync];
 }

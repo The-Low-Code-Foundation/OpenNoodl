@@ -29,6 +29,8 @@
 
 import { CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
+import { completesTopLevel } from './utils/completionPosition';
+
 /** The shape `AuthoringContextBuilder`'s `RegisteredLibraryInfo` and `projectmodules.ts`'s `RegisteredLibrary` both satisfy. */
 export interface LibraryCompletionSource {
   /** Display name, used in the completion's `info` text. */
@@ -59,10 +61,12 @@ export function createLibraryCompletionSource(
 
     // `\w*` (zero-or-more, matching `noodlCompletionSource`'s own convention)
     // rather than requiring a leading char — an explicit request (Ctrl+Space)
-    // at an empty position should still list what's available.
+    // at an empty position should still list what's available. A library's
+    // global is a top-level name, so a member position is never ours, explicit
+    // or not (FH-017 slice 1 — the twin of `noodl-completions.ts`'s guard).
     const word = context.matchBefore(/\w*/);
     if (!word) return null;
-    if (word.from === word.to && !context.explicit) return null;
+    if (!completesTopLevel(context, word)) return null;
 
     const filtered = options.filter((o) => o.label.toLowerCase().startsWith(word.text.toLowerCase()));
     if (filtered.length === 0) return null;

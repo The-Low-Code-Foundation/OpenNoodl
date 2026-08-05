@@ -18,7 +18,7 @@ import { EditorState, Extension } from '@codemirror/state';
 import { EditorView, lineNumbers, highlightActiveLineGutter } from '@codemirror/view';
 import React, { useEffect, useRef } from 'react';
 
-import { createOpenNoodlTheme } from './codemirror-theme';
+import { openNoodlTheme } from './codemirror-theme';
 import { markdownExtensions } from './markdown-language';
 
 export interface CodeDiffViewProps {
@@ -44,7 +44,7 @@ export interface CodeDiffViewProps {
 function readOnlyExtensions(language: 'javascript' | 'markdown'): Extension[] {
   return [
     ...(language === 'markdown' ? markdownExtensions() : [javascript()]),
-    createOpenNoodlTheme(),
+    openNoodlTheme(),
     syntaxHighlighting(defaultHighlightStyle),
     lineNumbers(),
     highlightActiveLineGutter(),

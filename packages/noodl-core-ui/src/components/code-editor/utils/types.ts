@@ -23,14 +23,6 @@ import type { CodeHistoryProvider } from '../CodeHistory/types';
  */
 export type ValidationType = 'expression' | 'function' | 'script' | 'json' | 'text' | 'css' | 'html';
 
-export interface ValidationResult {
-  valid: boolean;
-  error?: string;
-  suggestion?: string;
-  line?: number;
-  column?: number;
-}
-
 export interface JavaScriptEditorProps {
   /** Current code value */
   value: string;

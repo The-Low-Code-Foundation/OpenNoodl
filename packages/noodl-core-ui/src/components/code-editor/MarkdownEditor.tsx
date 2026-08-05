@@ -21,7 +21,7 @@ import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, placeholder as placeholderExtension } from '@codemirror/view';
 import React, { useEffect, useRef } from 'react';
 
-import { createOpenNoodlTheme } from './codemirror-theme';
+import { openNoodlTheme } from './codemirror-theme';
 import { markdownExtensions } from './markdown-language';
 
 export interface MarkdownEditorProps {
@@ -61,7 +61,7 @@ export function MarkdownEditor({
         doc: value,
         extensions: [
           ...markdownExtensions(),
-          createOpenNoodlTheme(),
+          openNoodlTheme(),
           history(),
           keymap.of([
             ...defaultKeymap,

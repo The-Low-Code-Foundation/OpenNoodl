@@ -6,7 +6,7 @@
  * - Autocompletion (the language's own, plus Noodl's globals)
  * - Search/replace
  * - Code folding
- * - Linting from the parse tree
+ * - Linting: ESLint for JavaScript, the parse tree for JSON
  * - Custom keybindings
  *
  * CED-001 (A1–A3) removed a layer of hand-rolled replacements for behaviour
@@ -20,7 +20,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab, toggleComment } f
 import { javascript, javascriptLanguage } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
 import { bracketMatching, foldGutter, foldKeymap, indentOnInput } from '@codemirror/language';
-import { lintGutter, linter, lintKeymap } from '@codemirror/lint';
+import { Diagnostic, forEachDiagnostic, lintGutter, linter, lintKeymap, openLintPanel } from '@codemirror/lint';
 import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
 import { Compartment, EditorSelection, EditorState, Extension } from '@codemirror/state';
 import {
@@ -33,11 +33,13 @@ import {
   lineNumbers,
   placeholder as placeholderExtension,
   rectangularSelection,
+  ViewPlugin,
   ViewUpdate
 } from '@codemirror/view';
 
-import { createOpenNoodlTheme } from './codemirror-theme';
+import { openNoodlTheme } from './codemirror-theme';
 import { noodlCompletionSource } from './noodl-completions';
+import { javascriptDiagnostics } from './utils/esLintDiagnostics';
 import { isExternalValueSync } from './utils/externalValueSync';
 import { defaultPlaceholder } from './utils/modes';
 import { syntaxDiagnostics } from './utils/syntaxDiagnostics';
@@ -61,7 +63,109 @@ export interface ExtensionOptions {
   onSave?: (value: string) => void;
   /** Tab size (default: 2) */
   tabSize?: number;
+  /**
+   * Called when the set of diagnostics changes — the toolbar's verdict.
+   *
+   * There used to be a second error system here: a synchronous `new Function()`
+   * on every keystroke, whose single-error verdict could disagree with the
+   * squiggles CodeMirror drew (FH-017 slice 2). One linter now feeds both, so
+   * "✗ Error" and the underline are by construction the same claim.
+   */
+  onDiagnostics?: (summary: DiagnosticSummary) => void;
 }
+
+/** What the toolbar needs to know about the document's problems. */
+export interface DiagnosticSummary {
+  errors: number;
+  warnings: number;
+}
+
+const NO_PROBLEMS: DiagnosticSummary = { errors: 0, warnings: 0 };
+
+/**
+ * Which diagnostics a mode gets.
+ *
+ * JavaScript goes to ESLint (real messages, and the semantic problems a parse
+ * tree cannot see); JSON keeps the Lezer error walk, which is the whole story
+ * for a data format. CSS, HTML and free text have no language installed and get
+ * nothing — valid CSS underlined as a JavaScript error was CED-001's bug and
+ * must not come back.
+ */
+export function diagnosticsFor(state: EditorState, validationType: ValidationType): Diagnostic[] {
+  switch (validationType) {
+    case 'expression':
+    case 'function':
+    case 'script':
+      return javascriptDiagnostics(state, validationType);
+
+    case 'json':
+      return syntaxDiagnostics(state);
+
+    default:
+      return [];
+  }
+}
+
+/**
+ * Report the diagnostic count to the consumer, but only when it changes.
+ *
+ * `forEachDiagnostic` reads the lint state field, so this reports what is
+ * actually drawn rather than a second opinion about the same text.
+ */
+function diagnosticReporter(onDiagnostics: (summary: DiagnosticSummary) => void): Extension {
+  let last = NO_PROBLEMS;
+
+  return EditorView.updateListener.of((update: ViewUpdate) => {
+    let errors = 0;
+    let warnings = 0;
+
+    forEachDiagnostic(update.state, (diagnostic) => {
+      if (diagnostic.severity === 'error') errors++;
+      else if (diagnostic.severity === 'warning') warnings++;
+    });
+
+    if (errors === last.errors && warnings === last.warnings) return;
+
+    last = { errors, warnings };
+    onDiagnostics(last);
+  });
+}
+
+/**
+ * Make the lint gutter's dot open the diagnostics panel.
+ *
+ * `lintGutter()`'s own marker is hover-only — `LintGutterMarker.toDOM` installs
+ * `onmouseover` and nothing else — so the one obviously-clickable thing in the
+ * editor did nothing when clicked (FH-017 slice 4).
+ *
+ * The listener goes on `view.dom` by hand. `EditorView.domEventHandlers` is the
+ * obvious-looking answer and is the wrong one: it registers on the *content*
+ * element (`@codemirror/view` index.d.ts:1193), and every gutter is a sibling of
+ * the content, so a gutter click never reaches it. That version passed its unit
+ * test and did nothing in the running editor. A second `gutter()` with
+ * `domEventHandlers` would work too, at the price of a second column beside the
+ * one we already have.
+ */
+const lintGutterClick = ViewPlugin.fromClass(
+  class {
+    private readonly onMouseDown: (event: MouseEvent) => void;
+
+    constructor(private readonly view: EditorView) {
+      this.onMouseDown = (event: MouseEvent) => {
+        const target = event.target as HTMLElement | null;
+        if (!target?.closest?.('.cm-gutter-lint .cm-gutterElement')) return;
+
+        openLintPanel(this.view);
+      };
+
+      view.dom.addEventListener('mousedown', this.onMouseDown);
+    }
+
+    destroy() {
+      this.view.dom.removeEventListener('mousedown', this.onMouseDown);
+    }
+  }
+);
 
 /**
  * Holds the read-only configuration so `disabled` can be toggled on a live editor
@@ -215,7 +319,7 @@ export function createExtensions(options: ExtensionOptions = {}): Extension[] {
     languageSupport(validationType),
 
     // 2. Theme
-    createOpenNoodlTheme(),
+    openNoodlTheme(),
 
     // 3. Keybindings
     customKeybindings(options),
@@ -249,8 +353,10 @@ export function createExtensions(options: ExtensionOptions = {}): Extension[] {
       maxRenderedOptions: 10,
       defaultKeymap: true
     }),
-    linter((view) => syntaxDiagnostics(view.state)),
+    linter((view) => diagnosticsFor(view.state, validationType)),
     lintGutter(),
+    lintGutterClick,
+    ...(options.onDiagnostics ? [diagnosticReporter(options.onDiagnostics)] : []),
 
     // 8. Tab size
     EditorState.tabSize.of(tabSize),

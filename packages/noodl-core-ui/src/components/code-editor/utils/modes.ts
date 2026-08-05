@@ -33,6 +33,24 @@ const PLACEHOLDERS: Record<ValidationType, string> = {
   html: '<!-- Enter HTML -->'
 };
 
+/**
+ * Modes nothing checks.
+ *
+ * CSS, HTML and free text are all edited here, and none of them is checkable by
+ * a JavaScript parser. {@link isValidatedType} is what consumers ask before
+ * *showing* a verdict — claiming "✓ Valid" over text nobody checked is the same
+ * lie as the "✗ Error" these modes used to produce.
+ *
+ * Moved here from `jsValidator.ts` when FH-017 slice 2 deleted that module: it
+ * is a fact about a mode, and the modes live in one table by design.
+ */
+const UNVALIDATED: readonly ValidationType[] = ['text', 'css', 'html'];
+
+/** Does this mode have a linter behind it, or is the editor just holding text? */
+export function isValidatedType(validationType: ValidationType): boolean {
+  return !UNVALIDATED.includes(validationType);
+}
+
 /** The name shown in the popout's toolbar. */
 export function modeLabel(validationType: ValidationType): string {
   return LABELS[validationType] ?? 'JavaScript';

@@ -15,6 +15,8 @@
 
 import { CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
+import { completesTopLevel, isMemberPosition } from './utils/completionPosition';
+
 /**
  * Noodl API structure completions
  */
@@ -54,16 +56,6 @@ const noodlCompletions = [
 ];
 
 /**
- * Get the word before the cursor
- */
-function wordBefore(context: CompletionContext): { from: number; to: number; text: string } | null {
-  const word = context.matchBefore(/\w*/);
-  if (!word) return null;
-  if (word.from === word.to && !context.explicit) return null;
-  return word;
-}
-
-/**
  * Get completions for after "Noodl."
  */
 function getNoodlPropertyCompletions(): CompletionResult {
@@ -79,18 +71,29 @@ function getNoodlPropertyCompletions(): CompletionResult {
 
 /**
  * Main Noodl completion source
+ *
+ * Order matters. `Noodl.`'s properties are answered *before* the top-level
+ * guard, because the word after a dot is zero-length and the guard exists to
+ * suppress exactly that — which is why this branch used to be dead code
+ * (FH-017 slice 1, and see `utils/completionPosition.ts`).
  */
 export function noodlCompletionSource(context: CompletionContext): CompletionResult | null {
-  const word = wordBefore(context);
+  const word = context.matchBefore(/\w*/);
   if (!word) return null;
 
-  // Check if we're after "Noodl."
+  // Members of the one object this source actually knows.
   const textBefore = context.state.doc.sliceString(Math.max(0, word.from - 6), word.from);
   if (textBefore.endsWith('Noodl.')) {
     const result = getNoodlPropertyCompletions();
     result.from = word.from;
     return result;
   }
+
+  // Anything else after a dot is somebody else's member — the language's own
+  // sources handle it. Offering `Math.min` after `myArray.` is noise.
+  if (isMemberPosition(context, word.from)) return null;
+
+  if (!completesTopLevel(context, word)) return null;
 
   // Check if we're typing "Noodl" itself
   if (word.text.toLowerCase().startsWith('nood')) {

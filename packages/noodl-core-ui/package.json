@@ -46,6 +46,7 @@
     "@codemirror/state": "^6.5.3",
     "@codemirror/view": "^6.39.9",
     "classnames": "^2.5.1",
+    "eslint-linter-browserify": "^10.8.0",
     "prismjs": "^1.30.0"
   },
   "peerDependencies": {

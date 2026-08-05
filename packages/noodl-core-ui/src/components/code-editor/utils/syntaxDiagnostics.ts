@@ -38,8 +38,11 @@ const MESSAGE_EXCERPT = 24;
  * Lezer reports the position where the parse failed, which is often zero-length
  * (the parser noticed *between* two tokens). A zero-length range draws nothing, so
  * widen it onto the neighbouring character.
+ *
+ * Exported for `esLintDiagnostics.ts`, which has the same problem from a different
+ * parser — one helper, not a twin.
  */
-function widen(state: EditorState, from: number, to: number): { from: number; to: number } {
+export function widen(state: EditorState, from: number, to: number): { from: number; to: number } {
   if (to > from) {
     return { from, to };
   }
