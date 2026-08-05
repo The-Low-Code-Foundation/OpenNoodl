@@ -31,6 +31,30 @@ Every layer of param mapping exists **except the declaration that makes it autho
   so a step with no params param has no row to author, and the `$path` picker is **reachable by no
   route in the product**.
 
+## ⚠️ Refinement, 2026-08-05 — data DOES reach the function; *mapping* doesn't
+
+Traced while writing the use-case walkthrough, and it narrows this task rather than changing it.
+A step's input is
+
+```ts
+const input = { ...basePayload, ...resolvedParams, ...(previous ? { previous } : {}) };
+```
+([WorkflowEngine.ts:496-501](../../../packages/nodegx-backend/src/workflow/WorkflowEngine.ts#L496-L501))
+
+and `invokeCloudFunction` sends it as the request body
+([StepExecutor.ts:187-190](../../../packages/nodegx-backend/src/workflow/StepExecutor.ts#L187-L190)).
+The Request node pulls named keys out of that body into outputs
+([request.ts:75-80, 145-147](../../../packages/noodl-viewer-cloud/src/nodes/cloud/request.ts#L145-L147)).
+
+So **today**, without this task: the trigger payload reaches every function, and a function can
+declare a param literally named `previous` to receive the whole previous step's output. What is
+impossible is *selecting or renaming* — you cannot pass `previous.result.total` as `amount`, and a
+function cannot be written against a stable input shape independent of its position in the graph.
+That is what `resolvedParams` (always empty today) exists for, and what this task delivers.
+
+State it that way in the docs too — "you can't pass data into a function" is not quite true, and an
+author who discovers `previous` on their own will conclude the docs lie.
+
 **The shape problem to solve.** Every other param is a fixed name with one value. A param *mapping*
 is a dictionary of **author-chosen keys** → value specs. One-port-per-declared-param cannot express
 it. The precedent is `switch`'s `cases`: a `raw` param with its own port type
