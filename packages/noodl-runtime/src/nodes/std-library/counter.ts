@@ -79,20 +79,32 @@ const CounterNode: NodeDefinitionOptions = {
     reset: {
       group: 'Actions',
       displayName: 'Reset To Start',
-      description: 'Puts the count back to Start Value',
+      description:
+        'Puts the count back to Start Value, or reports Unchanged and leaves Count Changed silent when it is already there',
       valueChangedToTrue: function (this: CounterNodeInstance) {
-        // Kept verbatim, and it is a defect: the count lives at
-        // `this._internal.currentValue`, so `this.currentValue` is always `undefined`
-        // and this early return has never fired. The effect is that Reset always flags
-        // the output dirty and signals, even when it changes nothing. Harmless, but the
-        // guard does not do what it reads as (PLAT-003 NOTES §25).
-        // ⚠️ Still kept verbatim, and deliberately **not** repaired into an `Unchanged`.
-        // Making the guard read `_internal.currentValue` would change when `Count Changed`
-        // fires, which is a behaviour change dressed as a rename; ERG-001 §4 is adopting the
-        // contract, not settling a two-year-old defect. Reset therefore always reports `Done`,
-        // which is exactly what it has always done — see PLAT-003 NOTES §25.
+        /**
+         * FH-022 slice 3 — the guard that had never once fired, now firing.
+         *
+         * The count lives at `_internal.currentValue`, so the old `this.currentValue` read
+         * `undefined` on every pass and this early return was dead code from the day it was
+         * written (PLAT-003 NOTES §25). ERG-001 §4 kept it verbatim on purpose and said so in
+         * the code: repairing it changes when `Count Changed` fires, which is a behaviour
+         * change and had no business riding along inside a contract adoption.
+         *
+         * ⚠️ **The obvious repair is also wrong.** Simply pointing the read at `_internal`
+         * leaves the comparison against `0`, which would report `Unchanged` for "the count is
+         * zero" — a different condition, and wrong on any counter that starts anywhere else.
+         * `Reset` sets the count to `_internal.startValue`, so the post-condition that already
+         * holds is `currentValue === startValue`, and that is what is tested.
+         *
+         * ⚠️ **This is a behaviour change, shipped alone so it can be reverted alone.** With
+         * the guard live, `Count Changed` stops firing on a Reset that changes nothing, and
+         * `Reset` starts reporting `Unchanged` on a node that has never emitted it. Both are
+         * what the contract says should happen, and `Treat Unchanged as` is already there for
+         * a project that wants the old pulse back as `Done`.
+         */
         const outcome = this.beginOutcome();
-        if ((this as unknown as { currentValue?: number }).currentValue === 0) {
+        if (this._internal.currentValue === this._internal.startValue) {
           this.reportOutcome(outcome, 'unchanged');
           return;
         }
@@ -177,7 +189,8 @@ const CounterNode: NodeDefinitionOptions = {
      */
     ...outcomeOutputs({
       done: 'Fires when the count actually moved',
-      unchanged: 'Fires when Limits Enabled held the count where it was, so nothing moved'
+      unchanged:
+        'Fires when nothing moved: Limits Enabled held the count at Min or Max, or Reset was pressed on a count already at Start Value'
     })
   }
 };

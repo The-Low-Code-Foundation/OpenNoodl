@@ -3403,7 +3403,7 @@
           "plug": "input",
           "group": "Actions",
           "displayName": "Reset To Start",
-          "description": "Puts the count back to Start Value"
+          "description": "Puts the count back to Start Value, or reports Unchanged and leaves Count Changed silent when it is already there"
         },
         {
           "name": "startValue",
@@ -3482,7 +3482,7 @@
           "plug": "output",
           "group": "Events",
           "displayName": "Unchanged",
-          "description": "Fires when Limits Enabled held the count where it was, so nothing moved"
+          "description": "Fires when nothing moved: Limits Enabled held the count at Min or Max, or Reset was pressed on a count already at Start Value"
         }
       ]
     },
