@@ -34,6 +34,11 @@ function stubNode({ hasComment, comment = 'why this node exists' }: { hasComment
     titlebarHeight: () => TITLEBAR_HEIGHT,
     titlebarLabelHeight: () => 14,
     typeDisplayName: () => 'Group',
+    // FH-003 (5270e34e) moved the painter off `model.label` and onto this accessor; the stub
+    // did not follow, so all three specs here died on `node.labelText is not a function`
+    // rather than on anything about the stripe. Matches the real one for an unlabelled node:
+    // the label equals the type name.
+    labelText: () => 'Group',
     owner: { isHighlighted: () => false },
     model: {
       label: 'Group',
