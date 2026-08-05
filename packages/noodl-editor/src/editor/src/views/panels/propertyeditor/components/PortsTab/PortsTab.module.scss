@@ -1,0 +1,166 @@
+.Root {
+  /* `ScrollArea`'s container is a flex row, so the tab body has to claim it —
+     the Properties tab does the same with `Frame`'s `flex: 1`. */
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-3) var(--spacing-4) var(--spacing-6);
+  gap: var(--spacing-4);
+}
+
+.Intro {
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+
+.Section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.SectionTitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-1-5);
+  color: var(--theme-color-fg-highlight);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.SectionCount {
+  color: var(--theme-color-fg-muted);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: 0;
+}
+
+.GroupTitle {
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  margin: var(--spacing-2) 0 0;
+}
+
+.Row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2) var(--spacing-2-5);
+  border: 1px solid var(--theme-color-border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--theme-color-bg-2);
+}
+
+.RowHead {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1-5);
+  min-width: 0;
+}
+
+.SignalIcon {
+  display: flex;
+  flex: none;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.Name {
+  color: var(--theme-color-fg-highlight);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.Type {
+  margin-left: auto;
+  flex: none;
+  color: var(--theme-color-fg-default-shy);
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-xs);
+  padding: 1px var(--spacing-1);
+  border-radius: var(--radius-sm);
+  background-color: var(--theme-color-bg-3);
+}
+
+.Description {
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+
+.Accepts {
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+
+.AcceptsLabel {
+  color: var(--theme-color-fg-default-shy);
+  font-weight: var(--font-weight-medium);
+}
+
+.Connections {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-1);
+  margin-top: var(--spacing-0-5);
+}
+
+.NoConnections {
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-xs);
+  font-style: italic;
+}
+
+.Chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--spacing-1);
+  max-width: 100%;
+  border: 0;
+  cursor: pointer;
+  background-color: var(--theme-color-primary-bg);
+  color: var(--theme-color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-0-5) var(--spacing-1-5);
+  font-family: var(--font-family);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+
+  &:hover {
+    background-color: var(--theme-color-primary-25);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+.ChipDirection {
+  flex: none;
+  color: var(--theme-color-fg-muted);
+  font-weight: var(--font-weight-regular);
+}
+
+.ChipLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.Empty {
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}

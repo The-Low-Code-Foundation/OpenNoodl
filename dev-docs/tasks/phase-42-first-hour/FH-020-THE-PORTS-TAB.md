@@ -1,5 +1,10 @@
 # FH-020 — The Ports tab: a read-only port explorer in the property panel
 
+**Status:** shipped 2026-08-06 — slices 1-4. Slice 5 (the connection popup's dropped `description`)
+is **deferred, not done**; it is independent by the doc's own note and nothing below depends on it.
+Two of this doc's own instructions were wrong and are corrected in place — see
+[What shipped, and what this doc got wrong](#what-shipped-and-what-this-doc-got-wrong).
+
 Out of [TALK-006](TALK-006-THE-THREE-SIGNALS.md) decision 2 (had 2026-08-05). Covers reported item
 **0**'s real remainder — signal-port descriptions render nowhere — and widens past it on Richard's
 argument, because the same tab answers a bigger question than "what does Done mean".
@@ -72,6 +77,14 @@ have a view class. That is precisely the set with property rows — which exclud
 connection-only port, and all 100% of outputs. It is the set the tab exists to escape. Read
 `model.getPorts('input')` and `model.getPorts('output')` directly and filter nothing.
 
+> ⚠️ **Correction (build).** "Filter nothing" is wrong by one filter.
+> `conditionalports/*` is a **filter over statically declared ports**
+> ([`dynamicPortRules.ts:32`](../../../packages/noodl-editor/src/editor/src/models/nodelibrary/dynamicPortRules.ts#L32)),
+> so a port whose condition is currently false is still sitting in `getPorts()` while not actually
+> being on the node. Listing it explains a port that is not there. The tab applies
+> `NodeLibrary.instance.applyPortConditionsFilterForNode(model)` — the same call `ModelProxy.getPorts`
+> makes, so the two tabs agree about what the node has — and filters nothing else.
+
 Two more absences:
 
 - **No output-side connection lookup.** Both helpers in `utils.ts` filter `c.toId === node.id &&
@@ -107,6 +120,18 @@ so quietly — the empty state is information here ("nothing reads this yet"), n
 **Slice 4 — "what it accepts."** Per port, the set of port types `canCastPortTypes` will let
 through, rendered as the annotation Richard asked for. Compute it from the type table, not by
 probing every other node. If that set is unbounded (`*`), say `Any` and stop.
+
+> ⚠️ **Correction (build).** `canCastPortTypes` alone gives the **wrong answer for every signal**.
+> The cast table really does declare `signal -> ['boolean', 'number']`
+> ([`nodelibraryexport.ts:224-226`](../../../packages/noodl-runtime/src/nodelibraryexport.ts#L224-L226)),
+> and the connection popup then refuses those wires with a second rule of its own that is not in the
+> table ([`ConnectionBar.tsx:144-152`](../../../packages/noodl-editor/src/editor/src/views/ConnectionPopup/components/ConnectionBar.tsx#L144-L152)):
+> a **signal output** reaches signal inputs and nothing else. A slice-4 built from the table alone
+> would tell an author that `Done` can drive a Number input — which is the exact class of wrong
+> answer this tab exists to stop. Both halves live in
+> [`portTypes.ts`](../../../packages/noodl-editor/src/editor/src/views/panels/propertyeditor/portTypes.ts)
+> so the tab and the popup cannot drift. Note the rule is **not** symmetric: it blocks signal
+> *sources*, so a Boolean output can still pulse a signal input, and the tab says so.
 
 **Slice 5 (optional, ~10 lines, not asked for).** While the connection popup stays the wiring
 surface, its per-port hover renders remote docs HTML and nothing else — because
@@ -144,3 +169,44 @@ prefer the node's own description over the remote page. Independent of slices 1-
   a connection never crosses a component — but it silently no-ops if the graph changed under it;
   keep the `undefined` → inert-chip behaviour rather than rendering a dead click target.
 - `IconSize` is inert (UIX-010) — size the ⚡ the way `PortItem.tsx:98` does, with an explicit style.
+
+## What shipped, and what this doc got wrong
+
+Shipped 2026-08-06. Every mechanism this doc cites was re-read at the line it names; the two that
+were wrong are corrected inline above (the `conditionalports` filter, and the signal rule slice 4
+would have missed). Everything else held: the tab strip really was AI-path-only, the chip really is
+on 5 row classes of ~29 and reads inputs only, `Ports._getPorts()` really is the wrong source, and
+`getConnectionStatus` really is at `NodeGraphModel.ts:491`.
+
+**Slice 1.** The `Tabs` wrapper is out of `AiPropertyEditor` and into one `PropertyEditorTabs` used
+by both paths — `Properties | Ports`, with `AI Chat` in front when the assistant is on, `NodeLabel`
+above the strip either way. The selected tab is **module state**, not `useState`: `createPanel`
+builds a *new function component* on every node selection
+([`sidebarmodel.tsx:76-85`](../../../packages/noodl-editor/src/editor/src/models/sidebar/sidebarmodel.tsx#L76-L85))
+and `SidePanel` re-creates the element from it, so the element type changes identity and React
+unmounts and remounts the whole panel every time you click a node. A `useState` tab would have reset
+on every click — and *not* resetting is what makes the chip-to-chip walk work.
+
+**Slice 2.** Both directions, grouped by `port.group` in declared order with `Other` last, and
+`port.tab.label` appended the way the popup does. Per row: the ⚡ for signals (explicit size, UIX-010),
+the type name with enum values spelled out (trimmed at 8 — a font-weight enum is longer than the row),
+and the description **in the row**.
+
+**Slice 3.** `getPortConnections(model, portName, direction)` in `utils.ts` — a list, both ways, each
+entry individually clickable. `getConnectionSourceLabel` / `getConnectionSourceNavigate` are now
+one-liners over it, so the five property rows and the tab cannot disagree about what a port is wired
+to. Their behaviour is unchanged except that a wire whose far node no longer resolves is skipped
+rather than suppressing the whole chip. Empty is stated, not hidden: *Nothing drives this yet* /
+*Nothing reads this yet*.
+
+**Slice 4.** `portTypes.ts` — pure, takes the cast table as an argument, and is therefore covered by
+the plain-Node runner (`tests-unit/property-editor/portTypes.test.ts`, 12 cases including the two
+signal traps).
+
+**Deferred.** Slice 5 (`ConnectionBar.tsx` drops `description` in a field copy) — independent by this
+doc's own note, and it belongs with whoever next opens the popup. Not attempted: a filter box for
+the `Function` node's ~76 rows; the tab is a long scroll there, which is honest but not comfortable.
+
+**Live QA is unrun.** No dev launch — a launch rewrites the example project and this checkout is
+shared. ⚠️ Anyone driving it must **relaunch, not HMR**: the property editor is long-lived and
+mounted, and ERG-004 lost a restart to exactly that.

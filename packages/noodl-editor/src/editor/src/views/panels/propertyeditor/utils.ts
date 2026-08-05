@@ -77,31 +77,87 @@ function underlyingNode(parentModel: TSFixme) {
   return parentModel?.model ?? parentModel;
 }
 
+/** One end of a wire attached to a port: what it is, and how to go there. */
+export interface PortConnectionRef {
+  /** The node at the other end, e.g. "CallCF · Result". */
+  label: string;
+  /**
+   * Select that node on the canvas. Always present here — it is the *handler*
+   * that no-ops if the graph moved under it, which keeps the chip honest
+   * without rendering a dead click target for a wire that exists.
+   */
+  navigate: () => void;
+}
+
+/**
+ * Every wire attached to `portName`, as the node at the other end of it.
+ *
+ * `direction` is the direction of the port being asked about: an **input** is
+ * asked what drives it, an **output** what it drives. An output legitimately
+ * has many targets, which is why this returns a list — FH-020: *"Where does
+ * `Done` go?" is the question the tab is for; `Foo · Do +3` does not answer it.*
+ *
+ * A wire whose far node cannot be resolved is dropped rather than rendered
+ * nameless. That is a broken graph, not a port worth describing.
+ */
+export function getPortConnections(
+  parentModel: TSFixme,
+  portName: string,
+  direction: 'input' | 'output'
+): PortConnectionRef[] {
+  const node = underlyingNode(parentModel);
+  const owner = node?.owner;
+  if (!node || !owner || !Array.isArray(owner.connections)) return [];
+
+  const isInput = direction === 'input';
+  const matches = owner.connections.filter((c) =>
+    isInput ? c.toId === node.id && c.toProperty === portName : c.fromId === node.id && c.fromProperty === portName
+  );
+
+  const refs: PortConnectionRef[] = [];
+  for (const con of matches) {
+    const peerId = isInput ? con.fromId : con.toId;
+    const peerPortName = isInput ? con.fromProperty : con.toProperty;
+
+    const peer = owner.findNodeWithId && owner.findNodeWithId(peerId);
+    if (!peer) continue;
+
+    const peerLabel = ParameterValueResolver.toString(peer.label) || peer.type?.displayName || '';
+    if (!peerLabel) continue;
+
+    const port = peer.getPort && peer.getPort(peerPortName, isInput ? 'output' : 'input');
+    const portLabel = (port && (port.displayName || port.name)) || peerPortName;
+
+    refs.push({
+      label: `${peerLabel} · ${portLabel}`,
+      navigate: () => {
+        const editor = NodeGraphContextTmp.nodeGraph;
+        const editorNode = editor?.findNodeWithId?.(peerId);
+        if (editorNode) {
+          editor.selectNode(editorNode);
+        }
+      }
+    });
+  }
+
+  return refs;
+}
+
 /**
  * Human label for the connection driving `portName` on `parentModel`'s node,
  * e.g. "CallCF · Result". Undefined when the port is not connected or the
  * source can't be resolved (callers fall back to the generic chip).
+ *
+ * One row of a property panel has room for one source, so this stays the
+ * first-plus-count summary the five row classes already render. FH-020's tab
+ * renders `getPortConnections` in full instead.
  */
 export function getConnectionSourceLabel(parentModel: TSFixme, portName: string): string | undefined {
-  const node = underlyingNode(parentModel);
-  const owner = node?.owner;
-  if (!node || !owner || !Array.isArray(owner.connections)) return undefined;
-
-  const connections = owner.connections.filter((c) => c.toId === node.id && c.toProperty === portName);
+  const connections = getPortConnections(parentModel, portName, 'input');
   if (connections.length === 0) return undefined;
 
-  const con = connections[0];
-  const source = owner.findNodeWithId && owner.findNodeWithId(con.fromId);
-  if (!source) return undefined;
-
-  const sourceLabel = ParameterValueResolver.toString(source.label) || source.type?.displayName || '';
-  if (!sourceLabel) return undefined;
-
-  const port = source.getPort && source.getPort(con.fromProperty, 'output');
-  const portLabel = (port && (port.displayName || port.name)) || con.fromProperty;
-
   const extra = connections.length > 1 ? ` +${connections.length - 1}` : '';
-  return `${sourceLabel} · ${portLabel}${extra}`;
+  return `${connections[0].label}${extra}`;
 }
 
 /**
@@ -110,18 +166,5 @@ export function getConnectionSourceLabel(parentModel: TSFixme, portName: string)
  * the chip then renders non-interactive (spec: navigate only if it exists).
  */
 export function getConnectionSourceNavigate(parentModel: TSFixme, portName: string): (() => void) | undefined {
-  const node = underlyingNode(parentModel);
-  const owner = node?.owner;
-  if (!node || !owner || !Array.isArray(owner.connections)) return undefined;
-
-  const con = owner.connections.find((c) => c.toId === node.id && c.toProperty === portName);
-  if (!con) return undefined;
-
-  return () => {
-    const editor = NodeGraphContextTmp.nodeGraph;
-    const editorNode = editor?.findNodeWithId?.(con.fromId);
-    if (editorNode) {
-      editor.selectNode(editorNode);
-    }
-  };
+  return getPortConnections(parentModel, portName, 'input')[0]?.navigate;
 }
