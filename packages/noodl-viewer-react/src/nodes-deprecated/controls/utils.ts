@@ -104,6 +104,22 @@ function addControlEventsAndStates(definition: ReactNodeDefinition): void {
       index: 450,
       displayName: 'Block Pointer Events',
       type: 'boolean'
+    },
+    // FH-015 slice 2. These nodes are deprecated but still render through `pointerProps`, so
+    // the new click-bubbling default reaches them whether they declare the port or not. They
+    // get it too, or a project still using them would have no way back to the old behaviour.
+    clickBubbling: {
+      index: 451,
+      displayName: 'Click Bubbling',
+      type: {
+        name: 'enum',
+        enums: [
+          { label: 'Automatic', value: 'auto' },
+          { label: 'Always', value: 'always' },
+          { label: 'Never', value: 'never' }
+        ]
+      },
+      default: 'auto'
     }
   });
 

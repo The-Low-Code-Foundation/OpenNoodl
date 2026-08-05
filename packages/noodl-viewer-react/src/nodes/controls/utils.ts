@@ -109,8 +109,27 @@ function addControlEventsAndStates(definition, args?) {
     blockTouch: {
       index: 450,
       displayName: 'Block Pointer Events',
-      description: 'Stops clicks and touches that land on this control from reaching anything behind it',
+      // FH-015 finding 3: "anything behind it" read as z-order; what it stops is the event
+      // reaching the nodes this control sits inside.
+      description:
+        'Stops every pointer event that lands on this control from reaching the nodes it sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in',
       type: 'boolean',
+      group: 'Pointer Events'
+    },
+    clickBubbling: {
+      index: 451,
+      displayName: 'Click Bubbling',
+      description:
+        "Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not",
+      type: {
+        name: 'enum',
+        enums: [
+          { label: 'Automatic', value: 'auto' },
+          { label: 'Always', value: 'always' },
+          { label: 'Never', value: 'never' }
+        ]
+      },
+      default: 'auto',
       group: 'Pointer Events'
     }
   });

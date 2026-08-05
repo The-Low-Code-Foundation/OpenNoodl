@@ -1216,6 +1216,31 @@
           "default": "button"
         },
         {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "index": 451
+        },
+        {
           "name": "color",
           "displayName": "Color",
           "group": "Text",
@@ -2404,6 +2429,31 @@
           "default": "#000000"
         },
         {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "index": 451
+        },
+        {
           "name": "cssClassName",
           "displayName": "CSS Class",
           "group": "Advanced HTML",
@@ -3142,8 +3192,35 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Stops pointer events reaching elements underneath this one",
+          "description": "Stops every pointer event that lands here from reaching the nodes this one sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "group": "Pointer Events",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "description": "Whether a click here also fires Click on the nodes this one sits inside. Automatic keeps it here as soon as this node's own Click is connected, so a button inside a clickable card runs the button and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not. Note that an element at zero opacity takes no pointer events at all",
+          "index": 451
         },
         {
           "name": "cssClassName",
@@ -10518,7 +10595,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Stops pointer events reaching elements underneath this one",
+          "description": "Stops every pointer event that lands here from reaching the nodes this one sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
         },
         {
@@ -11053,6 +11130,33 @@
           "description": "How much larger than the element the shadow is drawn",
           "index": 254,
           "allowVisualStates": true
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "group": "Pointer Events",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "description": "Whether a click here also fires Click on the nodes this one sits inside. Automatic keeps it here as soon as this node's own Click is connected, so a button inside a clickable card runs the button and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not. Note that an element at zero opacity takes no pointer events at all",
+          "index": 451
         },
         {
           "name": "clip",
@@ -12566,7 +12670,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Stops pointer events reaching elements underneath this one",
+          "description": "Stops every pointer event that lands here from reaching the nodes this one sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
         },
         {
@@ -13101,6 +13205,33 @@
           "description": "How much larger than the element the shadow is drawn",
           "index": 254,
           "allowVisualStates": true
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "group": "Pointer Events",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "description": "Whether a click here also fires Click on the nodes this one sits inside. Automatic keeps it here as soon as this node's own Click is connected, so a button inside a clickable card runs the button and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not. Note that an element at zero opacity takes no pointer events at all",
+          "index": 451
         },
         {
           "name": "cssClassName",
@@ -16432,7 +16563,18 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Id of the object this node is bound to, whether that came from the Id input or from a repeater item"
+          "description": "Id of the object this node is bound to, whether that came from the Id input or from a repeater item. This names the object; the Object output carries the object itself, which is what a node that watches or reads it wants"
+        },
+        {
+          "name": "object",
+          "displayName": "Object",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false,
+          "description": "The bound object itself, for Object Changed or anything else that reads or watches the object rather than naming it; empty while nothing is bound"
         }
       ],
       "dynamicPorts": {
@@ -17955,6 +18097,31 @@
           "isSignal": false,
           "default": 2,
           "index": 254
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "index": 451
         },
         {
           "name": "color",
@@ -20862,6 +21029,31 @@
           "default": "#000000"
         },
         {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "index": 451
+        },
+        {
           "name": "cssClassName",
           "displayName": "CSS Class",
           "group": "Advanced HTML",
@@ -22551,6 +22743,31 @@
           "isSignal": false,
           "default": 1,
           "index": 204
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "index": 451
         },
         {
           "name": "cssClassName",
@@ -26307,8 +26524,35 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Stops pointer events reaching elements underneath this one",
+          "description": "Stops every pointer event that lands here from reaching the nodes this one sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "group": "Pointer Events",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "description": "Whether a click here also fires Click on the nodes this one sits inside. Automatic keeps it here as soon as this node's own Click is connected, so a button inside a clickable card runs the button and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not. Note that an element at zero opacity takes no pointer events at all",
+          "index": 451
         },
         {
           "name": "color",
@@ -27564,6 +27808,31 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "index": 451
         },
         {
           "name": "color",
@@ -29570,7 +29839,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Stops pointer events reaching elements underneath this one",
+          "description": "Stops every pointer event that lands here from reaching the nodes this one sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
         },
         {
@@ -29991,6 +30260,33 @@
           "description": "Thickness of the border in pixels, which adds to the element's size unless Box Sizing accounts for it",
           "index": 204,
           "allowVisualStates": true
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "group": "Pointer Events",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "description": "Whether a click here also fires Click on the nodes this one sits inside. Automatic keeps it here as soon as this node's own Click is connected, so a button inside a clickable card runs the button and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not. Note that an element at zero opacity takes no pointer events at all",
+          "index": 451
         },
         {
           "name": "controls",
@@ -36247,7 +36543,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Stops clicks and touches that land on this control from reaching anything behind it",
+          "description": "Stops every pointer event that lands on this control from reaching the nodes it sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
         },
         {
@@ -36782,6 +37078,33 @@
           "description": "How much larger than the element the shadow is drawn",
           "index": 254,
           "allowVisualStates": true
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "group": "Pointer Events",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "description": "Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not",
+          "index": 451
         },
         {
           "name": "color",
@@ -38178,7 +38501,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Stops clicks and touches that land on this control from reaching anything behind it",
+          "description": "Stops every pointer event that lands on this control from reaching the nodes it sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
         },
         {
@@ -38738,6 +39061,33 @@
           "default": false,
           "description": "Sets whether the box is ticked; setting it from the graph does not fire Changed",
           "index": 100
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "group": "Pointer Events",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "description": "Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not",
+          "index": 451
         },
         {
           "name": "cssClassName",
@@ -40021,7 +40371,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Stops clicks and touches that land on this control from reaching anything behind it",
+          "description": "Stops every pointer event that lands on this control from reaching the nodes it sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
         },
         {
@@ -40556,6 +40906,33 @@
           "description": "How much larger than the element the shadow is drawn",
           "index": 254,
           "allowVisualStates": true
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "group": "Pointer Events",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "description": "Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not",
+          "index": 451
         },
         {
           "name": "color",
@@ -42164,7 +42541,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Stops clicks and touches that land on this control from reaching anything behind it",
+          "description": "Stops every pointer event that lands on this control from reaching the nodes it sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
         },
         {
@@ -42699,6 +43076,33 @@
           "description": "How much larger than the element the shadow is drawn",
           "index": 254,
           "allowVisualStates": true
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "group": "Pointer Events",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "description": "Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not",
+          "index": 451
         },
         {
           "name": "cssClassName",
@@ -43967,8 +44371,35 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Stops clicks and touches that land on this control from reaching anything behind it",
+          "description": "Stops every pointer event that lands on this control from reaching the nodes it sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "group": "Pointer Events",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "description": "Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not",
+          "index": 451
         },
         {
           "name": "cssClassName",
@@ -46144,7 +46575,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Stops clicks and touches that land on this control from reaching anything behind it",
+          "description": "Stops every pointer event that lands on this control from reaching the nodes it sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
         },
         {
@@ -46703,6 +47134,33 @@
           },
           "isSignal": true,
           "description": "Empties the field"
+        },
+        {
+          "name": "clickBubbling",
+          "displayName": "Click Bubbling",
+          "group": "Pointer Events",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Automatic",
+                "value": "auto"
+              },
+              {
+                "label": "Always",
+                "value": "always"
+              },
+              {
+                "label": "Never",
+                "value": "never"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "auto",
+          "description": "Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not",
+          "index": 451
         },
         {
           "name": "color",

@@ -574,9 +574,29 @@ export default {
       blockTouch: {
         index: 450,
         displayName: 'Block Pointer Events',
-        description: 'Stops pointer events reaching elements underneath this one',
+        // FH-015 finding 3: the old wording said "elements underneath this one", which reads as
+        // z-order. The implementation stops the event reaching this element's *ancestors* — a
+        // different thing, and the reason authors reached for it and got the wrong result.
+        description:
+          'Stops every pointer event that lands here from reaching the nodes this one sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in',
         group: 'Pointer Events',
         type: 'boolean'
+      },
+      clickBubbling: {
+        index: 451,
+        displayName: 'Click Bubbling',
+        description:
+          "Whether a click here also fires Click on the nodes this one sits inside. Automatic keeps it here as soon as this node's own Click is connected, so a button inside a clickable card runs the button and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not. Note that an element at zero opacity takes no pointer events at all",
+        group: 'Pointer Events',
+        type: {
+          name: 'enum',
+          enums: [
+            { label: 'Automatic', value: 'auto' },
+            { label: 'Always', value: 'always' },
+            { label: 'Never', value: 'never' }
+          ]
+        },
+        default: 'auto'
       }
     });
 
