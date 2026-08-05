@@ -31,6 +31,22 @@ interface PortValueResult extends PortRef {
 const REQUEST_TIMEOUT = 2000;
 
 /**
+ * How often a running recording is pulled.
+ *
+ * Slow enough that a long trace is not re-indexed continuously, fast enough that pressing a
+ * button in the preview and looking back at the editor shows what happened rather than what had
+ * happened before you pressed it.
+ *
+ * ⚠️ **The timer belongs to the session, not to a surface.** It lived in `ProvenancePanel` and
+ * was gated on a walk being on screen, which made Record → click → Stop a guaranteed empty
+ * panel: nothing pulled the runtime's buffer unless a walk happened to be open (FH-011). A
+ * sidebar panel is also not merely hidden while closed — `SidePanel` does not *construct* it
+ * until it is first opened — so a poll owned by the panel does not run for a user who has never
+ * opened it, which is the ordinary case once Record moves to the canvas (TALK-003 / HUD-001).
+ */
+export const LIVE_POLL_MS = 1500;
+
+/**
  * Replace the runtime's node names with the labels the user actually typed.
  *
  * ⚠️ The dictionary's `name` is the *runtime* node's `name`, which is its **type** — so a walk
@@ -72,10 +88,30 @@ export class TraceSession extends Model {
 
   /** Whether the runtime has been asked to record. Not whether anything has been recorded. */
   public recording = false;
+  /**
+   * Whether the events this session holds came from a recording — armed or finished.
+   *
+   * ⚠️ **Not the same question as {@link recording}, and not `traceEvents.length > 0` either.**
+   * It is what `walkEngine`'s `hasTrace` wants: the difference between a silent edge that
+   * *never fired during a recording* (✕, the answer the panel exists to give) and one nobody
+   * ever watched (·). Reading `recording` for it meant pressing **Stop** turned every ✕ in the
+   * walk back into `unknown` — the recording was taken, and the moment you finished taking it
+   * the panel forgot it had one. Reading the event count instead loses the case the feature is
+   * *for*: a recording in which nothing fired at all.
+   */
+  public hasTrace = false;
   public hasTopology = false;
 
   private lastSeq = 0;
   private listening = false;
+  private pollTimer: ReturnType<typeof setInterval> | undefined;
+  private pollInFlight = false;
+  /**
+   * Bumped on every arm. A pull is allowed to outlive the recording that issued it (2s
+   * deadline), so the disarm at the end of {@link stop} has to check that a *new* recording did
+   * not start in the meantime — otherwise stopping the previous one turns the new one off.
+   */
+  private armGeneration = 0;
 
   private constructor() {
     super();
@@ -124,10 +160,39 @@ export class TraceSession extends Model {
       this
     );
 
+    // FH-011 slice 3 — a reloaded preview comes back untraced.
+    //
+    // The runtime's `traceEnabled` lives on the `NodeContext`, and a reload builds a new one
+    // starting at `false` (`nodecontext.ts:191`). Nothing was re-sent on registration, so any
+    // reload mid-recording — a full export, a resolved warning, the user hitting reload —
+    // left the button saying "Stop" over a runtime that had stopped tracing, silently and for
+    // the rest of the session. Same pattern as `sendDebugInspectorsEnabled`, which is
+    // re-sent on registration for exactly this reason.
+    //
+    // Safe to send unconditionally: `setTraceEnabled` early-returns when the flag already
+    // matches, so a viewer that *is* already tracing does not have its buffer replaced.
+    EventDispatcher.instance.on(
+      'ViewerRegistered',
+      () => {
+        if (!this.recording) return;
+        ViewerConnection.instance?.sendTraceEnabled(true);
+      },
+      this
+    );
+
     EventDispatcher.instance.on(
       'TraceEvents',
       ({ events }) => {
-        if (!Array.isArray(events) || events.length === 0) return;
+        if (!Array.isArray(events)) return;
+
+        // ⚠️ **An empty pull is an answer, and it has to be delivered as one.** Every read here
+        // waits on `eventsChanged`, which only fires when the buffer actually grew — so a
+        // recording in which nothing has happened yet answered every pull by *timing out*
+        // after 2s, indistinguishable from a preview that has gone away. The runtime always
+        // replies (`nodecontext.ts:270-273` sends whatever `getTraceEvents` returns, empty
+        // included); this is where that reply stops being silent.
+        this.notifyListeners('eventsPulled');
+        if (events.length === 0) return;
 
         // ⚠️ **Not every batch that arrives here was asked for by this panel.** The relay
         // broadcasts viewer traffic to *every* editor peer, and OBS-004 adds a second one:
@@ -182,24 +247,84 @@ export class TraceSession extends Model {
   }
 
   /**
-   * Start recording.
+   * Start recording. Returns whether anything was armed.
    *
    * The dictionary arrives unprompted on the off→on transition; {@link refreshTopology} covers
    * the case where the trace was already on when this session attached.
+   *
+   * ⚠️ **Refuses to arm with no preview running.** `ViewerConnection.send()` no-ops on a closed
+   * socket, so arming used to flip the button to "Stop" over nothing at all — a recorder that
+   * says it is recording and cannot be, which is the one thing a debugging surface may not do.
+   * The caller gets `false` and says so.
    */
-  public start() {
+  public start(): boolean {
     this.listen();
+    if (!this.isPreviewRunning) return false;
+
     this.traceEvents = [];
     this.lastSeq = 0;
     this.recording = true;
-    ViewerConnection.instance.sendTraceEnabled(true);
+    this.hasTrace = true;
+    this.armGeneration++;
+    ViewerConnection.instance?.sendTraceEnabled(true);
+    this.startPolling();
     this.notifyListeners('recordingChanged');
+    return true;
   }
 
-  public stop() {
+  /**
+   * Stop recording, keeping what was recorded.
+   *
+   * ⚠️ **The pull has to happen before the disarm, and it is the whole point of this method.**
+   * `setTraceEnabled(false)` does not merely stop writing — it drops the runtime's buffer
+   * outright (`nodecontext.ts:691-695`) — so a stop that disarms first is a stop that throws
+   * the recording away. Record → click the app → Stop showed an empty panel *every time*, and
+   * no later Refresh could recover it (FH-011).
+   *
+   * `recording` flips first, before the pull, so the button stops saying "Stop" the moment it
+   * is pressed rather than up to 2s later. The promise is returned for tests and for the
+   * surfaces that want to know when the last events have landed; the UI ignores it.
+   */
+  public async stop(): Promise<void> {
+    if (!this.recording) return;
+
+    const armed = this.armGeneration;
     this.recording = false;
-    ViewerConnection.instance.sendTraceEnabled(false);
+    this.stopPolling();
     this.notifyListeners('recordingChanged');
+
+    await this.refreshEvents();
+
+    // A new recording started while that pull was in flight; disarming now would turn it off.
+    if (this.armGeneration !== armed) return;
+    ViewerConnection.instance?.sendTraceEnabled(false);
+  }
+
+  /**
+   * Pull the buffer on a timer for as long as a recording is armed.
+   *
+   * Still a **pull**, deliberately — the runtime is not made to push, which is the constraint
+   * that keeps this out of the failure mode the shelved Data Lineage panel died of. Each tick
+   * asks for events after the last `seq` it holds, so a long recording is a stream of deltas.
+   */
+  private startPolling() {
+    if (this.pollTimer) return;
+    this.pollTimer = setInterval(() => {
+      // A tick can outlive its interval: every pull has a 2s deadline, and a preview that has
+      // gone away takes all of it. Overlapping pulls would queue requests faster than they
+      // resolve.
+      if (this.pollInFlight) return;
+      this.pollInFlight = true;
+      void this.refreshEvents().finally(() => {
+        this.pollInFlight = false;
+      });
+    }, LIVE_POLL_MS);
+  }
+
+  private stopPolling() {
+    if (!this.pollTimer) return;
+    clearInterval(this.pollTimer);
+    this.pollTimer = undefined;
   }
 
   /**
@@ -219,14 +344,25 @@ export class TraceSession extends Model {
     });
   }
 
-  /** Pull whatever has been recorded since the last pull. */
+  /**
+   * Pull whatever has been recorded since the last pull.
+   *
+   * ⚠️ `listen()` here as well as in its siblings. This was the one pull that did not subscribe
+   * first, and it is the one the Refresh button calls before anything else: on a session where
+   * nothing had yet asked for a topology, the reply landed on no listener at all and the pull
+   * timed out with the events sitting unread in the message.
+   *
+   * Waits on `eventsPulled`, not on `eventsChanged` — see the listener. A recording that has
+   * captured nothing yet is answered, not timed out.
+   */
   public refreshEvents(): Promise<TraceEventLike[]> {
+    this.listen();
     const clientId = this.clientId;
     if (!clientId) return Promise.resolve(this.traceEvents);
 
     return new Promise((resolve) => {
-      this.awaitEvent('eventsChanged', () => resolve(this.traceEvents), () => resolve(this.traceEvents));
-      ViewerConnection.instance.sendGetTraceEvents(clientId, this.lastSeq || undefined);
+      this.awaitEvent('eventsPulled', () => resolve(this.traceEvents), () => resolve(this.traceEvents));
+      ViewerConnection.instance?.sendGetTraceEvents(clientId, this.lastSeq || undefined);
     });
   }
 
@@ -257,6 +393,9 @@ export class TraceSession extends Model {
     this.traceEvents = [];
     this.portValues = {};
     this.lastSeq = 0;
+    // Still a trace if one is running: an emptied buffer under a live recording is "nothing has
+    // fired since", which is a ✕, not an "unknown".
+    this.hasTrace = this.recording;
     this.notifyListeners('eventsChanged');
   }
 
@@ -269,16 +408,25 @@ export class TraceSession extends Model {
    * `recording` is reset too, and that is not tidiness. `hasTrace` is derived from it, and it
    * decides whether a silent edge reads as `never fired` or as `unknown` — so a session left
    * "recording" against a viewer that has gone away would stamp confident ✕ glyphs on a graph
-   * nothing was ever asked to trace. Nothing is sent to the runtime: the client this flag was
-   * about is the one that just went.
+   * nothing was ever asked to trace.
+   *
+   * ⚠️ **The disarm is sent, contrary to what this comment used to say.** "The client this flag
+   * was about is the one that just went" is true of a project *closed*, and false of a project
+   * *switched*: the preview outlives the switch, keeps its `traceEnabled = true`, and goes on
+   * filling a 250k-event ring for a recording no surface is watching and no gesture can stop —
+   * the editor's own `recording` flag, the only thing that could have turned it off, was just
+   * cleared. Broadcast, so it reaches whichever viewer is still there.
    */
   private forget() {
+    if (this.recording) ViewerConnection.instance?.sendTraceEnabled(false);
+    this.stopPolling();
     this.topology = { nodes: {}, edges: [] };
     this.hasTopology = false;
     this.traceEvents = [];
     this.portValues = {};
     this.lastSeq = 0;
     this.recording = false;
+    this.hasTrace = false;
     this.notifyListeners('topologyChanged');
     this.notifyListeners('eventsChanged');
     this.notifyListeners('recordingChanged');

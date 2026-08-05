@@ -153,6 +153,12 @@ export class ViewerConnection extends Model {
     if (request.cmd === 'registered' && request.type === 'viewer') {
       WarningsModel.instance.clearWarningsForRefMatching((ref) => ref.isFromViewer);
       this.sendDebugInspectorsEnabled();
+      // FH-011 — a viewer arriving is a viewer that is not tracing, whatever the editor thinks.
+      // Announced rather than handled here: `TraceSession` owns the recording state, and this
+      // file is deliberately transport (same reason the three inbound trace replies below are
+      // re-emitted). Importing the session here would also close an import cycle — it imports
+      // this.
+      EventDispatcher.instance.emit('ViewerRegistered', { clientId: request.clientId });
     }
     //a viewer disconnected
     else if (request.cmd === 'disconnect') {

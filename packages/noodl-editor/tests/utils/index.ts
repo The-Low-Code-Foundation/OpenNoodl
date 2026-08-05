@@ -5,4 +5,5 @@ export * from './iconsets.test';
 export * from './keyboardhandler.spec';
 export * from './ParameterValueResolver.test';
 export * from './projectmodules.test';
+export * from './tracesession.spec';
 export * from './verify-json.spec';

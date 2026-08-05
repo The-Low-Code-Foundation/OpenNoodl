@@ -10,7 +10,7 @@ import { WarningsModel } from '@noodl-models/warningsmodel';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import { NodeGraphContextTmp } from '../../../contexts/NodeGraphContext/NodeGraphContext';
-import { TraceSession } from '../../../utils/provenance/TraceSession';
+import { LIVE_POLL_MS, TraceSession } from '../../../utils/provenance/TraceSession';
 import { annotateWarnings } from '../../../utils/provenance/annotateWarnings';
 import { editorDiagnoses } from '../../../utils/provenance/editorDiagnoses';
 import {
@@ -59,15 +59,6 @@ import css from './ProvenancePanel.module.scss';
  *    `WarningsModel` already holds every diagnosis the running preview has reported, so a walk
  *    on a cold editor still carries them. Filled by `annotateWarnings`, outside the pure engine.
  */
-/**
- * How often a running recording is pulled while a walk is on screen.
- *
- * Slow enough that a long trace is not re-indexed continuously, fast enough that pressing a
- * button in the preview and looking back at the panel shows what happened rather than what had
- * happened before you pressed it.
- */
-const LIVE_POLL_MS = 1500;
-
 export function ProvenancePanel() {
   const session = TraceSession.instance;
 
@@ -116,8 +107,11 @@ export function ProvenancePanel() {
     };
   }, []);
 
+  // ⚠️ `hasTrace`, not `recording`. Pressing **Stop** does not un-record what was recorded, and
+  // passing `recording` here meant it did: every ✕ in the walk reverted to `·` the instant the
+  // recording finished, i.e. exactly when the user turns back to read it. See `TraceSession`.
   const index = useMemo(
-    () => buildIndex(session.topology, session.traceEvents, session.portValues, { recording: session.recording }),
+    () => buildIndex(session.topology, session.traceEvents, session.portValues, { recording: session.hasTrace }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [session, revision, recording]
   );
@@ -129,17 +123,19 @@ export function ProvenancePanel() {
    * topology before anything is rendered, so a ten-row walk costs one request.
    */
   const load = useCallback(
-    async (next: EdgeRef, options?: { quiet?: boolean }) => {
+    async (next: EdgeRef, options?: { quiet?: boolean; skipEvents?: boolean }) => {
       const say = (message?: string) => {
         if (!options?.quiet) setStatus(message);
       };
 
       say('Reading the graph…');
       await session.refreshTopology();
-      if (session.recording) await session.refreshEvents();
+      // `skipEvents` is for the walk-refresh timer below: the session polls the buffer itself
+      // now, so pulling it here as well would be two requests a tick for the same bytes.
+      if (session.recording && !options?.skipEvents) await session.refreshEvents();
 
       const scratch = buildIndex(session.topology, session.traceEvents, session.portValues, {
-        recording: session.recording
+        recording: session.hasTrace
       });
       const ports = portsToResolve(scratch, next);
       say(`Reading ${ports.length} port${ports.length === 1 ? '' : 's'}…`);
@@ -152,7 +148,8 @@ export function ProvenancePanel() {
   );
 
   /**
-   * Keep the walk current while a recording is running.
+   * Keep the *walk* current while a recording is running — the topology and the per-row current
+   * values. The events themselves are pulled by `TraceSession`'s own timer.
    *
    * ⚠️ **A walk on screen when Record is pressed turns every row into `✕ never fired`, and it
    * stays that way through the interaction it was recording.** Nothing has fired *yet*, so the
@@ -162,10 +159,12 @@ export function ProvenancePanel() {
    * ticks correctly."* A debugger that has to be told to look is one whose ✕ cannot be believed,
    * and `the ✓/✕ boundary is the bug` is the entire claim of this panel.
    *
-   * Still a **pull**, deliberately — the runtime is not made to push, which is the constraint
-   * that keeps this out of the failure mode the shelved Data Lineage panel died of. It is a
-   * timer, it only runs while a recording is in effect *and* a walk is on screen, and each tick
-   * asks for events after the last `seq` it holds.
+   * ⚠️ **The event pull used to live here, gated on this same `target`, and that was FH-011.**
+   * A walk had to be on screen for anything to read the runtime's buffer at all, so the flow
+   * the feature was specified for — Record, click the app, Stop — pulled nothing, ever, and
+   * showed an empty panel. The timer that keeps the *recording* alive belongs to the session
+   * (and now is: no panel needs to be open, or even constructed, for a recording to fill).
+   * This one is only about the rows this panel is currently drawing.
    */
   useEffect(() => {
     if (!recording || !target) return;
@@ -177,7 +176,7 @@ export function ProvenancePanel() {
       // resolve and each one rebuilds the index.
       if (inFlight) return;
       inFlight = true;
-      void load(target, { quiet: true }).finally(() => {
+      void load(target, { quiet: true, skipEvents: true }).finally(() => {
         inFlight = false;
       });
     }, LIVE_POLL_MS);
@@ -259,10 +258,18 @@ export function ProvenancePanel() {
 
   const handleRecord = useCallback(() => {
     if (session.recording) {
-      session.stop();
-    } else {
-      session.start();
+      // Stopping pulls the buffer before it disarms the runtime — the events do not survive the
+      // disarm — so this is where the interactions list fills. Deliberately not awaited: the
+      // button flips synchronously and `eventsChanged` re-renders the list when it lands.
+      setStatus('Pulling events…');
+      void session.stop().then(() => setStatus(undefined));
+    } else if (session.start()) {
       setSelectedKey(undefined);
+      setStatus(undefined);
+    } else {
+      // Criterion 4. Arming against a socket with nothing on the other end is the failure this
+      // panel exists to not commit: it would say "Stop", record nothing, and blame the graph.
+      setStatus('No preview is running — open the app, then press Record.');
     }
   }, [session]);
 
@@ -338,7 +345,15 @@ export function ProvenancePanel() {
           </div>
         )}
 
-        {!target && !focusedRoot && <EmptyState roots={roots} index={index} onPick={setFocusedRoot} />}
+        {!target && !focusedRoot && (
+          <EmptyState
+            roots={roots}
+            index={index}
+            onPick={setFocusedRoot}
+            recording={recording}
+            eventCount={session.traceEvents.length}
+          />
+        )}
 
         {walk && (
           <>
@@ -631,21 +646,47 @@ function Detail({ label, value }: { label: string; value: string }) {
 function EmptyState({
   roots,
   index,
-  onPick
+  onPick,
+  recording,
+  eventCount
 }: {
   roots: RootEvent[];
   index: ReturnType<typeof buildIndex>;
   onPick(root: RootEvent): void;
+  recording: boolean;
+  eventCount: number;
 }) {
   return (
     <div className={css.Empty}>
-      <Text textType={TextType.Shy}>
-        Right-click a port on the canvas and choose <b>Why is this empty?</b> to walk backwards from it.
-      </Text>
-      <Text textType={TextType.Shy}>
-        Current values work with a preview running and nothing recorded. Press <b>Record</b>, reproduce the problem,
-        then walk to see which hop never fired.
-      </Text>
+      {/* ⚠️ **A count of zero is a result, and it has to look like one.** While a recording is
+          armed this panel showed the same two lines of instructions it shows on a cold editor,
+          so "recording, nothing has fired yet" and "not recording at all" were the same
+          screen — and the user reading it had just pressed Record and clicked their app. The
+          count is pulled every 1.5s whether or not anything is on screen (FH-011), so it is a
+          live number, and a live zero is the honest answer to "did my click do anything?". */}
+      {recording && (
+        <>
+          <Text>
+            Recording — {eventCount} event{eventCount === 1 ? '' : 's'} so far
+          </Text>
+          {eventCount === 0 && (
+            <Text textType={TextType.Shy}>
+              Nothing has fired yet. Use the app in the preview; this updates about once a second.
+            </Text>
+          )}
+        </>
+      )}
+      {!recording && (
+        <>
+          <Text textType={TextType.Shy}>
+            Right-click a port on the canvas and choose <b>Why is this empty?</b> to walk backwards from it.
+          </Text>
+          <Text textType={TextType.Shy}>
+            Current values work with a preview running and nothing recorded. Press <b>Record</b>, reproduce the problem,
+            then walk to see which hop never fired.
+          </Text>
+        </>
+      )}
       {roots.length > 0 && (
         <>
           <Text>Recorded interactions</Text>
