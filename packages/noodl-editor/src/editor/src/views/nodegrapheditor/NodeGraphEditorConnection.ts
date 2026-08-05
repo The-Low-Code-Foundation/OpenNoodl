@@ -236,7 +236,14 @@ export class NodeGraphEditorConnection {
 
     if (type === 'move') {
       if (this.ctx) {
-        if (this.hitTest(pos)) {
+        // FH-016: the chip is asked about FIRST, and independently of the wire
+        // stroke. CAN-001's own spec called this ordering out and it was not
+        // honoured: the hover was decided by `hitTest` alone (±5 units of the
+        // stroke), so the grabbable part of a chip was the *intersection* of
+        // chip and stroke. Stepping onto the wide end of a two- or three-line
+        // chip on a sloped wire left the stroke band, cleared the highlight,
+        // and made the chip vanish out from under the cursor.
+        if (this.isPointInLabel(pos) || this.hitTest(pos)) {
           evt.consumed = true;
           this.owner.setHighlightedConnection(this, pos);
 
@@ -275,7 +282,16 @@ export class NodeGraphEditorConnection {
           this.owner.repaint();
         }
       }
-    } else if (type === 'down' && this.owner.highlightedConnection === this) {
+    } else if (type === 'down') {
+      // FH-016: a press on a *painted* chip belongs to this wire however the
+      // chip became visible — an author's label, a `connectionLabel` port type,
+      // the always-on setting, or either end's node being hovered or selected.
+      // CAN-001 put the chip test inside the `highlightedConnection` gate, and
+      // only the stroke hover ever sets that, so every one of those chips was
+      // visible and completely inert.
+      const onLabel = this.isPointInLabel(pos);
+      if (!onLabel && this.owner.highlightedConnection !== this) return;
+
       evt.consumed = true;
 
       if (this.owner.readOnly === true) return;
@@ -299,7 +315,7 @@ export class NodeGraphEditorConnection {
       }
 
       // Grabbing the label chip moves it along the wire (CAN-001).
-      if (this.isPointInLabel(pos)) {
+      if (onLabel) {
         PopupLayer.instance.hideTooltip();
         this.owner.interaction.startDraggingWireLabel(this);
       }

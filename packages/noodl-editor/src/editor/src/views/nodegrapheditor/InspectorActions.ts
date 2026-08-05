@@ -53,8 +53,22 @@ export class InspectorActions {
     // Connection inspector
     clearTimeout(this.showInspectorTimeout);
     if (c) {
+      // FH-016: not while the pointer is on the label chip. The inspector is a
+      // DOM element attached to a point on the curve and transformed
+      // `translate(-50%, calc(-100% - 4px))` — its bottom edge lands 4px above
+      // that point, which is the middle of the chip, so it covers the chip's
+      // top half and swallows the press that was reaching for it. A grab handle
+      // the user is already on outranks a value they can read anywhere else on
+      // the wire.
+      const overLabel = atPosition !== undefined && c.isPointInLabel(atPosition);
+
+      if (overLabel) {
+        // One may already be up from hovering the stroke on the way here.
+        const showing = this.getInspectorForConnection(c);
+        if (showing && !showing.isPinned()) showing.remove();
+      }
       // We have a new connection selected, show inspector
-      if (c.isHealthy() && !this.getInspectorForConnection(c)) {
+      else if (c.isHealthy() && !this.getInspectorForConnection(c)) {
         this.showInspectorTimeout = setTimeout(() => {
           this.hideInspectors();
 

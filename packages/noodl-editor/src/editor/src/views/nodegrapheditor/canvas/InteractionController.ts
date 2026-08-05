@@ -78,6 +78,12 @@ export class InteractionController {
    */
   draggingWireLabel: { connection: NodeGraphEditorConnection; startT: number | undefined };
 
+  /**
+   * Last value written to the canvas cursor, so a hover that has not changed
+   * anything does not write a style on every mousemove (FH-016).
+   */
+  private canvasCursor = 'inherit';
+
   // Rect multiselect
   multiselectMouseDown: IVector2;
   multiselectMouseMove: IVector2;
@@ -108,6 +114,23 @@ export class InteractionController {
   mouseEventsEnabled = true;
 
   constructor(private owner: NodeGraphEditor) {}
+
+  /**
+   * The single writer for the canvas cursor (FH-016).
+   *
+   * Everything that wants a cursor comes through here so the last value is
+   * always known: panning and label hover would otherwise each cache their own
+   * idea of the current cursor and leave the other one stuck.
+   *
+   * Note this is the *canvas* element's cursor, while node hover writes
+   * `owner.el.style.cursor` (the container). The canvas is the child, so its
+   * cursor wins where the two disagree, and `'inherit'` is how it stands down.
+   */
+  private setCursor(cursor: string) {
+    if (this.canvasCursor === cursor) return;
+    this.canvasCursor = cursor;
+    this.owner.setCanvasCursor(cursor);
+  }
 
   startDraggingNode(node: NodeGraphEditorNode) {
     if (this.owner.readOnly) {
@@ -235,6 +258,7 @@ export class InteractionController {
     // `this.model.labelT`, never `this.labelT` — the view copies model fields
     // once, at construction, so the view's copy is a snapshot.
     this.draggingWireLabel = { connection, startT: connection.model.labelT };
+    this.setCursor('grabbing');
   }
 
   handleMouseWheelEvent(event: TSFixme, args?: TSFixme) {
@@ -383,6 +407,9 @@ export class InteractionController {
       } else if (type === 'up') {
         const t = connection.model.labelT;
         this.draggingWireLabel = undefined;
+        // The chip followed the pointer, so it is still under it: back to the
+        // hover cursor, not to nothing.
+        this.setCursor('grab');
 
         if (t !== startT) {
           // One undo entry for the whole drag: rewind to where it started and
@@ -594,6 +621,18 @@ export class InteractionController {
         }
       }
 
+      // A wire label chip is a grab handle, and until FH-016 nothing on the
+      // canvas said so. Owned here rather than in the connection because a node
+      // card consumes every `move` it contains, so a connection that set the
+      // cursor itself would have no event left to unset it with once the
+      // pointer moved off the chip onto a card.
+      if (type === 'move' && !this.panMouseDown && !this.draggingNodes && !this.draggingWireLabel) {
+        const overLabel = owner.connections.some((c) => c.isPointInLabel && c.isPointInLabel(scaledPos));
+        this.setCursor(overLabel ? 'grab' : 'inherit');
+      } else if (type === 'out' && !this.panMouseDown) {
+        this.setCursor('inherit');
+      }
+
       // If a drag item is current in place indicate if
       // a drop can be accepted
       if (PopupLayer.instance.isDragging()) {
@@ -642,7 +681,7 @@ export class InteractionController {
       // Pan view on right mouse drag, middle mouse drag, or space + left mouse
       if (type === 'down' && (evt.button === 2 || evt.button === 1 || (evt.spaceKey && evt.button === 0))) {
         this.panMouseDown = pos;
-        owner.setCanvasCursor('grabbing');
+        this.setCursor('grabbing');
         evt.consumed = true;
       } else if (type === 'move' && this.panMouseDown) {
         // Move all roots and relayout
@@ -653,7 +692,7 @@ export class InteractionController {
         evt.consumed = true;
       } else if ((type === 'up' || type === 'out') && this.panMouseDown) {
         this.panMouseDown = this.originMouseDown = undefined;
-        owner.setCanvasCursor('inherit');
+        this.setCursor('inherit');
       }
 
       // Handle right click
