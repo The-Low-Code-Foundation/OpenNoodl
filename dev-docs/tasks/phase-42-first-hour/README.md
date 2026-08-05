@@ -33,7 +33,7 @@ Three kinds of doc in this folder:
 | 10 | Record records nothing | **Structural**: nothing pulls the trace buffer unless a walk is on screen; `stop()` never pulls; preview reload silently disarms with no re-arm; Record arms with no viewer connected. Capture itself works. ✅ **Talked 2026-08-05: the HUD is an alpha feature and Record moves to the canvas** — the HUD track below. | [FH-011](FH-011-RECORD-RECORDS-NOTHING.md) + [TALK-003](TALK-003-A-RECORDING-HUD.md) |
 | 11 | The whole cloud-workflow audit | Nine step kinds **by design** ("workflows orchestrate, functions compute"; conditions are data because eval'd strings = RCE behind an admin credential). Real holes: `call-function` **params have engine support and no UI** (you can't pass data into functions at all); workflow output is computed then **dropped** before the caller sees it; modern HTTP node is browser-only so the cloud picker has only deprecated REST2; POL-015 first-workflow still broken. | [TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) |
 | 12 | Pin from another workflow + z-order | POL-009's slice-2 warning ignored: the pin captures identity from the open canvas, not the execution. Auto-navigate + tag from `workflowId`. Overlay bars z=200 vs picker's popup layer z=10 with no intervening stacking context. | [FH-012](FH-012-PIN-NAVIGATION-AND-Z-ORDER.md) |
-| 13 | Where's the MCP server / URL? | **There is no URL and no door**: both servers are stdio (client-spawned), the editor has zero MCP UI, and neither binary ships in the packaged app. Deliverable = copy-pasteable commands in a settings section + packaging. | [TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) |
+| 13 | Where's the MCP server / URL? | **There is no URL and no door**: both servers are stdio (client-spawned), the editor has zero MCP UI (37 grep hits, all comments), and neither binary ships in the packaged app. ✅ **Talked 2026-08-05: settings section, two captioned buttons, per-project server names** — the MCP track below. Verifying it found two things the doc lacked: `nodegx-observe` **never reconnects** and its token is per-launch, so a copied command dies at the next editor restart; and the proposed commands **collide across projects**. | [TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) |
 | 14 | Props labels cut off even when panel widened | Hard **62px** label column in both label implementations (React row + legacy row), `flex-shrink: 0` — panel width is irrelevant. Cloud-workflow steps use the same component; fixed together. | [FH-013](FH-013-PROPS-LABELS-WRAP.md) |
 | 15 | Unit menus open empty | The select **removes the selected option from its own menu**, and ≈27 of 59 unit ports declare exactly one unit → one option, filtered out, empty bordered sliver. | [FH-014](FH-014-THE-EMPTY-UNIT-MENU.md) |
 | 16 | Block pointer events doesn't work | Click-through is the default (handlers installed on every visual node whether connected or not; nothing stops propagation). The blockTouch option **works everywhere except Button** — one JSX line re-assigns `onClick` after the blocking wrapper. Plus a right-default question (auto-stop when Click is connected). | [FH-015](FH-015-BLOCK-POINTER-EVENTS.md) |
@@ -57,9 +57,13 @@ Three kinds of doc in this folder:
    `eslint-linter-browserify` dependency** — the doc had mis-costed it as free, it is installed by
    nobody. Typed intellisense is promoted out of future-projects into
    [FH-019](FH-019-TYPED-INTELLISENSE.md). FH-017 unblocked and started.
-3. **[TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) — MCP onboarding.** "Main point of attraction"
-   with literally zero UI; the shape is mostly settled by the research, needs your yes on
-   placement and packaging.
+3. ✅ **[TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) — MCP onboarding. HAD 2026-08-05.**
+   Settings section beside the AI one, **two** captioned Copy buttons, and the registration is
+   **named after the project** so multiple projects coexist. Q3 went to (a) — the editor creates the
+   project — against the doc's lean, because [TAB-006](../phase-37-project-tabs/TAB-006-TAB-AWARE-AGENT-ACCESS.md)
+   records that tabs affect `nodegx-observe` (bound to a port) and explicitly **not** `noodl-mcp`
+   (bound to the path in argv, *"none — it works unchanged"*). Four build tasks (the MCP track
+   below); the observe reconnect fix gates the observe button.
 4. **[TALK-006](TALK-006-THE-THREE-SIGNALS.md) — the three signals.** One vocabulary decision
    (keep both ports on the 8 degenerate nodes?), one surface decision (where descriptions render).
 5. ✅ **[TALK-003](TALK-003-A-RECORDING-HUD.md) — recording HUD. HAD 2026-08-05.** **Alpha, not
@@ -116,6 +120,23 @@ panel is not constructed until it is first opened and Record no longer lives the
 | 3 | [HUD-003](HUD-003-EXPAND-TO-THE-WALK.md) — expand → roots → walk | Joins the halves. Must go through `provenanceRequest`'s stash-then-switch, and is *more* exposed to that trap than the canvas right-click was. |
 | 4 | [HUD-004](HUD-004-THE-TRACE-HAS-OWNERS.md) — per-peer trace ownership | Two peers share one global boolean and **neither editor peer registers a clientId**, so there is no identity to own a switch with. Includes the data-loss fix. |
 | — | replay scrubber | v2. `ExecutionTimeline` is reusable when we want it. |
+
+## The MCP track (out of TALK-004, 2026-08-05)
+
+Build in this order — the first two gate the third, and the ordering is the point: a front door
+that hands out a command which stops working, or points at a file only contributors have, is worse
+than today's no-door.
+
+| # | Task | Why |
+|---|---|---|
+| 1 | [MCP-003](MCP-003-OBSERVE-RECONNECTS.md) — observe reconnects | **Gates MCP-001's observe button.** [relayClient.ts:129-171](../../../packages/nodegx-observe/src/relayClient.ts#L129) connects once, with every handler behind `if (settled) return`; the token is minted per editor launch. Restart the editor and all nine tools throw `Not connected to the NodeGX relay.` forever. Also puts `@noodl/observe` into `test:packages`, which scopes `@noodl/mcp` and not it. |
+| 2 | [MCP-002](MCP-002-SHIP-THE-SERVERS.md) — ship both servers | `extraResources` has four entries and no MCP binary; `dist` is gitignored. Two build steps + two entries + one resolver, on the exact `nodegx-backend` precedent ([build-editor.ts:69](../../../scripts/build-editor.ts#L69), [ServiceSupervisor.js:65](../../../packages/noodl-editor/src/main/src/local-backend/ServiceSupervisor.js#L65)). |
+| 3 | [MCP-001](MCP-001-CONNECT-AN-AI-AGENT.md) — the front door | The settings section. Reuses ExecutionDetail's clipboard pattern verbatim. **Slug the directory basename, not `ProjectModel.name`** — it is optional and falls back to `'Untitled'`, which re-creates the collision the per-project naming exists to prevent. |
+| 4 | [MCP-004](MCP-004-THE-MCP-DOCS-PAGE.md) — the page and the READMEs | ⚠️ The page is a change to the **docs repo**, not this one — `docs/` here is reference material, and the user-facing origin is `getDocsEndpoint()`'s GitHub Pages site. Both package READMEs currently contradict the buttons; observe's config does not work off-PATH. |
+
+Deferred with a reason in the decisions table: the preview button (`npm run preview` →
+`127.0.0.1:8575`), a merged single server (phase-36's open question, stays closed), `npm publish`,
+and making `noodl-mcp` startable with no project directory.
 
 ## Suggested build order for the FH tasks
 
