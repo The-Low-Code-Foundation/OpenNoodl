@@ -818,8 +818,14 @@ export class NodeGraphNode extends Model {
   }
 
   /**
-   * Get a parameter value formatted as a display string.
-   * Handles expression parameter objects by resolving them to strings.
+   * Get a parameter value as a string that is safe to put in the UI — never "[object Object]".
+   *
+   * An expression parameter resolves to its **fallback**, which is what a property-panel field
+   * shows (the expression itself has its own fx editor). This is deliberately NOT the same as
+   * `getParameterDisplayValue` in `ExpressionParameter`, which returns the expression TEXT —
+   * that one is what the node's label takes (`BasicNodeType.labelForNode`), because a card
+   * reading `Noodl.Variables.foo` says more than the fallback does. The name here used to be
+   * the same as that function's, with the opposite meaning.
    *
    * @param name - The parameter name
    * @param args - Optional args (same as getParameter)
@@ -828,13 +834,13 @@ export class NodeGraphNode extends Model {
    * @example
    * ```ts
    * // Regular value
-   * node.getParameterDisplayValue('width') // '100'
+   * node.getParameterAsString('width') // '100'
    *
-   * // Expression parameter object
-   * node.getParameterDisplayValue('height') // '{height * 2}' (not '[object Object]')
+   * // Expression parameter object { expression: 'height * 2', fallback: 50 }
+   * node.getParameterAsString('height') // '50' (not '[object Object]')
    * ```
    */
-  getParameterDisplayValue(name: string, args?): string {
+  getParameterAsString(name: string, args?): string {
     const value = this.getParameter(name, args);
     return ParameterValueResolver.toString(value);
   }

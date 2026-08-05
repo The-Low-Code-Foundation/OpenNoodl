@@ -248,7 +248,11 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
 
     const iconOffset = node.icon ? 12 : 0;
 
-    const hasUserLabel = node.typeDisplayName() && node.model.label !== node.typeDisplayName();
+    // `labelText()` and not `model.label`: the title has to be compared as a string, or an
+    // expression-valued label (an object) never equals the type name and every such node paints
+    // a sub-label it did not earn (FH-003).
+    const labelText = node.labelText();
+    const hasUserLabel = node.typeDisplayName() && labelText !== node.typeDisplayName();
 
     // Title (node name — fg-1, semibold). The text inset and max width MUST
     // match NodeGraphEditorNode.titlebarLabelHeight or wrap math and paint
@@ -259,7 +263,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     ctx.textBaseline = 'top';
     textWordWrap(
       ctx,
-      node.model.label,
+      labelText,
       x + NodeGraphEditorNode.headerTextInset,
       y + NodeGraphEditorNode.verticalSpacing + 5,
       14,

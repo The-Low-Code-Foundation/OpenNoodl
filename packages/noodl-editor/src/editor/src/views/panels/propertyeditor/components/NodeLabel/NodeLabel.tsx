@@ -85,7 +85,10 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
   const labelInputRef = useRef<HTMLInputElement | null>(null);
   const isCancelling = useRef(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
-  // Defensive: convert label to string (handles expression parameter objects)
+  // `model.label` resolves expression parameters at the source now (BasicNodeType.labelForNode,
+  // FH-003), so this reads the same expression text the canvas card paints. The resolver call
+  // stays as a belt-and-braces cast: a node type is free to return a non-string from
+  // `labelForNode`, and this field must never be handed an object.
   const [label, setLabel] = useState(ParameterValueResolver.toString(model.label));
 
   // Listen for label changes on the model
@@ -93,7 +96,6 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
     model.on(
       'labelChanged',
       () => {
-        // Defensive: convert label to string (handles expression parameter objects)
         setLabel(ParameterValueResolver.toString(model.label));
       },
       this

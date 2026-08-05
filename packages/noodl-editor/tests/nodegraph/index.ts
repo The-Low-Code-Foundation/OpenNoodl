@@ -1,3 +1,4 @@
+export * from './basicnodetype-label.spec';
 export * from './canvas-characterisation.spec';
 export * from './conflictwarnings';
 export * from './createnewnode';

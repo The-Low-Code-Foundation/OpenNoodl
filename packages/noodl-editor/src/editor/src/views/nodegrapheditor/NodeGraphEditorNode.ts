@@ -308,8 +308,27 @@ export class NodeGraphEditorNode {
     return this.model.type instanceof ComponentModel;
   }
 
+  /**
+   * The card's title, guaranteed to be a string.
+   *
+   * `model.label` is whatever the node type's `labelForNode` returned for an unlabelled node.
+   * `BasicNodeType` resolves expression parameters now (FH-003), but everything that measures,
+   * caches or compares the title still has to go through one accessor: a non-string title poisons
+   * the wrap-height cache (every such node shares the key "[object Object]") and can never equal
+   * `typeDisplayName()`, which renders a spurious sub-label on a node the author never labelled.
+   */
+  labelText(): string {
+    const label = this.model.label;
+    if (label === null || label === undefined || typeof label === 'object') {
+      // Never paint "[object Object]". A title that did not resolve to a primitive is no title,
+      // and the type name is what an unlabelled node shows anyway.
+      return this.typeDisplayName() || '';
+    }
+    return String(label);
+  }
+
   titlebarLabelHeight() {
-    const cacheKey = this.model.label + (this.icon ? 'icon' : '');
+    const cacheKey = this.labelText() + (this.icon ? 'icon' : '');
     if (cacheKey !== this._cachedLabelHeightTextKey) {
       const connectionDragAreaWidth = 10;
       const horizontalSpacing = 10;
@@ -323,7 +342,7 @@ export class NodeGraphEditorNode {
         connectionDragAreaWidth -
         iconOffset;
 
-      this._cachedLabelHeight = measureTextHeight(this.model.label, CanvasFonts.nodeLabel, 14, maxWidth);
+      this._cachedLabelHeight = measureTextHeight(this.labelText(), CanvasFonts.nodeLabel, 14, maxWidth);
       this._cachedLabelHeightTextKey = cacheKey;
     }
 
@@ -345,7 +364,7 @@ export class NodeGraphEditorNode {
   }
 
   titlebarHeight() {
-    const labelExtraHeight = this.model.label !== this.typeDisplayName() ? this.titlebarSublabelHeight() : 0;
+    const labelExtraHeight = this.labelText() !== this.typeDisplayName() ? this.titlebarSublabelHeight() : 0;
     return this.titlebarLabelHeight() + labelExtraHeight + 22;
   }
 
@@ -569,7 +588,7 @@ export class NodeGraphEditorNode {
    */
   showCommentEditPopup() {
     const currentComment = this.model.getComment() || '';
-    const nodeLabel = this.model.label || 'Node';
+    const nodeLabel = this.labelText() || 'Node';
     const model = this.model;
     const owner = this.owner;
 
