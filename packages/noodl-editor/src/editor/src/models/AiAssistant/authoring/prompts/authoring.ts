@@ -237,7 +237,8 @@ function referenceBlocks(
   styleVocabulary?: string,
   docs?: PromptProjectDocs,
   libraryOverview?: string,
-  importReport?: string
+  importReport?: string,
+  backendSchema?: string
 ): string[] {
   return [
     'Reference material for this project. Your task is at the END of this message — read these first,',
@@ -250,11 +251,26 @@ function referenceBlocks(
     '--- NODE CATALOG ---',
     catalogOverview,
     '--- END NODE CATALOG ---',
+    ...backendSchemaBlock(backendSchema),
     ...styleBlock(styleVocabulary),
     ...libraryBlock(libraryOverview),
     ...importReportBlock(importReport),
     ...docBlocks(docs)
   ];
+}
+
+/**
+ * AAQ-002 slice 4: the collections and their fields, or nothing when the project
+ * has no backend and none is planned — same absent-means-omitted convention as
+ * the blocks around it.
+ *
+ * In the STABLE half, immediately after the catalog: it describes the project,
+ * is byte-identical across every component authored in one run, and it is the
+ * material the agent needs *before* it reaches a Record node rather than after.
+ */
+function backendSchemaBlock(backendSchema?: string): string[] {
+  if (!backendSchema) return [];
+  return ['', '--- BACKEND COLLECTIONS ---', backendSchema, '--- END BACKEND COLLECTIONS ---'];
 }
 
 /**
@@ -301,10 +317,19 @@ export function initialUserMessage(
   docs?: PromptProjectDocs,
   planContext?: string,
   libraryOverview?: string,
-  importReport?: string
+  importReport?: string,
+  backendSchema?: string
 ): OpeningTurn {
   return openingTurn(
-    referenceBlocks(projectOverview, catalogOverview, styleVocabulary, docs, libraryOverview, importReport),
+    referenceBlocks(
+      projectOverview,
+      catalogOverview,
+      styleVocabulary,
+      docs,
+      libraryOverview,
+      importReport,
+      backendSchema
+    ),
     [
       ...planContextBlock(planContext),
       '--- YOUR TASK ---',
@@ -342,10 +367,19 @@ export function updateUserMessage(
   docs?: PromptProjectDocs,
   planContext?: string,
   libraryOverview?: string,
-  importReport?: string
+  importReport?: string,
+  backendSchema?: string
 ): OpeningTurn {
   return openingTurn(
-    referenceBlocks(projectOverview, catalogOverview, styleVocabulary, docs, libraryOverview, importReport),
+    referenceBlocks(
+      projectOverview,
+      catalogOverview,
+      styleVocabulary,
+      docs,
+      libraryOverview,
+      importReport,
+      backendSchema
+    ),
     [
       ...planContextBlock(planContext),
       '--- YOUR TASK ---',

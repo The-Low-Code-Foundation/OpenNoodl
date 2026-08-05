@@ -36,6 +36,7 @@ import {
   type StyleVocabulary
 } from '../../StyleTokensModel/StyleVocabulary';
 import { assembleContext, ExplainContextError } from '../explain/assemble';
+import { renderBackendSchema, type SchemaCollectionInfo } from './backendSchema';
 import { componentPorts, findComponent } from '../explain/graph';
 import { renderContext } from '../explain/render';
 import type { ExplainGraph } from '../explain/types';
@@ -110,6 +111,9 @@ export class AuthoringContextBuilder {
   /** LIB-006: the open project's import report — see `importReport()`. */
   private readonly report: ImportReport | undefined;
 
+  /** AAQ-002 slice 4: the collections the agent may write against. */
+  private readonly collections: SchemaCollectionInfo[];
+
   constructor(
     private readonly graph: ExplainGraph,
     budget: Partial<ContextBudget> = {},
@@ -117,7 +121,8 @@ export class AuthoringContextBuilder {
     styleVocab?: StyleVocabulary,
     docs: ProjectDocsContent = {},
     libraries: RegisteredLibraryInfo[] = [],
-    report?: ImportReport
+    report?: ImportReport,
+    collections: SchemaCollectionInfo[] = []
   ) {
     this.budget = { ...DEFAULT_BUDGET, ...budget };
     // Defaults-only when no project-aware vocabulary is injected: the token
@@ -127,6 +132,7 @@ export class AuthoringContextBuilder {
     this.docs = docs;
     this.libraries = libraries;
     this.report = report;
+    this.collections = collections;
   }
 
   get log(): readonly ContextLogEntry[] {
@@ -202,6 +208,24 @@ export class AuthoringContextBuilder {
       lines.push(`- ${lib.name} — global \`${lib.global}\``);
     }
     return this.charge('library-overview', lines.join('\n'));
+  }
+
+  /**
+   * AAQ-002 slice 4 — the backend's collections and their fields.
+   *
+   * Until this existed the context carried **no backend block at all**, so the
+   * agent wrote `prop-<field>` parameters from the scope's prose. Returns
+   * `undefined` (never charged) for a project with no backend and no planned
+   * provision, matching `libraryOverview`'s absent-means-omitted convention, so
+   * such a project sends a byte-identical turn to before.
+   *
+   * See `backendSchema.ts` for why the list has two sources and why the block
+   * spells out `collectionName`.
+   */
+  backendSchema(): string | undefined {
+    const rendered = renderBackendSchema(this.collections);
+    if (!rendered) return undefined;
+    return this.charge('backend-schema', rendered);
   }
 
   /**

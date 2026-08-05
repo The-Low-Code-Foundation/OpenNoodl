@@ -32,6 +32,7 @@ import type { ConnectionV2 } from '../../../schemas';
 import { currentImportReport } from '../../../utils/import-engine/legacy/currentReport';
 import type { ImportReport } from '../../../utils/import-engine/legacy/types';
 import type { ProjectBackendFacts } from '../../../validation';
+import type { SchemaCollectionInfo } from './backendSchema';
 import { formatDiagnosticLine } from '../../../validation';
 import { currentProjectDocs } from '../../ProjectDocs/currentDocs';
 import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
@@ -171,6 +172,16 @@ export interface AuthoringSessionOptions {
    * provisions a backend, which a session has no way to know and the panel does.
    */
   backend?: ProjectBackendFacts;
+  /**
+   * AAQ-002 slice 4 — the collections the agent may write against, already
+   * merged from the plan's provision and the project's cached schema.
+   *
+   * Passed rather than read, for the same reason `backend` is: the true list
+   * needs the *plan*, because a wizard-built project has no backend at authoring
+   * time — the provision applies at Apply, after every authoring turn. A session
+   * has no way to know that and the panel does.
+   */
+  collections?: SchemaCollectionInfo[];
   /**
    * AIB-009 F11: how long one turn may deliver *nothing* before it is ended.
    * Defaults to {@link TURN_STALL_MS}; `0` disables the deadline. Specs that
@@ -377,7 +388,8 @@ export class AuthoringSession {
       options.styleVocabulary,
       projectDocs,
       options.libraries,
-      importReport
+      importReport,
+      options.collections
     );
     this.docTools = projectDocTools(projectDocs);
     this.legacyName = pathToLegacyName(request.componentPath);
@@ -543,7 +555,8 @@ export class AuthoringSession {
         this.promptDocs(),
         planBlock,
         this.context.libraryOverview(),
-        this.context.importReport()
+        this.context.importReport(),
+        this.context.backendSchema()
       );
     } else {
       opening = initialUserMessage(
@@ -554,7 +567,8 @@ export class AuthoringSession {
         this.promptDocs(),
         planBlock,
         this.context.libraryOverview(),
-        this.context.importReport()
+        this.context.importReport(),
+        this.context.backendSchema()
       );
     }
     this.messages.push(

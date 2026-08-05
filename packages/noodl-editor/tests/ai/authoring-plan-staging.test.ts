@@ -23,6 +23,10 @@ import {
 import { describePageRegistration } from '../../src/editor/src/models/AiAssistant/authoring/pageRegistration';
 import { StagingError } from '../../src/editor/src/models/AiAssistant/authoring/staging';
 import {
+  mergeSchemaCollections,
+  renderBackendSchema
+} from '../../src/editor/src/models/AiAssistant/authoring/backendSchema';
+import {
   findReusableBackend,
   planSchemaReconciliation
 } from '../../src/editor/src/models/BackendServices/provisionBackend';
@@ -889,5 +893,123 @@ describe('AAQ-002/F4 — backendNameForProject', () => {
     const spec = provisionFromScope(scope, { backendName: backendNameForProject('Puppy Adoption') });
 
     expect(spec?.name).toBe('Puppy Adoption backend');
+  });
+});
+
+/**
+ * AAQ-002 slice 4 — the collections the agent is told about.
+ *
+ * The context builder carried no backend block at all, so an agent authoring a
+ * Create Record node wrote `prop-<field>` parameters from the scope's prose.
+ * These pin the two halves that made a naive fix wrong: the list has two sources
+ * (a wizard-built project has no backend at authoring time), and the block has to
+ * name `collectionName` — the parameter a careful reader with the source open
+ * still got wrong during the live pass.
+ */
+describe('AAQ-002 slice 4 — mergeSchemaCollections', () => {
+  it('takes the planned collections when the project has no backend yet', () => {
+    // The live sequence for every wizard-built project: the provision is an
+    // operation in the same plan and applies AFTER every authoring turn.
+    const merged = mergeSchemaCollections(
+      [{ name: 'Puppy', fields: [{ name: 'age', type: 'Number' }] }],
+      []
+    );
+
+    expect(merged).toEqual([{ name: 'Puppy', fields: [{ name: 'age', type: 'Number' }] }]);
+  });
+
+  it('takes the cached collections when there is no provision', () => {
+    const merged = mergeSchemaCollections([], [{ name: 'Puppy', fields: [{ name: 'age', type: 'Number' }] }]);
+
+    expect(merged.map((c) => c.name)).toEqual(['Puppy']);
+  });
+
+  it('unions the fields of a collection that is in both', () => {
+    const merged = mergeSchemaCollections(
+      [{ name: 'Puppy', fields: [{ name: 'bio', type: 'String' }] }],
+      [{ name: 'Puppy', fields: [{ name: 'age', type: 'Number' }] }]
+    );
+
+    expect(merged.length).toBe(1);
+    expect(merged[0].fields.map((f) => f.name)).toEqual(['age', 'bio']);
+  });
+
+  it('lets the plan win on a field the two disagree about', () => {
+    // The plan is the newer statement of intent, and the user approved it.
+    const merged = mergeSchemaCollections(
+      [{ name: 'Puppy', fields: [{ name: 'age', type: 'Number' }] }],
+      [{ name: 'Puppy', fields: [{ name: 'age', type: 'String' }] }]
+    );
+
+    expect(merged[0].fields).toEqual([{ name: 'age', type: 'Number' }]);
+  });
+
+  it('⚠️ treats names case-insensitively, so no port is listed twice', () => {
+    const merged = mergeSchemaCollections(
+      [{ name: 'puppy', fields: [{ name: 'Age', type: 'Number' }] }],
+      [{ name: 'Puppy', fields: [{ name: 'age', type: 'String' }] }]
+    );
+
+    expect(merged.length).toBe(1);
+    expect(merged[0].fields.length).toBe(1);
+  });
+
+  it('drops a nameless collection rather than listing one the agent cannot use', () => {
+    const merged = mergeSchemaCollections([{ name: '  ', fields: [] }], []);
+
+    expect(merged).toEqual([]);
+  });
+});
+
+describe('AAQ-002 slice 4 — renderBackendSchema', () => {
+  it('is omitted entirely for a project with nothing', () => {
+    // Absent means omitted: such a project sends a byte-identical opening turn
+    // to before, which is what keeps AIX-007's cache prefix intact.
+    expect(renderBackendSchema([])).toBeUndefined();
+  });
+
+  it('names the collections and their field types', () => {
+    const text = renderBackendSchema([
+      {
+        name: 'Puppy',
+        fields: [
+          { name: 'name', type: 'String' },
+          { name: 'age', type: 'Number' }
+        ]
+      }
+    ])!;
+
+    expect(text).toContain('Puppy');
+    expect(text).toContain('name (String)');
+    expect(text).toContain('age (Number)');
+  });
+
+  it('⚠️ names collectionName, and says collection is ignored', () => {
+    // The live-pass defect: `resolveSchemaPortContext`'s own default is
+    // `collection`, the Record family passes `collectionName`, and setting the
+    // wrong one is completely inert with nothing to diagnose it.
+    const text = renderBackendSchema([{ name: 'Puppy', fields: [] }])!;
+
+    expect(text).toContain('collectionName');
+    expect(text).toContain('ignored');
+  });
+
+  it('teaches the prop- prefix, which no catalog entry declares', () => {
+    const text = renderBackendSchema([{ name: 'Puppy', fields: [{ name: 'name', type: 'String' }] }])!;
+
+    expect(text).toContain('prop-');
+  });
+
+  it('says a collection has no fields rather than rendering an empty line', () => {
+    const text = renderBackendSchema([{ name: 'Puppy', fields: [] }])!;
+
+    expect(text).toContain('no fields declared yet');
+  });
+
+  it('tells the agent not to write the backend-owned fields', () => {
+    const text = renderBackendSchema([{ name: 'Puppy', fields: [] }])!;
+
+    expect(text).toContain('objectId');
+    expect(text).toContain('never write them');
   });
 });

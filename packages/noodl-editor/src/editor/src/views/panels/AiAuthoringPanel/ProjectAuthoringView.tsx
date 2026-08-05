@@ -69,6 +69,11 @@ import { buildEffectiveTokens, buildStyleVocabulary, readStoredTokens } from '@n
 
 import { buildComponentV2Files } from '../../../io/ProjectExporter';
 import { DiagnosticCode, formatDiagnosticLine, type Diagnostic, type ProjectBackendFacts } from '../../../validation';
+import {
+  mergeSchemaCollections,
+  type SchemaCollectionInfo
+} from '../../../models/AiAssistant/authoring/backendSchema';
+import { projectSchemaCollections } from '../../../models/BackendServices/projectCollections';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -194,6 +199,25 @@ function planBackendFacts(project: ProjectModel, plan: AuthoringPlan): ProjectBa
 }
 
 /**
+ * AAQ-002 slice 4 — the collections the agent may write against.
+ *
+ * Same two-input shape as `backendFacts`, and for the same reason: the honest
+ * answer needs what the project has *and* what this plan is about to give it. A
+ * wizard-built project has no backend while its pages are being authored — the
+ * provision applies at Apply — so without the plan's half the agent would be
+ * told nothing exists and would go back to inventing field names from the
+ * scope's prose, which is the whole defect.
+ */
+function planBackendCollections(project: ProjectModel, plan: AuthoringPlan): SchemaCollectionInfo[] {
+  const provision = plan.operations.find((op) => op.kind === 'provision')?.provision;
+  const planned = (provision?.collections ?? []).map((collection) => ({
+    name: collection.name,
+    fields: collection.columns.map((column) => ({ name: column.name, type: column.type }))
+  }));
+  return mergeSchemaCollections(planned, projectSchemaCollections(project));
+}
+
+/**
  * The same facts at apply time, from the **accepted** set rather than the plan —
  * so an excluded provision correctly makes this the stricter check.
  */
@@ -279,7 +303,11 @@ function planRunOptions(
       // a backend must not warn about the Sign Up nodes it is building for the
       // backend it is about to create. Nothing else in the product knows both
       // halves.
-      backend: planBackendFacts(project, plan)
+      backend: planBackendFacts(project, plan),
+      // AAQ-002 slice 4. Bound here for the same reason as `backend` above —
+      // nothing else in the product knows both the project's schema and the
+      // plan's.
+      collections: planBackendCollections(project, plan)
     }
   };
 }
