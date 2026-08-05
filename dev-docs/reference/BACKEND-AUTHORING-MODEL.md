@@ -73,7 +73,11 @@ and its Request node splits named keys into output ports.
   resolved by the engine but **declared by no catalog kind**, so no UI can author it
   ([CWF-001](../tasks/phase-42-first-hour/CWF-001-CALL-FUNCTION-PARAMS.md)).
 - A workflow invokes functions with **no session token**, so any function whose Request node has
-  `Allow Unauthenticated` unticked — *the default* — fails the step.
+  `Allow Unauthenticated` unticked — *the default* — fails the step. Note precisely where that
+  refusal comes from: a step calls the function **in process**, so the backend's per-function `call`
+  rule (CWF-017's panel) never runs for it — a step is a system caller and bypasses that gate
+  entirely. The gate it does meet is the node's own check, inside the graph. Opening the rule in the
+  panel cannot fix a failing step; ticking the port can.
 
 ## Naming
 
