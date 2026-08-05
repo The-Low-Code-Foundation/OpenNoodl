@@ -68,6 +68,15 @@
     background-color: var(--theme-color-bg-3);
   }
 
+  /* FH-014: the current value stays in its own list and is marked. Same
+     selection pair as the active list row: primary tint + fg-highlight
+     (measured 14.43:1 on light bg-1, 13.24:1 on dark bg-1). */
+  &.is-selected {
+    color: var(--theme-color-fg-highlight);
+    background-color: var(--theme-color-primary-bg);
+    cursor: default;
+  }
+
   &.is-disabled {
     cursor: not-allowed;
     color: var(--theme-color-fg-muted) !important;

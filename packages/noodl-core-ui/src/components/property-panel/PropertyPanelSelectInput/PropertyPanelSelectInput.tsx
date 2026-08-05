@@ -81,8 +81,13 @@ export function PropertyPanelSelectInput({
         variant={BaseDialogVariant.Select}
       >
         <ul className={css['Options']}>
+          {/* FH-014. This list used to `return null` for the option matching the
+              current value, so every select hid its own current value — and a
+              single-option select (21 unit-bearing ports declare only ['px'])
+              opened as an empty ~40x6px bordered sliver. The selected option now
+              renders, marked. */}
           {properties?.options?.map((option) => {
-            if (option.value === value) return null;
+            const isSelected = option.value === value;
 
             return (
               <li
@@ -90,12 +95,18 @@ export function PropertyPanelSelectInput({
                 className={classNames(
                   css['Option'],
                   option.isDisabled && css['is-disabled'],
+                  isSelected && css['is-selected'],
                   hasSmallText && css['has-small-text']
                 )}
+                aria-selected={isSelected}
                 onClick={() => {
                   setIsSelectCollapsed(true);
 
                   if (option.isDisabled) return null;
+                  // Re-picking the current value is a no-op, not a change: firing
+                  // onChange here would write the same parameter again and push a
+                  // pointless undo entry.
+                  if (isSelected) return null;
 
                   onChange && onChange(option.value);
                 }}

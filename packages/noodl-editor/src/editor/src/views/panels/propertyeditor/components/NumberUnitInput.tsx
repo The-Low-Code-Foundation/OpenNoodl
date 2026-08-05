@@ -46,6 +46,9 @@ export function NumberUnitInput({
 }: NumberUnitInputProps) {
   const [displayedValue, setDisplayedValue] = useState(value ?? '');
 
+  const hasUnitChoice = (units?.length ?? 0) > 1;
+  const staticUnit = unit || units?.[0] || '';
+
   useEffect(() => {
     setDisplayedValue(value ?? '');
   }, [value]);
@@ -70,15 +73,37 @@ export function NumberUnitInput({
           onBlur={() => commitIfChanged()}
           onKeyDown={(e) => e.key === 'Enter' && commitIfChanged()}
         />
-        <div style={{ width: 40, flexShrink: 0 }}>
-          <PropertyPanelSelectInput
-            value={unit}
-            properties={{ options: units.map((u) => ({ label: u, value: u })) }}
-            onChange={(u) => onUnitChange(String(u), displayedValue)}
-            hasHiddenCaret
-            hasSmallText
-          />
-        </div>
+        {/* FH-014. About half the unit-bearing ports declare exactly one unit
+            (21x ['px'], 4x ['%'], 1x ['deg'] — Font Size, Padding, Border Width,
+            the Shadow numbers, Rotation...). A dropdown offering one immutable
+            choice is noise, so those render a static unit label instead. */}
+        {hasUnitChoice ? (
+          <div style={{ width: 40, flexShrink: 0 }}>
+            <PropertyPanelSelectInput
+              value={unit}
+              properties={{ options: units.map((u) => ({ label: u, value: u })) }}
+              onChange={(u) => onUnitChange(String(u), displayedValue)}
+              hasHiddenCaret
+              hasSmallText
+            />
+          </div>
+        ) : (
+          Boolean(staticUnit) && (
+            <div
+              style={{
+                width: 40,
+                flexShrink: 0,
+                textAlign: 'center',
+                fontSize: 10,
+                lineHeight: '28px',
+                color: 'var(--theme-color-fg-default)',
+                userSelect: 'none'
+              }}
+            >
+              {staticUnit}
+            </div>
+          )
+        )}
 
         {showFixed && (
           <div
