@@ -10,7 +10,7 @@ cloud function can compute *with*. That was the hole in the conversation. This d
 
 ## How to use this doc
 
-Add anything you want to §5 — one line each, no format required, half-formed is fine. I'll come
+Add anything you want to §6 — one line each, no format required, half-formed is fine. I'll come
 back and fill in the cost, the realism verdict, and what it would break. Then we reopen TALK-001,
 decide the list, and the survivors become CWF tasks like the rest of the track.
 
@@ -38,6 +38,9 @@ Driven live on a real cloud function canvas (probe component, since deleted):
 | Custom Code | 3 | Expression, JavaScript Function, Logic Builder |
 | Cloud Functions | 4 | Request, Response, Aggregate, Send Email |
 
+The 58th — the one registered but not offered — is **`REST2`**, an HTTP node carrying
+`deprecated: true`. It matters more than a footnote; see §3.
+
 ## 2. The thing you asked me to check — and the answer is not the one you expected
 
 > *"Pretty sure that's wrong, they're not in my node picker when I'm in the cloud function canvas."*
@@ -63,7 +66,78 @@ offered to a server-side function where they range from useless to actively misl
 Streaming six I'd keep (calling an upstream streaming API server-side is exactly
 [CWF-007](CWF-007-STREAMING-RESPONSES.md)'s case). *Your call — it's in the list below.*
 
-## 3. The gaps, in three piles
+## 3. Measured: the ceiling is much higher than the node list suggests
+
+Everything in this section was **run**, not read. Two probes, through the real `BackendService`,
+against `POST /functions/:name`.
+
+### 3.1 A Function node is a Node 22 script with the process wide open
+
+The probe: a cloud function of Request → **Function** → Response, whose script reports `typeof` for
+a list of globals and returns the result as the response body.
+
+| Reachable | Not reachable |
+|---|---|
+| `process` — **79 env keys**, `cwd()`, and `exit` is a function · `Buffer` · `crypto`, including **`subtle`** and `randomUUID` · global `fetch` · `TextEncoder` · `URL` · `structuredClone` · `AbortController` · `setTimeout` **and `setInterval`** · `Intl` · `WebAssembly` | `require` (ReferenceError) · `module` · `__dirname` · `new Function('return typeof require')()` → `"undefined"` · `process.mainModule` was `undefined` **under the test harness** — whether the esbuild-bundled build exposes it is unmeasured, so treat file/child-process access as *unproven*, not *impossible* |
+
+Measured values, verbatim: `nodeVersion: "v22.22.0"`, `envCount: 79`,
+`hash: "object"` (a real `crypto.subtle.digest('SHA-256', …)` completed), `b64: "aGk="`.
+
+**Why**: the script is compiled with `new AsyncFunction(...)`
+([simplejavascript.ts:443-453](../../../packages/noodl-runtime/src/nodes/std-library/simplejavascript.ts#L443-L453)),
+whose body runs in *global* scope — which is why CJS `require` is absent and everything Node puts on
+`globalThis` is present. And the CloudRunner runs **in the backend's own Node process**
+([WorkflowRunner.ts:34](../../../packages/nodegx-backend/src/workflow/WorkflowRunner.ts#L34)), not
+in an isolate. The isolate that *did* sandbox this —
+[sandbox.isolate.js](../../../packages/noodl-viewer-cloud/src/sandbox.isolate.js), which sets
+`global.require` to a console.log and hand-rolls `fetch` — is **Parse-era dead code**; nothing in
+the repo references it.
+
+Three consequences, and they reframe most of §6:
+
+1. **Hashing, HMAC, JWT sign/verify, base64, UUIDs, date maths, CSV/JSON parsing and calling any
+   third-party API with a stored credential are all writable today**, in a Function node, with no
+   dependency and no runtime change. So every row below that reduces to *"can a function do X"* is a
+   **node-and-door** question (Cheap/Real), never a **runtime** question (Deep). What we are
+   choosing is what deserves to be visual — not what is possible.
+2. **`process.env` is readable in full from any cloud function.** That is the environment-variables
+   answer already. It is also the argument for a *Secret* node with a namespace rather than a
+   documentation line saying "read `process.env`": one is a door, the other is a habit.
+3. **`process.exit` is callable and `setInterval` outlives the request.** Author-trusted today — the
+   person who writes the function is the person who deploys the backend — so this is not a
+   vulnerability. It becomes one the moment an **agent** writes a function that gets deployed
+   without a human reading it, which is a live direction in this repo. Worth knowing before, not
+   after.
+
+### 3.2 HTTP works today, and this closes CWF-003's open question
+
+[CWF-003](CWF-003-HTTP-IN-THE-CLOUD-RUNTIME.md) already says the right thing — a cloud function has
+only the deprecated `REST2` — so nothing here contradicts it. What it *asks for* is the measurement,
+and its first check item is the one I happened to run: *"the isolate also defines a bridged
+`global.fetch` and defines no `FormData`. Establish which `fetch` the node actually gets."*
+
+**Answer: the isolate is not in the picture at all.** `sandbox.isolate.js` is dead code (§3.1), the
+runtime is in the host process, and the node gets **Node 22's own globals**. Measured inside a cloud
+function: `fetch`, `FormData`, `Blob`, `File`, `Headers`, `Request`, `Response`, `ReadableStream`,
+`btoa` — all `function`; `new FormData()` round-tripped a field; `new Blob(['hi']).text()` returned
+`"hi"`. **So `httpnode`'s multipart path has everything it needs**, and CWF-003's "what to check
+before calling it done" item 1 can be struck rather than driven.
+
+Separately, and driven: a cloud function with a **`REST2`** node pointed at a local server — the
+upstream logged `GET /thing` and the function answered 200. HTTP from the server is not aspirational
+today; it is one deprecation flag from visible, which is the cheap fallback if registering
+`httpnode` turns out to trip CWF-003's second check (the editor-connection listeners).
+
+⚠️ CWF-003's cost is therefore lower than "open, unowned, small" suggests, and item 1 of its
+checklist is answered. It should be updated, not rewritten.
+
+⚠️ One trap the REST probe cost me, worth recording because it will cost the next person too: a
+REST node's outputs are **minted by its Response script at run time**, so a `pm-` wire drawn from
+`Outputs.status` at export time connects to a port that does not exist yet and is dropped with a
+console error. The function answered **200 with an empty body while the upstream call had actually
+succeeded**. A green response proved nothing; the upstream hit counter did.
+
+## 4. The gaps, in three piles
 
 ### Pile A — absent for no technical reason (**Cheap**)
 
@@ -76,7 +150,15 @@ registration line, then regenerate the snapshot.
   Static Data. **A cloud function cannot build, filter or reshape a list with nodes.**
 - **Variable / Set Variable** — no scratch state between parts of a function.
 - **Switch** (only two-way Condition today), **Number Remapper**, **Value Changed**.
-- **HTTP Request** — already [CWF-003](CWF-003-HTTP-IN-THE-CLOUD-RUNTIME.md).
+- **HTTP Request** — [CWF-003](CWF-003-HTTP-IN-THE-CLOUD-RUNTIME.md), and cheaper than that task
+  currently believes: see §3.2.
+
+⚠️ One mechanical fact about the move: `@noodl/runtime`'s registration list is **shared by both
+runtimes** ([noodl-runtime.ts:166-243](../../../packages/noodl-runtime/noodl-runtime.ts#L166-L243))
+— the viewer registers *extra* nodes on top of it. So moving a node into the runtime gives it to the
+cloud **and leaves the browser exactly as it was**. There is no per-runtime allow-list to maintain;
+that is why this pile is cheap, and also why AIX-005 leaked fourteen nodes into the cloud without
+anyone choosing it (§2).
 
 **Correction to something I said earlier:** cloud functions *can* iterate. **Run Tasks** is
 registered and is the server-shaped For Each — `items` in, a component template per item,
@@ -88,7 +170,7 @@ arrays, not looping over them.
 
 The nine in §2. Options: un-register for cloud (check first whether any existing function uses
 one), or keep and document. Un-registering is a one-line-per-node change plus a snapshot
-regenerate.
+regenerate. **This is the one open decision that needs you and nothing else** — see §7.
 
 ### Pile C — your auth ask, which is half-built already
 
@@ -108,15 +190,19 @@ Sorting that against the code:
   There is an admin API (`AdminSecurityRoutes`) and **no editor UI whatsoever** — I searched the
   panels for it and found nothing. **Free**: this is CWF-001's shape again — a built mechanism with
   no door. A per-function dropdown in the Cloud Functions panel is most of the work.
+- **Knowing who called: already there, and better than I said.** The Request node outputs
+  **`Authenticated`** and **`User Id`**, resolved from the `x-parse-session-token` header before the
+  graph runs ([request.ts:44-58, 110-131](../../../packages/noodl-viewer-cloud/src/nodes/cloud/request.ts#L44-L58)).
+  "Get Caller" is not a node we need to design; it is two ports nobody has been shown.
 - **Create user / verify a token server-side: genuinely absent.** The cloud runtime has User and
   Set User Properties; Sign Up, Log In, Verify Email, Reset Password, Sign In With, Magic Link are
   all browser-only — and unlike Pile A that's *defensible*, because they're session-shaped (they
-  set a client session). A server-side equivalent (Create User, Verify Token, Get Caller) needs
-  designing, not porting. **Real.**
+  set a client session). A server-side equivalent (Create User, Verify Token) needs designing, not
+  porting. **Real.**
 
 ---
 
-## 4. Answers already given (2026-08-05)
+## 5. Answers already given (2026-08-05)
 
 - **CWF-004 (workflow Transform step): keep it, decide after arrays land.** Q1(b) was argued on a
   cost that Pile A partly removes — so we judge it again once a function can reshape a list.
@@ -125,30 +211,48 @@ Sorting that against the code:
 
 ---
 
-## 5. Richard's list — add anything, however rough
+## 6. The list
 
-> Add below. One line each. Don't self-censor for feasibility — that's my job to annotate.
+Rows 1–14 are my own prompts, now annotated against the code rather than left as questions — §3
+changed enough of the costs that leaving them blank would have wasted your time. **Add yours at the
+bottom; cut, argue with, or reorder anything above.**
 
-| # | Idea | My verdict | Notes |
+| # | Idea | Verdict | Notes |
 |---|---|---|---|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
+| 1 | Hashing / crypto | **Free** in code, **Cheap** as nodes | `crypto.subtle`, `randomUUID` and `Buffer` all work in a Function node today (§3.1). A Hash / Random Bytes / UUID trio is ordinary node work with no dependency. Nothing to build in the runtime. |
+| 2 | JWT sign & verify | **Cheap → Real** | HS256 is `crypto.subtle` HMAC today; RS256 needs a key import, still WebCrypto, no library. Two nodes. The design work is not the algorithm, it's **whose key** — which is row 3. |
+| 3 | Environment variables & secrets | **Free** (read) / **Real** (door) | `process.env` is already fully readable from a function. The proper door exists too: [SecretsStore](../../../packages/nodegx-backend/src/config/SecretsStore.ts) is namespaced `get`/`set`, already used by webhook and email. It has **no node and no cloud-runtime binding**. A `Secret` node is cheap; deciding the namespace policy (who may read what, what a deploy carries) is the real part. |
+| 4 | Date & time maths | **Cheap** | A Function node does it today; `Date To String` is the only node. Now / Add / Difference / Format-with-timezone is a small family, and it's wanted **in the browser too** — so it lands in the shared runtime and both surfaces get it from one build (§4 Pile A note). |
+| 5 | Scheduling from inside a function | **Real — but probably reframe, not build** | `triggers/` already has cron, a scheduler, a registry and admin routes. What's missing is an in-process "run me again in 10 minutes" API. But that is exactly the workflow layer's Wait step: the function returns, the workflow waits. Decide against [BACKEND-AUTHORING-MODEL](../../reference/BACKEND-AUTHORING-MODEL.md) before building a node that argues with it. |
+| 6 | Logging & observability | **Cheap** | `console.log` in a Function node is Node's console and works now; execution history exists (`noodl-viewer-cloud/src/execution-history`) and ops has audit + metrics. Missing is a **Log** node with a level, and an honest answer to "where do I read it back" — the admin dashboard, or the editor? That second question is the whole cost. |
+| 7 | Queue / defer | **No as a node**, Real as a backend feature | Same argument as row 5, and one more: the workflow engine runs **in-memory with no cross-restart resume** (WF-001). A durable queue is a backend capability with a store behind it, not a node you drop on a function canvas. |
+| 8 | PDF / image work | **image: Cheap · PDF: No, for now** | `sharp` is already a backend dependency driving `?thumb=` transforms in file storage — an image-transform node has its engine present. PDF means a new dependency for something nothing in the product is asking for yet. Revisit when a real use lands. |
+| 9 | Payments | **No as nodes**, yes as a template | Stripe is an HTTP call, a webhook and a secret. Once HTTP (§3.2), secrets (row 3) and webhook triggers (present) are doors, payments is a **recipe** — a template project — not a runtime feature. Payment nodes would date faster than anything else on this list. |
+| 10 | Third-party APIs with stored credentials | **Free once two doors open** | This is rows 3 + §3.2 and nothing else. No new work of its own. |
+| 11 | Rate limiting per function | **Cheap** | [ops/rate-limit.ts](../../../packages/nodegx-backend/src/ops/rate-limit.ts) already classifies `/functions/*` into a single shared `functions` budget. Per-function limits = extend the classifier + one field in `security.config`, right next to the `call` rule from Pile C — **same file, same panel, same trip**. Do these two together or neither. |
+| 12 | Idempotency keys | **Real** | Nothing anywhere (the `idempot*` hits in the backend are S3 and realtime, not this). Needs a store, a TTL, and a decision on what makes two requests "the same". Genuine design work; genuinely valuable for payments and webhooks. |
+| 13 | File parsing — CSV / JSON | **JSON: Free · CSV: Cheap** | `JSON.parse` works today and a JSON Stream Parser node exists. A competent CSV parse/serialise node needs no dependency, and belongs in the shared runtime — browsers import spreadsheets too. |
+| 14 | Validating an incoming request body | **Real — and the row I'd argue hardest for** | The Request node splits `params` into ports with **no types at all**. That is the same hole in three places: AIB-001 (nothing validates parameter values), ERG-005 (component interface types come from a table and never leave the editor), and here. A typed Request — name, type, required, default, 400 on mismatch — pays one design against three debts, and it's the difference between a function and an API. |
+| 15 | | | |
+| 16 | | | |
+| 17 | | | |
 
-**Prompts, if useful** — things I'd expect to be on it and can't answer for you: hashing/crypto,
-JWT sign & verify, environment variables and secrets, date/time maths, scheduling from inside a
-function, logging/observability, queue or defer, PDF/image work, payments, sending to third-party
-APIs with stored credentials, rate limiting, idempotency keys, file parsing (CSV/JSON), validation
-of an incoming request body.
+### If you want a shortlist rather than a menu
 
-## 6. What happens next
+Ranked by value-per-day, from the above: **(a)** Pile A's array family — it is the only entry that
+removes a "cannot", **(b)** the security door + per-function rate limit (rows 11 and Pile C, one
+trip), **(c)** typed Request bodies (row 14), **(d)** secrets as a node (row 3), which is what makes
+rows 2, 9 and 10 real rather than notional.
 
-1. You fill in §5.
-2. I annotate every row: cost, verdict, what it breaks, and whether something already does it.
+## 7. What happens next
+
+1. **One decision only yours** — Pile B: un-register the 9 browser-shaped nodes from the cloud
+   runtime, or leave them and document? (My recommendation: un-register the 9, keep the Streaming
+   6.)
+2. You add rows to §6 and strike anything you disagree with.
 3. TALK-001 reopens for the decision — and the survivors become CWF tasks, sequenced against
-   the existing six.
+   the existing six. **CWF-003 has already been updated** with §3.2's measurement: its first check
+   item is answered, so it is now smaller than it was written.
 
 ⚠️ Whatever we add, two mechanical facts hold: the cloud picker is a **committed snapshot**
 (`cloud-library:generate` must run, and `cloud-library:check` is a gate that has been red for

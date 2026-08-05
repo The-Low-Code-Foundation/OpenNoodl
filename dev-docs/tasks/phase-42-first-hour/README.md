@@ -47,8 +47,11 @@ Three kinds of doc in this folder:
    REOPENED the same day.** Decisions recorded at the foot of the doc; seven build tasks written
    (the CWF track below). Reopened because it audited the workflow *steps* and never audited what a
    cloud *function* can compute with — that is
-   [TALK-007](TALK-007-WHAT-CLOUD-FUNCTIONS-SHOULD-HAVE.md), a working doc awaiting Richard's list.
-   **The cloud picker offers 57 nodes and not one array type.**
+   [TALK-007](TALK-007-WHAT-CLOUD-FUNCTIONS-SHOULD-HAVE.md), now annotated end to end and awaiting
+   one decision (Pile B) plus anything Richard wants to add. **The cloud picker offers 57 nodes and
+   not one array type — but a Function node is a Node 22 script with `crypto.subtle`, `fetch`,
+   `FormData` and all 79 env vars**, so almost nothing on the wish list is a runtime problem; it is
+   a node-and-door problem. CWF-003 shrank as a result.
 2. ✅ **[TALK-002](TALK-002-THE-CODE-EDITOR-IS-NOT-DIY.md) — code editor. HAD 2026-08-05.**
    **No editor switch** (we are stock CM6 minus six rows of config). Slice 3 **takes the
    `eslint-linter-browserify` dependency** — the doc had mis-costed it as free, it is installed by

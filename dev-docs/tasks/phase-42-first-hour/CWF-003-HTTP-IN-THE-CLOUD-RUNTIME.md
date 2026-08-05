@@ -29,14 +29,17 @@ the shared line double-registers in the browser viewer, which already has its ow
 
 Two things the "one line" framing hides:
 
-1. **`fetch` and `FormData`.** `httpnode` uses `fetch` ([httpnode.ts:697](../../../packages/noodl-runtime/src/nodes/std-library/data/httpnode.ts#L697))
-   and `new FormData()` for multipart ([httpnode.ts:560](../../../packages/noodl-runtime/src/nodes/std-library/data/httpnode.ts#L560)).
-   Node implementations run in the **host process**, not in the isolate, so both should come from
-   Node's globals — but the isolate *also* defines a bridged `global.fetch`
-   ([sandbox.isolate.js:101-125](../../../packages/noodl-viewer-cloud/src/sandbox.isolate.js#L101))
-   and defines no `FormData`. Establish which `fetch` the node actually gets by driving a real
-   request, and test a multipart body specifically — it is the one that will throw if the
-   assumption is wrong.
+1. ~~**`fetch` and `FormData`.**~~ **ANSWERED, 2026-08-05** — [TALK-007 §3.2](TALK-007-WHAT-CLOUD-FUNCTIONS-SHOULD-HAVE.md).
+   The isolate is not in the picture: `sandbox.isolate.js` is **Parse-era dead code** referenced by
+   nothing, and the CloudRunner runs in the backend's own Node process
+   ([WorkflowRunner.ts:34](../../../packages/nodegx-backend/src/workflow/WorkflowRunner.ts#L34)). So
+   the node gets **Node 22's own globals**. Measured inside a real cloud function, through
+   `POST /functions/:name`: `fetch`, `FormData`, `Blob`, `File`, `Headers`, `Request`, `Response`,
+   `ReadableStream`, `btoa` are all `function`; `new FormData()` round-tripped a field and
+   `new Blob(['hi']).text()` returned `"hi"`. **`httpnode`'s multipart path has what it needs** —
+   drive it once to confirm the node, but the global it depends on is no longer in doubt.
+   (Also measured: a `REST2` node in a cloud function made a real `GET` against a live upstream. The
+   deprecated node's server branch works, which is the cheap fallback if item 2 below bites.)
 2. **Editor-connection wiring.** The comment says "moved to viewer for debugging": `httpnode`
    installs graph-model listeners for its debug inspector
    ([httpnode.ts:1277-1281](../../../packages/noodl-runtime/src/nodes/std-library/data/httpnode.ts#L1277-L1281)).
