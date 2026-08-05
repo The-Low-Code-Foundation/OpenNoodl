@@ -2,6 +2,15 @@
    Popup layer
 
    TODO: Clean up order of layers
+
+   FH-012: `.popup-layer` is a child of <body> (router.tsx) and everything the
+   layer shows — popups, popouts, modals, toasts, tooltips, the dimmed backdrop
+   — is inside it, so this ONE number is what the rest of the editor has to
+   stay under to be covered by a popup. Anything drawing over the canvas that
+   needs to be beaten by the node picker must therefore both live in its own
+   stacking context and carry a z-index below 10; the canvas overlay layer does
+   that in `CanvasShell.ts` (5). Raise this number to win an argument and the
+   next overlay simply outbids it again.
    ------------------------------------------------------------------- */
 .popup-layer {
   pointer-events: none;

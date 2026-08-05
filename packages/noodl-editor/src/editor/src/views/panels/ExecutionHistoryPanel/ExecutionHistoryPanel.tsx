@@ -8,6 +8,8 @@ import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
 
 import { SidebarModel, SidebarModelEvent } from '@noodl-models/sidebar/sidebarmodel';
+import { workflowComponentName } from '@noodl-models/workflow/WorkflowComponentModel';
+import { WorkflowEditorService } from '@noodl-models/workflow/WorkflowEditorService';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import { ExecutionDetail } from './components/ExecutionDetail/ExecutionDetail';
@@ -18,6 +20,61 @@ import styles from './ExecutionHistoryPanel.module.scss';
 import { useExecutionDetail } from './hooks/useExecutionDetail';
 import { type ExecutionFilters as FiltersState, useExecutionHistory } from './hooks/useExecutionHistory';
 import { useWorkflowRunner } from './hooks/useWorkflowRunner';
+
+/**
+ * FH-012: the run whose canvas we can open, and the identity of that canvas.
+ *
+ * Typed structurally rather than importing `ExecutionWithSteps` — only these
+ * four fields are read here, and `ExecutionDetail.tsx` already avoids that
+ * import for the same reason (the `core-ui` typecheck project reaches these
+ * files without the `@noodl-viewer-cloud/*` alias).
+ */
+interface PinnableExecution {
+  workflowId: string;
+  workflowName: string;
+  steps: unknown[];
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Take the canvas to the workflow this run belongs to, and answer with the
+ * component name the overlay should tag the pin with.
+ *
+ * `kind: 'workflow'` is written by `WorkflowEngine` alone, which is the only
+ * thing that runs a workflow — and therefore the only run with a canvas to go
+ * to. A cloud function CALL is logged by `WorkflowRunner.run` with
+ * `workflowId = functionName` and no `kind`, so it answers null and the pin
+ * stays on the canvas in front of the user, where the overlay's "this run
+ * recorded no steps" notice explains itself. So does a trigger REJECTION
+ * record, which has a workflow id but never ran anything.
+ *
+ * A failed open answers null for the same reason: a pin the user can see on the
+ * wrong canvas beats a pin tagged to a canvas that would not open.
+ */
+async function openOwningWorkflow(execution: PinnableExecution): Promise<string | null> {
+  const metadata = execution.metadata;
+  const backendId = typeof metadata?.backendId === 'string' ? metadata.backendId : undefined;
+  if (metadata?.kind !== 'workflow' || !backendId || !execution.workflowId) return null;
+
+  const service = WorkflowEditorService.instance;
+  // Already there: `isOpen` is what keeps the Workflows panel's run-&-pin (and
+  // a second pin of the same run) from reopening the document under itself.
+  if (!service.isOpen(backendId, execution.workflowId)) {
+    try {
+      await service.open({
+        backendId,
+        backendName: typeof metadata.backendName === 'string' ? metadata.backendName : '',
+        id: execution.workflowId,
+        name: execution.workflowName,
+        stepCount: execution.steps.length
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  return workflowComponentName(execution.workflowId);
+}
 
 /**
  * CF11-006/007: Execution History Panel
@@ -48,12 +105,21 @@ export function ExecutionHistoryPanel() {
   // CF11-007: fetch full execution (with steps) and pin it to the canvas overlay
   const { execution: detailExecution } = useExecutionDetail(selectedExecutionId);
 
+  /**
+   * FH-012: pinning a run is a request to LOOK at it, so it takes you there.
+   *
+   * The navigation is awaited before the event goes out. The overlay hides a
+   * pin whose canvas is not the open one, so emitting first would flash a pin
+   * on the canvas you are leaving; and the identity carried on the event is
+   * what makes the pin survive the switch either way.
+   */
   const handlePinToCanvas = useCallback(
-    (executionId: string) => {
+    async (executionId: string) => {
       // detailExecution is already loaded by useExecutionDetail above
-      if (detailExecution && detailExecution.id === executionId) {
-        EventDispatcher.instance.emit('execution:pinToCanvas', { execution: detailExecution });
-      }
+      if (!detailExecution || detailExecution.id !== executionId) return;
+
+      const componentName = await openOwningWorkflow(detailExecution as unknown as PinnableExecution);
+      EventDispatcher.instance.emit('execution:pinToCanvas', { execution: detailExecution, componentName });
     },
     [detailExecution]
   );

@@ -69,9 +69,22 @@ export function ExecutionOverlay({ viewport, getNodeBounds }: ExecutionOverlayPr
    * lifetime: navigating away and back should bring it back, and the Unpin
    * button stays the only thing that ends a pin.
    *
-   * The identity is the component that was open at pin time, matched by
-   * `fullName` — the same rule and the same comparison `explainTarget.ts` uses
-   * for a remembered selection, for the same reason.
+   * The identity is a component `fullName` — the same rule and the same
+   * comparison `explainTarget.ts` uses for a remembered selection, for the same
+   * reason.
+   *
+   * FH-012: it comes from the PIN EVENT when the emitter knows which canvas the
+   * run belongs to, and only falls back to "whatever was open at pin time" when
+   * it does not. POL-009 slice 2 asked for exactly this and shipped the
+   * fallback alone, so pinning workflow B's run while A was open tagged the pin
+   * as A's: it rendered over A, where no step resolves, and disappeared on
+   * opening B — pinned to the wrong canvas and invisible where it belonged.
+   *
+   * The fallback is not dead code. A cloud function CALL records no steps and
+   * has no canvas of its own (`WorkflowRunner.run` logs `workflowId =
+   * functionName`), and the Workflows panel's run-&-pin is already standing on
+   * the right canvas; both emit without an identity and both want the canvas in
+   * front of the user.
    */
   const [pinnedComponentName, setPinnedComponentName] = useState<string | null>(null);
   const [activeComponentName, setActiveComponentName] = useState<string | null>(
@@ -83,13 +96,17 @@ export function ExecutionOverlay({ viewport, getNodeBounds }: ExecutionOverlayPr
   });
 
   // Listen for pin requests from ExecutionHistoryPanel
-  useEventListener(EventDispatcher.instance, 'execution:pinToCanvas', (data: { execution: ExecutionWithSteps }) => {
-    setPinnedExecution(data.execution);
-    setPinnedComponentName(NodeGraphContextTmp.nodeGraph?.activeComponent?.fullName ?? null);
-    setSelectedNodeId(null);
-    // Start at the last step so all completed steps are visible
-    setCurrentStepIndex(data.execution.steps.length > 0 ? data.execution.steps.length - 1 : 0);
-  });
+  useEventListener(
+    EventDispatcher.instance,
+    'execution:pinToCanvas',
+    (data: { execution: ExecutionWithSteps; componentName?: string | null }) => {
+      setPinnedExecution(data.execution);
+      setPinnedComponentName(data.componentName ?? NodeGraphContextTmp.nodeGraph?.activeComponent?.fullName ?? null);
+      setSelectedNodeId(null);
+      // Start at the last step so all completed steps are visible
+      setCurrentStepIndex(data.execution.steps.length > 0 ? data.execution.steps.length - 1 : 0);
+    }
+  );
 
   // Listen for unpin requests
   useEventListener(EventDispatcher.instance, 'execution:unpinFromCanvas', () => {

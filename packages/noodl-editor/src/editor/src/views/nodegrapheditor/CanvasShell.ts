@@ -45,17 +45,48 @@ function div(style?: Partial<CSSStyleDeclaration>, id?: string, className?: stri
  * bottom of the parent scroll all their siblings (a Chromium bug the original
  * template worked around the same way).
  */
-function clippingWrapper(child: HTMLElement, pointerEvents: 'none' | undefined): HTMLDivElement {
+function clippingWrapper(child: HTMLElement, pointerEvents: 'none' | undefined, zIndex?: string): HTMLDivElement {
   const wrapper = div({
     position: 'absolute',
     overflow: 'hidden',
     width: '100%',
     height: '100%',
-    ...(pointerEvents ? { pointerEvents } : {})
+    ...(pointerEvents ? { pointerEvents } : {}),
+    ...(zIndex ? { zIndex } : {})
   });
   wrapper.appendChild(child);
   return wrapper;
 }
+
+/**
+ * FH-012: the canvas-overlay layer's ceiling.
+ *
+ * `ExecutionOverlay`'s header, notice and timeline are each `z-index: 200`, and
+ * nothing between them and `<body>` was a stacking context — not this wrapper
+ * (positioned, `z-index: auto`), not the shell root (unpositioned). So those
+ * 200s were competing directly with `PopupLayer`'s `.popup-layer` (`z-index:
+ * 10`, appended to `<body>` by `router.tsx`) and won: the pin bars drew over
+ * the node picker, and over its dimmed backdrop.
+ *
+ * A positive `z-index` on the wrapper makes it a stacking context, so all three
+ * 200s — and the badges and the data popup with them — resolve INSIDE it and
+ * the whole layer competes as one number. 5 is chosen to stay above everything
+ * in the shell that paints at `z-index: auto` and would otherwise cover the
+ * bars by document order: `#nodegraph-dom-layer`, `.canvas-hud-root` (the AI
+ * pill and zoom cluster), `.nodegraph-component-trail-root` (the 38px bottom
+ * bar the timeline sits on), `#comment-layer-fg` and `.help-center-layer`. And
+ * it is below 10, which is the whole point.
+ *
+ * Deliberately NOT bumping `.popup-layer` to 201: that fixes one instance and
+ * leaves the class. Two other escapees remain and are not this task's —
+ * `#canvas-tabs-root` (100) and `#editor-banner-root` (1001) still reach the
+ * body-level stacking context, as do `HighlightOverlay`'s 999/1000/1001. The
+ * execution bars were already below the highlight overlay and above the tabs
+ * root; only the first of those relationships is preserved here, and the tabs
+ * root is empty unless a Logic Builder tab is open, in which case it owns the
+ * canvas anyway.
+ */
+const EXECUTION_OVERLAY_Z = '5';
 
 export function createCanvasShell(): CanvasShell {
   const root = div({ width: '100%', height: '100%' }, undefined, 'nodegrapgeditor-bg nodegrapheditor-canvas');
@@ -93,7 +124,7 @@ export function createCanvasShell(): CanvasShell {
     clippingWrapper(commentLayerBg, undefined),
     canvas,
     clippingWrapper(highlightOverlayLayer, 'none'),
-    clippingWrapper(executionOverlayLayer, 'none'),
+    clippingWrapper(executionOverlayLayer, 'none', EXECUTION_OVERLAY_Z),
     clippingWrapper(commentLayerFg, 'none'),
     domLayerWrapper,
     canvasHudRoot,
