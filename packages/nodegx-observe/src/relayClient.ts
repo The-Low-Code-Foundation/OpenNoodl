@@ -30,12 +30,32 @@
  *
  * ⚠️ **`globalThis.WebSocket`, not the `ws` package.** Node 22 ships one and this repo
  * requires Node 22, so the observe server has no dependencies of its own at all.
+ *
+ * ⚠️ **This client outlives the editor** (MCP-003). An MCP client spawns a stdio server once
+ * and holds it for the whole session, while the editor it talks to is quit and restarted
+ * freely — minting a *new* relay token every time. So a connection is a thing that drops and
+ * comes back, not a thing that is established once, and everything that describes the running
+ * app is per-connection state that a reconnect must drop rather than carry over.
  */
 
 const DEFAULT_PORT = 8574;
 
 /** How long a request may go unanswered before the caller is told rather than left hanging. */
 const DEFAULT_TIMEOUT = 5000;
+
+/**
+ * How long to wait after `register` before calling a connection accepted.
+ *
+ * ⚠️ Load-bearing, and the reason the backoff below has a floor: there is no `registered` ack
+ * for an *editor* peer — the relay only announces viewers — so "accepted" is distinguished from
+ * "refused" by nothing happening for this long. A retry faster than this races its own success
+ * detection.
+ */
+const ACCEPT_GRACE = 250;
+
+/** First reconnect delay, and the ceiling it doubles towards. */
+const DEFAULT_RECONNECT_DELAY = 500;
+const DEFAULT_MAX_RECONNECT_DELAY = 10_000;
 
 export interface EdgeRef {
   node: string;
@@ -81,6 +101,8 @@ export interface RuntimeWarning {
 interface Waiter {
   matches: (message: Record<string, unknown>) => boolean;
   resolve: (message: Record<string, unknown>) => void;
+  /** Used when the connection dies under a request — see `onConnectionLost`. */
+  reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
 }
 
@@ -89,12 +111,53 @@ export interface RelayClientOptions {
   port?: number;
   host?: string;
   timeout?: number;
+  /**
+   * Re-read the token before each reconnect attempt.
+   *
+   * ⚠️ The whole point of MCP-003. The editor mints a fresh token every launch, so the token
+   * this client started with is stale the moment the editor restarts, and reusing it produces
+   * close code 4401 forever. The *caller* supplies this rather than the client calling
+   * `findRelayToken` itself, so the `--token` / `$NODEGX_RELAY_TOKEN` / file precedence stays
+   * in one place (`token.ts`) and an explicit token stays explicit across reconnects.
+   *
+   * Returning `undefined` (nothing found this instant — the editor is still down) keeps the
+   * current token and retries; it is not an error.
+   */
+  refreshToken?: () => string | undefined;
+  /** First backoff delay, ms. Floored at {@link ACCEPT_GRACE}. */
+  reconnectDelay?: number;
+  /** Backoff ceiling, ms. */
+  maxReconnectDelay?: number;
+  /**
+   * Where lifecycle lines go.
+   *
+   * ⚠️ stdout is the MCP protocol channel — one stray line there corrupts the session in a way
+   * that looks like a client bug — so the default is stderr, and tests pass their own sink.
+   */
+  log?: (line: string) => void;
 }
+
+/**
+ * `disconnected` is the state before the first `connect()`; `closed` means *we* closed it and
+ * no reconnect is coming. Only `reconnecting` is recoverable without user action.
+ */
+export type RelayConnectionState = 'disconnected' | 'connected' | 'reconnecting' | 'closed';
 
 export class RelayClient {
   private socket: WebSocket | undefined;
-  private readonly options: Required<RelayClientOptions>;
+  private readonly options: Required<Omit<RelayClientOptions, 'token' | 'refreshToken'>>;
+  private readonly refreshToken: () => string | undefined;
+  /** Mutable: a reconnect after an editor restart replaces it. */
+  private token: string;
   private waiters: Waiter[] = [];
+
+  /** Observable so the tools, and the tests, can say what is actually true. */
+  public state: RelayConnectionState = 'disconnected';
+  /** Failed reconnect attempts since the last successful connection. */
+  private attempts = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  private lastLoggedDelay = 0;
+  private lastFailure: string | undefined;
 
   /** Viewer clients that have announced a node library, in announcement order. */
   public viewerClients: string[] = [];
@@ -114,11 +177,17 @@ export class RelayClient {
   private highestSeq = 0;
 
   constructor(options: RelayClientOptions) {
+    this.token = options.token;
+    this.refreshToken = options.refreshToken ?? (() => undefined);
     this.options = {
-      token: options.token,
       port: options.port ?? Number(process.env.NOODLPORT || DEFAULT_PORT),
       host: options.host ?? 'localhost',
-      timeout: options.timeout ?? DEFAULT_TIMEOUT
+      timeout: options.timeout ?? DEFAULT_TIMEOUT,
+      // ⚠️ Floored at the accept grace: see ACCEPT_GRACE. A caller asking for 50ms would get a
+      // client that reports every successful reconnect as a failure.
+      reconnectDelay: Math.max(ACCEPT_GRACE, options.reconnectDelay ?? DEFAULT_RECONNECT_DELAY),
+      maxReconnectDelay: options.maxReconnectDelay ?? DEFAULT_MAX_RECONNECT_DELAY,
+      log: options.log ?? ((line: string) => process.stderr.write(line + '\n'))
     };
   }
 
@@ -126,22 +195,56 @@ export class RelayClient {
     return `ws://${this.options.host}:${this.options.port}`;
   }
 
-  connect(): Promise<void> {
+  get isConnected(): boolean {
+    return !!this.socket && this.socket.readyState === 1;
+  }
+
+  /**
+   * The first connection.
+   *
+   * ⚠️ **Still rejects when there is nothing to connect to**, and deliberately does not start
+   * retrying — `cli.ts` refuses to start a server whose editor is absent, because a server that
+   * starts cleanly and then answers "could not connect" to every call reads as a broken server.
+   * Recovery is for the *already-running* server only, and begins at the first close after a
+   * connection that worked.
+   */
+  async connect(): Promise<void> {
+    this.state = 'disconnected';
+    await this.openSocket();
+    this.state = 'connected';
+    this.attempts = 0;
+    this.lastLoggedDelay = 0;
+  }
+
+  /**
+   * Open one socket and register on it.
+   *
+   * The `settled` guard covers the *initial* handshake only. A close after settling is a lost
+   * connection rather than a failed one, and is what schedules the reconnect — the bug MCP-003
+   * fixes was that this handler returned early and did nothing else, forever.
+   */
+  private openSocket(): Promise<void> {
     return new Promise((resolve, reject) => {
       let settled = false;
-      const socket = new WebSocket(this.address);
-      this.socket = socket;
+      let socket: WebSocket;
+      try {
+        socket = new WebSocket(this.address);
+      } catch (e) {
+        reject(new Error(`Could not reach the NodeGX relay at ${this.address}: ${(e as Error).message}`));
+        return;
+      }
 
       socket.addEventListener('open', () => {
-        socket.send(JSON.stringify({ cmd: 'register', type: 'editor', token: this.options.token }));
+        socket.send(JSON.stringify({ cmd: 'register', type: 'editor', token: this.token }));
         // There is no `registered` ack for an editor peer — the relay only announces
         // *viewers*. A rejection, however, arrives immediately and closes the socket, so a
         // short grace period is what distinguishes accepted from refused.
         setTimeout(() => {
           if (settled) return;
           settled = true;
+          this.socket = socket;
           resolve();
-        }, 250);
+        }, ACCEPT_GRACE);
       });
 
       socket.addEventListener('message', (event: MessageEvent) => {
@@ -149,15 +252,20 @@ export class RelayClient {
       });
 
       socket.addEventListener('close', (event: CloseEvent) => {
-        if (settled) return;
-        settled = true;
-        reject(
-          new Error(
-            event.code === 4401
-              ? 'The editor refused this connection: the relay token is wrong or stale. The editor mints a new one every launch — re-read it, or restart this server.'
-              : `The connection to ${this.address} closed before it was established (code ${event.code}).`
-          )
-        );
+        if (!settled) {
+          settled = true;
+          reject(
+            new Error(
+              event.code === 4401
+                ? 'The editor refused this connection: the relay token is wrong or stale. The editor mints a new one every launch — re-read it, or restart this server.'
+                : `The connection to ${this.address} closed before it was established (code ${event.code}).`
+            )
+          );
+          return;
+        }
+        // A superseded socket closing must not tear down the one that replaced it.
+        if (this.socket !== socket) return;
+        this.onConnectionLost(`the connection closed (code ${event.code})`);
       });
 
       socket.addEventListener('error', () => {
@@ -172,8 +280,137 @@ export class RelayClient {
     });
   }
 
+  /**
+   * The editor went away.
+   *
+   * ⚠️ **Everything this client knows about the running app dies with the connection**, and
+   * keeping any of it is worse than losing it:
+   *
+   *  - `viewerClients` are ids of a process that no longer exists; addressing one produces
+   *    "the preview did not answer" on every call — connected-looking and permanently silent.
+   *  - `topology` describes that same dead app.
+   *  - `highestSeq` is the one that would be silent rather than noisy: a fresh runtime builds a
+   *    fresh `TraceBuffer` whose `nextSeq` starts at **1** (`noodl-runtime/src/tracebuffer.ts`),
+   *    so a retained high-water mark discards every event of the new session while the tools
+   *    report a healthy connection. The buffer goes with it, for the same reason
+   *    `setTraceEnabled(true)` clears it: a walk spliced from two sessions is a wrong answer.
+   *
+   * `recording` is the one thing that is *kept* — it is what this server was asked to do, not
+   * something the app told us — and is re-sent once the connection is back.
+   */
+  private onConnectionLost(reason: string): void {
+    if (this.state === 'closed' || this.state === 'reconnecting') return;
+    this.state = 'reconnecting';
+    this.socket = undefined;
+    this.lastFailure = reason;
+
+    this.viewerClients = [];
+    this.topology = undefined;
+    this.events = [];
+    this.highestSeq = 0;
+
+    // A pending request would otherwise sit until its timeout and then blame the preview for
+    // not answering, which sends the reader off looking at the wrong process.
+    const waiting = this.waiters.splice(0);
+
+    this.options.log(`nodegx-observe: lost the editor connection (${reason}).`);
+    this.scheduleReconnect();
+
+    // After the state is `reconnecting`, so the rejection carries the retry message rather
+    // than the pre-connection one.
+    for (const waiter of waiting) {
+      clearTimeout(waiter.timer);
+      waiter.reject(new Error(this.describeDisconnected()));
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.state !== 'reconnecting') return;
+    const delay = Math.min(
+      this.options.reconnectDelay * Math.pow(2, this.attempts),
+      this.options.maxReconnectDelay
+    );
+    // stderr is the human channel, so: the first failure and every escalation, never every
+    // attempt. Once the delay is capped this stops logging entirely.
+    if (delay !== this.lastLoggedDelay) {
+      this.lastLoggedDelay = delay;
+      this.options.log(`nodegx-observe: retrying the editor connection every ${delay}ms until it is back.`);
+    }
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = setTimeout(() => {
+      void this.attemptReconnect();
+    }, delay);
+    // Never hold the process open on our own account: the MCP transport owns the lifetime.
+    if (typeof (this.reconnectTimer as { unref?: () => void }).unref === 'function') {
+      (this.reconnectTimer as unknown as { unref: () => void }).unref();
+    }
+  }
+
+  private async attemptReconnect(): Promise<void> {
+    if (this.state !== 'reconnecting') return;
+
+    const refreshed = this.refreshToken();
+    if (refreshed) this.token = refreshed;
+
+    try {
+      await this.openSocket();
+    } catch (err) {
+      this.lastFailure = (err as Error).message;
+      this.attempts++;
+      this.scheduleReconnect();
+      return;
+    }
+
+    if (this.state !== 'reconnecting') return; // closed while we were connecting
+    this.state = 'connected';
+    this.attempts = 0;
+    this.lastLoggedDelay = 0;
+    this.lastFailure = undefined;
+    this.options.log(`nodegx-observe: reconnected to ${this.address}.`);
+
+    // Re-arm what we asked for, not what the app remembers — the relay and the runtime know
+    // nothing about a trace requested over a socket that no longer exists, so an armed
+    // recording would silently disarm across a restart (FH-011's class of defect).
+    if (this.recording) {
+      try {
+        this.send({ cmd: 'traceEnabled', content: JSON.stringify({ enabled: true }) });
+      } catch (e) {
+        /* the socket died again between here and there; the close handler takes it from here */
+      }
+    }
+  }
+
   close(): void {
+    this.state = 'closed';
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = undefined;
     if (this.socket) this.socket.close();
+    this.socket = undefined;
+  }
+
+  /**
+   * What to tell a caller that arrived while there is no socket.
+   *
+   * ⚠️ The bar is `describeMissingToken` in `token.ts`: actionable rather than
+   * accurate-and-useless. "Not connected to the NodeGX relay." was accurate, permanent, and
+   * read like a bug in NodeGX — the user was never told that the cause was their own editor
+   * restart, nor that nothing on their side needs restarting.
+   */
+  private describeDisconnected(): string {
+    if (this.state === 'reconnecting') {
+      return (
+        'The connection to the NodeGX editor dropped, and this server is retrying' +
+        (this.lastFailure ? ` (${this.lastFailure})` : '') +
+        '. The usual cause is the editor being quit or restarted. Start the editor again with ' +
+        'the project open and the preview running, then try again — this server reconnects on ' +
+        'its own, including to the new relay token the editor mints at each launch, so there ' +
+        'is nothing here to restart.'
+      );
+    }
+    if (this.state === 'closed') {
+      return 'This server has closed its connection to the NodeGX relay and is not retrying.';
+    }
+    return `Not connected to the NodeGX relay at ${this.address}. Is the editor running, with a project open?`;
   }
 
   private async onMessage(data: unknown): Promise<void> {
@@ -291,10 +528,10 @@ export class RelayClient {
   }
 
   private send(message: Record<string, unknown>): void {
-    if (!this.socket || this.socket.readyState !== 1) {
-      throw new Error('Not connected to the NodeGX relay.');
+    if (!this.isConnected) {
+      throw new Error(this.describeDisconnected());
     }
-    this.socket.send(JSON.stringify(message));
+    this.socket!.send(JSON.stringify(message));
   }
 
   /** Send, then wait for the first inbound message that satisfies `matches`. */
@@ -307,6 +544,7 @@ export class RelayClient {
       const waiter: Waiter = {
         matches,
         resolve,
+        reject,
         timer: setTimeout(() => {
           this.waiters = this.waiters.filter((w) => w !== waiter);
           // ⚠️ Every request here is answered by a *different process* which may have gone
@@ -334,6 +572,10 @@ export class RelayClient {
    * and everything here is about the preview the user is looking at.
    */
   async resolveClientId(): Promise<string> {
+    // ⚠️ Before discovery, not after. `discoverClients` swallows request failures, so a
+    // disconnected client would otherwise report "no preview is running" — true of a dead app,
+    // and exactly the wrong thing to send a user off checking.
+    if (!this.isConnected) throw new Error(this.describeDisconnected());
     if (!this.viewerClients.length) await this.discoverClients();
     if (!this.viewerClients.length) {
       throw new Error(

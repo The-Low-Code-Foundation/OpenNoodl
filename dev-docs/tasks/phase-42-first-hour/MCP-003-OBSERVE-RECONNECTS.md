@@ -1,8 +1,10 @@
 # MCP-003 — `nodegx-observe` survives an editor restart
 
 **Created:** 2026-08-05, out of [TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) decision 6.
-**Status:** specified, not started. **Gates:** [MCP-001](MCP-001-CONNECT-AN-AI-AGENT.md)'s observe
-button. **Depends on:** nothing.
+**Status:** **BUILT** 2026-08-06 — all four slices, `@noodl/observe` is in `test:packages`, 23
+tests green (7 of them new, 4 of which fail with the reconnect disabled). Not driven against a real
+editor restart; see *What a human must still verify* below.
+**Gates:** [MCP-001](MCP-001-CONNECT-AN-AI-AGENT.md)'s observe button. **Depends on:** nothing.
 
 This was not in TALK-004's research. It was found while verifying it, and it is the reason the
 observe half of the front door cannot ship first: **the command we would be handing out stops
@@ -16,7 +18,8 @@ Three facts that are individually fine and together are the bug.
    `<userData>/relay-token` at every start;
    [token.ts:4-6](../../../packages/nodegx-observe/src/token.ts#L4) documents this, and
    `findRelayToken` reads the file **once**, in
-   [cli.ts:60](../../../packages/nodegx-observe/src/cli.ts#L60), before the server is built.
+   [cli.ts](../../../packages/nodegx-observe/src/cli.ts) (line 58 as written, not 60), before the
+   server is built.
 2. **`RelayClient.connect()` connects exactly once.**
    [relayClient.ts:129-171](../../../packages/nodegx-observe/src/relayClient.ts#L129) attaches
    `open`, `message`, `close` and `error` handlers, but every one of them is guarded by `if
@@ -107,6 +110,21 @@ Two pieces of state live across a connection and need an explicit decision, not 
   quiet while appearing connected, which is the worst available failure. Verify before choosing
   between resetting the buffer and keeping it.
 
+  **Answered while building: it does.** `TraceBuffer` initialises `nextSeq = 1`
+  ([tracebuffer.ts:207](../../../packages/noodl-runtime/src/tracebuffer.ts#L207)) and one is
+  constructed per `NodeContext` ([nodecontext.ts:686](../../../packages/noodl-runtime/src/nodecontext.ts#L686)),
+  so a restarted app counts from 1 again. Both `events` and `highestSeq` are therefore reset on
+  disconnect, for the same reason `setTraceEnabled(true)` clears them: a walk spliced from two
+  sessions is a wrong answer, not a fuller one.
+
+- **A third piece the doc missed: `viewerClients` and `topology`.** They describe a process that no
+  longer exists. Kept across a reconnect, `resolveClientId()` returns a dead clientId and every
+  call fails with "the preview did not answer" — connected-looking and permanently silent, the same
+  failure class as the `highestSeq` one. Both are cleared on disconnect, and `resolveClientId()`
+  now checks the connection *before* discovery, because `discoverClients()` swallows request
+  failures and would otherwise report "no preview is running" to a user whose editor is simply
+  down.
+
 ### Slice 4 — put the package in a gate
 
 `test:packages` in the root `package.json` scopes `@noodl/mcp` and **not** `@noodl/observe`. Add
@@ -124,6 +142,19 @@ first; do not discover a pre-existing failure through the gate.
 - [ ] An explicit `--token` is still honoured across reconnects.
 - [ ] A trace armed before a restart is armed after it — or the tool says plainly that it is not.
 - [ ] `npm run test:packages` runs `@noodl/observe` and is green.
+
+## What a human must still verify
+
+Everything above is proved against the **real relay** (`relay-server.js`, driven over real
+sockets, with the listener stopped and restarted on the same port demanding a *different* token) —
+but not against a real editor process. What a jest suite cannot prove:
+
+1. Quit and relaunch the editor with an observe server attached, then call `list_nodes`. It must
+   answer. **A restart is a stop** — reloading the window does not mint a new token and therefore
+   does not test the bug.
+2. While the editor is down, call any tool: the message must name the editor restart and say that
+   nothing needs restarting on the agent's side.
+3. `start_trace`, restart the editor, then `get_events` — the recording must still be armed.
 
 ## Traps
 

@@ -55,7 +55,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  const lookup = findRelayToken(flag(argv, '--token'));
+  const explicitToken = flag(argv, '--token');
+  const lookup = findRelayToken(explicitToken);
   if (!lookup.token) {
     process.stderr.write(describeMissingToken(lookup) + '\n');
     process.exitCode = 2;
@@ -63,7 +64,16 @@ async function main(): Promise<void> {
   }
 
   const portArg = flag(argv, '--port');
-  const client = new RelayClient({ token: lookup.token, port: portArg ? Number(portArg) : undefined });
+  const client = new RelayClient({
+    token: lookup.token,
+    port: portArg ? Number(portArg) : undefined,
+    // MCP-003 — the reason this is a function and not the token above. This process outlives
+    // the editor: an MCP client holds a stdio server for a whole session while the editor is
+    // quit and restarted, and each launch mints a *new* token. Re-running the same lookup keeps
+    // the `--token` / `$NODEGX_RELAY_TOKEN` / file precedence exactly as it was at startup, so
+    // an explicit token stays explicit and a discovered one is re-discovered.
+    refreshToken: () => findRelayToken(explicitToken).token
+  });
 
   try {
     await client.connect();
