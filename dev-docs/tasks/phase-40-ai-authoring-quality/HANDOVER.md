@@ -1,10 +1,10 @@
 # Phase 40 — AI authoring quality: the handover prompt
 
-Rewritten 2026-08-05 at the end of the **AAQ-002 criteria 1–3 drive**, which closed Layer 1. The
-previous version's headline instruction was "F4/F5 are Richard's calls, then slice 4, then the engine";
-F4, F5 and slice 4 all landed, criteria 1–3 were driven, and the drive found finding #7's **fourth**
-mechanism — the one that had been underneath the other three all along. Everything the earlier versions
-knew and is still true has been folded in below, including their six corrections, all of which survived.
+Rewritten 2026-08-05 at the end of the **AAQ-005 slice-1 session**, which built the one authored-candidate
+gate. The previous version's headline instruction was "Layer 1 is done, so the engine is the work"; the
+engine started, and its first slice found that the divergence AAQ-005 was written to close was not the one
+the task file described. Everything the earlier versions knew and is still true has been folded in below,
+including their seven corrections, all of which survived.
 
 Paste the block below into a fresh session.
 
@@ -14,33 +14,36 @@ You are continuing **Phase 40 — AI authoring quality**. Read
 `dev-docs/tasks/phase-40-ai-authoring-quality/README.md` and this file before doing anything, then the
 task file for whatever you pick up. The phase's own rule applies to its documents as well as to the code:
 **read the mechanism in source before trusting a stated fact, including the README's and this file's.**
-**Seven** premises written by people who opened or built this phase have now failed that check, plus an
-eighth still standing in the review path (AAQ-011 F8). They are listed below. Finding them has been most
-of the value of the last three sessions, and the seventh — a defect that had been sitting *underneath*
-three correct fixes to the same report — is the reason to assume a ninth exists.
+**Eight** premises written by people who opened or built this phase have now failed that check, plus a
+ninth still standing in the review path (AAQ-011 F8). They are listed below. Finding them has been most
+of the value of the last four sessions, and the last two — a defect sitting *underneath* three correct
+fixes to the same report, and a shared-code claim that was really a missing import — are the reason to
+assume a tenth exists.
 
 ## Where the phase stands
 
-**Layer 1 is COMPLETE — built, driven live, and closed.** Commits `4a0fdd4f`, `83647de9`, `c0bf8b5b`
-(build), `3ef42833` (Layer-1 live pass), `36ce5669`, `437ec919` (F4/F5 + slice 4) and this session's
-(criteria 1–3 + the fourth `prop-*` mechanism) on `cline-dev`. Editor suite **2198 specs, 0 failures**;
-runtime suite **2144 passed**; `typecheck:editor` and `typecheck:editor-tests` clean.
+**Layer 1 is COMPLETE. The engine has started: AAQ-005 slice 1 is built and green.** Commits `4a0fdd4f`,
+`83647de9`, `c0bf8b5b` (Layer-1 build), `3ef42833` (Layer-1 live pass), `36ce5669`, `437ec919` (F4/F5 +
+slice 4), `ac853edf` (the fourth `prop-*` mechanism) and `0cfa8640` (AAQ-005 slice 1) on `cline-dev`.
+
+Gates as of `0cfa8640`: editor suite **2200 specs, 0 failures**; `noodl-mcp` **121 tests / 12 suites,
+green**; runtime **2144 passed**; `typecheck:editor` and `typecheck:editor-tests` clean.
 
 | Task | State |
 |---|---|
 | AAQ-001 — a created page is reachable | **Criteria 1, 3, 4, 5 closed live.** Criterion 2 closed by construction. One thing owed: promote `PageWithoutPageNode` to blocking (AAQ-011 F7). |
-| AAQ-002 — the backend is first-class | ✅ **CLOSED.** All four slices built, **all five criteria driven live**. Finding #7 needed a fourth mechanism — correction 7 below, and it is the important one in this file. |
-| AAQ-003 — authored apps scroll | **Criterion 1 closed live** (scrolls in a real preview; `body-scroll` on the viewer's `<body>`). Criterion 3 under test. Criterion 2 (a dashboard brief's regions scrolling independently) needs a second brief — take it with the engine work. |
-| AAQ-004 — the conversation is kept | Mechanism A built, under test, **and confirmed live**. Mechanism B stays with AAQ-006. |
-| AAQ-005 → 007 (the engine) | Not started. **This is the next substantial work.** Read the perf warning below before you design it. |
+| AAQ-002 — the backend is first-class | ✅ **CLOSED.** All four slices built, all five criteria driven live. |
+| AAQ-003 — authored apps scroll | **Criterion 1 closed live.** Criterion 3 under test. Criterion 2 (a dashboard brief's regions scrolling independently) needs a second brief — take it with the engine work. |
+| AAQ-004 — the conversation is kept | Mechanism A built, under test, confirmed live. Mechanism B stays with AAQ-006. |
+| AAQ-005 — one substrate | **Slice 1 (one gate) BUILT.** Criteria 1, 2 and 5 met *for the gate*. The toolset convergence and the multi-component contract — the risk-bearing half — are **not started**. See correction 8. |
+| AAQ-006 → 007 (harness, self-review) | Not started. Read the perf warning below before designing either. |
 | AAQ-008/009/010 (doctrine) | Not started. Prompt-encodable parts can land early; acceptance runs against the new engine. |
-| AAQ-011 | Register. F4/F5 closed; **F9–F11 added** this session. F9 and F10 both affect every wizard-built app. |
+| AAQ-011 | Register. F4/F5 closed; F9–F11 from the AAQ-002 drive; **F12 added this session**. F9 and F10 both affect every wizard-built app. |
 
 ## The corrections. Do not re-derive these the hard way
 
-The first three are from the Layer-1 build session, the next three from the Layer-1 live pass, and the
-last — number 7, and the one most likely to cost you a day — from the AAQ-002 criteria drive. All still
-hold.
+The first three are from the Layer-1 build session, the next three from the Layer-1 live pass, the
+seventh from the AAQ-002 criteria drive, and the eighth from the AAQ-005 slice. All still hold.
 
 1. **`prop-age` / `prop-bio` was never a timing problem, and AAQ-002 said it was.**
    `SchemaHandler._fetch()` (`utils/schemahandler.ts`) had been a **stub since WF-007**: it set
@@ -49,13 +52,16 @@ hold.
    `backend:status` → `backend:getSchema`. The chain, for anyone debugging a missing data port:
    `record-ports.ts` → `resolveSchemaPortContext` (`schema-ports.ts:477`) →
    `selectedBackend?.schema?.collections` → `dbCollections` fallback → `schemahandler.ts`.
-   ⚠️ This fix is real and works — and the ports **still do not appear**. See correction 4.
+   ⚠️ This fix is real and works — and the ports **still do not appear**. See correction 7.
 
 2. **`RouterNavigate.target` and `Page.urlPath` are not in the node catalog.** Both are
    runtime-discovered ports, and `checkParameterValues` **skips dynamic-port nodes entirely** — so any
    string passes. This is very likely *why* the model reached for "navigate to path":
    `PageStackNavigateToPath.path` is the only navigation target the catalog declares statically.
    If you need to know whether a parameter is checked, write the four-line probe; do not reason about it.
+   ⚠️ The same skip bites elsewhere: `Text` and `Group` declare dynamic ports too, so decorating one with
+   a bogus parameter to provoke `UnknownParameter` does **nothing**. Use `Number Remapper` — one of the
+   54 static-port types, and the one the AIB-001 specs already prove is static.
 
 3. **`buildBackendList` has no production caller.** The Backend Services panel composes three separate
    card components. A right model seam is not a right panel — check which one a user actually looks at
@@ -69,22 +75,19 @@ hold.
    register, never a claim about what renders. Now `DiagnosticCode.PageWithoutPageNode` plus an explicit
    authoring-prompt contract; the diagnostic is a **warning, not blocking** (AAQ-011 F7 carries the bill).
 
-5. **⚠️ `prop-*` has a third mechanism, and it is not the cache.** After "timing" (wrong) and "the cache
-   was never written" (right, fixed), the live cause is: `findReusableBackend` matches on **name alone**
-   and `provisionFromScope` always names it *"App backend"*, so **every AI-created project on a machine
-   binds to the first backend ever provisioned there**. And `backend:createTable` returns
-   `created: false` for an existing table **without reconciling its columns**. A reused collection
-   therefore has no columns, so `recordFieldPorts` emits no ports, forever. Proven both ways in one
-   session: a *new* table created with columns comes back with them; the reused `Puppy` came back
-   `columns: []`. Two unrelated apps silently share one datastore. **Both halves are product decisions —
-   AAQ-011 F4/F5 — not bugs to quietly patch.**
+5. **⚠️ `prop-*` has a third mechanism, and it is not the cache.** `findReusableBackend` matched on
+   **name alone** while `provisionFromScope` always named it *"App backend"*, so every AI-created project
+   on a machine bound to the first backend ever provisioned there; and `backend:createTable` returned
+   `created: false` for an existing table **without reconciling its columns**. Both closed (F4/F5) as
+   product decisions: a project now owns its backend via `config.projectIds`, and provisioning fully
+   reconciles, type changes included.
 
 6. **⚠️ The Record family reads `collectionName`, not `collection`.** It passes
    `collectionParam: 'collectionName'` to `resolveSchemaPortContext`, **whose own default is
-   `'collection'`** — so reading the resolver instead of the caller gets it wrong, which is exactly how
-   the live-pass fixture got it wrong. Setting `collection` is completely inert and nothing diagnoses it.
-   Same family: `RouterNavigate.target` is the **full legacy component name** (`/Pages/Puppies`), matched
-   against the router's own `pages.routes` — not a display name and not a URL.
+   `'collection'`** — so reading the resolver instead of the caller gets it wrong. Setting `collection` is
+   completely inert and nothing diagnoses it. Same family: `RouterNavigate.target` is the **full legacy
+   component name** (`/Pages/Puppies`), matched against the router's own `pages.routes` — not a display
+   name and not a URL.
 
 7. **⚠️⚠️ `prop-*` had a FOURTH mechanism, and it was never about backends.** Read this before you
    trust any port-generation claim in this repo. `dbmodelcrudbase._addBaseInfo` defaulted its port
@@ -97,55 +100,54 @@ hold.
    collection and offers no way to write to it. The one-minute probe that settles it: add a `DbModel2`
    (Record) node on the same collection; it gates on `selectedCollection` alone, so if *its* ports
    appear the schema chain is fine and the fault is in the mixin assembly. Fixed by **deriving** both
-   flags from the mixins that build what they gate, not by correcting the default — see the docblock.
-   The gate is `record-property-ports.test.ts`, which drives the **assembled node modules** rather
-   than the pure generators, because two suites of the latter stayed green throughout.
+   flags from the mixins that build what they gate. The gate is `record-property-ports.test.ts`, which
+   drives the **assembled node modules** rather than the pure generators, because two suites of the
+   latter stayed green throughout.
 
-## What the live pass fixed
+8. **⚠️⚠️ "`noodl-mcp` shares the validation rules" was false, and it is a claim-shape to distrust.**
+   AAQ-005 §5 recorded the editor/MCP divergence as *policy*: shared rules, gated on `severity ===
+   'error'` only. In fact `checkParameterValues`, `checkBackendRequirements`, `checkNavigation` and
+   `checkPageShape` appeared **nowhere** in `packages/noodl-mcp` — grep, zero hits — and `editor-deps.ts`
+   never re-exported one of them. The gate was not lenient about those diagnostics; it **never computed
+   them**, and its error filter was correct with nothing to filter. So ~15 error-severity parameter
+   diagnostics, `ConnectionOnlyParameter` among them — *this phase's own* diagnostic, for the mechanism
+   that silently discarded a build's styling — rejected a submission in the editor and shipped clean
+   through Claude Code.
+   ⚠️ **The generalisation is the valuable part:** "package X shares Y via a re-export barrel" is a claim
+   about a specific export list. A package importing *some* of a module's exports reads exactly like one
+   importing all of them. Grep the barrel for the symbol; do not infer it from the pattern.
 
-All three were invisible to 2165 green specs, and each sat under code that was individually correct.
+## What AAQ-005 slice 1 built and found
 
-1. **A plan whose FIRST page linked to its second was unappliable.** The apply's pre-check
-   (`ProjectAuthoringView.applyPlan`) builds its component list **forward**, so `/Pages/Puppies` was
-   refused for navigating to `/Pages/Admin` — staged in the same transaction, about to be applied
-   alongside it. `plannedComponents` had been threaded into every authoring *session* and not into the
-   apply. ⚠️ **The bug class is the lesson: one fact existing in two places and present in one.** Fixed by
-   making both call `plannedComponentNames`, not by adding the second copy.
-2. **Every wizard-built app opened on "Hello World!".** `isPlaceholderPage` measured "empty" as the root
-   having *no children*, on the stated belief that the template's Home is one `Page` node.
-   `hello-world.template.ts` gives it a **Text child**. The one case the whole start-page mechanism
-   existed for could never match.
-3. **Correction 4 above**, which is the headline.
+`validation/authoredCandidate.ts` is now the **one** definition of the authored gate's policy and its four
+precondition checks, bound three times: the editor's `validateCandidateComponent`, the MCP write gate, and
+the MCP plan gate. `looksLikePageComponent` moved to `validation/navigation.ts` beside `checkPageShape`
+(re-exported from `pageRegistration`, so no caller changed) because three bindings must answer "is this a
+page" identically.
 
-Plus: `checkNavigation`'s repair message offered the same component twice and called `App` a page. It now
-dedupes, says "component names", and states when the list is truncated.
+Three things worth knowing before you extend it:
 
-**Proven live afterwards:** the router lists all three pages, `startPage` is `/Pages/Puppies`, the app
-opens on it (`document.title` = "Puppies"), both navigations resolve, the viewer's `<body>` carries
-`body-scroll`, and the listing page scrolls — 1832px of content in a 343px viewport, `scrollTo(0, 900)`
-lands at 900, scrollbar visible in the screenshot.
+- **There were three gates, not two.** `noodl-mcp/src/validate.ts` and `tools/planTools.ts::validateStaged`
+  were separate implementations, each with its own copy of `diagnosticKey`, one of them commented as
+  *deliberately kept identical* to the editor's. BCN-003's three twins, already realised, inside the task
+  written to prevent them. **A comment saying "kept identical on purpose" is a twin confessing.**
+- **Project normalization and the validator instance are deliberately NOT converged.** The editor
+  validates against an `ExplainGraph`; MCP validates over its `ProjectStore` with a validator built on the
+  *enriched* catalog index, so its catalog tools and its gate can never disagree about a type. Converging
+  those too would change MCP's semantic results as a side effect of closing a gap in what it checks —
+  a regression bought with a refactor. If you touch this, keep that line.
+- **Binding it exposed a defect in the editor.** The baseline exemption filtered `severity === 'error'`,
+  so a pre-existing **blocking warning** was always charged to the agent — re-arming the treadmill the
+  exemption exists to prevent, on the population the corpus is full of (imported nodes with parameters
+  the catalog cannot see). Proven on `noodl-mcp`'s own fixture: adding one unrelated `Text` node to
+  `/Pages/Home` was rejected for a dead `RouterNavigate` the agent had never touched. Now exempted on
+  blocking identity over all four checks. Baselining the project-relative checks is safe **because the
+  baseline is validated against today's project** — a link broken by someone else's deletion is already
+  in the set and forgiven; one the candidate breaks itself is not, and still blocks.
 
-## What the AAQ-002 criteria drive found
-
-Correction 7 is the headline. Beyond it, three defects were **filed, not fixed** (AAQ-011 F9–F11), and
-two of them are on the path of every app the wizard builds:
-
-- **F9 — every wizard-built app carries a permanent, false `⚠ 1`.** *"This Router has no Pages
-  configured"*, on a router whose `pages.routes` lists all three pages and whose app renders correctly.
-  `router.tsx::resetAsync` raises `router/no-pages` on the mount that precedes its `pages` parameter and
-  **never calls `clearWarning`** — the successful reset that follows says nothing. `dbmodelcrudbase`'s
-  `clearWarnings` is the shape the fix wants.
-- **F10 — nothing starts a project's backend when the project opens.** `backend:start` has exactly two
-  callers: the provision (once) and the panel's button. Reopen a wizard-built app tomorrow and its
-  Record nodes fail until the user finds Backend Services. Part product decision, which is why it is
-  filed.
-- **F11 — the Data Browser's first open says "Failed to load tables"** when no backend has been
-  selected yet: `backend:getSchema(undefined)` rejects and the catch reports it as a broken backend.
-
-Also confirmed by accident, and worth keeping: **the schema cache survives a stopped backend.** After a
-restart the process was down and the `prop-*` ports were still there — `fetchBuiltInSchema` returning
-`undefined` rather than `[]` for a sleeping backend is what preserves the saved cache, exactly as its
-docblock claims.
+Both new specs were **verified to fail against the old behaviour** (4 of 6 parity cases; the exemption
+case). `packages/noodl-mcp/tests/gateParity.test.ts` is the divergence detector: one candidate, both
+bindings, same verdict and same blocking codes.
 
 ## The driver — use it, do not rebuild it
 
@@ -182,21 +184,36 @@ prime suspect is `AuthoringSession.publish` → the Build panel's re-render, not
 
 ## What to do next
 
-**Layer 1 is done, so the engine is the work.** In order:
+The gate is one; the **contract** is not. In order:
 
-1. **The engine: AAQ-005 (substrate) → AAQ-006 (harness) → AAQ-007 (self-review)**, in that order.
-   AAQ-005 is the risk-bearing task. Read the perf warning above first — it is a prerequisite for
-   AAQ-007, not a footnote.
-2. **AAQ-011 F9 and F10**, if you want the Layer-1 apps to be defensible before the engine lands. F9 is
-   a false warning on *every* app the wizard builds and the fix has an established shape one file away;
-   F10 decides whether a wizard-built app works the second time it is opened, and is partly a product
+1. **AAQ-005, the rest of it** — the toolset convergence and the multi-component contract. This is the
+   risk-bearing work the task was opened for, and slice 1 deliberately did not touch it: the editor still
+   exposes **three** tools (`get_node_types`, `get_component`, `submit_component`) while `noodl-mcp`
+   exposes its own much larger surface. Criteria 3 (a scripted multi-component session creating a page,
+   two section components and a token write in one changeset) and 4 (Claude Code driven live against
+   `noodl-mcp`, transcript kept as a fixture) are untouched. Note that criterion 4 is the *only* way to
+   learn what external authoring actually feels like now that the gate finally blocks there.
+2. **AAQ-006 (harness) → AAQ-007 (self-review)**, in that order, on top of it. Read the perf warning
+   above first — it is a prerequisite for AAQ-007, not a footnote.
+3. **AAQ-011 F9 and F10**, if you want the Layer-1 apps defensible before the engine lands. F9 is a false
+   `⚠ 1` on *every* app the wizard builds (`router.tsx::resetAsync` raises `router/no-pages` on the mount
+   preceding its `pages` parameter and never calls `clearWarning`; `dbmodelcrudbase.clearWarnings` is the
+   shape the fix wants). F10 decides whether a wizard-built app works the second time it is opened —
+   `backend:start` has exactly two callers, neither on the project-open path — and is partly a product
    question worth putting to Richard with F9's answer.
-3. **AAQ-011 F7** — promote `PageWithoutPageNode` to `BLOCKING_WARNINGS`. It needs 57 fixture sites across
-   15 AI spec files corrected (every one builds a `/Pages/…` component out of a bare Group). Mechanical,
-   but it changes what a large part of the suite asserts, so it wants its own read.
-4. **AAQ-011 F8** — the review path still calls the built-in backend's collections "unknown, not absent"
-   on a premise Layer 1 made stale. The reader it needs (`projectSchemaCollections`) now exists, so this
-   is wiring; three specs assert the current four-outcome shape.
+4. **AAQ-011 F7** — promote `PageWithoutPageNode` to the blocking set, which now lives in
+   `validation/authoredCandidate.ts` and is one set for both clients. It needs 57 fixture sites across 15
+   AI spec files corrected (every one builds a `/Pages/…` component out of a bare Group). Mechanical, but
+   it changes what a large part of the suite asserts, so it wants its own read — and it now changes what
+   Claude Code may write too, which is a bigger blast radius than when F7 was filed.
+5. **AAQ-011 F12** — the MCP write gate is **component-scoped**, so a project-wide rule
+   (`duplicate-node-id`) fires only *after* the write: `create_component` returns `errors: 0` and the very
+   next `validate_project --strict` returns 3. An external agent can still write a colliding node id and
+   be told the write is clean. Making a project-scoped rule reachable from a component-scoped gate is a
+   design change, which is why slice 1 filed it rather than patched it.
+6. **AAQ-011 F8** — the review path still calls the built-in backend's collections "unknown, not absent"
+   on a premise Layer 1 made stale. The reader it needs (`projectSchemaCollections`) exists, so this is
+   wiring; three specs assert the current four-outcome shape.
 
 Richard's bar has not moved: *"legendary creations rivaling the best Opus landing page artifacts."* A page
 that validates is not the goal, and the exit criteria are three briefs judged side by side against Claude
@@ -208,7 +225,7 @@ Standing:
 
 - **The seams lie before the model fails.** When something looks wrong in the render, the first question
   is *"did this reach the runtime?"*, never *"why did the model not do this?"* Every defect in the last
-  two sessions was on that side of the line.
+  three sessions was on that side of the line.
 - **A declared `default` never runs its setter.** The most repeated trap in this repo.
 - **A saved project applies a parameter before the port exists.** Jest never reproduces it; only a real
   load does.
@@ -218,75 +235,81 @@ Standing:
   `cdp reload` on the editor page is unrecoverable. Reloading the *viewer* webview is safe and is the fix
   for a stale-looking preview.
 
-From the Layer-1 build session:
+Gates and harness:
 
 - ⚠️ **Run jest from `packages/noodl-editor`, never from the repo root.** The root config is babel-based
   and fails on TypeScript `import { type X }` with what looks like a syntax error in your spec.
 - ⚠️ **Editor specs under `tests/` are registered by hand** (`tests/index.ts` → `tests/ai/index.ts`). A
   *new* spec file nobody adds to the barrel compiles, typechecks and **silently never runs**. Adding
-  cases to an existing file avoids it.
+  cases to an existing file avoids it. (`noodl-mcp`'s jest picks up new files automatically — the two
+  packages differ here.)
+- ⚠️ **`packages/noodl-mcp`'s jest suite IS a gate**, via `test:packages --scope @noodl/mcp`. Run it with
+  `npx jest` from that directory. **It had been red for 8 days** before slice 1 (since `7fd3e053`) and
+  nobody noticed. Its own `npm run typecheck` is **also red** from that commit (`duplicateNodeId.ts:86`,
+  an unguarded `Map.get(...)`) and is gated by nothing; its tsconfig additionally pulls **jasmine** types
+  over jest specs, so `tsc --noEmit` there reports dozens of bogus `toHaveLength does not exist` errors.
+  **Do not own either failure.**
 - `tsconfig.tests-main.json` is **not** a gate; `typecheck:editor` and `typecheck:editor-tests` are.
 - Corpus calibration is cheap: `git ls-files '*project.json'` is 96 real projects.
-
-From the live pass:
-
 - ⚠️ **A rule calibrated on the project corpus is not calibrated on the authored one.**
   `PageWithoutPageNode` fires 6 times over 96 real projects and **57 times across 15 AI spec files**.
-  Before you make a new diagnostic blocking, run the editor suite — that is the population that flows
-  through the authored gate.
+  Since slice 1 there is a third population: `noodl-mcp`'s fixtures and whatever Claude Code writes.
+  Before you make a diagnostic blocking, run **all three** suites.
+- **Verify a new spec fails without the fix.** Slice 1's parity spec passed on the first run; only
+  reverting the change proved it was worth anything (4 of 6 then failed). A spec that has never been red
+  is an unchecked claim.
+
+Live driving:
+
+- ⚠️ **Write the discriminating probe before the third theory.** Three mechanisms were proposed for
+  finding #7 and all three were fixed before anyone asked the question that separates them: *does any
+  OTHER node get its ports from this same cache?* One `DbModel2` node answered it in a minute. When a
+  chain has N stages and you are on your third fix, find the input that splits the chain rather than
+  re-reading it from the top.
 - ⚠️ **A button below a panel's fold has a NON-ZERO bounding box.** The documented "zero-sized box" guard
   does not fire, `dispatchClick` reports success, and the click lands on whatever is at those
-  coordinates. Twenty minutes went to a plan that simply never started. Use the driver's `clickVisible`.
-- ⚠️ **HMR does not reach a mounted panel's callbacks.** A fix to `ProjectAuthoringView.applyPlan` was in
-  the module and *not* in the running closure; the apply failed identically until a full Electron
-  restart. Verify the running code (`__wr('…').fn.toString()`) before concluding a fix does not work.
+  coordinates. Use the driver's `clickVisible`.
+- ⚠️ **HMR does not reach a mounted panel's callbacks.** Verify the running code
+  (`__wr('…').fn.toString()`) before concluding a fix does not work.
+- ⚠️ **A tag written in one `eval` is gone by the next one.** React re-renders between two CDP calls, so
+  `el.id = 'x'` followed by a separate `cdp click #x` fails with "no element matching". Compute the box
+  and dispatch the click in **one** connection — `wizard-replay.js` exports `clickButtonWithText` /
+  `clickVisible` for exactly this.
+- ⚠️ **`npm run cdp -- reload --target=viewer` reloaded the EDITOR** and returned to the launcher. To get
+  a rebuilt runtime into the viewer, restart the stack — which is also the honest way to test anything
+  claiming "at first load".
 - **Match both spellings of a state.** The apply button reads "Apply to project (3)" when everything
   staged and "Apply 1 of 3 to project" when some failed; matching only the second reads a clean run as a
   hang.
 - **A cold editor's first scoping turn can take over a minute**, nearly all of it module loading and the
-  wizard's first render. The scripted reply is ~100ms. Do not go looking for a stall.
-- **Clean up after a live pass.** Scratch projects go in a scratch directory, get deleted, and get
-  removed from the launcher's recents. Anything written into a *shared local backend* (a probe table)
-  gets dropped — `backend:deleteTable <backendId> <tableName>`, positional, not an object. A backend the
-  pass *provisioned* is now the project's own (F4), so delete it whole: `backend:stop` then
-  `backend:delete`.
-
-From the AAQ-002 criteria drive:
-
-- ⚠️ **Write the discriminating probe before the third theory.** Three mechanisms were proposed for
-  finding #7 and all three were fixed before anyone asked the question that separates them: *does any
-  OTHER node get its ports from this same cache?* One `DbModel2` node in the same project answered it in
-  a minute. When a chain has N stages and you are on your third fix, find the input that splits the
-  chain rather than re-reading it from the top.
-- ⚠️ **`npm run cdp -- reload --target=viewer` reloaded the EDITOR**, dropping the webpack-require probe
-  and returning to the launcher. It was recoverable, but the documented trap ("`cdp reload` on the
-  editor page is unrecoverable") means you should not find out. To get a rebuilt runtime into the
-  viewer, restart the stack — which is also the honest way to test anything claiming "at first load".
-- ⚠️ **A tag written in one `eval` is gone by the next one.** React re-renders between two CDP calls, so
-  `el.id = 'x'` followed by a separate `cdp click #x` fails with "no element matching". Compute the box
-  and dispatch the click in **one** connection — `scripts/aaq40-live/wizard-replay.js` exports
-  `clickButtonWithText`/`clickVisible` for exactly this; a menu item needs the same treatment.
+  wizard's first render. Do not go looking for a stall.
 - **A card's rarely-used actions live behind `⋯`.** Disconnect and Delete are `showContextMenuInPopup`
   items, not buttons — a scan of `button, [role=button]` finds neither and reads as "the feature is
   missing".
-- **The Data Browser needs a selected backend.** Reaching it with `SidebarModel.switch('backend-data')`
-  before one is chosen shows "Failed to load tables" — that is AAQ-011 F11, and it is also how to fool
-  yourself into filing a criterion as failed. Open it from the card's own Data button.
+- **The Data Browser needs a selected backend** (AAQ-011 F11). Open it from the card's own Data button.
+- **Clean up after a live pass.** Scratch projects go in a scratch directory, get deleted, and get
+  removed from the launcher's recents. A backend the pass *provisioned* is now the project's own (F4), so
+  delete it whole: `backend:stop` then `backend:delete`.
 
 ## The shared checkout
 
-Fourteen tracked files were modified and uncommitted before the last three sessions started and are
+⚠️ **A second session WAS live during the AAQ-005 slice** — it wrote `dev-docs/tasks/phase-41-accessibility/`
+(`README.md`, `NORTH-STAR.md`) at 10:24–10:25 while this session was running. It was doing doc work, not
+driving the editor, so nothing collided. **Check for yourself at the start of every session** — it is a
+per-session fact, not a standing one, and the check that caught it was simply re-running `git status` and
+noticing a directory that had not been there an hour earlier.
+
+Fourteen tracked files have been modified and uncommitted since before the last four sessions and are
 **still untouched** — `package-lock.json`, `nodegx-observe`, `ProjectImporter.ts`, `projectmodel*.ts`,
 `featureFlags.ts`, `LocalProjectsModel.ts`, `analyze.ts`, the whole `VersionControlPanel/` set,
-`tests/versioning/index.ts` — plus untracked `tests-unit/erg-005/`, `dev-docs/tasks/phase-37-project-tabs/`
-and the phase-17 LEARN docs. They belong to another session. **Do not attribute them, do not commit them,
-never `git add -A`, and never `git stash`.** Commit with explicit pathspecs on *both* `git add` and
-`git commit`.
+`tests/versioning/index.ts` — plus untracked `tests-unit/erg-005/`, `tests/versioning/snapshotproject.test.ts`,
+`VersionControlPanel/context/snapshotProject.ts`, `dev-docs/tasks/phase-37-project-tabs/`,
+`dev-docs/tasks/phase-41-accessibility/` and the phase-17 LEARN docs. They belong to other sessions.
+**Do not attribute them, do not commit them, never `git add -A`, and never `git stash`.** Commit with
+explicit pathspecs on *both* `git add` and `git commit`.
 
-⚠️ `npx jest` from `packages/noodl-editor` currently reports **2 failing suites in `tests-unit/erg-005/`**
-(3 specs). They are that other session's in-flight work — `GraphComponent.ports` does not exist yet — and
-they are **not yours**. The gates that matter are `test:ci` (**2198/0**), the runtime's own `npx jest`
-from `packages/noodl-runtime` (**2144 passed**), and the two typechecks.
-
-No second session was live during this drive (checked: no foreign commits, no Electron running, dirty-file
-mtimes unchanged). **Check again yourself** — it is a per-session fact, not a standing one.
+⚠️ `npx jest` from `packages/noodl-editor` still reports **2 failing suites in `tests-unit/erg-005/`**
+(3 specs, 5 passing). That is another session's in-flight work — `GraphComponent.ports` does not exist
+yet — and it is **not yours**. The gates that matter are `test:ci` (**2200/0**), `npx jest` from
+`packages/noodl-mcp` (**121/121**), `npx jest` from `packages/noodl-runtime` (**2144 passed**), and the
+two typechecks.
