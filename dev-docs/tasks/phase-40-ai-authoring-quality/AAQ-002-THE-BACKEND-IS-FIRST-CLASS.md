@@ -2,9 +2,45 @@
 
 **Findings:** #4 (a "Built-in backend" card that can only edit/disconnect; disconnect makes it
 vanish), #7 (`prop-age` / `prop-bio` port errors on Create Record)
-**Status:** slices 1–3 built (2026-08-04); slice 4 open. Criterion 5 has now been answered **three
-times, by three different mechanisms**, and the live pass produced the third — read the next section
-first. Criterion 2 **fails live**, for a cause nobody had identified.
+**Status:** **all four slices built** — 1–3 on 2026-08-04, F4/F5 and slice 4 on 2026-08-05
+(`36ce5669`, `437ec919`). Criterion 5 was answered **three times, by three different mechanisms**;
+the live pass produced the third and it is now fixed. Criteria 1–3 remain **live-QA criteria that have
+not been driven** — the code is in, nobody has watched it work.
+
+## What changed on 2026-08-05, after Richard's two decisions
+
+The live pass left criterion 2 failing for a cause it had correctly identified but deliberately not
+patched, because both halves were product decisions. Richard took them:
+
+- **A project gets its own backend** (F4). Reuse now requires **ownership *and* name**. Ownership lives
+  in `config.projectIds`, stamped by `backend:create` — a field that had been written empty and read by
+  nobody since the backend manager was written, with three separate modules carrying a comment saying so.
+  A backend one project owns can never be adopted by another, and every backend that predates the stamp
+  is owned by nobody and therefore reused by nobody. That last part is the point, not an edge case: a
+  legacy "App backend" holding three apps' collections is exactly what must not be picked up again.
+  The name is no longer a constant either — `backendNameForProject` gives
+  `PlanFromScopeOptions.backendName` its first production caller in two phases, and the wizard reports
+  its draft name to the launcher so the review screen names the backend the apply will actually create.
+- **Provisioning may fully reconcile an existing collection, type changes included** (F5).
+  `planSchemaReconciliation` is the pure difference between what exists and what the plan wants; the
+  provisioner adds the missing columns and retypes the mismatched ones, advisory throughout.
+
+⚠️ **A type change did not exist anywhere in the stack.** The admin surface had four actions — create,
+add, rename, delete — and SQLite has no `ALTER COLUMN`. `SchemaManager.changeColumnType` is the fifth:
+metadata-only when both types share a storage class (`TYPE_MAP` collapses nine Noodl types onto three SQL
+ones, so most changes are), and add-copy-drop-rename when they do not. It refuses system columns and
+refuses `Relation` in both directions — a Relation lives in a junction table, so "converting" one creates
+or destroys associations. **It is lossy by SQLite's own CAST rules** (`'sold out'` becomes `0`), which is
+pinned in a spec and reported to the user as a count of converted values. What makes that defensible is
+F4: the collection being reconciled now always belongs to *this* project.
+
+Two traps in the mechanisms, both of which would have failed silently:
+
+- **Column matching must be case-insensitive.** SQLite identifiers are, so `ADD COLUMN age` against a
+  table holding `Age` fails with `duplicate column name` — which `SchemaManager.addColumn` **swallows**.
+  A case-sensitive compare would emit an addition that does nothing and reports success.
+- **A column whose recorded type is unknown** (an import, an older schema) has no `TYPE_MAP` entry, so a
+  rebuild would emit `ADD COLUMN "x" undefined`. That case corrects metadata and touches no data.
 
 ## ⚠️ The live pass, 2026-08-05 — `prop-*` still does not exist, and the reason is new
 
@@ -96,14 +132,38 @@ binding lands.
 - `endpointLocalStatus`'s port match is left in place for the case where an endpoint cannot be resolved
   to a managed process.
 
+### Slice 4 — the agent knows the schema (built `437ec919`)
+
+The authoring context carried **no backend block at all**, so the agent wrote `prop-*` names from the
+scope's prose. It now carries one, and the argument for it is not the model's failure but a human's: the
+`collectionName` mistake below was made by a careful reader with the source open. If reading the code
+gets the parameter *name* wrong, guessing field names from prose was never going to come out right. So
+the block spells out `collectionName`, the `prop-` prefix, and that `objectId`/`createdAt`/`updatedAt`
+belong to the backend — none of which any catalog entry declares.
+
+⚠️ **The list needs two sources, and a one-source version is wrong in the common case.** At authoring
+time a wizard-built project has **no backend**: the provision is an operation in the same plan and
+applies at Apply, *after* every authoring turn has finished. So the plan's own `PlanProvisionSpec` is the
+only description of the collections that exists while the graph is being written; a project that already
+has a backend has the opposite. `mergeSchemaCollections` unions them, the plan winning on a disagreement
+because it is the newer statement of intent and the user approved it at plan review. Bound in
+`ProjectAuthoringView` beside `backendFacts`, for the reason that function already gives: nothing else in
+the product knows both halves.
+
+The handout follows `libraryOverview`'s absent-means-omitted convention, so a project with no backend and
+no planned provision sends a **byte-identical** opening turn to before — AIX-007's cache-stable prefix is
+untouched. The block sits in the stable half right after the catalog, because the agent needs it *before*
+it reaches a Record node.
+
 ### Still open
 
-- **Slice 4 — the agent knows the schema.** The authoring context carries no backend schema block at all
-  (`ContextBuilder` has none), so the agent still writes `prop-*` names from the scope's prose rather
-  than from the collections that exist. With slice 3 in place the ports now *exist*, so a wrong name is
-  a caught diagnostic rather than a phantom port — which is why this is the remainder rather than the
-  blocker.
-- Criteria 1–3 are live-QA criteria and have not been driven.
+- **Criteria 1–3 have not been driven.** Everything above is mechanism-verified and spec-covered; none of
+  it has been watched working. Criterion 2 in particular now has a *plausible* path to passing (own
+  backend → columns created or reconciled → `SchemaHandler` caches them → `prop-*` ports exist → the
+  agent was told the right field names) and **every previous answer to criterion 5 also looked right on
+  paper.** Drive it with `scripts/aaq40-live/`.
+- **AAQ-011 F8** — the *review* path still tells the model the built-in backend's collections are
+  "unknown, not absent", on a premise Layer 1 made stale. The reader it needs now exists.
 
 ## The mechanisms
 

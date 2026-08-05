@@ -157,6 +157,31 @@ provisioning binds every project on a machine to the *same* backend (name-matche
 distinct mechanism — after "timing" (wrong) and "the cache was never written" (right, and fixed). Both
 halves are product decisions, filed as AAQ-011 F4/F5 rather than patched.
 
+## AAQ-002 closed out (2026-08-05, commits `36ce5669`, `437ec919`)
+
+Richard took F4 and F5: **a project gets its own backend**, and **provisioning may fully reconcile an
+existing collection, type changes included**. Both are built, with the editor suite at **2198 specs, 0
+failures** and the runtime suite green. Slice 4 landed with them — the authoring context now carries the
+collections and their fields, from the plan's provision *and* the project's cached schema, because at
+authoring time a wizard-built project has neither a backend nor any other description of what it will
+have.
+
+Three things belong here rather than only in the task file:
+
+1. **A type change existed nowhere in the stack.** The backend's admin surface had four schema actions and
+   SQLite has no `ALTER COLUMN`, so "full reconcile" meant building a fifth —
+   `SchemaManager.changeColumnType`, through byob-admin and the editor's IPC. It is lossy by SQLite's CAST
+   rules and says so, in a spec and to the user. F4 is what makes that acceptable: the collection being
+   reconciled now always belongs to the project doing the reconciling.
+2. **`config.projectIds` had been dead since the backend manager was written**, with three modules
+   carrying a comment saying so. It is now the ownership key, which is why the fix needed no new field.
+3. **⚠️ A seventh premise failed the read** (AAQ-011 F8): the project review still tells the model the
+   built-in backend's collections are "unknown, not absent", on the ground that the editor has no schema
+   introspection for a `cloudservices` endpoint. That was true when AIX-010 wrote it and stopped being
+   true in **this phase's own Layer 1**. Filed, not fixed — it is the review path, not authoring.
+
+**Criteria 1–3 are still undriven.** Every previous answer to criterion 5 also looked right on paper.
+
 **And one thing to know before the engine work starts:** authoring a 55-node component cost **6m51s of
 editor main-thread time with a zero-latency provider** (AAQ-011 F6). The model was not what it was waiting
 on. A phase aiming at components far larger than 55 nodes should measure that before it builds on top of
