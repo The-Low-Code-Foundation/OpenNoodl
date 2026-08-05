@@ -35,7 +35,7 @@ import type { WorkflowRunner } from '../workflow/WorkflowRunner';
 import type { SecurityState } from '../security/state';
 import type { SearchState } from '../search/SearchState';
 import type { RealtimeHub, Subscription } from '../realtime/RealtimeHub';
-import { ClpOp, Principal, keyAllowsFunction, ruleAllows, validateAclShape } from '../security/model';
+import { ClpOp, Principal, checkFunctionCall, functionRateLimit, ruleAllows, validateAclShape } from '../security/model';
 import type { TriggerSubsystem } from '../triggers/TriggerSubsystem';
 import type { WorkflowSubsystem } from '../workflow/WorkflowSubsystem';
 import type { BackupSubsystem } from '../backup/BackupSubsystem';
@@ -65,7 +65,7 @@ import { readonlyAdminMayCall, readonlyRefusalMessage } from '../admin/readonly'
 import type { OpsState } from '../ops/OpsState';
 import { logger } from '../ops/logger';
 import { clientIp } from '../ops/client-ip';
-import { RateLimiter, classifyRoute } from '../ops/rate-limit';
+import { RateLimiter, classifyRoute, type RateDecision } from '../ops/rate-limit';
 import type { AuditLog } from '../ops/audit';
 import { AUDIT_LOGIN_FAILURE, AUDIT_LOGIN_SUCCESS, auditActionFor, declaredAuditActions } from '../ops/audit-actions';
 import { REQUEST_ID_HEADER, resolveRequestId } from '../ops/request-id';
@@ -328,7 +328,13 @@ export class HttpServer {
     });
     this.files = new FileRoutes(deps.options.dataDir, `http://127.0.0.1:${deps.options.port}`, deps.files);
     this.adminFiles = new AdminFileRoutes(deps.files);
-    this.adminSecurity = new AdminSecurityRoutes(deps.security, deps.facade, deps.options, deps.getRunner);
+    this.adminSecurity = new AdminSecurityRoutes(
+      deps.security,
+      deps.facade,
+      deps.options,
+      deps.getRunner,
+      () => deps.ops.config.rateLimit.policies.functions
+    );
     this.adminTriggers = new AdminTriggerRoutes(deps.triggers);
     this.adminWorkflows = new AdminWorkflowRoutes(() => deps.workflows);
     this.adminBackups = new AdminBackupRoutes({
@@ -757,6 +763,25 @@ export class HttpServer {
         pattern: 'admin/permissions/collections/:name',
         access: { kind: 'admin' },
         handler: (ctx) => adminSec.deleteCollection(ctx)
+      },
+      // CWF-017: who may call each cloud function, and how often.
+      {
+        method: 'GET',
+        pattern: 'admin/permissions/functions',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminSec.listFunctions(ctx)
+      },
+      {
+        method: 'PUT',
+        pattern: 'admin/permissions/functions/:name',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminSec.putFunction(ctx)
+      },
+      {
+        method: 'DELETE',
+        pattern: 'admin/permissions/functions/:name',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminSec.deleteFunction(ctx)
       },
       { method: 'GET', pattern: 'admin/roles', access: { kind: 'admin' }, handler: (ctx) => adminSec.listRoles(ctx) },
       { method: 'POST', pattern: 'admin/roles', access: { kind: 'admin' }, handler: (ctx) => adminSec.createRole(ctx) },
@@ -1386,14 +1411,15 @@ export class HttpServer {
     // by sending garbage tokens.
     const routeClass = classifyRoute(route.pattern, route.access.kind);
     trace.rateClass = routeClass;
-    const decision = this.rateLimiter.check(routeClass, rateLimitKey(principal, trace.clientIp));
-    if (!decision.allowed) {
+    const limitKey = rateLimitKey(principal, trace.clientIp);
+    const refuse = (decision: RateDecision, bucket: string, what: string): never => {
       recordRateLimited(routeClass);
       res.setHeader('Retry-After', String(decision.retryAfterSeconds));
       logger.warn('ratelimit.refused', {
         requestId: trace.requestId,
         route: route.pattern,
         rateClass: routeClass,
+        bucket,
         principal: trace.principal,
         ip: trace.clientIp,
         retryAfterSeconds: decision.retryAfterSeconds,
@@ -1401,9 +1427,28 @@ export class HttpServer {
       });
       throw new HttpError(
         429,
-        `Rate limit exceeded for ${routeClass} requests (${decision.policy.ratePerMinute}/min, ` +
+        `Rate limit exceeded for ${what} (${decision.policy.ratePerMinute}/min, ` +
           `burst ${decision.policy.burst}). Retry in ${decision.retryAfterSeconds}s.`
       );
+    };
+
+    const decision = this.rateLimiter.check(routeClass, limitKey);
+    if (!decision.allowed) refuse(decision, routeClass, `${routeClass} requests`);
+
+    // CWF-017: a function may carry its OWN budget on top of the class one, for
+    // the expensive-endpoint case where "600 function calls a minute" is right
+    // for the app and wrong for this one function. Both buckets must allow, so
+    // a per-function number can only ever tighten — and the class bucket has
+    // already been spent above, deliberately: a call refused here still cost the
+    // caller its shared allowance, which is what stops a hammered function from
+    // being a free way to probe the service.
+    if (route.access.kind === 'function') {
+      const functionName = params[route.access.nameParam];
+      const policy = functionRateLimit(this.security.config, functionName);
+      if (policy) {
+        const own = this.rateLimiter.checkPolicy(`function:${functionName}`, limitKey, policy);
+        if (!own.allowed) refuse(own, `function:${functionName}`, `function "${functionName}"`);
+      }
     }
 
     // BAK-005 read-only tier: refuse every state-changing request from a
@@ -1498,17 +1543,16 @@ export class HttpServer {
 
       case 'function': {
         const name = params[access.nameParam];
-        if (principal.kind === 'admin') return;
+        const decision = checkFunctionCall(
+          this.security.config,
+          principal,
+          name,
+          this.functionAllowsNoAuth(name)
+        );
+        if (decision.allowed) return;
         if (principal.kind === 'apiKey') {
-          if (keyAllowsFunction(principal.scopes, name)) return;
           throw new HttpError(403, `Permission denied: API key "${principal.name}" cannot call "${name}".`, 119);
         }
-        const configured = this.security.config.functions[name];
-        const rule =
-          configured && configured.call !== undefined
-            ? configured.call
-            : this.functionAuthDefault(name);
-        if (ruleAllows(rule, principal)) return;
         throw new HttpError(403, `Permission denied for function "${name}".`, 119);
       }
 
@@ -1543,11 +1587,17 @@ export class HttpServer {
     }
   }
 
-  /** The function-rule default: the graph author's allowNoAuth declaration. */
-  private functionAuthDefault(name: string): string {
+  /**
+   * The graph author's `Allow Unauthenticated` declaration, which is what an
+   * undeclared function's rule falls back to (`effectiveFunctionRule`).
+   *
+   * A function the runner does not know about answers `false` — the closed
+   * direction — so a call to a name that is not deployed meets `authenticated`
+   * rather than `public` on its way to the 404.
+   */
+  private functionAllowsNoAuth(name: string): boolean {
     const runner = this.getRunner();
-    const allowNoAuth = runner ? runner.functionAllowsNoAuth(name) : false;
-    return allowNoAuth ? 'public' : 'authenticated';
+    return runner ? runner.functionAllowsNoAuth(name) : false;
   }
 
   /** CLP assertion shared by the dispatcher and /api/_batch (throws 403/119). */

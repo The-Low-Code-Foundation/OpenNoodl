@@ -215,8 +215,13 @@ describe('BAK-009 rate limiting over real sockets', () => {
     // accept. That is two calls per human decision, not per keystroke, so it
     // sits far inside the admin budget — and if it ever did not, the honest fix
     // would be to stop revalidating, not to widen the budget.
+    // CWF-017 moved it by 3: the per-function access surface
+    // (`GET /admin/permissions/functions`, `PUT`/`DELETE .../functions/:name`).
+    // Reviewed and left in the `admin` budget for the same reason as the
+    // collection routes it sits beside — the panel reads the list once when it
+    // opens and writes one entry per human decision.
     expect(counts).toEqual({
-      admin: 73,
+      admin: 76,
       auth: 15,
       data: 17,
       files: 4,

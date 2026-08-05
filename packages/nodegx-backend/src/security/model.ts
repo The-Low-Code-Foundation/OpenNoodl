@@ -15,6 +15,8 @@
  * @module nodegx-backend/security/model
  */
 
+import type { RateLimitPolicy } from '../ops/model';
+
 // ============================================================================
 // Principals
 // ============================================================================
@@ -72,6 +74,31 @@ function validateRuleAtom(atom: unknown): string | null {
   return `unknown rule value "${atom}" (expected public | authenticated | nobody | role:<name>)`;
 }
 
+/**
+ * Validate a per-function rate limit (CWF-017). Strict in the same way as every
+ * other config shape here: an unknown key is an error, because a budget field
+ * that is accepted and ignored reads as a limit that is being applied.
+ *
+ * `burst: 0` or `ratePerMinute: 0` is the limiter's "unlimited" convention, and
+ * saying that explicitly per function is a legitimate thing to write — it is
+ * still the class bucket that decides.
+ */
+export function validateFunctionRateLimit(value: unknown): string | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return 'must be an object { ratePerMinute, burst }';
+  }
+  const v = value as Record<string, unknown>;
+  for (const key of Object.keys(v)) {
+    if (key !== 'ratePerMinute' && key !== 'burst') return `unknown key "${key}" (expected ratePerMinute, burst)`;
+  }
+  for (const field of ['ratePerMinute', 'burst'] as const) {
+    const n = v[field];
+    if (n === undefined) return `${field} is required`;
+    if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return `${field} must be a number >= 0`;
+  }
+  return null;
+}
+
 export function validateRuleValue(value: unknown): string | null {
   if (Array.isArray(value)) {
     if (value.length === 0) return 'empty rule arrays are not allowed (use "nobody")';
@@ -117,6 +144,21 @@ export interface FunctionRules {
    * model document but its per-run credential seam is not built yet, so it is
    * REJECTED at load (accepted-and-ignored security config is forbidden). */
   runAs?: 'system';
+  /**
+   * CWF-017: this function's OWN request budget, on top of the shared
+   * `functions` class in ops.json.
+   *
+   * Deliberately additive rather than a replacement. A per-function number can
+   * therefore only ever TIGHTEN: declaring one cannot accidentally hand a
+   * function a larger allowance than the class an operator tuned, which is the
+   * failure mode a "consult this instead" rule has. To make one function more
+   * generous than the rest, raise the class.
+   *
+   * Absent = unchanged behaviour (the class bucket alone). The shape is ops.json's
+   * `RateLimitPolicy` by import rather than by restatement, so there is one
+   * token-bucket vocabulary and not a twin of it.
+   */
+  rateLimit?: RateLimitPolicy;
 }
 
 export interface FileRules {
@@ -256,11 +298,17 @@ export function validateSecurityConfig(raw: unknown): string[] {
       }
       const e = entry as Record<string, unknown>;
       for (const key of Object.keys(e)) {
-        if (key !== 'call' && key !== 'runAs') errors.push(`unknown key "${key}" in functions.${name}`);
+        if (key !== 'call' && key !== 'runAs' && key !== 'rateLimit') {
+          errors.push(`unknown key "${key}" in functions.${name}`);
+        }
       }
       if (e.call !== undefined) {
         const err = validateRuleValue(e.call);
         if (err) errors.push(`functions.${name}.call: ${err}`);
+      }
+      if (e.rateLimit !== undefined) {
+        const err = validateFunctionRateLimit(e.rateLimit);
+        if (err) errors.push(`functions.${name}.rateLimit: ${err}`);
       }
       if (e.runAs !== undefined && e.runAs !== 'system') {
         errors.push(
@@ -386,6 +434,104 @@ export function checkClp(config: SecurityConfig, principal: Principal, collectio
   return ruleAllows(rule, principal)
     ? { allowed: true, rule, reason: `rule ${JSON.stringify(rule)} grants ${op} to ${principal.kind}` }
     : { allowed: false, rule, reason: `rule ${JSON.stringify(rule)} denies ${op} to ${principal.kind}` };
+}
+
+// ============================================================================
+// Function access (CWF-017)
+// ============================================================================
+
+/** Where a function's effective `call` rule came from. */
+export type FunctionRuleSource =
+  /** `security.json` names this function: the config rule wins. */
+  | 'configured'
+  /** Nothing is configured, so the graph's Request node decides. */
+  | 'graph';
+
+export interface FunctionRuleResolution {
+  rule: RuleValue;
+  source: FunctionRuleSource;
+  /** The Request node's `Allow Unauthenticated` port, as the graph declares it. */
+  allowNoAuth: boolean;
+}
+
+/**
+ * The effective `call` rule for a function — THE resolver, called by the
+ * dispatcher's gate, by the admin dry run, and by the panel's read.
+ *
+ * It exists because those three had the same six lines written out three times,
+ * and a permission model with three copies of its own fallback is a model that
+ * will eventually show an operator one answer while enforcing another. CWF-017's
+ * whole premise is a panel that shows the EFFECTIVE rule, which is only worth
+ * anything if the panel and the gate compute it with the same function.
+ *
+ * The precedence, stated once: **a config entry wins; otherwise the graph's
+ * `Allow Unauthenticated` decides** (ticked = `public`, unticked = `authenticated`).
+ * That is the behaviour this build already had; naming it changes nothing about
+ * what an undeclared function does.
+ */
+export function effectiveFunctionRule(
+  config: SecurityConfig,
+  functionName: string,
+  allowNoAuth: boolean
+): FunctionRuleResolution {
+  const configured = config.functions[functionName];
+  if (configured && configured.call !== undefined) {
+    return { rule: configured.call, source: 'configured', allowNoAuth };
+  }
+  return { rule: allowNoAuth ? 'public' : 'authenticated', source: 'graph', allowNoAuth };
+}
+
+export interface FunctionAccessDecision extends AccessDecision {
+  source: FunctionRuleSource | 'credential';
+}
+
+/**
+ * Can this principal call this function? Mirrors `checkClp`'s shape: admin
+ * bypasses, an API key answers from its scopes, everyone else meets the
+ * effective rule.
+ */
+export function checkFunctionCall(
+  config: SecurityConfig,
+  principal: Principal,
+  functionName: string,
+  allowNoAuth: boolean
+): FunctionAccessDecision {
+  const resolved = effectiveFunctionRule(config, functionName, allowNoAuth);
+  if (principal.kind === 'admin') {
+    return { allowed: true, rule: resolved.rule, reason: 'admin credential bypasses function rules', source: 'credential' };
+  }
+  if (principal.kind === 'apiKey') {
+    const allowed = keyAllowsFunction(principal.scopes, functionName);
+    return {
+      allowed,
+      rule: resolved.rule,
+      reason: allowed
+        ? `API key "${principal.name}" has a scope covering "${functionName}"`
+        : `API key "${principal.name}" has no scope covering "${functionName}"`,
+      source: 'credential'
+    };
+  }
+  const allowed = ruleAllows(resolved.rule, principal);
+  return {
+    allowed,
+    rule: resolved.rule,
+    reason: `rule ${JSON.stringify(resolved.rule)} ${allowed ? 'grants' : 'denies'} calling "${functionName}" to ${principal.kind}` +
+      (resolved.source === 'graph' ? " (from the graph's Allow Unauthenticated port)" : ''),
+    source: resolved.source
+  };
+}
+
+/**
+ * This function's own rate-limit budget, or undefined when it only meets the
+ * shared `functions` class. A zeroed policy is normalised to undefined: the
+ * limiter reads `burst <= 0` as unlimited, so keeping it would mean carrying a
+ * bucket that can never refuse.
+ */
+export function functionRateLimit(config: SecurityConfig, functionName: string): RateLimitPolicy | undefined {
+  const entry = config.functions[functionName];
+  const policy = entry && entry.rateLimit;
+  if (!policy || policy.burst <= 0 || policy.ratePerMinute <= 0) return undefined;
+  return policy;
 }
 
 // ============================================================================

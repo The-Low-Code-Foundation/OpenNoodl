@@ -23,6 +23,11 @@ const ACTIONS: Record<string, string> = {
   'PUT admin/permissions': 'permissions.update',
   'PUT admin/permissions/collections/:name': 'permissions.collection.update',
   'DELETE admin/permissions/collections/:name': 'permissions.collection.delete',
+  // CWF-017. Changing who may call a cloud function changes what an anonymous
+  // caller can make this backend DO, which is at least as reconstructable-after-
+  // the-fact as a collection rule.
+  'PUT admin/permissions/functions/:name': 'permissions.function.update',
+  'DELETE admin/permissions/functions/:name': 'permissions.function.delete',
   'POST admin/roles': 'role.create',
   'DELETE admin/roles/:name': 'role.delete',
   'POST admin/roles/:name/users': 'role.user.add',

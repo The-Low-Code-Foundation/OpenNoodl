@@ -5,6 +5,9 @@
  *   PUT    /admin/permissions                       replace config (validated)
  *   PUT    /admin/permissions/collections/:name     set one collection's rules
  *   DELETE /admin/permissions/collections/:name     revert to defaults
+ *   GET    /admin/permissions/functions             every function + its EFFECTIVE call rule
+ *   PUT    /admin/permissions/functions/:name       set call / runAs / rateLimit
+ *   DELETE /admin/permissions/functions/:name       back to the graph's own declaration
  *   POST   /admin/permissions/check                 dry-run a decision
  *   GET    /admin/roles          POST /admin/roles          DELETE /admin/roles/:name
  *   POST   /admin/roles/:name/users                 DELETE /admin/roles/:name/users/:userId
@@ -23,16 +26,18 @@ import type { AdapterFacade } from '../persistence/AdapterFacade';
 import type { WorkflowRunner } from '../workflow/WorkflowRunner';
 import type { SecurityState } from '../security/state';
 import type { RequestContext } from './HttpServer';
+import type { RateLimitPolicy } from '../ops/model';
 import {
   ClpOp,
   CLP_OPS,
   Principal,
   SecurityConfig,
   checkClp,
+  checkFunctionCall,
   canAccessRecord,
+  effectiveFunctionRule,
   validateSecurityConfig,
   validateScopes,
-  keyAllowsFunction,
   ruleAllows
 } from '../security/model';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
@@ -60,17 +65,21 @@ export class AdminSecurityRoutes {
   private readonly facade: AdapterFacade;
   private readonly options: BackendServiceOptions;
   private readonly getRunner: () => WorkflowRunner | null;
+  /** Read through a getter so an ops.json edit shows up without a restart. */
+  private readonly getFunctionClassPolicy: () => RateLimitPolicy;
 
   constructor(
     security: SecurityState,
     facade: AdapterFacade,
     options: BackendServiceOptions,
-    getRunner: () => WorkflowRunner | null
+    getRunner: () => WorkflowRunner | null,
+    getFunctionClassPolicy: () => RateLimitPolicy
   ) {
     this.security = security;
     this.facade = facade;
     this.options = options;
     this.getRunner = getRunner;
+    this.getFunctionClassPolicy = getFunctionClassPolicy;
   }
 
   // ==========================================================================
@@ -162,6 +171,141 @@ export class AdminSecurityRoutes {
     sendJSON(ctx.res, 200, { success: true, collection: name, removed: existed });
   }
 
+  // ==========================================================================
+  // Cloud-function access + budget (CWF-017)
+  // ==========================================================================
+
+  /** The graph's `Allow Unauthenticated` declaration; false when unknown. */
+  private allowsNoAuth(name: string): boolean {
+    const runner = this.getRunner();
+    return runner ? runner.functionAllowsNoAuth(name) : false;
+  }
+
+  /**
+   * `GET /admin/permissions/functions` — every function this backend serves,
+   * with the rule that would actually decide a call.
+   *
+   * Three things this deliberately does that reading `config.functions` cannot:
+   *
+   * 1. It reports the EFFECTIVE rule, resolved by the same function the gate
+   *    uses. A function with no config entry is the common case, and showing it
+   *    blank was CWF-017's whole complaint: capability that exists and is
+   *    invisible.
+   * 2. It lists functions that are DEPLOYED but unconfigured, and config entries
+   *    for functions that are NOT deployed. The second kind is drift — a rule
+   *    guarding a name nothing answers to — and it is invisible from either side
+   *    alone.
+   * 3. It reports `graphRefusesAnonymous`: the two gates disagreeing. The
+   *    backend rule decides whether the REQUEST reaches the graph; the Request
+   *    node's own `Allow Unauthenticated` check then runs INSIDE the graph and
+   *    throws. So `call: "public"` over a node with the port unticked is not a
+   *    public function — it is a 500 with a confusing message. Nothing else in
+   *    the system can see that pair.
+   */
+  listFunctions(ctx: RequestContext): void {
+    const runner = this.getRunner();
+    const deployed = runner ? runner.getAvailableFunctions() : [];
+    const workflowOf = new Map(deployed.map((f) => [f.name, f.workflow]));
+    const names = [...new Set([...deployed.map((f) => f.name), ...Object.keys(this.security.config.functions)])].sort();
+
+    const functions = names.map((name) => {
+      const entry = this.security.config.functions[name];
+      const allowNoAuth = this.allowsNoAuth(name);
+      const resolved = effectiveFunctionRule(this.security.config, name, allowNoAuth);
+      const anonymousAllowed = ruleAllows(resolved.rule, { kind: 'anonymous' });
+      return {
+        name,
+        deployed: workflowOf.has(name),
+        workflow: workflowOf.get(name) || null,
+        /** The rule that decides, whether or not anyone wrote it down. */
+        call: resolved.rule,
+        source: resolved.source,
+        /** What is literally in security.json, or null — for a faithful round trip. */
+        configured: entry && entry.call !== undefined ? entry.call : null,
+        allowNoAuth,
+        runAs: (entry && entry.runAs) || null,
+        rateLimit: (entry && entry.rateLimit) || null,
+        graphRefusesAnonymous: anonymousAllowed && !allowNoAuth
+      };
+    });
+
+    sendJSON(ctx.res, 200, {
+      functions,
+      enforced: !this.security.devOpenActive,
+      /** The shared budget a per-function limit tightens, for the panel's copy. */
+      classRateLimit: this.getFunctionClassPolicy()
+    });
+  }
+
+  /**
+   * `PUT /admin/permissions/functions/:name` — set this function's rule and/or
+   * budget. Refuses a body it would otherwise ignore, for putCollection's
+   * reason: a permission write that answers `success` and changed nothing is
+   * worse than an error.
+   */
+  async putFunction(ctx: RequestContext): Promise<void> {
+    const name = ctx.params.name;
+    const body = await readJSONBody(ctx.req);
+
+    const KNOWN = ['call', 'runAs', 'rateLimit'];
+    const unknown = Object.keys(body).filter((k) => !KNOWN.includes(k));
+    if (unknown.length > 0) {
+      throw new HttpError(
+        400,
+        `Unknown field(s) ${unknown.map((k) => `"${k}"`).join(', ')} for function "${name}". ` +
+          `Expected { "call": "public" | "authenticated" | "nobody" | "role:<name>" | [those], ` +
+          `"runAs": "system", "rateLimit": { "ratePerMinute", "burst" } }.`
+      );
+    }
+    if (body.call === undefined && body.runAs === undefined && body.rateLimit === undefined) {
+      throw new HttpError(
+        400,
+        `Nothing to set for function "${name}". Send "call", "runAs" and/or "rateLimit"; ` +
+          `to fall back to the graph's own Allow Unauthenticated declaration use DELETE.`
+      );
+    }
+
+    // `null` clears a field — the panel's "back to the default" without making
+    // the caller reconstruct the whole entry.
+    const entry: Record<string, unknown> = { ...(this.security.config.functions[name] || {}) };
+    for (const field of KNOWN) {
+      if (body[field] === undefined) continue;
+      if (body[field] === null) delete entry[field];
+      else entry[field] = body[field];
+    }
+    ctx.audit({ function: name, rules: entry });
+
+    // Validate by candidate-mutating a copy of the whole config — one validator,
+    // no drift between the whole-doc write and this one.
+    const candidate = JSON.parse(JSON.stringify(this.security.config)) as SecurityConfig;
+    candidate.functions[name] = entry as SecurityConfig['functions'][string];
+    const errors = validateSecurityConfig(candidate);
+    if (errors.length > 0) {
+      throw new HttpError(400, `Invalid function rules:\n${errors.map((e) => `- ${e}`).join('\n')}`);
+    }
+
+    this.security.config.functions[name] = entry as SecurityConfig['functions'][string];
+    this.security.save();
+    const resolved = effectiveFunctionRule(this.security.config, name, this.allowsNoAuth(name));
+    sendJSON(ctx.res, 200, { success: true, function: name, rules: entry, effective: resolved.rule, source: resolved.source });
+  }
+
+  /** `DELETE /admin/permissions/functions/:name` — back to the graph's own declaration. */
+  deleteFunction(ctx: RequestContext): void {
+    const name = ctx.params.name;
+    const existed = this.security.config.functions[name] !== undefined;
+    delete this.security.config.functions[name];
+    this.security.save();
+    const resolved = effectiveFunctionRule(this.security.config, name, this.allowsNoAuth(name));
+    sendJSON(ctx.res, 200, {
+      success: true,
+      function: name,
+      removed: existed,
+      effective: resolved.rule,
+      source: resolved.source
+    });
+  }
+
   /**
    * POST /admin/permissions/check — server-side dry run. Body:
    *   { principal: { kind, userId?, roles?, scopes?, name? },
@@ -175,28 +319,20 @@ export class AdminSecurityRoutes {
     const principal = this.parsePrincipal(body.principal);
 
     if (typeof body.functionName === 'string') {
+      // CWF-017: one resolver with the dispatcher's gate. This used to restate
+      // the config-then-graph fallback in its own six lines, which meant the dry
+      // run could answer differently from enforcement the day either changed.
       const name = body.functionName;
-      let allowed: boolean;
-      let reason: string;
-      if (principal.kind === 'admin') {
-        allowed = true;
-        reason = 'admin credential';
-      } else if (principal.kind === 'apiKey') {
-        allowed = keyAllowsFunction(principal.scopes, name);
-        reason = allowed ? 'API key scope covers the function' : 'API key scope does not cover the function';
-      } else {
-        const configured = this.security.config.functions[name];
-        const runner = this.getRunner();
-        const rule =
-          configured && configured.call !== undefined
-            ? configured.call
-            : runner && runner.functionAllowsNoAuth(name)
-              ? 'public'
-              : 'authenticated';
-        allowed = ruleAllows(rule, principal);
-        reason = `rule ${JSON.stringify(rule)}`;
-      }
-      sendJSON(ctx.res, 200, { allowed, kind: 'function', functionName: name, reason, devOpen: this.security.devOpenActive });
+      const decision = checkFunctionCall(this.security.config, principal, name, this.allowsNoAuth(name));
+      sendJSON(ctx.res, 200, {
+        allowed: decision.allowed,
+        kind: 'function',
+        functionName: name,
+        rule: decision.rule,
+        source: decision.source,
+        reason: decision.reason,
+        devOpen: this.security.devOpenActive
+      });
       return;
     }
 
