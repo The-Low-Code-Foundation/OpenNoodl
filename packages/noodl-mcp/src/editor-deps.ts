@@ -38,6 +38,7 @@ export {
 // difference over shared rules; it was a missing import.
 export {
   AUTHORED_BLOCKING_WARNINGS,
+  authoredNodes,
   authoredPreconditionDiagnostics,
   declaredUrlPaths,
   diagnosticKey,
@@ -46,9 +47,54 @@ export {
 } from '../../noodl-editor/src/editor/src/validation';
 export type {
   AuthoredNode,
+  AuthoredPortLike,
   AuthoredPreconditionOptions,
   ComponentNodesView,
-  ProjectBackendFacts
+  ProjectBackendFacts,
+  StoredNodeLike
+} from '../../noodl-editor/src/editor/src/validation';
+// AAQ-005 — the fifth precondition check. A declared instance port with no
+// `plug` is inert (`getPorts` filters on it), so a Component Inputs node authored
+// without one yields a component with no such input, silently. This package's
+// port schema did not even declare the field until AAQ-005.
+export { checkInstancePorts } from '../../noodl-editor/src/editor/src/validation';
+
+// ─── The authoring vocabulary (AAQ-005) ───────────────────────────────────────
+// What an agent may say about a node, a port, a connection and a submission —
+// one table, rendered into this package's zod schemas by `src/vocabulary.ts` and
+// into the editor's JSON Schema by `authoring/tools.ts`.
+//
+// ⚠️ Grep before believing the next claim of this shape. Slice 1's lesson was
+// that "shares the rules via a barrel" is a claim about a specific export list;
+// this is the third time the two doors turned out to disagree about something the
+// task file assumed was shared. Here it was `children` and `variant` (accepted
+// only by this package) and `plug` on an instance port — never declared here at
+// all, and the field that decides whether the port exists: `getPorts(filter)`
+// selects on `p.plug`, so a port without one is inert and the component silently
+// has no such input or output.
+export {
+  AUTHORED_CONNECTION_FIELDS,
+  AUTHORED_NODE_FIELDS,
+  AUTHORED_PAYLOAD_FIELDS,
+  AUTHORED_PORT_FIELDS,
+  AUTHORING_SURFACES,
+  SURFACE_DIVERGENCES,
+  VOCAB_CLIENTS,
+  declaredDivergences,
+  describeFor,
+  fieldsFor,
+  isRequiredIn,
+  jsonSchemaForSurface,
+  jsonSchemasFor,
+  undeclaredDivergences
+} from '../../noodl-editor/src/editor/src/validation';
+export type {
+  DeclaredDivergence,
+  JsonSchemaNode,
+  VocabClient,
+  VocabField,
+  VocabKind,
+  VocabSurface
 } from '../../noodl-editor/src/editor/src/validation';
 
 // The editor's own binding of the gate, exported for the parity spec rather than

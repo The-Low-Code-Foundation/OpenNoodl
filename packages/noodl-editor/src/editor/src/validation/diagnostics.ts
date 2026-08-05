@@ -159,7 +159,31 @@ export enum DiagnosticCode {
    * Blocking for authored output. Over the 96-project corpus it fires 6 times,
    * all inside two synthetic node-id fixtures and none in a real project.
    */
-  PageWithoutPageNode = 'page-without-page-node'
+  PageWithoutPageNode = 'page-without-page-node',
+
+  /**
+   * A declared instance port with no `plug`, which makes it **inert**.
+   *
+   * `NodeGraphNode.getPorts(filter)` selects on `p.plug && p.plug.indexOf(filter)
+   * !== -1`, and a component's interface is derived from `getPorts('input')` /
+   * `getPorts('output')` on the nodes with `haveComponentPorts` (`componentmodel`).
+   * So a `Component Inputs` node carrying `ports: [{ name: 'Title' }]` lands in
+   * neither map: the port is written, the file validates, the canvas shows
+   * nothing, and the component silently has no such input. The agent believes it
+   * built a component interface and built nothing.
+   *
+   * Found by converging the two authoring vocabularies (AAQ-005). MCP's port
+   * schema was `{ name }` with `.passthrough()`, so an external agent was never
+   * told `plug` existed; the editor's schema declared it required, but that schema
+   * is instruction only — `toSubmitPayload` casts unchecked — and no rule checked
+   * it on either door.
+   *
+   * Error severity, and safe at that: across all three populations this gate sees
+   * — the 96-project corpus (1483 declared instance ports, **1483 with a plug**),
+   * the 15 AI spec files, and `noodl-mcp`'s fixtures — it fires zero times. A
+   * plug-less instance port is not a thing anyone has ever meant to write.
+   */
+  PortWithoutPlug = 'port-without-plug'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────

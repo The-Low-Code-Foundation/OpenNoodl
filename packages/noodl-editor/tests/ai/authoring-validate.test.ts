@@ -81,6 +81,29 @@ describe('AIX-002 validation gate', () => {
     expect(result.errors.some((d) => d.code === 'unresolved-component-ref')).toBe(true);
   });
 
+  it('rejects an instance port with no plug — the port would not exist (AAQ-005)', () => {
+    // `NodeGraphNode.getPorts(filter)` selects on `p.plug && p.plug.indexOf(filter)
+    // !== -1`, and `componentmodel` derives the component's interface from
+    // `getPorts('input')`/`getPorts('output')` on the `haveComponentPorts` nodes.
+    // A port with no plug lands in neither map: it is written, the files validate,
+    // the canvas shows nothing, and the component has no such input. The agent
+    // believes it built an interface and built nothing.
+    const payload = validPayload();
+    payload.nodes[0].ports = [{ name: 'Trigger', type: '*' } as never];
+    payload.connections = [];
+    const result = validate(payload);
+    expect(result.ok).toBe(false);
+    const finding = result.errors.find((d) => d.code === 'port-without-plug');
+    expect(finding).toBeDefined();
+    expect(finding!.location.port).toBe('Trigger');
+  });
+
+  it('accepts "input/output" as a plug — 92 ports in the real corpus use it', () => {
+    const payload = validPayload();
+    payload.nodes[0].ports = [{ name: 'Trigger', plug: 'input/output', type: '*' } as never];
+    expect(validate(payload).ok).toBe(true);
+  });
+
   it('fails structurally — and skips semantic — when a file violates its schema', () => {
     const candidate = buildCandidate(REQUEST, validPayload());
     const files = candidate.files!;

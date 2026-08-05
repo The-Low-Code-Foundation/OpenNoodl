@@ -63,7 +63,11 @@ import { componentIsPage, registerPages, registrationSummary } from '../project/
 import type { ProjectStore } from '../project/ProjectStore';
 import { authoredProjectViews, preconditionDiagnostics } from '../validate';
 import type { NodeInput } from './author';
-import { assembleCreateFiles, assembleSetFiles, connectionSchema, ensureIds, nodeSchema } from './author';
+import { assembleCreateFiles, assembleSetFiles, ensureIds } from './author';
+// AAQ-005: one authoring vocabulary — the same node/connection shapes
+// `create_component` takes, rendered from the shared table rather than from a
+// second hand-written copy.
+import { connectionSchema, nodeSchema } from '../vocabulary';
 import { writeProjectDocFile } from './docsTools';
 import { guarded, jsonResult } from './util';
 

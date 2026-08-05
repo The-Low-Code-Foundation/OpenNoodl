@@ -33,12 +33,46 @@ export type { CheckNavigationOptions, CheckPageShapeOptions, NavigatingNode } fr
 // AAQ-005 — the one authored-candidate gate, shared with noodl-mcp.
 export {
   AUTHORED_BLOCKING_WARNINGS,
+  authoredNodes,
   authoredPreconditionDiagnostics,
   declaredUrlPaths,
   diagnosticKey,
   isBlockingForAuthoredOutput
 } from './authoredCandidate';
-export type { AuthoredNode, AuthoredPreconditionOptions, ComponentNodesView } from './authoredCandidate';
+export type {
+  AuthoredNode,
+  AuthoredPreconditionOptions,
+  ComponentNodesView,
+  StoredNodeLike
+} from './authoredCandidate';
+// AAQ-005 — an instance port with no `plug` is inert, and nothing checked it.
+export { checkInstancePorts } from './instancePorts';
+export type { AuthoredPortLike, CheckInstancePortsOptions, PortDeclaringNode } from './instancePorts';
+// AAQ-005 — the one authoring vocabulary, rendered into both clients' schemas.
+export {
+  AUTHORED_CONNECTION_FIELDS,
+  AUTHORED_NODE_FIELDS,
+  AUTHORED_PAYLOAD_FIELDS,
+  AUTHORED_PORT_FIELDS,
+  AUTHORING_SURFACES,
+  SURFACE_DIVERGENCES,
+  VOCAB_CLIENTS,
+  declaredDivergences,
+  describeFor,
+  fieldsFor,
+  isRequiredIn,
+  jsonSchemaForSurface,
+  jsonSchemasFor,
+  undeclaredDivergences
+} from './authoringVocabulary';
+export type {
+  DeclaredDivergence,
+  JsonSchemaNode,
+  VocabClient,
+  VocabField,
+  VocabKind,
+  VocabSurface
+} from './authoringVocabulary';
 export {
   checkParameterValues,
   portTypeShape,

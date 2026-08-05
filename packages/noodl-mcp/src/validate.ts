@@ -28,6 +28,7 @@
 
 import type { Diagnostic, ValidationReport } from './editor-deps';
 import {
+  authoredNodes,
   authoredPreconditionDiagnostics,
   declaredUrlPaths,
   diagnosticKey,
@@ -37,7 +38,7 @@ import {
   SemanticValidator,
   sortDiagnostics
 } from './editor-deps';
-import type { AuthoredNode, ComponentNodesView } from './editor-deps';
+import type { ComponentNodesView } from './editor-deps';
 import { catalogIndex } from './catalog';
 import type { ComponentFiles } from './graph';
 import type { ProjectStore } from './project/ProjectStore';
@@ -112,16 +113,6 @@ export function authoredProjectViews(
   return views;
 }
 
-/** The candidate's v2 nodes in the shape all four precondition checks read. */
-export function authoredNodes(files: ComponentFiles): AuthoredNode[] {
-  return files.nodes.nodes.map((n) => ({
-    id: n.id,
-    type: n.type,
-    ...(typeof n.label === 'string' && n.label ? { label: n.label } : {}),
-    parameters: (n.parameters ?? null) as Record<string, unknown> | null
-  }));
-}
-
 /**
  * The precondition half of the gate, bound to this client (AAQ-005).
  *
@@ -137,7 +128,7 @@ export function preconditionDiagnostics(
 ): Diagnostic[] {
   return authoredPreconditionDiagnostics({
     component: legacyName,
-    nodes: authoredNodes(candidate),
+    nodes: authoredNodes(candidate.nodes.nodes),
     components: [...views.map((v) => v.name), legacyName],
     urlPaths: declaredUrlPaths(views),
     catalog: catalogIndex()

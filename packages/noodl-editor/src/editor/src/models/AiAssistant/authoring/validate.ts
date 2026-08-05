@@ -14,9 +14,9 @@
  * @module AiAssistant/authoring/validate
  */
 
-import type { NodeV2 } from '../../../schemas';
 import { SCHEMA_IDS, SchemaValidator } from '../../../schemas';
 import {
+  authoredNodes,
   authoredPreconditionDiagnostics,
   buildComponentRefs,
   declaredUrlPaths as collectUrlPaths,
@@ -28,7 +28,6 @@ import {
   sortDiagnostics
 } from '../../../validation';
 import type {
-  AuthoredNode,
   ComponentNodesView,
   Diagnostic,
   NormComponent,
@@ -196,16 +195,6 @@ export function validateCandidateComponent(
   };
 }
 
-/** The candidate's v2 nodes in the shape all four precondition checks read. */
-function authoredNodes(files: ComponentFiles): AuthoredNode[] {
-  return files.nodes.nodes.map((n: NodeV2) => ({
-    id: n.id,
-    type: n.type,
-    ...(typeof n.label === 'string' && n.label ? { label: n.label } : {}),
-    parameters: (n.parameters ?? null) as Record<string, unknown> | null
-  }));
-}
-
 /**
  * The editor's binding of the shared precondition set (AAQ-005).
  *
@@ -232,7 +221,7 @@ function preconditionDiagnostics(
 
   return authoredPreconditionDiagnostics({
     component: legacyName,
-    nodes: authoredNodes(files),
+    nodes: authoredNodes(files.nodes.nodes),
     components: [...graph.components.map((c) => c.name), legacyName, ...(options.plannedComponents ?? [])],
     urlPaths: collectUrlPaths([...projectViews, candidateView]),
     catalog: loadDefaultCatalog(),

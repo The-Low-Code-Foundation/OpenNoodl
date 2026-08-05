@@ -7,10 +7,20 @@
  * tool that submits the whole candidate to the validation gate. There is no
  * tool that returns more than one component, and no tool that touches disk.
  *
+ * ⚠️ AAQ-005: "the same vocabulary" was an intention, not a fact. This file
+ * hand-wrote `submit_component`'s node/connection/port schemas in JSON Schema
+ * while `noodl-mcp/src/tools/author.ts` hand-wrote the same three in zod, and
+ * they had drifted in both directions — MCP accepted `children` and `variant`
+ * the editor did not, and never declared `plug` on an instance port, which is
+ * the field that decides whether the port exists at all. Both are now rendered
+ * from `validation/authoringVocabulary`, where each remaining difference is
+ * declared with its reason and pinned by `vocabularyParity.test.ts`.
+ *
  * @module AiAssistant/authoring/tools
  */
 
 import type { ConnectionV2, NodePort } from '../../../schemas';
+import { jsonSchemasFor } from '../../../validation/authoringVocabulary';
 import type { AiToolCall, AiToolDefinition } from '../client/types';
 import type { AuthoringContextBuilder } from './ContextBuilder';
 import type { AgentSampleData, SubmitPayload, SubmittedNode } from './types';
@@ -43,48 +53,13 @@ export const GET_NODE_TYPES = 'get_node_types';
 export const GET_COMPONENT = 'get_component';
 export const SUBMIT_COMPONENT = 'submit_component';
 
-const nodeSchema = {
-  type: 'object',
-  properties: {
-    id: { type: 'string', description: 'Unique id you invent; required to wire connections or parent nodes' },
-    type: {
-      type: 'string',
-      description: 'Exact catalog typeName ("Group"), or an existing component name ("/Pages/Home") to instantiate it'
-    },
-    label: { type: 'string', description: 'What this node is for, in this graph' },
-    x: { type: 'number' },
-    y: { type: 'number' },
-    parent: { type: 'string', description: 'Id of the parent node in the visual tree; omit for roots and logic nodes' },
-    parameters: { type: 'object', description: 'Static input values keyed by exact port name' },
-    ports: {
-      type: 'array',
-      description:
-        'Instance ports — only for "Component Inputs" (plug "output") and "Component Outputs" (plug "input") nodes',
-      items: {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-          plug: { type: 'string', enum: ['input', 'output'] },
-          type: { type: 'string', description: 'Port value type; "*" when it does not matter' },
-          index: { type: 'number' }
-        },
-        required: ['name', 'plug']
-      }
-    }
-  },
-  required: ['id', 'type']
-} as const;
-
-const connectionSchema = {
-  type: 'object',
-  properties: {
-    fromId: { type: 'string' },
-    fromProperty: { type: 'string', description: 'Output port name on the source node' },
-    toId: { type: 'string' },
-    toProperty: { type: 'string', description: 'Input port name on the target node' }
-  },
-  required: ['fromId', 'fromProperty', 'toId', 'toProperty']
-} as const;
+/**
+ * Rendered from the shared vocabulary rather than written here. `payload` is
+ * `submit_component`'s parameter object — the editor's client omits the fields
+ * only the MCP door has (`path`, `type`, `allow_unknown_types`, and `children`/
+ * `variant` on a node) and keeps `sample_data`, which only this door consumes.
+ */
+const { node: nodeSchema, connection: connectionSchema, payload: submitSchema } = jsonSchemasFor('editor');
 
 export const AUTHORING_TOOLS: AiToolDefinition[] = [
   {
@@ -118,28 +93,17 @@ export const AUTHORING_TOOLS: AiToolDefinition[] = [
     description:
       'Submit the complete component for validation. Diagnostics come back with fixes; correct them and ' +
       'resubmit the full graph. A valid submission ends the task.',
-    parameters: {
-      type: 'object',
-      properties: {
-        nodes: { type: 'array', items: nodeSchema, minItems: 1 },
-        connections: { type: 'array', items: connectionSchema },
-        visual_roots: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Ids of the canvas root nodes (the visual root container for pages/visual components)'
-        },
-        description: { type: 'string', description: 'One or two sentences: what this component is and does' },
-        sample_data: {
-          type: 'object',
-          description:
-            'Optional. Example records the preview should display, keyed by the collection name this component ' +
-            'queries — up to 5 per collection, realistic values, no real data. Only for components that read a backend.'
-        }
-      },
-      required: ['nodes']
-    }
+    parameters: submitSchema as unknown as Record<string, unknown>
   }
 ];
+
+/**
+ * Exported for `tests-unit/aaq-005` and the cross-client parity spec: the two
+ * nested schemas the payload embeds, so a drift detector can compare them with
+ * `noodl-mcp`'s zod rendering of the same table without re-deriving either.
+ */
+export const AUTHORED_NODE_JSON_SCHEMA = nodeSchema;
+export const AUTHORED_CONNECTION_JSON_SCHEMA = connectionSchema;
 
 /** Parse submit_component arguments into a SubmitPayload (snake_case → camelCase). */
 export function toSubmitPayload(args: Record<string, unknown>): SubmitPayload {

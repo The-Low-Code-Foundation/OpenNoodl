@@ -23,6 +23,7 @@ import { componentIsPage, registerPages, registrationSummary } from '../project/
 import type { ProjectStore } from '../project/ProjectStore';
 import type { WriteValidation } from '../validate';
 import { validateCandidate, validateDeletion } from '../validate';
+import { CREATE_COMPONENT_SHAPE, connectionSchema, nodeSchema, portSchema } from '../vocabulary';
 import type {
   CreateComponentResponse,
   DeletionRefusalDetails,
@@ -34,36 +35,13 @@ import type {
 import { guarded, jsonResult } from './util';
 
 // ─── Zod shapes ───────────────────────────────────────────────────────────────
-// Exported for the plan tools (AIX-011): a staged plan operation carries the
-// same node/connection payload as create_component/update_component — one
-// authoring vocabulary, whichever door it arrives through.
-
-export const portSchema = z
-  .object({ name: z.string() })
-  .passthrough()
-  .describe('Port definition; `name` required, other fields (type, displayName, plug, group…) pass through');
-
-export const nodeSchema = z
-  .object({
-    id: z.string().optional().describe('Unique node id; generated when omitted (but required to wire connections)'),
-    type: z.string().describe('Catalog typeName ("Group") or a component legacyName ("/Pages/Home") to instantiate it'),
-    label: z.string().optional(),
-    x: z.number().optional(),
-    y: z.number().optional(),
-    parent: z.string().optional().describe('Id of the parent node in the visual tree'),
-    children: z.array(z.string()).optional().describe('Child ids in render order (kept consistent with parent fields)'),
-    parameters: z.record(z.unknown()).optional().describe('Static input values, keyed by port name'),
-    variant: z.string().optional(),
-    ports: z.array(portSchema).optional().describe('Instance ports (component inputs/outputs nodes etc.)')
-  })
-  .passthrough();
-
-export const connectionSchema = z.object({
-  fromId: z.string(),
-  fromProperty: z.string().describe('Output port name on the source node'),
-  toId: z.string(),
-  toProperty: z.string().describe('Input port name on the target node')
-});
+// AAQ-005: the node/port/connection shapes are no longer written here. They are
+// rendered from the one authoring vocabulary in `../vocabulary` — the same table
+// the editor's `submit_component` renders as JSON Schema — because the two
+// hand-written copies had drifted: this one accepted `children` and `variant`
+// that the editor did not, and never declared `plug` on an instance port at all.
+// A staged plan operation carries the same payload as create_component /
+// update_component: one vocabulary, whichever door it arrives through.
 
 const operationSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('add_node'), node: nodeSchema, index: z.number().optional().describe('Insertion index among the parent\'s children') }),
@@ -234,10 +212,10 @@ function successPayload(validation: WriteValidation): WriteValidationSummary {
 // ─── Registration ─────────────────────────────────────────────────────────────
 
 export function registerAuthorTools(server: McpServer, store: ProjectStore): void {
-  const allowUnknownArg = z
-    .boolean()
-    .optional()
-    .describe('Permit node types the catalog does not know (module-provided nodes). Default: unknown types reject the write.');
+  // Rendered from the shared vocabulary (AAQ-005), so the two doors describe a
+  // node with one set of words and `update_component` cannot drift from
+  // `create_component`.
+  const allowUnknownArg = CREATE_COMPONENT_SHAPE.allow_unknown_types;
 
   server.registerTool(
     'create_component',
@@ -250,18 +228,7 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         'from another graph, add a node whose type is the returned legacyName. ' +
         'If the component is a page (its path is under Pages/, or its graph has a `Page` node) it is also ' +
         'registered in the project router — returned as `registeredPages`, and a no-op if already listed.',
-      inputSchema: {
-        path: z.string().describe('New component path, e.g. "Pages/Settings" (parent path segments need not exist)'),
-        type: z
-          .enum(['page', 'visual', 'logic', 'cloud'])
-          .optional()
-          .describe('Component type; inferred from the path when omitted ("Pages/…" → page)'),
-        nodes: z.array(nodeSchema).min(1),
-        connections: z.array(connectionSchema).optional(),
-        visual_roots: z.array(z.string()).optional().describe('Canvas root node ids (optional)'),
-        description: z.string().optional().describe('Human/agent-facing summary stored on the component'),
-        allow_unknown_types: allowUnknownArg
-      }
+      inputSchema: CREATE_COMPONENT_SHAPE
     },
     guarded(
       (args: {

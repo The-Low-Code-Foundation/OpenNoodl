@@ -52,6 +52,7 @@
 import { checkBackendRequirements, type ProjectBackendFacts } from './backendRequirement';
 import type { CatalogIndex } from './CatalogIndex';
 import { DiagnosticCode, type Diagnostic } from './diagnostics';
+import { checkInstancePorts, type AuthoredPortLike } from './instancePorts';
 import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE } from './navigation';
 import { checkParameterValues } from './parameterValues';
 
@@ -66,6 +67,42 @@ export interface AuthoredNode {
   type: string;
   label?: string;
   parameters?: Record<string, unknown> | null;
+  /** Declared instance ports, for `checkInstancePorts`. */
+  ports?: readonly AuthoredPortLike[] | null;
+}
+
+/**
+ * A stored v2 node, as much of it as the checks read. Declared here rather than
+ * imported from `schemas/` so this module keeps its only dependency being the
+ * other pure checks.
+ */
+export interface StoredNodeLike {
+  id: string;
+  type: string;
+  label?: string;
+  parameters?: Record<string, unknown> | null;
+  ports?: readonly AuthoredPortLike[] | null;
+}
+
+/**
+ * A candidate's stored nodes in the shape all five precondition checks read.
+ *
+ * ⚠️ This adapter existed **twice**, byte-identical apart from an `export` —
+ * `authoring/validate.ts` and `noodl-mcp/src/validate.ts` — and it is the seam a
+ * new field has to travel through to reach the checks. Slice 1 converged the
+ * policy and left the adapter twinned, so adding `ports` here would have meant
+ * editing two copies and the one that was forgotten would have quietly stopped
+ * checking. That is exactly how `children` and `variant` drifted between the two
+ * tool schemas in the first place.
+ */
+export function authoredNodes(nodes: readonly StoredNodeLike[]): AuthoredNode[] {
+  return nodes.map((n) => ({
+    id: n.id,
+    type: n.type,
+    ...(typeof n.label === 'string' && n.label ? { label: n.label } : {}),
+    parameters: (n.parameters ?? null) as Record<string, unknown> | null,
+    ...(n.ports ? { ports: n.ports } : {})
+  }));
 }
 
 /** A component seen only as "what nodes, with what parameters" — enough to find `Page` nodes. */
@@ -162,18 +199,23 @@ export interface AuthoredPreconditionOptions {
 }
 
 /**
- * The four checks the semantic validator cannot make, in the order the editor
+ * The five checks the semantic validator cannot make, in the order the editor
  * has always composed them.
  *
- * All four are *precondition* checks rather than catalog rules, and for one
- * reason: their answers depend on the project and on parameter values, neither
- * of which the normalized model carries. SUB-006 reasons about types, ports and
- * connectivity; a value's shape and a target's existence are different questions
- * asked of different data.
+ * All five are *precondition* checks rather than catalog rules, and for one
+ * reason: their answers depend on the project, on parameter values, or on
+ * instance-port declarations — none of which the normalized model carries. SUB-006
+ * reasons about types, ports and connectivity; a value's shape, a target's
+ * existence and a port's direction are different questions asked of different
+ * data.
  *
  * The order is load-bearing only in that the editor's accepted-component report
  * and its specs have always shown them this way — `sortDiagnostics` is what
  * actually orders the output.
+ *
+ * `checkInstancePorts` is the fifth, added by AAQ-005: converging the two tool
+ * vocabularies showed that `plug` was undeclared on one door and unchecked on
+ * both, and that a port without it is inert rather than wrong.
  */
 export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOptions): Diagnostic[] {
   const { component, nodes, components, urlPaths, catalog, backend } = options;
@@ -181,7 +223,8 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     ...checkParameterValues(nodes, catalog, { component }),
     ...(backend ? checkBackendRequirements(nodes, { ...backend, component }) : []),
     ...checkNavigation(nodes, { component, components, urlPaths }),
-    ...checkPageShape(nodes, { component, isRoutedPage: looksLikePageComponent(component) })
+    ...checkPageShape(nodes, { component, isRoutedPage: looksLikePageComponent(component) }),
+    ...checkInstancePorts(nodes, { component })
   ];
 }
 

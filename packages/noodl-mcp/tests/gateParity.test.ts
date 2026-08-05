@@ -172,6 +172,41 @@ describe('AAQ-005 — the editor gate and the MCP write gate agree', () => {
     expect(mcp.ok).toBe(true);
   });
 
+  it('agrees that an instance port with no plug blocks (AAQ-005 slice 3)', () => {
+    // The finding that came out of converging the two tool vocabularies. A
+    // declared port with no `plug` is INERT: `NodeGraphNode.getPorts(filter)`
+    // selects on `p.plug`, and a component's interface is derived from
+    // `getPorts('input')`/`getPorts('output')` — so this Component Inputs node
+    // gives the component no inputs at all, silently. This package's port schema
+    // did not declare `plug` until slice 3, so an external agent was never told
+    // the field existed, and neither gate checked it.
+    const files = candidateFiles([
+      { id: 'page', type: 'Page', parameters: { title: 'Settings' } } as NodeV2,
+      { id: 'in', type: 'Component Inputs', ports: [{ name: 'Title', type: '*' }] } as unknown as NodeV2
+    ]);
+
+    const { editor, mcp } = judge(files);
+    expect(editor.ok).toBe(false);
+    expect(mcp.ok).toBe(false);
+    expect(blockingCodes(mcp.newErrors)).toEqual(blockingCodes(editor.errors));
+    expect(blockingCodes(mcp.newErrors)).toContain('port-without-plug');
+  });
+
+  it('agrees that a plug of "input/output" is fine — it is what 92 corpus ports use', () => {
+    const files = candidateFiles([
+      { id: 'page', type: 'Page', parameters: { title: 'Settings' } } as NodeV2,
+      {
+        id: 'in',
+        type: 'Component Inputs',
+        ports: [{ name: 'Title', plug: 'input/output', type: '*' }]
+      } as unknown as NodeV2
+    ]);
+
+    const { editor, mcp } = judge(files);
+    expect(editor.ok).toBe(true);
+    expect(mcp.ok).toBe(true);
+  });
+
   it('agrees that a routed component with no Page node is a warning and does NOT block', () => {
     // AAQ-011 F7 lives here: the rule is right and blocking it would need 57
     // fixture sites corrected first. Both clients must be on the same side of
