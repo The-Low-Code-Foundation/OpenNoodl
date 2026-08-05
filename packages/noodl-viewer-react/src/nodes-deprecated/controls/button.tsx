@@ -66,6 +66,8 @@ function Button(props: ButtonProps) {
   let className = 'ndl-controls-button';
   if (props.className) className = className + ' ' + props.className;
 
+  // FH-015 slice 1 — same defect as the modern Button: a trailing `onClick={props.onClick}`
+  // after the `controlEvents` spread discarded the `blockTouch` blocking wrapper.
   return (
     <button
       className={className}
@@ -73,7 +75,6 @@ function Button(props: ButtonProps) {
       {...Utils.controlEvents(props)}
       type={props.buttonType}
       style={style}
-      onClick={props.onClick}
     >
       {props.label}
       {props.children}

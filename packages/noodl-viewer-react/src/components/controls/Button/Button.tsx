@@ -86,6 +86,13 @@ export function Button(props: ButtonProps) {
     content = _renderIcon();
   }
 
+  // FH-015 slice 1. There used to be a trailing `onClick={props.onClick}` here, after the
+  // `controlEvents` spread. JSX later-wins, so it replaced the handler `pointerProps` had
+  // built — which is the one that carries the `blockTouch` `stopPropagation` wrapper and the
+  // `updateDirtyNodes()` flush. The consequence: "Block Pointer Events" on a Button blocked
+  // mousedown/mouseup/touchstart and let the click through to the parent Group anyway, which
+  // is exactly the "it doesn't work" report. `controlEvents` already supplies `onClick`
+  // (`pointerProps` picks `props.onClick` up off the props root), so the line was pure loss.
   return (
     <button
       ref={noodlRootRef(props.noodlNode)}
@@ -94,7 +101,6 @@ export function Button(props: ButtonProps) {
       {...Utils.controlEvents(props)}
       type={props.buttonType}
       style={style}
-      onClick={props.onClick}
     >
       {content}
       {props.children}
