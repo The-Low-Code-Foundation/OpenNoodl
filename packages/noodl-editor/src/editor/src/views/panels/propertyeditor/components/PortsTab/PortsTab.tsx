@@ -207,9 +207,10 @@ export interface PortsTabProps {
 export function PortsTab({ model }: PortsTabProps) {
   /*
    * The panel outlives any single edit, so the list has to follow the node.
-   * Same event set `Ports.bindModel` uses, plus `parametersChanged` — a
-   * parameter is what flips a `conditionalports` condition, and the ports this
-   * tab shows are filtered by exactly that.
+   * `Ports.bindModel`'s set, plus two this tab needs and it does not:
+   * `parametersChanged`, because a parameter is what flips a `conditionalports`
+   * condition and this list is filtered by exactly that, and `portRearranged`,
+   * because the rows are in declared order.
    */
   const [revision, setRevision] = useState(0);
 
@@ -227,7 +228,6 @@ export function PortsTab({ model }: PortsTabProps) {
         'portRemoved',
         'portRenamed',
         'portRearranged',
-        'labelChanged',
         'variantChanged',
         'variantUpdated'
       ],
