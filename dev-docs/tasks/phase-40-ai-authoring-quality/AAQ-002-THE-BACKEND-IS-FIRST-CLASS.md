@@ -2,10 +2,97 @@
 
 **Findings:** #4 (a "Built-in backend" card that can only edit/disconnect; disconnect makes it
 vanish), #7 (`prop-age` / `prop-bio` port errors on Create Record)
-**Status:** **all four slices built** — 1–3 on 2026-08-04, F4/F5 and slice 4 on 2026-08-05
-(`36ce5669`, `437ec919`). Criterion 5 was answered **three times, by three different mechanisms**;
-the live pass produced the third and it is now fixed. Criteria 1–3 remain **live-QA criteria that have
-not been driven** — the code is in, nobody has watched it work.
+**Status:** ✅ **CLOSED.** All four slices built (1–3 on 2026-08-04, F4/F5 and slice 4 on
+2026-08-05) and **all five criteria driven live on 2026-08-05**. Finding #7 needed a **fourth**
+mechanism, which the criterion-2 drive found and which had nothing to do with backends at all —
+see below. Editor suite **2198 specs, 0 failures**; runtime suite **2144 passed**; both typechecks
+clean.
+
+## ⚠️ The fourth mechanism, and it is the one that mattered
+
+Criterion 2 was driven with **every earlier mechanism fixed**: the project had its own backend
+(F4), `Puppy` was created *with* its three columns (F5), and `dbCollections` cached them exactly.
+The Class dropdown listed `Puppy`. And there were still **no `prop-*` ports**.
+
+The cause is in the Record family's mixin assembly, not in any schema:
+
+```ts
+// dbmodelcrudbase._addBaseInfo, before this task
+const _includeInputProperties = opts === undefined || opts.includeInputProperties;
+```
+
+That expression is only right while **no other option exists**. ERG-001 §4 (`67d2c339`) added a
+`done` sentence to the same options object, so `addBaseInfo(def, { done })` made `opts` defined,
+`opts.includeInputProperties` was `undefined`, and the whole thing went falsy. **Create Record and
+Update Record stopped emitting a single `prop-<field>` port** — on every backend, in every project,
+from that commit onward. The two relation nodes already passed `{ includeRelations: true }` and were
+unaffected; Delete Record's `includeInputProperties: false` was already correct.
+
+Two things make this worth reading twice:
+
+1. **It presents exactly like a schema bug.** `recordClassPorts` kept working throughout, so the
+   node *knew the collection existed* and offered no way to write to it. That is precisely the shape
+   of Richard's report, and it is why three plausible schema mechanisms were proposed and fixed
+   before anyone looked at the flag.
+2. **The discriminating probe took one minute and should have come first.** A `DbModel2` (Record)
+   node added to the same project with `collectionName: 'Puppy'` came back with `prop-name`,
+   `prop-age`, `prop-bio` — it gates only on `ctx.selectedCollection`. Same project, same cache, same
+   collection, ports present. That isolates the flag and rules out the entire schema chain in one
+   step.
+
+### The fix, and why it is not a corrected default
+
+The flags are **gone**, not re-defaulted. `_hasInputProperties` is set by `addInputProperties` and
+`_hasRelationProperty` by `addRelationProperty` — the mixins that actually build the things those
+flags gate — and both are read inside `_updatePorts` rather than captured, because `addBaseInfo`
+runs *first* in every one of these files. Writing `opts?.includeInputProperties !== false` would
+have fixed today's symptom and left the next person who adds an option to `addBaseInfo` holding the
+same loaded gun. This is the **one-fact-in-two-places** class the Layer-1 live pass named, and the
+phase has now paid for it twice.
+
+`record-property-ports.test.ts` is the gate, and it is deliberately written at the altitude the
+defect lives at: it drives the **assembled node modules** through `setup()` and asserts what reaches
+`sendDynamicPorts`. `schema-ports.test.js` and `record-picker-single-backend.test.ts` both exercise
+the pure generators, which were never broken, and both stayed green for the whole year. Confirmed to
+fail 4/10 against the old behaviour before being kept.
+
+## The live pass, 2026-08-05 — criteria 1, 2 and 3
+
+Driven with `scripts/aaq40-live/` into a scratch project, then **re-opened cold after a full editor
+restart**, which is what "at first load" has to mean.
+
+**Criterion 1 — one card. PASSES.** Exactly one card for the provisioned backend, exactly one
+`ACTIVE` badge, exactly one "This project uses this backend", and **no `CloudServicesEndpointSection`
+at all** — the second, crippled "Built-in backend" card of finding #4 is gone. Schema opens and lists
+`Puppy` with `name`/`age`/`bio` at the right types; Data opens from the card's own button and shows
+the row.
+
+**Criterion 2 — live ports and a real write. PASSES.** On the cold-opened project the Create Record
+node carries `prop-name`, `prop-age`, `prop-bio`, and the editor holds **zero** port warnings.
+Setting real values and clicking the authored form's button in a real preview wrote
+`{name: "Biscuit", age: 4, bio: "A beagle mix…"}` into `Puppy`, visible in the Data Browser, and the
+node's `done` fired the navigation back to the listing page. Finding #7 is closed end to end.
+
+**Criterion 3 — disconnect. PASSES.** The dialog reads *"This project stops using this backend. The
+backend keeps running on this computer and none of its data is deleted — it stays in this list, and
+you can connect the project to it again at any time."* After confirming: `cloudservices` is `{}`, the
+backend is still running, the card is **still listed**, and the `ACTIVE` badge and the "uses this
+backend" line are gone. Nothing vanished.
+
+**F4 and F5 confirmed live, not merely spec-covered.** The provision created a *new* backend named
+`aaq002-pass backend` (so `backendNameForProject` is reaching production), stamped
+`projectIds: ["cad96fbb-…"]`, and did **not** adopt the machine's legacy `App backend` — which still
+sits there with `projectIds: []`, owned by nobody and now reusable by nobody, which is the point.
+
+**And one designed behaviour confirmed by accident:** after the restart the backend process was
+*stopped*, and the `prop-*` ports were still there. `fetchBuiltInSchema` returning `undefined`
+rather than `[]` for a sleeping backend is what keeps the saved cache — the rule its docblock states,
+observed working.
+
+Three defects were found along the way and filed rather than patched: **AAQ-011 F9** (every
+wizard-built app carries a permanent *false* "this Router has no Pages" warning), **F10** (nothing
+starts a project's backend when the project opens), **F11** (the Data Browser's first open reports
+"Failed to load tables" when nothing is selected).
 
 ## What changed on 2026-08-05, after Richard's two decisions
 
@@ -157,13 +244,13 @@ it reaches a Record node.
 
 ### Still open
 
-- **Criteria 1–3 have not been driven.** Everything above is mechanism-verified and spec-covered; none of
-  it has been watched working. Criterion 2 in particular now has a *plausible* path to passing (own
-  backend → columns created or reconciled → `SchemaHandler` caches them → `prop-*` ports exist → the
-  agent was told the right field names) and **every previous answer to criterion 5 also looked right on
-  paper.** Drive it with `scripts/aaq40-live/`.
+Nothing in this task. What it leaves behind, all in the register:
+
 - **AAQ-011 F8** — the *review* path still tells the model the built-in backend's collections are
-  "unknown, not absent", on a premise Layer 1 made stale. The reader it needs now exists.
+  "unknown, not absent", on a premise Layer 1 made stale. The reader it needs now exists
+  (`projectSchemaCollections`).
+- **AAQ-011 F9, F10, F11** — found during the criteria 1–3 drive; F10 in particular decides whether a
+  wizard-built app works the second time it is opened.
 
 ## The mechanisms
 

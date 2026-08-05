@@ -76,6 +76,17 @@ export type AccessControlList = Record<string, { read: boolean; write: boolean }
  */
 export interface DbCrudNodeModule extends MixinNodeModule {
   _additionalDynamicPorts?(node: GraphNodeModel, ports: RuntimeDiscoveredPort[], graphModel: GraphModelLike): void;
+  /**
+   * Set by `addInputProperties` — the node has `prop-<field>` inputs.
+   *
+   * ⚠️ Read by `addBaseInfo`'s port builder **at port-update time, not at mixin time**, and
+   * that is the whole point: `addBaseInfo` runs first in every one of these files, so a flag
+   * it captured could only ever describe what the *caller* claimed. It used to, and see
+   * `_addBaseInfo` for the year the claim was silently wrong.
+   */
+  _hasInputProperties?: boolean;
+  /** Set by `addRelationProperty` — the node has a `relationProperty` dropdown. */
+  _hasRelationProperty?: boolean;
 }
 
 /** Contributed by `dbmodelcrudbase.addBaseInfo` — the `failure`/`error` pair and warnings. */

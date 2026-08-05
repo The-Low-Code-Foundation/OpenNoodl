@@ -72,11 +72,38 @@ const CloudStore = CloudStoreImport as {
  */
 const STORAGE_OP_ERROR_CODE = 'record/storage-op-failed';
 
+/**
+ * ## ⚠️ Why the two port flags are no longer options — AAQ-002, and it cost a year
+ *
+ * This used to take `includeInputProperties` and `includeRelations`, defaulted with
+ * `opts === undefined || opts.includeInputProperties`. That expression is only ever right
+ * while **no other option exists**: the moment ERG-001 §4 added the `done` sentence below,
+ * `addBaseInfo(def, { done })` made `opts` defined, `opts.includeInputProperties` was
+ * `undefined`, and the whole expression went falsy.
+ *
+ * The consequence was invisible and total. **Create Record and Update Record stopped
+ * emitting a single `prop-<field>` port** — on every backend, in every project, from commit
+ * `67d2c339` onward. The Class dropdown kept working, which is exactly what made it look
+ * like a schema problem: the node knew the collection existed and offered no way to write to
+ * it. It is Richard's finding #7 (*"'prop-age' 'prop-bio' with errors, saying those ports
+ * don't exist"*) and it is the **fourth** mechanism proposed for that report — after
+ * "provisioning is late" (wrong), "the schema cache is never written" (right, fixed in this
+ * phase's Layer 1) and "the backend was reused and its columns never reconciled" (right,
+ * fixed as AAQ-002 F4/F5). All three were real. None of them could have made the ports
+ * appear, because the generator was switched off underneath them.
+ *
+ * So the flags are gone, and each one is now derived from **the mixin that actually builds
+ * the thing it gates**: `addInputProperties` is what gives a node `prop-*` inputs, and
+ * `addRelationProperty` is what gives it a `relationProperty` dropdown. That is the
+ * one-fact-in-two-places bug class this phase keeps paying for, removed rather than
+ * re-defaulted — a corrected default would leave the next option added here armed with the
+ * same trap. They are read inside `_updatePorts` rather than captured here because
+ * `addBaseInfo` is called **first** in every one of these files and the mixins that set them
+ * have not run yet.
+ */
 function _addBaseInfo(
   def: DbCrudNodeModule,
   opts?: {
-    includeInputProperties?: boolean;
-    includeRelations?: boolean;
     /**
      * ERG-001 §4 — what this node's `Done` means, in this node's own words.
      *
@@ -88,8 +115,6 @@ function _addBaseInfo(
     done?: string;
   }
 ) {
-  const _includeInputProperties = opts === undefined || opts.includeInputProperties;
-  const _includeRelations = opts !== undefined && opts.includeRelations;
 
   Object.assign(def.node, {
     category: 'Data',
@@ -337,11 +362,12 @@ function _addBaseInfo(
           ports.push(...recordBackendPickerPorts(ctx));
           ports.push(...recordClassPorts(ctx));
 
-          if (_includeRelations && ctx.selectedCollection) {
+          // Read off `def` here, not captured at mixin time — see the `_addBaseInfo` note.
+          if (def._hasRelationProperty && ctx.selectedCollection) {
             ports.push(...recordRelationPorts(ctx));
           }
 
-          if (_includeInputProperties && ctx.selectedCollection) {
+          if (def._hasInputProperties && ctx.selectedCollection) {
             ports.push(...recordFieldPorts(ctx, { plug: 'input' }));
           }
 
@@ -583,6 +609,10 @@ function _addInputProperties(def: DbCrudNodeModule) {
   const _def: DbCrudNodeModule = { node: Object.assign({}, def.node), setup: def.setup };
   const _methods: PrototypeExtensions = Object.assign({}, def.node.methods);
 
+  // The `prop-<field>` ports exist because *this* mixin registers their setters, so this is
+  // the only honest place to say a node has them. See `_addBaseInfo`.
+  def._hasInputProperties = true;
+
   Object.assign(def.node, {
     inputs: def.node.inputs || {},
     outputs: def.node.outputs || {},
@@ -626,6 +656,9 @@ function _addInputProperties(def: DbCrudNodeModule) {
 
 function _addRelationProperty(def: DbCrudNodeModule) {
   const _methods: PrototypeExtensions = Object.assign({}, def.node.methods);
+
+  // The `relationProperty` dropdown belongs to the nodes that read it. See `_addBaseInfo`.
+  def._hasRelationProperty = true;
 
   Object.assign(def.node, {
     inputs: def.node.inputs || {},

@@ -174,7 +174,6 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
 };
 
 DbModelCRUDBase.addBaseInfo(AddDbModelRelationNodeDefinition, {
-  includeRelations: true,
   done: 'Fires once the relation has been written and the record has been refreshed from the response'
 });
 DbModelCRUDBase.addModelId(AddDbModelRelationNodeDefinition);

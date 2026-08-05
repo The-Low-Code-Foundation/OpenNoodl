@@ -80,8 +80,10 @@ const DeleteDbModelPropertiedNodeDefinition: DbCrudNodeModule = {
   }
 };
 
+// No `addInputProperties` below, which is now the whole of why this node has no `prop-*`
+// ports — it used to *also* say so here, and a second statement of one fact is what let
+// Create Record lose its ports in silence (AAQ-002; see `dbmodelcrudbase._addBaseInfo`).
 DbModelCRUDBase.addBaseInfo(DeleteDbModelPropertiedNodeDefinition, {
-  includeInputProperties: false,
   done: 'Fires once the backend has deleted the record and everything bound to it has been told that it is gone'
 });
 DbModelCRUDBase.addModelId(DeleteDbModelPropertiedNodeDefinition);

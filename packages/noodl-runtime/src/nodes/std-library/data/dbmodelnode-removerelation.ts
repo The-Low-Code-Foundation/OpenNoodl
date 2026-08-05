@@ -154,7 +154,6 @@ const AddDbModelRelationNodeDefinition: DbCrudNodeModule = {
 };
 
 DbModelCRUDBase.addBaseInfo(AddDbModelRelationNodeDefinition, {
-  includeRelations: true,
   done: 'Fires once the backend has accepted the removal, which is also what happens when the relation was not there to begin with'
 });
 DbModelCRUDBase.addModelId(AddDbModelRelationNodeDefinition);

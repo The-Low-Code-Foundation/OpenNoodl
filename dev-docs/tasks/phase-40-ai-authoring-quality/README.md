@@ -123,6 +123,7 @@ Outstanding from Layer 1, all of it live-QA or explicitly deferred: AAQ-001 crit
 `pages`, written by the apply, seen rendering in a real preview), AAQ-002 criteria 1–3 and slice 4 (the
 agent is still not told the collections), AAQ-003 criteria 1–2 (scrolls in a detached preview and on a
 phone; a dashboard brief's regions scroll independently), AAQ-004 mechanism B (with AAQ-006).
+*(All of the AAQ-002 items above were closed on 2026-08-05 — see the section at the end.)*
 
 ## The Layer-1 live pass (2026-08-05)
 
@@ -186,6 +187,47 @@ Three things belong here rather than only in the task file:
 editor main-thread time with a zero-latency provider** (AAQ-011 F6). The model was not what it was waiting
 on. A phase aiming at components far larger than 55 nodes should measure that before it builds on top of
 it.
+
+## AAQ-002 driven and closed — and finding #7 had a FOURTH mechanism (2026-08-05)
+
+Criteria 1, 2 and 3 have now been driven live, with the project re-opened cold after a full editor
+restart. All three pass, **Layer 1 is complete**, and the pass found the mechanism that had been
+underneath the other three the whole time. Editor suite **2198 specs, 0 failures**; runtime **2144
+passed**; both typechecks clean.
+
+1. **`prop-*` had nothing to do with backends.** Driven with every earlier fix in place — own
+   backend, `Puppy` created with its columns, the cache holding them, the Class dropdown listing it —
+   there were still no `prop-*` ports. `addBaseInfo` defaulted its port flag with
+   `opts === undefined || opts.includeInputProperties`, so the moment **ERG-001 §4 added a `done`
+   sentence to the same options object** (`67d2c339`), the expression went falsy and **Create Record
+   and Update Record stopped emitting property ports entirely — on every backend, in every project.**
+   The three earlier mechanisms were all real and all needed fixing; none of them could ever have made
+   the ports appear. ⚠️ **It presents exactly like a schema bug**, because the Class dropdown kept
+   working: the node knew the collection existed and offered no way to write to it. The discriminating
+   probe took one minute and should have been first — a Record node in the same project, on the same
+   collection, gets its ports, because it gates on `selectedCollection` alone.
+2. **Fixed by deletion, not by a corrected default.** The flags are derived from the mixins that build
+   what they gate (`addInputProperties`, `addRelationProperty`), read at port-update time. A corrected
+   default would have left the next option added to `addBaseInfo` armed with the same trap. This is
+   the **one-fact-in-two-places** class the Layer-1 live pass named, and the phase has now paid for it
+   twice.
+3. **The gate had to move altitude.** Two existing suites cover the pure port generators, which were
+   never broken, and both stayed green for a year. `record-property-ports.test.ts` drives the
+   **assembled node modules** through `setup()` and asserts what reaches `sendDynamicPorts` — verified
+   to fail 4/10 against the old behaviour before being kept.
+
+Criterion 2 is now closed end to end: ports at first load, zero port warnings, and a record written
+through the authored form in a real preview (`{name: "Biscuit", age: 4, …}`), visible in the Data
+Browser, with `Done` firing the navigation. Criterion 1: one card, one ACTIVE badge, no endpoint
+section, Schema and Data both opening on the provisioned collection. Criterion 3: the disconnect copy
+states both facts, and afterwards the pointer is gone while the card and the process remain.
+
+**Three defects filed rather than patched** (AAQ-011 F9–F11), and one of them is not small:
+**every wizard-built app carries a permanent, false `⚠ 1`** — *"This Router has no Pages configured"* —
+because `router.tsx` raises that diagnosis on a mount that precedes its `pages` parameter and **never
+clears it**. The app renders correctly the whole time. F10 is the other one that matters: **nothing
+starts a project's backend when the project is opened**, so a wizard-built app is dead the second day
+until the user finds Backend Services.
 
 ## Order of work
 
