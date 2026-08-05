@@ -35562,7 +35562,8 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
       "providedBy": "noodl-viewer-react",
       "ssr": {

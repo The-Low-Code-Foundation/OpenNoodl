@@ -7116,6 +7116,127 @@
           "description": "Why the last aggregation failed; empty until one does"
         }
       ]
+    },
+    {
+      "name": "net.noodl.HTTP",
+      "searchTags": [
+        "http",
+        "request",
+        "fetch",
+        "api",
+        "rest",
+        "curl"
+      ],
+      "displayNodeName": "HTTP Request",
+      "docs": "https://docs.noodl.net/nodes/data/http-request",
+      "shortDocs": "https://docs.noodl.net/nodes/data/http-request-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "url",
+          "type": "string",
+          "plug": "input",
+          "group": "Request",
+          "displayName": "URL",
+          "description": "Address the request is sent to; any {name} in it becomes a Path Parameter input, and leaving it blank fails the request rather than sending one",
+          "default": ""
+        },
+        {
+          "name": "fetch",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Fetch",
+          "description": "Sends the request using the values currently on the inputs"
+        },
+        {
+          "name": "cancel",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Cancel",
+          "description": "Abandons a request that is still in flight, which answers on Canceled rather than Failure; reports Unchanged when there is nothing to cancel"
+        },
+        {
+          "name": "response",
+          "type": "*",
+          "plug": "output",
+          "group": "Response",
+          "displayName": "Response",
+          "description": "Body the server sent, parsed as JSON when it said so and as text otherwise; it keeps the previous body when a request never reached the server"
+        },
+        {
+          "name": "statusCode",
+          "type": "number",
+          "plug": "output",
+          "group": "Response",
+          "displayName": "Status Code",
+          "description": "HTTP status the server answered with; it keeps the previous status when a request timed out or never reached the server"
+        },
+        {
+          "name": "responseHeaders",
+          "type": "object",
+          "plug": "output",
+          "group": "Response",
+          "displayName": "Response Headers",
+          "description": "Every header the server returned, keyed by lower-cased header name"
+        },
+        {
+          "name": "canceled",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Canceled",
+          "description": "Fires only when Cancel abandoned a request in flight; a timeout answers on Failure instead"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error",
+          "description": "What went wrong with the last request, in one sentence; unchanged when a request succeeds"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once the server has answered with a 2xx status and Response is up to date"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged",
+          "description": "Fires when nothing was fetched and nothing changed: a Cancel that abandoned a request in flight, or a Cancel with no request to abandon. Canceled tells those two apart"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when the request could not be completed — no URL, a network error, a timeout, an unparseable body, or a non-2xx status — after the reason has been put on Error"
+        }
+      ]
     }
   ],
   "nodeIndex": {
