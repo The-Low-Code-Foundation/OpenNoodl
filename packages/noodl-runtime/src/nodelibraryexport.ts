@@ -194,7 +194,14 @@ function formatPort(portName: string, portData: Record<string, unknown>, plugTyp
   return port;
 }
 
-function generateNodeLibrary(nodeRegister: NodeRegisterLike) {
+/**
+ * @param options.runtimeType The runtime this library describes (`NoodlRuntime.type`). Only
+ *   `'cloud'` changes anything: it drops `Component Children` from the seeded types below. Left
+ *   optional so the browser path and the tests are unchanged by its introduction.
+ */
+function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtimeType?: string }) {
+  const isCloud = options?.runtimeType === 'cloud';
+
   const obj = {
     //note: needs to include ALL types
     typecasts: [
@@ -347,16 +354,24 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike) {
         }
       }
     },
-    nodetypes: [
-      {
-        name: 'Component Children',
-        docs: 'https://docs.noodl.net/nodes/component-utilities/component-children',
-        color: 'component',
-        allowAsChild: true,
-        category: 'Visual',
-        haveComponentChildren: ['Visual']
-      }
-    ] as ExportedNodeType[],
+    // `Component Children` is seeded here rather than registered: it has no node definition at
+    // all, it is a marker `NodeScope` interprets structurally (nodescope.ts:162, 393-425). That
+    // is why subtracting it from the cloud vocabulary (TALK-007 Pile B) happens here and not in
+    // the runtime's registration list with the other nine — and why nothing about a cloud
+    // function's *behaviour* changes: the marker still works if a graph carries one, it is only
+    // no longer offered on a canvas that has nothing visual to place children into.
+    nodetypes: (isCloud
+      ? []
+      : [
+          {
+            name: 'Component Children',
+            docs: 'https://docs.noodl.net/nodes/component-utilities/component-children',
+            color: 'component',
+            allowAsChild: true,
+            category: 'Visual',
+            haveComponentChildren: ['Visual']
+          }
+        ]) as ExportedNodeType[],
     // Assigned unconditionally below; declared here so the object's type carries it.
     // JSON.stringify omits `undefined` members, and key order (last) matches the
     // original post-hoc assignment, so the serialised export is unchanged.

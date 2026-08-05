@@ -40,7 +40,9 @@ const cloudRuntime = new NoodlRuntime({
 
 registerCloudNodes(cloudRuntime);
 
-const library = generateNodeLibrary(cloudRuntime.context.nodeRegister);
+// `runtimeType` matches what a live cloud runtime passes from `getNodeLibrary`, so the committed
+// snapshot and a connected client describe the same vocabulary (TALK-007 Pile B).
+const library = generateNodeLibrary(cloudRuntime.context.nodeRegister, { runtimeType: 'cloud' });
 
 const outPath = process.env.CLOUD_NODE_LIBRARY_OUT;
 if (!outPath) throw new Error('CLOUD_NODE_LIBRARY_OUT must be set');

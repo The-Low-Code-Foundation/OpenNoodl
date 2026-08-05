@@ -16949,6 +16949,16 @@
             "group": "General",
             "valueType": "enum",
             "example": "collectionName"
+          },
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Properties",
+            "valueType": "string",
+            "example": "prop-Sa1"
           }
         ]
       }
@@ -24727,6 +24737,16 @@
             "group": "General",
             "valueType": "enum",
             "example": "collectionName"
+          },
+          {
+            "pattern": "prop-<property>",
+            "plug": "input",
+            "variables": {
+              "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
+            },
+            "group": "Properties",
+            "valueType": "string",
+            "example": "prop-Sa1"
           }
         ]
       }
@@ -31105,8 +31125,7 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser",
-        "cloud"
+        "browser"
       ],
       "providedBy": "noodl-runtime",
       "ssr": {
@@ -31556,8 +31575,7 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser",
-        "cloud"
+        "browser"
       ],
       "providedBy": "noodl-runtime",
       "ssr": {
@@ -32031,8 +32049,7 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser",
-        "cloud"
+        "browser"
       ],
       "providedBy": "noodl-runtime",
       "ssr": {
@@ -32165,8 +32182,7 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser",
-        "cloud"
+        "browser"
       ],
       "providedBy": "noodl-runtime",
       "ssr": {
@@ -32301,8 +32317,7 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser",
-        "cloud"
+        "browser"
       ],
       "providedBy": "noodl-runtime",
       "ssr": {
@@ -32907,8 +32922,7 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser",
-        "cloud"
+        "browser"
       ],
       "providedBy": "noodl-runtime",
       "ssr": {
@@ -34355,8 +34369,7 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser",
-        "cloud"
+        "browser"
       ],
       "providedBy": "noodl-runtime",
       "ssr": {
@@ -34569,8 +34582,7 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser",
-        "cloud"
+        "browser"
       ],
       "providedBy": "noodl-runtime",
       "ssr": {
@@ -34761,8 +34773,7 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser",
-        "cloud"
+        "browser"
       ],
       "providedBy": "noodl-runtime",
       "ssr": {

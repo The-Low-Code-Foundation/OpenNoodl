@@ -163,6 +163,16 @@ interface NoodlRuntimeConstructor {
   EdgeTriggeredInput: typeof EdgeTriggeredInput;
 }
 
+/**
+ * Nodes registered here reach **every** runtime — the browser viewer registers extra nodes on
+ * top of this list, but it never subtracts. That is why a node written for the browser and put
+ * here by mistake silently becomes part of the cloud function vocabulary: it is what happened to
+ * the agentic-UI batch (AIX-005), whose nine browser-state nodes were offered on a server-side
+ * function canvas for months without anyone choosing it (TALK-007 §2).
+ *
+ * The `type !== 'cloud'` block at the foot of this function is the subtraction that did not
+ * exist. Add to it rather than deleting a `require`: a node in neither list is in no product.
+ */
 function registerNodes(noodlRuntime: NoodlRuntime) {
   [
     require('./src/nodes/componentinputs'),
@@ -224,23 +234,41 @@ function registerNodes(noodlRuntime: NoodlRuntime) {
     // User
     require('./src/nodes/std-library/user/setuserproperties'),
     require('./src/nodes/std-library/user/user'),
-    // Agentic UI (AIX-005)
-    require('./src/nodes/std-library/agent/globalstorenode'),
-    require('./src/nodes/std-library/agent/globalstoresetnode'),
-    require('./src/nodes/std-library/agent/globalstoresubscribenode'),
-    require('./src/nodes/std-library/agent/optimisticupdatenode'),
-    require('./src/nodes/std-library/agent/statehistorynode'),
-    require('./src/nodes/std-library/agent/undonode'),
-    require('./src/nodes/std-library/agent/statesnapshotnode'),
+    // Agentic UI (AIX-005) — the streaming six. These are the ones that make sense on a server:
+    // calling an upstream streaming API from a cloud function is CWF-007's whole case.
     require('./src/nodes/std-library/agent/websocket'),
     require('./src/nodes/std-library/agent/sse'),
     require('./src/nodes/std-library/agent/text-accumulator'),
     require('./src/nodes/std-library/agent/json-stream-parser'),
     require('./src/nodes/std-library/agent/pattern-extractor'),
-    require('./src/nodes/std-library/agent/stream-buffer'),
-    require('./src/nodes/std-library/agent/actiondispatchernode'),
-    require('./src/nodes/std-library/agent/actionhandlernode')
+    require('./src/nodes/std-library/agent/stream-buffer')
   ].forEach((node) => noodlRuntime.registerNode(node));
+
+  /**
+   * Browser-only, by decision (Richard, 2026-08-05 — TALK-007 Pile B).
+   *
+   * All nine model **client session state**: a store that outlives a request, an optimistic
+   * update waiting for a server to confirm it, an undo stack, a snapshot to restore a UI to, an
+   * action bus between components on one page. A cloud function is a single request that answers
+   * once and is then torn down (`CloudRunner.run` deletes the component and resets the scope on
+   * send), so in that runtime they range from inert to actively misleading — a Global Store that
+   * silently forgets between two calls is worse than no Global Store.
+   *
+   * They stay registered in the browser unchanged; this only subtracts them from `type: 'cloud'`.
+   */
+  if (noodlRuntime.type !== 'cloud') {
+    [
+      require('./src/nodes/std-library/agent/globalstorenode'),
+      require('./src/nodes/std-library/agent/globalstoresetnode'),
+      require('./src/nodes/std-library/agent/globalstoresubscribenode'),
+      require('./src/nodes/std-library/agent/optimisticupdatenode'),
+      require('./src/nodes/std-library/agent/statehistorynode'),
+      require('./src/nodes/std-library/agent/undonode'),
+      require('./src/nodes/std-library/agent/statesnapshotnode'),
+      require('./src/nodes/std-library/agent/actiondispatchernode'),
+      require('./src/nodes/std-library/agent/actionhandlernode')
+    ].forEach((node) => noodlRuntime.registerNode(node));
+  }
 }
 
 const NoodlRuntime = function NoodlRuntime(this: NoodlRuntime, args?: NoodlRuntimeArgs) {
@@ -557,7 +585,9 @@ NoodlRuntime.prototype.getNodeLibrary = function () {
 
   // `projectsettings` is stamped on here rather than produced by the exporter: the
   // settings are the *project's*, and the exporter only knows the node register.
-  const nodeLibrary = generateNodeLibrary(this.context.nodeRegister) as ReturnType<typeof generateNodeLibrary> & {
+  const nodeLibrary = generateNodeLibrary(this.context.nodeRegister, {
+    runtimeType: this.type
+  }) as ReturnType<typeof generateNodeLibrary> & {
     projectsettings?: unknown;
   };
   nodeLibrary.projectsettings = projectSettings;

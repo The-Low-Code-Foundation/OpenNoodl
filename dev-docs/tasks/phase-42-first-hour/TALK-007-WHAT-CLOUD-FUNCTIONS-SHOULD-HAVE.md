@@ -4,6 +4,9 @@
 cost and a verdict, then [TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) reopens to decide what
 gets built.
 
+✅ **Pile B decided and shipped, 2026-08-05** (Richard: *"unregister the 9 browser nodes"*). The
+cloud picker went **58 → 48 node types**. See §4 Pile B for what shipped and §1 for the counts.
+
 **Why this exists.** TALK-001 audited the *workflow step* catalog and accepted "workflows
 orchestrate, **cloud functions compute**" as the answer to every gap — without ever auditing what a
 cloud function can compute *with*. That was the hole in the conversation. This doc closes it.
@@ -21,6 +24,10 @@ a reason).
 ---
 
 ## 1. What a cloud function actually has today — measured, not remembered
+
+> ⚠️ **This section describes the picker BEFORE the Pile B decision.** It is kept as measured
+> because §2's argument is about how those nodes got there. Since 2026-08-05 the cloud library is
+> **48 types**: the ten struck below no longer appear.
 
 **58 node types registered; 57 offered in the picker.** The picker is driven by
 [cloud-node-library.json](../../../packages/noodl-editor/src/editor/src/models/nodelibrary/cloud-node-library.json),
@@ -61,10 +68,12 @@ registered in the **shared** runtime rather than the viewer, so all fourteen of 
 into the cloud registry as a side effect. Nobody chose it.
 
 **So the decision stands, unchanged by the correction:** Global Store ×3, Optimistic Update, State
-History, Undo/Redo, State Snapshot, Action Dispatcher, Action Handler, Component Children — 9 nodes
-offered to a server-side function where they range from useless to actively misleading. The
-Streaming six I'd keep (calling an upstream streaming API server-side is exactly
-[CWF-007](CWF-007-STREAMING-RESPONSES.md)'s case). *Your call — it's in the list below.*
+History, Undo/Redo, State Snapshot, Action Dispatcher, Action Handler — **nine registered nodes**,
+plus **Component Children**, offered to a server-side function where they range from useless to
+actively misleading. The Streaming six I'd keep (calling an upstream streaming API server-side is
+exactly [CWF-007](CWF-007-STREAMING-RESPONSES.md)'s case). *Your call — it's in the list below.*
+
+✅ **Answered 2026-08-05: un-register them.** Shipped; see Pile B.
 
 ## 3. Measured: the ceiling is much higher than the node list suggests
 
@@ -166,11 +175,31 @@ concurrency, stop-on-failure ([runtasks.ts:151-250](../../../packages/noodl-runt
 For Each itself imports React and is genuinely browser-shaped. The gap is *producing and reshaping*
 arrays, not looping over them.
 
-### Pile B — present but browser-shaped
+### Pile B — present but browser-shaped ✅ DONE
 
-The nine in §2. Options: un-register for cloud (check first whether any existing function uses
-one), or keep and document. Un-registering is a one-line-per-node change plus a snapshot
-regenerate. **This is the one open decision that needs you and nothing else** — see §7.
+**Decided 2026-08-05 (Richard): un-register.** Shipped the same day. What went, and how:
+
+- **The nine registered nodes** left the cloud vocabulary through a new `type !== 'cloud'` block at
+  the foot of `registerNodes` ([noodl-runtime.ts:166-275](../../../packages/noodl-runtime/noodl-runtime.ts#L166-L275)).
+  That block is the subtraction the runtime never had — the shared list reached *every* runtime and
+  the viewer could only ever add to it, which is precisely how AIX-005 leaked fourteen nodes into
+  the cloud without a decision (§2). Adding to the block is now the documented way to say
+  "browser only".
+- **Component Children** is not registered at all — it is **seeded into the export by hand**
+  ([nodelibraryexport.ts:363-380](../../../packages/noodl-runtime/src/nodelibraryexport.ts#L363-L380)),
+  because it is a marker `NodeScope` interprets structurally rather than a node with a definition.
+  It is dropped for cloud by a new optional `{ runtimeType }` argument, passed from `getNodeLibrary`
+  (so a live cloud client agrees) and from the snapshot generator (so the committed file agrees).
+  **Nothing behavioural changed**: a graph that already carries the marker still works; it is simply
+  no longer offered on a canvas with nothing visual to place children into.
+- **Nothing used them.** Grepped `nodegx-backend/{src,tests}` and `noodl-viewer-cloud/src` for all
+  nine type names before touching anything: zero hits.
+
+Measured after: **58 → 48 node types**, removals exactly the ten and nothing else — every surviving
+type byte-identical, and `typecasts`/`dynamicports`/`colors`/`nodeIndex` untouched. The Streaming
+six survive as intended. Gates run: `cloud-library:check`, `catalog:check`, `catalog:merge:check`,
+`catalog:encoding:selftest`, `typecheck:{runtime,cloud,viewer,editor}`, and the runtime (2144),
+viewer (853), backend (743), mcp (161) and backend-contract (199) suites.
 
 ### Pile C — your auth ask, which is half-built already
 
@@ -246,9 +275,8 @@ rows 2, 9 and 10 real rather than notional.
 
 ## 7. What happens next
 
-1. **One decision only yours** — Pile B: un-register the 9 browser-shaped nodes from the cloud
-   runtime, or leave them and document? (My recommendation: un-register the 9, keep the Streaming
-   6.)
+1. ~~**One decision only yours** — Pile B.~~ ✅ **Answered and shipped 2026-08-05**: un-registered,
+   Streaming six kept, cloud picker 58 → 48. Details in Pile B.
 2. You add rows to §6 and strike anything you disagree with.
 3. TALK-001 reopens for the decision — and the survivors become CWF tasks, sequenced against
    the existing six. **CWF-003 has already been updated** with §3.2's measurement: its first check
