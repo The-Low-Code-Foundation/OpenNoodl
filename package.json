@@ -35,6 +35,7 @@
     "ci:build:viewer": "lerna exec --scope @noodl/noodl-viewer-react -- npm run build",
     "ci:build:editor": "lerna exec --scope noodl-editor -- npm run build:bundles",
     "build:editor": "ts-node -P ./scripts/tsconfig.json ./scripts/build-editor.ts",
+    "build:sidecars": "npm --prefix packages/nodegx-backend run build && npm --prefix packages/noodl-mcp run build && npm --prefix packages/nodegx-observe run build && node scripts/check-build-artefacts.js --built",
     "build:editor:_viewer": "ts-node -P ./scripts/tsconfig.json ./scripts/noodl-editor/build-viewer.ts",
     "build:editor:_editor": "ts-node -P ./scripts/tsconfig.json ./scripts/noodl-editor/build-editor.ts",
     "build:editor:pack": "ts-node -P ./scripts/tsconfig.json ./scripts/build-pack.ts",

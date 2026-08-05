@@ -55,6 +55,12 @@ jobs:
         env:
           WORKSPACE_PATH: .
 
+      # See release.yml: this path bypasses scripts/build-editor.ts, and a
+      # missing extraResources source is only a warning to electron-builder.
+      # (MCP-002)
+      - name: Build packaged sidecars
+        run: npm run build:sidecars
+
       - name: Build and package the editor
         run: npm run build:editor:_editor
         env:

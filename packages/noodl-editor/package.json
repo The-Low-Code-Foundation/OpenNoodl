@@ -89,6 +89,14 @@
         "to": "nodegx-backend/cli.js.map"
       },
       {
+        "from": "../noodl-mcp/dist/noodl-mcp.cjs",
+        "to": "noodl-mcp/noodl-mcp.cjs"
+      },
+      {
+        "from": "../nodegx-observe/dist/nodegx-observe.cjs",
+        "to": "nodegx-observe/nodegx-observe.cjs"
+      },
+      {
         "from": "../../PRIVACY.md",
         "to": "legal/PRIVACY.md"
       },

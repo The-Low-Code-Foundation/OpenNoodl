@@ -1,8 +1,11 @@
 # MCP-002 — Ship both MCP servers in the packaged app
 
 **Created:** 2026-08-05, out of [TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) decision 7.
-**Status:** specified, not started. **Gates:** [MCP-001](MCP-001-CONNECT-AN-AI-AGENT.md) for anyone
-who did not clone the repo. **Depends on:** nothing.
+**Status:** **BUILT** 2026-08-06 — all four slices, plus a fifth the doc did not know it needed
+(see *The premise that was wrong*). Not verified against an actual packaged app; see *What a
+human must still verify*.
+**Gates:** [MCP-001](MCP-001-CONNECT-AN-AI-AGENT.md) for anyone who did not clone the repo.
+**Depends on:** nothing.
 
 A packaged-app user has **no file to point `claude mcp add` at**. SUB-010's own assessment named
 this — the gap between "provable" and "usable by a stranger" is distribution — and it was never
@@ -32,6 +35,43 @@ The precedent is exact and already load-bearing for the backend:
 
 Two more build steps, two more `extraResources` entries, one resolver in the same shape.
 
+## The premise that was wrong — and it was the load-bearing one
+
+**"Follow the `nodegx-backend` precedent" would have shipped nothing.** The precedent is not
+load-bearing; it is dead code on the path that matters.
+
+`scripts/build-editor.ts` is the *local* packaging entry point. **CI does not use it.**
+[release.yml](../../../.github/workflows/release.yml) and
+[nightly.yml](../../../.github/workflows/nightly.yml) call `build:editor:_viewer` and then
+`build:editor:_editor` directly, so the `nodegx-backend` build step in `build-editor.ts` has never
+run in a published build.
+
+And nothing complains, because electron-builder does not treat a missing `extraResources` source as
+an error:
+
+```js
+// node_modules/app-builder-lib/out/fileMatcher.js — copyFiles()
+const fromStat = await statOrNull(matcher.from);
+if (fromStat == null) {
+  log.warn({ from: matcher.from }, `file source doesn't exist`);
+  return;
+}
+```
+
+A warning, and the app ships without the file. So **every released NodeGX artifact is very likely
+missing `Resources/nodegx-backend/cli.js`** (this task did not run a release to confirm it, but the
+code path is unambiguous) — the exact "artefact that exists on the machine that made it and nowhere
+else" failure this doc's own traps section warns about, already happening to the thing being
+copied.
+
+The fix is one list in one place, called from every path:
+
+- `npm run build:sidecars` builds all three bundles and ends in
+  `check-build-artefacts.js --built`, which fails when any `extraResources` source is missing.
+- `scripts/build-editor.ts` calls it (replacing its inline `nodegx-backend` step).
+- `release.yml` and `nightly.yml` each gained a **Build packaged sidecars** step, because they
+  bypass `build-editor.ts` entirely.
+
 ## Slices
 
 ### Slice 1 — build both packages during the editor build
@@ -52,6 +92,13 @@ Both packages already have `"build": "node build.mjs"` and produce a single `.cj
 Ship the `.map` files or don't — but decide, and match what `nodegx-backend` does (it ships its
 map). A stack trace from a bundled MCP server with no map is unreadable, and these are the
 processes an agent runs unattended.
+
+**Decided: no maps.** Both packages build with `sourcemap: false`, and — the reason that is the
+right default rather than an oversight — **Node ignores a source map unless the process was started
+with `--enable-source-maps`**, which the command MCP-001 hands out (`node <path> …`) does not pass.
+Shipping a 5MB file nothing reads is the stale-artefact failure mode in miniature. If the emitted
+command ever gains that flag, flip `sourcemap` in both `build.mjs` files and add two more
+`extraResources` entries — one line each. Noted in `build-editor.ts` so the next person finds it.
 
 ### Slice 3 — one resolver, two servers
 
@@ -76,6 +123,17 @@ decides.
 that silently ships without the MCP binaries is exactly the "a green build proves nothing" class
 from the packaging notes — assert both files are present after a pack.
 
+⚠️ **The script is not what this slice assumed.** It is a *git-tracking* guard — it fails when
+generated bundles are **committed** — and it runs on a bare checkout with no `npm install`
+(`check-build-artefacts.yml`). Adding "both binaries must exist" to it unconditionally would make
+`npm run check:artefacts` red in every fresh clone. So it grew two modes instead:
+
+- default (the commit gate): every `extraResources` entry that comes from a package `dist/` names a
+  package `build-editor.ts` mentions. Requires nothing to be built, catches an entry added with no
+  build step and a build step deleted from under an entry.
+- `--built` (run from `build:sidecars`, i.e. from every packaging path): the sources must exist on
+  disk.
+
 ## Success criteria
 
 - [ ] `npm run build:editor` produces both `.cjs` files before electron-builder runs.
@@ -85,6 +143,40 @@ from the packaging notes — assert both files are present after a pack.
       packaged build, from the same code.
 - [ ] With `dist/` deleted, the resolver returns `entry: null` and a populated `probed`.
 - [ ] `check:artefacts` fails if either binary is missing.
+
+## What shipped
+
+| Slice | Where |
+|---|---|
+| 1 | `npm run build:sidecars` (root `package.json`), called from `scripts/build-editor.ts` and from both packaging workflows |
+| 2 | `packages/noodl-editor/package.json` → `build.extraResources`, two entries, no maps |
+| 3 | `packages/noodl-editor/src/main/src/mcp/resolveMcpServer.js` + `tests-main/mcp/resolve-mcp-server.test.js` (6 tests) |
+| 4 | `scripts/check-build-artefacts.js`, two modes |
+
+The resolver has **no caller yet** — MCP-001 is its caller, and the IPC that carries it to the
+settings renderer is MCP-001's work. It carries each server's one-line caption alongside the path so
+the two servers are described in one place rather than in the panel.
+
+## What a human must still verify
+
+No packaged build was run (it is not cheap, and `build:editor` starts with `lerna clean`). The
+bundles themselves were built and smoke-run — `node packages/nodegx-observe/dist/nodegx-observe.cjs
+--version` prints `0.1.0`, `noodl-mcp --help` prints its usage — but nothing here proves what lands
+inside a `.app`. To confirm:
+
+```
+npm run build:editor
+ls "packages/noodl-editor/dist/mac-arm64/NodeGX.app/Contents/Resources/noodl-mcp"
+ls "packages/noodl-editor/dist/mac-arm64/NodeGX.app/Contents/Resources/nodegx-observe"
+node "…/NodeGX.app/Contents/Resources/nodegx-observe/nodegx-observe.cjs" --version
+```
+
+The last line is the one that matters: `extraResources` puts the file outside the asar precisely so
+an external `node` can read it, and only running it proves that it did.
+
+⚠️ **Watch the build log for `file source doesn't exist`.** That warning is how this failed
+silently for `nodegx-backend`; `--built` should now make it impossible to reach, and seeing it would
+mean the check was bypassed.
 
 ## Traps
 

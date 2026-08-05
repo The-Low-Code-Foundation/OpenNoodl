@@ -1,8 +1,15 @@
 name: Check build artefacts
 
-# Generated webpack output used to be committed under packages/noodl-editor/src/,
-# which is how a months-old bundle could run instead of the source beside it
-# (REV-008). This guard makes that regression loud instead of silent.
+# Two guards, both about the source/build-output boundary:
+#
+#  1. Generated webpack output used to be committed under
+#     packages/noodl-editor/src/, which is how a months-old bundle could run
+#     instead of the source beside it (REV-008).
+#  2. Every `extraResources` entry names a package the build script actually
+#     builds (MCP-002) — electron-builder only warns when one is missing, so
+#     without this an app can ship without a file and the build stays green.
+#
+# Both make a silent regression loud.
 
 on:
   push:
@@ -17,6 +24,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # No npm install: the check only shells out to `git ls-files`.
+      # No npm install: the check shells out to `git ls-files` and reads two
+      # files off the checkout. Nothing has to be built — `--built`, which does
+      # require that, is run from the packaging path instead.
       - name: Assert no generated bundles are tracked
         run: node scripts/check-build-artefacts.js

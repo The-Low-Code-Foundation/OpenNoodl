@@ -67,6 +67,16 @@ jobs:
         env:
           WORKSPACE_PATH: .
 
+      # Everything electron-builder copies via `extraResources`: the backend
+      # service and the two MCP servers. This path does NOT go through
+      # scripts/build-editor.ts (which is where those builds used to live), and
+      # electron-builder only *warns* when an extraResources source is missing —
+      # so without this step the published app shipped without them and the
+      # build was green. `build:sidecars` ends in `check-build-artefacts.js
+      # --built`, which fails the release instead. (MCP-002)
+      - name: Build packaged sidecars
+        run: npm run build:sidecars
+
       - name: Build, sign, and publish the editor
         run: npm run build:editor:_editor
         env:
