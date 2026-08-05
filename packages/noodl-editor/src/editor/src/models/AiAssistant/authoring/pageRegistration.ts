@@ -18,9 +18,15 @@
  * the plan created and which of them are pages is something the apply *knows*,
  * exactly, and a fact the apply knows should not be re-derived by a language
  * model that has to be told, believed, and checked. The prompts still carry the
- * contract (an agent authoring an App update by hand must write a valid `pages`
- * value, and `noodl-mcp` has no plan transaction at all) — this is the floor
- * under that, not a replacement for it.
+ * contract — an agent authoring an App update by hand must write a valid `pages`
+ * value — so this is the floor under that, not a replacement for it.
+ *
+ * ⚠️ This header used to add *"and `noodl-mcp` has no plan transaction at all"*.
+ * That was wrong when it was written: `noodl-mcp` has had one since AIX-011
+ * (`create_plan`/`stage_plan_operation`/`apply_plan`), built on this very
+ * package's `authoring/plan` module. What it lacked was not a transaction but
+ * this module — so AAQ-005 binds it there too, and the belief that it could not
+ * be bound is part of why nobody looked for a year.
  *
  * Idempotent by construction: a page already listed is not listed twice, so an
  * agent that *did* write the router update loses nothing and collides with
@@ -209,4 +215,187 @@ export function pageDisplayName(legacyName: string): string {
     .replace(/^\//, '')
     .replace(/^#__page__\//, '')
     .replace(/^Pages\//i, '');
+}
+
+// ── AAQ-005: the same registration, over plain data ───────────────────────────
+//
+// Everything above is pure already; everything below is what the *editor's*
+// binding used to hold privately in `staging.ts`, expressed over plain nodes
+// instead of `ProjectModel`/`NodeGraphNode`. It is here because AAQ-005 gave
+// this module a second client.
+//
+// ⚠️ The premise this module was written under is stale, and its own header
+// still states it: *"`noodl-mcp` has no plan transaction at all"*. It has had
+// one since AIX-011 (`create_plan`/`stage_plan_operation`/`apply_plan`), which
+// imports this package's `authoring/plan` module. What `noodl-mcp` actually
+// lacked was not a transaction but **this** — so a page written through the
+// external door was created, validated, and never listed in any router. The
+// unreachable page finding (#5), surviving in the other client after Layer 1
+// closed it in this one.
+
+/** One node, in the only shape registration reads it. */
+export interface RegistrationNode {
+  id: string;
+  type: string;
+  parameters?: Record<string, unknown> | null;
+  children?: readonly string[];
+  parent?: string;
+}
+
+/**
+ * One component, in the only shape registration reads it.
+ *
+ * No `visualRoots`: the placeholder rule reads parentless nodes on purpose —
+ * see {@link isPlaceholderPageGraph}. Carrying the field would invite a future
+ * reader to use it.
+ */
+export interface RegistrationComponent {
+  /** Legacy name ("/App"). */
+  name: string;
+  nodes: readonly RegistrationNode[];
+  /** True for the project's root component — its router is the app's own. */
+  isRoot?: boolean;
+}
+
+/**
+ * A Router's `pages` parameter, defensively.
+ *
+ * Hand-edited projects, older exports and a model that half-understood the shape
+ * all reach this, and the one thing that must never happen is a caller throwing
+ * on a malformed value it could simply have replaced.
+ */
+export function readRouterPagesValue(parameters: Record<string, unknown> | null | undefined): RouterPagesValue {
+  const value = parameters?.['pages'];
+  if (!value || typeof value !== 'object') return { routes: [] };
+  const record = value as Record<string, unknown>;
+  const routes = Array.isArray(record['routes'])
+    ? record['routes'].filter((route): route is string => typeof route === 'string' && Boolean(route.trim()))
+    : [];
+  const startPage = record['startPage'];
+  return {
+    routes,
+    ...(typeof startPage === 'string' && startPage.trim() ? { startPage: startPage.trim() } : {})
+  };
+}
+
+/** Every Router node in these components, with where it lives and what it lists. */
+export function findRoutersInComponents(components: readonly RegistrationComponent[]): RouterLocation[] {
+  const routers: RouterLocation[] = [];
+  for (const component of components) {
+    for (const node of component.nodes) {
+      if (!ROUTER_NODE_TYPES.has(node.type)) continue;
+      const name = node.parameters?.['name'];
+      routers.push({
+        component: component.name,
+        nodeId: node.id,
+        ...(typeof name === 'string' && name.trim() ? { name: name.trim() } : {}),
+        pages: readRouterPagesValue(node.parameters),
+        ...(component.isRoot ? { isRoot: true } : {})
+      });
+    }
+  }
+  return routers;
+}
+
+/**
+ * A page nobody has built anything in — the shape a freshly created project's
+ * Home has, and the only start page an apply is allowed to move away from.
+ *
+ * ⚠️ **The editor's original version of this rule was wrong, and a live pass is
+ * how we found out.** It measured "empty" as the page's root having no children,
+ * on the stated belief that the template's Home is one `Page` node with two
+ * parameters. It is not — `hello-world.template.ts` gives Home a `Text` child
+ * reading *"Hello World!"* — so the one case the mechanism existed for never
+ * matched, and every app the wizard built registered its pages correctly and
+ * then **opened on "Hello World!"**.
+ *
+ * What is measured is the template's actual shape, generalised only as far as it
+ * honestly generalises: a single root, and under it at most one leaf `Text`. The
+ * asymmetry is unchanged — taking home from a page somebody built is worse than
+ * opening on the wrong one — and a bare line of text with nothing under it is not
+ * a page somebody built.
+ *
+ * `noodl-mcp`'s own skeleton (`writeProjectSkeleton`) builds Home the same way: a
+ * `Page` with a single leaf `Text`. That is checked rather than assumed —
+ * a placeholder rule calibrated on the other client's template is precisely the
+ * mistake above, and it is why this takes the roots it is given.
+ */
+export function isPlaceholderPageGraph(component: RegistrationComponent): boolean {
+  const byId = new Map(component.nodes.map((node) => [node.id, node]));
+  const roots = rootNodesOf(component.nodes);
+
+  if (roots.length === 0) return true;
+  if (roots.length > 1) return false;
+
+  const children = childIdsOf(roots[0], component.nodes);
+  if (children.length === 0) return true;
+  if (children.length > 1) return false;
+
+  const only = byId.get(children[0]);
+  return Boolean(only && only.type === 'Text' && childIdsOf(only, component.nodes).length === 0);
+}
+
+/**
+ * A node's children, from whichever bookkeeping the source keeps.
+ *
+ * The two clients differ here and are both right: the editor's candidate builder
+ * derives `children` arrays from `parent` fields, while `noodl-mcp` accepts
+ * either and reconciles them. Reading both means this rule cannot depend on
+ * which door the component came through.
+ */
+function childIdsOf(node: RegistrationNode, nodes: readonly RegistrationNode[]): string[] {
+  if (node.children?.length) return [...node.children];
+  return nodes.filter((n) => n.parent === node.id).map((n) => n.id);
+}
+
+/**
+ * The graph's top-level nodes.
+ *
+ * ⚠️ **Parentless, not "visual roots"** — deliberately, and the difference is
+ * load-bearing. `NodeGraphModel.roots` holds every top-level node, visual and
+ * logic alike, and `visualRoots` is the `allowAsChild` subset of it
+ * (`NodeGraphModel.getVisualRootIds`). Reading `visualRoots` here would quietly
+ * *widen* the placeholder rule: a page carrying a stray logic node has two roots
+ * and is not a placeholder today, and would become one — meaning an apply could
+ * take the start page away from a page somebody had begun building. Preserving
+ * the editor's exact answer is the whole point of lifting this function.
+ */
+function rootNodesOf(nodes: readonly RegistrationNode[]): RegistrationNode[] {
+  const claimed = new Set<string>();
+  for (const node of nodes) {
+    for (const child of node.children ?? []) claimed.add(child);
+  }
+  return nodes.filter((node) => !node.parent && !claimed.has(node.id));
+}
+
+/**
+ * What registering these pages would do to this project, without doing it —
+ * the whole decision, including the placeholder start-page rule.
+ *
+ * The plan review shows this and the transaction performs exactly it: one
+ * function, so the promise and the act cannot disagree. That is also why a page
+ * the caller is about to *fill* is excluded from the placeholder test — run
+ * before the apply the project's Home is still empty, run after it is not, and
+ * without the clause the preview would offer to move the start page and the
+ * apply would decline to.
+ */
+export function resolvePageRegistration(
+  components: readonly RegistrationComponent[],
+  pages: readonly string[]
+): PageRegistration | undefined {
+  const routers = findRoutersInComponents(components);
+  const startPage = chooseRouter(routers)?.pages.startPage;
+  const isBeingBuilt = startPage !== undefined && pages.some((page) => isSamePage(page, startPage));
+  // ⚠️ Exact, not `isSamePage`. The editor resolved this through
+  // `getComponentWithName`, which compares names verbatim, and a start page
+  // recorded in a different form than its component simply found nothing and
+  // moved nothing. Widening it here would be a real behaviour change (a start
+  // page could become movable that was not) smuggled in under a refactor.
+  const current = startPage ? components.find((component) => component.name === startPage) : undefined;
+
+  return planPageRegistration(routers, pages, {
+    ...(startPage && !isBeingBuilt && current && isPlaceholderPageGraph(current)
+      ? { placeholderStartPage: startPage }
+      : {})
+  });
 }

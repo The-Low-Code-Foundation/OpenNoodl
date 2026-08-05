@@ -2,8 +2,82 @@
 
 **Findings:** #11 and Richard's directive on the contract question: *"Hooold the front door… Surely
 we can do better than [one component per session]. Let's not cut corners here."*
-**Status:** open — **slice 1 (one gate) is built and green**; the toolset and the multi-component
-contract are not started
+**Status:** open — **slice 1 (one gate) and slice 2 (the apply gap) are built and green**; the toolset
+convergence and criteria 3/4 are not started
+
+## ⚠️ Slice 2 landed, and it found the gate was only half the substrate (2026-08-05)
+
+Slice 1 made both clients *judge* an authored candidate identically. Slice 2 found that they still did
+completely different things **after** judging it, and that the difference silently reintroduced two of
+the four findings Layer 1 was written to close.
+
+**Layer 1's three project-level effects lived in the editor's apply path and nowhere else.**
+
+| Layer-1 effect | Editor | `noodl-mcp`, before slice 2 |
+|---|---|---|
+| Register the page in a Router (AAQ-001, finding #5) | `planPageRegistration` → `applyAuthoredPlan` | **absent** — read `nodegx.routes.json`, never wrote a router |
+| `bodyScroll` (AAQ-003, finding #8) | `applyAuthoredPlan` `settings` | **absent** — `create_plan` could not express a project setting |
+| Provision a backend (AAQ-002) | plan kind `'provision'` | **absent** — the kind was not in `create_plan`'s enum |
+
+`provision` and `scroll` appeared **nowhere** in `packages/noodl-mcp` (grep, zero hits), while both
+packages import `validatePlan`/`orderPlanOperations` from the *same* `authoring/plan` module — which
+has handled `provision` since AIB-007. One plan model, two plan vocabularies.
+
+**And slice 1 made the first one sharper, not safer.** `checkNavigation` resolves a Navigate target
+against the project's **component names**, not against router registration. That is sound in the editor
+*only because* the editor's apply registers the page a moment later. Bound to a client that never
+registered anything, the check certified as correct exactly the button that would not work: Claude Code
+could `create_component` a page, wire a `RouterNavigate` at it, pass the shared gate clean, and ship an
+app with a blank screen. **Gate parity without apply parity is a gate that lies.**
+
+### What was built
+
+- **The registration decision is now one function with two bindings.** `readRouterPagesValue`,
+  `findRoutersInComponents`, `isPlaceholderPageGraph` and `resolvePageRegistration` moved out of the
+  editor's `staging.ts` into `pageRegistration.ts` (already pure, already AAQ-001's module), expressed
+  over plain nodes. The editor's `staging.ts` supplies `ProjectModel` nodes; `noodl-mcp`'s new
+  `project/pageRegistration.ts` supplies `ProjectStore` ones. Neither holds policy.
+- **Registration fires on every door**: `create_component`, `update_component` (updates count, exactly
+  as the editor's apply does — a page that exists but was never listed is the state the task is about)
+  and `apply_plan`, in plan order, first page becomes home. Reported as `registeredPages` with the
+  editor's own `describePageRegistration` sentence, because a tool that writes a component the caller
+  did not name has to say so.
+- **`create_plan` gained `scroll`**, applied at `apply_plan` as `bodyScroll` through a new
+  `ProjectStore.writeProjectSettings` that **never overwrites a setting already present** — the
+  editor's rule and its reasoning (a plan states what a *new* app needs).
+- **`provision` is accepted and refused with a reason** — see AAQ-011 F13. One vocabulary, an honest
+  capability.
+- The MCP server instructions and `create_component`'s description now state the page contract. The
+  word "Router" had appeared **nowhere** in anything a model driving this server could read, which is
+  finding #5's root cause reproduced on the external door.
+
+### Two traps worth keeping
+
+1. **`graph.roots` is not `visualRoots`.** The placeholder start-page rule counts *parentless* nodes,
+   visual and logic alike; `visualRoots` is the `allowAsChild` subset. Lifting the rule onto v2 files
+   and reading `visualRoots` would have *widened* it — a page carrying a stray logic node would become
+   a "placeholder", letting an apply take the start page away from a page somebody had begun building.
+   Caught before it shipped, and it now has its own spec.
+2. **The start-page lookup is exact, not `isSamePage`.** The editor resolved it through
+   `getComponentWithName`, which compares verbatim. Widening it to the module's tolerant comparison
+   would have been a real behaviour change smuggled in under a refactor.
+
+### Evidence
+
+- `packages/noodl-mcp/tests/pageRegistration.test.ts` — 8 cases. **Verified non-vacuous: 6 of 8 fail
+  with registration neutralised**; the 2 that pass are the negative cases, which should.
+- `packages/noodl-mcp/tests/planProjectEffects.test.ts` — 7 cases for the scroll setting and the
+  provision refusal. **Verified non-vacuous: 3 of 7 fail** with both mechanisms reverted — precisely
+  the three that assert a mechanism.
+- `tests-unit/aaq-001/pageRegistration.test.ts` — 14 new cases over the lifted core, including the
+  `visualRoots` trap above.
+- Editor suite **2200 specs, 0 failures**; `noodl-mcp` **136 tests / 14 suites** (was 121/12); runtime
+  **2144 passed**; both editor typechecks clean.
+
+⚠️ **A ninth stale premise, and it is why nobody looked.** `pageRegistration.ts`'s own header said
+*"`noodl-mcp` has no plan transaction at all"*. It has had one since AIX-011 — built on this very
+package's `authoring/plan` module. What it lacked was not a transaction but the registration. Corrected
+in the header.
 
 ## ⚠️ Slice 1 landed, and it corrected this file's §5 (2026-08-05)
 
@@ -85,6 +159,9 @@ Acceptance criteria 1, 2 and 5 are met **for the gate**. Criterion 2's "same too
 source of truth" is untouched — the editor still exposes three tools and `noodl-mcp` exposes its own
 surface, and that convergence is the toolset work below. Criteria 3 (a scripted multi-component
 session) and 4 (Claude Code driven live) are not started.
+
+*(Slice 2 then closed the apply gap — see the section above. Criterion 4 is now worth driving: before
+slice 2 it would have produced an app with unreachable pages and no scrolling, and reported success.)*
 
 ## The problem
 

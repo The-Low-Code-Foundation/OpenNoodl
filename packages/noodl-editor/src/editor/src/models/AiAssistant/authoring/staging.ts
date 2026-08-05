@@ -19,14 +19,13 @@ import { ComponentModel } from '../../componentmodel';
 import type { NodeGraphNode } from '../../nodegraphmodel';
 import type { ProjectModel } from '../../projectmodel';
 import { UndoActionGroup, UndoQueue } from '../../undo-queue-model';
-import type { PageRegistration, RouterLocation, RouterPagesValue } from './pageRegistration';
+import type { PageRegistration, RegistrationComponent, RegistrationNode, RouterLocation } from './pageRegistration';
 import {
-  chooseRouter,
-  isSamePage,
+  findRoutersInComponents,
+  isPlaceholderPageGraph,
   looksLikePageComponent,
   PAGE_NODE_TYPE,
-  planPageRegistration,
-  ROUTER_NODE_TYPES
+  resolvePageRegistration
 } from './pageRegistration';
 import type { ComponentFiles } from './types';
 
@@ -231,47 +230,41 @@ export function stagedComponentIsPage(files: ComponentFiles): boolean {
   return files.nodes.nodes.some((node) => node.type === PAGE_NODE_TYPE);
 }
 
-/** Every Router node in the project, with where it lives and what it lists. */
-export function findProjectRouters(project: ProjectModel): RouterLocation[] {
+/**
+ * The project as the registration core reads it — plain nodes, no `ProjectModel`.
+ *
+ * AAQ-005: the decision itself (which router, which pages, whether the start page
+ * moves) lives in `pageRegistration.ts` so `noodl-mcp` computes the identical
+ * answer. This function is the editor's half of that seam and deliberately holds
+ * no policy.
+ *
+ * ⚠️ `graph.roots` rather than `getVisualRootIds()` — the placeholder rule counts
+ * top-level nodes of every kind, and narrowing it to visual roots would widen
+ * which pages count as placeholders. See {@link isPlaceholderPageGraph}.
+ */
+function registrationComponents(project: ProjectModel): RegistrationComponent[] {
   const rootComponent = project.getRootComponent();
-  const routers: RouterLocation[] = [];
-
-  for (const component of project.getComponents()) {
+  return project.getComponents().map((component) => {
+    const nodes: RegistrationNode[] = [];
     component.graph.forEachNode((node: NodeGraphNode) => {
-      if (!ROUTER_NODE_TYPES.has(node.typename)) return;
-      const name = node.parameters?.['name'];
-      routers.push({
-        component: component.name,
-        nodeId: node.id,
-        ...(typeof name === 'string' && name.trim() ? { name: name.trim() } : {}),
-        pages: readRouterPages(node),
-        ...(component === rootComponent ? { isRoot: true } : {})
+      nodes.push({
+        id: node.id,
+        type: node.typename,
+        parameters: node.parameters ?? undefined,
+        ...(node.parent ? { parent: node.parent.id } : {})
       });
     });
-  }
-
-  return routers;
+    return {
+      name: component.name,
+      nodes,
+      ...(component === rootComponent ? { isRoot: true } : {})
+    };
+  });
 }
 
-/**
- * A Router's `pages` parameter, defensively.
- *
- * Hand-edited projects, older exports and a model that half-understood the shape
- * all reach this, and the one thing that must never happen is an apply throwing
- * on a malformed value it could simply have replaced.
- */
-function readRouterPages(node: NodeGraphNode): RouterPagesValue {
-  const value = node.parameters?.['pages'];
-  if (!value || typeof value !== 'object') return { routes: [] };
-  const record = value as Record<string, unknown>;
-  const routes = Array.isArray(record['routes'])
-    ? record['routes'].filter((route): route is string => typeof route === 'string' && Boolean(route.trim()))
-    : [];
-  const startPage = record['startPage'];
-  return {
-    routes,
-    ...(typeof startPage === 'string' && startPage.trim() ? { startPage: startPage.trim() } : {})
-  };
+/** Every Router node in the project, with where it lives and what it lists. */
+export function findProjectRouters(project: ProjectModel): RouterLocation[] {
+  return findRoutersInComponents(registrationComponents(project));
 }
 
 /**
@@ -296,17 +289,10 @@ function readRouterPages(node: NodeGraphNode): RouterPagesValue {
  * more (a Group, a second child, a nested tree) is left alone as before.
  */
 export function isPlaceholderPage(project: ProjectModel, legacyName: string): boolean {
-  const component = project.getComponentWithName(legacyName);
+  const components = registrationComponents(project);
+  const component = components.find((c) => c.name === legacyName);
   if (!component) return false;
-  const roots = component.graph.roots ?? [];
-  if (roots.length === 0) return true;
-  if (roots.length > 1) return false;
-
-  const children = roots[0].children ?? [];
-  if (children.length === 0) return true;
-  if (children.length > 1) return false;
-  const only = children[0];
-  return only.typename === 'Text' && (only.children ?? []).length === 0;
+  return isPlaceholderPageGraph(component);
 }
 
 /**
@@ -323,14 +309,7 @@ export function prospectivePageRegistration(
   project: ProjectModel,
   pages: readonly string[]
 ): PageRegistration | undefined {
-  const routers = findProjectRouters(project);
-  const startPage = chooseRouter(routers)?.pages.startPage;
-  const isBeingBuilt = startPage !== undefined && pages.some((page) => isSamePage(page, startPage));
-  return planPageRegistration(routers, pages, {
-    ...(startPage && !isBeingBuilt && isPlaceholderPage(project, startPage)
-      ? { placeholderStartPage: startPage }
-      : {})
-  });
+  return resolvePageRegistration(registrationComponents(project), pages);
 }
 
 /**

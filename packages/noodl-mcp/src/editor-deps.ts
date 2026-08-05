@@ -73,6 +73,41 @@ export type {
 } from '../../noodl-editor/src/editor/src/validation';
 export { normalizeV2Component } from '../../noodl-editor/src/editor/src/validation/loadV2Project';
 
+// ─── Page registration (AAQ-001, shared by AAQ-005) ───────────────────────────
+// Which router a new page belongs in, whether the app should now open on it, and
+// what to tell the user it did. Pure by construction — `pageRegistration.ts`
+// imports nothing but the `validation` barrel it re-exports two names from.
+//
+// ⚠️ This was the other half of the AAQ-005 gap, and the sharper half. Slice 1
+// gave this package the gate's `checkNavigation`, which resolves a Navigate
+// target against the project's **component names** — sound in the editor only
+// because the editor's apply then registers the page in a Router. Bound to a
+// client whose apply did not, the check passed a page that no router listed:
+// `create_component` wrote it, the gate approved it, and the app could not reach
+// it. Finding #5 verbatim, surviving in the external door after Layer 1 closed
+// it in the editor. That module's own header still says "`noodl-mcp` has no plan
+// transaction at all" — stale since AIX-011; what it lacked was this.
+export {
+  chooseRouter,
+  describePageRegistration,
+  findRoutersInComponents,
+  isPlaceholderPageGraph,
+  isSamePage,
+  PAGE_NODE_TYPE,
+  pageDisplayName,
+  planPageRegistration,
+  readRouterPagesValue,
+  resolvePageRegistration,
+  ROUTER_NODE_TYPES
+} from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/pageRegistration';
+export type {
+  PageRegistration,
+  RegistrationComponent,
+  RegistrationNode,
+  RouterLocation,
+  RouterPagesValue
+} from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/pageRegistration';
+
 // ─── Schemas + structural validator (STRUCT-001) ──────────────────────────────
 export { SchemaValidator, SCHEMA_IDS, formatValidationErrors } from '../../noodl-editor/src/editor/src/schemas';
 export type {

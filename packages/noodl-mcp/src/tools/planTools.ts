@@ -59,6 +59,7 @@ import { ToolError } from '../errors';
 import type { ComponentFiles } from '../graph';
 import { reconcileHierarchy } from '../graph';
 import { pathToLegacyName, toPathForm, validateComponentPath } from '../paths';
+import { componentIsPage, registerPages, registrationSummary } from '../project/pageRegistration';
 import type { ProjectStore } from '../project/ProjectStore';
 import { authoredProjectViews, preconditionDiagnostics } from '../validate';
 import type { NodeInput } from './author';
@@ -257,10 +258,23 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         'Plans are validated here: creates must be new, updates must exist, one operation per component.',
       inputSchema: {
         request: z.string().describe('The overall request this plan implements, verbatim'),
+        scroll: z
+          .enum(['page', 'app'])
+          .optional()
+          .describe(
+            'How the app this plan builds scrolls, for a plan that builds one. "page": the browser scrolls, as ' +
+              'on any web page — marketing sites, listings, docs. "app": a fixed shell whose regions scroll ' +
+              'individually — dashboards, chat. Applied as the `bodyScroll` project setting, and ONLY when the ' +
+              'project has not already set it. ⚠️ The default is unset, which is falsy, which means "app": a ' +
+              'plan that builds a scrolling page and does not say so produces one clipped at the viewport with ' +
+              'no scrollbar, deployed as well as in preview.'
+          ),
         operations: z
           .array(
             z.object({
-              kind: z.enum(['create', 'update', 'doc']),
+              // `provision` is accepted so the vocabulary is one across both
+              // clients, and refused below with a reason — see the refusal.
+              kind: z.enum(['create', 'update', 'doc', 'provision']),
               target: z.string().describe('Component path ("Pages/Checkout"); for doc, a doc path'),
               intent: z.string().describe('One or two sentences: what this operation accomplishes')
             })
@@ -268,7 +282,30 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
           .min(1)
       }
     },
-    guarded((args: { request: string; operations: Array<{ kind: 'create' | 'update' | 'doc'; target: string; intent: string }> }) => {
+    guarded((args: {
+      request: string;
+      scroll?: 'page' | 'app';
+      operations: Array<{ kind: 'create' | 'update' | 'doc' | 'provision'; target: string; intent: string }>;
+    }) => {
+      // AAQ-005 — one vocabulary, an honest capability. The editor's plan model
+      // has carried `provision` since AIB-007 and this package imports that very
+      // module, so silently rejecting the kind at the schema edge told an agent
+      // its plan was malformed when the truth is that this server cannot create
+      // a backend: provisioning starts and supervises a `nodegx-backend` child
+      // process, which is the editor's backend manager over IPC, and
+      // `backend/client.ts` here only lists and talks to backends that already
+      // run. Refused with the sentence that actually helps.
+      const provisionOps = args.operations.filter((op) => op.kind === 'provision');
+      if (provisionOps.length > 0) {
+        throw new ToolError(
+          'invalid-argument',
+          'This server cannot provision a backend — it can read and administer backends that are already ' +
+            'running, but creating one means starting and supervising a new backend process, which only the ' +
+            'editor does. Create the backend in the editor (Backend Services), or in this project via ' +
+            'nodegx-backend directly, then plan the components against it. Nothing was created.',
+          { unsupportedOperations: provisionOps.map((op) => op.target) }
+        );
+      }
       const operations: PlanOperation[] = args.operations.map((op, index) => ({
         id: `op-${index + 1}`,
         kind: op.kind,
@@ -282,7 +319,11 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         existing.add(pathToLegacyName(key));
         existing.add(pathToLegacyName(entry.path));
       }
-      const plan: AuthoringPlan = { request: args.request, operations };
+      const plan: AuthoringPlan = {
+        request: args.request,
+        operations,
+        ...(args.scroll ? { scroll: args.scroll } : {})
+      };
       const errors = validatePlan(plan, { existingComponents: existing });
       for (const op of operations) {
         if (op.kind === 'create') {
@@ -310,13 +351,14 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
       const id = crypto.randomUUID();
       plans.set(id, {
         id,
-        plan: { request: args.request, operations: ordered },
+        plan: { ...plan, operations: ordered },
         staged: new Map(),
         stagedDocs: new Map()
       });
       return jsonResult({
         planId: id,
         operations: ordered,
+        ...(args.scroll ? { scroll: args.scroll } : {}),
         note:
           'Nothing is written yet. Stage every operation with stage_plan_operation (in the order given — ' +
           'creates first, so updates can instantiate them; docs last, so you write them knowing what the ' +
@@ -538,6 +580,30 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         });
         applied.push({ operation: op.id, target: op.target, revision });
       }
+      // AAQ-005 — register the pages this plan put into the project, in plan
+      // order, after the components are in. Same rule and same shared decision
+      // as the editor's apply: creates and updates both count (a page that
+      // exists but was never listed is the state the task is about), the first
+      // page is the one that becomes home when home is up for grabs, and plan
+      // order is the order the caller declared.
+      const pages: string[] = [];
+      for (const op of componentOps) {
+        const files = serverPlan.staged.get(op.id);
+        if (!files) continue;
+        const legacyName = pathToLegacyName(op.target);
+        if (componentIsPage(legacyName, files)) pages.push(legacyName);
+      }
+      const registration = registerPages(store, pages);
+
+      // AAQ-003, in the same place and for the same reason the editor applies it
+      // beside registration: a page that cannot scroll is as unreachable as a
+      // page nobody routed. Only when the plan said so, and only when the
+      // project has not already decided.
+      const settingsWritten =
+        serverPlan.plan.scroll !== undefined
+          ? store.writeProjectSettings({ bodyScroll: serverPlan.plan.scroll === 'page' })
+          : [];
+
       const docsWritten: Array<{ operation: string; path: string }> = [];
       for (const op of docOps) {
         const content = serverPlan.stagedDocs.get(op.id);
@@ -550,6 +616,8 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         applied,
         docs: docsWritten,
         skipped: [...skip],
+        ...registrationSummary(registration),
+        ...(settingsWritten.length > 0 ? { settings: settingsWritten } : {}),
         note: 'Plan applied and discarded. Re-read components with get_component for fresh revisions.'
       });
     })

@@ -151,7 +151,29 @@ export interface WriteValidationSummary {
   };
 }
 
-export interface CreateComponentResponse extends WriteValidationSummary {
+/**
+ * AAQ-005 — what a write did to the project's page router, when it did anything.
+ *
+ * Reported rather than performed silently: registration writes a *second*
+ * component (the one holding the Router), and a tool that quietly edits a file
+ * the caller did not name has to say so. The sentence is the editor's own
+ * `describePageRegistration`, so the two clients narrate the same act the same
+ * way.
+ */
+export interface PageRegistrationSummary {
+  registeredPages?: {
+    /** Legacy name of the component holding the router that was written. */
+    router: string;
+    /** Pages added to `routes`, in write order. May be empty when only the start page moved. */
+    added: string[];
+    /** Set when the app now opens on a different page. */
+    startPage?: string;
+    /** One human-readable sentence: what happened, in the user's terms. */
+    summary: string;
+  };
+}
+
+export interface CreateComponentResponse extends WriteValidationSummary, PageRegistrationSummary {
   created: string;
   legacyName: string;
   type: string;
@@ -159,7 +181,7 @@ export interface CreateComponentResponse extends WriteValidationSummary {
   registry: 'updated';
 }
 
-export interface UpdateComponentResponse extends WriteValidationSummary {
+export interface UpdateComponentResponse extends WriteValidationSummary, PageRegistrationSummary {
   updated: string;
   revision: string;
   /** Present for the `operations` form; absent for `set`. */

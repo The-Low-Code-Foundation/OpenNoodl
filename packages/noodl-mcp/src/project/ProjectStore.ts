@@ -168,6 +168,36 @@ export class ProjectStore {
     writeJsonAtomic(p, { ...project, metadata });
   }
 
+  /**
+   * AAQ-005 — write project settings, **never overwriting one already set**.
+   *
+   * Returns the names actually written. The non-overwriting rule is the editor's
+   * (`planStaging.applySettings`) and carries its reasoning: a plan states what a
+   * *new* app needs, not what an existing one should have chosen. `bodyScroll`
+   * defaults to unset-and-falsy, so "the project has not decided" and "the
+   * project chose `app`" are the same state on disk — which means the only safe
+   * reading of an absent value is that nobody chose, and the only safe treatment
+   * of a present one is to leave it alone.
+   */
+  writeProjectSettings(settings: Record<string, unknown>): string[] {
+    const p = this.projectFilePath;
+    if (!fs.existsSync(p)) {
+      throw new ToolError('not-found', `Missing nodegx.project.json in ${this.projectDir}; cannot store settings.`);
+    }
+    const project = readJson<ProjectV2File>(p);
+    const current: Record<string, unknown> = { ...(project.settings ?? {}) };
+    const written: string[] = [];
+    for (const [name, value] of Object.entries(settings)) {
+      if (value === undefined) continue;
+      if (current[name] !== undefined) continue;
+      current[name] = value;
+      written.push(name);
+    }
+    if (written.length === 0) return [];
+    writeJsonAtomic(p, { ...project, settings: current, modified: new Date().toISOString() });
+    return written;
+  }
+
   readRoutes(): RoutesV2File | undefined {
     const p = path.join(this.projectDir, 'nodegx.routes.json');
     return fs.existsSync(p) ? readJson<RoutesV2File>(p) : undefined;

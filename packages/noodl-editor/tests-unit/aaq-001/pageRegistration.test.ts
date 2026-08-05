@@ -14,9 +14,13 @@
 import {
   chooseRouter,
   describePageRegistration,
+  findRoutersInComponents,
+  isPlaceholderPageGraph,
   looksLikePageComponent,
   pageDisplayName,
   planPageRegistration,
+  readRouterPagesValue,
+  resolvePageRegistration,
   type RouterLocation
 } from '../../src/editor/src/models/AiAssistant/authoring/pageRegistration';
 import { checkNavigation, checkPageShape } from '../../src/editor/src/validation/navigation';
@@ -266,5 +270,206 @@ describe('AAQ-001 — checkNavigation', () => {
     );
 
     expect(diagnostics).toEqual([]);
+  });
+});
+
+// ── AAQ-005: the pieces the MCP door binds too ────────────────────────────────
+//
+// These four moved out of the editor's `staging.ts` when `noodl-mcp` gained a
+// second binding of the same decision. They are covered here because "the two
+// clients register identically" is now a property of THESE functions — the
+// editor's apply and the MCP write tools each supply plain nodes and do nothing
+// else. A drift in `staging.ts` alone would show up in the jasmine apply specs;
+// a drift here would show up in both clients at once, silently.
+
+describe('AAQ-005 — readRouterPagesValue', () => {
+  it('reads the shape a router actually carries', () => {
+    expect(readRouterPagesValue({ pages: { startPage: '/Pages/Home', routes: ['/Pages/Home'] } })).toEqual({
+      startPage: '/Pages/Home',
+      routes: ['/Pages/Home']
+    });
+  });
+
+  it('treats a router with no pages parameter as one listing nothing', () => {
+    // noodl-mcp's own fixture is exactly this, and so is a Router a model just
+    // dropped on a canvas.
+    expect(readRouterPagesValue({ name: 'Main' })).toEqual({ routes: [] });
+    expect(readRouterPagesValue(undefined)).toEqual({ routes: [] });
+  });
+
+  it('replaces a malformed value rather than throwing on it', () => {
+    // Hand-edited projects, older exports and a model that half-understood the
+    // shape all reach this. An apply must never die on a value it could replace.
+    expect(readRouterPagesValue({ pages: 'Home' })).toEqual({ routes: [] });
+    expect(readRouterPagesValue({ pages: { routes: ['/Pages/A', 42, '', null] } })).toEqual({
+      routes: ['/Pages/A']
+    });
+  });
+});
+
+describe('AAQ-005 — findRoutersInComponents', () => {
+  it('finds routers wherever they live and records what each lists', () => {
+    const routers = findRoutersInComponents([
+      {
+        name: '/App',
+        isRoot: true,
+        nodes: [
+          { id: 'g', type: 'Group' },
+          { id: 'r', type: 'Router', parameters: { name: 'Main', pages: { routes: ['/Pages/Home'] } }, parent: 'g' }
+        ]
+      },
+      { name: '/Widgets/Panel', nodes: [{ id: 'ps', type: 'Page Stack' }] }
+    ]);
+
+    expect(routers).toHaveLength(2);
+    expect(routers[0]).toMatchObject({ component: '/App', nodeId: 'r', name: 'Main', isRoot: true });
+    expect(routers[0].pages.routes).toEqual(['/Pages/Home']);
+    // Page Stack mounts pages too, and carries no name here.
+    expect(routers[1]).toMatchObject({ component: '/Widgets/Panel', nodeId: 'ps' });
+    expect(routers[1].name).toBeUndefined();
+  });
+
+  it('finds nothing in a project with no router, which is not an error', () => {
+    expect(findRoutersInComponents([{ name: '/App', nodes: [{ id: 'g', type: 'Group' }] }])).toEqual([]);
+  });
+});
+
+describe('AAQ-005 — isPlaceholderPageGraph', () => {
+  const page = (nodes: Array<{ id: string; type: string; parent?: string; children?: string[] }>) => ({
+    name: '/Pages/Home',
+    nodes
+  });
+
+  it('calls the template Home a placeholder — one Page, one leaf Text', () => {
+    // Both clients ship this exact shape: the editor's hello-world template and
+    // noodl-mcp's writeProjectSkeleton. The rule exists for it, and an earlier
+    // version of the rule never matched it — which is why every wizard-built app
+    // opened on "Hello World!".
+    expect(
+      isPlaceholderPageGraph(
+        page([
+          { id: 'p', type: 'Page', children: ['t'] },
+          { id: 't', type: 'Text', parent: 'p' }
+        ])
+      )
+    ).toBe(true);
+  });
+
+  it('reads hierarchy from parent fields alone, which is how the editor submits it', () => {
+    expect(
+      isPlaceholderPageGraph(
+        page([
+          { id: 'p', type: 'Page' },
+          { id: 't', type: 'Text', parent: 'p' }
+        ])
+      )
+    ).toBe(true);
+  });
+
+  it('leaves a page somebody built alone', () => {
+    expect(
+      isPlaceholderPageGraph(
+        page([
+          { id: 'p', type: 'Page', children: ['g'] },
+          { id: 'g', type: 'Group', parent: 'p' }
+        ])
+      )
+    ).toBe(false);
+    expect(
+      isPlaceholderPageGraph(
+        page([
+          { id: 'p', type: 'Page', children: ['t1', 't2'] },
+          { id: 't1', type: 'Text', parent: 'p' },
+          { id: 't2', type: 'Text', parent: 'p' }
+        ])
+      )
+    ).toBe(false);
+  });
+
+  it('counts logic nodes as roots, so a page with one is not a placeholder', () => {
+    // ⚠️ The load-bearing case for reading parentless nodes rather than
+    // `visualRoots`: a stray logic node is invisible to the visual roots and
+    // would make this page look empty, letting an apply take home away from a
+    // page somebody had started.
+    expect(
+      isPlaceholderPageGraph(
+        page([
+          { id: 'p', type: 'Page', children: ['t'] },
+          { id: 't', type: 'Text', parent: 'p' },
+          { id: 'nav', type: 'RouterNavigate' }
+        ])
+      )
+    ).toBe(false);
+  });
+});
+
+describe('AAQ-005 — resolvePageRegistration', () => {
+  const app = (pages?: unknown) => ({
+    name: '/App',
+    isRoot: true,
+    nodes: [{ id: 'r', type: 'Router', parameters: { name: 'Main', ...(pages ? { pages } : {}) } }]
+  });
+  const placeholderHome = {
+    name: '/Pages/Home',
+    nodes: [
+      { id: 'p', type: 'Page', children: ['t'] },
+      { id: 't', type: 'Text', parent: 'p' }
+    ]
+  };
+
+  it('moves home off the template placeholder onto the first page built', () => {
+    const registration = resolvePageRegistration(
+      [app({ startPage: '/Pages/Home', routes: ['/Pages/Home'] }), placeholderHome],
+      ['/Pages/Puppies', '/Pages/Admin']
+    );
+
+    expect(registration?.added).toEqual(['/Pages/Puppies', '/Pages/Admin']);
+    expect(registration?.startPage).toBe('/Pages/Puppies');
+  });
+
+  it('keeps home where it is when the start page is a page somebody built', () => {
+    const builtHome = {
+      name: '/Pages/Home',
+      nodes: [
+        { id: 'p', type: 'Page', children: ['g'] },
+        { id: 'g', type: 'Group', parent: 'p' }
+      ]
+    };
+    const registration = resolvePageRegistration(
+      [app({ startPage: '/Pages/Home', routes: ['/Pages/Home'] }), builtHome],
+      ['/Pages/Puppies']
+    );
+
+    expect(registration?.added).toEqual(['/Pages/Puppies']);
+    expect(registration?.startPage).toBeUndefined();
+  });
+
+  it('does not move home onto a page it is about to fill', () => {
+    // Run before the apply the placeholder is still empty; run after it is not.
+    // Without this clause the review would promise a move the apply declines.
+    const registration = resolvePageRegistration(
+      [app({ startPage: '/Pages/Home', routes: ['/Pages/Home'] }), placeholderHome],
+      ['/Pages/Home']
+    );
+
+    expect(registration).toBeUndefined();
+  });
+
+  it('registers into an empty router and opens the app on the first page', () => {
+    const registration = resolvePageRegistration([app()], ['/Pages/Puppies', '/Pages/Admin']);
+
+    expect(registration?.pages).toEqual({
+      startPage: '/Pages/Puppies',
+      routes: ['/Pages/Puppies', '/Pages/Admin']
+    });
+  });
+
+  it('returns nothing when there is no router to register into', () => {
+    const registration = resolvePageRegistration(
+      [{ name: '/App', isRoot: true, nodes: [{ id: 'g', type: 'Group' }] }],
+      ['/Pages/Puppies']
+    );
+
+    expect(registration).toBeUndefined();
   });
 });

@@ -19,6 +19,7 @@ import { ToolError } from '../errors';
 import type { ComponentFiles, UpdateOperation } from '../graph';
 import { applyOperations, reconcileHierarchy } from '../graph';
 import { pathToLegacyName, validateComponentPath } from '../paths';
+import { componentIsPage, registerPages, registrationSummary } from '../project/pageRegistration';
 import type { ProjectStore } from '../project/ProjectStore';
 import type { WriteValidation } from '../validate';
 import { validateCandidate, validateDeletion } from '../validate';
@@ -246,7 +247,9 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         'Create a new component from nodes + connections. The write is validated first (schemas, node types, ' +
         'ports, connection endpoints); any error rejects it with actionable diagnostics and nothing is written. ' +
         'Node hierarchy may be given via `parent` fields, `children` arrays, or both. To use the new component ' +
-        'from another graph, add a node whose type is the returned legacyName.',
+        'from another graph, add a node whose type is the returned legacyName. ' +
+        'If the component is a page (its path is under Pages/, or its graph has a `Page` node) it is also ' +
+        'registered in the project router — returned as `registeredPages`, and a no-op if already listed.',
       inputSchema: {
         path: z.string().describe('New component path, e.g. "Pages/Settings" (parent path segments need not exist)'),
         type: z
@@ -298,12 +301,21 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         if (!validation.ok) rejectWith(validation, `create_component "${args.path}"`);
 
         const { revision } = store.writeComponent(args.path, candidate, { expectNew: true });
+        // AAQ-005: a page component is not a page until a Router lists it. The
+        // editor's apply has done this since AAQ-001; this door did not, so
+        // every page Claude Code created was unreachable. After the write, so
+        // "is the current start page still an empty placeholder" is asked of the
+        // project as it now stands.
+        const registration = componentIsPage(legacyName, candidate)
+          ? registerPages(store, [legacyName])
+          : undefined;
         const payload: CreateComponentResponse = {
           created: args.path,
           legacyName,
           type: candidate.component.type,
           revision,
           registry: 'updated',
+          ...registrationSummary(registration),
           ...successPayload(validation)
         };
         return jsonResult(payload);
@@ -383,10 +395,17 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         if (!validation.ok) rejectWith(validation, `update_component "${stored.key}"`);
 
         const { revision } = store.writeComponent(stored.key, candidate, { ifRevision: args.if_revision });
+        // Updates register too, exactly as the editor's apply does: a page that
+        // exists but was never listed is the state this task is about, and
+        // re-listing one already listed is a no-op.
+        const registration = componentIsPage(stored.legacyName, candidate)
+          ? registerPages(store, [stored.legacyName])
+          : undefined;
         const payload: UpdateComponentResponse = {
           updated: stored.key,
           revision,
           ...(applied ? { applied } : {}),
+          ...registrationSummary(registration),
           ...successPayload(validation)
         };
         return jsonResult(payload);

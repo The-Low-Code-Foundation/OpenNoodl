@@ -261,6 +261,40 @@ normalization and the validator instance — the two clients differ there for go
 MCP's semantic results as a side effect of closing a gap in what it checks would be a regression bought
 with a refactor.
 
+## AAQ-005 slice 2 — the apply gap, and a ninth stale premise (2026-08-05)
+
+Slice 1 made both clients judge a candidate identically. Slice 2 found they still did entirely different
+things afterwards — and that the difference had quietly reintroduced two of the four findings Layer 1
+exists to close. Editor suite **2200 specs, 0 failures**; `noodl-mcp` **136 tests / 14 suites** (was
+121/12); runtime **2144**; both typechecks clean.
+
+1. **Layer 1's project-level effects lived in the editor's apply path and nowhere else.** Page
+   registration (AAQ-001), `bodyScroll` (AAQ-003) and backend provisioning (AAQ-002) were all absent
+   from `noodl-mcp` — `provision` and `scroll` appeared nowhere in the package at all, while both
+   packages import `validatePlan` from the *same* `authoring/plan` module, which has handled
+   `provision` since AIB-007. One plan model, two plan vocabularies.
+2. **⚠️ Slice 1 made the first one sharper, not safer, and this is the transferable lesson.**
+   `checkNavigation` resolves a Navigate target against the project's **component names**, not against
+   router registration — sound in the editor *only because* the editor's apply registers the page a
+   moment later. Bound to a client that never registered anything, the shared gate certified as correct
+   exactly the button that would not work. **Gate parity without apply parity is a gate that lies**:
+   sharing a check moves its unstated preconditions into a client that may not meet them.
+3. **The fix is one decision with two bindings.** Four functions moved from the editor's `staging.ts`
+   into `pageRegistration.ts` over plain nodes; the editor feeds it `ProjectModel` nodes, `noodl-mcp`
+   feeds it `ProjectStore` ones, and neither holds policy. Registration now fires on
+   `create_component`, `update_component` and `apply_plan`, and is *reported* (`registeredPages`),
+   because a tool that writes a component the caller did not name has to say so.
+4. **Provisioning genuinely does not port** — it means starting and supervising a backend child
+   process, which is the editor's manager over IPC. So `create_plan` accepts the kind (one vocabulary)
+   and refuses it with the reason and somewhere to go (AAQ-011 F13). Honest beats silent.
+5. **A ninth stale premise, and it is why nobody looked for a year.** `pageRegistration.ts`'s own header
+   said *"`noodl-mcp` has no plan transaction at all"*. It has had one since AIX-011 — built on this
+   package's own plan module. What it lacked was not a transaction but the registration.
+
+Two traps caught before they shipped, both now specced: `graph.roots` is **parentless nodes**, not
+`visualRoots` (reading the latter would widen the placeholder rule and let an apply steal the start page
+from a part-built page), and the start-page lookup is **exact**, not the module's tolerant `isSamePage`.
+
 ## Order of work
 
 **First, the seams — AAQ-001 through AAQ-004.** Small, mechanism-verified, and nothing above them

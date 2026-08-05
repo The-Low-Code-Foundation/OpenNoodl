@@ -45,7 +45,20 @@ export function createServer(options: ServerOptions): CreatedServer {
         'When authoring: read the parent/pattern component, fetch the node types you need with get_node_type, ' +
         'call get_style_vocabulary for the on-system tokens/variants (set colour/spacing params as ' +
         '"var(--token)", never raw hex/px), then create_component / update_component — every write is ' +
-        'validated and rejections return diagnostics with suggested fixes.'
+        'validated and rejections return diagnostics with suggested fixes. ' +
+        // AAQ-005. The word "Router" appeared nowhere in any guidance a model
+        // saw, which is why pages were built that nothing could reach and
+        // navigation was aimed at invented URL paths. Both halves are stated:
+        // what makes a page a page, and what this server does about it, so an
+        // agent neither omits the registration nor writes a competing one.
+        'PAGES: a page component is only reachable if a Router node lists it in its `pages` parameter, and it ' +
+        'renders blank without a `Page` node at its root — so build page components around a `Page` node, and ' +
+        'aim RouterNavigate.target at a component legacyName ("/Pages/Home"), never at an invented URL path. ' +
+        'Writing a page registers it in the project router for you (reported as `registeredPages`); you do not ' +
+        'need to edit the router yourself, and re-registering an already-listed page is a no-op. ' +
+        'For a multi-component build use create_plan / stage_plan_operation / apply_plan — nothing touches ' +
+        'disk until the one apply — and pass its `scroll` argument ("page" or "app"), because the underlying ' +
+        'default clips every page at the viewport with no scrollbar.'
     }
   );
 
