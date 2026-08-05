@@ -108,6 +108,10 @@ function listItemVariantToTextVariant(variant: ListItemVariant) {
       return TextType.Shy;
     case ListItemVariant.DefaultContrast:
       return TextType.DefaultContrast;
+    // FH-009: the active row is a tinted surface, so its label takes the
+    // highest-contrast foreground rather than the body default.
+    case ListItemVariant.Active:
+      return TextType.Proud;
     default:
       return TextType.Default;
   }

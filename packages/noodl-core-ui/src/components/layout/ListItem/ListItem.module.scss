@@ -47,15 +47,25 @@
     }
   }
 
+  // FH-009. This used to paint the selected row with `--theme-color-secondary`,
+  // which is the neutral ACTION colour: inverted relative to the surface by
+  // construction (#18212b near-black on light, #eef2f6 near-white on dark). As a
+  // row surface it broke in both themes — the label stayed `TextType.Default`
+  // and measured 2.17:1 (light) / 1.95:1 (dark). A selected row is a SURFACE, so
+  // it gets a surface pair: the primary selection tint plus `fg-highlight` text
+  // (measured 12.7–14.4:1 light, 10.5–14.4:1 dark over bg-0…bg-3). The tint
+  // alone is a ~1.12:1 step off the panel, so the left rule carries the
+  // "selected" signal (primary vs the tinted surface: 3.6:1 light, 5.7:1 dark).
   &.is-variant-active {
-    background-color: var(--theme-color-secondary) !important;
+    background-color: var(--theme-color-primary-bg) !important;
+    box-shadow: inset 2px 0 0 0 var(--theme-color-primary);
 
     .Prefix path {
-      fill: var(--theme-color-on-secondary) !important;
+      fill: var(--theme-color-primary) !important;
     }
 
     &:hover {
-      background-color: var(--theme-color-secondary-highlight) !important;
+      background-color: var(--theme-color-primary-25) !important;
     }
   }
 }
