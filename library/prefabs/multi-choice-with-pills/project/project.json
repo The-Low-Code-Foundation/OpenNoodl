@@ -1736,7 +1736,7 @@
         "styles": {
             "text": {
                 "Body Medium": {
-                    "fontFamily": "fonts/Roboto/Roboto-Regular.ttf",
+                    "fontFamily": "fonts/Inter/Inter-Regular.ttf",
                     "fontSize": {
                         "value": "16",
                         "unit": "px"
@@ -1750,7 +1750,7 @@
                     "textTransform": "none"
                 },
                 "Label Medium": {
-                    "fontFamily": "fonts/Roboto/Roboto-Medium.ttf",
+                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
                     "fontSize": {
                         "value": "14",
                         "unit": "px"
@@ -1764,7 +1764,7 @@
                     "textTransform": "none"
                 },
                 "Label Small": {
-                    "fontFamily": "fonts/Roboto/Roboto-Medium.ttf",
+                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
                     "fontSize": {
                         "value": "12",
                         "unit": "px"

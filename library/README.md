@@ -91,8 +91,30 @@ For every entry under `library/{prefabs,modules}/<slug>/`:
 2. `project/` loads as a Noodl project (v2 decomposed or legacy monolithic) —
    the same loader `scripts/validate-project.ts` uses.
 3. The SUB-006 semantic validator reports **zero errors** for the project.
+4. **Fonts** (FH-006). No entry may reference a font file it does not ship, and
+   no entry may ship or name a **retired** font family. The design system is
+   Inter (POL-006: a new project gets Inter + Lucide); `Roboto` is retired.
 
 This is wired into CI (`.github/workflows/pr.yml`, job `library`).
+
+**Why the font rule exists:** the font picker lists every `ttf/otf/woff/woff2`
+file it finds anywhere under the project directory, grouped by folder
+(`fontItems.ts` → `loadFontItems`). So importing a prefab that bundles a stray
+family puts a folder heading and an entry into the user's picker that they
+never asked for and cannot explain — the whole seeded library shipped Roboto,
+and a user's first prefab import produced a lone `fonts/Roboto` group. The rule
+is deliberately enforced over the *whole entry*, not just its text styles: a
+`fontFamily` sits on any node parameter, and a family name also hides in a CSS
+string inside a Javascript node's `code` parameter (a JSON *value*, not a
+`fontFamily` key) and in the minified bundle of a code module. All three forms
+were live in this tree.
+
+**Caveat the check does not cover:** the runtime derives a CSS family name from
+the *filename* (`fontloader.ts` — `Inter-Medium.ttf` registers as family
+`Inter-Medium`). A hand-written `font-family: Inter, …` in an injected CSS
+string therefore does **not** resolve to the bundled TTF; it resolves only if
+the viewer's machine has that family installed, and otherwise falls back. The
+check enforces which family is *named*, not that a bare CSS name resolves.
 
 **Errors vs. warnings:** content seeded from the live docs-site library
 (LIB-001 step 3) is committed *as-is* — repairing or restyling it is

@@ -9,7 +9,7 @@
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/multi-choice/",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

@@ -1132,7 +1132,7 @@
         "styles": {
             "text": {
                 "Body Medium": {
-                    "fontFamily": "fonts/Roboto/Roboto-Regular.ttf",
+                    "fontFamily": "fonts/Inter/Inter-Regular.ttf",
                     "fontSize": {
                         "value": "16",
                         "unit": "px"

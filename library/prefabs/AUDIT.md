@@ -54,7 +54,9 @@ already shares. Apply these uniformly so restyled prefabs read as one system:
 
 **Text**
 - Text nodes reference a **named text style** (`Label Small`, `Body Medium`, `Title Medium`, …), never
-  an inline font/size. Text styles reference the bundled Roboto weights (all shipped and resolving).
+  an inline font/size. Text styles reference the bundled Inter weights (all shipped and resolving).
+  Inter replaced Roboto across the whole library in FH-006 — Roboto is a retired family and
+  `library:check` now fails any entry that ships or names one.
 
 **Spacing & radius**
 - Spacing on an 8px rhythm (4 for tight inline gaps): 4 / 8 / 12 / 16 / 24.

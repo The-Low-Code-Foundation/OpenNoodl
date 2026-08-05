@@ -985,7 +985,7 @@
         "styles": {
             "text": {
                 "Label Small": {
-                    "fontFamily": "fonts/Roboto/Roboto-Medium.ttf",
+                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
                     "fontSize": {
                         "value": "12",
                         "unit": "px"

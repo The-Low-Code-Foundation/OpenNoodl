@@ -996,7 +996,7 @@
         "styles": {
             "text": {
                 "Title Medium": {
-                    "fontFamily": "fonts/Roboto/Roboto-Medium.ttf",
+                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
                     "fontSize": {
                         "value": "20",
                         "unit": "px"
