@@ -97,10 +97,39 @@ use, but **this is not a move**:
    for no benefit. This is a design choice, not a detail — it decides whether the node is a
    transport node or a call node.
 
-**Open question for Richard (§7):** Run Tasks' `taskTemplate` is `type: 'component'` and the picker
-deliberately refuses cloud functions ([componentpicker.ts:119-127](../../../packages/noodl-editor/src/editor/src/views/panels/propertyeditor/componentpicker.ts#L119-L127)).
-Do we (a) leave that, (b) let it target functions, or (c) say "run this function per item" is a
-workflow For Each? Until answered, build slices 1–3 and the transport half of slice 4.
+### Slice 4b — ✅ ANSWERED: the loop already works, and needs no code
+
+Richard, 2026-08-05: *"Yeah it is a For Each, call it whatever TF you want, I just meant we need a
+way to loop over array items to apply a function to each item (like a list of new users comes in and
+you want to register each one, one by one, looping them through a signup function)."*
+
+**Driven, and it works today.** A cloud function taking `{users: [...]}` → Run Tasks over the array
+→ a cloud **helper component** per item → each item's own data reaching an upstream call → the
+function answering once the run is Done. Kept as a spec:
+[`cloud-run-tasks-loop.test.ts`](../../../packages/nodegx-backend/tests/cloud-run-tasks-loop.test.ts).
+Concurrency honoured, empty list handled.
+
+So there is **nothing to build for the loop**. What is missing from Richard's exact example is only
+the *signup node* ([CWF-015](CWF-015-SERVER-SIDE-USERS.md)) and, if the list needs shaping first,
+slice 1 of this task.
+
+**What remains is naming and legibility, which is real:**
+
+- The node is called **Run Tasks**. Nobody hunting for a loop searches for that. It already carries
+  `searchTags`; "for each", "loop", "iterate", "map" belong in them. Cheap, and it is most of the
+  problem.
+- The per-item unit is a **cloud helper component**, and nothing on the canvas says so. The picker
+  refusing cloud functions is correct — a function is an HTTP-addressable endpoint with a
+  Request/Response contract, not a subroutine with a `Do`/`Success` contract — but the refusal is
+  silent. A "create a template component for this" gesture on the Template port is the same shape as
+  [CWF-004](CWF-004-THE-TRANSFORM-STEP.md)'s "new function from this step".
+- ⚠️ The template contract is four **string** port names (`Do`/`Success`/`Failure`/`Error`), matched
+  by string. A template that does not satisfy it fails at run time, not authoring time — and see
+  [CWF-018](CWF-018-A-FUNCTION-THAT-NEVER-ANSWERS.md) for what that failure did to the request.
+
+**Still open:** whether the Cloud Function node (slice 4) can also be a Run Tasks template once it
+exists in the cloud — that would give "call this *function* per item" without changing the picker
+rule, because the template would be a component wrapping a function call. Decide after slice 4.
 
 ### Slice 5 — the snapshot and the bundle
 

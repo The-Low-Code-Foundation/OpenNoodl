@@ -143,9 +143,14 @@ registered and invisible**.
 | 15 | [CWF-016](CWF-016-IDEMPOTENCY.md) — idempotency keys | The only item with **nothing built behind it**, and the only capability a Function node cannot fake (needs state across requests). Design first, concurrency test first. |
 | 16 | [CWF-017](CWF-017-FUNCTION-ACCESS-AND-LIMITS.md) — who may call, how often | **Cheapest high-value item on the track.** `public\|authenticated\|role:\|nobody` + `runAs` is built and has no editor door; per-function rate limiting is one field beside it. Richard: *"i love it"*. |
 
-⚠️ **Two questions still open** (TALK-007 §7): what Run Tasks should iterate over in the cloud — it
-runs a *helper component* today and the picker refuses cloud functions **on purpose** — and whether
-the richer **Script** node joins the cloud alongside Function.
+| — | [CWF-018](CWF-018-A-FUNCTION-THAT-NEVER-ANSWERS.md) — the hang | **Found by driving, 2026-08-05, filed not fixed.** `CloudRunner.run` settles only when a Response node fires, and `POST /functions/:name` awaits it with **no timeout** — while workflows have had per-step and per-run timeouts all along. Wiring only the happy path off an outcome node hangs the connection forever, leaks the component instance, and logs nothing. |
+
+✅ **Both open questions answered 2026-08-05.** The loop Richard wanted — "a list of new users comes
+in, register each one" — **already works**: array → Run Tasks → a cloud helper component per item,
+driven and kept as [`cloud-run-tasks-loop.test.ts`](../../../packages/nodegx-backend/tests/cloud-run-tasks-loop.test.ts).
+What is missing is the *name* (nobody searches for "Run Tasks" looking for a loop) and any sign that
+the per-item unit is a helper component — CWF-008 slice 4b. The **Script** node stays out of the
+cloud for now.
 
 ## The HUD track (out of TALK-003, 2026-08-05)
 

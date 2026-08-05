@@ -317,15 +317,20 @@ real rather than notional.
    Streaming six kept, cloud picker 58 → 48. Details in Pile B.
 2. ~~You add rows to §6 and strike anything you disagree with.~~ ✅ **Done — §6b.** The list is
    validated and written up as tasks: **CWF-008** (the moves) through **CWF-017** (the doors).
-3. **Two questions still open, both from the validation:**
-   - **Run Tasks over what?** Today it runs a cloud *helper component* per item, and the picker
-     refuses cloud functions on purpose. Options: (a) leave it — a helper component is the right
-     unit of work and a function is an HTTP-addressable endpoint, not a subroutine; (b) let the
-     Template picker offer cloud functions and bridge Request/Response to the template's signal
-     contract; (c) neither — express "run this function per item" with a **For Each step in a
-     workflow** calling the function, which is what the authoring model already says. My read: (c),
-     with (a) unchanged. Yours decides CWF-008 slice 4.
-   - **Script (`Javascript2`) into the cloud too?** See the foot of §6b.
+3. ~~**Two questions still open.**~~ ✅ **Both answered 2026-08-05.**
+   - **Run Tasks over what?** Richard: *"Yeah it is a For Each… we need a way to loop over array
+     items to apply a function to each item"*. **Driven: it already works** — array in, Run Tasks, a
+     cloud helper component per item, each with its own data, answered when Done. Kept as
+     [`cloud-run-tasks-loop.test.ts`](../../../packages/nodegx-backend/tests/cloud-run-tasks-loop.test.ts).
+     Nothing to build; what's left is **naming and legibility** (the node is called "Run Tasks" and
+     nothing says the per-item unit is a helper component) — CWF-008 slice 4b.
+   - **Script (`Javascript2`) into the cloud?** **No** — *"Nah leave Script node out for now"*. Not
+     struck permanently; not scheduled.
+4. ⚠️ **The validation drive found a defect nobody was looking for:** a cloud function that never
+   reaches a Response node **hangs the HTTP request forever** — `CloudRunner.run` only settles on a
+   Response, and `POST /functions/:name` has no timeout, while workflows have had one all along.
+   Wiring only the happy path off an outcome node is enough to trigger it.
+   **[CWF-018](CWF-018-A-FUNCTION-THAT-NEVER-ANSWERS.md)**, filed not fixed.
 4. **CWF-003 has already been updated** with §3.2's measurement: its first check item is answered,
    so it is now smaller than it was written.
 
