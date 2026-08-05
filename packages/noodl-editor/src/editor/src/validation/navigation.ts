@@ -116,7 +116,24 @@ function offerComponents(offered: readonly string[]): string {
 }
 
 /** The node type that makes a component a page, as far as the runtime is concerned. */
-const PAGE_NODE_TYPE = 'Page';
+export const PAGE_NODE_TYPE = 'Page';
+
+/** Component-name shapes that mean "page": `/Pages/Puppies`, `/#__page__/Home`. */
+const PAGE_NAME_PATTERNS = [/__page__/i, /(^|\/)pages\//i];
+
+/**
+ * Whether a component's name says "page" — the convention both plan paths write.
+ *
+ * Lives here rather than in the editor's `pageRegistration` (which re-exports it,
+ * so every existing caller is unchanged) because AAQ-005 made it a shared fact:
+ * `checkPageShape` asks its caller `isRoutedPage`, and the editor gate, the MCP
+ * write gate and the MCP plan gate must all answer that question the same way.
+ * Three callers deriving "is this a page" from the name independently is the
+ * one-fact-in-two-places class this phase has already paid for twice.
+ */
+export function looksLikePageComponent(legacyName: string): boolean {
+  return PAGE_NAME_PATTERNS.some((pattern) => pattern.test(legacyName));
+}
 
 export interface CheckPageShapeOptions {
   /** Component identifier for the diagnostic's location. */

@@ -25,6 +25,42 @@ export {
   refToPath,
   DiagnosticCode
 } from '../../noodl-editor/src/editor/src/validation';
+
+// ─── The authored-candidate gate (AAQ-005) ────────────────────────────────────
+// The precondition checks and the blocking policy, shared rather than twinned.
+//
+// ⚠️ Until AAQ-005 these were absent from this package entirely — not applied
+// laxly, absent. The write gate ran the SUB-006 semantic validator and nothing
+// else, so every parameter-value diagnostic (about fifteen error-severity ones,
+// `ConnectionOnlyParameter` among them), every unresolved navigation and every
+// backend precondition was invisible to an agent driving Claude Code, while the
+// same submission was rejected in the editor. AAQ-005 recorded this as a policy
+// difference over shared rules; it was a missing import.
+export {
+  AUTHORED_BLOCKING_WARNINGS,
+  authoredPreconditionDiagnostics,
+  declaredUrlPaths,
+  diagnosticKey,
+  isBlockingForAuthoredOutput,
+  looksLikePageComponent
+} from '../../noodl-editor/src/editor/src/validation';
+export type {
+  AuthoredNode,
+  AuthoredPreconditionOptions,
+  ComponentNodesView,
+  ProjectBackendFacts
+} from '../../noodl-editor/src/editor/src/validation';
+
+// The editor's own binding of the gate, exported for the parity spec rather than
+// for production use — `gateParity.test.ts` runs both bindings over one candidate
+// and fails if they disagree, which is what makes "one gate" a checked claim
+// instead of a comment. It is pure (v2 files in, diagnostics out; the project
+// arrives as an `ExplainGraph`), so importing it here costs nothing at runtime.
+export { validateCandidateComponent } from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/validate';
+export type {
+  CandidateValidation,
+  ComponentFiles as EditorComponentFiles
+} from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/types';
 export type {
   Diagnostic,
   ValidationReport,

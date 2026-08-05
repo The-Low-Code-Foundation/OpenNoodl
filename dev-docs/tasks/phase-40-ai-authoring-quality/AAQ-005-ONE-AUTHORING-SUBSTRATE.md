@@ -2,7 +2,89 @@
 
 **Findings:** #11 and Richard's directive on the contract question: *"Hooold the front door… Surely
 we can do better than [one component per session]. Let's not cut corners here."*
-**Status:** open — the risk-bearing task of the phase
+**Status:** open — **slice 1 (one gate) is built and green**; the toolset and the multi-component
+contract are not started
+
+## ⚠️ Slice 1 landed, and it corrected this file's §5 (2026-08-05)
+
+Read this before the rest of the document, because §5 below is the premise it falsifies and the
+sentence *"noodl-mcp shares the validation rules via `editor-deps.ts` but gates on `severity ===
+'error'` only"* is wrong in a way that changes what the task is.
+
+**`noodl-mcp` did not share the rules. It shared the semantic validator and nothing else.**
+`checkParameterValues`, `checkBackendRequirements`, `checkNavigation` and `checkPageShape` appeared
+**nowhere** in `packages/noodl-mcp` (grep: zero hits), and `editor-deps.ts` never re-exported one of
+them. So the gate was not applying a laxer policy to those diagnostics — it never computed them. Its
+`severity === 'error'` filter was correctly implemented and had nothing to filter.
+
+That makes the consequence bigger than the file claimed. It was never only a bare `width: 228`
+slipping through as a blocking *warning*. `checkParameterValues` emits roughly **fifteen distinct
+error-severity diagnostics**, `ConnectionOnlyParameter` among them — the diagnostic *this phase*
+created, for the mechanism that silently discarded a whole build's styling. Every one of them
+rejected a submission in the editor and shipped clean through Claude Code.
+
+**And there were three gates, not two.** `noodl-mcp/src/validate.ts` (the write tools) and
+`noodl-mcp/src/tools/planTools.ts::validateStaged` (the plan tools) were separate implementations,
+each carrying its own copy of `diagnosticKey` and its own baseline logic — one of them with a comment
+observing that keeping them identical was deliberate. BCN-003's three twins of one semantics, already
+realised, inside the task written to prevent them.
+
+### What was built
+
+`validation/authoredCandidate.ts` — the gate's **policy and preconditions** as pure functions over
+plain data, in the layer both packages already import, which is what makes "defined once" a fact
+rather than an intention. It exports `authoredPreconditionDiagnostics` (the four checks, in the order
+the editor has always composed them), `AUTHORED_BLOCKING_WARNINGS`, `isBlockingForAuthoredOutput`,
+`diagnosticKey` and `declaredUrlPaths`. `looksLikePageComponent` moved to `validation/navigation.ts`
+beside `checkPageShape` (re-exported from `pageRegistration`, so no caller changed) because three
+bindings must answer "is this a page" identically.
+
+All three call sites now compose it: the editor's `validateCandidateComponent`, the MCP write gate,
+and the MCP plan gate.
+
+**What it deliberately does *not* converge:** project normalization and the validator instance. The
+two clients legitimately differ — the editor validates against an `ExplainGraph`, the MCP server
+against its `ProjectStore`, and the MCP validator is built over the *enriched* catalog index so its
+catalog tools and its gate can never disagree about a type. Converging those too would have changed
+MCP's semantic results as a side effect of closing a gap in what it checks at all: a regression bought
+with a refactor.
+
+### The second defect, found by binding it
+
+The baseline exemption covered `severity === 'error'` only, so **a pre-existing blocking *warning* was
+always charged to the agent**. That reinstates on warnings the exact treadmill the exemption exists to
+prevent, and the corpus is full of the population it bites: imported nodes carrying `UnknownParameter`
+settings the catalog cannot see. An agent told never to argue with a diagnostic can satisfy it only by
+deleting the parameter.
+
+Proven on `noodl-mcp`'s own fixture, which ships a `RouterNavigate` with no target in `/Pages/Home`:
+adding one unrelated `Text` node to that component was rejected for a dead button the agent had never
+touched. The exemption now covers blocking diagnostics, over all four preconditions. Baselining the
+project-relative checks is safe because the baseline is validated against *today's* project — a link
+broken by someone else's deletion is already in the set and forgiven; one the candidate breaks itself
+is not, and still blocks.
+
+### Evidence
+
+- `packages/noodl-mcp/tests/gateParity.test.ts` — six cases run through **both** bindings and assert
+  the same verdict and the same blocking codes. **Verified non-vacuous: 4 of 6 fail against the old
+  behaviour.** The two deliberate differences (catalog source, backend facts) are documented in the
+  spec rather than asserted away.
+- `tests/ai/authoring-update-baseline.test.ts` — two cases for the widened exemption. **Verified
+  non-vacuous: the forgiveness case fails against the old errors-only filter, and reverting it broke
+  nothing else in 2200 specs.**
+- Editor suite **2200 specs, 0 failures**; `noodl-mcp` **121 tests, 12 suites, all passing** (it had
+  been red since `7fd3e053` — see AAQ-011 F12); runtime **2144 passed**; both typecheck gates clean.
+
+Three MCP fixtures were corrected, and all three were true positives: two authored a button wired to a
+`RouterNavigate` with no target, and one reused node ids the fixture's own `/Pages/Home` already had.
+
+### What slice 1 leaves for the rest of the task
+
+Acceptance criteria 1, 2 and 5 are met **for the gate**. Criterion 2's "same tool schemas from the same
+source of truth" is untouched — the editor still exposes three tools and `noodl-mcp` exposes its own
+surface, and that convergence is the toolset work below. Criteria 3 (a scripted multi-component
+session) and 4 (Claude Code driven live) are not started.
 
 ## The problem
 
@@ -54,11 +136,15 @@ Preview/verify (AAQ-007 consumes these): `render_preview`, `get_render_report`.
 4. **One dialect**: `noodl-mcp`'s existing tools either become re-exports of this contract or are
    migrated to it with deprecation shims. Grep for drift the way BCN-003b did; a snapshot test pins
    the two surfaces to one schema source.
-5. **One gate policy** (verified 2026-08-04): the twin already exists. `noodl-mcp` shares the
+5. ~~**One gate policy** (verified 2026-08-04): the twin already exists. `noodl-mcp` shares the
    validation *rules* via `editor-deps.ts` but gates on `severity === 'error'` only
    (`packages/noodl-mcp/src/validate.ts:72`) — the editor's `BLOCKING_WARNINGS` policy has no MCP
    counterpart, so a bare `width: 228` blocks the embedded agent and ships through Claude Code
-   today. The blocking policy moves into the substrate so both clients get one gate.
+   today. The blocking policy moves into the substrate so both clients get one gate.~~
+   **Wrong mechanism, and CLOSED — see the slice-1 section at the top.** The rules were not shared,
+   the gate never computed those diagnostics, and there were three implementations rather than two.
+   One gate now, in `validation/authoredCandidate.ts`, with a parity spec that fails if the two
+   bindings disagree.
 6. **The guidance surface**: the internal system prompt has no external twin — Claude Code sees
    only tool descriptions, `get_node_types`, and diagnostics. Doctrine (AAQ-008/009/010) that must
    reach external authors lands in catalog enrichment, tool descriptions, and an MCP

@@ -28,8 +28,17 @@ export type {
   ProjectBackendFacts
 } from './backendRequirement';
 // AAQ-001 — a navigation that lands somewhere.
-export { checkNavigation, checkPageShape } from './navigation';
-export type { CheckNavigationOptions, NavigatingNode } from './navigation';
+export { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE } from './navigation';
+export type { CheckNavigationOptions, CheckPageShapeOptions, NavigatingNode } from './navigation';
+// AAQ-005 — the one authored-candidate gate, shared with noodl-mcp.
+export {
+  AUTHORED_BLOCKING_WARNINGS,
+  authoredPreconditionDiagnostics,
+  declaredUrlPaths,
+  diagnosticKey,
+  isBlockingForAuthoredOutput
+} from './authoredCandidate';
+export type { AuthoredNode, AuthoredPreconditionOptions, ComponentNodesView } from './authoredCandidate';
 export {
   checkParameterValues,
   portTypeShape,

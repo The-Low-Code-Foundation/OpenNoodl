@@ -33,14 +33,14 @@
  * @module AiAssistant/authoring/pageRegistration
  */
 
+// AAQ-005 moved these two to `validation/navigation.ts`, beside `checkPageShape`,
+// because the gate now has three bindings (this editor, the MCP write tools, the
+// MCP plan tools) and all three must answer "is this a page" identically. They
+// are re-exported here so every existing caller of this module is unchanged.
+export { looksLikePageComponent, PAGE_NODE_TYPE } from '../../../validation';
+
 /** Node types that mount pages. Mirrors `review/pageMap.ts`, which reads the same parameter. */
 export const ROUTER_NODE_TYPES: ReadonlySet<string> = new Set(['Router', 'Page Stack']);
-
-/** The node a page component puts at its root to declare its title and url. */
-export const PAGE_NODE_TYPE = 'Page';
-
-/** Component-name shapes that mean "page": `/Pages/Puppies`, `/#__page__/Home`. */
-const PAGE_NAME_PATTERNS = [/__page__/i, /(^|\/)pages\//i];
 
 /** A Router's `pages` parameter, as it is serialised in `project.json`. */
 export interface RouterPagesValue {
@@ -91,11 +91,6 @@ export interface PageRegistrationOptions {
 export function isSamePage(a: string, b: string): boolean {
   const strip = (n: string) => n.replace(/^\//, '').replace(/^#/, '').toLowerCase();
   return a === b || strip(a) === strip(b);
-}
-
-/** Whether a component's name says "page" — the convention both plan paths write. */
-export function looksLikePageComponent(legacyName: string): boolean {
-  return PAGE_NAME_PATTERNS.some((pattern) => pattern.test(legacyName));
 }
 
 /**

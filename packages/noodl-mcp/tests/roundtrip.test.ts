@@ -34,7 +34,7 @@ describe('MCP-authored components load through the editor import path', () => {
         { id: 'layout', type: 'Group', parent: 'page' },
         { id: 'text', type: 'Text', parent: 'layout', parameters: { text: 'Settings' } },
         { id: 'back', type: 'net.noodl.controls.button', parent: 'layout' },
-        { id: 'nav', type: 'RouterNavigate' }
+        { id: 'nav', type: 'RouterNavigate', parameters: { target: '/Pages/Home' } }
       ],
       connections: [{ fromId: 'back', fromProperty: 'onClick', toId: 'nav', toProperty: 'navigate' }]
     });

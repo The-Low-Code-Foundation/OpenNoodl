@@ -17,20 +17,26 @@
 import type { NodeV2 } from '../../../schemas';
 import { SCHEMA_IDS, SchemaValidator } from '../../../schemas';
 import {
+  authoredPreconditionDiagnostics,
   buildComponentRefs,
-  checkBackendRequirements,
-  checkNavigation,
-  checkPageShape,
-  checkParameterValues,
-  DiagnosticCode,
+  declaredUrlPaths as collectUrlPaths,
+  diagnosticKey,
+  isBlockingForAuthoredOutput,
   loadDefaultCatalog,
   normalizeV2Component,
   SemanticValidator,
   sortDiagnostics
 } from '../../../validation';
-import type { Diagnostic, NormComponent, NormProject, ProjectBackendFacts, ValidationReport } from '../../../validation';
+import type {
+  AuthoredNode,
+  ComponentNodesView,
+  Diagnostic,
+  NormComponent,
+  NormProject,
+  ProjectBackendFacts,
+  ValidationReport
+} from '../../../validation';
 import type { GraphComponent, ExplainGraph } from '../explain/types';
-import { looksLikePageComponent } from './pageRegistration';
 import type { CandidateValidation, ComponentFiles, StructuralFailure } from './types';
 
 let semanticValidator: SemanticValidator | undefined;
@@ -75,22 +81,6 @@ function toNormComponent(component: GraphComponent): NormComponent {
       toProperty: c.toProperty
     }))
   };
-}
-
-/**
- * A diagnostic's identity for baseline comparison: the rule, what it is about,
- * and the message. The message is in the key on purpose — "unknown node type
- * Markdown" and "unknown node type Foo" are different problems on the same
- * node, and only the first can be pre-existing.
- *
- * Byte-for-byte the same key the MCP write-gate uses
- * (`noodl-mcp/src/tools/planTools.ts`), which has had this exemption since
- * AIX-011 landed. Keeping the two identical is deliberate: they are twins of
- * one policy, and this is the cheap half of not letting them drift.
- */
-function diagnosticKey(d: Diagnostic): string {
-  const l = d.location;
-  return JSON.stringify([d.code, l.nodeId, l.port, l.plug, l.connection, d.message]);
 }
 
 export interface ValidateCandidateOptions {
@@ -169,60 +159,26 @@ export function validateCandidateComponent(
   const report: ValidationReport = validator().validateComponent(project, legacyName, { strict: true });
   // AIB-001: the semantic validator reasons about types and connectivity and
   // has no view of parameter VALUES — its normalized model does not carry them.
-  // The value check runs over the candidate's own v2 nodes and its diagnostics
-  // join the report's, so they flow through the repair loop, the baseline
-  // exemption and the summary by exactly the same paths.
+  // The precondition checks run over the candidate's own v2 nodes and their
+  // diagnostics join the report's, so they flow through the repair loop, the
+  // baseline exemption and the summary by exactly the same paths.
+  //
+  // AAQ-005: the four of them, and the policy below, are now one shared
+  // definition (`validation/authoredCandidate.ts`) that the MCP write gate and
+  // the MCP plan gate call too. Before that they existed here and nowhere else,
+  // so an agent driving Claude Code through `noodl-mcp` had no parameter-value
+  // check at all.
   const diagnostics = [
     ...report.diagnostics,
-    ...parameterDiagnostics(legacyName, files),
-    ...backendDiagnostics(legacyName, files, options.backend),
-    ...navigationDiagnostics(graph, legacyName, files, options.plannedComponents),
-    ...pageShapeDiagnostics(legacyName, files)
+    ...preconditionDiagnostics(graph, legacyName, files, options)
   ];
-  // A parameter naming no port is a warning project-wide, and must stay one:
-  // the corpus is full of imported nodes carrying settings the catalog cannot
-  // see, and `validate:project` gaining a new error class across it is a
-  // separate decision. For *authored* output it is a different thing entirely.
-  // Nothing in the graph is legacy, every type was fetched from the catalog
-  // moments earlier, and a parameter that names no port is simply a value the
-  // agent believes it set and did not — `Page.title`, `Page.urlPath`,
-  // `button.size` and `button.boxShadow` all shipped in one build under a clean
-  // report. Blocking here rather than raising the severity keeps the two
-  // audiences separate: the loop gets one cheap repair round, the corpus is
-  // untouched.
-  // AAQ-001 joins them: a navigation that lands nowhere is the same class of
-  // defect as a parameter that is never read — the graph is well formed, the
-  // gate is green, and the button does nothing. Blocking here rather than by
-  // severity for the identical reason: a component library may legitimately
-  // navigate to a page its host supplies, and `validate:project` gaining an
-  // error class across the corpus is a separate decision.
-  const BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
-    DiagnosticCode.UnknownParameter,
-    DiagnosticCode.UnitlessDimension,
-    DiagnosticCode.UnresolvedNavigation
-    // ⚠️ `PageWithoutPageNode` is deliberately NOT here yet, and the reason is
-    // worth reading before adding it.
-    //
-    // The rule is right: a routed component with no Page node renders a blank
-    // screen (see the code's docblock), and it was calibrated on the 96-project
-    // corpus at 6 hits, all inside synthetic node-id fixtures. But the population
-    // that actually flows through THIS gate is the authored one, and there it
-    // fires on 57 fixture sites across 15 spec files — every one of which builds
-    // a `/Pages/...` component out of a bare Group, because that is what everyone
-    // believed a page was until the launcher was driven end to end.
-    //
-    // Promoting it means correcting those fixtures, which is a real change to
-    // what a large part of the AI suite asserts and deserves its own read — not a
-    // sweep tacked onto the session that found the defect. Until then it is a
-    // warning, which still reaches the agent in the accepted-component report,
-    // and the contract it enforces is stated outright in the authoring prompt,
-    // which is what actually changes what a model builds.
-  ]);
-  const blocking = (d: Diagnostic) => d.severity === 'error' || BLOCKING_WARNINGS.has(d.code);
-  const allErrors: Diagnostic[] = diagnostics.filter(blocking);
+  // The blocking-warning policy and its reasoning now live with the checks, in
+  // `validation/authoredCandidate.ts` — including why `PageWithoutPageNode` is
+  // still deliberately absent from it (AAQ-011 F7).
+  const allErrors: Diagnostic[] = diagnostics.filter(isBlockingForAuthoredOutput);
 
   const inherited = options.baseline
-    ? baselineErrorKeys(graph, legacyName, options.baseline, options.backend)
+    ? baselineErrorKeys(graph, legacyName, options.baseline, options)
     : undefined;
   const preExisting = inherited ? allErrors.filter((d) => inherited.has(diagnosticKey(d))) : [];
   const errors = inherited ? allErrors.filter((d) => !inherited.has(diagnosticKey(d))) : allErrors;
@@ -240,129 +196,53 @@ export function validateCandidateComponent(
   };
 }
 
-/**
- * AIB-001 — parameter values, checked against the wire format the catalog's
- * port type implies.
- *
- * Runs on the v2 nodes rather than the normalized model because the normalized
- * model deliberately does not carry parameters: SUB-006 reasons about the graph
- * (types, ports, wires), and a value's *shape* is a different question asked of
- * different data. Keeping it here rather than as a validator rule also keeps it
- * off every existing project — the crash class this closes is authored output
- * reaching a live adapter, and `validate:project` gaining a new error class
- * across the corpus is a separate decision from fixing it.
- */
-function parameterDiagnostics(legacyName: string, files: ComponentFiles): Diagnostic[] {
-  const nodes = files.nodes.nodes.map((n: NodeV2) => ({
+/** The candidate's v2 nodes in the shape all four precondition checks read. */
+function authoredNodes(files: ComponentFiles): AuthoredNode[] {
+  return files.nodes.nodes.map((n: NodeV2) => ({
     id: n.id,
     type: n.type,
-    ...(n.label !== undefined ? { label: n.label } : {}),
+    ...(typeof n.label === 'string' && n.label ? { label: n.label } : {}),
     parameters: (n.parameters ?? null) as Record<string, unknown> | null
   }));
-  return checkParameterValues(nodes, loadDefaultCatalog(), { component: legacyName });
 }
 
 /**
- * AIB-007 — Cloud Data and User nodes against a project that may have nowhere
- * to put them.
+ * The editor's binding of the shared precondition set (AAQ-005).
  *
- * Runs on the v2 nodes for the same reason `parameterDiagnostics` does, and it
- * is a *precondition* check rather than a catalog rule for a sharper reason: the
- * answer depends on the project's configuration, not on the graph. Two identical
- * candidates are correct in one project and broken in another, which is not
- * something the semantic validator's model can express — it has no view of
- * `cloudservices` and should not gain one.
+ * Everything specific to *this* client is here and nothing else is: the project
+ * arrives as an `ExplainGraph`, the catalog is the editor's default one, and the
+ * navigation names are the project's plus the candidate's own (a page may link to
+ * itself) plus whatever the plan in flight will create — that last one so an
+ * agent is never charged for the order the fan-out happened to run in.
+ *
+ * The url paths come from every `Page` node the project declares plus the
+ * candidate's, with the candidate's stale on-disk copy left out because the
+ * candidate replaces it.
  */
-function backendDiagnostics(
-  legacyName: string,
-  files: ComponentFiles,
-  backend: ProjectBackendFacts | undefined
-): Diagnostic[] {
-  if (!backend) return [];
-  return checkBackendRequirements(
-    files.nodes.nodes.map((n: NodeV2) => ({
-      id: n.id,
-      type: n.type,
-      ...(typeof n.label === 'string' && n.label ? { label: n.label } : {})
-    })),
-    { ...backend, component: legacyName }
-  );
-}
-
-/**
- * AAQ-001 — navigations that cannot land, given what this project has.
- *
- * The component names that resolve are the project's, plus the candidate's own
- * (a page may link to itself), plus whatever the plan in flight will create. The
- * url paths come from every `Page` node the project declares plus the
- * candidate's, which is exactly what the router resolves a browser URL against.
- *
- * Runs on the v2 nodes, like the other two precondition checks, and for the same
- * reason: the normalized model carries no parameters, and `target` is a
- * runtime-discovered port the catalog cannot see at all.
- */
-function navigationDiagnostics(
+function preconditionDiagnostics(
   graph: ExplainGraph,
   legacyName: string,
   files: ComponentFiles,
-  plannedComponents: readonly string[] | undefined
+  options: ValidateCandidateOptions
 ): Diagnostic[] {
-  const components = [
-    ...graph.components.map((c) => c.name),
-    legacyName,
-    ...(plannedComponents ?? [])
-  ];
-  return checkNavigation(
-    files.nodes.nodes.map((n: NodeV2) => ({
-      id: n.id,
-      type: n.type,
-      ...(typeof n.label === 'string' && n.label ? { label: n.label } : {}),
-      parameters: (n.parameters ?? null) as Record<string, unknown> | null
-    })),
-    { component: legacyName, components, urlPaths: declaredUrlPaths(graph, legacyName, files) }
-  );
+  const candidateView: ComponentNodesView = { name: legacyName, nodes: files.nodes.nodes };
+  const projectViews: ComponentNodesView[] = graph.components
+    .filter((c) => c.name !== legacyName)
+    .map((c) => ({ name: c.name, nodes: c.nodes }));
+
+  return authoredPreconditionDiagnostics({
+    component: legacyName,
+    nodes: authoredNodes(files),
+    components: [...graph.components.map((c) => c.name), legacyName, ...(options.plannedComponents ?? [])],
+    urlPaths: collectUrlPaths([...projectViews, candidateView]),
+    catalog: loadDefaultCatalog(),
+    backend: options.backend
+  });
 }
 
 /**
- * AAQ-001 — a page the runtime will refuse to render.
- *
- * The apply's authority on "will this be registered as a page" is
- * `stagedComponentIsPage`, which is `looksLikePageComponent(name) || has a Page
- * node`. Only the name half is used here — deliberately, and it is exactly
- * equivalent: the rule returns nothing the moment a Page node exists, so the
- * other half of that OR can never change this answer. It also keeps this module
- * pure, which the name half is and `staging.ts` (it reaches for `ProjectModel`)
- * is not.
- */
-function pageShapeDiagnostics(legacyName: string, files: ComponentFiles): Diagnostic[] {
-  return checkPageShape(
-    files.nodes.nodes.map((n: NodeV2) => ({ id: n.id, type: n.type })),
-    { component: legacyName, isRoutedPage: looksLikePageComponent(legacyName) }
-  );
-}
-
-/** Every `urlPath` this project declares, the candidate's own included. */
-function declaredUrlPaths(graph: ExplainGraph, legacyName: string, files: ComponentFiles): string[] {
-  const paths: string[] = [];
-  for (const component of graph.components) {
-    if (component.name === legacyName) continue; // the candidate replaces it
-    for (const node of component.nodes) {
-      if (node.type !== 'Page') continue;
-      const path = node.parameters['urlPath'];
-      if (typeof path === 'string' && path.trim()) paths.push(path.trim());
-    }
-  }
-  for (const node of files.nodes.nodes as NodeV2[]) {
-    if (node.type !== 'Page') continue;
-    const path = (node.parameters as Record<string, unknown> | undefined)?.['urlPath'];
-    if (typeof path === 'string' && path.trim()) paths.push(path.trim());
-  }
-  return paths;
-}
-
-/**
- * The error keys the component ALREADY has, validated the same way and in the
- * same project context as the candidate.
+ * The blocking-diagnostic keys the component ALREADY has, validated the same way
+ * and in the same project context as the candidate.
  *
  * The base is normalised first, and only for the *identity* fields the agent
  * cannot express — the same backfill `buildCandidate` performs. A legacy
@@ -378,7 +258,7 @@ function baselineErrorKeys(
   graph: ExplainGraph,
   legacyName: string,
   base: ComponentFiles,
-  backend?: ProjectBackendFacts
+  options: ValidateCandidateOptions
 ): Set<string> {
   const id = base.component.id ?? base.nodes.componentId ?? 'baseline-identity';
   const normalised: ComponentFiles = {
@@ -406,10 +286,31 @@ function baselineErrorKeys(
   // Sign Up and Log In nodes and no backend — makes every one of those
   // components unrevisable otherwise: the agent inherits the nodes, is told
   // never to argue with a diagnostic, and can only satisfy it by deleting them.
+  //
+  // AAQ-005 corrected two things here, and both were found by binding this gate
+  // to `noodl-mcp` and watching a real fixture fail.
+  //
+  // The exemption now covers **blocking warnings**, not only `severity: 'error'`.
+  // It was errors-only because the blocking set arrived later, and the omission
+  // reinstates on warnings the exact defect the docblock above describes for
+  // types: a component carrying a pre-existing `UnknownParameter` — which the
+  // 96-project corpus is full of, on imported nodes the catalog cannot see — is
+  // charged for it on every revision, and an agent told never to argue with a
+  // diagnostic can only satisfy it by deleting the parameter. Proven on
+  // `noodl-mcp`'s own fixture: `/Pages/Home` ships a `RouterNavigate` with no
+  // target, and adding one unrelated Text node to that component was rejected
+  // for it.
+  //
+  // And navigation and page shape are baselined too, rather than being treated
+  // as unexemptable because they are project-relative. The baseline is validated
+  // against *today's* project, so a link broken by a component someone else
+  // deleted is already in this set and correctly forgiven, while one the
+  // candidate breaks itself is not in it and correctly blocks. The comparison
+  // does that work on its own; special-casing the codes only removed the
+  // forgiveness.
   const diagnostics = [
     ...report.diagnostics,
-    ...parameterDiagnostics(legacyName, normalised),
-    ...backendDiagnostics(legacyName, normalised, backend)
+    ...preconditionDiagnostics(graph, legacyName, normalised, options)
   ];
-  return new Set(diagnostics.filter((d) => d.severity === 'error').map(diagnosticKey));
+  return new Set(diagnostics.filter(isBlockingForAuthoredOutput).map(diagnosticKey));
 }

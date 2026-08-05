@@ -44,8 +44,10 @@ import type { Diagnostic, NormProject } from '../editor-deps';
 import {
   assertInsideDocs,
   buildComponentRefs,
+  diagnosticKey,
   DocPathError,
   formatDiagnosticLine,
+  isBlockingForAuthoredOutput,
   normalizeV2Component,
   SCHEMA_IDS,
   SchemaValidator,
@@ -58,6 +60,7 @@ import type { ComponentFiles } from '../graph';
 import { reconcileHierarchy } from '../graph';
 import { pathToLegacyName, toPathForm, validateComponentPath } from '../paths';
 import type { ProjectStore } from '../project/ProjectStore';
+import { authoredProjectViews, preconditionDiagnostics } from '../validate';
 import type { NodeInput } from './author';
 import { assembleCreateFiles, assembleSetFiles, connectionSchema, ensureIds, nodeSchema } from './author';
 import { writeProjectDocFile } from './docsTools';
@@ -134,16 +137,40 @@ function overlayProject(store: ProjectStore, plan: ServerPlan, extra?: { opId: s
   return { components, componentRefs: buildComponentRefs([...refNames]) };
 }
 
-function diagnosticKey(d: Diagnostic): string {
-  const l = d.location;
-  return JSON.stringify([d.code, l.nodeId, l.port, l.plug, l.connection, d.message]);
+/**
+ * The plan's staged candidates keyed by legacy name — what the precondition
+ * checks must see as "the project", so a page staged in this plan resolves as a
+ * navigation target before anything exists on disk.
+ *
+ * The same overlay `overlayProject` builds for the semantic validator, in the
+ * shape the value-level checks need (they read parameters, which the normalized
+ * model drops).
+ */
+function stagedOverlay(plan: ServerPlan, extra?: { opId: string; files: ComponentFiles }): Map<string, ComponentFiles> {
+  const staged = new Map(plan.staged);
+  if (extra) staged.set(extra.opId, extra.files);
+
+  const byName = new Map<string, ComponentFiles>();
+  for (const [opId, files] of staged) {
+    const operation = plan.plan.operations.find((op) => op.id === opId);
+    if (!operation) continue;
+    byName.set(pathToLegacyName(operation.target), files);
+  }
+  return byName;
 }
 
 /**
  * Validate one staged candidate against the overlay. Same policy as the
- * write-gate: structural first, semantic strict; for updates only NEW errors
- * (relative to the on-disk baseline) reject, so a component that already
- * carried strict-mode errors stays editable.
+ * write-gate — which since AAQ-005 means the *shared* policy: structural first,
+ * semantic strict, then the four precondition checks, gated on errors plus the
+ * three warnings that block authored output. For updates, only diagnostics this
+ * change introduced reject, so a component that already carried strict-mode
+ * errors or a pre-existing dead navigation stays editable.
+ *
+ * ⚠️ This function was the third implementation of that policy, after the editor
+ * and `src/validate.ts`, each with its own copy of `diagnosticKey` — the exact
+ * three-twins shape BCN-003 taught us to look for, inside the task written to
+ * prevent it. It now composes the same pieces the other two do.
  */
 function validateStaged(
   store: ProjectStore,
@@ -159,25 +186,32 @@ function validateStaged(
   const project = overlayProject(store, plan, { opId: operation.id, files: candidate });
   const validatorOptions = { strict: !options.allowUnknownTypes };
   const report = validator().validateComponent(project, legacyName, validatorOptions);
-  let errors = report.diagnostics.filter((d) => d.severity === 'error');
+
+  const views = authoredProjectViews(store, stagedOverlay(plan, { opId: operation.id, files: candidate }));
+  const diagnostics = [...report.diagnostics, ...preconditionDiagnostics(legacyName, candidate, views)];
+  let errors = diagnostics.filter(isBlockingForAuthoredOutput);
 
   if (operation.kind === 'update' && errors.length > 0) {
-    const baseline = store.readComponent(operation.target).files;
+    const stored = store.readComponent(operation.target);
+    const baseline = stored.files;
     const baselineReport = validator().validateComponent(
-      store.buildNormProject({ replace: { key: store.readComponent(operation.target).key, files: baseline } }),
+      store.buildNormProject({ replace: { key: stored.key, files: baseline } }),
       legacyName,
       validatorOptions
     );
-    const preexisting = new Set(
-      baselineReport.diagnostics.filter((d) => d.severity === 'error').map(diagnosticKey)
-    );
+    const baselineViews = authoredProjectViews(store, stagedOverlay(plan, { opId: operation.id, files: baseline }));
+    const baselineDiagnostics = [
+      ...baselineReport.diagnostics,
+      ...preconditionDiagnostics(legacyName, baseline, baselineViews)
+    ];
+    const preexisting = new Set(baselineDiagnostics.filter(isBlockingForAuthoredOutput).map(diagnosticKey));
     errors = errors.filter((d) => !preexisting.has(diagnosticKey(d)));
   }
 
   return {
     ok: errors.length === 0,
     errors: errors.map(formatDiagnosticLine),
-    warnings: report.summary.warnings
+    warnings: diagnostics.filter((d) => d.severity === 'warning').length
   };
 }
 

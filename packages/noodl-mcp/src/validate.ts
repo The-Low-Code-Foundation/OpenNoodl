@@ -6,13 +6,38 @@
  *     fresh graphs are exactly the population for whom a typo'd node type must
  *     hard-fail (the diagnostic carries a suggestion). `allow_unknown_types`
  *     relaxes this per call for module-provided types the catalog can't know.
- *  3. Baseline comparison: for updates, only *new* errors reject the write. A
- *     component that already carried strict-mode errors (e.g. legitimate
- *     module nodes) must stay editable — the gate is "don't make it worse".
+ *  3. Preconditions: the four checks the semantic validator cannot make —
+ *     parameter values, backend requirements, navigation targets, page shape.
+ *  4. Policy: `severity === 'error'`, plus the three warnings that block
+ *     *authored* output (AAQ-005).
+ *  5. Baseline comparison: for updates, only diagnostics this change *introduced*
+ *     reject the write. A component that already carried strict-mode errors
+ *     (legitimate module nodes) or a pre-existing dead navigation must stay
+ *     editable — the gate is "don't make it worse".
+ *
+ * ⚠️ Steps 3 and 4 arrived with AAQ-005 and are the whole of that task's first
+ * slice. Before it, this gate ran step 2 and stopped: `checkParameterValues`,
+ * `checkBackendRequirements`, `checkNavigation` and `checkPageShape` appeared
+ * nowhere in this package. The task file recorded the editor/MCP difference as
+ * a *policy* one — "gates on `severity === 'error'` only" — but the filter was
+ * never the problem; there was nothing for it to filter. An agent driving
+ * Claude Code could write `variant: "primary"` (an error in the editor, and the
+ * exact defect that silently discarded a build's styling) and this gate called
+ * it clean.
  */
 
 import type { Diagnostic, ValidationReport } from './editor-deps';
-import { SCHEMA_IDS, SchemaValidator, SemanticValidator, sortDiagnostics } from './editor-deps';
+import {
+  authoredPreconditionDiagnostics,
+  declaredUrlPaths,
+  diagnosticKey,
+  isBlockingForAuthoredOutput,
+  SCHEMA_IDS,
+  SchemaValidator,
+  SemanticValidator,
+  sortDiagnostics
+} from './editor-deps';
+import type { AuthoredNode, ComponentNodesView } from './editor-deps';
 import { catalogIndex } from './catalog';
 import type { ComponentFiles } from './graph';
 import type { ProjectStore } from './project/ProjectStore';
@@ -36,16 +61,87 @@ export interface WriteValidation {
   structural?: StructuralFailure[];
   /** Diagnostics for the candidate component (sorted). */
   diagnostics: Diagnostic[];
-  /** Errors that did not exist before this change — these are what reject a write. */
+  /**
+   * Blocking diagnostics that did not exist before this change — these are what
+   * reject a write. Named `newErrors` since SUB-008; since AAQ-005 the set is
+   * "errors plus the three warnings that block authored output", which is what
+   * the editor's loop has always rejected on.
+   */
   newErrors: Diagnostic[];
-  /** Errors that already existed on disk (updates only) — reported, not blocking. */
+  /** Blocking diagnostics that already existed on disk (updates only) — reported, not blocking. */
   preexistingErrors: Diagnostic[];
   summary: { errors: number; warnings: number; infos: number };
 }
 
-function diagnosticKey(d: Diagnostic): string {
-  const l = d.location;
-  return JSON.stringify([d.code, l.nodeId, l.port, l.plug, l.connection, d.message]);
+/**
+ * Every component in the project as "name + nodes", with `overlay` (keyed by
+ * legacy name) standing in for what is about to be written.
+ *
+ * The precondition checks need two project-wide facts the `NormProject` cannot
+ * carry: which component names a navigation may resolve to, and which `urlPath`
+ * values exist — and the second one needs node *parameters*, which normalization
+ * deliberately drops.
+ *
+ * A component the registry lists but whose files will not read is skipped rather
+ * than fatal, matching `review.ts`: a corrupt neighbour is not a reason to refuse
+ * a write, it just means one fewer name resolves.
+ */
+export function authoredProjectViews(
+  store: ProjectStore,
+  overlay: ReadonlyMap<string, ComponentFiles>
+): ComponentNodesView[] {
+  const views: ComponentNodesView[] = [];
+  const seen = new Set<string>();
+  for (const row of store.listComponents()) {
+    seen.add(row.legacyName);
+    const staged = overlay.get(row.legacyName);
+    if (staged) {
+      views.push({ name: row.legacyName, nodes: staged.nodes.nodes });
+      continue;
+    }
+    try {
+      views.push({ name: row.legacyName, nodes: store.readComponent(row.path).files.nodes.nodes });
+    } catch {
+      views.push({ name: row.legacyName, nodes: [] });
+    }
+  }
+  // Components the plan or this call is creating do not exist on disk yet.
+  for (const [name, files] of overlay) {
+    if (!seen.has(name)) views.push({ name, nodes: files.nodes.nodes });
+  }
+  return views;
+}
+
+/** The candidate's v2 nodes in the shape all four precondition checks read. */
+export function authoredNodes(files: ComponentFiles): AuthoredNode[] {
+  return files.nodes.nodes.map((n) => ({
+    id: n.id,
+    type: n.type,
+    ...(typeof n.label === 'string' && n.label ? { label: n.label } : {}),
+    parameters: (n.parameters ?? null) as Record<string, unknown> | null
+  }));
+}
+
+/**
+ * The precondition half of the gate, bound to this client (AAQ-005).
+ *
+ * `backend` is deliberately not supplied: this server has no view of the
+ * project's `cloudservices` configuration, and the shared check reads an omitted
+ * backend as "do not check" rather than "there is no backend" — the only honest
+ * answer a caller that cannot tell can give.
+ */
+export function preconditionDiagnostics(
+  legacyName: string,
+  candidate: ComponentFiles,
+  views: readonly ComponentNodesView[]
+): Diagnostic[] {
+  return authoredPreconditionDiagnostics({
+    component: legacyName,
+    nodes: authoredNodes(candidate),
+    components: [...views.map((v) => v.name), legacyName],
+    urlPaths: declaredUrlPaths(views),
+    catalog: catalogIndex()
+  });
 }
 
 function structuralCheck(files: ComponentFiles): StructuralFailure[] {
@@ -66,10 +162,6 @@ function structuralCheck(files: ComponentFiles): StructuralFailure[] {
     }
   }
   return failures;
-}
-
-function componentErrors(report: ValidationReport): Diagnostic[] {
-  return report.diagnostics.filter((d) => d.severity === 'error');
 }
 
 /**
@@ -100,24 +192,48 @@ export function validateCandidate(
   const candidateProject = store.buildNormProject({ replace: { key, files: candidate } });
   const report = validator().validateComponent(candidateProject, name, validatorOptions);
 
+  const views = authoredProjectViews(store, new Map([[name, candidate]]));
+  const diagnostics = [...report.diagnostics, ...preconditionDiagnostics(name, candidate, views)];
+
   let preexistingKeys = new Set<string>();
   if (baseline) {
     const baselineName = baseline.component.path ?? key;
     const baselineProject = store.buildNormProject({ replace: { key, files: baseline } });
     const baselineReport = validator().validateComponent(baselineProject, baselineName, validatorOptions);
-    preexistingKeys = new Set(componentErrors(baselineReport).map(diagnosticKey));
+    // Exempted on **blocking** identity, not on `severity === 'error'`, and
+    // over the same four preconditions the candidate is judged by — the editor's
+    // rule, and the correction AAQ-005 made to it after this package's own
+    // fixture proved the cost. `/Pages/Home` there carries a `RouterNavigate`
+    // with no target; adding one unrelated Text node to that component was
+    // rejected for a dead button the agent had never touched, and its only
+    // available repair would have been to delete the node.
+    //
+    // Baselining the project-relative checks is safe because the baseline is
+    // validated against *today's* project: a link broken by someone else's
+    // deletion is already in this set and forgiven, while one the candidate
+    // breaks itself is not and still blocks.
+    const baselineViews = authoredProjectViews(store, new Map([[baselineName, baseline]]));
+    const baselineDiagnostics = [
+      ...baselineReport.diagnostics,
+      ...preconditionDiagnostics(baselineName, baseline, baselineViews)
+    ];
+    preexistingKeys = new Set(baselineDiagnostics.filter(isBlockingForAuthoredOutput).map(diagnosticKey));
   }
 
-  const errors = componentErrors(report);
-  const newErrors = errors.filter((d) => !preexistingKeys.has(diagnosticKey(d)));
-  const preexistingErrors = errors.filter((d) => preexistingKeys.has(diagnosticKey(d)));
+  const blocking = diagnostics.filter(isBlockingForAuthoredOutput);
+  const newErrors = blocking.filter((d) => !preexistingKeys.has(diagnosticKey(d)));
+  const preexistingErrors = blocking.filter((d) => preexistingKeys.has(diagnosticKey(d)));
 
   return {
     ok: newErrors.length === 0,
-    diagnostics: sortDiagnostics(report.diagnostics),
+    diagnostics: sortDiagnostics(diagnostics),
     newErrors,
     preexistingErrors,
-    summary: report.summary
+    summary: {
+      errors: diagnostics.filter((d) => d.severity === 'error').length,
+      warnings: diagnostics.filter((d) => d.severity === 'warning').length,
+      infos: diagnostics.filter((d) => d.severity === 'info').length
+    }
   };
 }
 

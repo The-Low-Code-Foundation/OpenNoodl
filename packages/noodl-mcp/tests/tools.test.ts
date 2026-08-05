@@ -210,19 +210,25 @@ describe('noodl-mcp tools (end to end)', () => {
 
   // ─── Author: create ─────────────────────────────────────────────────────────
 
+  // Node ids are prefixed because they are project-unique, not component-unique:
+  // `duplicate-node-id` (SUB-012) reports an id reused across components, and the
+  // fixture's own /Pages/Home already uses `page`, `layout` and `nav`. The write
+  // gate is component-scoped and cannot see the collision, so it showed up only
+  // in the project-wide `validate_project` assertion at the end of the create
+  // test — red since 7fd3e053 (AAQ-011 F12).
   const settingsNodes = [
-    { id: 'page', type: 'Page', label: 'Settings', parameters: { title: 'Settings' } },
-    { id: 'layout', type: 'Group', parent: 'page' },
-    { id: 'heading', type: 'Text', parent: 'layout', parameters: { text: 'Settings' } },
-    { id: 'back', type: 'net.noodl.controls.button', parent: 'layout', parameters: { label: 'Back' } },
-    { id: 'nav', type: 'RouterNavigate', label: 'Back Home', parameters: { target: '/Pages/Home' } }
+    { id: 'settingsPage', type: 'Page', label: 'Settings', parameters: { title: 'Settings' } },
+    { id: 'settingsLayout', type: 'Group', parent: 'settingsPage' },
+    { id: 'settingsHeading', type: 'Text', parent: 'settingsLayout', parameters: { text: 'Settings' } },
+    { id: 'back', type: 'net.noodl.controls.button', parent: 'settingsLayout', parameters: { label: 'Back' } },
+    { id: 'settingsNav', type: 'RouterNavigate', label: 'Back Home', parameters: { target: '/Pages/Home' } }
   ];
 
   it('create_component validates, writes and updates the registry', async () => {
     const res = await call<CreateComponentResponse>(session, 'create_component', {
       path: 'Pages/Settings',
       nodes: settingsNodes,
-      connections: [{ fromId: 'back', fromProperty: 'onClick', toId: 'nav', toProperty: 'navigate' }],
+      connections: [{ fromId: 'back', fromProperty: 'onClick', toId: 'settingsNav', toProperty: 'navigate' }],
       description: 'Settings page with a back button'
     });
     expect(res.isError).toBe(false);
@@ -239,8 +245,8 @@ describe('noodl-mcp tools (end to end)', () => {
 
     // children[] derived from parent fields
     const nodes = readJson<NodesV2File>(dir, 'components/Pages/Settings/nodes.json');
-    const page = nodes.nodes.find((n) => n.id === 'page');
-    expect(page?.children).toEqual(['layout']);
+    const page = nodes.nodes.find((n) => n.id === 'settingsPage');
+    expect(page?.children).toEqual(['settingsLayout']);
 
     // Whole project still validates
     const validation = await call<ValidateProjectResponse>(session, 'validate_project', { strict: true });
@@ -314,7 +320,13 @@ describe('noodl-mcp tools (end to end)', () => {
           op: 'add_node',
           node: { id: 'settingsBtn', type: 'net.noodl.controls.button', parent: 'layout', parameters: { label: 'Settings' } }
         },
-        { op: 'add_node', node: { id: 'navSettings', type: 'RouterNavigate' } },
+        // A Navigate with no target is a dead button, and the gate now says so
+        // (AAQ-005 bound `checkNavigation` to this server). The point of the test
+        // is batching and revision safety, so give it a real target.
+        {
+          op: 'add_node',
+          node: { id: 'navSettings', type: 'RouterNavigate', parameters: { target: '/Pages/Home' } }
+        },
         {
           op: 'add_connection',
           connection: { fromId: 'settingsBtn', fromProperty: 'onClick', toId: 'navSettings', toProperty: 'navigate' }

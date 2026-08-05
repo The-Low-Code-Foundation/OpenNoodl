@@ -127,6 +127,66 @@ describe('AIX-011 — update mode is judged against its own base', () => {
     expect(result.errors[0].location.nodeId).toBe('brand-new');
   });
 
+  /**
+   * AAQ-005 — the exemption covers BLOCKING WARNINGS, not only `severity: 'error'`.
+   *
+   * It was errors-only because `BLOCKING_WARNINGS` arrived after the exemption
+   * did, and the omission reinstates on warnings exactly the treadmill the file
+   * above exists to describe: a component carrying a pre-existing
+   * `UnknownParameter` — which the 96-project corpus is full of, on imported
+   * nodes whose settings the catalog cannot see — is charged for it on every
+   * revision, and an agent told never to argue with a diagnostic can only
+   * satisfy it by deleting the parameter.
+   *
+   * Found by binding this gate to `noodl-mcp`, whose own fixture ships a
+   * `RouterNavigate` with no target in `/Pages/Home`: adding one unrelated Text
+   * node to that component was rejected for a dead button the agent had never
+   * touched.
+   */
+  describe('AAQ-005 — a pre-existing blocking warning is not charged to the agent', () => {
+    const legacyName = '/Visual Components/Article/Article';
+
+    /**
+     * A node carrying a parameter that names no port.
+     *
+     * `Number Remapper` deliberately: the check only speaks about types with no
+     * dynamic ports, and this is one of the 54 that qualify (`parameterValues`
+     * asserts it directly). Decorating one of the component's existing `Text`
+     * nodes does nothing at all — `Text` declares dynamic ports, so a name the
+     * catalog cannot see is not evidence of a mistake and the node is skipped.
+     */
+    function withUnknownParameter(files: ComponentFiles): ComponentFiles {
+      const copy: ComponentFiles = JSON.parse(JSON.stringify(files));
+      copy.nodes.nodes.push({ id: 'legacy-remapper', type: 'Number Remapper', parameters: { clmap: true } });
+      return copy;
+    }
+
+    it('blocks it when the base does not have it', () => {
+      const base = baseFilesOf(legacyName);
+      const files = withUnknownParameter(candidateFor('Visual Components/Article/Article', base));
+
+      const result = validateCandidateComponent(GRAPH, legacyName, files, { baseline: base });
+      expect(result.ok).toBe(false);
+      const unknown = result.errors.filter((d) => d.code === 'unknown-parameter');
+      expect(unknown.length).toBe(1);
+      // It is a warning, and it blocks anyway — that is the whole point of the set.
+      expect(unknown[0].severity).toBe('warning');
+    });
+
+    it('forgives it when the base already had it, and still reports it', () => {
+      // The base carries the node, so the perfect resubmission inherits it —
+      // exactly how a legacy parameter reaches an agent's candidate.
+      const base = withUnknownParameter(baseFilesOf(legacyName));
+      const files = candidateFor('Visual Components/Article/Article', base);
+      expect(files.nodes.nodes.some((n) => n.id === 'legacy-remapper')).toBe(true);
+
+      const result = validateCandidateComponent(GRAPH, legacyName, files, { baseline: base });
+      expect(result.errors.some((d) => d.code === 'unknown-parameter')).toBe(false);
+      expect(result.preExisting!.some((d) => d.code === 'unknown-parameter')).toBe(true);
+      expect(result.diagnostics.some((d) => d.code === 'unknown-parameter')).toBe(true);
+    });
+  });
+
   it('suppresses nothing without a baseline — create mode is unchanged', () => {
     const legacyName = '/Visual Components/Article/Article';
     const files = candidateFor('Visual Components/Article/Article', baseFilesOf(legacyName));

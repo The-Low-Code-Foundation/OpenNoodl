@@ -229,6 +229,38 @@ clears it**. The app renders correctly the whole time. F10 is the other one that
 starts a project's backend when the project is opened**, so a wizard-built app is dead the second day
 until the user finds Backend Services.
 
+## AAQ-005 slice 1 — one gate, and an eighth stale premise (2026-08-05)
+
+Layer 1 was complete, so the engine began. Its first slice is the one thing AAQ-005 could deliver
+without designing the multi-component contract first: **the authored-candidate gate, defined once and
+bound three times**. Editor suite **2200 specs, 0 failures**; `noodl-mcp` **121 tests green** (it had
+been red for 8 days); runtime **2144**; both typechecks clean.
+
+The premise that failed is AAQ-005's own §5, and it failed in the direction that matters:
+
+1. **`noodl-mcp` did not share the validation rules — it shared the semantic validator and nothing
+   else.** The four precondition checks appeared nowhere in the package. So the gate was not lenient
+   about those diagnostics; it never computed them. The `severity === 'error'` filter the task file
+   blamed was correct and had nothing to filter. Consequence: about **fifteen error-severity parameter
+   diagnostics**, `ConnectionOnlyParameter` among them — *this phase's own* diagnostic, for the
+   mechanism that silently discarded a build's styling — rejected a submission in the editor and
+   shipped clean through Claude Code.
+2. **There were three gates, not two.** The MCP write tools and the MCP plan tools each had their own
+   implementation, each with its own copy of `diagnosticKey`, one of them commented as deliberately
+   kept identical to the editor's. BCN-003's three twins, already realised, inside the task written to
+   prevent them.
+3. **Binding it found a second defect in the editor.** The baseline exemption covered `severity ===
+   'error'` only, so a **pre-existing blocking warning was always charged to the agent** — the exact
+   treadmill the exemption exists to prevent, on the population the corpus is full of. Proven on
+   `noodl-mcp`'s own fixture: adding one unrelated Text node to `/Pages/Home` was rejected for a dead
+   `RouterNavigate` the agent had never touched.
+
+Both new specs were verified to fail against the old behaviour (4 of 6 parity cases; the exemption
+case), which is the only reason to believe them. The convergence deliberately stops short of project
+normalization and the validator instance — the two clients differ there for good reasons, and changing
+MCP's semantic results as a side effect of closing a gap in what it checks would be a regression bought
+with a refactor.
+
 ## Order of work
 
 **First, the seams — AAQ-001 through AAQ-004.** Small, mechanism-verified, and nothing above them
