@@ -108,6 +108,13 @@
   gap: 8px;
 }
 
+/* CWF-017: rule preset, exact rule, and this function's own budget. */
+.FunctionGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1.4fr 1fr;
+  gap: 8px;
+}
+
 .OpField {
   display: flex;
   flex-direction: column;

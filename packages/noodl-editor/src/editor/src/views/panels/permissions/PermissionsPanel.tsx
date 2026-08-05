@@ -51,6 +51,32 @@ interface Role {
   users: string[];
 }
 
+interface RateLimit {
+  ratePerMinute: number;
+  burst: number;
+}
+
+/**
+ * One row of `GET /admin/permissions/functions` (CWF-017).
+ *
+ * `call` is the EFFECTIVE rule and `source` says where it came from. The panel
+ * never resolves the fallback itself: the backend answers with the rule its own
+ * gate would apply, so what is on screen and what runs cannot disagree.
+ */
+interface FunctionRules {
+  name: string;
+  deployed: boolean;
+  workflow: string | null;
+  call: RuleValue;
+  source: 'configured' | 'graph';
+  configured: RuleValue | null;
+  allowNoAuth: boolean;
+  runAs: string | null;
+  rateLimit: RateLimit | null;
+  /** The two gates disagreeing: open at the door, closed inside the graph. */
+  graphRefusesAnonymous: boolean;
+}
+
 interface ApiKey {
   objectId: string;
   name: string;
@@ -83,6 +109,8 @@ function textToRule(text: string): RuleValue | undefined {
 export function PermissionsPanel({ backendId, backendName, onClose }: PermissionsPanelProps) {
   const [config, setConfig] = useState<SecurityConfig | null>(null);
   const [tables, setTables] = useState<string[]>([]);
+  const [functions, setFunctions] = useState<FunctionRules[]>([]);
+  const [classRateLimit, setClassRateLimit] = useState<RateLimit | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +129,9 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
       setEnforced(perms.enforced);
       const schema = await ipcRenderer.invoke('backend:getSchema', backendId);
       setTables((schema.tables || []).map((t: { name: string }) => t.name).filter((n: string) => !n.startsWith('_')));
+      const fns = await ipcRenderer.invoke('backend:getFunctionRules', backendId);
+      setFunctions(fns.functions || []);
+      setClassRateLimit(fns.classRateLimit || null);
       setRoles((await ipcRenderer.invoke('backend:listRoles', backendId)).roles || []);
       setKeys((await ipcRenderer.invoke('backend:listApiKeys', backendId)).keys || []);
     } catch (err) {
@@ -176,6 +207,65 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
       }
     },
     [backendId, config, flash, reportError]
+  );
+
+  // ---- Cloud function rules (CWF-017) --------------------------------------
+  /**
+   * Write one function's entry and re-read the list.
+   *
+   * Always a re-read rather than a local patch: the effective rule can change
+   * for a reason the write does not carry (clearing `call` hands the answer back
+   * to the graph), and guessing that here is how a panel starts showing a
+   * different rule from the one being enforced.
+   */
+  const writeFunctionRules = useCallback(
+    async (name: string, rules: Record<string, unknown>, message: string) => {
+      try {
+        await ipcRenderer.invoke('backend:setFunctionRules', backendId, name, rules);
+        await load();
+        flash(message);
+      } catch (err) {
+        reportError(err);
+      }
+    },
+    [backendId, load, flash, reportError]
+  );
+
+  const setFunctionCall = useCallback(
+    async (name: string, choice: string) => {
+      if (choice === 'graph') {
+        try {
+          await ipcRenderer.invoke('backend:resetFunctionRules', backendId, name);
+          await load();
+          flash(`${name} follows its graph's Allow Unauthenticated port again`);
+        } catch (err) {
+          reportError(err);
+        }
+        return;
+      }
+      await writeFunctionRules(name, { call: choice }, `${name}: ${choice}`);
+    },
+    [backendId, load, flash, reportError, writeFunctionRules]
+  );
+
+  const setFunctionRateLimit = useCallback(
+    async (name: string, text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        await writeFunctionRules(name, { rateLimit: null }, `${name}: no limit of its own`);
+        return;
+      }
+      // "60" or "60/20" — sustained rate, optional burst (defaulting to the rate).
+      const [rateText, burstText] = trimmed.split('/');
+      const ratePerMinute = Number(rateText);
+      const burst = burstText === undefined ? ratePerMinute : Number(burstText);
+      if (!Number.isFinite(ratePerMinute) || !Number.isFinite(burst) || ratePerMinute < 0 || burst < 0) {
+        reportError(new Error(`"${trimmed}" is not a limit. Write a rate per minute, optionally rate/burst — e.g. 60/20.`));
+        return;
+      }
+      await writeFunctionRules(name, { rateLimit: { ratePerMinute, burst } }, `${name}: ${ratePerMinute}/min, burst ${burst}`);
+    },
+    [reportError, writeFunctionRules]
   );
 
   // ---- Roles ---------------------------------------------------------------
@@ -372,6 +462,105 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
             );
           })}
         </div>
+
+        {/* Cloud function access + budget (CWF-017) */}
+        {functions.length > 0 && (
+          <div className={css.Section}>
+            <Text textType={TextType.DefaultContrast} style={{ marginBottom: '8px' }}>
+              Cloud functions
+            </Text>
+            <Text textType={TextType.Shy} style={{ fontSize: '11px', marginBottom: '10px' }}>
+              Who may call each function, and how often. Every function has a rule whether or not anyone set one:
+              with nothing here, the function's own Request node decides through its <em>Allow Unauthenticated</em>{' '}
+              port. Functions run with the backend's own authority — running as the caller is not built, so there is
+              nothing to choose. Limits are on top of the shared budget for all functions
+              {classRateLimit ? ` (${classRateLimit.ratePerMinute}/min, burst ${classRateLimit.burst})` : ''}, so a
+              number here can only tighten.
+            </Text>
+            {functions.map((fn) => (
+              <div key={fn.name} className={css.CollectionRow} data-test={`function-rules-${fn.name}`}>
+                <div className={css.CollectionName}>
+                  <Text textType={TextType.DefaultContrast}>
+                    {fn.name}
+                    {!fn.deployed && ' — not on this backend'}
+                  </Text>
+                  <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
+                    {fn.source === 'graph'
+                      ? `from the graph: ${ruleToText(fn.call)}`
+                      : `set here: ${ruleToText(fn.call)}`}
+                  </Text>
+                </div>
+                <div className={css.FunctionGrid}>
+                  <label className={css.OpField}>
+                    <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
+                      who can call this
+                    </Text>
+                    <select
+                      className={css.RuleInput}
+                      value={
+                        fn.source === 'graph'
+                          ? 'graph'
+                          : typeof fn.call === 'string' && ['public', 'authenticated', 'nobody'].includes(fn.call)
+                            ? fn.call
+                            : 'custom'
+                      }
+                      onChange={(e) => e.target.value !== 'custom' && setFunctionCall(fn.name, e.target.value)}
+                    >
+                      <option value="graph">
+                        From the graph ({fn.allowNoAuth ? 'anyone' : 'signed-in'})
+                      </option>
+                      <option value="public">Anyone</option>
+                      <option value="authenticated">Signed-in</option>
+                      <option value="nobody">Nobody</option>
+                      <option value="custom">Roles… (use the box)</option>
+                    </select>
+                  </label>
+                  <label className={css.OpField}>
+                    <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
+                      or an exact rule
+                    </Text>
+                    <input
+                      className={css.RuleInput}
+                      key={`${fn.name}-${ruleToText(fn.configured ?? undefined)}`}
+                      defaultValue={ruleToText(fn.configured ?? undefined)}
+                      placeholder={`${ruleToText(fn.call)} (from the graph)`}
+                      onBlur={(e) => {
+                        const next = textToRule(e.target.value);
+                        const before = fn.configured === null ? undefined : fn.configured;
+                        if (ruleToText(next) === ruleToText(before)) return;
+                        if (next === undefined) setFunctionCall(fn.name, 'graph');
+                        else writeFunctionRules(fn.name, { call: next }, `${fn.name}: ${ruleToText(next)}`);
+                      }}
+                    />
+                  </label>
+                  <label className={css.OpField}>
+                    <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
+                      its own limit (rate/burst)
+                    </Text>
+                    <input
+                      className={css.RuleInput}
+                      key={`${fn.name}-limit-${fn.rateLimit ? `${fn.rateLimit.ratePerMinute}/${fn.rateLimit.burst}` : ''}`}
+                      defaultValue={fn.rateLimit ? `${fn.rateLimit.ratePerMinute}/${fn.rateLimit.burst}` : ''}
+                      placeholder="no limit of its own"
+                      onBlur={(e) => {
+                        const current = fn.rateLimit ? `${fn.rateLimit.ratePerMinute}/${fn.rateLimit.burst}` : '';
+                        if (e.target.value.trim() === current) return;
+                        setFunctionRateLimit(fn.name, e.target.value);
+                      }}
+                    />
+                  </label>
+                </div>
+                {fn.graphRefusesAnonymous && (
+                  <Text textType={TextType.Shy} style={{ fontSize: '10px', color: 'var(--theme-color-notice)' }}>
+                    This rule lets an anonymous caller through, but the function's Request node does not have{' '}
+                    <em>Allow Unauthenticated</em> ticked — so the call reaches the graph and then fails there. Tick
+                    the port on the canvas, or set this back to Signed-in.
+                  </Text>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Roles */}
         <div className={css.Section}>

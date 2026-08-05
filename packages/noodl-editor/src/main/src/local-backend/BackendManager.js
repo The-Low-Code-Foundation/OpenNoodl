@@ -224,6 +224,27 @@ class BackendManager {
       this.requireRunning(id, 'revoke API key').request('DELETE', `/admin/keys/${encodeURIComponent(objectId)}`)
     );
 
+    // CWF-017: who may call each cloud function, and how often. The list is the
+    // EFFECTIVE rule resolved by the backend — the editor deliberately does not
+    // compute its own answer from the config, because a panel that resolves the
+    // fallback itself is a panel that can disagree with the gate.
+    ipcMain.handle('backend:getFunctionRules', async (_, id) =>
+      this.requireRunning(id, 'read function permissions').request('GET', '/admin/permissions/functions')
+    );
+    ipcMain.handle('backend:setFunctionRules', async (_, id, name, rules) =>
+      this.requireRunning(id, 'set function permissions').request(
+        'PUT',
+        `/admin/permissions/functions/${encodeURIComponent(name)}`,
+        rules
+      )
+    );
+    ipcMain.handle('backend:resetFunctionRules', async (_, id, name) =>
+      this.requireRunning(id, 'reset function permissions').request(
+        'DELETE',
+        `/admin/permissions/functions/${encodeURIComponent(name)}`
+      )
+    );
+
     // ==========================================================================
     // FULL-TEXT SEARCH (BAK-008) — the search panel proxies to /admin/search
     // ==========================================================================
