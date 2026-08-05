@@ -1,4 +1,4 @@
-import { outcomeOutputs } from '@noodl/runtime/src/outcome';
+import { outcomeOutputs } from '../../../outcome';
 import type { CollectionLike, NodeDefinitionOptions, NodeModule } from '@noodl/types';
 
 import {
@@ -87,4 +87,4 @@ const CollectionClearModule: NodeModule = {
 
 addCollectionFailure(CollectionClearNode, 'clear-array');
 
-export default CollectionClearModule;
+export = CollectionClearModule;

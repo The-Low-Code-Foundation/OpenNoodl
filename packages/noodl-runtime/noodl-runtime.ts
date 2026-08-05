@@ -204,6 +204,28 @@ function registerNodes(noodlRuntime: NoodlRuntime) {
     require('./src/nodes/std-library/data/setmodelpropertiesnode'),
     require('./src/nodes/std-library/data/newmodelnode'),
 
+    // Array (CWF-008). Moved here from `noodl-viewer-react`, where they sat by history rather
+    // than by dependency — every one of them imports this package and `@noodl/types` and nothing
+    // else. A cloud function could iterate (Run Tasks) and query (the record nodes) but had no
+    // way to *produce* the list it iterated over; this is what removes that "cannot".
+    require('./src/nodes/std-library/data/collectionnode2'),
+    require('./src/nodes/std-library/data/collectionnode-new'),
+    require('./src/nodes/std-library/data/collectionnode-insert'),
+    require('./src/nodes/std-library/data/collectionnode-remove'),
+    require('./src/nodes/std-library/data/collectionnode-clear'),
+    require('./src/nodes/std-library/data/filtercollectionnode'),
+    require('./src/nodes/std-library/data/mapcollectionnode'),
+    require('./src/nodes/std-library/data/staticdata'),
+
+    // Scratch state (CWF-008). A cloud function is created per request and torn down on send,
+    // so a Component Object is per-request state and a Variable is per-run state — see the
+    // scoping note on `variablenode2.ts`. The *parent* variants stay browser-only: a function
+    // graph rarely nests and "parent" has no meaning at the top of one.
+    require('./src/nodes/std-library/data/variablenode2'),
+    require('./src/nodes/std-library/data/setvariablenode'),
+    require('./src/nodes/std-library/componentutils/componentobject'),
+    require('./src/nodes/std-library/componentutils/setcomponentobjectproperties'),
+
     // Cloud
     require('./src/nodes/std-library/data/cloudfilenode'),
     require('./src/nodes/std-library/data/signfileurl'), // BAK-006 follow-up
@@ -226,6 +248,9 @@ function registerNodes(noodlRuntime: NoodlRuntime) {
     require('./src/nodes/std-library/stringformat'),
     require('./src/nodes/std-library/counter'),
     require('./src/nodes/std-library/uniqueid'),
+    // CWF-008: multi-way Switch and range maths. The cloud had only the two-way Condition.
+    require('./src/nodes/std-library/switch'),
+    require('./src/nodes/std-library/numberremapper'),
     // The Failure Contract's global error boundary (NDA-004 §1). Registered here rather than
     // in the viewer so it exists in the cloud runtime and in exported code too — a catch-all
     // that only works in the browser would miss the contexts hardest to debug.

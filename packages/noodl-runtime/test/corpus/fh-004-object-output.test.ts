@@ -51,7 +51,7 @@ import ModelNodeModule = require('../../src/nodes/std-library/data/modelnode2');
 /* eslint-disable @typescript-eslint/no-var-requires */
 const ObjectChangedModule = require('../../../noodl-viewer-react/src/nodes/std-library/objectchanged').default;
 const ArrayChangedModule = require('../../../noodl-viewer-react/src/nodes/std-library/arraychanged').default;
-const CollectionNodeModule = require('../../../noodl-viewer-react/src/nodes/std-library/data/collectionnode2').default;
+const CollectionNodeModule = require('../../src/nodes/std-library/data/collectionnode2');
 /* eslint-enable @typescript-eslint/no-var-requires */
 
 /** Records the value ports of whatever it is wired to, as they stood when a signal arrived. */

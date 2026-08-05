@@ -1,8 +1,8 @@
 'use strict';
 
-import { Node } from '@noodl/runtime';
-import Model from '@noodl/runtime/src/model';
-import { outcomeOutputs } from '@noodl/runtime/src/outcome';
+import Node = require('../../../node');
+import Model = require('../../../model');
+import { outcomeOutputs } from '../../../outcome';
 import type {
   InspectInfo,
   ModelChangeEvent,
@@ -67,7 +67,20 @@ const VariableNodeDefinition: NodeDefinitionOptions = {
       }
     };
 
-    internal.variablesModel = Model.get('--ndl--global-variables');
+    // CWF-008: `(nodeScope.modelScope || Model)`, not bare `Model`.
+    //
+    // In the browser `modelScope` is undefined all the way up (`componentinstance.ts:86`), so
+    // this is the process-wide registry exactly as before. In the **cloud** runtime
+    // `CloudRunner.run` mints a `Model.Scope` per request and resets it on send, which is what
+    // makes a Variable request-scoped rather than shared between two concurrent callers.
+    //
+    // It is also what makes the Variable node agree with the code nodes. `createNoodlContext`
+    // has always read `Variables` off `scope.get('--ndl--global-variables')`
+    // (`expression-evaluator.ts:128`), so an Expression reading `Variables.x` and a Set
+    // Variable writing `x` would have resolved to two different records in the cloud —
+    // Expression always seeing `undefined`. Bringing this node in unscoped would have shipped
+    // that on day one.
+    internal.variablesModel = (this.nodeScope.modelScope || Model).get('--ndl--global-variables');
     internal.variablesModel.on('change', this._internal.onModelChangedCallback);
   },
   getInspectInfo(this: VariableNodeInstance): InspectInfo {
@@ -253,4 +266,4 @@ const VariableNodeModule: NodeModule = {
   node: VariableNodeDefinition
 };
 
-export default VariableNodeModule;
+export = VariableNodeModule;

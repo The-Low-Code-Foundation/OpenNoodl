@@ -170,6 +170,6 @@ const NumberRemapperNode: NodeDefinitionOptions = {
   }
 };
 
-export default {
+export = {
   node: NumberRemapperNode
 };

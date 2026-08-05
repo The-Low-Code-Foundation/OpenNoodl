@@ -38,15 +38,15 @@ import type { CollectionLike, NodeInstance, NodeModule } from '@noodl/types';
 
 import { createCorpusGraph, type CorpusGraph } from '../../../noodl-runtime/test/corpus/graph-harness';
 
-import CollectionClearModule from '../../src/nodes/std-library/data/collectionnode-clear';
-import CollectionInsertModule from '../../src/nodes/std-library/data/collectionnode-insert';
-import CollectionNewModule from '../../src/nodes/std-library/data/collectionnode-new';
-import CollectionRemoveModule from '../../src/nodes/std-library/data/collectionnode-remove';
-import ComponentObjectModule from '../../src/nodes/std-library/componentutils/componentobject';
-import SetComponentObjectPropertiesModule from '../../src/nodes/std-library/componentutils/setcomponentobjectproperties';
+import CollectionClearModule = require('@noodl/runtime/src/nodes/std-library/data/collectionnode-clear');
+import CollectionInsertModule = require('@noodl/runtime/src/nodes/std-library/data/collectionnode-insert');
+import CollectionNewModule = require('@noodl/runtime/src/nodes/std-library/data/collectionnode-new');
+import CollectionRemoveModule = require('@noodl/runtime/src/nodes/std-library/data/collectionnode-remove');
+import ComponentObjectModule = require('@noodl/runtime/src/nodes/std-library/componentutils/componentobject');
+import SetComponentObjectPropertiesModule = require('@noodl/runtime/src/nodes/std-library/componentutils/setcomponentobjectproperties');
 import SetParentComponentObjectPropertiesModule from '../../src/nodes/std-library/componentutils/setparentcomponentobjectproperties';
 import { GroupModule } from './visual-container';
-import SwitchModule from '../../src/nodes/std-library/switch';
+import SwitchModule = require('@noodl/runtime/src/nodes/std-library/switch');
 import TimerModule from '../../src/nodes/std-library/timer';
 
 /** `Collection.get(name)` is a process-wide registry, so every row needs its own array. */

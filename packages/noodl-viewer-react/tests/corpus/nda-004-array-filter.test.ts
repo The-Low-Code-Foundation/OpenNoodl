@@ -39,7 +39,7 @@ import type { NodeInstance, NodeModule } from '@noodl/types';
 
 import { createCorpusGraph, type CorpusGraph } from '../../../noodl-runtime/test/corpus/graph-harness';
 
-import FilterCollectionModule from '../../src/nodes/std-library/data/filtercollectionnode';
+import FilterCollectionModule = require('@noodl/runtime/src/nodes/std-library/data/filtercollectionnode');
 
 interface TriggerInstance extends NodeInstance {
   go(): void;

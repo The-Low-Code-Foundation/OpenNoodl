@@ -1,4 +1,4 @@
-import { outcomeOutputs } from '@noodl/runtime/src/outcome';
+import { outcomeOutputs } from '../../outcome';
 import type { InspectInfo, NodeDefinitionOptions, NodeInstance } from '@noodl/types';
 
 /**
@@ -137,6 +137,6 @@ const Switch: NodeDefinitionOptions = {
   }
 };
 
-export default {
+export = {
   node: Switch
 };

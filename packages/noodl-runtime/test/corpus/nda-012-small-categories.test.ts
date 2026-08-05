@@ -51,7 +51,7 @@ import { createCorpusGraph, type CorpusGraph } from './graph-harness';
 import CounterNode = require('../../src/nodes/std-library/counter');
 
 import EventReceiverNode from '../../../noodl-viewer-react/src/nodes/std-library/eventreceiver';
-import NumberRemapperNode from '../../../noodl-viewer-react/src/nodes/std-library/numberremapper';
+import NumberRemapperNode = require('../../src/nodes/std-library/numberremapper');
 import EventSenderNode from '../../../noodl-viewer-react/src/nodes/std-library/eventsender';
 
 interface TriggerInstance extends NodeInstance {

@@ -40,7 +40,7 @@ import type { NodeInstance, NodeModule } from '@noodl/types';
 import { createCorpusGraph, type CorpusGraph } from '../../../noodl-runtime/test/corpus/graph-harness';
 
 import ForEachActionsModule from '../../src/nodes/std-library/data/foreachactions';
-import SetVariableModule from '../../src/nodes/std-library/data/setvariablenode';
+import SetVariableModule = require('@noodl/runtime/src/nodes/std-library/data/setvariablenode');
 
 interface TriggerInstance extends NodeInstance {
   go(): void;

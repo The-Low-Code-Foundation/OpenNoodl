@@ -1,8 +1,8 @@
 'use strict';
 
-import { Node } from '@noodl/runtime';
-import Collection from '@noodl/runtime/src/collection';
-import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
+import Node = require('../../../node');
+import Collection = require('../../../collection');
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 import type {
   CollectionLike,
   InspectInfo,
@@ -236,6 +236,25 @@ const CollectionNode: NodeDefinitionOptions = {
     })
   },
   prototypeExtensions: {
+    /**
+     * ⚠️ CWF-008 — a **named** array is process-wide, including in a cloud function.
+     *
+     * `Model` has a `Scope` (`model.ts:373`) and `CloudRunner.run` mints one per request, which
+     * is how Objects, Variables and Component Objects are kept per-request server-side.
+     * `Collection` has **no `Scope` at all**: `Collection.get(name)` reads one module-level
+     * table for the life of the process. So two concurrent requests that both name an array
+     * `cart` share it, and it survives the response.
+     *
+     * The anonymous tier is unaffected and is the ordinary path — `Create New Array`,
+     * `Array Filter`, `Array Map` and `Static Array` all build unnamed collections that are
+     * per-node and collected with the request. Only spelling a name opts into the shared table.
+     *
+     * Fixing it properly means a `Collection.Scope` threaded through `NodeScope` and every
+     * consumer (`cloudstore`, `javascriptnodeparser`'s `Noodl.Arrays`, this node), or the
+     * runtime ends up with a split registry where a Function node and an Array node named the
+     * same array and got two different ones. That is a runtime-contract change, deliberately
+     * not folded into this move.
+     */
     setCollectionID: function (this: CollectionNodeInstance, id: string) {
       this.setCollection(Collection.get(id));
     },
@@ -342,4 +361,4 @@ const CollectionNodeModule: NodeModule = {
   node: CollectionNode
 };
 
-export default CollectionNodeModule;
+export = CollectionNodeModule;

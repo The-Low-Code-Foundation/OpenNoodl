@@ -32,8 +32,8 @@ import NoodlRuntime from '@noodl/runtime';
 import Model = require('@noodl/runtime/src/model');
 
 import ForEachModule from '../../src/nodes/std-library/data/foreach';
-import FilterCollectionModule from '../../src/nodes/std-library/data/filtercollectionnode';
-import MapCollectionModule from '../../src/nodes/std-library/data/mapcollectionnode';
+import FilterCollectionModule = require('@noodl/runtime/src/nodes/std-library/data/filtercollectionnode');
+import MapCollectionModule = require('@noodl/runtime/src/nodes/std-library/data/mapcollectionnode');
 
 /**
  * The Repeater's minimal visual parent.

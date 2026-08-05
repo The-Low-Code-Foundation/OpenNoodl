@@ -1,9 +1,9 @@
 'use strict';
 
-import { Node } from '@noodl/runtime';
-import Collection from '@noodl/runtime/src/collection';
-import Model from '@noodl/runtime/src/model';
-import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
+import Node = require('../../../node');
+import Collection = require('../../../collection');
+import Model = require('../../../model');
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 import type {
   CollectionLike,
   EditorConnectionLike,
@@ -721,4 +721,4 @@ const FilterCollectionModule: NodeModule = {
   }
 };
 
-export default FilterCollectionModule;
+export = FilterCollectionModule;

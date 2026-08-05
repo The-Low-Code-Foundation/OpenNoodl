@@ -1,6 +1,6 @@
 'use strict';
 
-import Collection from '@noodl/runtime/src/collection';
+import Collection = require('../../../collection');
 import type {
   CollectionLike,
   InspectInfo,
@@ -317,4 +317,4 @@ const CSVNodeModule: NodeModule = {
   node: CSVNode
 };
 
-export default CSVNodeModule;
+export = CSVNodeModule;

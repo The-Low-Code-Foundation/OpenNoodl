@@ -31,7 +31,7 @@ import type { NodeInstance, NodeModule } from '@noodl/types';
 import { createCorpusGraph, type CorpusGraph } from './graph-harness';
 
 import SignalToIndexNode from '../../../noodl-viewer-react/src/nodes-deprecated/std-library/signaltoindex';
-import SwitchNode from '../../../noodl-viewer-react/src/nodes/std-library/switch';
+import SwitchNode = require('../../src/nodes/std-library/switch');
 import ValueChangedNode from '../../../noodl-viewer-react/src/nodes/std-library/valuechanged';
 
 /** Reads whatever a value output holds at the instant a signal output fires. */

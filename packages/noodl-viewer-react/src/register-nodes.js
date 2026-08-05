@@ -38,7 +38,7 @@ export default function registerNodes(noodlRuntime) {
     //require('./nodes/std-library/condition'),
     //require('./nodes/std-library/and'),
     //require('./nodes/std-library/or'),
-    require('./nodes/std-library/switch'),
+    //require('./nodes/std-library/switch'), // moved to runtime (CWF-008)
     //require('./nodes/std-library/booleantostring'), // moved to runtime
     //require('./nodes/std-library/datetostring'),
     //require('./nodes/std-library/stringmapper'),
@@ -51,7 +51,7 @@ export default function registerNodes(noodlRuntime) {
     require('./nodes/std-library/screenresolution'),
     require('./nodes/std-library/javascript'),
     //require('./nodes/std-library/simplejavascript'), // moved to runtime
-    require('./nodes/std-library/numberremapper'),
+    //require('./nodes/std-library/numberremapper'), // moved to runtime (CWF-008)
     require('./nodes/std-library/valuechanged'),
     require('./nodes/std-library/states'),
     //require('./nodes/std-library/stringformat'), // moved to runtime
@@ -70,15 +70,16 @@ export default function registerNodes(noodlRuntime) {
     //require('./nodes/std-library/variables/boolean'),
     require('./nodes/std-library/variables/color'),
 
-    // Component Object
-    require('./nodes/std-library/componentutils/componentobject'),
+    // Component Object — the self pair moved to the runtime (CWF-008); the parent pair is
+    // browser-only, because "parent" has no meaning at the top of a cloud function graph.
+    //require('./nodes/std-library/componentutils/componentobject'), // moved to runtime (CWF-008)
     require('./nodes/std-library/componentutils/parentcomponentobject'),
-    require('./nodes/std-library/componentutils/setcomponentobjectproperties'),
+    //require('./nodes/std-library/componentutils/setcomponentobjectproperties'), // moved to runtime (CWF-008)
     require('./nodes/std-library/componentutils/setparentcomponentobjectproperties'),
 
     // Variable
-    require('./nodes/std-library/data/variablenode2'),
-    require('./nodes/std-library/data/setvariablenode'),
+    //require('./nodes/std-library/data/variablenode2'), // moved to runtime (CWF-008)
+    //require('./nodes/std-library/data/setvariablenode'), // moved to runtime (CWF-008)
 
     // New object
     // require('./nodes/std-library/data/modelnode2'), // moved to runtime
@@ -95,17 +96,18 @@ export default function registerNodes(noodlRuntime) {
     // require('./nodes/std-library/data/dbmodelnode-removerelation'),
     // require('./nodes/std-library/data/filterdbmodelsnode'),
 
-    // New array
-    require('./nodes/std-library/data/collectionnode2'),
-    require('./nodes/std-library/data/collectionnode-insert'),
-    require('./nodes/std-library/data/collectionnode-remove'),
-    require('./nodes/std-library/data/collectionnode-clear'),
-    require('./nodes/std-library/data/collectionnode-new'),
-    require('./nodes/std-library/data/filtercollectionnode'),
+    // New array — the whole family moved to the runtime (CWF-008) so a cloud function can
+    // build, filter and reshape a list.
+    //require('./nodes/std-library/data/collectionnode2'), // moved to runtime (CWF-008)
+    //require('./nodes/std-library/data/collectionnode-insert'), // moved to runtime (CWF-008)
+    //require('./nodes/std-library/data/collectionnode-remove'), // moved to runtime (CWF-008)
+    //require('./nodes/std-library/data/collectionnode-clear'), // moved to runtime (CWF-008)
+    //require('./nodes/std-library/data/collectionnode-new'), // moved to runtime (CWF-008)
+    //require('./nodes/std-library/data/filtercollectionnode'), // moved to runtime (CWF-008)
 
-    require('./nodes/std-library/data/staticdata'),
+    //require('./nodes/std-library/data/staticdata'), // moved to runtime (CWF-008)
 
-    require('./nodes/std-library/data/mapcollectionnode'),
+    //require('./nodes/std-library/data/mapcollectionnode'), // moved to runtime (CWF-008)
     //require('./nodes/std-library/data/restnode'), // moved to runtime
     require('./nodes/std-library/data/cloudfunction2'),
     //require('./nodes/std-library/uniqueid'), // moved to runtime

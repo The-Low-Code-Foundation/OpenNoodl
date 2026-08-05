@@ -153,6 +153,11 @@ const RunTasksDefinition: NodeDefinitionOptions = {
   docs: 'https://docs.noodl.net/nodes/data/run-tasks',
   color: 'data',
   category: 'Data',
+  // CWF-008 slice 4b. This node *is* the For Each — items in, a component template run once per
+  // item, bounded concurrency, stop-on-failure — and nobody looking for a loop searches for
+  // "Run Tasks". The picker searches these tags, so this is most of that problem. (The task doc
+  // said the node already carried searchTags; it did not — it carried none.)
+  searchTags: ['for each', 'foreach', 'loop', 'iterate', 'each', 'map', 'batch', 'queue', 'concurrency'],
   initialize(this: RunTasksNodeInstance) {
     this._internal.queuedOperations = [];
     this._internal.state = 'idle';

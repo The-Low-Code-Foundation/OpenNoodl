@@ -1,7 +1,7 @@
 'use strict';
 
-import Model from '@noodl/runtime/src/model';
-import { outcomeOutputs } from '@noodl/runtime/src/outcome';
+import Model = require('../../../model');
+import { outcomeOutputs } from '../../../outcome';
 import type { CollectionLike, NodeDefinitionOptions, NodeModule } from '@noodl/types';
 
 import {
@@ -78,7 +78,10 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
           // NDA-012 (Data). `Model.get` mints on read, so an Id nothing has loaded produces a
           // fresh object that is by construction not in the array — the removal is a guaranteed
           // no-op and `Done` below was reporting it as success. See `_failUnknownObjectId`.
-          if (!Model.exists(internal.modifyId)) {
+          // CWF-008: `exists` and `get` must ask the same registry, or in the cloud the guard
+          // below would answer for one table and the removal act on another.
+          const models = this.nodeScope.modelScope || Model;
+          if (!models.exists(internal.modifyId)) {
             this._failUnknownObjectId(outcome, 'remove', internal.modifyId);
             return;
           }
@@ -94,7 +97,7 @@ const CollectionRemoveNode: NodeDefinitionOptions = {
            *   `Array.prototype.remove` is `if (idx !== -1) …` (`collection.ts:611`), so it is a
            *   silent no-op that the node reported as `Done` — `Unchanged`.
            */
-          const model = Model.get(internal.modifyId);
+          const model = models.get(internal.modifyId);
           const wasMember = internal.collection.contains(model);
           internal.collection.remove(model);
           this.reportOutcome(outcome, wasMember ? 'done' : 'unchanged');
@@ -125,4 +128,4 @@ const CollectionRemoveModule: NodeModule = {
 
 addCollectionFailure(CollectionRemoveNode, 'remove-from-array');
 
-export default CollectionRemoveModule;
+export = CollectionRemoveModule;

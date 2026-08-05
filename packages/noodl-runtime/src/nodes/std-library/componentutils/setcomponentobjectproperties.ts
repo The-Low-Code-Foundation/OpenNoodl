@@ -15,7 +15,7 @@ import { extendSetComponentObjectProperties, type SetComponentObjectPropertiesIn
  * throwaway record while reporting `Done`. Same file, same shape, opposite verdict — which is
  * this phase's recurring lesson about reading what reaches a site rather than matching on shape.
  */
-export default extendSetComponentObjectProperties({
+export = extendSetComponentObjectProperties({
   name: 'net.noodl.SetComponentObjectProperties',
   displayName: 'Set Component Object Properties',
   docs: 'https://docs.noodl.net/nodes/component-utilities/set-component-object-properties',

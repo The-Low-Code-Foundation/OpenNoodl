@@ -7,7 +7,13 @@ import {
   findAncestorWithName
 } from '@noodl/runtime/src/componentwalk';
 
-import { extendSetComponentObjectProperties, type SetComponentObjectPropertiesInstance } from './base';
+// CWF-008: the base and the *self* variants moved into `@noodl/runtime` so a cloud function can
+// hold per-request state. This parent variant stays browser-only (a function graph rarely nests
+// and "parent" has no meaning at the top of one), so it reaches across for the shared base.
+import {
+  extendSetComponentObjectProperties,
+  type SetComponentObjectPropertiesInstance
+} from '@noodl/runtime/src/nodes/std-library/componentutils/base';
 
 /**
  * The **write** half of the Parent Component Object pair.

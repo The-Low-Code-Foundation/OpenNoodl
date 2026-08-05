@@ -16,7 +16,7 @@ import type { NodeInstance, NodeModule } from '@noodl/types';
 
 import { createCorpusGraph, type CorpusGraph } from '../../../noodl-runtime/test/corpus/graph-harness';
 
-import ComponentObjectModule from '../../src/nodes/std-library/componentutils/componentobject';
+import ComponentObjectModule = require('@noodl/runtime/src/nodes/std-library/componentutils/componentobject');
 import ParentComponentObjectModule from '../../src/nodes/std-library/componentutils/parentcomponentobject';
 import SetParentComponentObjectPropertiesModule from '../../src/nodes/std-library/componentutils/setparentcomponentobjectproperties';
 

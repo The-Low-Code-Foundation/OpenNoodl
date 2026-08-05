@@ -4444,9 +4444,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -4616,9 +4617,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -4718,9 +4720,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -4832,9 +4835,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -4910,9 +4914,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -8759,9 +8764,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -16085,9 +16091,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -17453,9 +17460,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -24219,6 +24227,17 @@
         "compat": "safe"
       },
       "docs": "https://docs.noodl.net/nodes/data/run-tasks",
+      "searchTags": [
+        "for each",
+        "foreach",
+        "loop",
+        "iterate",
+        "each",
+        "map",
+        "batch",
+        "queue",
+        "concurrency"
+      ],
       "inputs": [
         {
           "name": "abort",
@@ -24539,9 +24558,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -25647,9 +25667,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -26243,9 +26264,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -29582,9 +29604,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -32210,9 +32233,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },
@@ -34432,9 +34456,10 @@
       "isDeprecated": false,
       "inNodePicker": true,
       "availableIn": [
-        "browser"
+        "browser",
+        "cloud"
       ],
-      "providedBy": "noodl-viewer-react",
+      "providedBy": "noodl-runtime",
       "ssr": {
         "compat": "safe"
       },

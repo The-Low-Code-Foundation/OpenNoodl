@@ -56,13 +56,13 @@ import type { CollectionLike, NodeInstance, NodeModule } from '@noodl/types';
 
 import { createCorpusGraph, type CorpusGraph } from '../../../noodl-runtime/test/corpus/graph-harness';
 
-import CollectionModule from '../../src/nodes/std-library/data/collectionnode2';
-import CollectionInsertModule from '../../src/nodes/std-library/data/collectionnode-insert';
-import FilterCollectionModule from '../../src/nodes/std-library/data/filtercollectionnode';
-import MapCollectionModule from '../../src/nodes/std-library/data/mapcollectionnode';
-import SetVariableModule from '../../src/nodes/std-library/data/setvariablenode';
-import StaticDataModule from '../../src/nodes/std-library/data/staticdata';
-import VariableModule from '../../src/nodes/std-library/data/variablenode2';
+import CollectionModule = require('@noodl/runtime/src/nodes/std-library/data/collectionnode2');
+import CollectionInsertModule = require('@noodl/runtime/src/nodes/std-library/data/collectionnode-insert');
+import FilterCollectionModule = require('@noodl/runtime/src/nodes/std-library/data/filtercollectionnode');
+import MapCollectionModule = require('@noodl/runtime/src/nodes/std-library/data/mapcollectionnode');
+import SetVariableModule = require('@noodl/runtime/src/nodes/std-library/data/setvariablenode');
+import StaticDataModule = require('@noodl/runtime/src/nodes/std-library/data/staticdata');
+import VariableModule = require('@noodl/runtime/src/nodes/std-library/data/variablenode2');
 
 interface TriggerInstance extends NodeInstance {
   go(): void;

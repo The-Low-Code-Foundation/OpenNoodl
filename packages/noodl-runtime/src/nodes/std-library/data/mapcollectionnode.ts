@@ -1,9 +1,9 @@
 'use strict';
 
-import { Node } from '@noodl/runtime';
-import Collection from '@noodl/runtime/src/collection';
-import Model from '@noodl/runtime/src/model';
-import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
+import Node = require('../../../node');
+import Collection = require('../../../collection');
+import Model = require('../../../model');
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 import type {
   CollectionLike,
   ModelLike,
@@ -305,7 +305,8 @@ const MapCollectionNode: NodeDefinitionOptions = {
         let mappedModels: ModelLike[];
         try {
           mappedModels = this._internal.collection.map((model) => {
-            const m = Model.create();
+            // CWF-008: the mapped records belong to the request that built them.
+            const m = (this.nodeScope.modelScope || Model).create();
             this._internal.mapFunc(function (mappings) {
               for (const key in mappings) {
                 const mapping = mappings[key];
@@ -353,4 +354,4 @@ const MapCollectionModule: NodeModule = {
   }
 };
 
-export default MapCollectionModule;
+export = MapCollectionModule;

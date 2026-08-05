@@ -20,7 +20,7 @@
  * this and a corpus row pins the absence.
  */
 
-import Collection from '@noodl/runtime/src/collection';
+import Collection = require('../../../collection');
 import type { CollectionLike, NodeDefinitionOptions, NodeInstance, OutcomeToken } from '@noodl/types';
 
 /** A node definition part-way through assembly, as the three call sites hand it over. */

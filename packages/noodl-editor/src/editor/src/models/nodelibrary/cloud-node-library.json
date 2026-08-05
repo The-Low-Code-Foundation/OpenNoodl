@@ -232,6 +232,17 @@
     },
     {
       "name": "RunTasks",
+      "searchTags": [
+        "for each",
+        "foreach",
+        "loop",
+        "iterate",
+        "each",
+        "map",
+        "batch",
+        "queue",
+        "concurrency"
+      ],
       "displayNodeName": "Run Tasks",
       "docs": "https://docs.noodl.net/nodes/data/run-tasks",
       "shortDocs": "https://docs.noodl.net/nodes/data/run-tasks-short.md",
@@ -2479,6 +2490,1190 @@
       ]
     },
     {
+      "name": "Collection2",
+      "displayNodeName": "Array",
+      "docs": "https://docs.noodl.net/nodes/data/array/array-node",
+      "shortDocs": "https://docs.noodl.net/nodes/data/array/array-node-short.md",
+      "category": "Data",
+      "usePortAsLabel": "collectionId",
+      "color": "data",
+      "ports": [
+        {
+          "name": "collectionId",
+          "type": {
+            "name": "string",
+            "identifierOf": "CollectionName",
+            "identifierDisplayName": "Array Ids"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Id",
+          "description": "Id of the shared array to bind to; the first node to use an id creates the array, and every later node naming it reaches the same one"
+        },
+        {
+          "name": "items",
+          "type": "array",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Items",
+          "description": "undefined leaves this Array's current collection alone (no opinion supplied). null clears it — every item is removed and Changed fires once, the same as connecting an empty collection."
+        },
+        {
+          "name": "fetch",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Fetch",
+          "description": "Re-reads the array named by Id and rebinds this node to it. This is additional to Id rebinding on change and to array changes being announced; untick either under Run On Value Change to stop it"
+        },
+        {
+          "name": "runOnChange-collectionId",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Id",
+          "description": "Whether a new value on Id re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
+        },
+        {
+          "name": "runOnChange-array",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Array contents",
+          "description": "Whether a new value on Array contents re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Id",
+          "description": "Id of the array this node is currently bound to"
+        },
+        {
+          "name": "items",
+          "type": "array",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Items",
+          "description": "The bound array itself, for a Repeater or another Array node to read"
+        },
+        {
+          "name": "firstItemId",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "First Item Id",
+          "description": "Id of the first object in the array, or empty while the array holds nothing"
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Count",
+          "description": "How many objects the bound array holds"
+        },
+        {
+          "name": "changed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Changed",
+          "description": "Fires when the bound array gains or loses items; suppressed while Fetch is connected"
+        },
+        {
+          "name": "fetched",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Fetched",
+          "description": "Fires once Fetch has rebound this node and the outputs are up to date"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires when a Fetch finished and the outputs are up to date"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — so it always fires together with Done, and wiring either one does the same thing. It is here on every action so that reaching for it is never a per-node decision"
+        }
+      ]
+    },
+    {
+      "name": "CollectionNew",
+      "displayNodeName": "Create New Array",
+      "docs": "https://docs.noodl.net/nodes/data/array/create-new-array",
+      "shortDocs": "https://docs.noodl.net/nodes/data/array/create-new-array-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "new",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do",
+          "description": "Creates a fresh array with a generated id and copies Items into it"
+        },
+        {
+          "name": "items",
+          "type": "array",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Items",
+          "description": "Contents to copy into the new array when Do fires; leave unconnected to start empty"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Id",
+          "description": "Id of the array made by the last Do — give it to an Array node or a mutator to reach the same array; empty until Do has fired"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once the new array exists and Id is up to date"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — so it always fires together with Done, and wiring either one does the same thing. It is here on every action so that reaching for it is never a per-node decision"
+        }
+      ]
+    },
+    {
+      "name": "CollectionInsert",
+      "displayNodeName": "Insert Object Into Array",
+      "docs": "https://docs.noodl.net/nodes/data/array/insert-into-array",
+      "shortDocs": "https://docs.noodl.net/nodes/data/array/insert-into-array-short.md",
+      "category": "Data",
+      "usePortAsLabel": "collectionId",
+      "color": "data",
+      "ports": [
+        {
+          "name": "collectionId",
+          "type": {
+            "name": "string",
+            "identifierOf": "CollectionName",
+            "identifierDisplayName": "Array Ids"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Array Id",
+          "description": "Id of the array to insert into; clearing it unbinds the node, and the next Do then fails rather than writing to a throwaway array"
+        },
+        {
+          "name": "modifyId",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Modify",
+          "displayName": "Object Id",
+          "description": "Id of the object to insert; a record with this id is created if none has been loaded yet"
+        },
+        {
+          "name": "add",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do",
+          "description": "Adds the object named by Object Id to the array, or fires Failure if either cannot be resolved"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once the object has been added to the array"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged",
+          "description": "Fires when the object was already in the array, so nothing was added"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when the array or the object could not be resolved, so nothing was changed"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error",
+          "description": "Why the last attempt changed nothing, in one sentence; empty until something fails"
+        }
+      ]
+    },
+    {
+      "name": "CollectionRemove",
+      "displayNodeName": "Remove Object From Array",
+      "docs": "https://docs.noodl.net/nodes/data/array/remove-from-array",
+      "shortDocs": "https://docs.noodl.net/nodes/data/array/remove-from-array-short.md",
+      "category": "Data",
+      "usePortAsLabel": "collectionId",
+      "color": "data",
+      "ports": [
+        {
+          "name": "collectionId",
+          "type": {
+            "name": "string",
+            "identifierOf": "CollectionName",
+            "identifierDisplayName": "Array Ids"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Array Id",
+          "description": "Id of the array to remove from; clearing it unbinds the node, and the next Do then fails rather than acting on a throwaway array"
+        },
+        {
+          "name": "modifyId",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Modify",
+          "displayName": "Object Id",
+          "description": "Id of the object to remove; the record must already have been loaded, or the removal is refused instead of quietly doing nothing"
+        },
+        {
+          "name": "remove",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do",
+          "description": "Removes the object named by Object Id from the array, or fires Failure if either cannot be resolved"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once the object has been removed from the array"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged",
+          "description": "Fires when the object was not in the array, so nothing was removed"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when the array or the object could not be resolved, so nothing was changed"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error",
+          "description": "Why the last attempt changed nothing, in one sentence; empty until something fails"
+        }
+      ]
+    },
+    {
+      "name": "CollectionClear",
+      "displayNodeName": "Clear Array",
+      "docs": "https://docs.noodl.net/nodes/data/array/clear-array",
+      "shortDocs": "https://docs.noodl.net/nodes/data/array/clear-array-short.md",
+      "category": "Data",
+      "usePortAsLabel": "collectionId",
+      "color": "data",
+      "ports": [
+        {
+          "name": "collectionId",
+          "type": {
+            "name": "string",
+            "identifierOf": "CollectionName",
+            "identifierDisplayName": "Array Ids"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Array Id",
+          "description": "Id of the array to empty; clearing it unbinds the node, and the next Do then fails rather than emptying a throwaway array"
+        },
+        {
+          "name": "clear",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do",
+          "description": "Removes every item from the array, or fires Failure if no array is bound"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once the array has been emptied"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged",
+          "description": "Fires when the array was already empty, so nothing was removed"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when no array is bound, so nothing was changed"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error",
+          "description": "Why the last attempt changed nothing, in one sentence; empty until something fails"
+        }
+      ]
+    },
+    {
+      "name": "Filter Collection",
+      "displayNodeName": "Array Filter",
+      "docs": "https://docs.noodl.net/nodes/data/array/array-filter",
+      "shortDocs": "https://docs.noodl.net/nodes/data/array/array-filter-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "items",
+          "type": "array",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Items",
+          "description": "Array to filter; the node re-runs whenever this array changes, unless you untick it under Run On Value Change"
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Enabled",
+          "description": "When false the input array passes straight through — unfiltered, unsorted and unlimited",
+          "default": true
+        },
+        {
+          "name": "filter",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Filter",
+          "description": "Runs the filter now and replaces Items with the result. This is additional to it re-running when Items, Enabled, the filter settings or the array contents change; untick any of those under Run On Value Change to stop it"
+        },
+        {
+          "name": "refresh",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Refresh",
+          "description": "Runs the filter now — the same action as Filter, under the name the rest of the Array family uses"
+        },
+        {
+          "name": "runOnChange-items",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Items",
+          "description": "Whether a new value on Items re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
+        },
+        {
+          "name": "runOnChange-enabled",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Enabled",
+          "description": "Whether a new value on Enabled re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
+        },
+        {
+          "name": "runOnChange-array",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Array contents",
+          "description": "Whether a new value on Array contents re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
+        },
+        {
+          "name": "runOnChange-filterSettings",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Filter settings",
+          "description": "Whether a new value on Filter settings re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
+        },
+        {
+          "name": "items",
+          "type": "array",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Items",
+          "description": "A new array holding the records that passed, in sort order; the input array is never modified"
+        },
+        {
+          "name": "firstItemId",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "First Item Id",
+          "description": "Id of the first record that passed, or empty when nothing matched"
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Count",
+          "description": "How many records passed the filter, after Skip and Limit have been applied"
+        },
+        {
+          "name": "modified",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Filtered",
+          "description": "Fires once the filter has run and Items is up to date, whether an author asked for the run or an input changed; wire Done instead for the outcome of a Filter you triggered"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once a Filter or Refresh you triggered has run and Items is up to date"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when the filter could not be applied — a pattern that will not compile, or a Filter pulse with no array connected"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error",
+          "description": "Why the last run failed, in one sentence; empty until something fails"
+        }
+      ]
+    },
+    {
+      "name": "Map Collection",
+      "displayNodeName": "Array Map",
+      "docs": "https://docs.noodl.net/nodes/data/array/array-map",
+      "shortDocs": "https://docs.noodl.net/nodes/data/array/array-map-short.md",
+      "category": "Data",
+      "color": "data",
+      "ports": [
+        {
+          "name": "items",
+          "type": "array",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Items",
+          "description": "Array to map; the node re-runs whenever this array reports a change"
+        },
+        {
+          "name": "mapScript",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true,
+            "codeeditor": "javascript"
+          },
+          "plug": "input",
+          "displayName": "Script",
+          "description": "Script run once per record, declaring the output properties through map({ … }); each entry is either a source property name or a function of the record",
+          "default": "map({\n\t// Here you add mappings between the input object and the mapped output object.\n\t//myOutputProp: 'inputProp',\n\t//anotherProperty: function(object) { return object.get('someProperty') + ' ' + object.get('otherProp') }\n})\n"
+        },
+        {
+          "name": "refresh",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Refresh",
+          "description": "Re-runs the mapping now, for a source array that changed without notifying"
+        },
+        {
+          "name": "items",
+          "type": "array",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Items",
+          "description": "A new array of records built by the script; the source array is never modified"
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Count",
+          "description": "How many records the last successful mapping produced"
+        },
+        {
+          "name": "modified",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Changed",
+          "description": "Fires once the mapping has run and Items is up to date, whether an author asked for the run or an input changed; wire Done instead for the outcome of a Refresh you triggered"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once a Refresh you triggered has run and Items is up to date"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when the script could not be compiled, or threw while mapping a record"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error",
+          "description": "Why the last mapping failed, in one sentence; empty until something fails"
+        }
+      ]
+    },
+    {
+      "name": "Static Data",
+      "displayNodeName": "Static Array",
+      "nodeDoubleClickAction": [
+        {
+          "focusPort": "JSON"
+        },
+        {
+          "focusPort": "CSV"
+        }
+      ],
+      "docs": "https://docs.noodl.net/nodes/data/array/static-array",
+      "shortDocs": "https://docs.noodl.net/nodes/data/array/static-array-short.md",
+      "category": "Data",
+      "color": "data",
+      "dynamicports": [
+        {
+          "name": "conditionalports/extended",
+          "condition": "type = csv OR type NOT SET",
+          "ports": [
+            {
+              "name": "csv",
+              "type": {
+                "name": "string",
+                "codeeditor": "text",
+                "allowEditOnly": true
+              },
+              "plug": "input",
+              "group": "General",
+              "displayName": "CSV",
+              "description": "Rows of comma-separated values whose first row names the properties; every cell is read as a string, so use JSON if numbers must stay numbers — ignored unless Type is CSV"
+            }
+          ]
+        },
+        {
+          "name": "conditionalports/extended",
+          "condition": "type = json",
+          "ports": [
+            {
+              "name": "json",
+              "type": {
+                "name": "string",
+                "codeeditor": "json",
+                "allowEditOnly": true
+              },
+              "plug": "input",
+              "group": "General",
+              "displayName": "JSON",
+              "description": "An array of objects authored inline; unlike CSV it keeps numbers and booleans as they are — ignored unless Type is JSON"
+            }
+          ]
+        }
+      ],
+      "ports": [
+        {
+          "name": "type",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "CSV",
+                "value": "csv"
+              },
+              {
+                "label": "JSON",
+                "value": "json"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Type",
+          "description": "Which of the two authoring formats below is read",
+          "default": "csv"
+        },
+        {
+          "name": "csv",
+          "type": {
+            "name": "string",
+            "codeeditor": "text",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "CSV",
+          "description": "Rows of comma-separated values whose first row names the properties; every cell is read as a string, so use JSON if numbers must stay numbers — ignored unless Type is CSV"
+        },
+        {
+          "name": "json",
+          "type": {
+            "name": "string",
+            "codeeditor": "json",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "JSON",
+          "description": "An array of objects authored inline; unlike CSV it keeps numbers and booleans as they are — ignored unless Type is JSON"
+        },
+        {
+          "name": "items",
+          "type": "array",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Items",
+          "description": "The authored rows, as an array of records; unchanged while the JSON cannot be parsed"
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Count",
+          "description": "How many rows the last successful parse produced"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when the authored JSON could not be parsed, leaving Items as it was"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error",
+          "description": "Why the JSON could not be parsed, in one sentence; empty until a parse fails"
+        }
+      ]
+    },
+    {
+      "name": "Variable2",
+      "displayNodeName": "Variable",
+      "docs": "https://docs.noodl.net/nodes/data/variable/variable-node",
+      "shortDocs": "https://docs.noodl.net/nodes/data/variable/variable-node-short.md",
+      "category": "Data",
+      "usePortAsLabel": "name",
+      "color": "data",
+      "ports": [
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "identifierOf": "VariableName",
+            "identifierDisplayName": "Variable names"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Name",
+          "description": "Which app-wide variable this node reads and writes"
+        },
+        {
+          "name": "fetch",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Fetch",
+          "description": "Re-reads the variable named by Name and refreshes Value. This is additional to Name rebinding on change and to changes being announced; untick either under Run On Value Change to stop it"
+        },
+        {
+          "name": "value",
+          "type": "*",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Value",
+          "description": "Stores this value in the named variable as soon as it arrives; refused, loudly, when Name is empty"
+        },
+        {
+          "name": "runOnChange-name",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Name",
+          "description": "Whether a new value on Name re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
+        },
+        {
+          "name": "runOnChange-variable",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Variable changes",
+          "description": "Whether a new value on Variable changes re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Name",
+          "description": "The variable name this node is currently bound to"
+        },
+        {
+          "name": "changed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Changed",
+          "description": "Fires when the named variable is written from anywhere in the app"
+        },
+        {
+          "name": "fetched",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Fetched",
+          "description": "Fires once Fetch has rebound this node and Value is up to date"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires when a Fetch finished and Value is up to date"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when a value arrived but could not be stored because no Name is set. This belongs to the Value input rather than to Fetch, so it reports no outcome and does not fire Completed"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error",
+          "description": "Why the last write was refused, in one sentence; empty until something fails"
+        },
+        {
+          "name": "value",
+          "type": "*",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Value",
+          "description": "Current contents of the named variable, or empty until something writes it"
+        }
+      ]
+    },
+    {
+      "name": "Set Variable",
+      "docs": "https://docs.noodl.net/nodes/data/variable/set-variable",
+      "shortDocs": "https://docs.noodl.net/nodes/data/variable/set-variable-short.md",
+      "category": "Data",
+      "usePortAsLabel": "name",
+      "color": "data",
+      "ports": [
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "identifierOf": "VariableName",
+            "identifierDisplayName": "Variable names"
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Name",
+          "description": "Which app-wide variable to write; leaving it blank refuses the write rather than storing it somewhere unreadable"
+        },
+        {
+          "name": "setWith",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "String",
+                "value": "string"
+              },
+              {
+                "label": "Boolean",
+                "value": "boolean"
+              },
+              {
+                "label": "Number",
+                "value": "number"
+              },
+              {
+                "label": "Empty string",
+                "value": "emptyString"
+              },
+              {
+                "label": "Date",
+                "value": "date"
+              },
+              {
+                "label": "Object",
+                "value": "object"
+              },
+              {
+                "label": "Array",
+                "value": "array"
+              },
+              {
+                "label": "Any",
+                "value": "*"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Set as",
+          "description": "Chooses the type of the Value port; Empty string stores \"\" and needs no Value, Object and Array accept an id as well as a value, and Boolean is coerced",
+          "default": "*"
+        },
+        {
+          "name": "do",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do",
+          "description": "Writes Value into the named variable, or fires Failure when no Name is set"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once the variable has been written and every Variable node reading it has been notified"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when nothing was stored because no variable Name is set"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Error",
+          "description": "Why the write was refused, in one sentence; empty until something fails"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.ComponentObject",
+      "displayNodeName": "Component Object",
+      "docs": "https://docs.noodl.net/nodes/component-utilities/component-object",
+      "shortDocs": "https://docs.noodl.net/nodes/component-utilities/component-object-short.md",
+      "category": "Component Utilities",
+      "color": "component",
+      "ports": [
+        {
+          "name": "properties",
+          "type": {
+            "name": "stringlist",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Properties",
+          "displayName": "Properties",
+          "description": "Names of the values this component keeps, each becoming a matching input and output"
+        },
+        {
+          "name": "fetch",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Fetch",
+          "description": "Republishes every property now. This is additional to the outputs updating on their own; untick Object properties under Run On Value Change to stop that"
+        },
+        {
+          "name": "runOnChange-object",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Run On Value Change",
+          "displayName": "Object properties",
+          "description": "Whether a new value on Object properties re-runs this node. On by default; untick to make this input passive so only the control signal runs it",
+          "default": true
+        },
+        {
+          "name": "changed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Changed",
+          "description": "Fires when any property is written, unless Object properties is unticked under Run On Value Change"
+        },
+        {
+          "name": "fetched",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Fetched",
+          "description": "Fires once Fetch has republished every property"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once Fetch has republished every property, after Fetched"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — so it always fires together with Done, and wiring either one does the same thing. It is here on every action so that reaching for it is never a per-node decision"
+        }
+      ]
+    },
+    {
+      "name": "net.noodl.SetComponentObjectProperties",
+      "displayNodeName": "Set Component Object Properties",
+      "docs": "https://docs.noodl.net/nodes/component-utilities/set-component-object-properties",
+      "shortDocs": "https://docs.noodl.net/nodes/component-utilities/set-component-object-properties-short.md",
+      "category": "Component Utilities",
+      "color": "component",
+      "ports": [
+        {
+          "name": "properties",
+          "type": {
+            "name": "stringlist",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Properties",
+          "displayName": "Properties",
+          "description": "Names of the values this node writes, each becoming an input to supply it"
+        },
+        {
+          "name": "store",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do",
+          "description": "Writes every supplied property value into the component object"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once every property has been written"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — so it always fires together with Done, and wiring either one does the same thing. It is here on every action so that reaching for it is never a per-node decision"
+        }
+      ]
+    },
+    {
       "name": "Cloud File",
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/cloud-file",
       "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/cloud-file-short.md",
@@ -3524,6 +4719,195 @@
           "group": "Events",
           "displayName": "Completed",
           "description": "Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — so it always fires together with Done, and wiring either one does the same thing. It is here on every action so that reaching for it is never a per-node decision"
+        }
+      ]
+    },
+    {
+      "name": "Switch",
+      "docs": "https://docs.noodl.net/nodes/logic/switch",
+      "shortDocs": "https://docs.noodl.net/nodes/logic/switch-short.md",
+      "category": "Logic",
+      "ports": [
+        {
+          "name": "on",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Change State",
+          "displayName": "On",
+          "description": "Switches on, or fires Unchanged if it is already on"
+        },
+        {
+          "name": "off",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Change State",
+          "displayName": "Off",
+          "description": "Switches off, or fires Unchanged if it is already off"
+        },
+        {
+          "name": "flip",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Change State",
+          "displayName": "Flip",
+          "description": "Switches to whichever state it is not currently in"
+        },
+        {
+          "name": "onFromStart",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "State",
+          "description": "State to start in, and setting it announces a switch on Switched even though nothing switched",
+          "default": false
+        },
+        {
+          "name": "state",
+          "type": "boolean",
+          "plug": "output",
+          "displayName": "Current State",
+          "description": "True while the switch is on"
+        },
+        {
+          "name": "switched",
+          "type": "signal",
+          "plug": "output",
+          "group": "Signals",
+          "displayName": "Switched",
+          "description": "Fires on every state change, alongside whichever of Switched To On and Switched To Off applies"
+        },
+        {
+          "name": "switchedToOn",
+          "type": "signal",
+          "plug": "output",
+          "group": "Signals",
+          "displayName": "Switched To On",
+          "description": "Fires when the switch becomes on"
+        },
+        {
+          "name": "switchedToOff",
+          "type": "signal",
+          "plug": "output",
+          "group": "Signals",
+          "displayName": "Switched To Off",
+          "description": "Fires when the switch becomes off"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires when the switch actually changed state"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged",
+          "description": "Fires when it was already in that state, so none of the Switched signals fired"
+        }
+      ]
+    },
+    {
+      "name": "Number Remapper",
+      "docs": "https://docs.noodl.net/nodes/math/number-remapper",
+      "shortDocs": "https://docs.noodl.net/nodes/math/number-remapper-short.md",
+      "category": "Math",
+      "ports": [
+        {
+          "name": "inputValue",
+          "type": {
+            "name": "number",
+            "allowConnectionOnly": true
+          },
+          "plug": "input",
+          "group": "Value to Remap",
+          "displayName": "Input Value",
+          "description": "Number to remap, read against Input Minimum and Input Maximum",
+          "default": 0
+        },
+        {
+          "name": "minInputValue",
+          "type": {
+            "name": "number"
+          },
+          "plug": "input",
+          "group": "Input Parameters",
+          "displayName": "Input Minimum",
+          "description": "Value of Input Value that maps to Output Minimum",
+          "default": 0
+        },
+        {
+          "name": "maxInputValue",
+          "type": {
+            "name": "number"
+          },
+          "plug": "input",
+          "group": "Input Parameters",
+          "displayName": "Input Maximum",
+          "description": "Value of Input Value that maps to Output Maximum; set equal to Input Minimum and the result is pinned at Output Minimum for every input",
+          "default": 1
+        },
+        {
+          "name": "minOutputValue",
+          "type": {
+            "name": "number"
+          },
+          "plug": "input",
+          "group": "Output Parameters",
+          "displayName": "Output Minimum",
+          "description": "Result when Input Value is at Input Minimum",
+          "default": 0
+        },
+        {
+          "name": "maxOutputValue",
+          "type": {
+            "name": "number"
+          },
+          "plug": "input",
+          "group": "Output Parameters",
+          "displayName": "Output Maximum",
+          "description": "Result when Input Value is at Input Maximum",
+          "default": 1
+        },
+        {
+          "name": "clamp",
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Output Parameters",
+          "displayName": "Clamp Output",
+          "description": "Holds the result inside the output range when Input Value falls outside the input range, instead of extrapolating",
+          "default": true
+        },
+        {
+          "name": "remappedValue",
+          "type": "number",
+          "plug": "output",
+          "group": "Outputs",
+          "displayName": "Remapped Value",
+          "description": "Input Value rescaled from the input range onto the output range"
         }
       ]
     },

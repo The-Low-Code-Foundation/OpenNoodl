@@ -76,16 +76,16 @@ import type { CollectionLike, NodeInstance, NodeModule } from '@noodl/types';
 
 import { createCorpusGraph, type CorpusGraph } from '../../../noodl-runtime/test/corpus/graph-harness';
 
-import CollectionModule from '../../src/nodes/std-library/data/collectionnode2';
-import CollectionClearModule from '../../src/nodes/std-library/data/collectionnode-clear';
-import CollectionInsertModule from '../../src/nodes/std-library/data/collectionnode-insert';
-import CollectionNewModule from '../../src/nodes/std-library/data/collectionnode-new';
-import CollectionRemoveModule from '../../src/nodes/std-library/data/collectionnode-remove';
+import CollectionModule = require('@noodl/runtime/src/nodes/std-library/data/collectionnode2');
+import CollectionClearModule = require('@noodl/runtime/src/nodes/std-library/data/collectionnode-clear');
+import CollectionInsertModule = require('@noodl/runtime/src/nodes/std-library/data/collectionnode-insert');
+import CollectionNewModule = require('@noodl/runtime/src/nodes/std-library/data/collectionnode-new');
+import CollectionRemoveModule = require('@noodl/runtime/src/nodes/std-library/data/collectionnode-remove');
 import {
   resolveCollectionId,
   setCollectionIdInput,
   type FailableCollectionInstance
-} from '../../src/nodes/std-library/data/collection-failure';
+} from '@noodl/runtime/src/nodes/std-library/data/collection-failure';
 
 /**
  * `Collection.get(name)` is a process-wide registry, so every test needs its own name or the

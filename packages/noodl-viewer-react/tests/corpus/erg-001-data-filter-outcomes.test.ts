@@ -92,9 +92,9 @@ import type { CollectionLike, NodeInstance, NodeModule } from '@noodl/types';
 
 import { createCorpusGraph, type CorpusGraph } from '../../../noodl-runtime/test/corpus/graph-harness';
 
-import FilterCollectionModule from '../../src/nodes/std-library/data/filtercollectionnode';
-import MapCollectionModule from '../../src/nodes/std-library/data/mapcollectionnode';
-import SetVariableModule from '../../src/nodes/std-library/data/setvariablenode';
+import FilterCollectionModule = require('@noodl/runtime/src/nodes/std-library/data/filtercollectionnode');
+import MapCollectionModule = require('@noodl/runtime/src/nodes/std-library/data/mapcollectionnode');
+import SetVariableModule = require('@noodl/runtime/src/nodes/std-library/data/setvariablenode');
 
 /**
  * The terminal outcomes a node reported.

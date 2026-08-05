@@ -1,9 +1,9 @@
 'use strict';
 
-import { Node } from '@noodl/runtime';
-import Model from '@noodl/runtime/src/model';
-import { outcomeOutputs } from '@noodl/runtime/src/outcome';
-import { ResolvedTargetReporter } from '@noodl/runtime/src/resolvedtarget';
+import Node = require('../../../node');
+import Model = require('../../../model');
+import { outcomeOutputs } from '../../../outcome';
+import { ResolvedTargetReporter } from '../../../resolvedtarget';
 import type {
   EditorConnectionLike,
   GraphNodeModel,
@@ -229,7 +229,10 @@ function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef
             return;
           }
 
-          const model: ModelLike = Model.get(resolution.id);
+          // CWF-008: the same scope the *read* side uses (`componentobject.ts`) and the same one
+          // `javascriptnodeparser.ts` resolves `Component.Object` in. Undefined in the browser,
+          // per-request in the cloud runtime.
+          const model: ModelLike = (this.nodeScope.modelScope || Model).get(resolution.id);
 
           const properties = (this.model.parameters.properties as string) || '';
           const validProperties = properties.split(',');

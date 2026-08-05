@@ -1,7 +1,7 @@
 'use strict';
 
-import Model from '@noodl/runtime/src/model';
-import { outcomeOutputs } from '@noodl/runtime/src/outcome';
+import Model = require('../../../model');
+import { outcomeOutputs } from '../../../outcome';
 import type { CollectionLike, NodeDefinitionOptions, NodeModule } from '@noodl/types';
 
 import {
@@ -86,7 +86,10 @@ const CollectionInsertNode: NodeDefinitionOptions = {
            * when a node emits nothing, and folding this into `Failure` breaks it for a state the
            * author explicitly asked for.
            */
-          const model = Model.get(internal.modifyId);
+          // CWF-008: through the node's model scope, so a cloud function resolves the same
+          // record the Request/Run Tasks/record nodes minted for this request rather than a
+          // fresh one out of the process-wide table.
+          const model = (this.nodeScope.modelScope || Model).get(internal.modifyId);
           const alreadyPresent = internal.collection.contains(model);
           internal.collection.add(model);
           this.reportOutcome(outcome, alreadyPresent ? 'unchanged' : 'done');
@@ -117,4 +120,4 @@ const CollectionInsertModule: NodeModule = {
 
 addCollectionFailure(CollectionInsertNode, 'insert-into-array');
 
-export default CollectionInsertModule;
+export = CollectionInsertModule;

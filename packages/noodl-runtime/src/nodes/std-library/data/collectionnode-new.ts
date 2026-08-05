@@ -1,7 +1,7 @@
 'use strict';
 
-import Collection from '@noodl/runtime/src/collection';
-import { outcomeOutputs } from '@noodl/runtime/src/outcome';
+import Collection = require('../../../collection');
+import { outcomeOutputs } from '../../../outcome';
 import type { CollectionLike, NodeDefinitionOptions, NodeInstance, NodeModule } from '@noodl/types';
 
 
@@ -94,4 +94,4 @@ const CollectionNewModule: NodeModule = {
   node: CollectionNewNode
 };
 
-export default CollectionNewModule;
+export = CollectionNewModule;

@@ -23,7 +23,7 @@ import type { CollectionLike, NodeModule } from '@noodl/types';
 
 import { createCorpusGraph, type CorpusGraph } from '../../../noodl-runtime/test/corpus/graph-harness';
 
-import CollectionNode2 from '../../src/nodes/std-library/data/collectionnode2';
+import CollectionNode2 = require('@noodl/runtime/src/nodes/std-library/data/collectionnode2');
 
 import Collection = require('@noodl/runtime/src/collection');
 import Model = require('@noodl/runtime/src/model');

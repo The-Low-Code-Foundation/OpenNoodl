@@ -77,8 +77,8 @@ import type { NodeInstance, NodeModule } from '@noodl/types';
 
 import { createCorpusGraph, type CorpusGraph } from '../../../noodl-runtime/test/corpus/graph-harness';
 
-import CollectionNodeModule from '../../src/nodes/std-library/data/collectionnode2';
-import VariableNodeModule from '../../src/nodes/std-library/data/variablenode2';
+import CollectionNodeModule = require('@noodl/runtime/src/nodes/std-library/data/collectionnode2');
+import VariableNodeModule = require('@noodl/runtime/src/nodes/std-library/data/variablenode2');
 
 async function graphWith(module: unknown, type: string, parameters: Record<string, unknown> = {}): Promise<CorpusGraph> {
   const graph = await createCorpusGraph({

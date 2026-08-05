@@ -1,8 +1,8 @@
 'use strict';
 
-import Collection from '@noodl/runtime/src/collection';
-import Model from '@noodl/runtime/src/model';
-import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
+import Collection = require('../../../collection');
+import Model = require('../../../model');
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 import type {
   GraphNodeModel,
   ModelLike,
@@ -54,7 +54,10 @@ const SetVariableNodeDefinition: NodeDefinitionOptions = {
   initialize: function (this: SetVariableInstance) {
     const internal = this._internal;
 
-    internal.variablesModel = Model.get('--ndl--global-variables');
+    // CWF-008 — see the long note on `variablenode2.ts`'s matching line. Browser: unchanged
+    // (`modelScope` is undefined). Cloud: per-request, and agreeing with what an Expression or
+    // a Function node reads out of `Variables`.
+    internal.variablesModel = (this.nodeScope.modelScope || Model).get('--ndl--global-variables');
   },
   // NDA-004 §2: `Done` had no counterpart, and it fired for a write that went nowhere. See
   // `scheduleStore`. The trigger is an author `Do` (group `Actions`), so these cannot fire on
@@ -191,7 +194,10 @@ const SetVariableNodeDefinition: NodeDefinitionOptions = {
 
         let value = internal.setWith === 'emptyString' ? '' : internal.value;
 
-        if (internal.setWith === 'object' && typeof value === 'string') value = Model.get(value); // Can set arrays with "id" or array
+        // Resolving an Object by id goes through the same scope the write does (CWF-008).
+        // Arrays do not: `Collection` has no `Scope` — see the note at the top of this file.
+        if (internal.setWith === 'object' && typeof value === 'string')
+          value = (this.nodeScope.modelScope || Model).get(value); // Can set objects with "id"
         if (internal.setWith === 'array' && typeof value === 'string') value = Collection.get(value); // Can set arrays with "id" or array
         if (internal.setWith === 'boolean') value = !!value;
 
@@ -252,4 +258,4 @@ const SetVariableModule: NodeModule = {
   }
 };
 
-export default SetVariableModule;
+export = SetVariableModule;

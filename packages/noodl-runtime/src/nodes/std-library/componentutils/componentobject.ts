@@ -1,8 +1,8 @@
 'use strict';
 
-import { Node } from '@noodl/runtime';
-import Model from '@noodl/runtime/src/model';
-import { outcomeOutputs, reportOutcomes } from '@noodl/runtime/src/outcome';
+import Node = require('../../../node');
+import Model = require('../../../model');
+import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 import type {
   EditorConnectionLike,
   GraphNodeModel,
@@ -74,7 +74,15 @@ const ComponentObject: NodeDefinitionOptions = {
       this.sendSignalOnOutput('changed');
     };
 
-    const model: ModelLike = Model.get('componentState' + this.nodeScope.componentOwner.getInstanceId());
+    // CWF-008: `(nodeScope.modelScope || Model)`, which is what `javascriptnodeparser.ts` has
+    // always used for the same record (`getComponentScopeForNode`). Bare `Model` here meant a
+    // Function node's `Component.Object` and this node resolved to two different records in the
+    // cloud runtime, where a scope exists. In the browser `modelScope` is undefined, so nothing
+    // changes; in a cloud function the record now lives in the per-request scope and is dropped
+    // with it when the response is sent, instead of accumulating in a process-wide table.
+    const model: ModelLike = (this.nodeScope.modelScope || Model).get(
+      'componentState' + this.nodeScope.componentOwner.getInstanceId()
+    );
     this._internal.model = model;
 
     model.on('change', this._internal.onModelChangedCallback);
@@ -356,4 +364,4 @@ const ComponentObjectModule: NodeModule = {
   }
 };
 
-export default ComponentObjectModule;
+export = ComponentObjectModule;

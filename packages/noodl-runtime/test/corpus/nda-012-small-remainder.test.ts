@@ -55,7 +55,7 @@ import { driveSetup } from './setup-harness';
 import DateToStringNode = require('../../src/nodes/std-library/datetostring');
 import SimpleJavascriptNode = require('../../src/nodes/std-library/simplejavascript');
 
-import ComponentObjectModule from '../../../noodl-viewer-react/src/nodes/std-library/componentutils/componentobject';
+import ComponentObjectModule = require('../../src/nodes/std-library/componentutils/componentobject');
 import AnimateToValueModule from '../../../noodl-viewer-react/src/nodes/std-library/animate-to-value';
 import StatesModule from '../../../noodl-viewer-react/src/nodes/std-library/states';
 
