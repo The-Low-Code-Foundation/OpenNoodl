@@ -2,6 +2,7 @@ import { SidebarModel } from '@noodl-models/sidebar';
 
 import { ComponentModel } from '../../models/componentmodel';
 import { NodeLibrary } from '../../models/nodelibrary';
+import { forgetTarget } from '../panels/ExplainPanel/explainTarget';
 import PopupLayer from '../popuplayer';
 import * as HitTester from './canvas/HitTester';
 
@@ -24,6 +25,23 @@ export class SelectionActions {
 
     editor.commentLayer?.clearMultiselection();
     editor.selector.unselect();
+
+    /**
+     * FH-008: the Explain panel's remembered target is a *shadow* of this
+     * selection, and it has to be dropped with it. Clicking empty canvas used to
+     * leave the panel still offering "Explain this node" for a node nothing was
+     * pointing at any more — the memo was written when the node was clicked and
+     * nothing ever cleared it.
+     *
+     * Safe to do on every deselect: the paths that deselect only to re-select
+     * (`selectNode`, `addNodeToSelection`) re-arm the memo immediately afterwards
+     * via `SidebarModelEvent.nodeSelected`. Read-only editors are excluded for the
+     * same reason they leave the sidebar alone — they are a view of a graph, not
+     * the canvas the user is pointing at.
+     */
+    if (!editor.readOnly) {
+      forgetTarget();
+    }
 
     /**
      * A read-only editor is a *view of a graph*, not the app's canvas, and it

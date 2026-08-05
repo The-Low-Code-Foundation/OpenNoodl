@@ -21,6 +21,7 @@ import { Frame } from '../../common/Frame';
 import { EditorTopbar } from '../../EditorTopbar';
 import { HelpCenter } from '../../HelpCenter';
 import { NodeGraphEditor } from '../../nodegrapheditor';
+import { panelHoldsCanvasSelection } from '../../nodegrapheditor/EditorEventBindings';
 import { ScopePlanStrip } from '../../panels/AiAuthoringPanel/ScopePlanStrip';
 import { showContextMenuInPopup } from '../../ShowContextMenuInPopup';
 import { useCanvasView } from './hooks/UseCanvasView';
@@ -105,8 +106,10 @@ function EditorDocument() {
     SidebarModel.instance.on(
       SidebarModelEvent.activeChanged,
       (activeId) => {
-        const isNodePanel = activeId === 'PropertyEditor' || activeId === 'PortEditor';
-        if (isNodePanel === false) {
+        // Same allow-list as the canvas deselect, deliberately shared: this is
+        // what the detached viewer highlights, and it drifting from what is
+        // selected on canvas is how the two used to disagree (FH-008).
+        if (panelHoldsCanvasSelection(activeId) === false) {
           setSelectedNodeId(null);
         }
       },

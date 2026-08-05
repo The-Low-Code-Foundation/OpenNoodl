@@ -11,6 +11,7 @@ import { ComponentModel } from '../../models/componentmodel';
 import { NodeLibrary } from '../../models/nodelibrary';
 import { ProjectModel } from '../../models/projectmodel';
 import { WarningsModel } from '../../models/warningsmodel';
+import { ExplainPanel_ID } from '../panels/ExplainPanel';
 import { SnapSpacing } from './canvas/types';
 
 import type { NodeGraphEditor } from '../nodegrapheditor';
@@ -102,6 +103,23 @@ export function registerRenderEventBindings(editor: NodeGraphEditor): void {
   );
 }
 
+/**
+ * Which sidebar panels are allowed to keep the canvas selection alive.
+ *
+ * Opening any other panel clears it, so that a stale highlight never outlives
+ * the panel that explained it. That rule costs a panel *about* the selection
+ * everything: FH-008 measured Explain being handed an empty canvas every time,
+ * because the deselect below runs on `activeChanged` — before the panel it is
+ * switching to has read anything.
+ *
+ * A function rather than an exported array on purpose: `ExplainPanel_ID` comes
+ * from a module that imports the canvas context back, and a top-level array
+ * would capture it at module-init time.
+ */
+export function panelHoldsCanvasSelection(panelId: string): boolean {
+  return panelId === 'PropertyEditor' || panelId === 'PortEditor' || panelId === ExplainPanel_ID;
+}
+
 export function registerEditorEventBindings(editor: NodeGraphEditor): KeyboardCommand[] {
   EventDispatcher.instance.on(
     ['DebugInspectorConnectionPulseChanged'],
@@ -171,9 +189,8 @@ export function registerEditorEventBindings(editor: NodeGraphEditor): KeyboardCo
   SidebarModel.instance.on(
     SidebarModelEvent.activeChanged,
     (activeId) => {
-      const isNodePanel = activeId === 'PropertyEditor' || activeId === 'PortEditor';
-      if (isNodePanel === false) {
-        //deselect nodes when switching away from property editor or port editor
+      if (panelHoldsCanvasSelection(activeId) === false) {
+        //deselect nodes when switching to a panel that has no use for a selection
         editor.deselect({ disableHidePanels: true });
         editor.repaint();
       }

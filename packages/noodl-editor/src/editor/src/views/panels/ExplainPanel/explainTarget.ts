@@ -1,25 +1,24 @@
 /**
  * AIX-004 — Explain Mode: what the user last pointed at
  *
- * **A sidebar panel cannot read the canvas selection when it opens.** Switching
- * to any panel other than `PropertyEditor`/`PortEditor` deselects every node —
- * `EditorEventBindings` does it on `SidebarModelEvent.activeChanged`, so the
- * selection is already gone by the time a panel mounts. A panel that asked
- * `getSelectedNodes()` on mount would always see an empty selection and would
- * only ever be able to explain whole components. (The Data Lineage panel listens
- * for a `selectionChanged` event that nothing in the editor emits, and its
- * context-menu entry is commented out — so it has this bug today.)
+ * A record of what the user last pointed at, kept because the *live* selection
+ * is not always readable when the panel wants it.
  *
- * This module is the fix: it remembers what the user pointed at *before* the
- * deselect, from two sources that both fire early enough —
+ * Switching to any panel outside `panelHoldsCanvasSelection` (EditorEventBindings)
+ * deselects every node on `SidebarModelEvent.activeChanged`. Explain used to be
+ * outside that list — FH-008 — so opening it destroyed the very selection it was
+ * opened to explain, and this memo was the only thing that survived. Explain is
+ * in the list now and the live read normally wins; the memo still covers the
+ * paths where it cannot:
  *
  *  - `SidebarModelEvent.nodeSelected`, which carries the node id explicitly and
  *    fires whenever clicking a node opens its property panel; and
  *  - the canvas context menu, which captures the live multi-selection at the
  *    moment the user asks for an explanation.
  *
- * It starts at editor boot, not at panel mount, because the selection it needs
- * to see usually happens before the panel is ever opened.
+ * It starts at editor boot, not at panel mount, because what it records happens
+ * before the panel is ever opened. It is dropped by `SelectionActions.deselect`,
+ * so it can never outlive the selection it shadows.
  *
  * @module noodl-editor/views/panels/ExplainPanel/explainTarget
  */
@@ -59,6 +58,10 @@ export function rememberTarget(componentName: string, nodeIds: string[]): void {
 }
 
 export function forgetTarget(): void {
+  // Quiet when there is nothing to forget. `SelectionActions.deselect` calls this
+  // on every canvas mouse-up that lands on nothing, and an event per mouse-up
+  // would re-render the panel for a change that did not happen.
+  if (remembered === null) return;
   remembered = null;
   EventDispatcher.instance.emit(EXPLAIN_TARGET_CHANGED, null);
 }

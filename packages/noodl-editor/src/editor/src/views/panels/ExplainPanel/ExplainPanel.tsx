@@ -37,6 +37,8 @@ import { ExperimentalFlag } from '@noodl-core-ui/components/sidebar/Experimental
 import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { useIsActivePanel } from '../useIsActivePanel';
+
 import { ExplanationView } from './components/ExplanationView';
 import { clearCitedHighlight } from './canvasLink';
 import { useCanvasSelection } from './hooks/useCanvasSelection';
@@ -58,7 +60,10 @@ function scopeForSelection(selectedNodeIds: string[]): { scope: ExplainScope; la
 }
 
 export function ExplainPanel() {
-  const selection = useCanvasSelection();
+  // The panel is mounted once and then hidden behind `display: none`, so
+  // "became visible" is the only moment a fresh read of the canvas can happen.
+  const isActivePanel = useIsActivePanel(ExplainPanel_ID);
+  const selection = useCanvasSelection(isActivePanel);
   const [detail, setDetail] = useState<ExplainDetail>('standard');
   const [state, setState] = useState<ExplainSessionState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -213,9 +218,9 @@ export function ExplainPanel() {
 
           {!error && !state && (
             <Text textType={TextType.Shy}>
-              Ask about the whole component from here, or right-click a node on canvas and choose “Explain this
-              node”. Node names in the answer are links — hover one to light it up on canvas, click it to jump
-              there.
+              Select nodes on canvas and come back here, ask about the whole component, or right-click a node
+              and choose “Explain this node”. Node names in the answer are links — hover one to light it up on
+              canvas, click it to jump there.
             </Text>
           )}
 

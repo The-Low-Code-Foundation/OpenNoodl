@@ -3,6 +3,7 @@ export * from './canvas-characterisation.spec';
 export * from './conflictwarnings';
 export * from './createnewnode';
 export * from './createstatus';
+export * from './explain-selection.spec';
 export * from './export';
 export * from './hierarchy';
 export * from './nodegrapheditor';

@@ -3,20 +3,24 @@
  *
  * Answers "what has the user pointed at" from two sources, in order:
  *
- *  1. The live canvas selection, which survives a multi-select (dragging a
- *     marquee does not switch the sidebar) and is therefore still readable.
- *  2. The remembered target from ./explainTarget, for the far more common case —
- *     clicking a single node, which opens its property panel and, on the way,
- *     deselects everything. See that module for why a live read is not enough.
+ *  1. The live canvas selection, which since FH-008 survives opening this panel
+ *     (see `panelHoldsCanvasSelection` in EditorEventBindings).
+ *  2. The remembered target from ./explainTarget, for the paths where the live
+ *     read cannot see it.
  *
  * Falls back to no selection, which means whole-component scope.
+ *
+ * **Read on becoming visible, not on mount.** Sidebar panels are hidden behind
+ * `display: none`, never unmounted, so a panel constructed the first time it is
+ * opened would answer with that first selection forever. The caller passes
+ * whether it is the active panel and every transition into active re-reads.
  *
  * @module noodl-editor/views/panels/ExplainPanel/hooks/useCanvasSelection
  */
 
 import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import { useEventListener } from '@noodl-hooks/useEventListener';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
 import { EXPLAIN_TARGET_CHANGED, rememberedTarget } from '../explainTarget';
@@ -48,14 +52,45 @@ function readSelection(): CanvasSelection {
   };
 }
 
-export function useCanvasSelection(): CanvasSelection {
+function isSameSelection(a: CanvasSelection, b: CanvasSelection): boolean {
+  return (
+    a.componentName === b.componentName &&
+    a.isRemembered === b.isRemembered &&
+    a.selectedNodeIds.length === b.selectedNodeIds.length &&
+    a.selectedNodeIds.every((id, index) => id === b.selectedNodeIds[index])
+  );
+}
+
+export function useCanvasSelection(isPanelActive = true): CanvasSelection {
   const [selection, setSelection] = useState<CanvasSelection>(readSelection);
 
-  useEffect(() => setSelection(readSelection()), []);
+  const refresh = useCallback(
+    () =>
+      setSelection((previous) => {
+        const next = readSelection();
+        return isSameSelection(previous, next) ? previous : next;
+      }),
+    []
+  );
 
-  useEventListener(EventDispatcher.instance, EXPLAIN_TARGET_CHANGED, () => setSelection(readSelection()), []);
+  useEffect(() => {
+    if (isPanelActive) refresh();
+  }, [isPanelActive]);
 
-  useEventListener(EventDispatcher.instance, 'activeComponentChanged', () => setSelection(readSelection()), []);
+  // A marquee on the canvas changes the selection without touching the sidebar,
+  // and the canvas emits nothing for it — so while this panel is the visible one
+  // there is no notification to subscribe to. The end of any mouse gesture is
+  // the cheapest honest moment to look again; the compare above keeps a gesture
+  // that changed nothing from re-rendering the panel.
+  useEffect(() => {
+    if (!isPanelActive) return;
+    document.addEventListener('mouseup', refresh);
+    return () => document.removeEventListener('mouseup', refresh);
+  }, [isPanelActive]);
+
+  useEventListener(EventDispatcher.instance, EXPLAIN_TARGET_CHANGED, refresh, []);
+
+  useEventListener(EventDispatcher.instance, 'activeComponentChanged', refresh, []);
 
   return selection;
 }
