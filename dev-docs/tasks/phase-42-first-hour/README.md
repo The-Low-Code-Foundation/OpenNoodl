@@ -123,6 +123,30 @@ Build in this order — CWF-001 gates the rest of the track:
 Deferred with reasons in the decisions table: data steps (Q2), an HTTP *step* (Q4), workflow-calls-
 workflow (Q6). Pile 1.4 keeps its existing owners (POL-015, OPEN-WORK F62).
 
+## The CWF track, second half (out of TALK-007, validated 2026-08-05)
+
+CWF-001…007 are all **workflow-side**. These are the **cloud-function** side — the vocabulary audit
+TALK-001 never did. Richard walked the list node by node and approved it; §6b of TALK-007 records
+what the validation found, which was mostly that five of six things asked for were **already
+registered and invisible**.
+
+| # | Task | Why |
+|---|---|---|
+| 7 | [CWF-008](CWF-008-THE-CLOUD-VOCABULARY.md) — the cloud vocabulary | **The only one that removes a *cannot*.** A function cannot build, filter or reshape a list. Arrays ×8, Variable ×2, **Component Object ×2** (per-request state), Switch, Number Remapper — all pure `@noodl/runtime`, a move not a build. Plus the Cloud Function node, which is *not* a move (`XMLHttpRequest` + no session store). Value Changed struck by Richard. |
+| 8 | [CWF-009](CWF-009-THE-SECRET-NODE.md) — the Secret node | `process.env` is already readable from any function; `SecretsStore` is the proper door and the runtime cannot see it. **Gates CWF-010, payments and every third-party API.** The work is the namespace policy, not the node. |
+| 9 | [CWF-010](CWF-010-THE-CRYPTO-KIT.md) — hash, random, UUID, JWT | Engine measured present (`crypto.subtle`, `randomUUID`, `Buffer`). No dependency. JWT Verify is for *other people's* tokens — our own caller is already on the Request node. |
+| 10 | [CWF-011](CWF-011-DATE-AND-TIME.md) — date & time | `Date To String` is the entire vocabulary. Now / Add / Difference / Compare / timezone. **Shared runtime — the browser wants it equally.** |
+| 11 | [CWF-012](CWF-012-CSV.md) — CSV | We already ship a real CSV parser inside Static Array, authoring-time only. Lift it; don't write a second one. |
+| 12 | [CWF-013](CWF-013-THE-LOG-NODE.md) — the Log node | Small node, real question: three log destinations exist and the only one an author can reach is the one with **no redaction**. |
+| 13 | [CWF-014](CWF-014-TYPED-REQUEST-BODIES.md) — typed Request bodies | `params` is a comma-separated string minting `'*'` ports. **One design against three debts** (AIB-001, ERG-005, here) — and the difference between a function and an API. |
+| 14 | [CWF-015](CWF-015-SERVER-SIDE-USERS.md) — server-side users | Genuinely absent, unlike the rest. Create/administer users as the *system*, plus Verify Token. Ships with CWF-017 or it ships a privilege escalation. |
+| 15 | [CWF-016](CWF-016-IDEMPOTENCY.md) — idempotency keys | The only item with **nothing built behind it**, and the only capability a Function node cannot fake (needs state across requests). Design first, concurrency test first. |
+| 16 | [CWF-017](CWF-017-FUNCTION-ACCESS-AND-LIMITS.md) — who may call, how often | **Cheapest high-value item on the track.** `public\|authenticated\|role:\|nobody` + `runAs` is built and has no editor door; per-function rate limiting is one field beside it. Richard: *"i love it"*. |
+
+⚠️ **Two questions still open** (TALK-007 §7): what Run Tasks should iterate over in the cloud — it
+runs a *helper component* today and the picker refuses cloud functions **on purpose** — and whether
+the richer **Script** node joins the cloud alongside Function.
+
 ## The HUD track (out of TALK-003, 2026-08-05)
 
 **[FH-011](FH-011-RECORD-RECORDS-NOTHING.md) gates all four** — a HUD over a recorder that records

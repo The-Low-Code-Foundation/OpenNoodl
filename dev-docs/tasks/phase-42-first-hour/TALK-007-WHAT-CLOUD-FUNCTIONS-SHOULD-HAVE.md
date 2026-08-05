@@ -266,21 +266,68 @@ bottom; cut, argue with, or reorder anything above.**
 | 16 | | | |
 | 17 | | | |
 
+## 6b. Validated — 2026-08-05, and what the validation found
+
+Richard walked the list. **Tier 2 (rows 1–4, 6, 13), Tier 3 (rows 12, 14 + server-side auth) and
+the two doors (Pile C + row 11) are all approved as written.** Value Changed struck. The Tier 1
+amendments are where the interesting part is: **five of the six things asked for were already
+registered**, which is itself the finding — the cloud picker's contents are not legible from the
+picker.
+
+| Asked for | Reality | Result |
+|---|---|---|
+| "add the object nodes along with the array ones" | **Already in.** Object (`Model2`), Set Object Properties, Create New Object have been in the cloud list all along. What is *not* in is the **Component Object** family — per-instance shared state, which in a function means **per-request** state, no wires. | Component Object + Set Component Object Properties added to the move list |
+| "add expression and function (if they're not already in there)" | **Already in.** Expression, Function (`JavaScriptFunction`) and Logic Builder are the Custom Code category today (§1). | nothing to do — but see **Script** below |
+| "make sure the data nodes are in there to call our integrated backend" | **Already in.** All 11: Record, Create/Update/Delete Record, Query Records, Filter Records, both relation nodes, Cloud File, Sign File URL, Config. | nothing to do |
+| "add run tasks node" | **Already in** — and it iterates today. | nothing to do |
+| "(you have to choose another cloud function to run)" | **Not what it does, deliberately.** `taskTemplate` is `type: 'component'`, and the picker on a cloud canvas explicitly excludes cloud functions: *"don't allow references to cloud functions, only cloud components"* ([componentpicker.ts:119-127](../../../packages/noodl-editor/src/editor/src/views/panels/propertyeditor/componentpicker.ts#L119-L127)). It runs a **cloud helper component** per item. | **open question — see §7** |
+| "add cloud function (a function calling another function could be useful)" | **Not a free move.** `cloudfunction2.ts` uses `new XMLHttpRequest()` ([line 33](../../../packages/noodl-viewer-react/src/nodes/std-library/data/cloudfunction2.ts#L33)) and reads the browser session store for its token. Needs the `typeof window` branch `restnode` already has, **and** an answer to what identity a server-to-server call carries — the same hole as the workflow join. | in, as its own slice with a design question |
+
+**One more the validation surfaced, not asked for:** **Script** (`Javascript2`) — the richer code
+node (typed inputs/outputs, named signal handlers, setup/run/destroy lifecycle) is browser-only,
+while the plainer Function node is what the cloud gets. That is backwards if anything. *Needs a
+yes/no.*
+
+### The tasks this became
+
+Written 2026-08-05, straight after the validation: **[CWF-008](CWF-008-THE-CLOUD-VOCABULARY.md)**
+(the moves) · **[CWF-009](CWF-009-THE-SECRET-NODE.md)** (Secret) ·
+**[CWF-010](CWF-010-THE-CRYPTO-KIT.md)** (hash/JWT) · **[CWF-011](CWF-011-DATE-AND-TIME.md)** (date)
+· **[CWF-012](CWF-012-CSV.md)** (CSV) · **[CWF-013](CWF-013-THE-LOG-NODE.md)** (Log) ·
+**[CWF-014](CWF-014-TYPED-REQUEST-BODIES.md)** (typed requests) ·
+**[CWF-015](CWF-015-SERVER-SIDE-USERS.md)** (server-side users) ·
+**[CWF-016](CWF-016-IDEMPOTENCY.md)** (idempotency) ·
+**[CWF-017](CWF-017-FUNCTION-ACCESS-AND-LIMITS.md)** (access + limits).
+
+Rows deliberately **not** given a task, with the reason: scheduling from inside a function (row 5 —
+reframe as a workflow Wait, don't build), queue/defer (row 7 — backend feature, not a node), PDF
+(row 8 — no case yet; the image half has `sharp` present and can be added when one appears),
+payments (row 9 — a template project once CWF-009 and CWF-003 land, never nodes).
+
 ### If you want a shortlist rather than a menu
 
-Ranked by value-per-day, from the above: **(a)** Pile A's array family — it is the only entry that
-removes a "cannot", **(b)** the security door + per-function rate limit (rows 11 and Pile C, one
-trip), **(c)** typed Request bodies (row 14), **(d)** secrets as a node (row 3), which is what makes
-rows 2, 9 and 10 real rather than notional.
+Ranked by value-per-day: **(a)** CWF-008's array family — the only entry that removes a "cannot",
+**(b)** CWF-017, the security door + per-function rate limit in one trip, **(c)** CWF-014, typed
+Request bodies, **(d)** CWF-009, secrets as a node, which is what makes CWF-010 and third-party APIs
+real rather than notional.
 
 ## 7. What happens next
 
 1. ~~**One decision only yours** — Pile B.~~ ✅ **Answered and shipped 2026-08-05**: un-registered,
    Streaming six kept, cloud picker 58 → 48. Details in Pile B.
-2. You add rows to §6 and strike anything you disagree with.
-3. TALK-001 reopens for the decision — and the survivors become CWF tasks, sequenced against
-   the existing six. **CWF-003 has already been updated** with §3.2's measurement: its first check
-   item is answered, so it is now smaller than it was written.
+2. ~~You add rows to §6 and strike anything you disagree with.~~ ✅ **Done — §6b.** The list is
+   validated and written up as tasks: **CWF-008** (the moves) through **CWF-017** (the doors).
+3. **Two questions still open, both from the validation:**
+   - **Run Tasks over what?** Today it runs a cloud *helper component* per item, and the picker
+     refuses cloud functions on purpose. Options: (a) leave it — a helper component is the right
+     unit of work and a function is an HTTP-addressable endpoint, not a subroutine; (b) let the
+     Template picker offer cloud functions and bridge Request/Response to the template's signal
+     contract; (c) neither — express "run this function per item" with a **For Each step in a
+     workflow** calling the function, which is what the authoring model already says. My read: (c),
+     with (a) unchanged. Yours decides CWF-008 slice 4.
+   - **Script (`Javascript2`) into the cloud too?** See the foot of §6b.
+4. **CWF-003 has already been updated** with §3.2's measurement: its first check item is answered,
+   so it is now smaller than it was written.
 
 ⚠️ Whatever we add, two mechanical facts hold: the cloud picker is a **committed snapshot**
 (`cloud-library:generate` must run, and `cloud-library:check` is a gate that has been red for
