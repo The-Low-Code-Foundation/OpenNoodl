@@ -19,7 +19,7 @@ Three kinds of doc in this folder:
 
 | # | What Richard reported | What research found | Doc |
 |---|---|---|---|
-| 0 | Done/Completed/Unchanged "doubling up" | Semantics are real and your guess was backwards (**Completed** always fires; **Done** = changed something; **Unchanged** = valid no-op). Real problems: signal-port descriptions render **nowhere** in the editor, and on 48/82 nodes the distinction collapses (8 nodes: Done ≡ Completed). | [TALK-006](TALK-006-THE-THREE-SIGNALS.md) |
+| 0 | Done/Completed/Unchanged "doubling up" | Semantics are real and your guess was backwards (**Completed** always fires; **Done** = changed something; **Unchanged** = valid no-op). Real problems: signal-port descriptions render **nowhere** in the editor, and on 48/82 nodes the distinction collapses (8 nodes: Done ≡ Completed). ✅ **Talked 2026-08-05: keep both ports, no rename, and the surface is a read-only Ports tab in the props panel.** Verifying it corrected the doc three times — the canvas has no port hit-testing to hang a hover on, pruning `Done` would restore nothing to the validator, and a display-only rename would have been *one line*. | [TALK-006](TALK-006-THE-THREE-SIGNALS.md) + [FH-020](FH-020-THE-PORTS-TAB.md) + [FH-022](FH-022-WHEN-COMPLETED-IS-DONE.md) |
 | 0.1 | "Didn't we add nodes to watch arrays?" | **Yes — built and shipped.** `Array Changed` + `Object Changed` (category Logic, ERG-004): Item Added/Removed/Changed (in-place edits via per-member subscriptions), Array Replaced, Index/Item/Key/Count. No "choose what to watch" selector **by design** — you choose by which output you wire. Known blocker: no Data node emits a live object → FH-004. Reorders (sort/reverse) deliberately fire no signal. | answer + [FH-004](FH-004-THE-OBJECT-NODE-EMITS-AN-OBJECT.md) |
 | 1 | `[object Object]` as auto-name | Diagnosed in phase 3 (TASK-006B), chosen fix half-applied: `labelForNode` returns the raw expression object; the resolver built for it has zero call sites. Three collateral bugs (cache poisoning, spurious sub-label, latent crash). | [FH-003](FH-003-OBJECT-OBJECT-ON-THE-CANVAS.md) |
 | 2 | WebSocket node bound to the selected backend | Not just the wrong abstraction — **our backend has no WebSocket server at all** (SSE `/realtime` only, per BAK-001), so the mode had nothing to connect to. A five-transport realtime layer already exists with exactly **one door** (Query Records' checkbox). ✅ **Talked 2026-08-05: build the standalone Subscribe To Changes node**, which is `_active_` by default and so *is* the easy path to our backend. | [TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) + [FH-021](FH-021-SUBSCRIBE-TO-CHANGES.md) |
@@ -64,8 +64,18 @@ Three kinds of doc in this folder:
    records that tabs affect `nodegx-observe` (bound to a port) and explicitly **not** `noodl-mcp`
    (bound to the path in argv, *"none — it works unchanged"*). Four build tasks (the MCP track
    below); the observe reconnect fix gates the observe button.
-4. **[TALK-006](TALK-006-THE-THREE-SIGNALS.md) — the three signals.** One vocabulary decision
-   (keep both ports on the 8 degenerate nodes?), one surface decision (where descriptions render).
+4. ✅ **[TALK-006](TALK-006-THE-THREE-SIGNALS.md) — the three signals. HAD 2026-08-05.**
+   **Keep both ports on all 82** and make the generated `Completed` description say when it is
+   redundant ([FH-022](FH-022-WHEN-COMPLETED-IS-DONE.md)); **no rename**; and the surface is a
+   read-only **`Ports` tab** in the property panel ([FH-020](FH-020-THE-PORTS-TAB.md)) — Richard's
+   argument: the connection popup filters by what you dragged from, which is right for wiring and
+   useless for discovery. Every count re-derived from the generated catalog held (82/34/48/8), and
+   verifying the doc corrected it three times: the canvas has **no port hit-testing at all** to hang
+   a hover on; pruning `Done` would have restored nothing to the validator (`completed` is in the
+   same proxy set); and a display-only rename would have been **one line**, because
+   `displayName: 'Done'` is set in exactly one place. Both mechanisms the tab needs already exist —
+   the tab strip is in this panel on the AI path only, and the connected-source chip is on 5 row
+   classes of ~29 and reads inputs only.
 5. ✅ **[TALK-003](TALK-003-A-RECORDING-HUD.md) — recording HUD. HAD 2026-08-05.** **Alpha, not
    fast-follow**, and **Record leaves the Provenance panel** for a canvas control. Four build tasks
    (the HUD track below), all gated on FH-011. Q4 went the expensive way — per-peer trace
@@ -161,6 +171,10 @@ Cheap-and-visible first, grouped by shared surface:
    **FH-019** (typed intellisense, same files — sequence them, don't parallelise).
 5. **FH-006** (Roboto — after the one measurement), **FH-007** (blocked on ERG-005 §2 + the
    other session's §1).
+6. **FH-022** (the `Completed` wording — one branch in `outcome.ts`, then *explicitly* run
+   `catalog:check`, `cloud-library:check` and `catalog:merge:check`; its Counter slice is a
+   behaviour change and gets its own commit) → **FH-020** (the Ports tab). Either order works, but
+   neither alone closes item 0: FH-022 makes the words right, FH-020 is where anyone reads them.
 
 ## ⚠️ Concurrent-session note
 

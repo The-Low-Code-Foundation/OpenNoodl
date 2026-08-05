@@ -126,6 +126,17 @@ two modes are genuinely needed, the mode is declared, visible and author-chosen.
 - **`Completed` is universal, and it is the one port with no exemption** — because its whole value
   is that an author can rely on it being there.
 
+  ⚠️ **The price, and what it costs: on 8 of the 82 adopting nodes there is neither an `Unchanged`
+  nor a `Failure`, so `Done` and `Completed` are the same pulse.** `Collection2`, `CollectionNew`,
+  `Condition`, `NewModel`, `Page`, `Unique Id`, `net.noodl.ComponentObject`,
+  `net.noodl.SetComponentObjectProperties`. Richard read this as the vocabulary doubling up
+  (phase 42, item 0). **Decided 2026-08-05: both ports stay on all 82** — wiring `Completed` must
+  never become a per-node decision — **and `outcomeOutputs` says so in the generated `Completed`
+  description** when the node has no other outcome. See
+  [`TALK-006`](../tasks/phase-42-first-hour/TALK-006-THE-THREE-SIGNALS.md) for the argument and
+  [`FH-022`](../tasks/phase-42-first-hour/FH-022-WHEN-COMPLETED-IS-DONE.md) for the build. Also
+  decided there: **no rename** of `Done`/`Unchanged`/`Failure`/`Completed`.
+
 ### The one real exception
 
 **Navigation destroys the graph that would observe the signal.** `Navigate` and friends may complete
