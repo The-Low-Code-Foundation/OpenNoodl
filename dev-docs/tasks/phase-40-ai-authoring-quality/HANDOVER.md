@@ -5,7 +5,7 @@ previous version's headline was "slice 1 built the one gate, now converge the to
 something more urgent first: the two clients judged a candidate identically and then did entirely
 different things with it, and slice 1's own gate-sharing had made one of Layer 1's defects *harder* to
 see rather than fixing it. Everything the earlier versions knew and is still true has been folded in
-below, including their eight corrections, all of which survived.
+below, including their nine corrections, all of which survived.
 
 Paste the block below into a fresh session.
 
@@ -38,15 +38,17 @@ green**; runtime **2144 passed**; `typecheck:editor` and `typecheck:editor-tests
 | AAQ-002 — the backend is first-class | ✅ **CLOSED.** All four slices built, all five criteria driven live. |
 | AAQ-003 — authored apps scroll | **Criterion 1 closed live.** Criterion 3 under test. Criterion 2 (a dashboard brief's regions scrolling independently) needs a second brief — take it with the engine work. |
 | AAQ-004 — the conversation is kept | Mechanism A built, under test, confirmed live. Mechanism B stays with AAQ-006. |
-| AAQ-005 — one substrate | **Slices 1 (one gate) and 2 (one apply) BUILT.** Criteria 1, 2 and 5 met *for the gate and the apply*. The **toolset convergence** and criteria 3/4 are **not started**. See corrections 8 and 9. |
+| AAQ-005 — one substrate | **Slices 1 (one gate) and 2 (one apply) BUILT.** Criteria 1 and 5 met; criterion 2 met *only in its "a test fails if the two surfaces diverge" half* (`gateParity.test.ts`) — the "same tool schemas from the same source of truth" half is untouched. **Toolset convergence and criteria 3/4 not started.** See corrections 8 and 9. |
 | AAQ-006 → 007 (harness, self-review) | Not started. Read the perf warning below before designing either. |
 | AAQ-008/009/010 (doctrine) | Not started. Prompt-encodable parts can land early; acceptance runs against the new engine. |
-| AAQ-011 | Register. F4/F5 closed; F9–F11 from the AAQ-002 drive; **F12 added this session**. F9 and F10 both affect every wizard-built app. |
+| AAQ-011 | Register. F4/F5 closed; F9–F11 from the AAQ-002 drive; F12 from slice 1; **F13 added this session**. F9, F10 and F13 are product questions for Richard; F9 and F10 affect every wizard-built app. |
 
 ## The corrections. Do not re-derive these the hard way
 
 The first three are from the Layer-1 build session, the next three from the Layer-1 live pass, the
-seventh from the AAQ-002 criteria drive, and the eighth from the AAQ-005 slice. All still hold.
+seventh from the AAQ-002 criteria drive, the eighth from AAQ-005 slice 1 and the ninth from slice 2. All
+still hold. **8 and 9 are the two to read first if you are touching the substrate**: both are about
+believing a claim that code sharing had happened.
 
 1. **`prop-age` / `prop-bio` was never a timing problem, and AAQ-002 said it was.**
    `SchemaHandler._fetch()` (`utils/schemahandler.ts`) had been a **stub since WF-007**: it set
@@ -135,7 +137,7 @@ seventh from the AAQ-002 criteria drive, and the eighth from the AAQ-005 slice. 
    that lies. When you converge a rule, ask what the *other* code around the original call site was
    quietly guaranteeing.
 
-## What AAQ-005 slice 1 built and found
+## AAQ-005 slice 1 — one gate: what it built and found
 
 `validation/authoredCandidate.ts` is now the **one** definition of the authored gate's policy and its four
 precondition checks, bound three times: the editor's `validateCandidateComponent`, the MCP write gate, and
@@ -166,6 +168,50 @@ Three things worth knowing before you extend it:
 Both new specs were **verified to fail against the old behaviour** (4 of 6 parity cases; the exemption
 case). `packages/noodl-mcp/tests/gateParity.test.ts` is the divergence detector: one candidate, both
 bindings, same verdict and same blocking codes.
+
+## AAQ-005 slice 2 — one apply: what it built and found
+
+**Layer 1's three project-level effects lived in the editor's apply path and nowhere else**, so an
+external agent got none of them. Page registration (AAQ-001), `bodyScroll` (AAQ-003) and provisioning
+(AAQ-002) were all absent from `noodl-mcp` — `provision` and `scroll` appeared nowhere in the package at
+all, while both packages import `validatePlan` from the *same* `authoring/plan` module, which has handled
+`provision` since AIB-007. See correction 9 for the part that matters.
+
+What exists now:
+
+- **One registration decision, two bindings.** `readRouterPagesValue`, `findRoutersInComponents`,
+  `isPlaceholderPageGraph` and `resolvePageRegistration` moved out of the editor's `staging.ts` into
+  `pageRegistration.ts`, over plain nodes. `staging.ts` feeds it `ProjectModel` nodes; `noodl-mcp`'s new
+  `project/pageRegistration.ts` feeds it `ProjectStore` ones. Neither holds policy.
+- **Registration fires on all three MCP write paths** — `create_component`, `update_component` (updates
+  count, exactly as the editor's apply does) and `apply_plan` in plan order — and is **reported** as
+  `registeredPages`, because a tool that writes a component the caller did not name has to say so.
+- **`create_plan` takes `scroll`**, applied as `bodyScroll` via `ProjectStore.writeProjectSettings`,
+  which never overwrites a setting already present.
+- **Provisioning does not port and says so.** It means starting and supervising a `nodegx-backend` child
+  process — the editor's manager over IPC; `backend/client.ts` only speaks admin HTTP to backends already
+  running. `create_plan` accepts `kind: 'provision'` (one vocabulary) and refuses it with the reason and
+  somewhere to go. Filed as **AAQ-011 F13**, and it is a product question of the F4/F5 class.
+
+Two traps caught before they shipped, both now specced. **`graph.roots` is parentless nodes, not
+`visualRoots`** — the latter is the `allowAsChild` subset, so reading it would have *widened* the
+placeholder rule and let an apply steal the start page from a part-built page. And the **start-page lookup
+is exact**, not the module's tolerant `isSamePage`, because `getComponentWithName` compares verbatim;
+widening it would have been a real behaviour change smuggled in under a refactor.
+
+The four harnesses, so you extend them rather than write a fifth:
+
+| File | What it pins |
+|---|---|
+| `noodl-mcp/tests/gateParity.test.ts` | one candidate through **both gate bindings** — same verdict, same blocking codes (slice 1) |
+| `noodl-mcp/tests/pageRegistration.test.ts` | registration on all three MCP write paths; **6 of 8 fail** with it neutralised |
+| `noodl-mcp/tests/planProjectEffects.test.ts` | the `scroll` → `bodyScroll` setting and the provision refusal; **3 of 7 fail** with both reverted |
+| `noodl-editor/tests-unit/aaq-001/pageRegistration.test.ts` | the shared pure core — 36 cases, 14 of them new in slice 2, including the `visualRoots` trap |
+
+⚠️ There is **no apply-parity spec across the two clients** the way `gateParity` covers the gate — the
+editor's apply needs a `ProjectModel` and the MCP one needs a `ProjectStore`, so what is shared is proven
+at the *decision* level (the pure core, tested once) and bound twice. If you add a third client, that is
+the seam to check by hand.
 
 ## The driver — use it, do not rebuild it
 
@@ -199,36 +245,6 @@ used, so a live run is **worse, not better**.
 Phase 40 aims at components far larger than 55 nodes. Measure this and fix it before building an
 iteration loop (AAQ-007) that republishes a candidate many times per build. Filed as AAQ-011 F6; the
 prime suspect is `AuthoringSession.publish` → the Build panel's re-render, not the scanner.
-
-## What slice 2 built and found
-
-**Layer 1's three project-level effects lived in the editor's apply path and nowhere else**, so an
-external agent got none of them. Page registration (AAQ-001), `bodyScroll` (AAQ-003) and provisioning
-(AAQ-002) were all absent from `noodl-mcp` — `provision` and `scroll` appeared nowhere in the package at
-all, while both packages import `validatePlan` from the *same* `authoring/plan` module, which has handled
-`provision` since AIB-007. See correction 9 for the part that matters.
-
-What exists now:
-
-- **One registration decision, two bindings.** `readRouterPagesValue`, `findRoutersInComponents`,
-  `isPlaceholderPageGraph` and `resolvePageRegistration` moved out of the editor's `staging.ts` into
-  `pageRegistration.ts`, over plain nodes. `staging.ts` feeds it `ProjectModel` nodes; `noodl-mcp`'s new
-  `project/pageRegistration.ts` feeds it `ProjectStore` ones. Neither holds policy.
-- **Registration fires on all three MCP write paths** — `create_component`, `update_component` (updates
-  count, exactly as the editor's apply does) and `apply_plan` in plan order — and is **reported** as
-  `registeredPages`, because a tool that writes a component the caller did not name has to say so.
-- **`create_plan` takes `scroll`**, applied as `bodyScroll` via `ProjectStore.writeProjectSettings`,
-  which never overwrites a setting already present.
-- **Provisioning does not port and says so.** It means starting and supervising a `nodegx-backend` child
-  process — the editor's manager over IPC; `backend/client.ts` only speaks admin HTTP to backends already
-  running. `create_plan` accepts `kind: 'provision'` (one vocabulary) and refuses it with the reason and
-  somewhere to go. Filed as **AAQ-011 F13**, and it is a product question of the F4/F5 class.
-
-Two traps caught before they shipped, both now specced. **`graph.roots` is parentless nodes, not
-`visualRoots`** — the latter is the `allowAsChild` subset, so reading it would have *widened* the
-placeholder rule and let an apply steal the start page from a part-built page. And the **start-page lookup
-is exact**, not the module's tolerant `isSamePage`, because `getComponentWithName` compares verbatim;
-widening it would have been a real behaviour change smuggled in under a refactor.
 
 ## What to do next
 
@@ -284,7 +300,7 @@ Standing:
 
 - **The seams lie before the model fails.** When something looks wrong in the render, the first question
   is *"did this reach the runtime?"*, never *"why did the model not do this?"* Every defect in the last
-  three sessions was on that side of the line.
+  five sessions was on that side of the line.
 - **A declared `default` never runs its setter.** The most repeated trap in this repo.
 - **A saved project applies a parameter before the port exists.** Jest never reproduces it; only a real
   load does.
@@ -317,7 +333,18 @@ Gates and harness:
   Before you make a diagnostic blocking, run **all three** suites.
 - **Verify a new spec fails without the fix.** Slice 1's parity spec passed on the first run; only
   reverting the change proved it was worth anything (4 of 6 then failed). A spec that has never been red
-  is an unchecked claim.
+  is an unchecked claim. Slice 2 did the same and learned which of its cases were load-bearing: the
+  negative cases ("a non-page registers nothing") pass either way and prove nothing on their own.
+- ⚠️ **`noodl-mcp`'s `demo-app` fixture is itself an instance of the AAQ-001 defect.** Its Router carries
+  `{ name: "Main" }` and **no `pages` key at all**, so the fixture's own `/Pages/Home` is unregistered,
+  and its `nodegx.project.json` has neither `rootNodeId` nor `settings.rootComponent` (so `isRoot` is
+  never true and `chooseRouter` takes the first router it finds). Convenient for testing the empty-router
+  path; misleading if you assume a fixture is well-formed.
+- ⚠️ **Replacing a component's nodes wholesale leaves the old connections dangling**, and the gate
+  correctly rejects the write. `update_component`'s `set` needs `connections: []` (or the surviving set)
+  whenever it drops nodes — the fixture's Home ships a `btn.onClick → nav.navigate` pair, so a naive
+  full-graph replacement fails with `dangling-connection` and reads like a bug in whatever you were
+  actually testing.
 
 Live driving:
 
@@ -358,7 +385,7 @@ Electron/jest/webpack for this repo, and nothing under the repo had been written
 working tree at the end matched the start exactly. The slice before it *did* have one. **Check for
 yourself at the start of every session** — it is a per-session fact, not a standing one.
 
-Fourteen tracked files have been modified and uncommitted since before the last four sessions and are
+Fourteen tracked files have been modified and uncommitted since before the last five sessions and are
 **still untouched** — `package-lock.json`, `nodegx-observe`, `ProjectImporter.ts`, `projectmodel*.ts`,
 `featureFlags.ts`, `LocalProjectsModel.ts`, `analyze.ts`, the whole `VersionControlPanel/` set,
 `tests/versioning/index.ts` — plus untracked `tests-unit/erg-005/`, `tests/versioning/snapshotproject.test.ts`,
