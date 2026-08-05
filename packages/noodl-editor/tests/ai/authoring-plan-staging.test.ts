@@ -22,6 +22,16 @@ import {
 } from '../../src/editor/src/models/AiAssistant/authoring/planStaging';
 import { describePageRegistration } from '../../src/editor/src/models/AiAssistant/authoring/pageRegistration';
 import { StagingError } from '../../src/editor/src/models/AiAssistant/authoring/staging';
+import {
+  findReusableBackend,
+  planSchemaReconciliation
+} from '../../src/editor/src/models/BackendServices/provisionBackend';
+import {
+  DEFAULT_PROVISIONED_BACKEND_NAME,
+  backendNameForProject,
+  emptyScope,
+  provisionFromScope
+} from '../../src/editor/src/models/AiAssistant/scoping';
 import type { AuthoringRequest, ComponentFiles } from '../../src/editor/src/models/AiAssistant/authoring/types';
 import { NodeGraphNode } from '../../src/editor/src/models/nodegraphmodel/NodeGraphNode';
 import { ProjectModel } from '../../src/editor/src/models/projectmodel';
@@ -703,5 +713,181 @@ describe('AAQ-001 — the apply registers the pages it created', () => {
     expect(sentence).toContain('Checkout');
     expect(sentence).toContain('Main');
     expect(sentence.indexOf('will be')).toBe(-1);
+  });
+});
+
+/**
+ * AAQ-002/F4 — a backend belongs to one project.
+ *
+ * These are the two halves of the live defect Richard hit: reuse matched on a
+ * name that was a *constant*, so every AI-created project on a machine bound to
+ * the first backend ever provisioned there, and the collections of three
+ * unrelated apps sat in one datastore.
+ */
+describe('AAQ-002/F4 — findReusableBackend', () => {
+  const owned = { id: 'b1', name: 'Puppies backend', port: 8577, projectIds: ['project-a'] };
+  const otherProjects = { id: 'b2', name: 'Puppies backend', port: 8578, projectIds: ['project-b'] };
+  /** Every backend that predates the stamp, and every one made by hand. */
+  const unowned = { id: 'b3', name: 'App backend', port: 8579, projectIds: [] };
+
+  it('reuses the backend this project owns', () => {
+    expect(findReusableBackend([otherProjects, owned], 'Puppies backend', 'project-a')).toBe(owned);
+  });
+
+  it('⚠️ never reuses a backend another project owns', () => {
+    // The whole defect in one line: same name, different project.
+    expect(findReusableBackend([otherProjects], 'Puppies backend', 'project-a')).toBeUndefined();
+  });
+
+  it('⚠️ never adopts an unowned backend, however well the name matches', () => {
+    // A legacy "App backend" carrying three apps' collections is exactly what
+    // must not be picked up again — an empty `projectIds` is owned by nobody.
+    expect(findReusableBackend([unowned], 'App backend', 'project-a')).toBeUndefined();
+  });
+
+  it('gives a renamed backend a wide berth — the rule that was already here', () => {
+    expect(findReusableBackend([owned], 'Adoption backend', 'project-a')).toBeUndefined();
+  });
+
+  it('does not reuse at all when there is no project id', () => {
+    expect(findReusableBackend([owned, unowned], 'Puppies backend', undefined)).toBeUndefined();
+  });
+
+  it('matches the name case- and whitespace-insensitively, as it always did', () => {
+    expect(findReusableBackend([owned], '  puppies BACKEND ', 'project-a')).toBe(owned);
+  });
+});
+
+/**
+ * AAQ-002/F5 — what a reused collection needs to match the plan.
+ *
+ * `createTable` returns `created: false` for a collection that exists and adds
+ * nothing, so an auto-created collection keeps its zero columns — and a
+ * collection with no columns yields no `prop-*` ports, forever. That is finding
+ * #7's live cause, and this is the difference the provisioner then applies.
+ */
+describe('AAQ-002/F5 — planSchemaReconciliation', () => {
+  it('adds the columns a collection that already exists is missing', () => {
+    const plan = planSchemaReconciliation(
+      [{ name: 'name', type: 'String' }],
+      [
+        { name: 'name', type: 'String' },
+        { name: 'age', type: 'Number' },
+        { name: 'bio', type: 'String' }
+      ]
+    );
+
+    expect(plan.add.map((c) => c.name)).toEqual(['age', 'bio']);
+    expect(plan.retype).toEqual([]);
+  });
+
+  it('treats the zero-column collection — the live case — as all-missing', () => {
+    const plan = planSchemaReconciliation([], [{ name: 'age', type: 'Number' }]);
+
+    expect(plan.add.map((c) => c.name)).toEqual(['age']);
+  });
+
+  it('retypes a column the plan disagrees with', () => {
+    const plan = planSchemaReconciliation([{ name: 'age', type: 'String' }], [{ name: 'age', type: 'Number' }]);
+
+    expect(plan.add).toEqual([]);
+    expect(plan.retype).toEqual([{ name: 'age', from: 'String', to: 'Number' }]);
+  });
+
+  it('counts an untyped existing column as a mismatch, not a match', () => {
+    // The shape an auto-created collection has. Leaving it is how the ports stay
+    // wrong even once the column exists.
+    const plan = planSchemaReconciliation([{ name: 'age' }], [{ name: 'age', type: 'Number' }]);
+
+    expect(plan.retype).toEqual([{ name: 'age', from: 'untyped', to: 'Number' }]);
+  });
+
+  it('⚠️ matches names case-insensitively, and keeps the EXISTING spelling', () => {
+    // SQLite identifiers are case-insensitive, so `ADD COLUMN age` against a
+    // table holding `Age` fails with `duplicate column name` — which
+    // `SchemaManager.addColumn` swallows. A case-sensitive comparison here would
+    // emit an addition that silently does nothing and reports success.
+    const plan = planSchemaReconciliation([{ name: 'Age', type: 'String' }], [{ name: 'age', type: 'Number' }]);
+
+    expect(plan.add).toEqual([]);
+    expect(plan.retype).toEqual([{ name: 'Age', from: 'String', to: 'Number' }]);
+  });
+
+  it('never touches the columns the backend owns', () => {
+    const plan = planSchemaReconciliation(
+      [],
+      [
+        { name: 'objectId', type: 'String' },
+        { name: 'createdAt', type: 'Date' },
+        { name: 'ACL', type: 'Object' },
+        { name: 'age', type: 'Number' }
+      ]
+    );
+
+    expect(plan.add.map((c) => c.name)).toEqual(['age']);
+  });
+
+  it('asks for nothing when the collection already matches', () => {
+    const plan = planSchemaReconciliation(
+      [
+        { name: 'name', type: 'String' },
+        { name: 'age', type: 'Number' }
+      ],
+      [
+        { name: 'name', type: 'String' },
+        { name: 'age', type: 'Number' }
+      ]
+    );
+
+    expect(plan.add).toEqual([]);
+    expect(plan.retype).toEqual([]);
+  });
+
+  it('leaves a column the plan does not mention alone', () => {
+    // Additive in the other direction: reconcile means "make the plan's columns
+    // right", never "delete what someone else added".
+    const plan = planSchemaReconciliation(
+      [
+        { name: 'age', type: 'Number' },
+        { name: 'nickname', type: 'String' }
+      ],
+      [{ name: 'age', type: 'Number' }]
+    );
+
+    expect(plan.add).toEqual([]);
+    expect(plan.retype).toEqual([]);
+  });
+});
+
+/**
+ * AAQ-002/F4 — the other half: the name a provision gives its backend. The list
+ * in Backend Services is machine-wide, so the name is the only thing telling a
+ * human which app a backend belongs to, and it was the constant "App backend".
+ */
+describe('AAQ-002/F4 — backendNameForProject', () => {
+  it('names the backend after the project', () => {
+    expect(backendNameForProject('Puppy Adoption')).toBe('Puppy Adoption backend');
+  });
+
+  it('does not say backend twice', () => {
+    expect(backendNameForProject('Chat Backend')).toBe('Chat Backend');
+  });
+
+  it('falls back rather than producing a bare " backend"', () => {
+    expect(backendNameForProject('   ')).toBe(DEFAULT_PROVISIONED_BACKEND_NAME);
+    expect(backendNameForProject(undefined)).toBe(DEFAULT_PROVISIONED_BACKEND_NAME);
+  });
+
+  it('is what the plan actually names the provision', () => {
+    const scope = {
+      ...emptyScope(),
+      request: 'a puppy adoption site',
+      objects: [{ name: 'Puppy', fields: ['age'] }],
+      backend: { kind: 'nodegx' as const, description: 'built-in' }
+    };
+
+    const spec = provisionFromScope(scope, { backendName: backendNameForProject('Puppy Adoption') });
+
+    expect(spec?.name).toBe('Puppy Adoption backend');
   });
 });

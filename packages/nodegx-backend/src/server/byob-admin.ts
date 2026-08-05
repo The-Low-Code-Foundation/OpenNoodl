@@ -58,14 +58,23 @@ export interface TableSchemaResponse {
   columns: unknown[];
 }
 
-/** `POST /admin/schema` — one of the four mutation actions. */
+/** `POST /admin/schema` — one of the five mutation actions. */
 export interface SchemaMutationResponse {
   success: boolean;
-  action: 'createTable' | 'addColumn' | 'renameColumn' | 'deleteTable';
+  action: 'createTable' | 'addColumn' | 'renameColumn' | 'changeColumnType' | 'deleteTable';
   table: string;
   /** Present on createTable / deleteTable: whether the DDL actually ran. */
   created?: boolean;
   deleted?: boolean;
+  // ── changeColumnType (AAQ-002) ────────────────────────────────────────────
+  /** Whether the column's type actually moved (false when it already matched). */
+  changed?: boolean;
+  /** The type it had before. */
+  from?: string;
+  /** Whether stored values had to be converted, rather than metadata alone. */
+  rebuilt?: boolean;
+  /** How many non-null values went through `CAST`, and so could have been lost. */
+  convertedValues?: number;
 }
 
 export class ByobAdminRoutes {
@@ -246,6 +255,21 @@ export class ByobAdminRoutes {
         sm.renameColumn(table, body.oldName as string, body.newName as string);
         sendJSON(res, 200, { success: true, action: 'renameColumn', table } satisfies SchemaMutationResponse);
         return;
+      case 'changeColumnType': {
+        // AAQ-002. Optional on the interface (an older adapter predates it), so
+        // its absence is a 501 rather than an `is not a function` at request time.
+        if (typeof sm.changeColumnType !== 'function') {
+          throw new HttpError(501, 'This adapter cannot change a column type.');
+        }
+        const result = sm.changeColumnType(table, body.column as string, body.type as string);
+        sendJSON(res, 200, {
+          success: true,
+          action: 'changeColumnType',
+          table,
+          ...result
+        } satisfies SchemaMutationResponse);
+        return;
+      }
       case 'deleteTable': {
         // `deleteTable` is optional on the interface because `schema-migrate`
         // feature-detects it; here its absence is a real 501, not a crash.

@@ -37,6 +37,7 @@ import {
   DOC_INITIAL_SCOPE,
   ProjectScope,
   ScopingSession,
+  backendNameForProject,
   emptyScope,
   planFromScope,
   scopeHasContent,
@@ -227,6 +228,11 @@ export function ProjectsPage(props: ProjectsPageProps) {
   const [scopingError, setScopingError] = useState<string | undefined>(undefined);
   /** AIB-009 F7 — the reply of the turn in flight, as it streams in. */
   const [scopingStreaming, setScopingStreaming] = useState('');
+  /**
+   * AAQ-002/F4 — the project name as typed in the wizard's first step, so the
+   * plan preview can name the backend the same thing the apply will.
+   */
+  const [draftProjectName, setDraftProjectName] = useState('');
   const [aiConfigVersion, setAiConfigVersion] = useState(0);
 
   // GitHub OAuth state
@@ -570,8 +576,15 @@ export function ProjectsPage(props: ProjectsPageProps) {
    * cannot contain a page nobody agreed to.
    */
   const previewPlan = useMemo(
-    () => planFromScope(scopingScope, { existingComponents: NEW_PROJECT_COMPONENTS }),
-    [scopingScope]
+    () =>
+      planFromScope(scopingScope, {
+        existingComponents: NEW_PROJECT_COMPONENTS,
+        // AAQ-002/F4. The same derivation `finishScopedProject` uses, from the
+        // same string — `newProject` is called with this name verbatim, so the
+        // row the user approves names the backend the apply will create.
+        backendName: backendNameForProject(draftProjectName)
+      }),
+    [scopingScope, draftProjectName]
   );
 
   const scopingState: ScopingState = useMemo(
@@ -585,7 +598,8 @@ export function ProjectsPage(props: ProjectsPageProps) {
       planRows: toPlanRows(previewPlan),
       onSend: (text: string) => {
         void handleScopingSend(text);
-      }
+      },
+      onDraftNameChange: setDraftProjectName
     }),
     [
       scopingMessages,
@@ -631,7 +645,13 @@ export function ProjectsPage(props: ProjectsPageProps) {
     // Re-derived against what the project actually has, not against the
     // template we assume it came from.
     const existingComponents = new Set<string>(project.getComponents().map((c) => c.name));
-    const plan = planFromScope(scope, { existingComponents });
+    // AAQ-002/F4 — named from the project, because the provision reuses by name
+    // and "App backend" is a constant. Read from the project rather than from
+    // the wizard's draft so it is the name the project actually has.
+    const plan = planFromScope(scope, {
+      existingComponents,
+      backendName: backendNameForProject(project.name)
+    });
 
     const session = scopingSessionRef.current;
     const result = await writeScopeDocs(docs, {

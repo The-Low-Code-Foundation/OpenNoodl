@@ -398,12 +398,37 @@ export interface PlanFromScopeOptions {
    * (which has none).
    */
   hasBackend?: boolean;
-  /** Display name for a provisioned backend. Defaults to the project's own idea of one. */
+  /**
+   * Display name for a provisioned backend.
+   *
+   * ⚠️ Had **no production caller** for two phases, so every provision was named
+   * by the fallback below — and since `findReusableBackend` matched on name, one
+   * constant name meant one shared backend for every AI project on the machine
+   * (AAQ-002/F4). Pass {@link backendNameForProject}; the fallback is for callers
+   * that genuinely have no project yet.
+   */
   backendName?: string;
 }
 
 /** What a backend gets called when nobody named one. */
 export const DEFAULT_PROVISIONED_BACKEND_NAME = 'App backend';
+
+/**
+ * What to call the backend a project provisions for itself — AAQ-002/F4.
+ *
+ * The list in Backend Services is machine-wide, so the name is the only thing
+ * telling a human which app a backend belongs to. "App backend" told them
+ * nothing, three times over.
+ *
+ * A project already ending in "backend" is left alone rather than becoming
+ * "Puppy backend backend", and a project with no usable name falls back rather
+ * than producing a bare " backend".
+ */
+export function backendNameForProject(projectName: string | undefined): string {
+  const name = (projectName ?? '').replace(/\s+/g, ' ').trim();
+  if (!name) return DEFAULT_PROVISIONED_BACKEND_NAME;
+  return /backend$/i.test(name) ? name : `${name} backend`;
+}
 
 /**
  * AIB-007 — the `PlanProvisionSpec` this scope implies, or `undefined`.

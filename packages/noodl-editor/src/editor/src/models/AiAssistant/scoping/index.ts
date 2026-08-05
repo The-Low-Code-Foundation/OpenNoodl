@@ -17,6 +17,7 @@ export {
   DOC_INITIAL_SCOPE,
   PLAN_FENCE_TAG,
   TODO_MARKER,
+  backendNameForProject,
   emptyScope,
   mergeScope,
   normalizeScopeBackend,

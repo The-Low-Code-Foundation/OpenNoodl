@@ -259,6 +259,122 @@ class SchemaManager {
   }
 
   /**
+   * Change a column's declared type, converting the values already stored in it.
+   *
+   * AAQ-002 (phase 40). The four mutation actions that existed — create, add,
+   * rename, delete — could not express "this column is the wrong type", which is
+   * the shape a *reconcile* needs: a provision re-run against a collection that
+   * already exists must be able to make it match the plan, and until this method
+   * existed the only ways to do that were dropping the table or leaving it wrong.
+   *
+   * ## Two different operations wear this one name
+   *
+   * A column's type lives in **two** places: the `_Schema` JSON row, which is
+   * what `getTableSchema` reports and therefore what every reader downstream
+   * (the Data Browser, `backend:getSchema`, the editor's `prop-*` ports) actually
+   * believes — and the SQLite declared type, which only sets *affinity*.
+   * {@link TYPE_MAP} collapses nine Noodl types onto three SQL ones, so most
+   * changes (String→Date, Object→GeoPoint, …) touch the metadata and nothing
+   * else. Only a change that crosses TEXT/REAL/INTEGER has to move data, and
+   * that one is a real rebuild: SQLite has no `ALTER COLUMN`.
+   *
+   * ⚠️ **A crossing change can lose data, and that is the point of the return
+   * value.** `CAST('sold out' AS REAL)` is `0.0`, silently, per SQLite's rules —
+   * so the count of non-null values that were converted comes back to the caller,
+   * which is the only place a human can be told. Callers that must not lose data
+   * should compare types first and refuse, rather than calling this and hoping.
+   *
+   * `Relation` is refused outright in both directions: it is not a column at all
+   * (`_columnToSQL` returns null for it — the data lives in a junction table), so
+   * "converting" one is creating or destroying a table's worth of associations,
+   * which is a decision this method must not take on a caller's behalf.
+   *
+   * @returns What changed — `{ changed: false }` when the column already had
+   *   this type, so an idempotent re-run reports honestly instead of claiming work.
+   */
+  changeColumnType(
+    tableName: string,
+    columnName: string,
+    newType: string
+  ): { changed: boolean; from?: string; rebuilt?: boolean; convertedValues?: number } {
+    const systemCols = ['objectId', 'createdAt', 'updatedAt', 'ACL'];
+    if (systemCols.includes(columnName)) {
+      throw new Error('Cannot change the type of system columns');
+    }
+    if (!(newType in TYPE_MAP)) {
+      throw new Error(`Unknown column type "${newType}"`);
+    }
+
+    const schema = this.getTableSchema(tableName);
+    if (!schema) {
+      throw new Error(`Table "${tableName}" does not exist`);
+    }
+    const col = (schema.columns || []).find((c) => c.name === columnName);
+    if (!col) {
+      throw new Error(`Column "${columnName}" does not exist`);
+    }
+
+    const oldType = col.type;
+    if (oldType === newType) {
+      return { changed: false };
+    }
+    if (oldType === 'Relation' || newType === 'Relation') {
+      throw new Error(
+        `Cannot convert "${columnName}" between ${oldType} and ${newType}: a Relation is stored in a junction ` +
+          'table, not a column. Delete it and add it back to change it.'
+      );
+    }
+
+    const oldSql = TYPE_MAP[oldType];
+    const newSql = TYPE_MAP[newType];
+    let rebuilt = false;
+    let convertedValues = 0;
+
+    // `oldSql` is undefined when the column was tracked with a type this map has
+    // never heard of — an import, or a schema written by an older version. There
+    // is no way to know what storage class those values are in, and SQLite does
+    // not care, so that case corrects the metadata and touches no data: a
+    // rebuild would emit `ADD COLUMN "x" undefined`, which is not SQL.
+    if (typeof oldSql === 'string' && oldSql !== newSql) {
+      // Affinity changes, so the stored values do too. Add-copy-drop-rename
+      // rather than the twelve-step table rebuild: user columns carry no
+      // constraints and no indexes (only `createdAt`/`updatedAt` are indexed,
+      // and they are system columns this method refuses), which is what makes
+      // the short form safe here and would not make it safe in general.
+      const temp = `__nodegx_convert_${columnName}`;
+      const nonNull = this.db
+        .prepare(`SELECT COUNT(*) AS n FROM ${escapeTable(tableName)} WHERE ${escapeColumn(columnName)} IS NOT NULL`)
+        .get() as { n: number } | undefined;
+      convertedValues = nonNull?.n ?? 0;
+
+      this.db.exec('BEGIN');
+      try {
+        this.db.exec(`ALTER TABLE ${escapeTable(tableName)} ADD COLUMN ${escapeColumn(temp)} ${newSql}`);
+        this.db.exec(
+          `UPDATE ${escapeTable(tableName)} SET ${escapeColumn(temp)} = ` +
+            `CAST(${escapeColumn(columnName)} AS ${newSql}) WHERE ${escapeColumn(columnName)} IS NOT NULL`
+        );
+        this.db.exec(`ALTER TABLE ${escapeTable(tableName)} DROP COLUMN ${escapeColumn(columnName)}`);
+        this.db.exec(`ALTER TABLE ${escapeTable(tableName)} RENAME COLUMN ${escapeColumn(temp)} TO ${escapeColumn(columnName)}`);
+        this.db.exec('COMMIT');
+      } catch (e) {
+        this.db.exec('ROLLBACK');
+        throw e;
+      }
+      rebuilt = true;
+    }
+
+    // The metadata, which is what every reader downstream actually believes.
+    col.type = newType;
+    this.db
+      .prepare(`UPDATE "_Schema" SET "schema" = ?, "updatedAt" = CURRENT_TIMESTAMP WHERE "name" = ?`)
+      .run(JSON.stringify(schema), tableName);
+    this._schemaCache.set(tableName, schema);
+
+    return { changed: true, from: oldType, rebuilt, convertedValues };
+  }
+
+  /**
    * Get schema for a table
    */
   getTableSchema(tableName: string): TableSchema | null {

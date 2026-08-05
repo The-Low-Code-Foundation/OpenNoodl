@@ -49,6 +49,19 @@ export interface SchemaManagerLike {
   createTable(spec: { name: string; columns: SchemaColumnLike[] }): boolean;
   addColumn(table: string, column: SchemaColumnLike): void;
   renameColumn(table: string, oldName: string, newName: string): void;
+  /**
+   * AAQ-002: change a column's type, converting stored values.
+   *
+   * Optional, and feature-detected at the one call site, for the same reason
+   * `deleteTable` is: `SchemaManagerLike` describes the adapter *this* service
+   * happens to be handed, and an older adapter predates the method. A route that
+   * assumed it would fail with `is not a function` at request time.
+   */
+  changeColumnType?(
+    table: string,
+    column: string,
+    newType: string
+  ): { changed: boolean; from?: string; rebuilt?: boolean; convertedValues?: number };
   /** Optional: `schema-migrate` feature-detects it before calling. */
   deleteTable?(table: string): boolean;
   getTableSchema(table: string): TableSchemaLike | null;

@@ -47,6 +47,17 @@ export interface ScopingState {
   /** The plan derived from the agreed scope, for the review step. */
   planRows: readonly ReviewPlanRow[];
   onSend: (text: string) => void;
+  /**
+   * AAQ-002/F4 — the project name as it stands, so the host can derive the
+   * plan's provision row from it.
+   *
+   * The wizard owns the name (it is collected in `basics`, which comes *before*
+   * scoping in AI mode) and the host owns the plan, so without this the review
+   * screen would promise a backend called one thing and the apply would create
+   * another. A review step that names something the apply will not create is the
+   * one failure this whole screen exists to prevent.
+   */
+  onDraftNameChange?: (name: string) => void;
 }
 
 export interface ProjectCreationWizardProps {
@@ -122,6 +133,13 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailabi
   // A turn in flight must not be walked out from under: the reply would land
   // on an unmounted step and the scope it recorded would be lost.
   const isBlocked = currentStep === 'scoping' && Boolean(scoping?.isBusy);
+
+  // AAQ-002/F4. Reported rather than read at confirm time because the *plan
+  // preview* needs it, and that renders two steps before confirm.
+  const onDraftNameChange = scoping?.onDraftNameChange;
+  React.useEffect(() => {
+    onDraftNameChange?.(projectName.trim());
+  }, [projectName, onDraftNameChange]);
 
   const handleNext = () => {
     if (isLastStep) {

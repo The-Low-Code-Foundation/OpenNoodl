@@ -50,7 +50,10 @@ function generateBackendId() {
  * @property {string} name - Display name
  * @property {string} createdAt - ISO8601 timestamp
  * @property {number} port - HTTP port
- * @property {string[]} projectIds - Projects using this backend
+ * @property {string[]} projectIds - Projects that own this backend. Stamped at
+ *   creation (AAQ-002/F4) and read by `findReusableBackend` — a backend one
+ *   project owns is never reused by another. Empty for backends made by hand in
+ *   Backend Services, and for every backend created before that task.
  */
 
 /**
@@ -75,7 +78,7 @@ class BackendManager {
     safeLog('Setting up IPC handlers');
 
     ipcMain.handle('backend:list', async () => this.listBackends());
-    ipcMain.handle('backend:create', async (_, name) => this.createBackend(name));
+    ipcMain.handle('backend:create', async (_, name, options) => this.createBackend(name, options));
     ipcMain.handle('backend:delete', async (_, id) => this.deleteBackend(id));
     // Start a backend. options.ephemeral opts in to non-persisting in-memory mode.
     ipcMain.handle('backend:start', async (_, id, options) => this.startBackend(id, options));
@@ -90,6 +93,9 @@ class BackendManager {
     ipcMain.handle('backend:addColumn', async (_, id, tableName, column) => this.addColumn(id, tableName, column));
     ipcMain.handle('backend:renameColumn', async (_, id, tableName, oldName, newName) =>
       this.renameColumn(id, tableName, oldName, newName)
+    );
+    ipcMain.handle('backend:changeColumnType', async (_, id, tableName, columnName, newType) =>
+      this.changeColumnType(id, tableName, columnName, newType)
     );
     ipcMain.handle('backend:deleteTable', async (_, id, tableName) => this.deleteTable(id, tableName));
 
@@ -511,7 +517,7 @@ class BackendManager {
    * @param {string} name - Display name
    * @returns {Promise<BackendMetadata>}
    */
-  async createBackend(name) {
+  async createBackend(name, options) {
     await this.ensureBackendsDir();
 
     const id = generateBackendId();
@@ -525,13 +531,20 @@ class BackendManager {
     // Find available port
     const port = await this.findAvailablePort();
 
-    // Create config
+    // Create config.
+    //
+    // AAQ-002/F4: `projectIds` was written empty here and read by nobody — three
+    // separate modules say "projectIds is dead" in a comment. It is now the
+    // *ownership* record a provision matches on, and it is stamped at creation
+    // rather than added afterwards on purpose: a backend that exists for a
+    // moment with no owner is a backend the next provision would adopt, which is
+    // the machine-wide reuse this field exists to end.
     const config = {
       id,
       name,
       createdAt: new Date().toISOString(),
       port,
-      projectIds: []
+      projectIds: options && options.projectId ? [options.projectId] : []
     };
 
     await fs.writeFile(path.join(backendPath, 'config.json'), JSON.stringify(config, null, 2));
@@ -791,6 +804,39 @@ class BackendManager {
     await supervisor.request('POST', '/admin/schema', { action: 'addColumn', table: tableName, column });
     safeLog(`Added column: ${column.name} to table ${tableName}`);
     return { success: true, tableName, columnName: column.name };
+  }
+
+  /**
+   * Change a column's type, converting the values already stored in it (AAQ-002).
+   *
+   * ⚠️ Lossy by nature when the storage class moves — `CAST('sold out' AS REAL)`
+   * is `0.0` — so `convertedValues` comes back and callers are expected to say
+   * so. See `SchemaManager.changeColumnType` for what is and is not refused.
+   *
+   * @param {string} id - Backend ID
+   * @param {string} tableName
+   * @param {string} columnName
+   * @param {string} newType - A Noodl column type (String, Number, Boolean, …)
+   * @returns {Promise<Object>} `{ success, changed, from, rebuilt, convertedValues }`
+   */
+  async changeColumnType(id, tableName, columnName, newType) {
+    const supervisor = this.requireRunning(id, 'change column type');
+    const result = await supervisor.request('POST', '/admin/schema', {
+      action: 'changeColumnType',
+      table: tableName,
+      column: columnName,
+      type: newType
+    });
+    safeLog(`Changed column type: ${tableName}.${columnName} → ${newType} (changed: ${result.changed})`);
+    return {
+      success: true,
+      tableName,
+      columnName,
+      changed: result.changed,
+      from: result.from,
+      rebuilt: result.rebuilt,
+      convertedValues: result.convertedValues
+    };
   }
 
   /**
