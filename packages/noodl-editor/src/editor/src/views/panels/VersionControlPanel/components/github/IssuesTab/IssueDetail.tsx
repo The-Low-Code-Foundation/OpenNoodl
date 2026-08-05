@@ -7,6 +7,7 @@
 import React from 'react';
 
 import type { GitHubIssue } from '../../../../../../services/github/GitHubTypes';
+import { PanelOverlay } from '../../PanelOverlay';
 import styles from './IssueDetail.module.scss';
 
 interface IssueDetailProps {
@@ -16,8 +17,14 @@ interface IssueDetailProps {
 
 export function IssueDetail({ issue, onClose }: IssueDetailProps) {
   return (
-    <div className={styles.IssueDetailOverlay} onClick={onClose}>
-      <div className={styles.IssueDetail} onClick={(e) => e.stopPropagation()}>
+    // FH-010: the drawer is `position: fixed` and was rendered in-tree, so it
+    // was confined to — and clipped by — the panel that opened it. `PanelOverlay`
+    // portals it to the dialog layer and owns dismissal; the `stopPropagation`
+    // guards that used to pair with the overlay's `onClick={onClose}` are gone
+    // with it, so selecting text in the body and releasing outside the drawer no
+    // longer closes it.
+    <PanelOverlay backdropClassName={styles.IssueDetailOverlay} onDismiss={onClose}>
+      <div className={styles.IssueDetail}>
         <div className={styles.Header}>
           <div className={styles.TitleSection}>
             <h2 className={styles.Title}>
@@ -66,18 +73,12 @@ export function IssueDetail({ issue, onClose }: IssueDetailProps) {
         </div>
 
         <div className={styles.Footer}>
-          <a
-            href={issue.html_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.ViewOnGitHub}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <a href={issue.html_url} target="_blank" rel="noopener noreferrer" className={styles.ViewOnGitHub}>
             View on GitHub →
           </a>
         </div>
       </div>
-    </div>
+    </PanelOverlay>
   );
 }
 

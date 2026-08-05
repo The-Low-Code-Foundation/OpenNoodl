@@ -7,6 +7,7 @@
 import React from 'react';
 
 import type { GitHubPullRequest } from '../../../../../../services/github/GitHubTypes';
+import { PanelOverlay } from '../../PanelOverlay';
 import styles from './PRDetail.module.scss';
 
 interface PRDetailProps {
@@ -20,8 +21,11 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
   const isClosed = pr.state === 'closed' && !isMerged;
 
   return (
-    <div className={styles.PRDetailOverlay} onClick={onClose}>
-      <div className={styles.PRDetail} onClick={(e) => e.stopPropagation()}>
+    // FH-010: the same escape and the same dismiss gesture as `IssueDetail` —
+    // see `PanelOverlay` for why a `position: fixed` drawer left in the panel's
+    // React tree never reaches the viewport.
+    <PanelOverlay backdropClassName={styles.PRDetailOverlay} onDismiss={onClose}>
+      <div className={styles.PRDetail}>
         <div className={styles.Header}>
           <div className={styles.TitleSection}>
             <h2 className={styles.Title}>
@@ -108,18 +112,12 @@ export function PRDetail({ pr, onClose }: PRDetailProps) {
         )}
 
         <div className={styles.Footer}>
-          <a
-            href={pr.html_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.ViewOnGitHub}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <a href={pr.html_url} target="_blank" rel="noopener noreferrer" className={styles.ViewOnGitHub}>
             View on GitHub →
           </a>
         </div>
       </div>
-    </div>
+    </PanelOverlay>
   );
 }
 

@@ -149,6 +149,13 @@
 }
 
 // Modal styles
+//
+// FH-010: `position: fixed` here only reaches the viewport because
+// `PanelOverlay` portals this element out of the panel. `BasePanel.Root` is a
+// `container-type: inline-size` element, which makes it the containing block for
+// fixed descendants — rendered in-tree, `inset: 0` resolves against the ~300px
+// panel body and the modal is centred inside, and clipped by, that. Do not
+// render this class without `PanelOverlay`.
 .ModalBackdrop {
   position: fixed;
   inset: 0;

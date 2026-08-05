@@ -8,6 +8,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 
 import { GitHubClient } from '../../../../../../services/github';
 import type { GitHubRepository, GitHubOrganization } from '../../../../../../services/github/GitHubTypes';
+import { PanelOverlay } from '../../PanelOverlay';
 import styles from './ConnectToGitHub.module.scss';
 
 interface SelectRepoModalProps {
@@ -123,12 +124,6 @@ export function SelectRepoModal({ onClose, onSelect, isConnecting }: SelectRepoM
     }
   };
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget && !isConnecting) {
-      onClose();
-    }
-  };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -144,7 +139,10 @@ export function SelectRepoModal({ onClose, onSelect, isConnecting }: SelectRepoM
   };
 
   return (
-    <div className={styles.ModalBackdrop} onClick={handleBackdropClick}>
+    // FH-010: see `PanelOverlay` — the backdrop escapes the panel, and both ends
+    // of the dismiss gesture have to land on it, so dragging across a repository
+    // row and releasing outside the box no longer closes the picker.
+    <PanelOverlay backdropClassName={styles.ModalBackdrop} onDismiss={isConnecting ? undefined : onClose}>
       <div className={`${styles.Modal} ${styles.ModalLarge}`}>
         <div className={styles.ModalHeader}>
           <h2>Connect to Existing Repository</h2>
@@ -221,6 +219,6 @@ export function SelectRepoModal({ onClose, onSelect, isConnecting }: SelectRepoM
           </button>
         </div>
       </div>
-    </div>
+    </PanelOverlay>
   );
 }

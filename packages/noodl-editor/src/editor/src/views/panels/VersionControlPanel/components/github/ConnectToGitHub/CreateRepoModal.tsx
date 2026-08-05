@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 
 import { GitHubClient } from '../../../../../../services/github';
 import type { GitHubOrganization } from '../../../../../../services/github/GitHubTypes';
+import { PanelOverlay } from '../../PanelOverlay';
 import styles from './ConnectToGitHub.module.scss';
 
 interface CreateRepoModalProps {
@@ -65,14 +66,13 @@ export function CreateRepoModal({ onClose, onCreate, isCreating }: CreateRepoMod
     });
   };
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget && !isCreating) {
-      onClose();
-    }
-  };
-
   return (
-    <div className={styles.ModalBackdrop} onClick={handleBackdropClick}>
+    // FH-010: `PanelOverlay` portals the backdrop out of the panel — a
+    // `position: fixed` backdrop left in-tree resolves against the panel body,
+    // not the viewport. It also owns dismissal, so there is no backdrop
+    // `onClick` here any more; a press that starts on a form field and ends on
+    // the backdrop no longer throws the half-filled form away.
+    <PanelOverlay backdropClassName={styles.ModalBackdrop} onDismiss={isCreating ? undefined : onClose}>
       <div className={styles.Modal}>
         <div className={styles.ModalHeader}>
           <h2>Create New Repository</h2>
@@ -169,6 +169,6 @@ export function CreateRepoModal({ onClose, onCreate, isCreating }: CreateRepoMod
           </div>
         </form>
       </div>
-    </div>
+    </PanelOverlay>
   );
 }

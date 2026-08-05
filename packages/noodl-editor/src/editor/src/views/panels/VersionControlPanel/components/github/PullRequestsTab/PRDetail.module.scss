@@ -2,6 +2,9 @@
  * PRDetail Styles - Slide-out panel
  */
 
+/* FH-010: reaches the viewport only because `PanelOverlay` portals this element
+   out of the panel — `BasePanel.Root` is the containing block for any fixed
+   descendant left in-tree. Do not render this class without `PanelOverlay`. */
 .PRDetailOverlay {
   position: fixed;
   top: 0;
