@@ -210,15 +210,22 @@ move into the body and the field contract changes shape.**
 > unmerged branch until the ALPHA-007 merge (`80d221c0`), so anyone who tried this
 > instruction before then found nothing and had no way to tell why.
 >
-> ⚠️ And this item named **four** dropdowns — `surface`, `severity`, `os`,
-> `fresh-project`. **There is no `severity` field.** `bug_report.yml` has `surface`
-> (:26), `os` (:51) and `fresh-project` (:63) and nothing else. Check three, not four,
-> or "the severity dropdown came back empty" will read as a prefill failure when it is
-> a field that was never there. (The absence is itself F72's second half: there is no
-> severity vocabulary anywhere, so the queue can only be ranked by date.)
+> ~~And this item named four dropdowns... There is no `severity` field.~~ **Wrong,
+> re-checked 2026-08-06 while running the probe for real.** `bug_report.yml` has
+> **four** dropdowns, not three: `surface` (:26), `severity` (:53-56), `os` (:74) and
+> `fresh-project` (:87). The `severity` field was added in `c57f729a` (ALPHA-007
+> §2-§4, 2026-08-03) — the "only three" correction above was written the same day as
+> the merge that made it wrong, on an unmerged branch it hadn't seen yet. Check all
+> four dropdowns, including whether "Blocks me — I cannot work around it" (note the
+> em dash) survives the prefill.
 
-Two minutes of work, and it is the only thing standing between ALPHA-007 Part A and
-its acceptance criterion 3.
+`node scripts/alpha-007/prefill-probe.js` run 2026-08-06 — it builds against the
+renamed `NodeGX` repo correctly, payload is 1567 bytes (budget 6144). **Still needs a
+human with a signed-in GitHub browser session to open the URL and confirm the
+dropdowns actually land** — that part cannot be done headlessly (`issues/new`
+redirects anonymous and token-authenticated requests alike to sign-in). Two minutes
+of work, and it is the only thing standing between ALPHA-007 Part A and its
+acceptance criterion 3.
 
 ### B7. Discord / Discussions — does either exist? → ALPHA-006 §6, ALPHA-007 ✅ **Answered 2026-08-06**
 
