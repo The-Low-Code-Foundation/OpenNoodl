@@ -148,6 +148,28 @@ export const PORT_PARAM_MAPPING = '__paramMapping__';
 export const PORT_TYPE_BACKOFF = 'workflow-backoff';
 
 /**
+ * CWF-004: a `transform` step's `output` — one row per field, each holding a
+ * value or one operation from the served vocabulary.
+ *
+ * Its own port type rather than `object` for the same reason `switch.cases` has
+ * one: the thing being edited is a dictionary whose KEYS the author invents, and
+ * one-port-per-declared-param cannot express that. Unlike CWF-001's mapping this
+ * is a single param's VALUE, so the row writes one parameter and nothing else —
+ * no sibling writes, no undo group.
+ */
+export const PORT_TYPE_TRANSFORM = 'workflow-transform';
+
+/**
+ * The `control` name the backend serves for that param (CWF-005's mechanism).
+ *
+ * Keyed on the served control rather than on `param.name === 'output'`, because
+ * "output" is a word the rest of CWF-004's family (Validate, Filter, Sort) will
+ * want too — a control keyed on a common param name is a collision waiting to be
+ * debugged.
+ */
+export const CONTROL_TRANSFORM_OUTPUT = 'transform-output';
+
+/**
  * CWF-005: the served `control` names this editor has a bespoke port type for.
  *
  * A name that is not in here falls back to the control for the param's `type` —
@@ -156,5 +178,6 @@ export const PORT_TYPE_BACKOFF = 'workflow-backoff';
  * row still renders something usable.
  */
 export const PORT_TYPE_FOR_CONTROL: Record<string, string> = {
-  'retry-backoff': PORT_TYPE_BACKOFF
+  'retry-backoff': PORT_TYPE_BACKOFF,
+  [CONTROL_TRANSFORM_OUTPUT]: PORT_TYPE_TRANSFORM
 };

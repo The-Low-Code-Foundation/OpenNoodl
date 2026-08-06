@@ -45,6 +45,13 @@ import { CONDITION_LANGUAGE, validateCondition } from './conditions';
 import type { ConditionLanguageSpec } from './conditions';
 import type { ValueLanguageSpec } from './values';
 import { MIGRATED_STEP_KINDS } from './migrate';
+import {
+  CONTROL_TRANSFORM_OUTPUT,
+  TRANSFORM_LANGUAGE,
+  TRANSFORM_OP_NAMES,
+  validateTransformOutput
+} from './transform';
+import type { TransformLanguageSpec } from './transform';
 import { isPlainObject, VALUE_LANGUAGE } from './values';
 
 /**
@@ -79,8 +86,21 @@ import { isPlainObject, VALUE_LANGUAGE } from './values';
  * `group` on a param, and added `migratedKinds` to the served catalog. A client
  * that refuses a kind this backend does not serve needs to tell "cannot run it"
  * from "accepts it and converts it", and only the backend knows which.
+ * 1.6.0 — CWF-004 added `transformLanguage`: the closed operation vocabulary the
+ * `transform` step's `output` may use. Served for the same reason
+ * `conditionLanguage` is — an editor holding its own copy could offer an
+ * operation this backend cannot perform, and an agent working from memory will
+ * simply invent one. Removing an op from the backend removes it from the
+ * editor's picker with no editor change.
+ *
+ * Degradation: a pre-1.6.0 backend serves neither the `transform` kind nor the
+ * vocabulary, so a newer editor draws no Transform card for it and the picker
+ * offers nothing; an older editor talking to a 1.6.0 backend gets the kind, and
+ * its `output` param falls back to the control for its declared `object` type
+ * (that is exactly what `control` being a served STRING rather than an enum is
+ * for).
  */
-export const STEP_KIND_CATALOG_VERSION = '1.5.0';
+export const STEP_KIND_CATALOG_VERSION = '1.6.0';
 
 export interface StepParamSpec {
   name: string;
@@ -521,6 +541,51 @@ export const STEP_KIND_SPECS: Record<StepKind, StepKindSpec> = {
     ]
   },
 
+  transform: {
+    kind: 'transform',
+    displayName: 'Transform',
+    category: 'Workflow Data',
+    source: 'CWF-004',
+    summary: 'Builds a new object out of the run\'s data — renaming, flattening and defaulting, with no code.',
+    whenToUse:
+      "Reshape an awkward payload before handing it on. A supplier's webhook arrives nested and verbose; a " +
+      'function should not have to know that. Reshape here and the function keeps a stable input contract, so it ' +
+      'stays callable from your app and from three other workflows.',
+    invokesFunction: false,
+    params: [
+      {
+        name: 'output',
+        type: 'object',
+        required: true,
+        raw: true,
+        control: CONTROL_TRANSFORM_OUTPUT,
+        displayName: 'Fields',
+        description:
+          'The object this step produces, as `{ "<field>": <value> }`. Each value is a literal, a ' +
+          '`{"$path": "previous.user.order.payment"}` reference, or one of the operations in `transformLanguage` ' +
+          `(${TRANSFORM_OP_NAMES.join(', ')}) applied to values. A field cannot read another field of the same ` +
+          'transform — every field resolves against the run, in one pass.'
+      }
+    ],
+    routes: [],
+    output: 'The object you described, and nothing else — so the next step reads it as `previous.<field>`.',
+    clientEquivalent:
+      'Nothing exact. In the browser you would wire an Object node, or compute in a Function. Server-side there ' +
+      'is no code here on purpose: a workflow definition is deployable, agent-authored JSON running with admin ' +
+      'authority, so it references and reshapes, and it never evaluates.',
+    notes: [
+      'The vocabulary is CLOSED and served. An unknown `$operation` is refused when the definition is saved, ' +
+        'never passed through as data — which is what stops a typo becoming a literal object inside a function.',
+      'There is no arithmetic in it. That was proposed and deliberately left out of the first cut: the value ' +
+        'language already tells every client "no arithmetic — compute in a cloud function", and shipping `$add` ' +
+        'would have falsified a served sentence. Adding an op later is additive; removing one is not.',
+      'Wildcard paths (`lines.*.amount`) are NOT in v1. They would be a change to the `$path` walker that ' +
+        'conditions share, and a second walker for transforms is the one thing CWF-004 rules out by name.',
+      'Chain two transform steps where one field genuinely depends on another. One pass, one scope, no order to ' +
+        'depend on — which is also what makes a transform diffable and safe for an agent to write.'
+    ]
+  },
+
   stop: {
     kind: 'stop',
     displayName: 'Stop / Error',
@@ -701,6 +766,13 @@ export interface StepKindCatalog {
    */
   conditionLanguage: ConditionLanguageSpec;
   /**
+   * CWF-004: the closed operation vocabulary a `transform` step's `output` may
+   * use, with each operation's arity and operand labels — everything a rows-plus-
+   * op-picker editor needs in order not to hold its own copy of the list, and
+   * everything an authoring agent needs in order not to invent one.
+   */
+  transformLanguage: TransformLanguageSpec;
+  /**
    * CWF-005: step kinds this backend no longer SERVES but still reads and
    * converts, as `{ oldKind: newKind }`.
    *
@@ -721,6 +793,7 @@ export function stepKindCatalog(): StepKindCatalog {
     kinds: STEP_KINDS.map((k) => STEP_KIND_SPECS[k]),
     valueLanguage: VALUE_LANGUAGE,
     conditionLanguage: CONDITION_LANGUAGE,
+    transformLanguage: TRANSFORM_LANGUAGE,
     migratedKinds: { ...MIGRATED_STEP_KINDS }
   };
 }
@@ -943,6 +1016,16 @@ export function validateStepShape(step: WorkflowStep): string[] {
           `${at}: wait of ${p.duration} ${unit} exceeds the ${MAX_WAIT_MS}ms (24h) cap — use a schedule trigger`
         );
       }
+      break;
+    }
+
+    case 'transform': {
+      // CWF-004: `output` is REQUIRED here rather than defaulted, and the
+      // executor has no fallback either. A declared default never runs a setter
+      // in this codebase, and CWF-005 found that an executor's fallback is what
+      // ever actually applies — so a transform with nothing to produce is
+      // refused at the one place a refusal costs nothing.
+      errors.push(...validateTransformOutput(p.output, at));
       break;
     }
 

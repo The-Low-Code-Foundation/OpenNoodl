@@ -27,7 +27,9 @@ export type StepKind =
   | 'wait'
   | 'wait-until'
   /** CWF-002: sets what the run answers with, and ends its path. */
-  | 'return';
+  | 'return'
+  /** CWF-004: builds a new object out of the run's data, with no code. */
+  | 'transform';
 
 /** A param's declared type, which is what picks a property-editor control. */
 export type StepParamType =
@@ -140,6 +142,37 @@ export interface ConditionLanguageSpec {
   summary: string;
 }
 
+/** One transform operation, as the backend describes it (CWF-004). */
+export interface TransformOpSpec {
+  /** The key an author writes, `$`-prefixed. */
+  name: string;
+  /** What the picker shows. */
+  label: string;
+  /**
+   * How many operands. `'variadic'` takes a non-empty array of them; a NUMBER
+   * takes exactly that many, and `1` takes its operand verbatim rather than
+   * wrapped in an array — which is what makes `{"$length": [1,2,3]}` the length
+   * of that array and not a botched argument list.
+   */
+  arity: number | 'variadic';
+  /** One label per operand, so a rows editor can name its controls. */
+  args: string[];
+  description: string;
+}
+
+/**
+ * The closed operation vocabulary, served rather than bundled — for exactly the
+ * reason `conditionLanguage` is. The editor builds its operation picker from
+ * this, so removing an op from the backend removes it from the picker with no
+ * editor change, and this editor can never offer an operation the target backend
+ * cannot perform.
+ */
+export interface TransformLanguageSpec {
+  summary: string;
+  ops: TransformOpSpec[];
+  notes: string[];
+}
+
 /** The body of `GET /admin/workflow-step-kinds`. */
 export interface StepKindCatalog {
   version: string;
@@ -149,6 +182,12 @@ export interface StepKindCatalog {
   valueLanguage: ValueLanguageSpec;
   /** Present from catalog 1.2.0 (WFA-004). */
   conditionLanguage?: ConditionLanguageSpec;
+  /**
+   * CWF-004: the transform step's operation vocabulary. Absent from a pre-1.6.0
+   * backend — which also serves no `transform` kind, so there is no card whose
+   * picker would be empty.
+   */
+  transformLanguage?: TransformLanguageSpec;
   /**
    * CWF-005: kinds this backend no longer serves but still reads and converts,
    * as `{ oldKind: newKind }`. Absent from a pre-1.5.0 backend.

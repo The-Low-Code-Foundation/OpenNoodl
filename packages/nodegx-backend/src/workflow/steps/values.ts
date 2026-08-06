@@ -45,6 +45,55 @@ export function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
+// ---------------------------------------------------------------------------
+// The operation hook (CWF-004)
+// ---------------------------------------------------------------------------
+
+/**
+ * One operation the deep resolver may apply, supplied by a CALLER.
+ *
+ * ⚠️ Read this before adding an op here: the table is a PARAMETER and there is
+ * no default. Conditions and step params call `resolveValueDeep` without one and
+ * therefore cannot compute — which is CWF-004's third design question answered
+ * in the type system rather than in a comment. Only the `transform` step passes
+ * a table (`steps/transform.ts`), so widening what a condition can do would take
+ * a deliberate change at a call site, not a quiet addition to a shared list.
+ *
+ * The walker resolves an op's operands before calling `apply`, so `apply` never
+ * sees a spec — only values. It may throw; a throw is a loud step failure, which
+ * is the same loudness an unevaluable condition already has.
+ */
+export interface ValueOp {
+  /** Operand count. `'variadic'` takes a non-empty array of them. */
+  arity: number | 'variadic';
+  apply(args: unknown[]): unknown;
+}
+
+export type ValueOpTable = Readonly<Record<string, ValueOp>>;
+
+/** Thrown when an operation cannot be applied. A loud step failure. */
+export class ValueOpError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValueOpError';
+  }
+}
+
+/**
+ * The sole `$`-prefixed key of an object, or null when there is none.
+ *
+ * The rule it enforces — an object carrying a `$` key carries NOTHING else — is
+ * what makes `{"$concat": […]}` unambiguously an operation rather than data that
+ * happens to have that shape. Data that really does have a `$` key is written
+ * `{"$literal": {…}}`, which this function never reaches because `$literal` is
+ * handled before it.
+ */
+function soleDollarKey(spec: Record<string, unknown>): string | null {
+  const keys = Object.keys(spec);
+  if (keys.length !== 1) return null;
+  return keys[0].startsWith('$') ? keys[0] : null;
+}
+
 /**
  * Read a dotted path out of a scope. `a.b.0.c` walks objects and arrays alike.
  * A missing segment yields `undefined` (which `exists`/`notExists` test for) —
@@ -93,21 +142,78 @@ export function resolveValue(spec: unknown, scope: Record<string, unknown>): unk
  * conditions') semantics precisely. Past `MAX_VALUE_DEPTH` the subtree is
  * returned unchanged rather than throwing mid-run; write-time validation rejects
  * such a param, so this branch is unreachable for a persisted definition.
+ *
+ * CWF-004 added the optional `ops` table, and everything about it is opt-in:
+ * with no table the walk is byte-for-byte what it was, which is what every
+ * condition and every non-`raw` step param still gets. With one, an object whose
+ * SOLE key is `$`-prefixed is an operation rather than data — see
+ * `steps/transform.ts` for the table and the reasoning.
  */
-export function resolveValueDeep(spec: unknown, scope: Record<string, unknown>, depth = 0): unknown {
+export function resolveValueDeep(
+  spec: unknown,
+  scope: Record<string, unknown>,
+  depth = 0,
+  ops?: ValueOpTable
+): unknown {
   if (depth >= MAX_VALUE_DEPTH) return spec;
 
-  if (Array.isArray(spec)) return spec.map((item) => resolveValueDeep(item, scope, depth + 1));
+  if (Array.isArray(spec)) return spec.map((item) => resolveValueDeep(item, scope, depth + 1, ops));
 
   if (isPlainObject(spec)) {
     if (typeof spec.$path === 'string') return getPath(scope, spec.$path);
     if ('$literal' in spec) return spec.$literal;
+
+    if (ops) {
+      const key = soleDollarKey(spec);
+      if (key) return applyValueOp(key, spec[key], scope, depth, ops);
+    }
+
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(spec)) out[k] = resolveValueDeep(v, scope, depth + 1);
+    for (const [k, v] of Object.entries(spec)) out[k] = resolveValueDeep(v, scope, depth + 1, ops);
     return out;
   }
 
   return spec;
+}
+
+/**
+ * Resolve an operation's operands and apply it.
+ *
+ * Every failure here is loud, and each is unreachable for a definition that
+ * passed write-time validation — which is the point of raising them anyway: an
+ * unknown `$op` reaching a run means something wrote a definition around the
+ * validator, and answering that with a silent passthrough would hand a cloud
+ * function a literal `{"$lowr": …}` object as if it were data.
+ */
+function applyValueOp(
+  name: string,
+  operand: unknown,
+  scope: Record<string, unknown>,
+  depth: number,
+  ops: ValueOpTable
+): unknown {
+  const op = ops[name];
+  if (!op) {
+    throw new ValueOpError(
+      `Unknown operation "${name}" (this backend performs ${Object.keys(ops).join(', ')}). ` +
+        'It was never valid; it should have been refused when the workflow was saved.'
+    );
+  }
+
+  // Arity 1 takes its operand VERBATIM and is never unwrapped, so `{"$length":
+  // [1,2,3]}` is the length of that array rather than a one-item argument list.
+  if (op.arity === 1) return op.apply([resolveValueDeep(operand, scope, depth + 1, ops)]);
+
+  if (!Array.isArray(operand)) {
+    throw new ValueOpError(`"${name}" takes an array of operands, got ${typeof operand}`);
+  }
+  if (op.arity === 'variadic' ? operand.length === 0 : operand.length !== op.arity) {
+    throw new ValueOpError(
+      `"${name}" takes ${op.arity === 'variadic' ? 'at least one operand' : `exactly ${op.arity} operands`}, ` +
+        `got ${operand.length}`
+    );
+  }
+  return op.apply(operand.map((item) => resolveValueDeep(item, scope, depth + 1, ops)));
 }
 
 /**
@@ -289,6 +395,11 @@ export const VALUE_LANGUAGE: ValueLanguageSpec = {
   },
   limits: [
     'No arithmetic, string interpolation or function calls. Compute in a cloud function.',
-    'No cross-run or cross-workflow references.'
+    'No cross-run or cross-workflow references.',
+    // CWF-004: said here so a client reading only the value language does not
+    // conclude that reshaping is impossible and send the author to a function.
+    'Reshaping — renaming, flattening, joining, trimming, defaulting — is the `transform` step, whose closed ' +
+      'operation vocabulary is served alongside this one as `transformLanguage`. It is still not an expression ' +
+      'language: every operation is a name with a fixed arity.'
   ]
 };

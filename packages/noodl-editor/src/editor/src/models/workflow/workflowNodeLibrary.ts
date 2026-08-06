@@ -33,6 +33,7 @@ import type { NodeLibraryData, NodeLibraryDataNodeType } from '@noodl-models/nod
 import { WIRE_TYPE_ERROR } from '../../views/nodegrapheditor/canvas/CanvasTheme';
 import type { StepKindCatalog, StepKindSpec, StepParamSpec } from './types';
 import {
+  CONTROL_TRANSFORM_OUTPUT,
   GROUP_PARAMS,
   GROUP_ROUTES,
   PORT_FIRES,
@@ -46,6 +47,7 @@ import {
   PORT_TYPE_FUNCTION_REF,
   PORT_TYPE_PARAMS,
   PORT_TYPE_PATH,
+  PORT_TYPE_TRANSFORM,
   PORT_TYPE_TRIGGER_INFO,
   PORT_TYPE_VALUE,
   routePortName,
@@ -88,6 +90,8 @@ export {
   PORT_TYPE_PARAMS,
   PORT_PARAM_MAPPING,
   PORT_TYPE_BACKOFF,
+  PORT_TYPE_TRANSFORM,
+  CONTROL_TRANSFORM_OUTPUT,
   PORT_TYPE_FOR_CONTROL
 } from './workflowPorts';
 
@@ -105,6 +109,10 @@ const CATEGORY_COLOR: Record<string, string> = {
   // CWF-002's Return. Not `component`: it schedules nothing. It is a structural
   // decision about the run, which is what the `logic` token means here.
   'Workflow Result': 'logic',
+  // CWF-004's Transform, and the family behind it (Validate, Filter, Sort, …).
+  // `data`, from the existing five-key taxonomy: these steps reshape the run's
+  // data and schedule nothing. No new colour — phase 23's law.
+  'Workflow Data': 'data',
   'Workflow Error Handling': 'default' // quiet on purpose: these are exception paths
 };
 
@@ -185,10 +193,36 @@ function portTypeForRawParam(param: StepParamSpec, catalog?: StepKindCatalog): u
   if (param.type === 'condition') {
     return { name: PORT_TYPE_CONDITION, ops: conditionOps(catalog), scope: scopeRoots(catalog) };
   }
+  // CWF-004: a transform's `output` is a raw structure too, and its operation
+  // vocabulary rides on the port type exactly as the condition operators do.
+  // Keyed on the SERVED control name, not on `param.name === 'output'` — a
+  // control keyed on a common param name would collide with the rest of the
+  // family the moment Validate or Filter lands.
+  //
+  // ⚠️ It cannot be left to `portTypeForParam`'s `control` lookup below: that
+  // one answers `{ name }` and nothing else, and a picker with no operations in
+  // it renders an empty dropdown rather than a missing one.
+  if (param.control === CONTROL_TRANSFORM_OUTPUT) {
+    return { name: PORT_TYPE_TRANSFORM, ops: transformOps(catalog), scope: scopeRoots(catalog) };
+  }
   if (param.name === 'cases') {
     return { name: PORT_TYPE_CASES, ops: conditionOps(catalog), scope: scopeRoots(catalog) };
   }
   return portTypeForParam(param, catalog);
+}
+
+/**
+ * The operations the backend will actually perform.
+ *
+ * Empty when a pre-1.6.0 backend served no `transformLanguage` — which is also a
+ * backend that serves no `transform` kind, so in practice there is no card whose
+ * picker this could empty. The control says so rather than guessing a list, for
+ * the reason `conditionOps` gives: an operation this backend cannot perform is a
+ * run that fails at 3am, which is worse than a control that admits it does not
+ * know.
+ */
+function transformOps(catalog?: StepKindCatalog) {
+  return catalog?.transformLanguage?.ops || [];
 }
 
 /** A signal output that paints its name on the wire. */

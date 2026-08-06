@@ -27,6 +27,7 @@ import { ConditionEditor } from '../components/WorkflowCondition/ConditionEditor
 import { FunctionRefRow } from '../components/WorkflowCondition/FunctionRefRow';
 import { RetryBackoffRow } from '../components/WorkflowCondition/RetryBackoffRow';
 import { SwitchCasesEditor } from '../components/WorkflowCondition/SwitchCasesEditor';
+import { TransformOutputEditor } from '../components/WorkflowCondition/TransformOutputEditor';
 import { TriggerInfoRow } from '../components/WorkflowCondition/TriggerInfoRow';
 import { WorkflowParamsEditor } from '../components/WorkflowCondition/WorkflowParamsEditor';
 import { WorkflowValueInput } from '../components/WorkflowCondition/WorkflowValueInput';
@@ -171,6 +172,46 @@ export class WorkflowCasesType extends WorkflowTypeView {
         children: React.createElement(SwitchCasesEditor, {
           value: this.parent.model.getParameter(this.name),
           onChange: (value: unknown) => this.write(value),
+          ops: this.ops,
+          scope: this.scope,
+          graph: this.graph,
+          stepId: this.stepId
+        })
+      })
+    );
+  }
+}
+
+/**
+ * `transform.output` — the object a Transform step produces (CWF-004).
+ *
+ * Unlike `WorkflowParamsType` below, this edits ONE param's value, so it needs
+ * none of that row's sibling-writing machinery: an ordinary `write()` through
+ * the undo queue is the whole story, and `isChanged` / `onReset` mean what they
+ * mean everywhere else in this panel.
+ *
+ * The operation vocabulary rides on the port TYPE (`this.ops`), put there by the
+ * translator from the served catalog — the same place `enum` carries its values.
+ * Nothing here holds a copy of the backend's operation list, which is what makes
+ * "remove an op from the backend and it leaves the picker" true with no editor
+ * change at all.
+ */
+export class WorkflowTransformType extends WorkflowTypeView {
+  static fromPort(args: TSFixme) {
+    return WorkflowTypeView.fill(new WorkflowTransformType(), args);
+  }
+
+  renderReact() {
+    if (!this.root) return;
+    const value = this.parent.model.getParameter(this.name);
+    this.root.render(
+      React.createElement(PropertyPanelRow, {
+        label: this.displayName,
+        isChanged: !this.isDefault,
+        onReset: () => this.write(undefined),
+        children: React.createElement(TransformOutputEditor, {
+          value,
+          onChange: (next: Record<string, unknown>) => this.write(next),
           ops: this.ops,
           scope: this.scope,
           graph: this.graph,

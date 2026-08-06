@@ -23,6 +23,7 @@ import { STEP_KINDS } from './kinds';
 import { BranchStepExecutor, ForEachStepExecutor, MergeStepExecutor, SwitchStepExecutor } from './logic';
 import { ReturnStepExecutor } from './returns';
 import { WaitStepExecutor, WaitUntilStepExecutor } from './timing';
+import { TransformStepExecutor } from './transform';
 
 export interface CompositeStepExecutorDeps {
   getRunner: () => WorkflowRunner | null;
@@ -41,6 +42,7 @@ export class CompositeStepExecutor implements StepExecutor {
       switch: new SwitchStepExecutor(),
       'for-each': new ForEachStepExecutor({ getRunner }),
       merge: new MergeStepExecutor(),
+      transform: new TransformStepExecutor(),
       stop: new StopStepExecutor(),
       wait: new WaitStepExecutor(),
       'wait-until': new WaitUntilStepExecutor(),

@@ -31,6 +31,7 @@ const EXPECTED_KINDS = [
   'switch',
   'for-each',
   'merge',
+  'transform',
   'stop',
   'return',
   'wait',
@@ -176,6 +177,25 @@ describe('WF-002 author documentation coverage', () => {
     // hides the right-hand control for those and only those.
     const unary = conditionLanguage.ops.filter((o) => o.unary).map((o) => o.name).sort();
     expect(unary).toEqual(['empty', 'exists', 'falsy', 'notEmpty', 'notExists', 'truthy']);
+  });
+
+  it('documents every transform operation the catalog serves (CWF-004)', () => {
+    // Same drift as the condition operators, one surface further out: the
+    // editor builds its operation picker from the served `transformLanguage`,
+    // so an operation can reach a user's screen without anyone writing it down.
+    const { transformLanguage } = stepKindCatalog();
+    expect(transformLanguage.ops.length).toBeGreaterThan(0);
+    for (const op of transformLanguage.ops) {
+      expect(doc).toContain(`\`${op.name}\``);
+      expect(op.label.length).toBeGreaterThan(0);
+      // Operand labels are what a rows editor names its fields; a numeric arity
+      // with the wrong number of them would render an unlabelled control.
+      if (typeof op.arity === 'number') expect(op.args.length).toBe(op.arity);
+      else expect(op.args.length).toBeGreaterThan(0);
+    }
+    // The doctrine line has to survive contact with a step that reshapes data,
+    // or the next person reads the op table and assumes arithmetic is coming.
+    expect(doc).toMatch(/no arithmetic/i);
   });
 
   it('tells an author how to build one on the canvas (WFA-004, F10)', () => {

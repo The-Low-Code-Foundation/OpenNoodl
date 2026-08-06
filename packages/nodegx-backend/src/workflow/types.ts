@@ -49,7 +49,9 @@ export type StepKind =
   | 'wait'
   | 'wait-until'
   // CWF-002: what the caller gets back
-  | 'return';
+  | 'return'
+  // CWF-004: reshape a payload without a round trip through a function
+  | 'transform';
 
 export interface WorkflowStep {
   /** Unique within the workflow. Doubles as the execution-history `nodeId`. */

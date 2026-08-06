@@ -56,7 +56,11 @@ const KNOWN_CATEGORIES = new Set([
   // CWF-002's `return`. It gets its own family rather than joining `Workflow`
   // (which is coloured `component` — "it schedules a function", which a Return
   // does not) and is mapped to `logic` in workflowNodeLibrary's CATEGORY_COLOR.
-  'Workflow Result'
+  'Workflow Result',
+  // CWF-004's `transform`, and the family the wider CWF-004 table opens
+  // (Validate, Filter, Split, Sort, Dedupe). Mapped to `data` in CATEGORY_COLOR:
+  // a step that reshapes the run's data, which is what that token means here.
+  'Workflow Data'
 ]);
 
 describe('WFA-004 — the served step-kind catalog is what the canvas assumes', () => {

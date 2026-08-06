@@ -193,10 +193,12 @@ export function registerBackendReadTools(server: McpServer): void {
       title: 'List backend workflow step kinds',
       description:
         'The step vocabulary a backend can run (WF-002): every step `kind` with its params, routes, output shape ' +
-        'and when to use it — call-function, branch, switch, for-each, merge, stop, wait, wait-until — ' +
-        'PLUS `valueLanguage` (WFA-003): how a param references data ($path / $literal), what a $path may ' +
-        'address (body, trigger, previous, upstream.<stepId>), and the one payload shape every entry point ' +
-        'delivers. CALL THIS BEFORE AUTHORING A WORKFLOW. A workflow step is not a canvas node, so these are ' +
+        'and when to use it — call-function, branch, switch, for-each, merge, transform, stop, return, wait, ' +
+        'wait-until — PLUS `valueLanguage` (WFA-003): how a param references data ($path / $literal), what a ' +
+        '$path may address (body, trigger, previous, upstream.<stepId>), and the one payload shape every entry ' +
+        'point delivers, `conditionLanguage` (the closed comparison operators) and `transformLanguage` ' +
+        '(CWF-004: the closed operation vocabulary a transform step may use, with each operation\'s arity). ' +
+        'CALL THIS BEFORE AUTHORING A WORKFLOW. A workflow step is not a canvas node, so these are ' +
         'NOT in the node catalog (list_node_types); this is where their contract lives, and it is served by the ' +
         'running backend so it can never drift from what that backend actually executes.',
       inputSchema: { backendId: z.string().optional().describe('Which backend (omit if exactly one is running)') }
@@ -941,8 +943,8 @@ export function registerBackendWriteTools(server: McpServer): void {
     kind: z
       .string()
       .describe(
-        'What the step runs, e.g. call-function / branch / switch / for-each / merge / stop / wait / ' +
-          'wait-until. THE AUTHORITY IS THE TARGET BACKEND: call list_backend_step_kinds against the backend ' +
+        'What the step runs, e.g. call-function / branch / switch / for-each / merge / transform / stop / ' +
+          'return / wait / wait-until. THE AUTHORITY IS THE TARGET BACKEND: call list_backend_step_kinds against the backend ' +
           "you are authoring for, and use what it returns — for each kind's params, routes and output shape, " +
           'and because the vocabulary differs between backend versions. A kind this backend does not serve is ' +
           'refused before anything is written.'
@@ -965,7 +967,13 @@ export function registerBackendWriteTools(server: McpServer): void {
           "kind's own params are yours to choose and arrive at the top level of the function's request body — so " +
           'name them for the function ("amount"), not for wherever the value sits today ("previous"). The names ' +
           'in `paramMapping.reserved` are refused at write time; `previous` in particular would be silently ' +
-          'discarded, because the engine writes it after your params.'
+          'discarded, because the engine writes it after your params.\n' +
+          'CWF-004: a `transform` step\'s `output` is `{ "<field>": <value> }`, where a value may also be an ' +
+          'OPERATION — {"$lower": …}, {"$concat": [a, " ", b]}, {"$default": [value, fallback]}. The set is ' +
+          'CLOSED and SERVED: read `transformLanguage` from list_backend_step_kinds and use only what is in it. ' +
+          'Do NOT invent an operation — an unknown $op is refused at write time, not passed through. An ' +
+          'operation with one operand takes it verbatim; one with two or more takes an array of exactly that ' +
+          'many. There is no arithmetic: compute in a cloud function.'
       ),
     timeoutMs: z.number().optional().describe('Per-step timeout (0/omitted = the workflow default)'),
     next: z

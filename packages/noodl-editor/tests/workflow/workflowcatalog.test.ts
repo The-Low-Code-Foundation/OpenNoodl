@@ -17,6 +17,7 @@ import {
   PORT_ON_ERROR,
   PORT_PARAM_MAPPING,
   PORT_TYPE_CONDITION,
+  PORT_TYPE_TRANSFORM,
   routeNameFromPort,
   routePortName,
   typeNameForKind,
@@ -31,6 +32,14 @@ const CATALOG: StepKindCatalog = {
   source: 'test',
   docs: 'test',
   valueLanguage: {},
+  transformLanguage: {
+    summary: '',
+    notes: [],
+    ops: [
+      { name: '$lower', label: 'lowercase', arity: 1, args: ['text'], description: '' },
+      { name: '$concat', label: 'join text', arity: 'variadic', args: ['parts'], description: '' }
+    ]
+  },
   kinds: [
     {
       kind: 'call-function',
@@ -81,6 +90,28 @@ const CATALOG: StepKindCatalog = {
         { name: '<case label>', description: '', dynamic: true },
         { name: 'default', description: '' }
       ],
+      output: ''
+    },
+    {
+      kind: 'transform',
+      displayName: 'Transform',
+      category: 'Workflow Data',
+      source: 'CWF-004',
+      summary: '',
+      whenToUse: '',
+      invokesFunction: false,
+      params: [
+        {
+          name: 'output',
+          type: 'object',
+          raw: true,
+          required: true,
+          control: 'transform-output',
+          displayName: 'Fields',
+          description: 'The object this step produces.'
+        }
+      ],
+      routes: [],
       output: ''
     },
     {
@@ -211,6 +242,20 @@ describe('WFA-004 step kinds become node types', () => {
     expect(type.shadows).toEqual(['body']);
   });
 
+  it('gives a transform its own port type, carrying the SERVED operation set (CWF-004)', () => {
+    const output = portsOf('transform').find((p) => p.name === 'output');
+    const type = output.type as { name: string; ops: { name: string }[]; scope: unknown };
+    // Keyed on the served `control`, not on the param being called "output" —
+    // the rest of CWF-004's family (Validate, Filter, Sort) wants that word too.
+    expect(type.name).toBe(PORT_TYPE_TRANSFORM);
+    // The picker is built from THIS, so an operation the backend does not serve
+    // can never appear in it, and one it stops serving disappears with no
+    // editor change at all.
+    expect(type.ops.map((o) => o.name)).toEqual(['$lower', '$concat']);
+    // The row's label is the served displayName, not the wire name.
+    expect(output.displayName).toBe('Fields');
+  });
+
   it('adds no mapping port to a kind that does not declare one', () => {
     // A pre-1.3.0 backend serves no `paramMapping` at all, and this is the same
     // shape: no row, and the definitions that already carry a mapping still run.
@@ -220,6 +265,8 @@ describe('WFA-004 step kinds become node types', () => {
   it('colours by the served category, using only the canvas taxonomy', () => {
     expect(typeFor('call-function').color).toBe('component');
     expect(typeFor('branch').color).toBe('logic');
+    // CWF-004's new family. `data` from the existing taxonomy — no new colour.
+    expect(typeFor('transform').color).toBe('data');
   });
 
   it('builds a picker category per served category, listing its kinds', () => {

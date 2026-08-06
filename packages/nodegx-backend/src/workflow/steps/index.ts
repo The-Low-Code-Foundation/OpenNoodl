@@ -15,9 +15,11 @@ export {
   MAX_VALUE_DEPTH,
   resolveStepParams,
   resolveValueDeep,
+  ValueOpError,
   VALUE_LANGUAGE
 } from './values';
-export type { FoundPath, ScopeEntrySpec, ValueFormSpec, ValueLanguageSpec } from './values';
+export type { FoundPath, ScopeEntrySpec, ValueFormSpec, ValueLanguageSpec, ValueOp, ValueOpTable } from './values';
+export * from './transform';
 export * from './kinds';
 export * from './sleep';
 export * from './logic';

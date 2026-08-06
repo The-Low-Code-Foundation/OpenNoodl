@@ -42,6 +42,7 @@ import {
   WorkflowConditionType,
   WorkflowFunctionRefType,
   WorkflowParamsType,
+  WorkflowTransformType,
   WorkflowTriggerInfoType,
   WorkflowValueType
 } from './WorkflowTypes';
@@ -519,6 +520,12 @@ export class Ports extends View {
       return NodeLibrary.nameForPortType(type) === 'workflow-params';
     }
 
+    // CWF-004: a transform's `output` — one row per field of the object the
+    // step produces, each row a value or one operation from the served table.
+    function isOfWorkflowTransformType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-transform';
+    }
+
     // CWF-005: an attempt count that shows the delay sequence it implies.
     function isOfWorkflowBackoffType() {
       return NodeLibrary.nameForPortType(type) === 'workflow-backoff';
@@ -575,6 +582,7 @@ export class Ports extends View {
     else if (isOfWorkflowCasesType()) return WorkflowCasesType;
     else if (isOfWorkflowValueType()) return WorkflowValueType;
     else if (isOfWorkflowParamsType()) return WorkflowParamsType;
+    else if (isOfWorkflowTransformType()) return WorkflowTransformType;
     else if (isOfWorkflowBackoffType()) return WorkflowBackoffType;
     else if (isOfWorkflowTriggerInfoType()) return WorkflowTriggerInfoType;
     else if (isOfWorkflowFunctionRefType()) return WorkflowFunctionRefType;

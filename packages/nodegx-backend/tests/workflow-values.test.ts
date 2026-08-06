@@ -331,9 +331,13 @@ describe('WFA-003 the served spec describes the value language', () => {
     // `displayName` and `control`, because two of retry's knobs lied in the
     // field NAME and the name is the wire contract and cannot change; CWF-005
     // then folded `retry` into `call-function` and added `migratedKinds`, so a
-    // client can tell "cannot run that" from "accepts and converts that".
+    // client can tell "cannot run that" from "accepts and converts that";
+    // CWF-004 added `transformLanguage`, the closed operation vocabulary a
+    // `transform` step's `output` may use — served for the same reason the
+    // operators are, so an editor cannot offer an operation this backend does
+    // not perform and an agent cannot invent one.
     // Bumping this line is the deliberate act the catalog's `version` is for.
-    expect(catalog.version).toBe('1.5.0');
+    expect(catalog.version).toBe('1.6.0');
   });
 
   it('marks every DSL param raw, and nothing else', () => {
@@ -341,7 +345,11 @@ describe('WFA-003 the served spec describes the value language', () => {
     for (const spec of Object.values(STEP_KIND_SPECS)) {
       for (const p of spec.params) if (p.raw) raw.push(`${spec.kind}.${p.name}`);
     }
-    expect(raw.sort()).toEqual(['branch.condition', 'for-each.filter', 'switch.cases']);
+    // CWF-004's `transform.output` is the fourth. `raw` there means what it has
+    // always meant — the engine does NOT value-resolve it — and it is load-
+    // bearing in a way CWF-001's proposed `raw` param would not have been: only
+    // the transform executor holds the operation table, so only it can walk it.
+    expect(raw.sort()).toEqual(['branch.condition', 'for-each.filter', 'switch.cases', 'transform.output']);
     // Every raw param is one the value language calls a structure, which is what
     // the served note tells a property editor to render differently.
     expect(stepKindCatalog().valueLanguage.rawParamNote).toMatch(/raw: true/);

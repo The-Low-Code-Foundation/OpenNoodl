@@ -262,11 +262,11 @@ first, which is not something to build on.
 
 ### Params that are structures, not values
 
-A `condition`, a `for-each` `filter` and a `switch`'s `cases` are **not values** —
-they are small structures whose own operands use this language, evaluated when the
-step runs. They are marked `raw` in `GET /admin/workflow-step-kinds` and are
-passed to the step exactly as authored (so the execution record shows the
-comparison you wrote, not its answer).
+A `condition`, a `for-each` `filter`, a `switch`'s `cases` and a `transform`'s
+`output` are **not values** — they are small structures whose own operands use
+this language, evaluated when the step runs. They are marked `raw` in
+`GET /admin/workflow-step-kinds` and are passed to the step exactly as authored
+(so the execution record shows the comparison you wrote, not its answer).
 
 ### No expressions, deliberately
 
@@ -276,6 +276,11 @@ A workflow definition is a persisted, deployable, agent-authored JSON file, so a
 credential in front of it. **Compute in a cloud function** — that is what the
 function is for. This language makes *referencing* values possible, not
 *computing* them.
+
+**Reshaping is not computing**, and it has its own step: renaming, flattening,
+joining, trimming and defaulting are the [`transform`](#transform) step, whose
+operation vocabulary is a closed, backend-served table of names with fixed
+arities. It is still not an expression language, and it still has no arithmetic.
 
 ### One payload, whatever started the run
 
@@ -594,6 +599,127 @@ involved: topological order guarantees every predecessor has finished.
 `mode: "all"` is the default deliberately: a half-merge passed downstream as if
 complete is a silent data-loss bug. Use `"any"` when converging genuinely
 alternative branches (as after a `branch` or `switch`), which is the common case.
+
+---
+
+### `transform`
+
+Builds a **new object** out of the run's data — renaming, flattening, joining,
+trimming, defaulting — with no code and no round trip through a function.
+
+| Param | Default | Description |
+|---|---|---|
+| `output` | — (required) | The object this step produces, as `{ "<field>": <value> }`. Each value is a literal, a `$path` reference, or an **operation** from the closed table below. |
+
+**Output:** the object you described, and nothing else — so the next step reads
+it as `previous.<field>`.
+
+```jsonc
+{
+  "id": "shape", "kind": "transform",
+  "params": {
+    "output": {
+      "paymentObject": { "$path": "previous.user.order.payment" },
+      "fullName": { "$concat": [{ "$path": "body.first" }, " ", { "$path": "body.last" }] },
+      "email":    { "$lower": { "$trim": { "$path": "body.customer.email" } } },
+      "currency": { "$default": [{ "$path": "body.currency" }, "GBP"] }
+    }
+  },
+  "next": ["charge"]
+}
+```
+
+#### Why this is workflow work and not function work
+
+Reshaping JSON **references**; it does not compute. It reads paths and rebuilds
+an object, and it never evaluates a string — which is exactly the line
+[the backend authoring model](../../dev-docs/reference/BACKEND-AUTHORING-MODEL.md)
+draws between a workflow and a cloud function.
+
+The argument that settles it is what happens without it: **every function carries
+its caller's mess.** A supplier's webhook shape leaks into the function that
+processes it, so the function is no longer a clean unit of work — it is a unit of
+work welded to one caller's payload format. Reshape here and the function keeps a
+stable input contract, which is what makes it callable from your app *and* from
+three different workflows.
+
+#### The operations
+
+Every operation is a **name in a closed table with a fixed arity**, served by the
+backend at `GET /admin/workflow-step-kinds` as `transformLanguage`. The editor's
+picker is built from that, so it can never offer an operation this backend cannot
+perform, and an operation removed from the backend disappears from the picker
+with no editor change.
+
+| Operation | Operands | What it does |
+|---|---|---|
+| `$concat` | one or more | Runs values together into one string. |
+| `$join` | `list`, `separator` | Turns an array into one string. |
+| `$split` | `text`, `separator` | Turns one string into an array. |
+| `$lower` | `text` | Lowercases. |
+| `$upper` | `text` | Uppercases. |
+| `$trim` | `text` | Removes leading and trailing whitespace. |
+| `$string` | `value` | Reads a number or boolean as text. |
+| `$number` | `value` | Reads text as a number. Nonsense **fails the step**. |
+| `$default` | `value`, `fallback` | Uses the fallback when the value is missing or null. **This is how a field is declared optional.** |
+| `$length` | `value` | Length of text or an array; key count of an object. |
+| `$get` | `value`, `path` | Reads a dotted path out of a value — `$path` for something already computed. |
+| `$pick` | `object`, `keys` | Keeps only the named keys. |
+
+How the operands are written follows from the arity, so it is never ambiguous:
+
+- **One operand** takes it *verbatim*, never unwrapped:
+  `{"$length": [1,2,3]}` is the length of that array, `3`.
+- **Two or more** take an array of exactly that many:
+  `{"$join": [{"$path": "body.tags"}, ", "]}`.
+- **Operations nest.** An operand may itself be an operation, a `$path`, or a
+  literal.
+- An object that *really does* have a `$`-prefixed key is written
+  `{"$literal": {"$type": …}}`. Anything else carrying a `$` key is an
+  operation, and it must be that object's only key.
+
+#### Loud, except for absence
+
+An operation that cannot be performed **fails the step**, so an `onError` edge
+can route it — the same loudness a condition has always had, and for the same
+reason: a silent `undefined` from a third-party webhook is what ruins an
+afternoon three weeks later.
+
+The one exception is **absence**, which is not a failure anywhere in this
+language: a missing path is `undefined`, and `$get` past the end of an array is
+too. `$default` is how you say a field is optional, and it is the operation to
+reach for in front of anything applied to data you did not produce:
+
+```jsonc
+{ "email": { "$lower": { "$default": [{ "$path": "body.email" }, "" ] } } }
+```
+
+#### A field cannot read another field of the same transform
+
+Every field resolves against **the run**, in one pass, so there is no order to
+depend on. That is what keeps a transform diffable, order-independent and safe
+for an agent to write. Where one field genuinely depends on another, chain two
+transform steps — the second reads the first as `previous.<field>`.
+
+#### What is deliberately not here
+
+- **No arithmetic.** `$add` / `$subtract` / `$multiply` / `$divide` were proposed
+  and left out of the first cut. This page, the value language and the served
+  catalog all say "no arithmetic — compute in a cloud function", and shipping one
+  arithmetic operation would falsify that sentence everywhere it appears. Adding
+  an operation later is additive; removing one is not.
+- **No wildcards in paths.** `lines.*.amount` is genuinely useful and it is a
+  change to the `$path` walker that **conditions share** — so it is one change
+  for both languages or none, never a second walker for transforms.
+- **No free function step, ever.** See
+  [the backend authoring model](../../dev-docs/reference/BACKEND-AUTHORING-MODEL.md):
+  a workflow definition is persisted, deployable, agent-authored JSON executing
+  with admin authority, and an `eval`'d string in one is remote code execution
+  behind an admin credential. When you genuinely need code, the answer is a
+  one-node cloud function reached by the descent gesture.
+
+**Client equivalent:** nothing exact. In the browser you would wire an Object
+node or compute in a Function; server-side there is no code here on purpose.
 
 ---
 
