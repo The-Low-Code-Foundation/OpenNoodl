@@ -165,4 +165,34 @@ describe('SPR-005 — the two doors onto a new cloud function agree', () => {
     // is the one place that equality is written down.
     expect('/' + CLOUD_SHEET.folderName + '/').toBe(CLOUD_SHEET.pathPrefix);
   });
+
+  it('holds a typed name to the rule the gesture mints by', () => {
+    // `planFunctionFromStep` will only ever mint a name matching
+    // FUNCTION_NAME_RE. Before SPR-005 the panel accepted anything, so the two
+    // doors could produce functions of which only one was addressable.
+    const cloud = ComponentTemplates.instance.cloudFunction;
+
+    expect(cloud.validateLocalName('chargeCard')).toBeNull();
+    expect(cloud.validateLocalName('_private-fn2')).toBeNull();
+
+    expect(cloud.validateLocalName('Charge card')).toContain('/functions/');
+    expect(cloud.validateLocalName('2fa')).toBeTruthy();
+    expect(cloud.validateLocalName('a,b')).toBeTruthy();
+  });
+
+  it('holds nothing else to it — a visual component may be called anything', () => {
+    const visual = ComponentTemplates.instance
+      .getTemplates({ forParentType: 'folder', forRuntimeType: 'browser' })
+      .find((t) => t.label === 'Visual Component');
+
+    expect(visual.validateLocalName('My Card!')).toBeNull();
+  });
+
+  it('asks for the name it actually wants', () => {
+    // F26's argument one level up: "New component name / e.g. ProductCard" is
+    // the wrong question to put in front of someone naming an HTTP endpoint.
+    const cloud = ComponentTemplates.instance.cloudFunction;
+    expect(cloud.promptLabel).toBe('New cloud function name');
+    expect(cloud.promptPlaceholder).toBe('e.g. chargeCard');
+  });
 });

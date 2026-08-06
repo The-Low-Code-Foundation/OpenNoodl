@@ -319,6 +319,20 @@ export function useComponentActions(options: UseComponentActionsOptions = {}) {
             return;
           }
 
+          /**
+           * SPR-005 — the template's own rule about what it may be called.
+           *
+           * Only the cloud function template declares one, and it has to: its
+           * name is the URL path segment its backend serves it on. CWF-004 S6's
+           * gesture has always held itself to that regex; this door did not, so
+           * the two could produce functions of which only one was addressable.
+           */
+          const nameError = template?.validateLocalName?.(localName);
+          if (nameError) {
+            ToastLayer.showError(nameError);
+            return;
+          }
+
           if (ProjectModel.instance?.getComponentWithName(componentName)) {
             ToastLayer.showError('Component name already exists. Name must be unique.');
             return;

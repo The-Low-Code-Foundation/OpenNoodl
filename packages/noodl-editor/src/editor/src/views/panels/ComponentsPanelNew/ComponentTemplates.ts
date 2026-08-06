@@ -8,7 +8,7 @@ import View from '../../../../../shared/ListenableView';
 import { ComponentModel } from '../../../models/componentmodel';
 import { NodeGraphModel } from '../../../models/nodegraphmodel';
 import { RouterAdapter } from '../../../models/NodeTypeAdapters/RouterAdapter';
-import { declareRequestParams } from '../../../models/workflow/newFunctionFromStep';
+import { declareRequestParams, FUNCTION_NAME_RE, isLegalFunctionName } from '../../../models/workflow/newFunctionFromStep';
 import Utils from '../../../utils/utils';
 import PopupLayer from '../../popuplayer';
 import { PageComponentTemplatePopup } from './PageTemplatePopup';
@@ -19,6 +19,16 @@ class ComponentTemplate {
   template: any;
   label: string;
   icon: IconName;
+  /**
+   * SPR-005 — what the name prompt asks for, per template.
+   *
+   * F26 already established that a shared prompt is how the comment editor's
+   * hint reached a cloud function's name field. The same argument applies one
+   * level up: "New component name / e.g. ProductCard" is the wrong question to
+   * ask someone creating a cloud function, whose name is an HTTP path segment.
+   */
+  promptLabel = 'New component name';
+  promptPlaceholder = 'e.g. ProductCard';
 
   constructor(label, icon) {
     this.label = label;
@@ -38,13 +48,25 @@ class ComponentTemplate {
     return component;
   }
 
+  /**
+   * SPR-005 — is this a name this template is willing to be given?
+   *
+   * A message to show, or `null` to accept. Most components may be called
+   * anything; the rule exists because one of them may not (see
+   * `CloudFunctionComponentTemplate`), and putting it on the template rather
+   * than in the panel keeps the panel free of any knowledge of runtimes.
+   */
+  validateLocalName(localName: string): string | null {
+    return null;
+  }
+
   createPopup(options: any): { el: HTMLElement } {
     const popup = new PopupLayer.StringInputPopup({
-      label: 'New component name',
+      label: this.promptLabel,
       okLabel: 'Add',
       cancelLabel: 'Cancel',
       // F26: this is the prompt a user meets when creating a cloud function.
-      placeholder: 'e.g. ProductCard',
+      placeholder: this.promptPlaceholder,
       onOk(localName) {
         options.onCreate(localName);
       },
@@ -142,6 +164,11 @@ class CloudFunctionComponentTemplate extends ComponentTemplate {
     this.parentTypes = ['folder'];
     this.runtimeTypes = ['cloud'];
 
+    // SPR-005: the name it is really asking for. `chargeCard` is the example the
+    // rest of the cloud-function docs use, and it satisfies `FUNCTION_NAME_RE`.
+    this.promptLabel = 'New cloud function name';
+    this.promptPlaceholder = 'e.g. chargeCard';
+
     this.template = {
       connections: [],
       roots: [
@@ -196,6 +223,28 @@ class CloudFunctionComponentTemplate extends ComponentTemplate {
     if (requestParams) declareRequestParams(component.graph, requestParams);
 
     return component;
+  }
+
+  /**
+   * SPR-005 — the two doors onto a new cloud function, held to one naming rule.
+   *
+   * CWF-004 S6's gesture only ever mints a name matching `FUNCTION_NAME_RE`,
+   * because a function's name is a **URL path segment** (`POST /functions/<name>`)
+   * as well as a component's local name and a workflow step's `ref`. The panel's
+   * door asked for a free string and accepted it, so the two doors could produce
+   * functions of which only one was addressable — `Charge card!` looked like a
+   * cloud function in the tree, deployed, and answered nothing.
+   *
+   * The rule is `isLegalFunctionName`, imported rather than restated: one regex,
+   * two doors.
+   */
+  validateLocalName(localName: string): string | null {
+    if (isLegalFunctionName(localName)) return null;
+    return (
+      `"${localName}" cannot be a cloud function name. Your backend serves it as POST /functions/${localName}, ` +
+      `so it must match ${FUNCTION_NAME_RE.source} — a letter or underscore, then letters, digits, "_" or "-". ` +
+      `Try "chargeCard".`
+    );
   }
 }
 
