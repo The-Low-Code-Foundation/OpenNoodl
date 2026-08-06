@@ -1,8 +1,27 @@
 # Next session — the prompt
 
-**Written 2026-08-06**, at the end of a day that shipped 23 phase-42 tasks across 20 parallel
-agents. Covers everything still open in **phase 42** (first hour), **phase 40** (AI authoring
-quality) and **phase 39** (alpha polish).
+**Written 2026-08-06**, updated at the end of a **second** session the same day. Covers everything
+still open in **phase 42** (first hour), **phase 40** (AI authoring quality) and **phase 39**
+(alpha polish).
+
+**What the second session did**, so you do not redo it:
+
+1. **Paid the live-QA debt.** HUD-001…004, FH-011, MCP-001/003, FH-020+FH-022 and the cloud
+   vocabulary were driven in the running editor, **both themes**, across two real restarts.
+   Evidence is in `phase-42-first-hour/README.md` § *The live-QA pass*. Two things were proved the
+   only way they can be: **HUD-004's data-loss fix** (editor at 60 events, an agent's `start_trace`
+   did not drop it) and **MCP-003's reconnect** (observe survived an editor restart and a new
+   token). **FH-020 + FH-022 close triage item 0.**
+2. **Built Richard's four decisions** — F10, F13, NDA-017's migration, and `set_design_tokens`
+   recorded in both docs.
+3. **Closed six plain bugs** — F1, F2, F8, F9, F11, POL-017 — plus a new **POL-019**.
+
+⚠️ **Three registers were lying, and all three the same way**: a row filed from one task's notes,
+fixed by an adjacent task, and never closed. `ProvenancePanel.timeOf()` (fixed by HUD-003),
+AAQ-011 F2 (fixed by FH-005 + FH-013) and POL-017's gutter (fixed by `00adecd5`, a commit about the
+linter) all sat as *filed, not fixed* while being fixed. POL-016's rule catches rows that
+**vanish**; nothing catches rows that **outlive their fix**. If you touch a register, check its open
+rows against the code before believing them.
 
 Paste the block below into a fresh session.
 
@@ -41,7 +60,13 @@ through 23 tasks. What was learned doing it, which you should carry:
   `typecheck:editor`.** Only the final `Jasmine:` line counts. The retry fold passed every gate it
   was given and still left a reader un-migrated.
 - **Verify the whole tree yourself at the end**, rather than trusting the agents' reports. Every
-  batch so far has left something the individual gates could not see.
+  batch so far has left something the individual gates could not see. **It happened again on
+  2026-08-06**: F10 and F13 independently built **two incompatible spawn records** for the same
+  orphan problem — precisely the failure F13's own row predicts, since each spawner reaps only its
+  own. They converged (`6640dfc1`), and the F10 agent then reported a defect in F13's reaper it was
+  not allowed to fix, which the orchestrator fixed (`b4af5ab5`). **Two agents given adjacent
+  problems will solve them twice**; ask each what shared state it is writing, and read the other's
+  work before believing a report that says "done".
 - Tell every agent the task docs are **researched but not infallible** and to verify at file:line.
   Across three batches roughly two premises per doc were wrong, and several specified
   implementations would have broken the feature they specified. Have them fix the doc line.
@@ -52,13 +77,18 @@ through 23 tasks. What was learned doing it, which you should carry:
 npm run typecheck:runtime|cloud|viewer|editor|editor-tests
 npm run catalog:check && npm run cloud-library:check && npm run catalog:merge:check
 npm run library:check                       # 58/58
-npx lerna run test --scope @noodl/runtime           # 2284
+npx lerna run test --scope @noodl/runtime           # 2285
 npx lerna run test --scope @noodl/cloud-runtime     # 172
-npx lerna run test --scope @noodl/nodegx-backend    # 86 suites / 887
+npx lerna run test --scope @noodl/nodegx-backend    # 89 suites / 901
 npx lerna run test --scope @noodl/observe           # 23
-npx lerna run test --scope @noodl/mcp               # 161
-npm run test:ci                             # Jasmine: 2295 specs, 0 failures
+npx lerna run test --scope @noodl/mcp               # 186
+npm run test:ci                             # Jasmine: 2342 specs, 0 failures
 ```
+
+All of the above were re-run by the orchestrator on the settled tree at the end of the second
+session, **not** taken from agent reports. ⚠️ **The editor spec count is a shared-checkout number.**
+It moved 2295 → 2342 across one day with four sessions' work in the tree; treat the **failure
+count** as the signal and never conclude "my change added N specs" from the total.
 
 `npm run typecheck:core-ui` is **red on files nobody owns and is not a gate**.
 `npm run typecheck:backend-tests` has ~11 pre-existing errors in `realtime-filter.test.ts` and
@@ -98,11 +128,26 @@ that session is live before starting anything that overlaps.
   fire, etc so that there's no chance we leave orphaned backends running that fuck up other projects
   or fry the user's CPU."* **A close handler is not the design** — a crash or a power cut never runs
   one. The design owes **orphan reaping**: a durable pid/port/project record at spawn, swept on the
-  next launch. Unowned.
+  next launch. ✅ **BUILT 2026-08-06** — `240bf0c0` (registry + reaper, 46 jest specs), `2994e48f`
+  (start on open / stop on close), `7e76c70b` (delayed spinner, silent success, sticky failure),
+  `6640dfc1` (converged onto `noodl-mcp`'s record format). ⚠️ **The row's premise was wrong**: an
+  orphan guard already existed — `nodegx-backend` has taken `--parent-pid` since WF-004 and drains
+  itself. What it cannot survive is a **recycled** parent pid, `EPERM` read as alive, or a wedged
+  process. Those three are what the reaper covers. **Adopt, never restart**, and therefore never
+  stop what we did not start.
 - **AAQ-011 F13 → yes, `noodl-mcp` may provision backends.** Decided 2026-08-06, on the ground that
   an external agent must be able to build a full-stack app end to end. What that opens is the design
   work — lifecycle, ports and secrets ownership — and **it inherits F10's no-orphans constraint**,
-  in the harder form: an MCP sidecar has no window to close and no quit event. Unowned.
+  in the harder form: an MCP sidecar has no window to close and no quit event. ✅ **BUILT
+  2026-08-06** — `e45bc02a` (record + reaper), `460f17e3` (`provision_backend` / `stop_backend` /
+  `list_backend_processes`, write-gated), `b4af5ab5` (the self-identity fix below). Deliberately
+  **not** a plan operation: `apply_plan`'s contract is all-or-nothing with a byte-identical
+  discard, and a spawned process plus a created database are neither — the editor reaches the same
+  conclusion from the other side (`provisionBackend.ts:21-25` puts only the *binding* in the undo
+  group). ⚠️ **`b4af5ab5` is worth reading before you touch the reaper**: its `self` fast path
+  compared the owner pid alone, so a dead session whose pid the OS recycled onto the current one was
+  classified `self` and skipped **forever** — the `--parent-pid` hole rebuilt one branch above the
+  code that closes it. Identity is now kind + pid + session start time.
 - **`set_design_tokens` → declared in AAQ-005, implemented in AAQ-009.** Decided 2026-08-06. The
   declaration is a vocabulary question (the one table in `validation/authoringVocabulary.ts`, so the
   two clients cannot diverge on it); the behaviour is a styling question, on the `applyPreset` seam.
@@ -187,70 +232,100 @@ This is the **largest remaining block** and it is a dependency chain, not a list
 - ✅ **F8 — closed `61579634`.** `collectBackendSummary` reads the built-in backend's cached schema
   through `builtInSchemaCollections`. Outcome 3 narrowed rather than being replaced; **one** spec
   asserted the four-outcome shape, not three, and `DatabaseSchemaExtractor` needed no wiring.
-- **F11** — the Data Browser's first open reports "Failed to load tables" (an undefined
-  `backendId` rendered as a broken backend).
-- **F1** — light mode: a component dragged from the component menu is a dark pill with dark text.
-  Mechanism unverified.
-- **F2** — the custom-CSS property row label clips to "CSS …", and the popup CSS editor opens
-  downward and overflows. Mechanism unverified. (Note FH-005 already fixed the *popout* flip for
-  the code and JSON editors — check whether that covers half of this.)
-- **F6** — the 6m51s authoring cost. Not a decision; it gates AAQ-007.
+- ✅ **F11 — closed `1da7a13e`.** The row was right about the line and incomplete twice:
+  `requireRunning` throws the *same* message for a missing id, an unknown id and a **stopped**
+  backend, so **four** situations reached one "Failed to load tables"; and the propless mount comes
+  from the hot-reload handler and `useSetupSettings`, not a plain sidebar click. A pure
+  `schemaFailure.ts` discriminates them. **Auto-select was deliberately rejected** — this surface
+  deletes rows, so the empty state offers the backends as buttons instead of silently targeting one.
+- ✅ **F1 — closed `1e20488f`.** Not "hardcoded to dark tokens": a **token-tier mismatch inside one
+  rule** — a `--base-color-*` primitive background under a `--theme-color-*` foreground. Measured
+  **1.29:1** light. One singleton, three drag surfaces, and **two twins in the same file**
+  (`.popup-layer-toast`, still reachable from `EditorClipboard.ts:267`, at 1.92:1).
+- ✅ **F2 — closed as superseded**, both halves driven: FH-013 killed the label truncation, FH-005's
+  `flushSync` fixed the popout. It had been fixed for a day while the row said otherwise.
+- **F6** — the 6m51s authoring cost. Not a decision; it gates AAQ-007. **Still the only open F-row
+  that is a plain bug**, and it is the one blocking the AAQ chain.
 
 ---
 
 ## Phase 39 — alpha polish
 
-Nearly closed. What is actually left:
+**The register hygiene is done** (`d7258ae2`): the stale `(N residual)` tags corrected against their
+own bodies, the headline reconciled at **18 numbered tasks / 18 files, no gaps**, `Status:` lines
+added to POL-001/002/003/014/015, POL-010's two `## Status:` headings disambiguated, and POL-005's
+stale "filed, not fixed" prose rewritten. **POL-018** was created for POL-010 slice 2, which had
+been deferred with no row — the exact failure POL-016 exists to prevent, inside the phase that
+adopted the rule.
 
-- **POL-017** — every code editor's line numbers are below the text contrast floor. Filed, not
-  fixed, not alpha-blocking. The replacement token is already measured (`fg-default-shy`,
-  4.82/4.67). ⚠️ **Its own criterion 4 is wider than its proposed answer**: it demands zero text
-  nodes below 4.5:1, and the measurement table lists a second failing element (the change-summary
-  line, 3.93:1 / 3.62:1) with no token proposed. Fixing only the gutter will not meet it.
-- **POL-010 slice 2** — provenance topology sourced from `ProjectModel` rather than the preview.
-  Deferred by decision, but it has **no row and no task file** — which is precisely the failure
-  mode POL-016 exists to prevent, unfixed inside the phase that adopted the rule. Give it a row.
+What is actually left:
 
-**Register hygiene, worth 20 minutes** (this phase has a documented history of a register that
-lied, so this is not cosmetic):
-
-- POL-002 `(1 residual)`, POL-004 `(2 residuals)` and POL-005 `(1 open question)` all carry tags
-  whose own bodies say the item is closed. POL-005's still reads "Richard's call whether that
-  matters" when the answer is in the same file.
-- `PROGRESS.md` contradicts itself three lines apart: headline "16 of 16 done" vs "there are 15
-  numbered tasks, not 16 — a miscount". There are 17 `POL-*.md` files on disk.
-- POL-005's "three findings — filed, not fixed" section is stale prose; all three are closed.
-- POL-001/002/003/014/015 carry **no `Status:` line at all** — the register is the only claim of
-  doneness, and it is the thing that has lied before.
-- POL-010 has two `## Status:` headings in one file (`DONE` at :30, `DIAGNOSED` at :89) with
-  nothing saying the second is a historical stratum.
+- ✅ **POL-017 — closed `47a5987e` + `7b9440b8`.** ⚠️ **The gutter had already been fixed** by
+  `00adecd5` (a commit about the linter) a day before, while the task file still said *filed, not
+  fixed*. The real remaining defect was one level up: `TextType.Shy` mapped straight to `fg-muted`,
+  so criterion 4's *second* element (the change-summary line, 3.93/3.62) failed — fixed at the token
+  mapping, which **257 call sites in 59 files** inherit. `Icon`'s `is-variant-shy` deliberately
+  stays at `fg-muted` (a non-text graphic is 1.4.11 at 3:1; raising it would mirror the POL-016
+  mistake). **Owed:** `pol004-doc-diff.js` has not been re-run, and POL-017 says so rather than
+  claiming a green harness.
+- 🆕 **POL-019 — the topbar did not fit** (`fc623918`). Found by driving. Three parts: `.LeftSide`
+  could shrink but `.UrlBarWrapper` had `min-width: 300px` and no `overflow`; `.RightSide` declared
+  no flex and was spared by accident; and `isSmall < 850` **matched nothing** — the roomy layout
+  needs 1007px and the compact one 705px, a **157px dead band** that the Settings panel misses by
+  six pixels. At 858 (the backend surfaces' shipped default) the route pill sat entirely inside the
+  right cluster. Also removed a `container-name` with no `container-type` — inert.
+- **POL-018** — provenance topology from `ProjectModel`. Deferred by Richard's decision; now has a
+  row and a file, with the two open questions it carries (component scoping; component instances)
+  written as questions rather than assumed. ⚠️ Its blast radius **grew after the deferral**:
+  `RecordingOverlay` (HUD-001/002) is a third consumer now, and a project-sourced topology contains
+  nodes with no runtime existence — while a badge is a claim that something *fired*.
 
 ---
 
-## The biggest debt: nothing has been driven in the editor
+## The live-QA debt — mostly paid, and what is left
 
-**Twenty-three tasks shipped on 2026-08-06 and not one was verified in the running app.** Every
-task doc carries its own live-QA recipe. This is the highest-value thing the next session can do
-and it cannot be parallelised across agents the way building was — the editor is a queue, not a
-resource to seize.
+**Done 2026-08-06 (second session).** HUD-001…004, FH-011, MCP-001/003, FH-020+FH-022 and the cloud
+vocabulary were driven in the running editor against the **NodeGX QA Fixture**, both themes, across
+two full restarts. The evidence table is in
+[`phase-42-first-hour/README.md`](phase-42-first-hour/README.md) § *The live-QA pass* — read that
+rather than re-driving them.
 
-Priority order, because these are the ones where a test genuinely cannot see the answer:
+**Still owed**, and each needs a *fresh* editor session because the state is one-shot:
 
-1. **HUD-001…004** — the recording overlay, badges lighting up as nodes fire, expand → walk, and
-   the per-peer trace ownership. **HUD-004's data-loss fix needs `nodegx-observe` on the same
-   relay** (rebuild it first: `npm --prefix packages/nodegx-observe run build` — it runs from
-   `dist/`). The recipe for proving the data loss is gone is at the foot of HUD-004.
-2. **FH-011** — Record with no walk on screen, and across a preview reload.
-3. **MCP-001** — copy both commands, run them from an unrelated directory, then **restart the
-   editor** and query the observe server. That restart is the whole point of MCP-003.
-4. **FH-020** (the Ports tab), **FH-019** (completions in a Function vs an Expression popout — the
-   two `Noodl` objects differ), **FH-010** (the VC dialogs), **FH-023** (the four prefabs).
-5. **The cloud vocabulary** — open a cloud-function canvas and confirm the 81 node types are
-   really there and the browser picker is unchanged.
+1. **HUD-003 criterion 2** — clicking a root with the Provenance panel **never opened this
+   session**. Opening it first destroys the test, which is what happened.
+2. **HUD-001 step 2** — Record pressed with **no preview running** (the pill must stay on `Record`
+   and say so). The preview auto-restores on open, so you must stop it first.
+3. **FH-011's preview-reload re-arm**, and **HUD-004's crashed-agent (slice 3) and legacy paths**.
+4. **FH-010** (the VC dialogs), **FH-019** (completions in a Function vs an Expression popout — the
+   two `Noodl` objects differ), **FH-023** (the four prefabs).
 
 **Restart the editor; do not trust HMR** — it will not reach an already-mounted panel, and several
-of these are mount-effect wiring. **Check both themes.** A dev launch rewrites the example
-project — revert it afterwards. Use the `run-editor` skill.
+of these are mount-effect wiring. **Check both themes.** Use the `run-editor` skill.
+
+⚠️ **Driving traps found the hard way, all of which cost time:**
+
+- **Verify which project actually opened, by name, before believing anything.** Clicking a launcher
+  card by walking up from matched text opened the *wrong* project, and a full HUD scenario was then
+  driven against one whose `Home` is a single `Page` node — producing a legitimate-looking
+  "0 events" that reads exactly like a broken feature. Confirm with
+  `ProjectModel.instance.name` through the webpack module cache.
+- **The preview can legitimately show a different app than the project you opened** — a dev launch
+  opens the example project, and that project on disk has been rewritten by an earlier AI session
+  into a puppy app while keeping the title *"Hello World Project"*.
+- **`nodegx-observe`'s MCP handshake races its own startup**: it connects to the relay *before* it
+  wires stdin, so an `initialize` sent immediately is dropped and looks like a broken server. Wait
+  for its readiness line on **stderr**.
+- **The fixture's `/erg-rig` was never laid out** — six root nodes report `getNodeBounds → (0,0)`,
+  so their badges pile on one pixel and the canvas draws the nodes overlapping too. That nearly got
+  filed as a badge-deduplication bug; `data-node-id` proved one badge per node. Good for signal QA,
+  useless for judging layout by eye.
+- **Each `npm run cdp` costs ~1.5s of node startup**, so a loop of clicks is seconds apart and a
+  3-second badge fade will be over before an "immediate" read lands. Collapse click-then-measure
+  into one shell call.
+
+Full notes: `live-qa-driving-traps-2026-08-06` in the orchestrator's memory, and the corrected
+`nodegx-qa-fixture` entry.
 
 ⚠️ **One packaging item a human must verify**, from MCP-002:
 
