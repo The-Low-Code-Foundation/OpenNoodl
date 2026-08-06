@@ -219,6 +219,7 @@ export function SheetSelector({
                   [css['Selected']]: currentSheet === null
                 })}
               />
+              <Icon icon={sheetGlyph(null)} size={IconSize.Tiny} UNSAFE_className={css['SheetGlyph']} />
               <span className={css['SheetLabel']}>{ALL_SHEETS_LABEL}</span>
               <span className={css['SheetCount']}>new in Default</span>
             </div>
