@@ -84,12 +84,14 @@ that session is live before starting anything that overlaps.
   session** — do not commit a lockfile change on top of theirs. Wait until it is clean, or agree
   the handoff with that session first.
 - **NDA-017's per-input "Run on value change"** is the shipped design and stays.
-- **NDA-017 migration → yes, migrate on load.** Decided 2026-08-06: write `runOnChange-*: false` for
-  the value inputs of any node that has `Run` connected, preserving what the author actually built.
-  **Unowned, and no task is written.** Constraints at the foot of
-  [NDA-017](phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md) — in particular that a
-  declared `default` never runs its setter (so `false` must be written *explicitly*) and that a
-  saved project applies a parameter before the port exists, which jest cannot reproduce.
+- **NDA-017 migration → yes, migrate on load.** Decided 2026-08-06 and ✅ **built the same day** —
+  [NDA-017 §4](phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md#4--the-migration-built).
+  A pure function in `ProjectPatches/runOnValueChangeMigration.ts`, wired into `applyPatches`.
+  **7,196 parameters on 2,908 nodes across 55 of 81 real projects** — 29% of the class. ⚠️ Two things
+  worth carrying: the ordering that actually bit was **drain order inside the parameter bag**, not
+  §3's port-exists race (that one is already fixed in `defineNode`, and jest *can* reach it); and
+  **Text Input has no run-on-change checkbox at all**, because `createNodeFromReactComponent` never
+  copies `runOnValueChange`.
 - **AAQ-011 F10 → yes, start the project's backend on open and stop it on close.** Decided
   2026-08-06. ⚠️ **The constraint, verbatim, is a hard requirement:** *"for the love of Mike please
   make sure that all 'stop' cases are covered, like the editor crashes, the user's computer goes on

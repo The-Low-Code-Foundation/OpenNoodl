@@ -537,9 +537,9 @@ with `Run` wired **built against passive inputs and could see that they were pas
 default would now do to it. A graph with no `Run` connected is untouched, because its behaviour did
 not change.
 
-**What this decision does not yet have is an owner or a task.** It is recorded here, in
-[phase 42's filed-not-fixed list](../phase-42-first-hour/README.md) and in
-[NEXT-SESSION.md](../NEXT-SESSION.md) so it stops being asked, not because anyone has scheduled it.
+> ✅ **BUILT, 2026-08-06.** See [§4 — the migration, built](#4--the-migration-built). The blast
+> radius was measured before a line of it shipped: **7,196 parameters on 4,100 nodes across 55 of
+> 81 real projects.**
 
 ### Why it matters more than a default change usually would
 
@@ -571,6 +571,130 @@ criteria for it here would be the same mistake in a different register.
   `functionScript`). Do not migrate it.
 - Whether this runs once and stamps the project, or on every load, is an open question. Once-and-
   stamp needs a marker the project format does not have today.
+
+## §4 — the migration, built
+
+`packages/noodl-editor/src/editor/src/models/ProjectPatches/runOnValueChangeMigration.ts`
+(pure, ~370 lines of which most is the reasoning), wired into `applyPatches`, with 24 rows in
+`packages/noodl-editor/tests/projectpatcher/runonvaluechange-migration.test.ts` and one more in the
+runtime corpus.
+
+### The rule, exactly
+
+For every node in one of the eighteen type names (fifteen families; the four Variable types share a
+definition and get a row each), **when a connection whose source node exists in the same component
+lands on that family's control signal**, write `runOnChange-<input>: false` for every governed input
+that does not already have an answer.
+
+| | |
+|---|---|
+| **Migrated** | the family's `runOnValueChange.inputs` *and* its `sources` — the subscriptions (`record`, `object`, `array`, `user`, `variable`, `querySettings`, `filterSettings`) that the same guard silenced and that have no port of their own. `defineNode` puts a checkbox on every instance for both, so writing them always lands somewhere real. |
+| **Migrated, per instance** | discovered inputs, by prefix (`in-` Function, `qp-` Query Records, `fp-` Filter Records) or, for Expression alone, as *any observed name that is not one of its two declared inputs*. |
+| **Not migrated** | the **definition ports** `expression` and `functionScript`, which keep the old guard on purpose; every type outside the eighteen, including the deprecated twins (`Model`, `Collection`, `DbModel`) which still carry the old guard and have no checkbox to write to; any `runOnChange-*` that is **already present**, whatever its value; a control-signal wire whose **source node no longer exists**, because `NodeScope.addConnection` swallows a dangling wire so it never made anything passive; and every node whose control signal is not connected at all, because its behaviour never changed. |
+| **Not written even though it exists** | a discovered input with neither a connection nor a stored parameter nor an instance port. Nothing ever delivers a value to it, so its checkbox governs nothing and writing it would only add a row to the panel. Measured: over the two corpora, all **343** distinct Expression identifiers the rule derives are valid JS identifiers — zero junk. |
+
+### Blast radius, measured before building
+
+| Corpus | Projects | Family nodes | …with the signal wired | Parameters written | Already answered |
+|---|---|---|---|---|---|
+| In-repo (`**/project.json`: prefabs, examples, test fixtures, QA fixtures) | 91 | 788 | 148 | **174** on 96 nodes, in 19 projects | 50 |
+| Real user projects (`~/vscode_projects/Noodl projects`) | 81 | 14,027 | 4,100 | **7,196** on 2,908 nodes, in 55 projects | 0 |
+
+By type, on the real corpus: `JavaScriptFunction` 3,344 · `DbCollection2` 1,290 · `Expression` 835 ·
+`DbModel2` 732 · `Condition` 212 · `Filter Collection` 180 · `Model2` 130 · `Variable2` 122 ·
+`Collection2` 110 · `String` 90 · `FilterDBModels` 40 · `Boolean` 30 · `net.noodl.ComponentObject` 28 ·
+`net.noodl.user.User` 26 · `net.noodl.controls.textinput` 15 · `Color` 9 · `Number` 3. Idempotency was
+asserted on every one of the 172 projects, not on a fixture: plan → apply → re-plan yields zero
+writes, and a second apply is byte-identical.
+
+**29% of every node in the class is affected.** That is the number the decision is worth: those
+nodes have been running the *opposite* of their authored contract since §2 shipped.
+
+### Where it runs, and why that is the valid point rather than the convenient one
+
+`applyPatches(content)` in `projectmodel.editor.ts` — the existing load-time patch pass, before
+`ProjectModel.fromJSON`, on both the legacy and the v2 path (v2 is reconstructed into the same
+shape). It is **not** another entry in `Patches`: a patch's `condition` sees one *node*, and this
+rule turns on whether the node's control signal is connected, which lives in the component's
+connection list. `applyPatches` is the one place that holds the whole document.
+
+Three things had to be true for the write to be valid there, and the second and third are the ones
+that cost something:
+
+1. **The whole graph is in view, and nothing is instantiated yet.** From that point the writes are
+   ordinary stored parameters, indistinguishable from an author's hand-untick.
+2. **The runtime survives a `runOnChange-*` arriving before its port exists — but only since §3.**
+   That fix (the `registerInputIfNeeded` wrapper in `defineNode`) is what makes this safe; this
+   migration is its first bulk consumer. Without it, this would have broken every Expression and
+   Function node it touched, exactly as §3 measured.
+3. ⚠️ **Order inside the parameter bag is load-bearing, and that was a live defect.** All nodes and
+   their parameters are created before any connection is added (`NodeScope.setComponentModel`), and
+   queued values drain in `Object.keys(_inputValuesQueue)` order — the bag's own key order. **A
+   governed value that drains before its checkbox is read against *absent means ticked* and
+   schedules a run at load**, on a node the author had made passive. Closed twice over: the
+   migration emits the `runOnChange-*` keys first, and `NodeScope.setNodeParameters` now gives any
+   `runOnChange-…` name absolute priority in its existing sort — `inputPriority` could not express
+   it, because a metadata lookup answers `undefined` for every checkbox on the four dynamic-port
+   families.
+
+   **This is §2's bug, not the migration's.** Every hand-untick has had it since the checkboxes
+   shipped, on every governed input that also carries a stored parameter — `Text Input.startValue`,
+   `Condition.condition`, `Variable.value`: the common shape, not an exotic one. Pinned by a new
+   corpus row (`a saved checkbox is applied before the saved value it governs, whatever the key
+   order`) whose key order is adversarial on purpose. Discrimination run: removing the hoist reddens
+   that row and only that row, 15 of 16 still green.
+
+### Idempotency, and how a user undoes it
+
+**An existing `runOnChange-<input>` key is never touched, whatever its value.** That single check is
+the whole of idempotency — and it is also the undo. `BooleanType.onChange` writes `Boolean(value)`,
+so re-ticking a box stores a literal `true` that survives every future load. Only the panel's
+explicit *reset* affordance deletes the parameter, and a reset on a pre-§2 graph asking for "the
+default" gets what this migration says the default is. That is the answer to the open question
+above: **presence of the key is the marker the project format was said to lack**, so on-every-load
+needs no stamp.
+
+Diagnosability is a report rather than a stamp: `applyPatches` returns the plan and logs one
+`console.info` line naming the counts whenever it writes anything.
+
+⚠️ It therefore also runs in the git **merge driver**, which patches `ours`/`theirs`/ancestor before
+merging. Correct rather than merely harmless: deterministic and idempotent, so all three sides
+normalise identically and it can only remove conflicts.
+
+⚠️ **The writes land on disk the next time the project is saved, not at load** — nothing is written
+back by `applyPatches` itself, and no model event fires, so the autosave allowlist is not tripped.
+The consequence is a version-control surprise and it is inherent to the decision rather than a
+choice made here: on a large project, the first save after upgrading carries thousands of
+`runOnChange-*: false` additions alongside whatever the author actually changed. Until that save,
+the migration simply re-runs on every load, which is exactly what idempotency buys.
+
+### ⚠️ Two premises in this file that did not survive contact
+
+1. **"Fifteen families" is fourteen and a half.** `net.noodl.controls.textinput` declares
+   `runOnValueChange: { controlSignal: 'set', inputs: ['startValue'] }` and calls
+   `shouldRunOnValueChange('startValue')` — but **`createNodeFromReactComponent` builds its
+   definition field by field and never copies `runOnValueChange`**, so `defineNode` synthesises no
+   checkbox, the catalog carries no `runOnChange-startValue`, and the predicate has answered
+   *ticked* on every Text Input since §2. The affordance §2 says removes the trap does not exist on
+   the one node most likely to have `Set` wired. Migrated anyway, and it works: the parameter
+   reaches `registerInputIfNeeded`, `defineNode`'s wrapper mints the checkbox, and the untick lands
+   — so the migration incidentally gives Text Input the port §2 meant it to have, on the 15 corpus
+   nodes that need it. Pinned by a row that goes **red when the real fix lands**, which is the
+   signal to delete it. Not fixed here: `createNodeFromReactComponent` is the viewer's seam and this
+   was not that task.
+2. **"jest cannot reproduce it" is true of the *port-exists* ordering and false of the ordering that
+   actually bit.** The corpus harness takes `data.components[].nodes[].parameters` and pushes them
+   through `NodeScope.setNodeParameters`, which is exactly what a saved project does — §3 already
+   used that shape for the scope-corruption row. The drain-order defect above is reproducible in
+   jest and now is. What jest still cannot reach is the *editor's* half.
+
+### Not done, deliberately
+
+- **`ProjectImporter` never calls `applyPatches` at all** — importing a pre-§2 component into a
+  project gets neither the node patches nor this migration. Pre-existing, unrelated to §2, and the
+  file was another session's; filed rather than fixed.
+- Live QA in the running editor. The wiring is exercised through `applyPatches` in the suite; the
+  panel-side reading of a migrated project has not been driven.
 
 ## Out of scope
 
