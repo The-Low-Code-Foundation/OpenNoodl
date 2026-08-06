@@ -1,0 +1,34 @@
+{
+  "typeName": "noodl.cloud.verifysessiontoken",
+  "summary": "Asks this backend whether a session token is one of its own live sessions, and whose. Cloud-only.",
+  "description": "Verify Session Token looks a token up in this backend's `_Session` table and answers who holds it. It is for a token that arrived in the request BODY — from a mobile client, a partner integration, a callback — not the caller's own, which the Request node has already resolved onto `auth` (Authenticated) and `userId` (User Id). ⚠️ This is not CWF-010's JWT Verify: that node verifies somebody else's JWT against a key you hold, while this one asks our own backend about our own session. Only a session matches — an admin credential is not a session and an API key is not a session, so neither can be probed through this node. There is no expiry to report: this backend's session rows carry a token and a user id and nothing else, and a session lives until a password change or a delete revokes it.",
+  "whenToUse": "When a cloud function receives a token it did not get as its own caller's credential and has to decide whether to trust it — a mobile client posting a token in a body, a partner passing a user's token through, a webhook that carries one. Reach for JWT Verify instead when the token was minted somewhere else and is signed with a key. Do not reach for either to check the caller's own session; that is already done.",
+  "ports": {
+    "token": "Value, connection-only; the token to check. It cannot be set as a parameter, because a session token in a project file is a live credential in a project file.",
+    "verify": "Signal (Do); performs the lookup. Nothing is checked, and nothing is ever written, until this fires.",
+    "valid": "Value; whether the token is a live session. The value form of the `done` / `unchanged` branch.",
+    "userId": "Value; whose session it is, after `done`. Blank on every other branch — it is cleared before each check, so a stale identity cannot sit on the port while the next answer is in flight.",
+    "username": "Value; that user's username, after `done`. Blank on every other branch.",
+    "done": "Signal; fires when the token is a live session.",
+    "unchanged": "Signal; fires when the token is not a live session. Nothing failed and nothing changed — the answer is simply no, and this is the branch to wire to your 401.",
+    "failure": "Signal; fires when the check could not be made at all, such as a blank token.",
+    "completed": "Signal; fires after every check.",
+    "error": "Value; why a check could not be made. It never contains a token.",
+    "treatUnchangedAs": "Edit-only enum; set it to Failure if an invalid token should take the same path as a broken check."
+  },
+  "examples": [],
+  "patterns": [
+    "Request `receive` → Verify Session Token `verify`, with the body's token wired into `token`; `done` → the work, `unchanged` → a Response with Status set to Failure. That is the whole shape of a token-checked endpoint."
+  ],
+  "antiPatterns": [
+    "Putting this in a `public` function. It is an oracle for session tokens by design, so an unauthenticated caller behind an open rule can test tokens at whatever rate the limiter allows. Give the function a `call` rule and a per-function `rateLimit` (CWF-017).",
+    "Using it to re-check the caller's own token. The Request node has already resolved it; a second lookup is a database round trip that answers a question already answered.",
+    "Confusing it with JWT Verify. Verifying our own session token as if it were a JWT will never succeed, and verifying somebody else's JWT here will always answer `unchanged`."
+  ],
+  "relatedNodes": [
+    "noodl.cloud.jwtverify",
+    "noodl.cloud.createuser",
+    "noodl.cloud.updateuser",
+    "noodl.cloud.request"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "typeName": "noodl.cloud.deleteuser",
+  "summary": "Deletes a named user account and every session it holds, from inside a cloud function, as the system. Cloud-only.",
+  "description": "Delete User removes the `_User` row whose id you give it, and every `_Session` row belonging to it, with the authority of the server. Sessions go first and that ordering is deliberate: a deleted user whose sessions survived would leave tokens that resolve to a row the backend can no longer fetch. `sessionsRevoked` reports how many went, which is also the honest answer to 'was anybody actually signed in as them?'. `userId` is required — a blank one is a `failure`, never the deletion of whoever called.",
+  "whenToUse": "In a cloud function that closes accounts: a moderation action, an account-deletion request the user made in your app, or the cleanup half of a provisioning job. There is no browser equivalent and there deliberately is not one.",
+  "ports": {
+    "userId": "Value; required. Which account to delete. A blank one is a `failure`; this node never falls back to the caller.",
+    "remove": "Signal (Do); deletes the account and its sessions. Nothing is deleted until this fires.",
+    "sessionsRevoked": "Value; how many sessions the deleted account held. Zero after `unchanged`.",
+    "done": "Signal; fires once the account and its sessions are gone.",
+    "unchanged": "Signal; fires when there is no user with this id. Not a failure — the post-condition already holds, so a moderation job re-run after a partial failure does not go red on its second pass.",
+    "failure": "Signal; fires when the account could not be deleted, including when `userId` is blank.",
+    "completed": "Signal; fires after every attempt.",
+    "error": "Value; why the last attempt failed.",
+    "treatUnchangedAs": "Edit-only enum; set it to Failure if 'that account was already gone' should stop the chain."
+  },
+  "examples": [],
+  "patterns": [
+    "Wire `done` and `unchanged` to the same Response when the function's job is 'make sure this account is gone'. Both mean it is."
+  ],
+  "antiPatterns": [
+    "Wiring a request parameter straight into `userId` on a function anyone may call. That is 'delete any account by id' with an HTTP endpoint in front of it — give the function a `call` rule (CWF-017) and check inside the graph that the caller is entitled to delete that particular account.",
+    "Expecting a blank `userId` to delete the caller's own account. It is a failure; read the caller's id from the Request node's `userId` output and wire it in explicitly, so the graph says what it does."
+  ],
+  "relatedNodes": [
+    "noodl.cloud.createuser",
+    "noodl.cloud.updateuser",
+    "noodl.cloud.verifysessiontoken",
+    "noodl.cloud.request"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "typeName": "noodl.cloud.updateuser",
+  "summary": "Writes properties (and optionally a new password) to a NAMED user from inside a cloud function, as the system. Cloud-only.",
+  "description": "Update User is Set User Properties' server-side sibling, and the difference is the whole point: Set User Properties writes to whoever is signed in and fails when nobody is, while this one writes to the account whose id you give it, with the authority of the server. `userId` is required — a blank one is a `failure` with a sentence saying so, and never a fallback to the caller, because the failure mode this split exists to prevent is 'accidentally edited the caller instead of the target'. List the columns to write in `properties` to get one input per name, pulse `store` (Do), and `done` fires once the row is written.",
+  "whenToUse": "In a cloud function that moderates or administers accounts: suspending a user, changing a plan after a webhook from a payment provider, resetting a password on request, correcting an imported record. Use the browser's Set User Properties node when a signed-in person is editing their own profile — that is the caller's own authority and does not belong on the server.",
+  "ports": {
+    "userId": "Value; required. Which account to write to. A blank one is a `failure`; this node never falls back to the caller.",
+    "password": "Value, connection-only; optional. A new password for the account, hashed by the backend. ⚠️ Setting one revokes EVERY session this user holds, including one that may be calling this function — there is no session that authorized the change, so there is no survivor to spare.",
+    "properties": "Edit-only string list. Each name becomes a `prop-<name>` input for one `_User` column. A protected name is a `failure` naming the key. Changing `username` to one another account already holds is a `failure` too, because Log In resolves accounts by username.",
+    "store": "Signal (Do); writes the values. Nothing is written until this fires.",
+    "sessionsRevoked": "Value; how many sessions the last write ended. Non-zero only when a password was supplied.",
+    "done": "Signal; fires once the account has been written.",
+    "failure": "Signal; fires when the write could not happen — blank or unknown id, a refused property, or a username collision. There is no `unchanged`: nothing diffs the row first, and an update aimed at a user that does not exist is a mistake rather than a goal already met.",
+    "completed": "Signal; fires after every attempt.",
+    "error": "Value; why the last write failed. It never contains a password or a hash."
+  },
+  "runtimeBehavior": "Every name listed in the `properties` parameter mints one input port called `prop-<name>`, in the Properties group, typed `*`. The set comes from that parameter alone — nothing is read from the backend's `_User` schema and no editor connection is involved — so an authoring tool can derive the port list from the project file. Names are de-duplicated and blanks dropped; a refused name still mints a port and fails at run time with the key named.",
+  "examples": [],
+  "patterns": [
+    "Request `receive` → Update User `store`, with the target's id arriving as a request parameter: the shape of every 'admin acts on account X' function.",
+    "Wire `sessionsRevoked` into the response when the function resets a password, so the caller knows the user was signed out everywhere."
+  ],
+  "antiPatterns": [
+    "Leaving `userId` unwired and expecting it to mean 'the current user'. It does not, and it never will — that node is Set User Properties, in the browser.",
+    "Putting this node in a function with no `call` rule. A function that can change any account's password is a function that must name who may call it (CWF-017)."
+  ],
+  "relatedNodes": [
+    "noodl.cloud.createuser",
+    "noodl.cloud.deleteuser",
+    "noodl.cloud.verifysessiontoken",
+    "net.noodl.user.SetUserProperties",
+    "noodl.cloud.request"
+  ]
+}

@@ -37938,6 +37938,152 @@
       }
     },
     {
+      "typeName": "net.noodl.ParseCSV",
+      "displayName": "Parse CSV",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/data/array/parse-csv",
+      "inputs": [
+        {
+          "name": "delimiter",
+          "displayName": "Delimiter",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": ",",
+          "description": "The character between cells. Use ; for a European export, or a tab for TSV"
+        },
+        {
+          "name": "hasHeader",
+          "displayName": "Has Header",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "When ticked the first row names the columns and Items is an array of records. Untick it and Items is an array of rows, each an array of cells"
+        },
+        {
+          "name": "text",
+          "displayName": "CSV",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string",
+            "codeeditor": "text"
+          },
+          "isSignal": false,
+          "description": "The CSV text to parse. A leading byte-order mark — which is what Excel writes when it saves UTF-8 — is stripped, so the first column keeps its name"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "changed",
+          "displayName": "Changed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once Items and Count hold the freshly parsed CSV"
+        },
+        {
+          "name": "count",
+          "displayName": "Count",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "How many rows the last successful parse produced, not counting the header row"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the CSV could not be parsed, naming the line it gave up on; empty until a parse fails"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the CSV could not be parsed, leaving Items and Count as they were"
+        },
+        {
+          "name": "items",
+          "displayName": "Items",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "The parsed rows — records when Has Header is ticked, arrays of cells when it is not. Every cell is a string, including columns that look numeric. Unchanged while the CSV cannot be parsed"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "net.noodl.ParseCSV",
+        "summary": "Turns CSV text that arrived at runtime into an array — records when the first row is a header, rows of cells when it is not.",
+        "description": "Parse CSV reads CSV text into an array. With Has Header ticked (the default) the first row names the properties and Items is an array of records; untick it and Items is an array of rows, each an array of cells. It handles the awkward parts of the format properly: quoted cells, cells containing the delimiter, cells containing newlines, and doubled quotes. Every cell comes out a string — there is no type inference, so a column that looks numeric yields \"42\" and not 42; use an Expression or Array Map if you need numbers. A leading byte-order mark, which is what Excel writes when it saves UTF-8, is stripped so the first column keeps its name. A quote the parser cannot pair is a Failure with the line number, not a half-read file: without that check the text around the stray quote simply disappears and the array looks plausible. This is the same parser Static Array has always used, so an authored CSV and a received one cannot disagree. In a cloud function, remember the request body limit is 10 MB — a bigger file has to arrive through file storage instead.",
+        "whenToUse": "A CSV arriving from anywhere at runtime: a request body, an upload, an HTTP response, a file read from storage. For a CSV you type in yourself, Static Array is the node — it is this parser with an editor field in front of it.",
+        "ports": {
+          "text": "The CSV text to parse. A leading byte-order mark is stripped.",
+          "hasHeader": "When ticked the first row names the columns and Items is records; when unticked Items is rows of cells.",
+          "delimiter": "The character between cells. Default ','; use ';' for many European exports or a tab for TSV.",
+          "items": "The parsed rows. Records when Has Header is ticked, arrays of cells when it is not. Every cell is a string. Left unchanged when a parse fails.",
+          "count": "How many rows the last successful parse produced, not counting the header row.",
+          "changed": "Fires once Items and Count hold the freshly parsed CSV.",
+          "failure": "Fires when the CSV could not be parsed, leaving Items and Count as they were.",
+          "error": "Why the parse failed, naming the line it gave up on. Empty until a parse fails."
+        },
+        "examples": [],
+        "patterns": [
+          "Request `pm-csv` → Parse CSV `text`; Parse CSV `items` → Array Filter → To CSV → Response: the whole 'someone sent us a spreadsheet' shape, with no Function node.",
+          "Wire `failure` somewhere that answers the caller. A function whose only wired path is the happy one hangs forever when the file is malformed (CWF-018)."
+        ],
+        "antiPatterns": [
+          "Expecting numeric columns to arrive as numbers. Every cell is a string; convert explicitly.",
+          "Splitting on commas with a String node instead. That breaks on the first quoted cell containing a comma, which is the first real file you will meet.",
+          "Posting a CSV larger than 10 MB to a cloud function. The body limit rejects it with a 413 before the graph runs."
+        ],
+        "relatedNodes": [
+          "net.noodl.ToCSV",
+          "Static Data",
+          "Filter Collection",
+          "Map Collection"
+        ]
+      }
+    },
+    {
       "typeName": "net.noodl.PatternExtractor",
       "displayName": "Pattern Extractor",
       "category": "Data",
@@ -40523,6 +40669,139 @@
           "net.noodl.StreamBuffer",
           "String Format",
           "Substring"
+        ]
+      }
+    },
+    {
+      "typeName": "net.noodl.ToCSV",
+      "displayName": "To CSV",
+      "category": "Data",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/data/array/to-csv",
+      "inputs": [
+        {
+          "name": "columns",
+          "displayName": "Columns",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "stringlist",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Which properties to write, in order, comma separated. Leave it empty and every property found on the records is written, in the order they were first seen"
+        },
+        {
+          "name": "delimiter",
+          "displayName": "Delimiter",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": ",",
+          "description": "The character between cells. Any cell containing it is quoted automatically"
+        },
+        {
+          "name": "includeHeader",
+          "displayName": "Include Header",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "Write the column names as the first row"
+        },
+        {
+          "name": "items",
+          "displayName": "Items",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "The array to write. Records become rows; an array of arrays is written cell for cell"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "changed",
+          "displayName": "Changed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once CSV holds the freshly written text"
+        },
+        {
+          "name": "count",
+          "displayName": "Count",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "How many data rows were written, not counting the header row"
+        },
+        {
+          "name": "text",
+          "displayName": "CSV",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The array as CSV text. Cells containing the delimiter, a quote or a newline are quoted and their quotes doubled, so this round-trips back through Parse CSV unchanged"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "net.noodl.ToCSV",
+        "summary": "Writes an array out as CSV text, quoting any cell that needs it.",
+        "description": "To CSV turns an array into CSV text. Records become rows: leave Columns empty and every property found on the records is written, in the order they were first seen, or name the columns yourself to fix the order and drop the rest. An array of arrays — what Parse CSV produces with Has Header unticked — is written cell for cell with no header invented. The correctness of a CSV writer is entirely about quoting, and this one gets it right: any cell containing the delimiter, a quote or a newline is wrapped in quotes with its own quotes doubled, so the output reads back through Parse CSV unchanged. The record `id` the runtime mints is not written unless you name it in Columns, because it is not a column you put there.",
+        "whenToUse": "Answering with a spreadsheet: a cloud function replying to an export request, a download button in a browser app, a file written to storage. Pair it with Parse CSV for 'read a supplier's file, filter it, send it back'.",
+        "ports": {
+          "items": "The array to write. Records become rows; an array of arrays is written cell for cell.",
+          "columns": "Which properties to write, in order, comma separated in one string. Empty means every property found, in first-seen order.",
+          "delimiter": "The character between cells. Any cell containing it is quoted automatically.",
+          "includeHeader": "Write the column names as the first row. Ignored for an array of arrays, which has no column names.",
+          "text": "The array as CSV text.",
+          "count": "How many data rows were written, not counting the header row.",
+          "changed": "Fires once CSV holds the freshly written text."
+        },
+        "examples": [],
+        "patterns": [
+          "Query Records `items` → To CSV `items`; To CSV `text` → Response `pm-csv`: an export endpoint in three nodes.",
+          "Parse CSV → Array Filter → To CSV: read, narrow, write back. The round trip is exact, including cells containing commas, quotes and newlines."
+        ],
+        "antiPatterns": [
+          "Building CSV by joining strings in an Expression or Function node. That is the quoting rule reimplemented, and it is wrong the first time a cell contains a comma.",
+          "Passing an array of arrays and expecting a header row. There are no column names to write; use records if you want one."
+        ],
+        "relatedNodes": [
+          "net.noodl.ParseCSV",
+          "Static Data",
+          "Filter Collection",
+          "Map Collection"
         ]
       }
     },
@@ -56657,6 +56936,417 @@
       }
     },
     {
+      "typeName": "noodl.cloud.createuser",
+      "displayName": "Create User",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/create-user",
+      "inputs": [
+        {
+          "name": "create",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Creates the account"
+        },
+        {
+          "name": "email",
+          "displayName": "Email",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The account's email address. Optional, and NOT checked for uniqueness — this backend's own signup does not check it either, so a duplicate email is not a duplicate user here"
+        },
+        {
+          "name": "emailVerified",
+          "displayName": "Email Verified",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Whether the new account counts as having a verified address. This node never sends a verification email; tick this for an account that must be able to log in straight away on a backend that requires verification, and leave it for one that should go through the normal flow"
+        },
+        {
+          "name": "password",
+          "displayName": "Password",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": false,
+          "description": "The account's password, hashed by the backend with the same function Log In verifies against. Leave it unwired for an invite or passwordless account: no hash is stored at all, so no password can ever match it until one is set. Connection-only — a password must not live in a project file"
+        },
+        {
+          "name": "properties",
+          "displayName": "Properties",
+          "group": "Properties",
+          "plug": "input",
+          "type": {
+            "name": "stringlist",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Names of the user columns this node writes, each becoming an input to supply the value. A name the backend refuses — objectId, ACL, password, sessionToken, or anything starting with \"_\" — is a Failure naming the key, never a silent drop"
+        },
+        {
+          "name": "treatUnchangedAs",
+          "displayName": "Treat Unchanged as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "unchanged",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way; Failure suits one whose idiom is that a no-op is a bug. Completed fires whatever this is set to."
+        },
+        {
+          "name": "username",
+          "displayName": "Username",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The account's identity, and what Log In looks it up by. Required; a blank one is a Failure"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the account exists and User Id holds its id"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the last operation could not be performed. It never contains a password, a hash or a token"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the account could not be created — a blank Username, a property the backend refuses, or a store that would not write"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a user with this Username already exists. User Id holds the EXISTING user, so this is the branch to wire for \"make sure this account exists\"; set Treat Unchanged as to Failure if a duplicate is a bug"
+        },
+        {
+          "name": "userId",
+          "displayName": "User Id",
+          "group": "User",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The new account's id after Done, or the existing account's id after Unchanged. Blank after a Failure"
+        }
+      ],
+      "dynamicPorts": {
+        "mechanisms": [
+          "declared-port-groups",
+          "runtime-discovered"
+        ],
+        "description": "Declares conditional/expandable port groups whose visibility depends on parameter values (see declaredPortGroups). Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances.",
+        "declaredPortGroups": [
+          {
+            "name": "namedports/list",
+            "parameter": "properties",
+            "port": {
+              "displayName": "{{*}}",
+              "group": "Properties",
+              "name": "prop-{{*}}",
+              "plug": "input",
+              "type": "*"
+            }
+          }
+        ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
+      },
+      "enrichment": {
+        "typeName": "noodl.cloud.createuser",
+        "summary": "Creates a user account from inside a cloud function, as the system. Cloud-only — it does not exist in the browser.",
+        "description": "Create User writes a new `_User` row on this backend's own database, with the authority of the server rather than of whoever called the function. Set `username` (the identity Log In looks accounts up by), optionally wire `password` and `email`, list any extra columns in `properties` to get one input per name, then pulse `create` (Do). On success `done` fires and `userId` holds the new account's id. It mints no session and returns no session token, so it is not Sign Up and cannot hand a caller a logged-in session for an account it just made. A password that is never wired means no password hash is stored at all — the invite/passwordless account BAK-004 describes — and no password can match until one is set.",
+        "whenToUse": "In a cloud function that provisions accounts: an invite flow, a bulk import, a signup that has to validate something server-side first, or a partner integration that creates users on your behalf. Do NOT use it for a person signing themselves up in your app — that is the browser's Sign Up node, which sets the session as it goes. ⚠️ A function containing this node must carry a `call` rule in the backend's Permissions panel (CWF-017). With no rule the function's Request node decides: `Allow Unauthenticated` ticked means the open internet may create accounts, and unticked means any signed-in user may.",
+        "ports": {
+          "username": "Value; required. The account's identity. A blank one is a `failure`, never a silently-skipped write.",
+          "email": "Value; optional, and NOT checked for uniqueness — this backend's signup route does not check it either.",
+          "password": "Value, connection-only; optional. Hashed by the backend with the same function Log In verifies against. It cannot be set as a parameter, because a typed password would live in the project file a deploy ships.",
+          "emailVerified": "Value; whether the account counts as verified. This node never sends a verification email. Leave it false for an account that should go through the normal verification flow; tick it for one that must be able to log in immediately on a backend with `requireForLogin` on.",
+          "properties": "Edit-only string list. Each name becomes a `prop-<name>` input for one `_User` column. A protected name is a `failure` naming the key, not a silent drop.",
+          "create": "Signal (Do); creates the account. Nothing is written until this fires.",
+          "userId": "Value; the new account's id after `done`, or the EXISTING account's id after `unchanged`. Blank after `failure`.",
+          "done": "Signal; fires once the account exists.",
+          "unchanged": "Signal; fires when a user with this username already exists. This is the specific 'already exists' branch — `userId` carries the existing account, so a provisioning function is idempotent in one wire.",
+          "failure": "Signal; fires when the account could not be created. `error` says why.",
+          "completed": "Signal; fires after every attempt, whatever the outcome.",
+          "error": "Value; why the last attempt failed. It never contains a password or a hash.",
+          "treatUnchangedAs": "Edit-only enum; set it to Failure in a project whose idiom is that a duplicate signup is a bug."
+        },
+        "runtimeBehavior": "Every name listed in the `properties` parameter mints one input port called `prop-<name>`, in the Properties group, typed `*`. The set is derived from that parameter alone — nothing is discovered from the backend's `_User` schema, and no editor connection or running backend is involved — so an authoring tool can compute the port list from the project file exactly as the editor does. Names are de-duplicated and blanks dropped. A `prop-` name the backend refuses (objectId, createdAt, updatedAt, ACL, password, sessionToken, or anything starting with `_`) still mints a port; the refusal happens at run time, on the `failure` branch, with the key named.",
+        "examples": [],
+        "patterns": [
+          "Request `receive` → Create User `create`, with the Request node's parameter outputs wired into `username` and `password`: the ordinary shape of a server-side provisioning function.",
+          "Wire `unchanged` to the same Response as `done` when the function's job is 'make sure this account exists'. `userId` is correct on both branches.",
+          "Wire `failure` somewhere that answers the caller. A function whose only wired path is the happy one hangs until its timeout (CWF-018) the first time a username is taken."
+        ],
+        "antiPatterns": [
+          "Leaving the function without a `call` rule. A cloud function holding this node and answering `public` is account creation for the open internet.",
+          "Returning `userId` from a `public` function on the `unchanged` branch. That turns the function into a username-enumeration oracle: it answers 'this one exists' for any name a caller tries.",
+          "Reaching for this instead of the browser's Sign Up node. Sign Up signs the person in; this deliberately does not, and bolting a Log In onto the response is how a signup flow ends up with two sources of truth for the session."
+        ],
+        "relatedNodes": [
+          "noodl.cloud.updateuser",
+          "noodl.cloud.deleteuser",
+          "noodl.cloud.verifysessiontoken",
+          "noodl.cloud.request",
+          "noodl.cloud.response",
+          "net.noodl.user.SetUserProperties"
+        ]
+      }
+    },
+    {
+      "typeName": "noodl.cloud.deleteuser",
+      "displayName": "Delete User",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/delete-user",
+      "inputs": [
+        {
+          "name": "remove",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Deletes the account named by User Id, and every session it holds"
+        },
+        {
+          "name": "treatUnchangedAs",
+          "displayName": "Treat Unchanged as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "unchanged",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way; Failure suits one whose idiom is that a no-op is a bug. Completed fires whatever this is set to."
+        },
+        {
+          "name": "userId",
+          "displayName": "User Id",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Which account to delete. Required — this node never falls back to the caller, and a blank id is a Failure rather than the deletion of whoever is signed in"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the account and its sessions are gone"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the last operation could not be performed. It never contains a password, a hash or a token"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the account could not be deleted, including when User Id is blank"
+        },
+        {
+          "name": "sessionsRevoked",
+          "displayName": "Sessions Revoked",
+          "group": "User",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "How many sessions the deleted account held. Zero after Unchanged"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there is no user with this id — the account is already absent, which is the goal met"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "noodl.cloud.deleteuser",
+        "summary": "Deletes a named user account and every session it holds, from inside a cloud function, as the system. Cloud-only.",
+        "description": "Delete User removes the `_User` row whose id you give it, and every `_Session` row belonging to it, with the authority of the server. Sessions go first and that ordering is deliberate: a deleted user whose sessions survived would leave tokens that resolve to a row the backend can no longer fetch. `sessionsRevoked` reports how many went, which is also the honest answer to 'was anybody actually signed in as them?'. `userId` is required — a blank one is a `failure`, never the deletion of whoever called.",
+        "whenToUse": "In a cloud function that closes accounts: a moderation action, an account-deletion request the user made in your app, or the cleanup half of a provisioning job. There is no browser equivalent and there deliberately is not one.",
+        "ports": {
+          "userId": "Value; required. Which account to delete. A blank one is a `failure`; this node never falls back to the caller.",
+          "remove": "Signal (Do); deletes the account and its sessions. Nothing is deleted until this fires.",
+          "sessionsRevoked": "Value; how many sessions the deleted account held. Zero after `unchanged`.",
+          "done": "Signal; fires once the account and its sessions are gone.",
+          "unchanged": "Signal; fires when there is no user with this id. Not a failure — the post-condition already holds, so a moderation job re-run after a partial failure does not go red on its second pass.",
+          "failure": "Signal; fires when the account could not be deleted, including when `userId` is blank.",
+          "completed": "Signal; fires after every attempt.",
+          "error": "Value; why the last attempt failed.",
+          "treatUnchangedAs": "Edit-only enum; set it to Failure if 'that account was already gone' should stop the chain."
+        },
+        "examples": [],
+        "patterns": [
+          "Wire `done` and `unchanged` to the same Response when the function's job is 'make sure this account is gone'. Both mean it is."
+        ],
+        "antiPatterns": [
+          "Wiring a request parameter straight into `userId` on a function anyone may call. That is 'delete any account by id' with an HTTP endpoint in front of it — give the function a `call` rule (CWF-017) and check inside the graph that the caller is entitled to delete that particular account.",
+          "Expecting a blank `userId` to delete the caller's own account. It is a failure; read the caller's id from the Request node's `userId` output and wire it in explicitly, so the graph says what it does."
+        ],
+        "relatedNodes": [
+          "noodl.cloud.createuser",
+          "noodl.cloud.updateuser",
+          "noodl.cloud.verifysessiontoken",
+          "noodl.cloud.request"
+        ]
+      }
+    },
+    {
       "typeName": "noodl.cloud.hmac",
       "displayName": "HMAC",
       "category": "Cloud",
@@ -57247,7 +57937,7 @@
             "allowEditOnly": true
           },
           "isSignal": false,
-          "description": "Names to pull out of the request body, each becoming an output"
+          "description": "Names to pull out of the request body, each becoming an output — and a Type, Required and Default row to declare what it is"
         }
       ],
       "outputs": [
@@ -57300,7 +57990,80 @@
               "group": "Parameters",
               "name": "pm-{{*}}",
               "plug": "output",
-              "type": "*"
+              "type": "*",
+              "typeFromParameter": "ptype-{{*}}"
+            }
+          },
+          {
+            "name": "namedports/list",
+            "parameter": "params",
+            "port": {
+              "displayName": "{{*}} — Type",
+              "group": "Parameter Types",
+              "name": "ptype-{{*}}",
+              "plug": "input",
+              "type": {
+                "allowEditOnly": true,
+                "enums": [
+                  {
+                    "label": "Any",
+                    "value": "*"
+                  },
+                  {
+                    "label": "String",
+                    "value": "string"
+                  },
+                  {
+                    "label": "Number",
+                    "value": "number"
+                  },
+                  {
+                    "label": "Boolean",
+                    "value": "boolean"
+                  },
+                  {
+                    "label": "Object",
+                    "value": "object"
+                  },
+                  {
+                    "label": "Array",
+                    "value": "array"
+                  },
+                  {
+                    "label": "Date",
+                    "value": "date"
+                  }
+                ],
+                "name": "enum"
+              }
+            }
+          },
+          {
+            "name": "namedports/list",
+            "parameter": "params",
+            "port": {
+              "displayName": "{{*}} — Required",
+              "group": "Parameter Types",
+              "name": "preq-{{*}}",
+              "plug": "input",
+              "type": {
+                "allowEditOnly": true,
+                "name": "boolean"
+              }
+            }
+          },
+          {
+            "name": "namedports/list",
+            "parameter": "params",
+            "port": {
+              "displayName": "{{*}} — Default",
+              "group": "Parameter Types",
+              "name": "pdef-{{*}}",
+              "plug": "input",
+              "type": {
+                "allowEditOnly": true,
+                "name": "string"
+              }
             }
           }
         ]
@@ -57312,14 +58075,44 @@
         ],
         "patterns": [
           {
+            "pattern": "pdef-<param>",
+            "plug": "input",
+            "variables": {
+              "param": "one of the comma-separated entries in the `params` parameter"
+            },
+            "group": "Parameter Types",
+            "valueType": "string",
+            "example": "pdef-Sa1"
+          },
+          {
             "pattern": "pm-<param>",
             "plug": "output",
             "variables": {
               "param": "one of the comma-separated entries in the `params` parameter"
             },
             "group": "Parameters",
-            "valueType": "*",
+            "valueType": "follows the matching `ptype-<param>` parameter",
             "example": "pm-Sa1"
+          },
+          {
+            "pattern": "preq-<param>",
+            "plug": "input",
+            "variables": {
+              "param": "one of the comma-separated entries in the `params` parameter"
+            },
+            "group": "Parameter Types",
+            "valueType": "boolean",
+            "example": "preq-Sa1"
+          },
+          {
+            "pattern": "ptype-<param>",
+            "plug": "input",
+            "variables": {
+              "param": "one of the comma-separated entries in the `params` parameter"
+            },
+            "group": "Parameter Types",
+            "valueType": "enum",
+            "example": "ptype-Sa1"
           }
         ]
       },
@@ -57333,9 +58126,9 @@
           "allowNoAuth": "Boolean value (default false). When false, calls without a valid user session are rejected before the graph runs.",
           "auth": "Boolean value; true when the call carried a valid user session.",
           "userId": "Value holding the authenticated caller's user id (undefined for unauthenticated calls); use it to scope queries to the calling user.",
-          "params": "Edit-only name list declaring the function's parameters; drives both this node's outputs and the caller's inputs."
+          "params": "Edit-only name list declaring the function's parameters; drives both this node's outputs and the caller's inputs. Each name also gets three declaration rows in the Parameter Types group — Type, Required and Default — which together are the function's request contract (CWF-014). Leaving them alone is the behaviour every function had before that task: every parameter is Any, and optional."
         },
-        "runtimeBehavior": "Each name in the `params` stringlist becomes a runtime-registered output (stored as `pm-<name>`, type '*') holding that parameter's value from the current call. The same list is what CloudFunctionAdapter mirrors onto browser-side CloudFunction2 callers as `in-<name>` inputs, so editing `params` changes both sides.",
+        "runtimeBehavior": "Each name in the `params` stringlist becomes a runtime-registered output (stored as `pm-<name>`) holding that parameter's value from the current call. The same list is what CloudFunctionAdapter mirrors onto browser-side CloudFunction2 callers as `in-<name>` inputs, so editing `params` changes both sides. CWF-014: a name may also carry `ptype-<name>` (one of *, string, number, boolean, object, array, date), `preq-<name>` and `pdef-<name>`. When any of those is set the node checks the request body BEFORE the graph runs — a missing required field, or a value the declared type cannot take, is answered as HTTP 400 naming the field, and the graph does not run at all. A value the declared type can take losslessly is coerced first, so \"42\" reaches a number-typed output as the number 42, and an omitted parameter with a Default arrives holding it. A declared type also becomes the `pm-<name>` output's port type, so the wire out of it is checked like any other.",
         "examples": [
           "fn-cloud-function-roundtrip",
           "fn-aggregate-stats-function"
@@ -57345,7 +58138,9 @@
           "`userId` → a query filter parameter: trust the session-derived id, never an id passed in `params`, for per-user data."
         ],
         "antiPatterns": [
-          "Leaving `allowNoAuth` false and then calling the function from a logged-out browser session — the call is rejected before `receive` ever fires."
+          "Leaving `allowNoAuth` false and then calling the function from a logged-out browser session — the call is rejected before `receive` ever fires.",
+          "Ticking Required on a parameter and giving it a Default too: the default wins and the request is never refused, which is almost certainly not what the tick meant.",
+          "Checking the request body inside the graph with Condition nodes and answering through a Response node with Status = Failure: that is a graph that ran. Declare the type on the parameter instead, and the request never starts."
         ],
         "relatedNodes": [
           "noodl.cloud.response",
@@ -57864,14 +58659,383 @@
           "noodl.cloud.response"
         ]
       }
+    },
+    {
+      "typeName": "noodl.cloud.updateuser",
+      "displayName": "Update User",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/update-user",
+      "inputs": [
+        {
+          "name": "password",
+          "displayName": "Password",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": false,
+          "description": "A new password for this account, hashed by the backend. Setting one revokes EVERY session this user has, including one that may be calling this function. Leave it unwired to change properties only. Connection-only — a password must not live in a project file"
+        },
+        {
+          "name": "properties",
+          "displayName": "Properties",
+          "group": "Properties",
+          "plug": "input",
+          "type": {
+            "name": "stringlist",
+            "allowEditOnly": true
+          },
+          "isSignal": false,
+          "description": "Names of the user columns this node writes, each becoming an input to supply the value. A name the backend refuses — objectId, ACL, password, sessionToken, or anything starting with \"_\" — is a Failure naming the key, never a silent drop"
+        },
+        {
+          "name": "store",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Writes the values below to the account named by User Id"
+        },
+        {
+          "name": "userId",
+          "displayName": "User Id",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Which account to change. Required — this node never falls back to the caller, and a blank id is a Failure rather than a write to whoever is signed in"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the account has been written"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the last operation could not be performed. It never contains a password, a hash or a token"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the account could not be written — a blank or unknown User Id, a property the backend refuses, or a username already taken by somebody else"
+        },
+        {
+          "name": "sessionsRevoked",
+          "displayName": "Sessions Revoked",
+          "group": "User",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "How many of this user's sessions the last write ended. Non-zero only when a Password was supplied"
+        }
+      ],
+      "dynamicPorts": {
+        "mechanisms": [
+          "declared-port-groups",
+          "runtime-discovered"
+        ],
+        "description": "Declares conditional/expandable port groups whose visibility depends on parameter values (see declaredPortGroups). Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances.",
+        "declaredPortGroups": [
+          {
+            "name": "namedports/list",
+            "parameter": "properties",
+            "port": {
+              "displayName": "{{*}}",
+              "group": "Properties",
+              "name": "prop-{{*}}",
+              "plug": "input",
+              "type": "*"
+            }
+          }
+        ]
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
+      },
+      "enrichment": {
+        "typeName": "noodl.cloud.updateuser",
+        "summary": "Writes properties (and optionally a new password) to a NAMED user from inside a cloud function, as the system. Cloud-only.",
+        "description": "Update User is Set User Properties' server-side sibling, and the difference is the whole point: Set User Properties writes to whoever is signed in and fails when nobody is, while this one writes to the account whose id you give it, with the authority of the server. `userId` is required — a blank one is a `failure` with a sentence saying so, and never a fallback to the caller, because the failure mode this split exists to prevent is 'accidentally edited the caller instead of the target'. List the columns to write in `properties` to get one input per name, pulse `store` (Do), and `done` fires once the row is written.",
+        "whenToUse": "In a cloud function that moderates or administers accounts: suspending a user, changing a plan after a webhook from a payment provider, resetting a password on request, correcting an imported record. Use the browser's Set User Properties node when a signed-in person is editing their own profile — that is the caller's own authority and does not belong on the server.",
+        "ports": {
+          "userId": "Value; required. Which account to write to. A blank one is a `failure`; this node never falls back to the caller.",
+          "password": "Value, connection-only; optional. A new password for the account, hashed by the backend. ⚠️ Setting one revokes EVERY session this user holds, including one that may be calling this function — there is no session that authorized the change, so there is no survivor to spare.",
+          "properties": "Edit-only string list. Each name becomes a `prop-<name>` input for one `_User` column. A protected name is a `failure` naming the key. Changing `username` to one another account already holds is a `failure` too, because Log In resolves accounts by username.",
+          "store": "Signal (Do); writes the values. Nothing is written until this fires.",
+          "sessionsRevoked": "Value; how many sessions the last write ended. Non-zero only when a password was supplied.",
+          "done": "Signal; fires once the account has been written.",
+          "failure": "Signal; fires when the write could not happen — blank or unknown id, a refused property, or a username collision. There is no `unchanged`: nothing diffs the row first, and an update aimed at a user that does not exist is a mistake rather than a goal already met.",
+          "completed": "Signal; fires after every attempt.",
+          "error": "Value; why the last write failed. It never contains a password or a hash."
+        },
+        "runtimeBehavior": "Every name listed in the `properties` parameter mints one input port called `prop-<name>`, in the Properties group, typed `*`. The set comes from that parameter alone — nothing is read from the backend's `_User` schema and no editor connection is involved — so an authoring tool can derive the port list from the project file. Names are de-duplicated and blanks dropped; a refused name still mints a port and fails at run time with the key named.",
+        "examples": [],
+        "patterns": [
+          "Request `receive` → Update User `store`, with the target's id arriving as a request parameter: the shape of every 'admin acts on account X' function.",
+          "Wire `sessionsRevoked` into the response when the function resets a password, so the caller knows the user was signed out everywhere."
+        ],
+        "antiPatterns": [
+          "Leaving `userId` unwired and expecting it to mean 'the current user'. It does not, and it never will — that node is Set User Properties, in the browser.",
+          "Putting this node in a function with no `call` rule. A function that can change any account's password is a function that must name who may call it (CWF-017)."
+        ],
+        "relatedNodes": [
+          "noodl.cloud.createuser",
+          "noodl.cloud.deleteuser",
+          "noodl.cloud.verifysessiontoken",
+          "net.noodl.user.SetUserProperties",
+          "noodl.cloud.request"
+        ]
+      }
+    },
+    {
+      "typeName": "noodl.cloud.verifysessiontoken",
+      "displayName": "Verify Session Token",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/verify-session-token",
+      "inputs": [
+        {
+          "name": "token",
+          "displayName": "Token",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": false,
+          "description": "The session token to check, as it arrived in the request body. Not the caller's own — that is already resolved on the Request node's Authenticated and User Id. Connection-only, because a token in a project file is a credential in a project file"
+        },
+        {
+          "name": "treatUnchangedAs",
+          "displayName": "Treat Unchanged as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "unchanged",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way; Failure suits one whose idiom is that a no-op is a bug. Completed fires whatever this is set to."
+        },
+        {
+          "name": "verify",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Checks the token. Nothing is checked, and nothing is written, until this fires"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the token is a live session — Valid is true and User Id holds whose it is"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the last operation could not be performed. It never contains a password, a hash or a token"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the check could not be made at all, such as a blank Token"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the token is not a live session on this backend. Nothing failed and nothing changed; the answer is simply no, and this is the branch to wire to your 401"
+        },
+        {
+          "name": "userId",
+          "displayName": "User Id",
+          "group": "User",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Whose session it is, after Done. Blank on every other branch"
+        },
+        {
+          "name": "username",
+          "displayName": "Username",
+          "group": "User",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "That user's username, after Done. Blank on every other branch"
+        },
+        {
+          "name": "valid",
+          "displayName": "Valid",
+          "group": "User",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "Whether the token is a live session. The value form of the Done / Unchanged branch"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "noodl.cloud.verifysessiontoken",
+        "summary": "Asks this backend whether a session token is one of its own live sessions, and whose. Cloud-only.",
+        "description": "Verify Session Token looks a token up in this backend's `_Session` table and answers who holds it. It is for a token that arrived in the request BODY — from a mobile client, a partner integration, a callback — not the caller's own, which the Request node has already resolved onto `auth` (Authenticated) and `userId` (User Id). ⚠️ This is not CWF-010's JWT Verify: that node verifies somebody else's JWT against a key you hold, while this one asks our own backend about our own session. Only a session matches — an admin credential is not a session and an API key is not a session, so neither can be probed through this node. There is no expiry to report: this backend's session rows carry a token and a user id and nothing else, and a session lives until a password change or a delete revokes it.",
+        "whenToUse": "When a cloud function receives a token it did not get as its own caller's credential and has to decide whether to trust it — a mobile client posting a token in a body, a partner passing a user's token through, a webhook that carries one. Reach for JWT Verify instead when the token was minted somewhere else and is signed with a key. Do not reach for either to check the caller's own session; that is already done.",
+        "ports": {
+          "token": "Value, connection-only; the token to check. It cannot be set as a parameter, because a session token in a project file is a live credential in a project file.",
+          "verify": "Signal (Do); performs the lookup. Nothing is checked, and nothing is ever written, until this fires.",
+          "valid": "Value; whether the token is a live session. The value form of the `done` / `unchanged` branch.",
+          "userId": "Value; whose session it is, after `done`. Blank on every other branch — it is cleared before each check, so a stale identity cannot sit on the port while the next answer is in flight.",
+          "username": "Value; that user's username, after `done`. Blank on every other branch.",
+          "done": "Signal; fires when the token is a live session.",
+          "unchanged": "Signal; fires when the token is not a live session. Nothing failed and nothing changed — the answer is simply no, and this is the branch to wire to your 401.",
+          "failure": "Signal; fires when the check could not be made at all, such as a blank token.",
+          "completed": "Signal; fires after every check.",
+          "error": "Value; why a check could not be made. It never contains a token.",
+          "treatUnchangedAs": "Edit-only enum; set it to Failure if an invalid token should take the same path as a broken check."
+        },
+        "examples": [],
+        "patterns": [
+          "Request `receive` → Verify Session Token `verify`, with the body's token wired into `token`; `done` → the work, `unchanged` → a Response with Status set to Failure. That is the whole shape of a token-checked endpoint."
+        ],
+        "antiPatterns": [
+          "Putting this in a `public` function. It is an oracle for session tokens by design, so an unauthenticated caller behind an open rule can test tokens at whatever rate the limiter allows. Give the function a `call` rule and a per-function `rateLimit` (CWF-017).",
+          "Using it to re-check the caller's own token. The Request node has already resolved it; a second lookup is a database round trip that answers a question already answered.",
+          "Confusing it with JWT Verify. Verifying our own session token as if it were a JWT will never succeed, and verifying somebody else's JWT here will always answer `unchanged`."
+        ],
+        "relatedNodes": [
+          "noodl.cloud.jwtverify",
+          "noodl.cloud.createuser",
+          "noodl.cloud.updateuser",
+          "noodl.cloud.request"
+        ]
+      }
     }
   ],
   "enrichment": {
     "version": "1.0.0",
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
-      "documented": 165,
-      "total": 165
+      "documented": 171,
+      "total": 171
     }
   },
   "compatibility": {

@@ -701,7 +701,12 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
             'CollectionInsert',
             'Filter Collection',
             'Map Collection',
-            'Static Data'
+            'Static Data',
+            // CWF-012. A type absent from this index is unreachable in the add-node picker, so
+            // these two would have been registered and invisible — which is exactly how the
+            // parser inside Static Array stayed authoring-only for years.
+            'net.noodl.ParseCSV',
+            'net.noodl.ToCSV'
           ]
         },
         {
@@ -822,6 +827,24 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
           // module comments on hmac.ts and jwtsign.ts.
           name: 'Security',
           items: ['noodl.cloud.hmac', 'noodl.cloud.jwtsign', 'noodl.cloud.jwtverify']
+        },
+        {
+          // CWF-015: user administration AS THE SYSTEM. Cloud-only for a reason one
+          // notch past Secret's — a node that creates accounts, offered on a browser
+          // canvas, is account creation in the hands of everyone who opens the page.
+          //
+          // ⚠️ `Verify Session Token` sits here and NOT beside `noodl.cloud.jwtverify`
+          // above, deliberately: the two are the pair CWF-015 says naming apart is half
+          // the work. JWT Verify checks somebody else's token against a key you hold;
+          // this one asks our own backend about our own session. Listing them together
+          // is how an author reaches for the wrong one.
+          name: 'Users',
+          items: [
+            'noodl.cloud.createuser',
+            'noodl.cloud.updateuser',
+            'noodl.cloud.deleteuser',
+            'noodl.cloud.verifysessiontoken'
+          ]
         }
       ]
     }

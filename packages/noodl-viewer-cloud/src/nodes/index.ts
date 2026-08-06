@@ -24,6 +24,23 @@ export function registerNodes(runtime: NoodlRuntime) {
     require('./cloud/jwtsign'),
     require('./cloud/jwtverify'),
 
+    /**
+     * CWF-015 — user administration **as the system**. Here for the same reason
+     * as Secret, one notch further up: a node that creates accounts, shipped in
+     * a browser bundle, is account creation in the hands of everyone who opens
+     * the page. See the family note in `cloud/system-users.ts`.
+     *
+     * The seven session-shaped user nodes the browser has — Sign Up, Log In,
+     * Log Out, Verify Email, Reset Password, Sign In With, Magic Link — stay
+     * absent server-side, deliberately: each sets the browser's current session
+     * as a side effect, which is meaningless in a process handling many
+     * requests at once and dangerous if it half-works.
+     */
+    require('./cloud/createuser'),
+    require('./cloud/updateuser'),
+    require('./cloud/deleteuser'),
+    require('./cloud/verifysessiontoken'),
+
     require('./data/aggregatenode'),
 
     /**

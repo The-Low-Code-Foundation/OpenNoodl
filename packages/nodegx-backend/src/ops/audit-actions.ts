@@ -127,6 +127,28 @@ export const AUDIT_LOGIN_FAILURE = 'admin.login.failed';
 export const AUDIT_AUTH_SIGN_IN = 'auth.signin';
 export const AUDIT_AUTH_CREDENTIALS_REVOKED = 'auth.link.credentials-revoked';
 
+/**
+ * Actions raised by a CLOUD FUNCTION rather than by a route (CWF-015).
+ *
+ * The same exception as BAK-004's above, one level further in. `POST
+ * /functions/:name` is a single route whose action is whatever the graph does,
+ * so the dispatcher cannot know an account was created inside it; only
+ * `users/SystemUsers` can. "Who created this account?" is the first question
+ * asked after an account nobody recognises turns up, and without these entries
+ * the honest answer would be "some cloud function, at some point".
+ *
+ * ⚠️ **`actorKind` is `'system'` and `actor` is `'cloud-function'`, not the
+ * function's name.** Functions run concurrently in one process, so a
+ * process-global "the function currently running" would be wrong under exactly
+ * the load where the trail matters. The per-run attribution already exists and
+ * is the execution history (`executions.sqlite`), which records the function
+ * name, the request and the outcome of every call; these entries are what point
+ * at the window to look in.
+ */
+export const AUDIT_SYSTEM_USER_CREATE = 'user.system.create';
+export const AUDIT_SYSTEM_USER_UPDATE = 'user.system.update';
+export const AUDIT_SYSTEM_USER_DELETE = 'user.system.delete';
+
 /** The declared action for a route, or null when the route is not audited. */
 export function auditActionFor(method: string, pattern: string): string | null {
   return ACTIONS[`${method} ${pattern}`] || null;
@@ -151,7 +173,10 @@ export function declaredAuditActions(): string[] {
       AUDIT_LOGIN_SUCCESS,
       AUDIT_LOGIN_FAILURE,
       AUDIT_AUTH_SIGN_IN,
-      AUDIT_AUTH_CREDENTIALS_REVOKED
+      AUDIT_AUTH_CREDENTIALS_REVOKED,
+      AUDIT_SYSTEM_USER_CREATE,
+      AUDIT_SYSTEM_USER_UPDATE,
+      AUDIT_SYSTEM_USER_DELETE
     ])
   ].sort();
 }

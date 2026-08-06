@@ -130,6 +130,7 @@ export type NodeTypeName =
   | 'net.noodl.ObjectChanged'
   | 'net.noodl.OptimisticUpdate'
   | 'net.noodl.ParentComponentObject'
+  | 'net.noodl.ParseCSV'
   | 'net.noodl.PatternExtractor'
   | 'net.noodl.RandomBytes'
   | 'net.noodl.SSE'
@@ -140,6 +141,7 @@ export type NodeTypeName =
   | 'net.noodl.StateSnapshot'
   | 'net.noodl.StreamBuffer'
   | 'net.noodl.TextAccumulator'
+  | 'net.noodl.ToCSV'
   | 'net.noodl.UUID'
   | 'net.noodl.WebSocket'
   | 'net.noodl.animatetovalue'
@@ -164,13 +166,17 @@ export type NodeTypeName =
   | 'net.noodl.visual.columns'
   | 'net.noodl.visual.icon'
   | 'noodl.cloud.aggregate'
+  | 'noodl.cloud.createuser'
+  | 'noodl.cloud.deleteuser'
   | 'noodl.cloud.hmac'
   | 'noodl.cloud.jwtsign'
   | 'noodl.cloud.jwtverify'
   | 'noodl.cloud.request'
   | 'noodl.cloud.response'
   | 'noodl.cloud.secret'
-  | 'noodl.cloud.sendemail';
+  | 'noodl.cloud.sendemail'
+  | 'noodl.cloud.updateuser'
+  | 'noodl.cloud.verifysessiontoken';
 
 /** Node palette categories present in the registries. */
 export type NodeCategory =

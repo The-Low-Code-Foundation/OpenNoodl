@@ -44,6 +44,7 @@ import {
 import { OpsState } from './ops/OpsState';
 import { logger } from './ops/logger';
 import { AuditLog, ensureAuditTable } from './ops/audit';
+import { SystemUsers, SystemUserRequest, SystemUserResult } from './users/SystemUsers';
 import { TriggerSubsystem } from './triggers/TriggerSubsystem';
 import { BackupSubsystem } from './backup/BackupSubsystem';
 import { FileSubsystem } from './storage/FileSubsystem';
@@ -125,6 +126,8 @@ export class BackendService {
   private ops: OpsState | null = null;
   private audit: AuditLog | null = null;
   private mailer: Mailer | null = null;
+  /** CWF-015: the system-scoped user operations a cloud function can perform. */
+  private systemUsers: SystemUsers | null = null;
   private readonly executions = new ExecutionHistory();
 
   constructor(partial: Partial<BackendServiceOptions> = {}) {
@@ -249,6 +252,26 @@ export class BackendService {
     //     entries the retention setting says should be gone.
     this.audit = new AuditLog({ facade: this.facade, getConfig: () => this.ops!.config.audit });
     void this.audit.prune();
+
+    // 1.75 CWF-015: system-scoped user administration for cloud functions.
+    //      Constructed beside the audit log because every write it makes goes
+    //      through it — an account created by a graph must be as
+    //      reconstructable afterwards as one created through the admin surface.
+    //      The action names are declared in ops/audit-actions like every other,
+    //      so the dashboard's filter list has them without a second vocabulary.
+    this.systemUsers = new SystemUsers({
+      facade: this.facade,
+      onAudit: ({ action, outcome, target }) => {
+        void this.audit?.record({
+          action,
+          actorKind: 'system',
+          actor: 'cloud-function',
+          outcome,
+          target,
+          ip: 'in-process'
+        });
+      }
+    });
 
     // 2. Execution history beside the data.
     const executionHistory = this.executions.open(this.options.dataDir);
@@ -420,6 +443,27 @@ export class BackendService {
     //     policy paragraph in config/SecretsStore.ts.
     (globalThis as any)._noodl_get_secret = (name: unknown): SecretLookupResult => this.resolveFunctionSecret(name);
 
+    // 4.7 The user-administration nodes (CWF-015) reach the database the same
+    //     way, and for the same reason the Secret node's seam is a resolver
+    //     rather than the store: what a graph may do is decided HERE, not by
+    //     the graph. The node names an operation and an id; this end owns the
+    //     protected-key policy, the duplicate check, the hashing and the
+    //     session revocation.
+    //
+    //     ⚠️ It deliberately adds NO HTTP route. `POST /users` mints a session
+    //     and `PUT /users/:id` refuses any id but the caller's own, so neither
+    //     could serve this; adding an admin route that could would be a second
+    //     door onto account creation, gated separately from the first. In
+    //     process, the ONLY gate is CWF-017's per-function `call` rule.
+    (globalThis as any)._noodl_system_users = (request: SystemUserRequest): Promise<SystemUserResult> =>
+      this.systemUsers
+        ? this.systemUsers.handle(request)
+        : Promise.resolve<SystemUserResult>({
+            outcome: 'failure',
+            code: 'user/service-stopped',
+            error: 'User administration is not available: the backend service is not running.'
+          });
+
     // 5. Workflows.
     this.runner = new WorkflowRunner({
       workflowsPath: path.join(this.options.dataDir, 'workflows'),
@@ -525,6 +569,10 @@ export class BackendService {
     this.auth = null;
     this.ops = null;
     this.audit = null;
+    // CWF-015: the process-global stays installed (as `_noodl_get_secret` and
+    // `_noodl_send_email` do — a `start()` overwrites it), but it now answers a
+    // loud `user/service-stopped` rather than reaching a disconnected adapter.
+    this.systemUsers = null;
   }
 
   /** True when the current options require a bearer token (non-loopback bind). */

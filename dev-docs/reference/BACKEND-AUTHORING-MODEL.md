@@ -104,6 +104,28 @@ it is short enough to state here in full:
   and a credential must never appear in one. Where a step needs a credential, the function it calls
   reads it.
 
+## Users: what a cloud function may do to an account
+
+A cloud function runs **as the system** (the loopback services carry the master key, §4 of
+`service.ts`), and CWF-015 gives that authority four nodes: `Create User`, `Update User`,
+`Delete User`, `Verify Session Token`. Four facts about them belong here, because they follow from
+the model above rather than from the nodes:
+
+- **They are cloud-only, and the seven session-shaped user nodes stay browser-only.** Sign Up,
+  Log In, Log Out, Verify Email, Reset Password, Sign In With and Magic Link each set *the browser's
+  current session* as a side effect. "The server is now logged in as bob" is meaningless in one
+  process answering many requests, so those seven have no server-side equivalent and will not get
+  one. Nothing in the CWF-015 family touches the request's current user; each addresses a row by id.
+- **They add no HTTP route.** The seam is a process global (`_noodl_system_users`), the same idiom
+  as the Secret node's, and deliberately so: a second door onto account creation would be a second
+  gate to keep in step with the first. The only gate is the function's own `call` rule.
+- **⚠️ Which makes that rule load-bearing.** A function holding these nodes with no rule falls back
+  to its Request node's `Allow Unauthenticated` — `public` if ticked, which is account creation for
+  the open internet. Set `functions.<name>.call` in the Permissions panel (CWF-017).
+- **They cannot manufacture privilege.** Admin authority is a credential, not a user row; a user's
+  privilege is role membership in `_Role`, which nothing in this family writes; and `ACL`,
+  `objectId` and every `_`-prefixed column are refused by name rather than dropped.
+
 ## Naming
 
 "Cloud function" is a Noodl-era term; the wire URLs say Parse for compatibility reasons that have
