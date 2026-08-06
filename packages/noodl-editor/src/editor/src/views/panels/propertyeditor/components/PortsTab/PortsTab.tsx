@@ -2,6 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
+import {
+  isPortConnectable,
+  omitHiddenPorts,
+  PORT_CONDITION_FILTER_MODES
+} from '@noodl-models/nodelibrary/portConnectivity';
 
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
@@ -25,9 +30,26 @@ import css from './PortsTab.module.scss';
  * `conditionalports/*` rule is a filter over statically declared ports (see
  * `dynamicPortRules.ts`), so a port whose condition is currently false is still
  * in `getPorts()` while not actually being on this node. Listing it would tell
- * an author about a port that is not there. This is the same call the property
- * panel makes via `ModelProxy.getPorts`, so the two tabs agree about what the
- * node has.
+ * an author about a port that is not there.
+ *
+ * ⚠️ SPR-003 §1 (F82) changed the *scope* of that call, and the change is not
+ * cosmetic. It used to pass no modes — the property panel's scope, which also
+ * applies `conditionalports/basic` rules — on the reasoning that the two tabs
+ * should agree. They should, but about the right question: the panel is
+ * choosing which property **rows** to draw, this tab is describing the node's
+ * **ports**, and `NodeGraphModel.isConnectionValid` decides a port is not on the
+ * node using `['extended']` alone. So this now passes
+ * `PORT_CONDITION_FILTER_MODES`, the same constant the connection popup passes.
+ *
+ * ## Not every port can be wired
+ *
+ * A port whose declared type carries `allowEditOnly: true` is a **setting**: it
+ * is real, it holds a value, it has a property row, and the canvas refuses to
+ * connect it. 139 declarations across the runtime and the viewer say so, and
+ * they cluster in the nodes a beginner meets first. Those rows stay — a beginner
+ * needs to know `Treat Unchanged as` exists — but they carry a marker and lose
+ * the "Accepts …" line, because both of those claim a wire is possible.
+ * `isPortConnectable` is the shared predicate; see `portConnectivity.ts`.
  *
  * ## Read-only
  *
@@ -44,6 +66,8 @@ interface PortRow {
   typeName: string;
   typeLabel: string;
   isSignal: boolean;
+  /** False for an `allowEditOnly` port: a setting the canvas will not wire. */
+  isConnectable: boolean;
   description?: string;
   connections: PortConnectionRef[];
 }
@@ -68,13 +92,11 @@ function typeLabelFor(type: TSFixme): string {
 }
 
 function buildRows(model: NodeGraphNode, direction: 'input' | 'output'): PortGroupRows[] {
-  const hidden = NodeLibrary.instance.applyPortConditionsFilterForNode(model);
+  const hidden = NodeLibrary.instance.applyPortConditionsFilterForNode(model, PORT_CONDITION_FILTER_MODES);
 
   const groups: PortGroupRows[] = [];
 
-  for (const port of model.getPorts(direction) as TSFixme[]) {
-    if (hidden.indexOf(port.name) !== -1) continue;
-
+  for (const port of omitHiddenPorts(model.getPorts(direction) as TSFixme[], hidden)) {
     const typeName = NodeLibrary.nameForPortType(port.type);
     const tabSuffix = port.tab && port.tab.label ? ` (${port.tab.label})` : '';
 
@@ -85,6 +107,7 @@ function buildRows(model: NodeGraphNode, direction: 'input' | 'output'): PortGro
       typeName,
       typeLabel: typeLabelFor(port.type),
       isSignal: typeName === 'signal',
+      isConnectable: isPortConnectable(port),
       description:
         typeof port.description === 'string' && port.description.trim() !== '' ? port.description : undefined,
       connections: getPortConnections(model, port.name, direction)
@@ -129,7 +152,9 @@ function ConnectionChip({ direction, connection }: { direction: 'input' | 'outpu
 }
 
 function PortRowView({ row, direction }: { row: PortRow; direction: 'input' | 'output' }) {
-  const accepts = acceptsLineFor(row.typeName, direction);
+  // SPR-003 §1: "Accepts number, string" on a port no wire can reach is the
+  // false half of the sentence, so an edit-only row does not get one.
+  const accepts = row.isConnectable ? acceptsLineFor(row.typeName, direction) : undefined;
 
   return (
     <div className={css['Row']}>
@@ -144,6 +169,13 @@ function PortRowView({ row, direction }: { row: PortRow; direction: 'input' | 'o
         <span className={css['Type']}>{row.typeLabel}</span>
       </div>
 
+      {!row.isConnectable && (
+        <p className={css['NotConnectable']}>
+          <Icon icon={IconName.Setting} UNSAFE_style={{ width: 12, height: 12 }} />
+          <span>Setting — set here, cannot be connected</span>
+        </p>
+      )}
+
       {Boolean(row.description) && <p className={css['Description']}>{row.description}</p>}
       {Boolean(accepts) && (
         <p className={css['Accepts']}>
@@ -151,17 +183,25 @@ function PortRowView({ row, direction }: { row: PortRow; direction: 'input' | 'o
         </p>
       )}
 
-      <div className={css['Connections']}>
-        {row.connections.length > 0 ? (
-          row.connections.map((connection, index) => (
-            <ConnectionChip key={`${connection.label}-${index}`} direction={direction} connection={connection} />
-          ))
-        ) : (
-          <span className={css['NoConnections']}>
-            {direction === 'input' ? 'Nothing drives this yet' : 'Nothing reads this yet'}
-          </span>
-        )}
-      </div>
+      {/*
+       * An edit-only port with no connections says nothing here: the marker
+       * above has already said why, and "Nothing drives this yet" reads as an
+       * invitation. If a legacy project *does* hold a wire to one, the chips
+       * still show — that is the truth and the author needs to see it.
+       */}
+      {(row.connections.length > 0 || row.isConnectable) && (
+        <div className={css['Connections']}>
+          {row.connections.length > 0 ? (
+            row.connections.map((connection, index) => (
+              <ConnectionChip key={`${connection.label}-${index}`} direction={direction} connection={connection} />
+            ))
+          ) : (
+            <span className={css['NoConnections']}>
+              {direction === 'input' ? 'Nothing drives this yet' : 'Nothing reads this yet'}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

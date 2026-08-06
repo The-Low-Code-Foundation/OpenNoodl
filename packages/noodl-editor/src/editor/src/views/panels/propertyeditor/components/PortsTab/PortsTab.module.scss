@@ -88,6 +88,27 @@
   background-color: var(--theme-color-bg-3);
 }
 
+/* SPR-003 §1 (F82): an `allowEditOnly` port is real but unwireable. The row
+   stays; this is what stops it reading as connectable. Deliberately not red —
+   nothing is wrong, and red is danger only (phase 23). */
+.NotConnectable {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  align-self: flex-start;
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  margin: 0;
+  padding: 1px var(--spacing-1-5) 1px var(--spacing-1);
+  border-radius: var(--radius-sm);
+  background-color: var(--theme-color-bg-3);
+
+  > :first-child {
+    flex: none;
+  }
+}
+
 .Description {
   color: var(--theme-color-fg-default);
   font-size: var(--font-size-sm);

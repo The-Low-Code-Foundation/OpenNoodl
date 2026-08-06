@@ -29,6 +29,11 @@
     "tests-unit",
     "src/editor/src/utils/provenance",
     "src/editor/src/models/nodelibrary/dynamicPortRules.ts",
+    // SPR-003 §1: `portConnectivity.ts` is the third of these — the shared
+    // "is this port on the node, and may it be wired" predicate, import-free so
+    // the runner can grade it against the real runtime port declarations
+    // (which are themselves type-only-import modules) without Electron.
+    "src/editor/src/models/nodelibrary/portConnectivity.ts",
     "src/editor/src/models/nodelibrary/cloud-node-library.json",
     "src/editor/src/utils/import-engine/legacy",
     "src/editor/src/validation",

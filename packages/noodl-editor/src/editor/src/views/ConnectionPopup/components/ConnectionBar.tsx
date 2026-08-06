@@ -4,6 +4,11 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { KeyCode } from '@noodl-constants/KeyCode';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
+import {
+  isPortConnectable,
+  omitHiddenPorts,
+  PORT_CONDITION_FILTER_MODES
+} from '@noodl-models/nodelibrary/portConnectivity';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 
@@ -12,24 +17,25 @@ import css from '../ConnectionPopup.module.scss';
 import { PortGroup } from './PortGroup';
 
 function _getPorts(type, model /* NodeGraphNode */) {
-  const ports = type === 'from' ? model.getPorts('output') : model.getPorts('input');
+  const declared = type === 'from' ? model.getPorts('output') : model.getPorts('input');
   const models = [];
 
-  function isConnectable(p) {
-    return !(typeof p.type === 'object' && p.type.allowEditOnly);
-  }
-
-  // Apply ports condition filter (only use extended filter, i.e. ones that should not be connectable if filtered)
-  const portFilter = NodeLibrary.instance.applyPortConditionsFilterForNode(model, ['extended']);
-  portFilter.forEach((portname) => {
-    const idx = ports.findIndex((p) => p.name === portname);
-    if (idx !== -1) ports.splice(idx, 1);
-  });
+  /*
+   * SPR-003 §1 (F82): both the predicate and the filter scope now come from
+   * `portConnectivity`, which is the *only* place either is written down. This
+   * function and `PortsTab.buildRows` were the two lists that disagreed —
+   * a port marked `allowEditOnly` was missing here and unqualified there.
+   *
+   * `omitHiddenPorts` also returns a copy, where this used to `splice` the
+   * array `getPorts()` handed back.
+   */
+  const hidden = NodeLibrary.instance.applyPortConditionsFilterForNode(model, PORT_CONDITION_FILTER_MODES);
+  const ports = omitHiddenPorts(declared, hidden);
 
   for (const i in ports) {
     const p = ports[i];
 
-    if (isConnectable(p)) {
+    if (isPortConnectable(p)) {
       models.push({
         name: p.name,
         group: p.group,
