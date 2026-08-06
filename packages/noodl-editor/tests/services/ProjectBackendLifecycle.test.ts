@@ -15,6 +15,7 @@ import {
   ProjectBackendLifecycleImpl,
   type ProjectBackendState
 } from '../../src/editor/src/services/ProjectBackendLifecycle';
+import { intentFor } from '../../src/editor/src/services/projectBackendStatusToasts';
 
 interface Call {
   channel: string;
@@ -258,5 +259,44 @@ describe('AAQ-011/F10 ProjectBackendLifecycle', () => {
     bound = 'backend_a';
     await service.reconcile();
     expect(service.getState().phase).toBe('idle');
+  });
+});
+
+/**
+ * Slice 4 — what the user sees. The rules, not the rendering: a start that
+ * finishes fast must show nothing, a start that succeeds must say nothing, and a
+ * start that fails must say so and not go away on its own.
+ */
+describe('AAQ-011/F10 project backend toast rules', () => {
+  it('asks for a DELAYED spinner while starting, never an immediate one', () => {
+    const intent = intentFor({ phase: 'starting', backendId: 'b', backendName: 'App backend' });
+    expect(intent.kind).toBe('spinner-after-delay');
+    expect(intent.kind === 'spinner-after-delay' && intent.message).toBe('Starting App backend…');
+  });
+
+  it('says nothing on success — the expected state is not news', () => {
+    expect(intentFor({ phase: 'running', backendId: 'b' }).kind).toBe('hide');
+    expect(intentFor({ phase: 'adopted', backendId: 'b' }).kind).toBe('hide');
+    expect(intentFor({ phase: 'idle' }).kind).toBe('hide');
+  });
+
+  it('carries the real reason into the failure toast, and says what stops working', () => {
+    const intent = intentFor({
+      phase: 'failed',
+      backendId: 'b',
+      backendName: 'App backend',
+      error: 'the native SQLite engine is unavailable'
+    });
+    expect(intent.kind).toBe('error');
+    if (intent.kind !== 'error') return;
+    expect(intent.title).toContain('App backend');
+    expect(intent.message).toContain('native SQLite engine is unavailable');
+    expect(intent.message).toContain('Data Browser');
+  });
+
+  it('still names something when the backend has no name and no error text', () => {
+    const intent = intentFor({ phase: 'failed' });
+    expect(intent.kind === 'error' && intent.title).toBe('The project backend could not be started');
+    expect(intent.kind === 'error' && intent.message).toContain('did not start');
   });
 });

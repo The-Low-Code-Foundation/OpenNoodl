@@ -12,6 +12,7 @@ import { IconName } from '@noodl-core-ui/components/common/Icon';
 import config from '../../shared/config/config';
 import { CloudFunctionDeployer } from './services/CloudFunctionDeployer';
 import { ProjectBackendLifecycle } from './services/ProjectBackendLifecycle';
+import { installProjectBackendStatusToasts } from './services/projectBackendStatusToasts';
 import { AuthoringPreviewDocumentProvider } from './views/documents/AuthoringPreviewDocument';
 import { ChangeReviewDocumentProvider } from './views/documents/ChangeReviewDocument';
 import { ComponentDiffDocumentProvider } from './views/documents/ComponentDiffDocument';
@@ -163,6 +164,9 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   // project closes. The guarantee that a crash leaves nothing behind is the
   // main process's `BackendProcessRegistry`, not this.
   ProjectBackendLifecycle.install();
+  // And its only visible surface. Delayed spinner, silent success, sticky error
+  // with a way to Backend Services — see the module for why each.
+  installProjectBackendStatusToasts();
 
   SidebarModel.instance.register({
     experimental: true,
