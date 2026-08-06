@@ -5,7 +5,9 @@
 **not** POL-004's defect and was not caused by its fix — the doc-review sheet is correct in both
 themes. This is what the same measurement found sitting on top of it.
 
-**Status:** ☐ filed, not fixed. Not alpha-blocking — the numbers are legible, just under the bar.
+**Status:** ☑ **FIXED 2026-08-06.** Both failing elements, not just the gutter — see
+[What was actually changed](#what-was-actually-changed) at the bottom, and note the correction to
+criterion 4, which as originally written asked for more than the proposed fix delivered.
 
 It gets a row because that is now the phase's rule: a finding recorded only as prose inside a
 completed task is a finding that has been lost. That is the whole reason
@@ -60,6 +62,13 @@ and fails the other.
    numbers as prominent as the source is not the fix.
 4. `pol004-doc-diff.js` reports zero text nodes below 4.5:1 in both themes.
 
+   ⚠️ **This criterion was wider than this task's own proposed answer, and that is now resolved by
+   widening the fix rather than narrowing the criterion.** The measurement table above lists *two*
+   failing elements; §"The answer, already measured" proposes a token for only one of them. Fixing
+   the gutter alone would have left the change-summary line at 3.93/3.62 and the criterion would
+   have read as met while the measurement still failed — the exact shape of lie this phase's
+   register rule exists to stop. The second element is fixed too; see below.
+
 ## Traps
 
 - **The three `fg-muted` uses in that file are not interchangeable.** Line 60 is the gutter, line 100
@@ -68,3 +77,67 @@ and fails the other.
 - The gutter background is `bg-3`, not the sheet. Measuring against the sheet flatters it by ~0.8.
 - **HMR will not restyle a mounted CodeMirror instance.** Restart the stack before believing a
   measurement.
+
+## What was actually changed
+
+### 1. The gutter — already fixed, and nobody said so
+
+`codemirror-theme.ts` `.cm-gutters` was moved from `fg-muted` to `fg-default-shy` in **`00adecd5`**
+(2026-08-05, "fix(code editor): one linter, Noodl. completes, and a selection you can see"), a commit
+about the linter. It carried the POL-017 fix and its reasoning as a comment and left this file saying
+"filed, not fixed" for a day. Worth recording as its own small lesson: **a fix that lands inside an
+unrelated commit is a fix the register cannot see.** Verified today at
+`codemirror-theme.ts:94-100`. `fg-default-shy` on `bg-3` = **4.82:1 dark / 4.67:1 light** (was
+3.17/3.16).
+
+### 2. The sweep trap, resolved — there are now only *two* `fg-muted` uses left in that file
+
+The task warned that three uses sit on three backgrounds. One of the three *was* the gutter, so after
+the fix above the count is two, and **both are correctly left alone**:
+
+| line | element | background | why it stays `fg-muted` |
+|---|---|---|---|
+| `:136` | `.cm-foldPlaceholder` | `bg-hover` over `bg-2` | A collapsed-region marker (`…`), not prose. It is a placeholder glyph, and the surrounding source is the text being read. |
+| `:261` | `.cm-placeholder` | `bg-2`, and it carries `opacity: 0.6` besides | Empty-editor placeholder text. Placeholder text is the one case where "muted" is the intent, and raising it would make an empty editor look like it had content. |
+
+Neither is text a reader is expected to *use*, which is the line the gutter crossed. This is also why
+`--theme-color-border-control` (POL-016) keeps the same tone and is **not** a bug: 1.4.11 asks 3:1 of
+a control boundary, 1.4.3 asks 4.5:1 of text, and `fg-muted` passes the first and fails the second.
+
+### 3. The second failing element — `TextType.Shy`
+
+The change-summary line in the doc-review dialog is `<Text textType={TextType.Shy}>`
+(`PlanDocReviewDialog.tsx:56`). It is not a dialog-local colour: `Text.module.scss` `is-type-shy`
+mapped straight to `fg-muted`, which is the 3.93:1 / 3.62:1 in the table above and is the same token
+misuse the gutter had — `colors.css` documents `fg-muted` as *"large/secondary text only"* and `Text`
+renders at 12px (10px at `Small`), so there is no large-text exemption.
+
+Fixed at the token mapping rather than the call site, for the same reason the gutter was: 257 call
+sites across 59 files all inherit the defect, and patching one dialog leaves 256.
+`Label.module.scss` `is-variant-shy` had the identical mapping and is changed with it — the two read
+the same `TextType` enum, so leaving one behind would have manufactured a twin.
+
+| | before (`fg-muted`) | after (`fg-default-shy`) |
+|---|---|---|
+| on `bg-1` (the review sheet) | 3.93 dark / 3.62 light | **5.98 / 5.34** |
+| on `bg-2` | 3.66 / 3.43 | **5.57 / 5.06** |
+| on `bg-3` | 3.17 / 3.16 | **4.82 / 4.67** |
+
+**Why this is safe at 257 sites:** `fg-default-shy` is one step *toward* the foreground extreme in
+both themes (dark `#6b7682` → `#8b95a1`, light `#7c8894` → `#616c79`), so contrast rises against
+every background in the palette — there is no surface where this makes anything worse. And criterion
+3's spirit holds: `shy` remains dimmer than `fg-default`, so the hierarchy the type exists to express
+survives.
+
+⚠️ **Deliberately not changed:** `Icon` `is-variant-shy` still resolves `fg-muted`. An icon is a
+non-text graphic under 1.4.11 at 3:1, which `fg-muted` clears on `bg-1` (3.93) and `bg-2` (3.66).
+Raising it would be the mirror of the POL-016 mistake this task warns about.
+
+### 4. How the CSS was verified to win
+
+A ratio computed from a stylesheet proves what the stylesheet says, not what the browser painted.
+Checked in the running editor over CDP, read-only, in both themes: the CSSOM contains **exactly one**
+rule matching `Text-module__is-type-shy` and **exactly one** matching
+`Label-module__is-variant-shy`, both resolving `var(--theme-color-fg-default-shy)`, so no selector
+can out-rank them. Token values read live off `:root` in each theme match `colors.css`
+(`fg-default-shy` = `#8b95a1` dark, `#616c79` light).
