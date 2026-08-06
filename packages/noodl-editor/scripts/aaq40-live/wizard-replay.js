@@ -124,11 +124,12 @@ function installScript(partialChunks = 8) {
      *
      * A \`setTimeout\` here is what AAQ-011 F6 was: this window is occluded
      * whenever the script drives it, Chromium clamps timers in an occluded
-     * window to a second and aligns them to a whole minute once it has been
-     * hidden for five, and fourteen of these per component turned a
-     * zero-latency provider into a seven-minute run. \`requestAnimationFrame\`
-     * is worse — a hidden window stops servicing it at all. A \`MessagePort\`
-     * message is a macrotask like a timer and is not a timer.
+     * window to about a second and stretches individual waits further once it
+     * has been hidden for five minutes, and fourteen of these per component
+     * turned a zero-latency provider into a seven-minute run.
+     * \`requestAnimationFrame\` is worse — a hidden window stops servicing it at
+     * all. A \`MessagePort\` message is a macrotask like a timer and is not a
+     * timer: 0.1ms per yield, hidden or not.
      */
     const yieldToEditor = () =>
       new Promise((resolve) => {

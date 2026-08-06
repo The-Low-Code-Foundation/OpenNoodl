@@ -11,7 +11,7 @@
  *   timers   `await new Promise(r => setTimeout(r, 10))` — what the *fixture
  *            provider* does between partial payloads. Chromium throttles
  *            `setTimeout` in an occluded window (1s clamped when hidden, aligned
- *            to a whole minute once hidden for 5 minutes), and the editor's main
+ *            far further once hidden for 5 minutes), and the editor's main
  *            window uses Electron's default `backgroundThrottling: true`
  *            (`src/main/main.js:311` sets no override). `turnDeadline.ts:26-29`
  *            already records this biting once, in AIB-002's live QA.

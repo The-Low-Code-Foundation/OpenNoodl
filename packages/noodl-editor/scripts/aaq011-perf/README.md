@@ -54,9 +54,9 @@ Two measurements a plain-Node run cannot make:
 - **timers** — what `await new Promise(r => setTimeout(r, 10))` actually costs in this renderer.
   That is what the *fixture provider* does between partial payloads, and the editor's main window
   takes Electron's default `backgroundThrottling: true` (`src/main/main.js:311` overrides nothing),
-  so Chromium clamps it to 1s while the window is occluded and aligns it to a whole minute once the
-  window has been hidden for five. Run it once with the editor in front and once with it fully
-  covered — the two numbers are the finding.
+  so Chromium clamps it to ~1s while the window is occluded, and stretches individual waits further
+  once it has been hidden for five minutes. Run it once with the editor in front and once with it
+  fully covered — the two numbers are the finding.
 - **session** — the real `AuthoringSession` over the real 56-node `aaq40-live/fixtures.js` payload,
   streamed with **no sleeps at all**, timed around each `onToolCallPartial`.
 

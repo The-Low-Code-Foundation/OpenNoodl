@@ -48,8 +48,9 @@ zero-latency provider, filed as AAQ-011 F6 as "editor main-thread time".
 `ProjectAuthoringView.tsx:1329`) — so it is wall clock, and nothing in the pass measured CPU at all.
 The wall clock went on the fourteen `await new Promise(r => setTimeout(r, …))` this script used to put
 between fragments: the editor's window is occluded whenever a script drives it from a terminal, and
-Chromium clamps a timer in an occluded window to a second, then aligns it to a whole minute once the
-window has been hidden for five. Fourteen of those is minutes. The pacing is a `MessagePort` task now.
+Chromium clamps a timer in an occluded window to about a second, and stretches individual waits
+further once the window has been hidden for five minutes. Fourteen of those, per component, is
+minutes. The pacing is a `MessagePort` task now — measured at 0.1ms per yield, hidden or not.
 
 The editor's own cost is flat, and is now measured by a committed driver
 (`packages/noodl-editor/scripts/aaq011-perf`): **400 nodes streamed as 4000 partial payloads costs

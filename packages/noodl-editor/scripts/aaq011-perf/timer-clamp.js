@@ -13,7 +13,7 @@
  *   on-screen     the baseline
  *   hidden 2s     the 1-second clamp every hidden page gets
  *   hidden 5m30s  the "intensive" tier, which a page hidden for five minutes
- *                 gets and which aligns timers to a whole minute
+ *                 gets, and where a single wait can run many seconds
  *
  * A `MessagePort` round trip is measured beside each one. It is a macrotask like
  * a timer — it yields to the event loop, so a panel still renders between
