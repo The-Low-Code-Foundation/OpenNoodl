@@ -67,14 +67,46 @@ building on one.
 - **ERG-005 §2 → add explicit type selection on Component I/O, inference stays the default.**
   Blocked on sequencing only: the other session's §1 changes the same seams.
 
-**Two defects filed, not fixed, by that batch:** `Array Filter`'s `enabled` and `Array Map`'s
-`mapScript` are inert `default`s (a hand-authored filter passes everything through) — and they
-affect the browser identically, so the fix is a behaviour change that wants its own task.
+**Shipped, 2026-08-06 — the third batch (seven parallel agents, fourteen commits `54298d59`…`51f00310`):**
 
-**Still open:** FH-007 (decided, blocked on ERG-005 §1), FH-018, FH-019, FH-021, HUD-001…004,
-MCP-001, MCP-004, CWF-001, 002, 004, 005, 006, 009…016, 018.
+| Task | What landed | Notable |
+|---|---|---|
+| **FH-018** | The Config node is **deleted**, and `GET /config` filters server-side — secrets are *omitted*, not blanked, so an anonymous caller cannot learn a key exists | The endpoint **stayed**: already-deployed artifacts `await getConfig()` on every request, so deleting the route would fail every request to a live cloud function. And "the node is inert" was true of *authoring* only — the dropdown is behind `isRunningLocally()`, so **four shipped prefabs hold nine live Config nodes reading real API keys**. |
+| **FH-019** | Autocomplete that knows your project: `Inputs.` completes from the ports the script itself declares | The spike killed the design. A TS language service on the **renderer thread** costs 3 ms/keystroke; a worker loads from `file://` in 97 ms. What broke Monaco was reusing the *renderer* webpack config for a worker chunk — it fails *after* top-level code runs, so you get a half-working worker that still replies. Three shipped completion lists were wrong: `Props`/`State` are in scope **nowhere**, and there are two different `Noodl` objects (4 properties vs 19). |
+| **FH-021** | A standalone **Subscribe To Changes** node — active by default, no query needed | `RealtimeSubscribeOptions.where` was typed as the *neutral* filter; the backend evaluates subscription filters in the Parse `$` grammar and **fails closed**. A filtered subscription connected, reported `Subscribed`, and delivered nothing, silently. The existing test asserted pass-through and was green either way. |
+| **HUD-001/002** | Record is a canvas control with a live counter; nodes light up as they fire | `TraceEvent.t` is `performance.now()` from the *preview page's* load, not a wall clock — the specified fade computes ~56 years, so every badge would be born faded and nothing would ever draw. Same bug means the Provenance panel prints confident nonsense clock times. |
+| **CWF-009** | A cloud function can ask for a secret by name; the value never leaves the backend | `functions` is the one namespace a graph can read, and the *resolver* supplies it — so `auth`/`webhooks`/`adminToken` are unnameable, not merely forbidden. Leak paths asserted by scanning every file the service wrote, sqlite included. |
+| **CWF-010** | Hash, Random Bytes, UUID, HMAC, JWT Sign/Verify — no new dependency | `Unique Id` is **not** a UUID: `Model.guid()` is 10 characters of `Math.random()`, described as "a globally unique identifier". And `Random Bytes` used `length \|\| 32`, so `Length: 0` silently produced 32 valid-looking bytes. |
+| **CWF-011** | Now, Date Add, Date Difference, Date Compare, Date Parts, and a Timezone on Date To String | `platform.getCurrentTime()` is the **frame** clock (`performance.now()`, and `() => 0` under SSR) — building `Now` on it as specified would have shipped 1970. |
+| **CWF-018** | A function that never answers returns a **504 naming the function**, and tears the graph down | The unbounded await was in `WorkflowRunner.run`, not the `HttpServer` line the doc cited. Closed a second pre-existing leak on the "no Request node" path. |
+| **MCP-001/004** | A "Connect an AI agent" settings section with two filled-in Copy buttons, and READMEs that agree with it | The commands were **verified by running them** — two projects registered side by side. Paths need shell-quoting (the default project location has a space), and a directory named `observe` would have overwritten the other button's registration. |
 
-**Nothing in either batch has been driven in the editor.** Every task doc carries its own live-QA
+### Filed, not fixed
+
+| What | Where it bites |
+|---|---|
+| **Nine Config nodes in four shipped prefabs** (send-grid, mail-gun, stripe, email-verification) now paint as missing-type | Deliberately not rewired to a `String` node — that ships an empty API key that looks like it works. The replacement is CWF-009's Secret node, which landed the same day. **Wants a task.** |
+| `Array Filter`'s `enabled` and `Array Map`'s `mapScript` are inert `default`s | A hand-authored filter passes **everything** through; the map reports "unknown error". Affects the browser identically, so the fix is a behaviour change that wants its own task. |
+| `ProvenancePanel`'s `timeOf()` does `new Date(row.event.t)` | With `t` counting from page load, every walk row prints a confident wrong clock time. Wants a relative render or a `t0` handshake. |
+| A node whose graph **id** is `add` fails the whole bundle load | `Collection` patches `Array.prototype.add` read-only; every function in that bundle then 500s with "Can't find component model". |
+| CWF-009 has no admin route, so an editor Secrets panel has nothing to call | `HttpServer.ts` was outside that agent's scope. |
+| CWF-018's `timeoutMs` has no row in the Permissions panel | Backend + config + admin API are done; the editor control is not. |
+
+### Fixed on the way, worth knowing
+
+`tests/email-flows.test.ts`'s Send Email fixture wired `sent`/`failed` — ports ERG-001 §4 renamed to
+`done`/`failure`. `addConnection` accepts a wire to a port that does not exist **without a word**, so
+both wires went nowhere, no Response node was reached, and the two specs hung to jest's limit
+instead of failing. Three separate sessions independently classified them as known flake. The node
+was always fine. Backend suite is now 79/79 green.
+
+**Still open:** FH-007 (decided, blocked on ERG-005 §1), HUD-003, HUD-004, MCP-004 (docs repo),
+CWF-001, 002, 004, 005, 006, 012, 013, 014, 015, 016, and FH-019 slice 3 (blocked on a dependency
+call: `typescript` is a devDependency and everything in `node_modules` is externalised, so the
+language service works in dev and would not in the packaged app — moving it to `dependencies` is
+~11 MB on a 23 MB package).
+
+**Nothing in any batch has been driven in the editor.** Every task doc carries its own live-QA
 recipe; that pass is still owed, in both themes.
 
 ## The six conversations, in the order I'd have them
