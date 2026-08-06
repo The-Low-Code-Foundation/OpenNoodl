@@ -193,14 +193,20 @@ These have mechanisms recorded and no owner. Several are small.
 - **`Array Filter`'s `enabled` and `Array Map`'s `mapScript` are inert `default`s** — a
   hand-authored filter passes *everything* through. Affects the browser identically, so the fix
   is a behaviour change and wants its own task.
-- **CWF-009 has no admin route**, so an editor Secrets panel has nothing to call.
-- **CWF-018's `timeoutMs` has no row in the Permissions panel.**
+- ~~**CWF-009 has no admin route**~~ — ✅ fixed `4aba4eb2`. `GET /admin/secrets`, `PUT`/`DELETE
+  /admin/secrets/:name`. No `:namespace` segment ever: the handler supplies `functions`, so the
+  backend's own namespaces stay *unnameable* through this door as they are from a graph. No route
+  returns a value. **The panel itself is still not built** and is now the only missing part.
+- ~~**CWF-018's `timeoutMs` has no row in the Permissions panel.**~~ — ✅ fixed `25e9696c`. A
+  `time limit (seconds)` field beside CWF-017's rate limit; blank = the service default, `0` = no
+  limit (CWF-007 streaming's opt-out).
 - **`impersonate()` writes `_Session` rows with `expiresAt` that `findSession` never reads** — an
   "expiring" impersonation session never expires.
 - **`fireWorkflow` never calls `recordTriggerFire`** — workflow-target fires are missing from
   trigger metrics.
-- The Execution History panel's empty state says a function call is recorded "not node by node" —
-  true only for a function with no Log node.
+- ~~The Execution History panel's empty state says a function call is recorded "not node by node"~~
+  — ✅ fixed `98096162`. It now names the case the reader is in ("this call reached none"), which is
+  true whether or not the function has a Log node.
 - **Badges stay `pointer-events: none`** even now HUD-003 gives the click a destination. Revisit
   only if the canvas grows hit-testing.
 
