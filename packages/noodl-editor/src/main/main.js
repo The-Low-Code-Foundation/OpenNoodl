@@ -36,7 +36,22 @@ const { initializeGitHubOAuthHandlers } = require('./github-oauth-handler');
 const { handleProjectMerge } = require('./src/merge-driver');
 const { openLegalWindow } = require('./src/legal-window');
 const { setupReportIPC } = require('./src/report-window');
-const { initialiseDebugDirectory, pruneCrashDirectory, setupDebugLogActions } = require('./src/debug-log');
+const {
+  initialiseDebugDirectory,
+  installMainProcessErrorLog,
+  pruneCrashDirectory,
+  setupDebugLogActions
+} = require('./src/debug-log');
+
+// ALPHA-003 criterion 2 — a main-process exception must leave a record.
+//
+// Installed here, at module scope, rather than at `ready`: the interesting
+// failures are the early ones, and by `ready` we have already required a dozen
+// modules that can throw. Node's default (print to stderr, exit 1) leaves
+// nothing behind in a packaged build, where there is no terminal to print to;
+// this writes the stack to `<userData>/debug/main-errors.txt` first and then
+// reproduces that default exactly.
+installMainProcessErrorLog({ app });
 
 // ALPHA-003 §3 — native crashes, captured locally and sent nowhere.
 //

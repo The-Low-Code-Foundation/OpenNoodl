@@ -1,7 +1,7 @@
 # NodeGX Privacy Policy
 
 **Applies to:** NodeGX 0.1.0 (alpha), the desktop application.
-**Last updated:** 2026-08-03.
+**Last updated:** 2026-08-06.
 
 This document was written by reading the source, not by filling in a template.
 Every claim below names the thing in the product that makes it true, so that a
@@ -191,26 +191,66 @@ implementation that discards everything, and no code path ever replaces it.
 
 ## 5. Crash reporting and logs
 
-**Nothing about a crash is transmitted.** NodeGX has no crash-reporting service,
-and the alpha does not send crash data anywhere. If it breaks, we find out
-because you tell us.
+**Nothing about a crash is transmitted.** NodeGX has no crash-reporting service.
+There is no endpoint to send a crash to, and none is planned for the alpha. If
+it breaks, we find out because you tell us.
 
-Released builds do keep a **local** diagnostic log, in a `debug/` directory
-inside the application-data directory (§7):
+Crashes and errors are recorded **on your machine only**, in the
+application-data directory (§7), and you can open both places from the **Help**
+menu.
 
-- `log-<date>.txt` — a session log which records the editor's console output and
-  any uncaught error, including a limited amount of the data attached to it.
-  Because it captures console output, it can incidentally contain fragments of
-  whatever the editor was logging at the time, which may include parts of your
-  project.
-- `git-*-merge-*.json` — when a Git merge of a project fails, the conflicting
-  versions of the project are written here so the failure can be diagnosed.
+### The diagnostic log — `debug/`
 
-These files stay on your machine. Deleting the `debug/` directory is safe; the
-app recreates it as needed. If you send us a log to help with a bug report, read
-it first — you are choosing to share whatever is in it.
+**Help → Open log folder.**
 
-Development builds run from source do not write these files.
+- `log-<date>.txt` — one file per NodeGX session, in released builds. It records
+  **errors and warnings only**, each with a timestamp. It does not record
+  everything the editor prints.
+
+  File paths, web addresses, anything shaped like an API key or a token, and
+  email addresses are **redacted as the line is written**, using the same
+  redaction rules as "Report a problem" below. Your home directory becomes `~`
+  and paths inside it are dropped rather than shortened. The intent is that this
+  file is safe to attach to a public bug report — read it before you send it
+  anyway, because you are the one sharing it.
+
+  Each entry is capped, and the file stops at 2 MB with a line saying so.
+
+- `main-errors.txt` — NodeGX itself failing, rather than something inside the
+  editor. Redacted harder than the session log: every file path and every web
+  address is removed outright, leaving the error, the function names and the
+  line numbers.
+
+- `git-*-merge-*.json` — written only when a Git merge of a project fails. These
+  are copies of the conflicting versions of your project, so they **do contain
+  your project content and are not redacted**. Do not attach one to a public
+  issue without reading it.
+
+A `README.txt` in that directory repeats the two paragraphs above, so the
+distinction is visible to anyone who opens the folder.
+
+**How long it is kept.** NodeGX deletes files in `debug/` that are older than
+**14 days**, and keeps the directory under **40 files and 20 MB** by deleting the
+oldest first. The sweep runs once each time the app starts. Deleting the whole
+directory yourself is safe; it is recreated on the next launch.
+
+### Native crash dumps — `crashDumps/`
+
+**Help → Open crash report folder**, where the platform provides one.
+
+When NodeGX itself crashes rather than merely erroring, the operating system
+writes a minidump — a snapshot of the program's memory at the moment it died.
+NodeGX enables this capture with uploading explicitly **switched off**, so the
+dumps are written to your disk and go nowhere. They are kept for **30 days**.
+
+A minidump is a memory image, so it can contain fragments of whatever the app
+was holding, including parts of your project. Treat one as private. If you want
+us to see it, attach it to a report yourself.
+
+### Development builds
+
+A build run from source does not write `log-<date>.txt`. It still writes
+`git-*-merge-*.json` if a project merge fails, and it still writes crash dumps.
 
 ### "Report a problem"
 
@@ -274,8 +314,8 @@ The application-data directory referred to above is:
 
 It holds `editorSettings.json` (your editor preferences, in plain text — never
 credentials), the credential files described in §2 and §8, the telemetry file
-(§4), the debug logs and any "Report a problem" folders (§5), together with the
-standard caches any Electron application keeps.
+(§4), the debug logs, the crash dumps and any "Report a problem" folders (§5),
+together with the standard caches any Electron application keeps.
 
 Your **projects** live wherever you chose to put them, and NodeGX does not copy
 them anywhere else.

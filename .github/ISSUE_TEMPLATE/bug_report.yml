@@ -115,10 +115,12 @@ body:
     attributes:
       label: Any error text
       description: |
-        NodeGX does not write a log file yet, so there may be nothing to attach — that is
-        expected and not your fault. If you can, open the developer console
-        (**View → Toggle Developer Tools**, or ⌥⌘I / Ctrl+Shift+I), reproduce the bug, and
-        paste anything red. Screenshots of the editor are just as welcome.
+        Released builds keep a log of errors and warnings. **Help → Open log folder** reveals
+        it and selects the newest file; paste the lines from around the time it broke.
+        Paths, addresses and anything key-shaped are already redacted, but read it before
+        you paste it. Alternatively open the developer console (**Dev → Open Editor
+        Devtools**, or ⌘E / Ctrl+E), reproduce the bug, and paste anything red.
+        Screenshots of the editor are just as welcome.
       render: text
 
   # ALPHA-007 §4. `render: json` fences the content, which makes it a stable

@@ -68,6 +68,10 @@ const CRASH_RETENTION = {
 /** Never swept: it is this directory's own documentation, not its contents. */
 const README_NAME = 'README.txt';
 
+/** Main-process fatals, appended across sessions. See `installMainProcessErrorLog`. */
+const MAIN_ERROR_FILE = 'main-errors.txt';
+const MAX_MAIN_ERROR_BYTES = 256 * 1024;
+
 /**
  * What the directory is, written where a user who opened it will read it.
  *
@@ -92,6 +96,11 @@ function readmeText(retention) {
     '      URLs, credentials and email addresses are redacted as they are',
     '      written, so this file is intended to be safe to attach to a public',
     '      bug report. Read it first anyway; you are the one sharing it.',
+    '',
+    '  main-errors.txt',
+    '      NodeGX itself failing, rather than something inside the editor.',
+    '      Redacted harder than the session log: every file path and web',
+    '      address is removed outright.',
     '',
     '  git-*-merge-*.json',
     '      Written only when a Git merge of a project fails. These are copies',
@@ -248,6 +257,111 @@ function pruneCrashDirectory(app, now = Date.now()) {
 }
 
 /**
+ * ALPHA-003 criterion 2, main-process half — and the one place this task has to
+ * write its own redaction rather than reuse ALPHA-007's.
+ *
+ * The reason is mechanical, not a disagreement: `report/redact.ts` is
+ * TypeScript inside the renderer's webpack bundle. `main.js` is plain JavaScript
+ * executed directly by Electron and can `require` neither. Sharing the module
+ * would mean rewriting ALPHA-007's redactor as JS with a TS wrapper — a large
+ * edit to another task's file, for one caller.
+ *
+ * So instead of a *second policy*, this is a **strictly tighter floor**. Every
+ * rule below removes a superset of what the shared redactor removes in the same
+ * category:
+ *
+ * | Category | `report/redact` | here |
+ * |---|---|---|
+ * | URLs | keeps a known host, drops the path | drops the whole URL, always |
+ * | Paths under our app dir | kept as `<app>/…` | dropped |
+ * | Paths under `~` | `~/...` | dropped |
+ * | Any other path | `<path>` | `<path>` |
+ * | Credentials | a named deny-list of shapes | any long opaque run |
+ *
+ * It therefore cannot leak something the shared redactor would have caught,
+ * which is the property that matters and the one the tests assert. The cost is
+ * that a main-process stack loses its `<app>` frame paths — function names and
+ * line numbers survive, which is what anyone reads.
+ *
+ * If you widen anything here, widen it *downwards* — towards more redaction.
+ */
+function redactHard(text) {
+  if (!text) return '';
+  return (
+    String(text)
+      // Any long opaque run: keys, tokens, JWT segments, hashes. Anchored on a
+      // word boundary and requiring a digit or a `-`/`_` so ordinary English
+      // words and long identifiers survive.
+      .replace(/\b(?=[A-Za-z0-9_-]*[0-9_-])[A-Za-z0-9_-]{20,}\b/g, '[redacted]')
+      // Whole URLs, no host allow-list.
+      .replace(/\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>)\]]+/gi, '<url>')
+      // Absolute paths, POSIX and Windows, greedy across single spaces so a
+      // directory called `Acme Legal` cannot leave ` Legal` behind as prose.
+      .replace(/(?:[A-Za-z]:[\\/]|[\\/])[^\s"'<>,;:)\]}]+(?:[ \t][^\s"'<>,;:)\]}]+)*/g, '<path>')
+      .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, '[redacted-email]')
+  );
+}
+
+/** One fatal record, ready to append. */
+function formatFatal(error, at = new Date()) {
+  const name = (error && error.name) || 'Error';
+  const message = (error && error.message) || String(error);
+  const stack = error && error.stack ? String(error.stack) : '';
+  const body = redactHard(stack || `${name}: ${message}`);
+  return `${at.toISOString()}  FATAL  ${body.replace(/\n/g, '\n    ')}\n`;
+}
+
+/**
+ * Record a main-process fatal, then die exactly as Node would have.
+ *
+ * Criterion 2 asks for "a main-process exception" to leave a record. In a
+ * packaged build there is no terminal, so Node's default — print the stack to
+ * stderr and exit 1 — leaves no record at all; the app simply vanishes.
+ *
+ * The handler therefore writes first and then **reproduces that default
+ * precisely**. It deliberately does not keep the app alive: an uncaught
+ * exception in the main process leaves state nobody can reason about, and a
+ * crash reporter that converts crashes into zombies is worse than no handler.
+ *
+ * `unhandledRejection` is deliberately **not** hooked. On Node 22 (Electron 43)
+ * the default is to rethrow, which arrives here as an uncaught exception —
+ * adding a listener would suppress that and silently change the app's failure
+ * mode, which is the opposite of this task.
+ */
+function installMainProcessErrorLog({ app, dir, exit } = {}) {
+  const target = dir || (app ? debugDirectory(app) : null);
+  if (!target) return () => {};
+
+  const handler = (error) => {
+    try {
+      fs.mkdirSync(target, { recursive: true });
+      const file = path.join(target, MAIN_ERROR_FILE);
+      // One file across sessions rather than one per launch — a main-process
+      // fatal is rare, and a directory of near-empty files is worse to read.
+      // That means the retention sweep never ages it out (every write refreshes
+      // its mtime), so it carries its own cap: past 256KB it starts again.
+      let size = 0;
+      try {
+        size = fs.statSync(file).size;
+      } catch (_statError) {
+        /* not there yet */
+      }
+      const line = formatFatal(error);
+      if (size > MAX_MAIN_ERROR_BYTES) fs.writeFileSync(file, line);
+      else fs.appendFileSync(file, line);
+    } catch (_writeError) {
+      // Nowhere left to report to.
+    }
+    // Node's default, verbatim.
+    console.error(error);
+    (exit || process.exit.bind(process))(1);
+  };
+
+  process.on('uncaughtException', handler);
+  return () => process.removeListener('uncaughtException', handler);
+}
+
+/**
  * The newest thing worth pointing at.
  *
  * `shell.showItemInFolder` wants a *file*: pointed at a directory, Windows
@@ -301,6 +415,8 @@ module.exports = {
   DEBUG_RETENTION,
   CRASH_RETENTION,
   README_NAME,
+  MAIN_ERROR_FILE,
+  MAX_MAIN_ERROR_BYTES,
   readmeText,
   listFiles,
   pruneDirectory,
@@ -308,6 +424,9 @@ module.exports = {
   crashDirectory,
   initialiseDebugDirectory,
   pruneCrashDirectory,
+  redactHard,
+  formatFatal,
+  installMainProcessErrorLog,
   newestFile,
   revealDirectory,
   setupDebugLogActions

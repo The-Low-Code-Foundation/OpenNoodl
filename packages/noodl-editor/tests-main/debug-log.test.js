@@ -14,13 +14,18 @@ const path = require('path');
 const {
   DAY_MS,
   DEBUG_RETENTION,
+  MAIN_ERROR_FILE,
+  MAX_MAIN_ERROR_BYTES,
   README_NAME,
   debugDirectory,
+  formatFatal,
   initialiseDebugDirectory,
+  installMainProcessErrorLog,
   newestFile,
   pruneCrashDirectory,
   pruneDirectory,
   readmeText,
+  redactHard,
   revealDirectory,
   setupDebugLogActions
 } = require('../src/main/src/debug-log');
@@ -217,6 +222,99 @@ describe('pruneCrashDirectory', () => {
   it('is a no-op when the platform has no crash directory', () => {
     const result = pruneCrashDirectory(fakeApp({}), NOW);
     expect(result.deleted).toBe(0);
+  });
+});
+
+describe('redactHard — the strictly tighter floor', () => {
+  it('drops every URL, including hosts the shared redactor would keep', () => {
+    expect(redactHard('GET https://api.github.com/repos/a/b failed')).toBe('GET <url> failed');
+    expect(redactHard('POST https://acme.example.com/x')).toBe('POST <url>');
+  });
+
+  it('drops every absolute path, including our own app directory', () => {
+    expect(redactHard('at f (/Applications/NodeGX.app/Contents/Resources/app/main.js:1:2)')).not.toContain('NodeGX.app');
+    expect(redactHard('ENOENT: /Users/rich/Clients/Acme Legal/project.json')).not.toContain('Acme');
+    expect(redactHard('cannot read C:\\Users\\rich\\Projects\\thing')).not.toContain('rich');
+  });
+
+  it('keeps the part of a stack anyone actually reads', () => {
+    const out = redactHard('TypeError: x is not a function\n    at startBackend (/a/b/c.js:12:3)');
+    expect(out).toContain('TypeError: x is not a function');
+    expect(out).toContain('startBackend');
+  });
+
+  it('removes any long opaque run, not only the shapes on a deny-list', () => {
+    expect(redactHard('token=Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5')).toContain('[redacted]');
+    expect(redactHard('sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAA')).toContain('[redacted]');
+  });
+
+  it('leaves ordinary prose alone', () => {
+    expect(redactHard('Backend failed to start within the timeout')).toBe(
+      'Backend failed to start within the timeout'
+    );
+  });
+
+  it('removes email addresses', () => {
+    expect(redactHard('user rich@digitalbricks.io not found')).toContain('[redacted-email]');
+  });
+});
+
+describe('installMainProcessErrorLog', () => {
+  let removeHandler;
+
+  afterEach(() => {
+    if (removeHandler) removeHandler();
+    removeHandler = null;
+  });
+
+  function fire(dir, error) {
+    const exits = [];
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    removeHandler = installMainProcessErrorLog({ dir, exit: (code) => exits.push(code) });
+    process.emit('uncaughtException', error);
+    spy.mockRestore();
+    return exits;
+  }
+
+  it('writes the stack where a packaged build has no terminal to print it to', () => {
+    const dir = path.join(root, 'debug');
+    fire(dir, new Error('backend refused to start'));
+
+    const text = fs.readFileSync(path.join(dir, MAIN_ERROR_FILE), 'utf8');
+    expect(text).toContain('FATAL');
+    expect(text).toContain('backend refused to start');
+  });
+
+  it('reproduces Node’s default rather than turning a crash into a zombie', () => {
+    expect(fire(path.join(root, 'debug'), new Error('boom'))).toEqual([1]);
+  });
+
+  it('does not hook unhandledRejection, whose default is already fatal on Node 22', () => {
+    const before = process.listenerCount('unhandledRejection');
+    removeHandler = installMainProcessErrorLog({ dir: path.join(root, 'debug'), exit: () => {} });
+    expect(process.listenerCount('unhandledRejection')).toBe(before);
+  });
+
+  it('starts the file again rather than growing it without bound', () => {
+    const dir = path.join(root, 'debug');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, MAIN_ERROR_FILE), 'x'.repeat(MAX_MAIN_ERROR_BYTES + 1));
+
+    fire(dir, new Error('boom'));
+
+    expect(fs.statSync(path.join(dir, MAIN_ERROR_FILE)).size).toBeLessThan(4096);
+  });
+
+  it('never lets a failed write hide the crash', () => {
+    // An unwritable directory: the handler must still print and exit.
+    expect(fire(path.join(root, 'no', 'such', '\0bad'), new Error('boom'))).toEqual([1]);
+  });
+
+  it('stamps and redacts the record', () => {
+    const rendered = formatFatal(new Error('open /Users/rich/Secret Client/x failed'), new Date(NOW));
+    expect(rendered).toContain('2026-08-06T12:00:00.000Z');
+    expect(rendered).not.toContain('Secret Client');
+    expect(rendered.endsWith('\n')).toBe(true);
   });
 });
 
