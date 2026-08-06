@@ -41,6 +41,24 @@ export function registerNodes(runtime: NoodlRuntime) {
     require('./cloud/deleteuser'),
     require('./cloud/verifysessiontoken'),
 
+    /**
+     * F86 — role membership. Here for the same reason as the four above, one
+     * notch further up again: **role membership is the only way a `_User` row
+     * acquires privilege on this backend** (`SecurityState.rolesForUser`; admin
+     * authority is a credential, not a row). An Add User To Role node in a
+     * browser bundle would be one wire from a button to "make me staff", so
+     * there is no browser version of these and there will not be one.
+     *
+     * Deliberately NOT part of the CWF-015 family above: `users/SystemUsers.ts`
+     * has a documented, tested property that it writes no roles, and that is
+     * what makes "a node that can create a user" provably not "a node that can
+     * create an admin". Granting privilege has its own module, its own process
+     * global and its own audit actions. See `cloud/system-roles.ts`.
+     */
+    require('./cloud/addusertorole'),
+    require('./cloud/removeuserfromrole'),
+    require('./cloud/getuserroles'),
+
     require('./data/aggregatenode'),
 
     /**
