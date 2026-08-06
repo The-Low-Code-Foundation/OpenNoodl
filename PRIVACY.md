@@ -203,9 +203,9 @@ menu.
 
 **Help → Open log folder.**
 
-- `log-<date>.txt` — one file per NodeGX session, in released builds. It records
-  **errors and warnings only**, each with a timestamp. It does not record
-  everything the editor prints.
+- `log-<date>.txt` — one file per NodeGX session. It records **errors and
+  warnings only**, each with a timestamp. It does not record everything the
+  editor prints.
 
   File paths, web addresses, anything shaped like an API key or a token, and
   email addresses are **redacted as the line is written**, using the same
@@ -249,8 +249,10 @@ us to see it, attach it to a report yourself.
 
 ### Development builds
 
-A build run from source does not write `log-<date>.txt`. It still writes
-`git-*-merge-*.json` if a project merge fails, and it still writes crash dumps.
+Everything above applies to a build run from source as well. An earlier version
+of this policy said development builds wrote no log; that was incorrect — the
+setting that was supposed to disable it had never been set in any build, so the
+log has always been written. Corrected 2026-08-06.
 
 ### "Report a problem"
 

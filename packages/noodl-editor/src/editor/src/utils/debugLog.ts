@@ -2,9 +2,10 @@
  * ALPHA-003 §1 — what a diagnostic log line is allowed to say.
  *
  * The on-disk log is not new. `bugtracker.ts` has written
- * `<userData>/debug/log-<date>.txt` in every packaged build since the fork
- * (`enabled = !Config.devMode`, and `devMode: true` exists only in
- * `config-dev.js`). What was new in ALPHA-003 is the *scope*: before this
+ * `<userData>/debug/log-<date>.txt` in every build since the fork — including
+ * development ones, because the `Config.devMode` flag that was supposed to
+ * disable it has never been set in any build (see `bugtracker.ts`'s note on
+ * `enabled`). What was new in ALPHA-003 is the *scope*: before this
  * module the writer teed **every** `console.log` into that file together with
  * up to 10,000 characters of whatever object was attached, un-redacted and
  * un-timestamped. In an editor whose console carries project graphs, that is

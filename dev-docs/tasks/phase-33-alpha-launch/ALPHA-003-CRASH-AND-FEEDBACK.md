@@ -27,9 +27,20 @@ without leaving the app.
   `main.js` now calls `crashReporter.start({ uploadToServer: false })`.
 - ~~**No log file.**~~ **This was wrong, and it was the load-bearing premise of
   the whole task.** Corrected 2026-08-06 by reading the code:
-  `src/editor/src/utils/bugtracker.ts:97` sets `enabled = !Config.devMode`, and
-  `devMode: true` appears **only** in `shared/config/config-dev.js:9`. So in every
-  packaged build the BugTracker is live and has been since the fork. It creates
+  `src/editor/src/utils/bugtracker.ts:97` set `enabled = !Config.devMode`, and
+  `devMode: true` appears only in `shared/config/config-dev.js:9`.
+
+  **And that flag has never been set, in any build.** Nothing in the repo
+  requires `config-dev.js`; the only config swap is
+  `scripts/noodl-editor/build-editor.ts:20-21`, which copies `config-dist.js`
+  over `config.js` for a packaged build, and neither declares `devMode`. So the
+  branch has always taken the same side and the log is written from source too —
+  measured 2026-08-06 on a `npm run dev` launch of this checkout, which had
+  accumulated **465 log files**. Four other places in the tree stated the
+  opposite (`errorTail.ts`, `collect.ts`, `PRIVACY.md` §5, and this task's own
+  brief); all four are corrected.
+
+  So the BugTracker is live and has been since the fork. It creates
   `<userData>/debug/`, appends to `log-<date>.txt`, monkey-patches `console.log`
   so that *every* call is teed into that file with up to 10,000 characters of
   `JSON.stringify(data, null, 2)` attached (`bugtracker.ts:26–30`, `:64`, `:78`),
@@ -45,7 +56,8 @@ without leaving the app.
   1. **Nobody was ever told, and nobody was asked.** The log captures whatever
      `console.log` was handed, which in this editor includes project content.
   2. **It was unbounded.** One file per launch, forever, no size cap, never
-     pruned. Confirmed by reading the writer: nothing deletes anything.
+     pruned. Confirmed by reading the writer, and then by measurement: the first
+     launch after the sweep landed deleted **424** files.
   3. So the task is **surfacing and scoping an existing log**, not adding one.
 
   All three are addressed by this task; see "What was built" at the end.

@@ -6,16 +6,25 @@
  * §3 is explicit that the existing log is **not attachable raw**, and reading
  * the mechanism confirms why:
  *
- * - `bugtracker.ts` tees *every* `console.log` into
+ * - ~~`bugtracker.ts` tees *every* `console.log` into
  *   `<userData>/debug/log-<date>.txt`, with up to 10,000 characters of attached
- *   data per line. That is project content by the megabyte.
+ *   data per line. That is project content by the megabyte.~~ True when written;
+ *   **fixed by ALPHA-003** — `console.log` is no longer captured at all and
+ *   every field goes through this directory's own `redact`.
  * - The same directory holds `git-*-merge-*.json`, which are whole project
- *   graphs written by the merge driver (`PRIVACY.md` §5 says so).
- * - The file has **no timestamps**. §3 asks for "the last few minutes", and
- *   that cannot be derived from it at all.
- * - `bugtracker` is disabled when `Config.devMode` is set, so in a build run
- *   from source the file does not exist — which is exactly the build anyone
- *   testing this feature is using.
+ *   graphs written by the merge driver (`PRIVACY.md` §5 says so). Still true,
+ *   and still the reason the log is not attachable wholesale.
+ * - ~~The file has **no timestamps**.~~ It does now (ALPHA-003). The ring
+ *   buffer below stays regardless: it answers "what was on screen just before
+ *   the reporter clicked" without reading a file off disk, which is a different
+ *   question from "what did this session record".
+ * - ~~`bugtracker` is disabled when `Config.devMode` is set, so in a build run
+ *   from source the file does not exist.~~ **This was wrong.** `Config.devMode`
+ *   has never been set in any build — `config-dev.js` is not referenced by
+ *   anything, and the only config swap in the repo
+ *   (`scripts/noodl-editor/build-editor.ts:20-21`) copies `config-dist.js`,
+ *   which does not declare it. The file exists in a source build too; a `npm run
+ *   dev` checkout had accumulated 465 of them. Corrected 2026-08-06, ALPHA-003.
  *
  * So this module keeps its own ring buffer instead: errors and warnings only,
  * timestamped, bounded, in memory, never written anywhere until the reporter

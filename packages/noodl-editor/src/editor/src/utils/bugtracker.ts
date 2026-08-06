@@ -3,11 +3,13 @@
  *
  * ## What this was
  *
- * This file has written `<userData>/debug/log-<date>.txt` in every packaged
- * build since the fork — `enabled = !Config.devMode`, and `devMode: true`
- * appears only in `config-dev.js`, so "released build" and "log is live" are
- * the same condition. It is the one piece of ALPHA-003 that already existed,
- * and the reason the task is *scoping and surfacing* rather than *adding*.
+ * This file has written `<userData>/debug/log-<date>.txt` in **every** build
+ * since the fork. It is the one piece of ALPHA-003 that already existed, and
+ * the reason the task is *scoping and surfacing* rather than *adding*.
+ *
+ * "Every build" including development ones — see the note on `enabled` at the
+ * bottom of this file, which is the correction to a premise four other places
+ * in the tree had wrong.
  *
  * It did four things wrong, all of them the same mistake:
  *
@@ -206,12 +208,33 @@ function formatArgument(value: unknown): string {
 export const logFileDir = filesystem.join(platform.getUserDataPath(), 'debug');
 const logFilePath = filesystem.join(logFileDir, logFileName(new Date()));
 
-const enabled = !Config.devMode;
+/**
+ * **`Config.devMode` has never been set, in any build.**
+ *
+ * The old line here was `const enabled = !Config.devMode`, and everyone who
+ * read it — including `errorTail.ts`, `collect.ts`, `PRIVACY.md` and this
+ * task's own brief — concluded that a build run from source writes no log.
+ * It does. `devMode: true` lives in `shared/config/config-dev.js`, and
+ * **nothing requires that file**: the only config swap in the repo is
+ * `scripts/noodl-editor/build-editor.ts:20-21`, which copies `config-dist.js`
+ * over `config.js` for a packaged build, and neither of those declares
+ * `devMode`. So the flag is `undefined` everywhere and the branch has always
+ * taken the same side.
+ *
+ * Measured 2026-08-06 on a `npm run dev` launch: 465 log files in
+ * `<userData>/debug/`, every one of them written by a source build.
+ *
+ * Left on deliberately, now that the contents are scoped and redacted. A
+ * diagnostic log that only exists in the build nobody developing against it can
+ * run is a log nobody tests, and the two-line dev/packaged divergence bought
+ * nothing that `packaged` in the report diagnostics does not already say.
+ */
+const enabled = true;
+void Config;
 
 // The directory is no longer created at import time. It used to be created on
-// every launch including development ones, where the tracker is disabled and
-// therefore never wrote anything into it — an empty `debug/` folder in the
-// application-data directory that implied a log existed when none did.
+// import, before anything had been written, so an installation that never hit
+// an error still grew an empty-but-present `debug/` folder.
 bugtracker = enabled ? new BugTracker() : new EmptyBugTracker();
 
 export { bugtracker };

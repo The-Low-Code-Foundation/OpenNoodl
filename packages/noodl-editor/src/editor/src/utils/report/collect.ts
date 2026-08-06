@@ -104,9 +104,15 @@ export function collectContext(): Omit<ComposeReportInput, 'reportId' | 'capture
     app: {
       version: safe(() => platform.getVersion(), '0.0.0'),
       buildNumber: safe(() => platform.getBuildNumber(), undefined),
-      // `Config.devMode` is what turns the on-disk log off; a report from a
-      // source build means something different from one from a packaged app,
-      // and triage should not have to guess which it is reading.
+      // A report from a source build means something different from one from a
+      // packaged app, and triage should not have to guess which it is reading.
+      //
+      // `process.env.devMode` is the right signal and the only working one:
+      // `main.js` sets it from `--dev`. It is *not* the same thing as
+      // `Config.devMode`, which an earlier version of this comment claimed
+      // turns the on-disk log off — that flag has never been set in any build
+      // (`config-dev.js` is unreferenced), so the log is written from source
+      // too. Corrected 2026-08-06, ALPHA-003.
       packaged: safe(() => !process.env.devMode, true)
     },
     os: {
