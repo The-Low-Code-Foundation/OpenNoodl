@@ -222,8 +222,9 @@ export function SearchPanel({ backendId, backendName, onClose }: SearchPanelProp
         {!fts5Available && (
           <div className={css.WarningBanner}>
             <Text textType={TextType.DefaultContrast} style={{ fontSize: '12px' }}>
-              This backend&apos;s SQLite engine does not have the FTS5 extension. Search cannot be enabled — there is
-              no degraded fallback.
+              The database engine this backend is running on was built without the search extension, so search cannot
+              be turned on here. Everything else in the backend works as normal, and there is no partial version to
+              fall back on — a query with a search term will fail until this backend runs on an engine that has it.
             </Text>
           </div>
         )}
@@ -231,24 +232,48 @@ export function SearchPanel({ backendId, backendName, onClose }: SearchPanelProp
         <div className={css.Section}>
           <div className={css.SpreadRow}>
             <VStack>
-              <Text textType={TextType.DefaultContrast}>Full-text search</Text>
-              <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
+              <Text textType={TextType.DefaultContrast}>Search</Text>
+              <Text textType={TextType.Shy} style={{ fontSize: '11px', marginTop: '4px' }}>
+                Let the people using your app find records by typing words — <em>blue running shoes</em> — instead of
+                matching a field exactly. Pick a collection below, tick the fields worth searching, and press{' '}
+                <em>Enable</em>.
+              </Text>
+              <Text textType={TextType.Shy} style={{ fontSize: '11px', marginTop: '6px' }}>
                 {enabledCount === 0
-                  ? 'No collections have search enabled yet.'
-                  : `${enabledCount} collection${enabledCount === 1 ? '' : 's'} indexed.`}{' '}
-                Tokenizer default is unicode61 (no language-specific stemming or CJK segmentation).
+                  ? 'Nothing is searchable yet. Until you enable a collection here, queries only match fields exactly — and a Query Records node with something in its Search input will fail with "search is not enabled for this collection".'
+                  : `${enabledCount} collection${enabledCount === 1 ? ' is' : 's are'} searchable. Collections not listed as enabled below still match fields exactly only.`}
+              </Text>
+              <Text textType={TextType.Shy} style={{ fontSize: '11px', marginTop: '6px' }}>
+                Once a collection is enabled, the <em>Search</em> input on a <em>Query Records</em> node (under Cloud
+                Services) works against it: wire a text field to it and you get back the records that match, best
+                match first. Each record arrives with two extra properties you can show — <em>_score</em>, higher for
+                a better match, and <em>_snippet</em>, the matching text with the words marked.
+              </Text>
+              <Text textType={TextType.Shy} style={{ fontSize: '11px', marginTop: '6px' }}>
+                What it costs: the backend keeps its own copy of the fields you tick, so the database grows by roughly
+                the size of that text, and saving a record does a little extra work to keep the copy current. Reading
+                and querying do not get slower. Disabling throws the copy away and leaves your records untouched, so
+                turning this on is not a one-way door.
               </Text>
             </VStack>
           </div>
         </div>
 
         <div className={css.Section}>
-          <Text textType={TextType.DefaultContrast} style={{ marginBottom: '8px' }}>
+          <Text textType={TextType.DefaultContrast} style={{ marginBottom: '4px' }}>
             Collections
+          </Text>
+          <Text textType={TextType.Shy} style={{ fontSize: '11px', marginBottom: '10px' }}>
+            Tick the fields holding words a person would actually type — a title, a description, a name. Numbers,
+            dates and IDs are better found with an exact filter, so leaving them unticked costs you nothing. The
+            dropdown decides how text is chopped into words: leave it on <em>unicode61</em> unless you know you need
+            otherwise — it suits languages written with spaces between words, does not treat <em>run</em> and{' '}
+            <em>running</em> as the same word, and does not split Chinese, Japanese or Korean text.
           </Text>
           {tables.length === 0 && (
             <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
-              No collections yet — create one in the Schema panel.
+              This backend has no collections yet, so there is nothing to make searchable. Create one in the Schema
+              panel, put some records in it, then come back here.
             </Text>
           )}
           {tables.map((table) => {
