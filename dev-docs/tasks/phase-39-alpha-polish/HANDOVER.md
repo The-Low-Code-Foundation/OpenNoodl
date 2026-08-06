@@ -1,5 +1,13 @@
 # Phase 39 — handover prompt
 
+> 🔴 **SUPERSEDED — do not paste the block below.** It is a *sixth*-session artefact. The seventh
+> session (2026-08-04) closed POL-016 and all three of the "loose ends" this file lists as open,
+> and filed POL-017, which this file does not mention at all. Anyone working from it re-does
+> finished work. `PROGRESS.md` is the register; the current cross-phase handover is
+> [`../NEXT-SESSION.md`](../NEXT-SESSION.md).
+>
+> Kept as the record of what the sixth session handed over.
+
 Written 2026-08-04 at the end of the **sixth** build session (`0667f365`…`db7aaf0b`).
 Paste the block below into a fresh session.
 
