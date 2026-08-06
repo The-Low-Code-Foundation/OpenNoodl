@@ -240,6 +240,26 @@ a week not on the product, and both weeks are the same person's.
 
 ---
 
+## Two corrections found while checking the counter-review — both widen the envelope
+
+Recorded here because they are the only places the adversarial read over-reached, and both were found
+by verifying it rather than by defending against it.
+
+1. **The broken SSR server does not touch SSG.** `ssg.js:59-76` renders routes **sequentially in one
+   process** — no express, no `NodeCache`. The concurrency race needs two simultaneous requests; the
+   permanent cache is `index.js`'s; the `app.get('*')` DoS is a server route. None can occur in a
+   build step. Only the React 18/19 mismatch carries over. **So static-output projects are unaffected
+   today**, and phase 49's DIS-004 gates dynamic per-request rendering, not SEO in general.
+2. **"You can never host two customers on one machine" is true of a platform, not a product.** Cloud
+   functions are build-time artifacts compiled into the deployed bundle — there is no runtime
+   endpoint that creates one (checked the route table). So *"the author of a function is the person
+   who deploys the backend"* holds intact for ordinary SaaS, where the vendor writes every function
+   and tenants are ACL-isolated. The real constraint is narrower and sharper: **do not build a
+   platform where your users author logic.**
+
+Neither rescues the comcoi verdict. Both matter for
+[what NodeGX *is* for](NODEGX-WHAT-IT-IS-FOR.md), which is the companion this exercise was missing.
+
 ## The revised verdict
 
 | | Soft (mine) | Hard (skeptic) | **Where I land** |
@@ -278,6 +298,9 @@ Worth recording, because it generalises past this comparison.
    did not think of them: **I inherited the repo's blind spots along with its evidence.**
 3. **I discounted the human channel.** *"An agent does not mind that a 600-node graph is ugly."* The
    reviewer is the control on the agent, and I optimised the wrong side.
+
+The constructive counterpart — the fitness envelope these three documents implied and none of them
+stated — is [NODEGX-WHAT-IT-IS-FOR.md](NODEGX-WHAT-IT-IS-FOR.md).
 
 The counter-review cost one subagent and about twenty minutes. It changed one verdict, corrected two
 phase docs, and found a shipping SSR server that races on process globals. **Commission the skeptic
