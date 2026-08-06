@@ -81,6 +81,27 @@ building on one.
 | **CWF-018** | A function that never answers returns a **504 naming the function**, and tears the graph down | The unbounded await was in `WorkflowRunner.run`, not the `HttpServer` line the doc cited. Closed a second pre-existing leak on the "no Request node" path. |
 | **MCP-001/004** | A "Connect an AI agent" settings section with two filled-in Copy buttons, and READMEs that agree with it | The commands were **verified by running them** — two projects registered side by side. Paths need shell-quoting (the default project location has a space), and a directory named `observe` would have overwritten the other button's registration. |
 
+**Shipped, 2026-08-06 — the fourth batch (seven parallel agents):**
+
+| Task | What landed | Notable |
+|---|---|---|
+| **CWF-001** | A **Params** section on Call Function — say what a step passes the function | **The headline was false**: you could pass data since WFA-003, with a test proving it end to end. The *declaration* was missing, so the editor had no row to draw. And the specified `raw: true` is the flag that tells the engine **not** to resolve a param. |
+| **CWF-002** | A workflow's answer reaches the caller (`sync`/`async` per trigger + a visible `return` step) | **Backwards**: the dispatcher already awaits and always has — a webhook has held the connection for a 10-minute `wait` since WF-005. `sync` is the only mode that ever had a bound. The deepest unbounded await is `WorkflowEngine.run`'s `acquire()`. The editor's **Test fire** was dropping the body. |
+| **CWF-005** | Retry folds into a policy on Call Function — eight step kinds, not nine | The defaults trap fired in the half the doc didn't name: the *executor's* fallbacks were what ever applied, so migrating without materialising `maxAttempts` would have silently turned three attempts into one. **Three readers, not two** — the proposal review reads off *disk*, so it announced a semantic change for a proposal making none. |
+| **CWF-012** | Parse CSV / To CSV, on the parser Static Array has had all along | The specified integrity check was the wrong check: an unterminated quote does **not** truncate — `exec` with `g` scans forward, so every row arrives and one word vanishes. Contiguity is the check. The doc's body limit was **160× too small**. |
+| **CWF-013** | A Log node whose line carries the request id, and a logged secret comes out redacted | `redact()` is **key-based** and a log message is a bare string — the Log node is the first thing in the product to break the mitigation everything else relies on. Value-based scrubbing added. ⚠️ The "use the Send Email seam" advice was **wrong**: that seam is a process global, and a log line's value *is* the request id. |
+| **CWF-014** | A Request parameter can say what it is; a body that doesn't match never reaches the graph | **The three-debts claim does not hold** — AIB-001 shipped 2026-08-03 and was never this hole; ERG-005's defect is a component interface written nowhere. One debt paid, **so the design was made smaller**. The typecast table declares which *wires* are legal and converts nothing. |
+| **CWF-015** | Create/Update/Delete User and Verify Session Token, as the system | The doc's stated foundation was unusable: **`POST /users` mints a session and returns its token**, so a node built on it could hand a caller a session for the account it just made. There is **no session expiry** — `_Session` declares no `expiresAt`. |
+| **HUD-003/004** | Expand the pill to see what you just did; per-peer trace ownership | **The data-loss bug is fixed**: an agent's `start_trace` used to destroy a human's recording outright. `start_trace`/`stop_trace`'s tool descriptions were lies. Giving editors a `clientId` would have regressed the relay's disconnect broadcast — it ran for every socket type and got away with it only because editors had none. |
+| **FH-023** | The four prefabs read their keys from the backend again | **`library:check` reported 58/58 clean while the library shipped nine typeless nodes** — `unknownNodeType` was a warning, contradicting the script's own comment. Now a real gate, including the first check that a wire to a component instance names a port that component declares. A double-send was one hop away (NDA-017's run-on-change default vs a key that now arrives mid-request). |
+
+### Caught in verification, not by any agent's gates
+
+- **HEAD advertised a node it did not register.** CWF-013's `require('./src/nodes/std-library/log')` sat in the working tree while the generated catalog and the cloud picker snapshot naming `net.noodl.Log` were both committed. `catalog:check` and `cloud-library:check` **both passed** — they compare the snapshot to the *working tree* source. Per CWF-003's drive, an unregistered type hangs the request rather than failing it. Fixed in `1456c78a`.
+- **`tests/email-flows.test.ts` had been red for days as "known flake."** See below — three sessions each cleared themselves of it correctly and none diagnosed it.
+
+**Gates at the end of the day:** `typecheck:runtime|cloud|viewer|editor|editor-tests` green · `catalog:check`, `cloud-library:check`, `catalog:merge:check` green · `library:check` 58/58 · runtime 2284 · cloud-runtime 172 · **nodegx-backend 86 suites / 887** · observe 23 · mcp 161 · **`Jasmine: 2295 specs, 0 failures`**. Cloud picker: **48 → 81 node types** in one day.
+
 ### Filed, not fixed
 
 | What | Where it bites |
@@ -91,6 +112,12 @@ building on one.
 | A node whose graph **id** is `add` fails the whole bundle load | `Collection` patches `Array.prototype.add` read-only; every function in that bundle then 500s with "Can't find component model". |
 | CWF-009 has no admin route, so an editor Secrets panel has nothing to call | `HttpServer.ts` was outside that agent's scope. |
 | CWF-018's `timeoutMs` has no row in the Permissions panel | Backend + config + admin API are done; the editor control is not. |
+| **`runRetentionCleanup()` / `cleanupByAge` have zero call sites** | Fully implemented. **Nothing trims the execution-history table today.** Hence CWF-013's per-run cap of 200 log lines. |
+| **NDA-017 changed the run-on-value-change default and migrated nothing** | Repo-wide. It is what put a double-send one hop away in FH-023, and it silently reverses the contract graphs were authored against. Needs a decision. |
+| `impersonate()` writes `_Session` rows with `expiresAt`; `findSession` never reads it | An "expiring" impersonation session never expires (CWF-015). |
+| `fireWorkflow` never calls `recordTriggerFire` | Workflow-target fires are absent from trigger metrics (CWF-002). |
+| The Execution History panel's empty state says a function call is recorded "not node by node" | True only for a function with no Log node (CWF-013). |
+| Badges stay `pointer-events: none` even now HUD-003 gives the click a destination | A badge is canvas-space, arrives on a 1.5s poll and fades after 3s — a live target under the cursor at unpredictable moments during the exact interaction being recorded. Revisit if the canvas grows hit-testing. |
 
 ### Fixed on the way, worth knowing
 
@@ -100,11 +127,17 @@ both wires went nowhere, no Response node was reached, and the two specs hung to
 instead of failing. Three separate sessions independently classified them as known flake. The node
 was always fine. Backend suite is now 79/79 green.
 
-**Still open:** FH-007 (decided, blocked on ERG-005 §1), HUD-003, HUD-004, MCP-004 (docs repo),
-CWF-001, 002, 004, 005, 006, 012, 013, 014, 015, 016, and FH-019 slice 3 (blocked on a dependency
-call: `typescript` is a devDependency and everything in `node_modules` is externalised, so the
-language service works in dev and would not in the packaged app — moving it to `dependencies` is
-~11 MB on a 23 MB package).
+**Still open, and it is now a short list:**
+
+| Task | Why it is still open |
+|---|---|
+| **CWF-004** — Transform + data steps | Was blocked on CWF-001, which has now landed. Unblocked. |
+| **CWF-006** — triggers + entry step | A **subset of [phase 43](../phase-43-backend-authoring-clarity/README.md)**, which supersedes it if that lands first. CWF-002 deferred its entry-card indicator here for the same reason. |
+| **CWF-007** — streaming | A design doc to argue with, not a build. |
+| **CWF-016** — idempotency keys | The only item with nothing built behind it. Design first, concurrency test first. |
+| **FH-007** / ERG-005 §2 | **Decided** (explicit types, inference default). Blocked on sequencing only — the other session's §1 changes the same seams. |
+| **FH-019 slice 3** — the language service | Blocked on **a dependency call from Richard**: `typescript` is a devDependency and everything in `node_modules` is externalised, so it resolves in dev and would silently not in the packaged app. Moving it to `dependencies` is ~11 MB on a 23 MB package. Slices 1–2 shipped and are useful without it. |
+| **MCP-004** — the docs page | ⚠️ A change to the **docs repo**, not this one. MCP-001 already probes the URL once per session and renders the link only if it answers, so the page turns itself on when published — no editor release needed. The exact path, sidebar entry and content are specified at the foot of MCP-004. |
 
 **Nothing in any batch has been driven in the editor.** Every task doc carries its own live-QA
 recipe; that pass is still owed, in both themes.
