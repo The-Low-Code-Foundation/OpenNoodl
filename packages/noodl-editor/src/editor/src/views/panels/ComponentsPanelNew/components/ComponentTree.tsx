@@ -49,6 +49,11 @@ interface ComponentTreeProps {
    * sheet.
    */
   runtimeType?: 'browser' | 'cloud';
+  /**
+   * SPR-005 — the sheet in force, by the name a user sees. Passed to every row's
+   * create menu so it can say where a new component will land before the click.
+   */
+  sheetName?: string;
 }
 
 export function ComponentTree({
@@ -77,7 +82,8 @@ export function ComponentTree({
   sheets,
   onMoveToSheet,
   matched = null,
-  runtimeType = 'browser'
+  runtimeType = 'browser',
+  sheetName
 }: ComponentTreeProps) {
   return (
     <>
@@ -121,6 +127,7 @@ export function ComponentTree({
               onDuplicate={onDuplicate}
               isDimmed={isDimmed}
               runtimeType={runtimeType}
+              sheetName={sheetName}
             >
               {expandedFolders.has(node.data.path) && node.data.children.length > 0 && (
                 <ComponentTree
@@ -150,6 +157,7 @@ export function ComponentTree({
                   onMoveToSheet={onMoveToSheet}
                   matched={matched}
                   runtimeType={runtimeType}
+              sheetName={sheetName}
                 />
               )}
             </FolderItem>
@@ -182,6 +190,7 @@ export function ComponentTree({
               onMoveToSheet={onMoveToSheet}
               isDimmed={isDimmed}
               runtimeType={runtimeType}
+              sheetName={sheetName}
             />
           );
         }

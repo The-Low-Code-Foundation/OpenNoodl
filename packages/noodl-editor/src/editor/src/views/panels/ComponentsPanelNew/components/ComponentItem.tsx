@@ -13,7 +13,7 @@ import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
 import { iconForKind, labelForKind } from '../componentKind';
 import css from '../ComponentsPanel.module.scss';
-import { ComponentTemplates } from '../ComponentTemplates';
+import { buildCreateMenuItems, createMenuTitle } from '../createMenu';
 import { CLOUD_SHEET, ComponentItemData, Sheet, TreeNode } from '../types';
 import { RenameInput } from './RenameInput';
 import { WarningDot } from './WarningDot';
@@ -49,6 +49,8 @@ interface ComponentItemProps {
   isDimmed?: boolean;
   /** WFA-001: which runtime the create menu authors for — see `ComponentTree`. */
   runtimeType?: 'browser' | 'cloud';
+  /** SPR-005: the sheet in force, by display name — the create menu says where a new thing lands. */
+  sheetName?: string;
 }
 
 export function ComponentItem({
@@ -75,7 +77,8 @@ export function ComponentItem({
   sheets,
   onMoveToSheet,
   isDimmed,
-  runtimeType = 'browser'
+  runtimeType = 'browser',
+  sheetName
 }: ComponentItemProps) {
   const itemRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -182,27 +185,16 @@ export function ComponentItem({
         // `parentTypes: ['folder']`, and a function nested inside another
         // function would export as `/#__cloud__/outer/inner` — a name the
         // backend's `/functions/:name` route cannot address.
-        const templates = ComponentTemplates.instance.getTemplates({
-          forParentType: 'component',
-          forRuntimeType: runtimeType
-        });
-
-        // Add template creation items
-        templates.forEach((template) => {
-          items.push({
-            icon: template.icon,
-            label: `Create ${template.label}`,
-            onClick: () => onAddComponent(template, parentPath)
-          });
-        });
-
-        // Add folder creation
-        items.push('divider');
-        items.push({
-          icon: IconName.FolderClosed,
-          label: 'Create Folder',
-          onClick: () => onAddFolder(parentPath)
-        });
+        //
+        // SPR-005: that reasoning is now *said*, as a disabled row, instead of
+        // being enforced silently — a user who never sees the option cannot
+        // learn why it is not there.
+        items.push(
+          ...buildCreateMenuItems(
+            { forParentType: 'component', runtimeType, sheetName, parentPath },
+            { onAddComponent, onAddFolder }
+          )
+        );
 
         items.push('divider');
       }
@@ -217,8 +209,10 @@ export function ComponentItem({
       // Only show "Make Home" for pages or visual components (not logic/cloud functions)
       if (component.isPage || component.isVisual) {
         items.push({
+          // SPR-005: `isDisabled` is the key `MenuDialog` reads; `disabled`
+          // was inert, so "Make Home" has been offered on the home component.
           label: 'Make Home',
-          disabled: component.isRoot,
+          isDisabled: component.isRoot,
           onClick: () => onMakeHome?.(node)
         });
         items.push('divider');
@@ -290,6 +284,8 @@ export function ComponentItem({
       });
 
       showContextMenuInPopup({
+        // SPR-005: the destination, said before the click rather than after it.
+        title: onAddComponent && onAddFolder ? createMenuTitle({ sheetName, parentPath }) : undefined,
         items,
         width: MenuDialogWidth.Default
       });
@@ -305,7 +301,8 @@ export function ComponentItem({
       onAddFolder,
       sheets,
       onMoveToSheet,
-      runtimeType
+      runtimeType,
+      sheetName
     ]
   );
 

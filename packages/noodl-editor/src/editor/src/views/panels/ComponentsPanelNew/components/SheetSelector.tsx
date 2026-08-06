@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 
-import { Sheet } from '../types';
+import { CLOUD_SHEET, Sheet } from '../types';
 import css from './SheetSelector.module.scss';
 
 interface SheetSelectorProps {
@@ -39,6 +39,47 @@ interface SheetSelectorProps {
  */
 function canManageSheet(sheet: Sheet): boolean {
   return !sheet.isDefault && !sheet.isCloud;
+}
+
+/**
+ * SPR-005 — what this control is a control *over*.
+ *
+ * F83: the trigger rendered a bare "All", which reads as a filter over what the
+ * tree is showing — and a filter reading "All" says you are already seeing
+ * everything. It is neither. It is the surface you are authoring into: the sheet
+ * decides which runtime the create menus offer and which folder a new component
+ * is named into (`ComponentsPanel`'s `sheetPrefix`).
+ *
+ * Three changes, all of them wording and glyph rather than behaviour:
+ *  - the value is "All sheets", never the bare "All";
+ *  - a glyph rides with it, and the cloud sheet's is the one the tree already
+ *    gives a cloud function, so the current surface is legible without opening
+ *    anything;
+ *  - the `title` says, in words, where a new component will land.
+ *
+ * Naming is deliberately *not* touched: whether "Cloud Functions" survives as a
+ * term is phase 43's, and this control quotes `CLOUD_SHEET.displayName` rather
+ * than spelling anything itself.
+ */
+const ALL_SHEETS_LABEL = 'All sheets';
+
+function sheetGlyph(sheet: Sheet | null): IconName {
+  if (!sheet) return IconName.Components;
+  return sheet.isCloud ? IconName.CloudFunction : IconName.FolderClosed;
+}
+
+function sheetDescription(sheet: Sheet | null, disabled: boolean): string {
+  if (disabled) return `Sheet: ${sheet ? sheet.name : ALL_SHEETS_LABEL} — locked to this sheet`;
+  if (!sheet) {
+    return (
+      `Sheet: ${ALL_SHEETS_LABEL} — every sheet except ${CLOUD_SHEET.displayName}, ` +
+      `flattened. New components land in Default.`
+    );
+  }
+  if (sheet.isCloud) {
+    return `Sheet: ${sheet.name} — components that run on your backend. New cloud functions land here.`;
+  }
+  return `Sheet: ${sheet.name} — new components land here.`;
 }
 
 /**
@@ -134,7 +175,7 @@ export function SheetSelector({
     return null;
   }
 
-  const displayName = currentSheet ? currentSheet.name : 'All';
+  const displayName = currentSheet ? currentSheet.name : ALL_SHEETS_LABEL;
 
   return (
     <div className={css['SheetSelector']} ref={dropdownRef}>
@@ -143,8 +184,11 @@ export function SheetSelector({
         className={classNames(css['TriggerButton'], { [css['Open']]: isOpen })}
         onClick={handleToggle}
         disabled={disabled}
-        title={disabled ? 'Sheet selection is locked' : 'Select sheet'}
+        title={sheetDescription(currentSheet, disabled)}
+        aria-label={sheetDescription(currentSheet, disabled)}
+        data-test="sheet-selector-trigger"
       >
+        <Icon icon={sheetGlyph(currentSheet)} size={IconSize.Tiny} UNSAFE_className={css['SheetGlyph']} />
         <span className={css['SheetName']}>{displayName}</span>
         <Icon
           icon={IconName.CaretDown}
@@ -155,21 +199,28 @@ export function SheetSelector({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className={css['Dropdown']}>
+        <div className={css['Dropdown']} data-test="sheet-selector-dropdown">
+          {/* SPR-005: what the list below is a list OF. Without it the entries
+              read as filter presets rather than as places. */}
+          <div className={css['DropdownHeading']}>Author in sheet</div>
           <div className={css['SheetList']}>
-            {/* "All" option - no sheet filter */}
+            {/* The flattened view of every browser sheet. Not a filter preset:
+                it has its own create destination (Default), which is why it says
+                so rather than saying "All". */}
             <div
               className={classNames(css['SheetItem'], css['AllSheets'], {
                 [css['Selected']]: currentSheet === null
               })}
               onClick={() => handleSelectSheet(null)}
+              data-test="sheet-selector-all"
             >
               <div
                 className={classNames(css['RadioIndicator'], {
                   [css['Selected']]: currentSheet === null
                 })}
               />
-              <span className={css['SheetLabel']}>All</span>
+              <span className={css['SheetLabel']}>{ALL_SHEETS_LABEL}</span>
+              <span className={css['SheetCount']}>new in Default</span>
             </div>
 
             {/* Sheet items */}
@@ -181,12 +232,15 @@ export function SheetSelector({
                   [css['HasActions']]: canManageSheet(sheet) && (onRenameSheet || onDeleteSheet)
                 })}
                 onClick={() => handleSelectSheet(sheet)}
+                title={sheetDescription(sheet, false)}
+                data-test={sheet.isCloud ? 'sheet-selector-cloud' : undefined}
               >
                 <div
                   className={classNames(css['RadioIndicator'], {
                     [css['Selected']]: currentSheet?.folderName === sheet.folderName
                   })}
                 />
+                <Icon icon={sheetGlyph(sheet)} size={IconSize.Tiny} UNSAFE_className={css['SheetGlyph']} />
                 <span className={css['SheetLabel']}>{sheet.name}</span>
                 <span className={css['SheetCount']}>({sheet.componentCount})</span>
 

@@ -42,6 +42,26 @@
   white-space: nowrap;
 }
 
+/* SPR-005: the glyph that makes the current sheet legible without opening the
+   dropdown. The cloud sheet's is the same `CloudFunction` glyph the tree gives a
+   cloud function, so the two surfaces name the same thing the same way. */
+.SheetGlyph {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--theme-color-fg-default-shy);
+}
+
+/* SPR-005: says what the list is a list of — "Author in sheet", not a filter. */
+.DropdownHeading {
+  padding: 8px 12px 4px;
+  font: 10px var(--font-family);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-default-shy);
+}
+
 .ChevronIcon {
   width: 10px;
   height: 10px;
@@ -91,9 +111,11 @@
     color: var(--theme-color-primary);
   }
 
+  /* SPR-005: was shy + italic, which read as "not really one of these" — the
+     exact impression F83 formed of the whole control. It is a place like the
+     others; only its caption differs. */
   &.AllSheets {
-    color: var(--theme-color-fg-default-shy);
-    font-style: italic;
+    color: var(--theme-color-fg-default);
   }
 }
 

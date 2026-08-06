@@ -7,11 +7,11 @@
  * @module noodl-editor
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 
 import { DialogLayerModel } from '@noodl-models/DialogLayerModel';
 
-import { IconName } from '@noodl-core-ui/components/common/Icon';
+import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { SearchInput } from '@noodl-core-ui/components/inputs/SearchInput';
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
@@ -21,7 +21,7 @@ import { ComponentTree } from './components/ComponentTree';
 import { SheetSelector } from './components/SheetSelector';
 import { StringInputDialog } from './components/StringInputDialog';
 import css from './ComponentsPanel.module.scss';
-import { ComponentTemplates } from './ComponentTemplates';
+import { buildCreateMenuItems, createMenuTitle, DEFAULT_SHEET_NAME } from './createMenu';
 import { useComponentActions } from './hooks/useComponentActions';
 import { useComponentFilter } from './hooks/useComponentFilter';
 import { useComponentsPanel } from './hooks/useComponentsPanel';
@@ -53,6 +53,15 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
    */
   const sheetPrefix = currentSheet && !currentSheet.isDefault ? `/${currentSheet.folderName}` : '';
   const runtimeType = currentSheet?.isCloud ? 'cloud' : 'browser';
+
+  /**
+   * SPR-005 — the sheet a new component lands in, by the name a user sees.
+   *
+   * With no sheet selected the tree shows several sheets at once but `sheetPrefix`
+   * is `''`, so a new component lands in **Default**. That is precisely the fact
+   * "All" hid, and every create menu below now states it before the click.
+   */
+  const sheetName = currentSheet ? currentSheet.name : DEFAULT_SHEET_NAME;
 
   const {
     handleMakeHome,
@@ -206,39 +215,64 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
     }
   }, [draggedItem, handleDropOnRoot]);
 
+  /**
+   * SPR-005 — the sheet root's create menu, built once for both doors onto it.
+   *
+   * Empty space is the sheet's root — a folder context, not a component one.
+   * Passing `forParentType` makes the templates' own `parentTypes` declarations
+   * load-bearing instead of inert.
+   */
+  const rootCreateContext = useMemo(
+    () => ({ forParentType: 'folder' as const, runtimeType: runtimeType as 'browser' | 'cloud', sheetName }),
+    [runtimeType, sheetName]
+  );
+
+  /**
+   * SPR-005 — the one create menu, opened from the header "+" or from a
+   * right-click on empty space.
+   *
+   * `attachTo` is what separates the two: a menu opened from a button anchors to
+   * the button (and can therefore be driven by a script), a right-click menu
+   * anchors to the cursor. Both render the same items, so the visible door and
+   * the hidden one cannot drift apart.
+   */
+  const openRootCreateMenu = useCallback(
+    (attachTo?: HTMLElement) => {
+      showContextMenuInPopup({
+        title: createMenuTitle(rootCreateContext),
+        items: buildCreateMenuItems(rootCreateContext, {
+          onAddComponent: handleAddComponent,
+          onAddFolder: handleAddFolder
+        }),
+        width: MenuDialogWidth.Default,
+        attachTo
+      });
+    },
+    [rootCreateContext, handleAddComponent, handleAddFolder]
+  );
+
   // Handle right-click on empty space - Show create menu
   const handleTreeContextMenu = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-
-      const templates = ComponentTemplates.instance.getTemplates({
-        // Empty space is the sheet's root — a folder context, not a component
-        // one. Passing it makes the templates' own `parentTypes` declarations
-        // load-bearing instead of inert.
-        forParentType: 'folder',
-        forRuntimeType: runtimeType
-      });
-
-      const items: TSFixme[] = templates.map((template) => ({
-        icon: template.icon,
-        label: `Create ${template.label}`,
-        onClick: () => handleAddComponent(template)
-      }));
-
-      items.push({
-        icon: IconName.FolderClosed,
-        label: 'Create Folder',
-        onClick: () => handleAddFolder()
-      });
-
-      showContextMenuInPopup({
-        items,
-        width: MenuDialogWidth.Default
-      });
+      openRootCreateMenu();
     },
-    [handleAddComponent, handleAddFolder, runtimeType]
+    [openRootCreateMenu]
   );
+
+  /**
+   * SPR-005 — the visible half of the same gesture.
+   *
+   * F83's finding was not that creating a cloud function was impossible, it was
+   * that nothing on screen said it could be done. A "+" in the panel header is
+   * the affordance every other tree in this editor has; it opens the menu that
+   * already existed rather than adding a second way to create anything.
+   */
+  const createButtonRef = useRef<HTMLButtonElement>(null);
+  const handleHeaderCreateClick = useCallback(() => {
+    openRootCreateMenu(createButtonRef.current ?? undefined);
+  }, [openRootCreateMenu]);
 
   return (
     /* PNL-005: the panel's own 36px `bg-3` bar is gone — this is the shared
@@ -252,15 +286,31 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
       isFill
       UNSAFE_content_style={{ paddingInline: 0, paddingTop: 0 }}
       headerSlot={
-        <SheetSelector
-          sheets={sheets}
-          currentSheet={currentSheet}
-          onSelectSheet={selectSheet}
-          onCreateSheet={handleCreateSheet}
-          onRenameSheet={handleRenameSheet}
-          onDeleteSheet={handleDeleteSheet}
-          disabled={!!options?.lockToSheet}
-        />
+        <>
+          <SheetSelector
+            sheets={sheets}
+            currentSheet={currentSheet}
+            onSelectSheet={selectSheet}
+            onCreateSheet={handleCreateSheet}
+            onRenameSheet={handleRenameSheet}
+            onDeleteSheet={handleDeleteSheet}
+            disabled={!!options?.lockToSheet}
+          />
+          {/* SPR-005: the create affordance, visible without a right-click. Its
+              tooltip names the destination, so where a new component lands is
+              legible before the menu is even open. */}
+          <button
+            ref={createButtonRef}
+            type="button"
+            className={css['HeaderAction']}
+            onClick={handleHeaderCreateClick}
+            aria-label={createMenuTitle(rootCreateContext)}
+            title={createMenuTitle(rootCreateContext)}
+            data-test="components-panel-create"
+          >
+            <Icon icon={IconName.Plus} size={IconSize.Tiny} />
+          </button>
+        </>
       }
     >
       {/* PNL-006: the filter is pinned under the shared header — it does not
@@ -309,6 +359,7 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
             sheets={sheets}
             onMoveToSheet={handleMoveToSheet}
             runtimeType={runtimeType}
+            sheetName={sheetName}
           />
         ) : filtered.isFiltering ? (
           /* An empty *result* is a different fact from an empty project, and
@@ -328,11 +379,15 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
           <div className={css['PlaceholderMessage']} data-test="cloud-functions-empty">
             <span>No cloud functions yet</span>
             <span>These components run on your backend, not in the browser.</span>
-            <span>Right-click here to create one.</span>
+            {/* SPR-005: names the visible control rather than the hidden gesture.
+                "Right-click here" was the only instruction, and it was the whole
+                reason F83 concluded the feature did not exist. */}
+            <span>Use + in the panel header to create one, or right-click here.</span>
           </div>
         ) : (
           <div className={css['PlaceholderMessage']}>
-            <span>No components in project</span>
+            <span>No components in {sheetName}</span>
+            <span>Use + in the panel header to create one.</span>
           </div>
         )}
       </div>

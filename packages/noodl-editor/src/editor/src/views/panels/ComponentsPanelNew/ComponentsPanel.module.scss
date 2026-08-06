@@ -83,6 +83,45 @@
 /* -----------------------------------------------------------------------------
  * The filter field, pinned under the shared header.
  * -------------------------------------------------------------------------- */
+/* -----------------------------------------------------------------------------
+ * SPR-005 — the header's create button.
+ *
+ * A plain `<button>` rather than core-ui's `IconButton`: that component forwards
+ * neither `aria-label` nor `title`, and an icon-only control with no accessible
+ * name is exactly what phase 41 exists to stop being added. The geometry matches
+ * `PanelHeader`'s 27px action buttons; the hover treatment matches the sheet
+ * selector's trigger next to it, so the two read as one control group.
+ * -------------------------------------------------------------------------- */
+.HeaderAction {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid transparent;
+  /* `--radius-default` is the sheet selector's 4px, and the two sit side by side. */
+  border-radius: var(--radius-default);
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  transition: background-color var(--speed-turbo), border-color var(--speed-turbo);
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+    border-color: var(--theme-color-border-default);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  /* The focus ring is the token's, not the browser's default outline — the
+     runtime deletes those, and a keyboard user needs this one. */
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+}
+
 .FilterBar {
   flex: 0 0 auto;
   padding: 0 var(--tree-inset, 10px) var(--spacing-2);

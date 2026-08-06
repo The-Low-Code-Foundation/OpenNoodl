@@ -11,8 +11,9 @@ import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
 
 import { ViewerConnection } from '../../ViewerConnection';
-import { ComponentTemplates } from '../panels/ComponentsPanelNew/ComponentTemplates';
+import { buildCreateMenuItems, createMenuTitle, DEFAULT_SHEET_NAME } from '../panels/ComponentsPanelNew/createMenu';
 import { useComponentActions } from '../panels/ComponentsPanelNew/hooks/useComponentActions';
+import { CLOUD_SHEET } from '../panels/ComponentsPanelNew/types';
 import { showContextMenuInPopup } from '../ShowContextMenuInPopup';
 import css from './NodeGraphComponentTrail.module.scss';
 
@@ -73,7 +74,32 @@ export function NodeGraphComponentTrail({
   statusSlot
 }: NodeGraphComponentTrailProps) {
   const trailRef = useRef<HTMLDivElement>(null);
-  const { handleAddComponent } = useComponentActions();
+
+  /**
+   * SPR-005 — which sheet this bar's "+" creates into.
+   *
+   * It used to call `useComponentActions()` with no options, so `sheetPrefix`
+   * was `''` and every component it created was named `/<name>`. On a cloud
+   * function's canvas the menu offers **Cloud Function Component**, so that
+   * produced a component with `noodl.cloud.request`/`response` roots sitting
+   * *outside* `#__cloud__` — which `isCloudFunctionComponent` does not match, so
+   * no backend would ever be sent it and no `call-function` step could resolve
+   * it. It looked like a cloud function in the tree and was not one. The prefix
+   * is the same string `ComponentsPanel` computes from the selected sheet.
+   */
+  const isCloudCanvas = runtimeType === RuntimeType.Cloud;
+  const { handleAddComponent } = useComponentActions({
+    sheetPrefix: isCloudCanvas ? '/' + CLOUD_SHEET.folderName : ''
+  });
+
+  /**
+   * A workflow is not a component and is not stored in the project, so no
+   * component template declares `runtimeTypes: ['workflow']` — the "+" opened an
+   * empty menu on a workflow canvas. It is not rendered there now. That removes
+   * a control that did nothing; what a workflow canvas *should* offer instead is
+   * phase 43's (canvas identity and first-run), not this task's.
+   */
+  const canCreateComponents = runtimeType !== RuntimeType.Workflow;
 
   // Change the scroll direction to horizontal.
   function onScroll(event: React.WheelEvent<HTMLDivElement>) {
@@ -84,20 +110,22 @@ export function NodeGraphComponentTrail({
   }
 
   // Same create menu as the components panel's empty-space context menu —
-  // the existing new-component action, reachable from the bar.
-  function onNewComponentClick() {
-    const templates = ComponentTemplates.instance.getTemplates({
-      forRuntimeType: runtimeType || RuntimeType.Browser
-    });
+  // the existing new-component action, reachable from the bar. SPR-005 made
+  // that literally the same builder rather than a second copy of it, so the
+  // bar and the panel cannot offer different things or land them differently.
+  const createContext = {
+    // The bar creates at the root of the sheet the canvas belongs to, which is
+    // a folder context — the same one the panel's empty space declares.
+    forParentType: 'folder' as const,
+    runtimeType: (isCloudCanvas ? 'cloud' : 'browser') as 'browser' | 'cloud',
+    sheetName: isCloudCanvas ? CLOUD_SHEET.displayName : DEFAULT_SHEET_NAME
+  };
 
+  function onNewComponentClick() {
     showContextMenuInPopup({
-      items: [
-        ...templates.map((template) => ({
-          icon: template.icon,
-          label: `Create ${template.label}`,
-          onClick: () => handleAddComponent(template)
-        }))
-      ],
+      title: createMenuTitle(createContext),
+      // No `onAddFolder`: this bar has no folder tree to put one in.
+      items: buildCreateMenuItems(createContext, { onAddComponent: handleAddComponent }),
       width: MenuDialogWidth.Default
     });
   }
@@ -141,9 +169,18 @@ export function NodeGraphComponentTrail({
         </div>
       </div>
 
-      {!readOnly && (
-        <Tooltip content="New component">
-          <button className={css['NewComponentButton']} aria-label="New component" onClick={onNewComponentClick}>
+      {!readOnly && canCreateComponents && (
+        /* SPR-005: the tooltip names the destination, so a "+" on a cloud
+           function's canvas says it creates into Cloud Functions before it is
+           clicked. */
+        <Tooltip content={createMenuTitle(createContext)}>
+          <button
+            className={css['NewComponentButton']}
+            aria-label={createMenuTitle(createContext)}
+            title={createMenuTitle(createContext)}
+            data-test="trail-new-component"
+            onClick={onNewComponentClick}
+          >
             <svg
               width="12"
               height="12"

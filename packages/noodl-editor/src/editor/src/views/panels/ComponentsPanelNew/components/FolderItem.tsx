@@ -13,7 +13,7 @@ import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
 import { iconForKind, labelForKind } from '../componentKind';
 import css from '../ComponentsPanel.module.scss';
-import { ComponentTemplates } from '../ComponentTemplates';
+import { buildCreateMenuItems, createMenuTitle } from '../createMenu';
 import { CLOUD_SHEET, FolderItemData, Sheet, TreeNode } from '../types';
 import { RenameInput } from './RenameInput';
 import { WarningDot } from './WarningDot';
@@ -53,6 +53,8 @@ interface FolderItemProps {
   isDimmed?: boolean;
   /** WFA-001: which runtime the create menu authors for — see `ComponentTree`. */
   runtimeType?: 'browser' | 'cloud';
+  /** SPR-005: the sheet in force, by display name — the create menu says where a new thing lands. */
+  sheetName?: string;
 }
 
 export function FolderItem({
@@ -82,7 +84,8 @@ export function FolderItem({
   onMakeHome,
   onDuplicate,
   isDimmed,
-  runtimeType = 'browser'
+  runtimeType = 'browser',
+  sheetName
 }: FolderItemProps) {
   const itemRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -176,27 +179,14 @@ export function FolderItem({
       if (onAddComponent && onAddFolder) {
         // WFA-001: a folder's create menu authors for the sheet's runtime, and
         // declares itself a folder context so `parentTypes` is honoured.
-        const templates = ComponentTemplates.instance.getTemplates({
-          forParentType: 'folder',
-          forRuntimeType: runtimeType
-        });
-
-        // Add template creation items
-        templates.forEach((template) => {
-          items.push({
-            icon: template.icon,
-            label: `Create ${template.label}`,
-            onClick: () => onAddComponent(template, parentPath)
-          });
-        });
-
-        // Add folder creation
-        items.push('divider');
-        items.push({
-          icon: IconName.FolderClosed,
-          label: 'Create Folder',
-          onClick: () => onAddFolder(parentPath)
-        });
+        // SPR-005: built by the shared builder, which is what puts the
+        // filtered-out cloud template back as a disabled row with its reason.
+        items.push(
+          ...buildCreateMenuItems(
+            { forParentType: 'folder', runtimeType, sheetName, parentPath },
+            { onAddComponent, onAddFolder }
+          )
+        );
 
         items.push('divider');
       }
@@ -212,8 +202,10 @@ export function FolderItem({
         // Only show "Make Home" for pages or visual components (not logic/cloud functions)
         if (folder.isPage || folder.isVisual) {
           items.push({
+            // SPR-005: `isDisabled` is the key `MenuDialog` reads; `disabled`
+            // was inert, so "Make Home" has been offered on the home component.
             label: 'Make Home',
-            disabled: folder.isRoot,
+            isDisabled: folder.isRoot,
             onClick: () => onMakeHome?.(node)
           });
           items.push('divider');
@@ -289,6 +281,8 @@ export function FolderItem({
       });
 
       showContextMenuInPopup({
+        // SPR-005: the destination, said before the click rather than after it.
+        title: onAddComponent && onAddFolder ? createMenuTitle({ sheetName, parentPath }) : undefined,
         items,
         width: MenuDialogWidth.Default
       });
@@ -304,7 +298,8 @@ export function FolderItem({
       onOpen,
       onMakeHome,
       onDuplicate,
-      runtimeType
+      runtimeType,
+      sheetName
     ]
   );
 
