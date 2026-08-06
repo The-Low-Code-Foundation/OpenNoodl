@@ -1,4 +1,4 @@
-# Phase 54 — Progress
+# Phase 42bis — Progress
 
 **The alpha driving sprint. 5 tasks specced 2026-08-06. Nothing built.**
 **Phase overview:** [README.md](./README.md)

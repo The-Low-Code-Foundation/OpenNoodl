@@ -1,4 +1,4 @@
-# Phase 54 — The alpha driving sprint
+# Phase 42bis — The alpha driving sprint
 
 **Created:** 2026-08-06
 **Status:** open, blocks the alpha cut

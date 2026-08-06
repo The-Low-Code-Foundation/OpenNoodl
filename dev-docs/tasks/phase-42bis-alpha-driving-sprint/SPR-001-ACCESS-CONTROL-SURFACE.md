@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **ID** | SPR-001 |
-| **Phase** | 54 — The alpha driving sprint |
+| **Phase** | 42bis — The alpha driving sprint |
 | **Tier** | 1 — blocks the alpha |
 | **Findings** | F84, F85, F86, F87 |
 | **Measured** | 2026-08-06 against `91fcd680` |
@@ -149,7 +149,7 @@ app does can ever put anyone in `member`.
 2. **Nested roles.** Richard notes Parse allowed roles to contain roles: *"even add roles
    to roles so you get a kind of nested ACL if that's possible."* Check whether
    `principalKeys()` resolves transitively — it takes `principal.roles` as already
-   resolved, so the question is what resolves them. **Phase 54 records this question and
+   resolved, so the question is what resolves them. **Phase 42bis records this question and
    does not have to answer it**; say which you chose and why.
 
 Richard's framing is worth keeping: in Parse, Role was *"considered as a default table

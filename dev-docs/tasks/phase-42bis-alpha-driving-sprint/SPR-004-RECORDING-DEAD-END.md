@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **ID** | SPR-004 |
-| **Phase** | 54 — The alpha driving sprint |
+| **Phase** | 42bis — The alpha driving sprint |
 | **Tier** | 2 |
 | **Findings** | F90, F91 |
 | **Measured** | 2026-08-06 against `91fcd680` |

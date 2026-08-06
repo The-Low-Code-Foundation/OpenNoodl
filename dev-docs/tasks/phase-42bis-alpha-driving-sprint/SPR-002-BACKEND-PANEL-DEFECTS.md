@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **ID** | SPR-002 |
-| **Phase** | 54 — The alpha driving sprint |
+| **Phase** | 42bis — The alpha driving sprint |
 | **Tier** | 2 |
 | **Findings** | F88, F89 |
 | **Measured** | 2026-08-06 against `91fcd680` |
@@ -16,7 +16,7 @@
 > *"The edit button in the SQLite backend schema page on already created tables doesn't
 > work, click but no reaction."*
 
-**Status: reported, not reproduced.** This is the one finding in phase 54 whose mechanism
+**Status: reported, not reproduced.** This is the one finding in phase 42bis whose mechanism
 was not established on 2026-08-06 — the editor stack was stopped before it could be
 driven, and no schema-manager edit handler was located by inspection.
 
