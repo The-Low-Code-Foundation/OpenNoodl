@@ -24,6 +24,7 @@ import type { WorkflowRunner } from '../workflow/WorkflowRunner';
 import type { RequestContext } from './HttpServer';
 import type { ClpOp } from '../security/model';
 import type { SchemaColumnLike } from '../persistence/SchemaManagerLike';
+import { validateAclShape } from '../security/model';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
 
 function parseJSON(value: string | undefined, name: string): Record<string, unknown> | undefined {
@@ -33,6 +34,27 @@ function parseJSON(value: string | undefined, name: string): Record<string, unkn
   } catch {
     throw new HttpError(400, `Invalid ${name} parameter`);
   }
+}
+
+/**
+ * SPR-001/F84 — a write through `/api/:table` may set `ACL`, so it has to be
+ * shape-checked here too.
+ *
+ * `stampCreate` has validated the create path since BAK-003 and `classPut`
+ * validates the Parse-wire update, but this route — the one the Data Browser
+ * writes through — did not. `{"ACL": {"someone": 5}}` was stored verbatim, and
+ * a mis-shaped ACL is not inert: `canAccessRecord` matches on
+ * `entry[access] === true`, so a nonsense entry silently means *nobody*.
+ * Now that F84 puts an editable ACL cell in front of people, a typo there must
+ * come back as a 400 the panel can show, not as a row that has quietly
+ * disappeared for every caller.
+ *
+ * `null`/`undefined` stay legal — that is how an ACL is cleared.
+ */
+function assertAclShape(data: Record<string, unknown> | undefined | null): void {
+  if (!data || !Object.prototype.hasOwnProperty.call(data, 'ACL')) return;
+  const error = validateAclShape(data.ACL);
+  if (error) throw new HttpError(400, `Invalid ACL: ${error}`, 123);
 }
 
 /**
@@ -124,6 +146,7 @@ export class ByobAdminRoutes {
 
   async save(ctx: RequestContext): Promise<void> {
     const data = await readJSONBody(ctx.req);
+    assertAclShape(data);
     try {
       const record = await this.facade.rawSave(ctx.params.table, ctx.params.id, data, ctx.acl('write'));
       sendJSON(ctx.res, 200, record);
@@ -180,6 +203,7 @@ export class ByobAdminRoutes {
           }
           case 'save':
             ctx.checkData(collection, clpOp);
+            assertAclShape(op.data as Record<string, unknown>);
             await this.facade.rawSave(
               collection,
               op.objectId as string,
