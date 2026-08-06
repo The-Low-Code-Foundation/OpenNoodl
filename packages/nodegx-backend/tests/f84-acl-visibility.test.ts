@@ -100,6 +100,20 @@ describe('F84 — the ACL on the Data Browser read path', () => {
     expect(row!.ACL).toEqual({ 'user-1': { read: true, write: true }, '*': { read: true } });
   });
 
+  it('a record created the way the Create Record node creates one shows its ACL', async () => {
+    // F84 exactly: the node posts to `/classes/:c` through ParseWireAdapter
+    // (`{ ACL: options.acl }`), and the Data Browser reads `/api/:table`. Two
+    // route families, one table — so this is the round trip Richard described,
+    // end to end.
+    const nodeAcl = { 'role:member': { read: true }, ownerId: { read: true, write: true } };
+    const created = await req<ApiRecord>('POST', '/classes/Note', { title: 'from the node', ACL: nodeAcl }, asAdmin());
+    expect(created.status).toBe(201);
+
+    const { json } = await req<{ results: ApiRecord[] }>('GET', '/api/Note?limit=50&skip=0', undefined, asAdmin());
+    const row = json.results.find((r) => r.objectId === created.json.objectId);
+    expect(row!.ACL).toEqual(nodeAcl);
+  });
+
   it('GET /api/:table/:id returns the ACL too', async () => {
     const { status, json } = await req<ApiRecord>('GET', `/api/Doc/${docId}`, undefined, asAdmin());
     expect(status).toBe(200);
