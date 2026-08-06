@@ -54,6 +54,8 @@ import { SidebarModelEvent } from '@noodl-models/sidebar/sidebarmodel';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
 
+import { BACKEND_SERVICES_PANEL_ID } from '../backendServicesPanelId';
+
 import { AuthPanel } from '../../auth';
 import { DataBrowser } from '../../databrowser';
 import { EmailPanel } from '../../email';
@@ -223,5 +225,11 @@ export function openBackendSurface(kind: BackendSurfaceKind, props: BackendSurfa
   return SidebarModel.instance.switch(id);
 }
 
-/** The panel a surface returns to when its own close button is used. */
-export const BACKEND_SERVICES_PANEL_ID = 'backend-services';
+/**
+ * The panel a surface returns to when its own close button is used.
+ *
+ * Defined in a leaf module (AAQ-011/F11) so that a surface can link *back* to
+ * Backend Services without importing this file — which imports all seven
+ * surfaces, itself included. Re-exported here so existing importers do not move.
+ */
+export { BACKEND_SERVICES_PANEL_ID };

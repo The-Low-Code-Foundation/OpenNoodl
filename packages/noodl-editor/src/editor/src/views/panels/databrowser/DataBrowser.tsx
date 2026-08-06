@@ -10,17 +10,28 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { SidebarModel } from '@noodl-models/sidebar';
+
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { BACKEND_SERVICES_PANEL_ID } from '../BackendServicesPanel/backendServicesPanelId';
+
 import css from './DataBrowser.module.scss';
 import { DataGrid } from './DataGrid';
 import { NewRecordModal } from './NewRecordModal';
+import { BackendStatusLike, SchemaFailure, describeSchemaFailure, stripIpcErrorPrefix } from './schemaFailure';
 
 const { ipcRenderer } = window.require('electron');
+
+/** The bit of a backend's metadata this panel needs to offer it as a choice. */
+interface SelectableBackend {
+  id: string;
+  name: string;
+}
 
 /** Column definition from schema */
 export interface ColumnDef {
@@ -38,10 +49,22 @@ export interface TableSchema {
 }
 
 export interface DataBrowserProps {
-  /** Backend ID to browse */
-  backendId: string;
+  /**
+   * Backend ID to browse.
+   *
+   * AAQ-011/F11: optional, and honestly so. This panel is registered as a
+   * *transient* side panel (`backendSurfaces.tsx`) whose props are written onto
+   * the `SidebarItem` immediately before `switch()`. Anything that activates
+   * `backend-data` without going through `openBackendSurface` — the
+   * `router.setup` hot-reload handler in `EditorPage.tsx` re-registers every
+   * panel and then switches back to the active id, and `useSetupSettings`
+   * restores a saved panel id without excluding transient ones — mounts it with
+   * no props at all. Typing this `string` did not prevent that; it only stopped
+   * the component from being allowed to handle it.
+   */
+  backendId?: string;
   /** Backend display name */
-  backendName: string;
+  backendName?: string;
   /** Initial table to show (optional) */
   initialTable?: string;
   /** Close callback */
@@ -53,7 +76,24 @@ const PAGE_SIZE = 50;
 /**
  * DataBrowser component - main data browsing UI
  */
-export function DataBrowser({ backendId, backendName, initialTable, onClose }: DataBrowserProps) {
+export function DataBrowser({
+  backendId: backendIdProp,
+  backendName: backendNameProp,
+  initialTable,
+  onClose
+}: DataBrowserProps) {
+  /**
+   * AAQ-011/F11 — the backend the user picked here, when the panel arrived
+   * without one. Kept apart from the prop so that a panel that *was* given a
+   * backend can never be silently redirected at another one.
+   */
+  const [picked, setPicked] = useState<SelectableBackend | null>(null);
+  /** What Backend Services could offer, loaded only when there is no selection. */
+  const [selectable, setSelectable] = useState<SelectableBackend[] | null>(null);
+
+  const backendId = backendIdProp || picked?.id;
+  const backendName = backendIdProp ? backendNameProp : picked?.name;
+
   // State
   const [tables, setTables] = useState<string[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | null>(initialTable || null);
@@ -76,6 +116,15 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
    * here until the next write succeeds, or the table changes.
    */
   const [writeError, setWriteError] = useState<string | null>(null);
+  /**
+   * Why the table list could not be read — AAQ-011/F11.
+   *
+   * A *kind*, not a string, because the whole defect was that four unrelated
+   * situations shared one sentence. `null` means the last attempt succeeded, and
+   * `{ kind: 'no-selection' }` is not a failure at all: it is the state the
+   * panel is in before anyone has said which backend to browse.
+   */
+  const [schemaFailure, setSchemaFailure] = useState<SchemaFailure | null>(null);
 
   // System columns shown for all tables
   const systemColumns: ColumnDef[] = useMemo(
@@ -99,12 +148,29 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
     return [...systemColumns, ...userColumns];
   }, [schema, systemColumns]);
 
+  /** Where every "pick a backend" affordance in this panel goes. */
+  const openBackendServices = useCallback(() => {
+    SidebarModel.instance.switch(BACKEND_SERVICES_PANEL_ID);
+  }, []);
+
   // Load table list
   const loadTables = useCallback(async () => {
+    // AAQ-011/F11: a missing *selection* is not a broken *backend*. This used to
+    // call straight through with `backendId === undefined`; the main process
+    // rejects with `Backend must be running to get schema` (verified — it is the
+    // same message for a missing id, an unknown id and a stopped backend), and
+    // the panel reported "Failed to load tables" about a backend that was fine.
+    if (!backendId) {
+      setTables([]);
+      setSchemaFailure({ kind: 'no-selection' });
+      return;
+    }
+
     try {
       const result = await ipcRenderer.invoke('backend:getSchema', backendId);
-      const tableNames = result.tables.map((t: { name: string }) => t.name);
+      const tableNames = (result?.tables || []).map((t: { name: string }) => t.name);
       setTables(tableNames);
+      setSchemaFailure(null);
 
       // Auto-select first table if none selected
       if (!selectedTable && tableNames.length > 0) {
@@ -112,13 +178,37 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
       }
     } catch (err) {
       console.error('Failed to load tables:', err);
-      setError('Failed to load tables');
+      setTables([]);
+
+      // Ask the two questions the rejection cannot answer: is the backend still
+      // there, and is it running? `backend:get` returns `null` for an id that is
+      // not on disk; `backend:status` reports `running` without throwing.
+      // Either probe may itself fail, and neither failure is allowed to replace
+      // the original one — `describeSchemaFailure` falls back to reporting the
+      // real message when it is not told otherwise.
+      const [exists, status] = await Promise.all([
+        ipcRenderer
+          .invoke('backend:get', backendId)
+          .then((b: unknown) => b !== null && b !== undefined)
+          .catch(() => true),
+        ipcRenderer.invoke('backend:status', backendId).catch(() => null) as Promise<BackendStatusLike | null>
+      ]);
+
+      setSchemaFailure(
+        describeSchemaFailure({
+          backendId,
+          backendName,
+          exists,
+          status,
+          rawMessage: err instanceof Error ? err.message : String(err)
+        })
+      );
     }
-  }, [backendId, selectedTable]);
+  }, [backendId, backendName, selectedTable]);
 
   // Load data for selected table
   const loadData = useCallback(async () => {
-    if (!selectedTable) return;
+    if (!backendId || !selectedTable) return;
 
     setLoading(true);
     setError(null);
@@ -167,7 +257,9 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
       setTotalCount(result.count || 0);
     } catch (err) {
       console.error('Failed to load data:', err);
-      setError('Failed to load data');
+      // AAQ-011/F11, same class as the table list: the reason is the useful part.
+      const detail = stripIpcErrorPrefix(err instanceof Error ? err.message : String(err));
+      setError(detail ? `Could not load ${selectedTable}: ${detail}` : `Could not load ${selectedTable}.`);
     } finally {
       setLoading(false);
     }
@@ -177,6 +269,37 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
   useEffect(() => {
     loadTables();
   }, [loadTables]);
+
+  /**
+   * AAQ-011/F11 — what the empty state can offer when nothing is selected.
+   *
+   * Loaded only in that case, so a panel opened normally from a backend card
+   * never makes this call. **Deliberately an offer and not an auto-selection**,
+   * even when exactly one backend exists: this panel edits cells, deletes rows
+   * and bulk-deletes them, and choosing on the user's behalf would make "the only
+   * backend on this machine" the silent target of a destructive surface. Naming
+   * the backend on a button is one click and no guessing — and the click is
+   * recorded in `picked`, so the header stops claiming a name it was never given.
+   */
+  useEffect(() => {
+    if (backendId) return;
+
+    let cancelled = false;
+    ipcRenderer
+      .invoke('backend:list')
+      .then((list: SelectableBackend[]) => {
+        if (cancelled) return;
+        setSelectable((list || []).map(({ id, name }) => ({ id, name })));
+      })
+      .catch((err: unknown) => {
+        console.error('Failed to list backends:', err);
+        if (!cancelled) setSelectable([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [backendId]);
 
   // Load data when table, page, or search changes
   useEffect(() => {
@@ -356,14 +479,18 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
           <VStack>
             <Text textType={TextType.DefaultContrast}>Data Browser</Text>
             <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
-              {backendName}
+              {/* AAQ-011/F11: with no selection this was blank, which read as a
+                  backend with no name rather than as no backend. */}
+              {backendName || 'No backend selected'}
             </Text>
           </VStack>
         </HStack>
         <IconButton icon={IconName.Close} onClick={onClose} />
       </div>
 
-      {/* Toolbar */}
+      {/* Toolbar — AAQ-011/F11: a table picker, a search box and a refresh button
+          are all inert without a backend, so they are not offered. */}
+      {backendId && (
       <div className={css.Toolbar}>
         <HStack hasSpacing>
           {/* Table selector */}
@@ -415,6 +542,7 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
           )}
         </HStack>
       </div>
+      )}
 
       {/* Bulk actions bar */}
       {selectedRecords.size > 0 && (
@@ -437,6 +565,34 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
         </div>
       )}
 
+      {/* AAQ-011/F11 — why the table list is missing, said once and said usefully.
+          `no-selection` is deliberately absent here: it is not a failure, and it
+          is answered by the picker in the content area below. */}
+      {schemaFailure && schemaFailure.kind !== 'no-selection' && (
+        <div className={schemaFailure.kind === 'failed' ? css.Error : css.Notice}>
+          <Text textType={TextType.Default}>{schemaFailure.message}</Text>
+          <HStack hasSpacing>
+            {schemaFailure.kind !== 'failed' && (
+              <PrimaryButton
+                label="Backend Services"
+                size={PrimaryButtonSize.Small}
+                variant={PrimaryButtonVariant.Muted}
+                onClick={openBackendServices}
+              />
+            )}
+            {/* A stopped backend becomes a running one without this panel being
+                told, and F10 may be starting one right now — so retrying has to
+                be one click rather than a reopen. */}
+            <PrimaryButton
+              label="Try again"
+              size={PrimaryButtonSize.Small}
+              variant={PrimaryButtonVariant.Muted}
+              onClick={loadTables}
+            />
+          </HStack>
+        </div>
+      )}
+
       {/* Error messages — a failed read and a failed write are different news. */}
       {error && (
         <div className={css.Error}>
@@ -454,6 +610,35 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
         {loading ? (
           <div className={css.Loading}>
             <Text textType={TextType.Shy}>Loading...</Text>
+          </div>
+        ) : !backendId ? (
+          /* AAQ-011/F11 — the state that used to say "Failed to load tables".
+             Nothing is broken; nothing has been chosen. */
+          <div className={css.EmptyState}>
+            <Text textType={TextType.Shy}>
+              {selectable === null
+                ? 'Looking for backends…'
+                : selectable.length === 0
+                ? 'There are no backends yet. Create one in Backend Services, then come back here.'
+                : 'Choose a backend to browse.'}
+            </Text>
+            <VStack hasSpacing UNSAFE_style={{ marginTop: '12px', alignItems: 'stretch' }}>
+              {(selectable || []).map((candidate) => (
+                <PrimaryButton
+                  key={candidate.id}
+                  label={candidate.name || candidate.id}
+                  size={PrimaryButtonSize.Small}
+                  variant={PrimaryButtonVariant.Muted}
+                  onClick={() => setPicked(candidate)}
+                />
+              ))}
+              <PrimaryButton
+                label="Open Backend Services"
+                size={PrimaryButtonSize.Small}
+                variant={PrimaryButtonVariant.Muted}
+                onClick={openBackendServices}
+              />
+            </VStack>
           </div>
         ) : !selectedTable ? (
           <div className={css.EmptyState}>
@@ -516,7 +701,7 @@ export function DataBrowser({ backendId, backendName, initialTable, onClose }: D
       )}
 
       {/* New Record Modal */}
-      {showNewRecord && schema && selectedTable && (
+      {showNewRecord && backendId && schema && selectedTable && (
         <NewRecordModal
           backendId={backendId}
           tableName={selectedTable}
