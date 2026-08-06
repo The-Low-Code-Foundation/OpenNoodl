@@ -77,11 +77,21 @@ const SIDEBAR_MODULE = './src/editor/src/models/sidebar/sidebarmodel.tsx';
 /**
  * @param partialChunks How many partial payloads each submission streams in.
  *   Eight is the honest default — it makes the editor's `onToolCallPartial`
- *   path run the way a provider drives it. It is also **expensive**: publishing
- *   a growing 55-node candidate eight times took the editor SEVEN MINUTES of
- *   main-thread work per component, with a zero-latency provider (see the pass
- *   notes; a 9-node component in the same run took 0s). Pass 1 to skip the
- *   partial path entirely when what is under test is downstream of authoring.
+ *   path run the way a provider drives it. Pass 1 to skip the partial path
+ *   entirely when what is under test is downstream of authoring.
+ *
+ *   ⚠️ **This used to be expensive, and the reason was here, not in the
+ *   editor.** Eight payloads for a 55-node component took 6m51s of *wall clock*
+ *   (AAQ-011 F6), which was filed as editor main-thread cost. It was this
+ *   function's pacing: it yielded with `setTimeout`, and Chromium clamps
+ *   `setTimeout` in an occluded window — which the editor's main window is,
+ *   every time this script drives it from a terminal (`src/main/main.js:311`
+ *   leaves `backgroundThrottling` at its default; `turnDeadline.ts:26-29`
+ *   records the same throttling making a scripted run look hung once before).
+ *   The pacing is a `MessagePort` task now: still a macrotask, so the panel
+ *   still renders between payloads, but not a timer, so nothing clamps it. The
+ *   editor's own cost for the same eight payloads is ~0.2ms — see
+ *   `scripts/aaq011-perf`.
  */
 function installScript(partialChunks = 8) {
   return `(async () => {
@@ -108,13 +118,32 @@ function installScript(partialChunks = 8) {
       stopReason: toolCalls && toolCalls.length ? 'tool_calls' : 'stop'
     });
 
+    /**
+     * Yield to the event loop between fragments, so the panel renders as it
+     * would while a real stream arrives — WITHOUT a timer.
+     *
+     * A \`setTimeout\` here is what AAQ-011 F6 was: this window is occluded
+     * whenever the script drives it, Chromium clamps timers in an occluded
+     * window to a second and aligns them to a whole minute once it has been
+     * hidden for five, and fourteen of these per component turned a
+     * zero-latency provider into a seven-minute run. \`requestAnimationFrame\`
+     * is worse — a hidden window stops servicing it at all. A \`MessagePort\`
+     * message is a macrotask like a timer and is not a timer.
+     */
+    const yieldToEditor = () =>
+      new Promise((resolve) => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = () => resolve();
+        channel.port2.postMessage(0);
+      });
+
     /** Stream the prose the way a provider does, so the panel's bubble behaves. */
     const streamText = async (callbacks, text) => {
       const chunks = 6;
       for (let i = 0; i < chunks; i++) {
         const upto = Math.floor((text.length * (i + 1)) / chunks);
         callbacks.onText?.(text.slice(0, upto));
-        await new Promise((r) => setTimeout(r, 15));
+        await yieldToEditor();
       }
     };
 
@@ -163,7 +192,7 @@ function installScript(partialChunks = 8) {
         for (let i = 0; i < chunks; i++) {
           const upto = Math.floor((argsText.length * (i + 1)) / chunks);
           callbacks.onToolCallPartial?.({ index: 0, name: 'submit_component', argsText: argsText.slice(0, upto) });
-          await new Promise((r) => setTimeout(r, 10));
+          await yieldToEditor();
         }
         const call = { id: 'scripted-' + target, name: 'submit_component', arguments: args };
         callbacks.onToolCall?.(call);

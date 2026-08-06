@@ -228,19 +228,34 @@ provider boundary**. What it cannot test is authoring *quality* — that needs a
 AAQ-005..007 are for.
 
 `--fast` streams one partial payload per submission instead of eight. Use the default when the partial
-path is what you are testing; use `--fast` when it is not, because of this:
+path is what you are testing; use `--fast` when it is not. It is no longer the difference between a
+seven-minute run and a twenty-second one — that was this script, not the editor:
 
-## ⚠️ Read this before designing the engine
+## ⚠️ The perf warning that used to be here was wrong — AAQ-011 F6 is closed
 
-**Authoring a 55-node component cost 6m51s of editor main-thread time against a ZERO-latency provider.**
-A 9-node component in the same run took 0s. The `PartialPayloadScanner` is *not* the cost — 0–1ms for the
-whole component, measured directly by calling `update()` in the renderer. The cost is per `publish()`,
-and it is superlinear in node count. A real provider streams far more partials than the eight this pass
-used, so a live run is **worse, not better**.
+It said authoring a 55-node component cost **6m51s of editor main-thread time** against a zero-latency
+provider, per `publish()`, superlinear in node count, and told you to fix that before building AAQ-007.
+**Three of those four claims were false, and the fourth was not a measurement of the editor.**
 
-Phase 40 aims at components far larger than 55 nodes. Measure this and fix it before building an
-iteration loop (AAQ-007) that republishes a candidate many times per build. Filed as AAQ-011 F6; the
-prime suspect is `AuthoringSession.publish` → the Build panel's re-render, not the scanner.
+- Nothing in that pass measured main-thread time. What the panel prints per operation is
+  `endedAt - startedAt`, `Date.now()` around `await session.run()` (`PlanRun.ts:644,700`,
+  `ProjectAuthoringView.tsx:1329`) — **wall clock**, every await included.
+- The wall clock was `wizard-replay.js`'s own pacing. It yielded with `await setTimeout(…, 10)` — six
+  for the prose, one per partial payload — and the editor's window is occluded whenever a script drives
+  it from a terminal. **Measured in this Electron build with the editor's own webPreferences: a
+  `setTimeout(10)` costs 11ms on screen and ~1000ms hidden.** `src/main/main.js:311` leaves
+  `backgroundThrottling` at its default; `turnDeadline.ts:26-29` already recorded this making a scripted
+  run look hung once.
+- The editor's real cost is flat and now has a committed driver
+  (`packages/noodl-editor/scripts/aaq011-perf`): **400 nodes streamed as 4000 partial payloads cost
+  5.7ms** in the entire `onToolCallPartial` path — scan, state rebuild, `PlanRun` publish and the
+  session snapshot the store takes on every one. It does not grow with fragment count *at all*, because
+  the publish is gated on an element closing (`partial.ts:143`), not on a fragment arriving.
+
+**So AAQ-007 is not gated on anything here.** An iteration loop that republishes a candidate many times
+per build costs single-digit milliseconds per republish at four times the node count phase 40 aims at.
+The pacing in `wizard-replay.js` is a `MessagePort` task now — still a macrotask, so the panel still
+renders between payloads, but not a timer, so nothing clamps it.
 
 ## What to do next
 

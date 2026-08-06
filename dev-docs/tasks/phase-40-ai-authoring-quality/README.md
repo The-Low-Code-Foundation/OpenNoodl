@@ -185,10 +185,13 @@ Three things belong here rather than only in the task file:
 
 **Criteria 1–3 are still undriven.** Every previous answer to criterion 5 also looked right on paper.
 
-**And one thing to know before the engine work starts:** authoring a 55-node component cost **6m51s of
-editor main-thread time with a zero-latency provider** (AAQ-011 F6). The model was not what it was waiting
-on. A phase aiming at components far larger than 55 nodes should measure that before it builds on top of
-it.
+**And one thing that turned out not to be true:** this said authoring a 55-node component cost **6m51s of
+editor main-thread time with a zero-latency provider** (AAQ-011 F6), and that the engine work should fix
+it first. ✅ **Measured and closed 2026-08-06.** The number was wall clock, not main-thread time, and the
+wall clock belonged to the *fixture provider's* `setTimeout` pacing in an occluded window — 11ms on
+screen, ~1000ms hidden, measured in this Electron build. The editor's own cost is 5.7ms for 400 nodes
+streamed as 4000 partial payloads (`packages/noodl-editor/scripts/aaq011-perf`), and it does not grow
+with fragment count. Nothing here gates AAQ-007.
 
 ## AAQ-002 driven and closed — and finding #7 had a FOURTH mechanism (2026-08-05)
 

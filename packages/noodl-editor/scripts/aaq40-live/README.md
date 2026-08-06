@@ -30,18 +30,31 @@ node packages/noodl-editor/scripts/aaq40-live/wizard-replay.js \
 
 - `--install` alone leaves the editor scripted so the wizard can be driven by hand.
 - `--fast` streams each submission as **one** partial payload instead of eight. Prefer the default when
-  the partial path is what you are testing; prefer `--fast` when it is not, because it is the difference
-  between a 7-minute run and a 20-second one (see below).
+  the partial path is what you are testing; prefer `--fast` when it is not. It used to be the difference
+  between a 7-minute run and a 20-second one — that was this script's own timer pacing being throttled,
+  and it is fixed (see below).
 - `--location` should be a scratch directory. The launcher's recents and the project scanner are the
   user's; clean up after yourself.
 
 ## What it measured, 2026-08-05
 
 Three defects, all invisible to the suite, all fixed — see
-`dev-docs/tasks/phase-40-ai-authoring-quality/README.md`. Plus one number worth keeping: authoring a
-55-node component took **6m51s of editor main-thread time** against a zero-latency provider, while a
-9-node component in the same run took 0s. The `PartialPayloadScanner` is not the cost (0–1ms for the
-whole component, measured); publishing is. Filed as AAQ-011 F6.
+`dev-docs/tasks/phase-40-ai-authoring-quality/README.md`. Plus one number that turned out to be about
+this script rather than about the editor: authoring a 55-node component took **6m51s** against a
+zero-latency provider, filed as AAQ-011 F6 as "editor main-thread time".
+
+**It was not main-thread time and it was not the editor.** What the panel shows per operation is
+`endedAt - startedAt` — `Date.now()` around `await session.run()` (`PlanRun.ts:644,700`,
+`ProjectAuthoringView.tsx:1329`) — so it is wall clock, and nothing in the pass measured CPU at all.
+The wall clock went on the fourteen `await new Promise(r => setTimeout(r, …))` this script used to put
+between fragments: the editor's window is occluded whenever a script drives it from a terminal, and
+Chromium clamps a timer in an occluded window to a second, then aligns it to a whole minute once the
+window has been hidden for five. Fourteen of those is minutes. The pacing is a `MessagePort` task now.
+
+The editor's own cost is flat, and is now measured by a committed driver
+(`packages/noodl-editor/scripts/aaq011-perf`): **400 nodes streamed as 4000 partial payloads costs
+5.7ms in the whole `onToolCallPartial` path**, publishes included, because the publish is gated on an
+element closing rather than on a fragment arriving.
 
 ## Traps this run paid for
 

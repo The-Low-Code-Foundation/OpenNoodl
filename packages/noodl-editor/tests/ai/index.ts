@@ -23,6 +23,9 @@ export * from './authoring-parameter-values.test';
 export * from './authoring-session.test';
 export * from './authoring-staging.test';
 export * from './authoring-partial.test';
+// AAQ-011 F6: what a streamed submission costs the main thread — publishes are
+// bounded by the component, not by the stream, and the scan is resumable.
+export * from './aaq011-publish-cost.test';
 export * from './authoring-preview.test';
 export * from './authoring-telemetry.test';
 
