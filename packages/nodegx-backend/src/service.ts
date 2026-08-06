@@ -35,7 +35,12 @@ import { SearchState, SearchStartupError } from './search/SearchState';
 import { SearchIndexer, SearchCapabilityError } from './search/SearchIndexer';
 import { ChangeBus } from './realtime/ChangeBus';
 import { RealtimeHub } from './realtime/RealtimeHub';
-import { SecretsStore } from './config/SecretsStore';
+import {
+  SecretsStore,
+  FUNCTION_SECRETS_NAMESPACE,
+  FUNCTION_SECRET_NAME_PATTERN,
+  functionSecretEnvName
+} from './config/SecretsStore';
 import { OpsState } from './ops/OpsState';
 import { logger } from './ops/logger';
 import { AuditLog, ensureAuditTable } from './ops/audit';
@@ -61,6 +66,20 @@ export interface SendEmailNodeRequest {
   template?: string;
   /** Variables for `{{...}}` interpolation when `template` is set. `appName` defaults to the backend's name. */
   variables?: Record<string, string>;
+}
+
+/**
+ * What `_noodl_get_secret` answers the Secret node with (CWF-009).
+ *
+ * An object rather than a bare string for one reason: `undefined` and "the
+ * empty string is genuinely the value" have to be distinguishable, and a
+ * missing credential must be loud. `error` is a message about a NAME — it never
+ * carries, quotes or hints at a value.
+ */
+export interface SecretLookupResult {
+  found: boolean;
+  value?: string;
+  error?: string;
 }
 
 export interface StartedService {
@@ -392,6 +411,15 @@ export class BackendService {
     (globalThis as any)._noodl_send_email = (request: SendEmailNodeRequest): Promise<SendEmailResult> =>
       this.resolveAndSendEmail(request);
 
+    // 4.6 The Secret node (CWF-009, noodl-viewer-cloud) reaches SecretsStore the
+    //     same way — a process-global function, because the cloud runtime runs
+    //     in THIS process. The seam is deliberately a *resolver*, not the store:
+    //     the namespace is supplied here and never by the graph, so a function
+    //     can read the project author's `functions` secrets and cannot name
+    //     `webhooks`, `email`, `auth`, `files` or `adminToken` at all. See the
+    //     policy paragraph in config/SecretsStore.ts.
+    (globalThis as any)._noodl_get_secret = (name: unknown): SecretLookupResult => this.resolveFunctionSecret(name);
+
     // 5. Workflows.
     this.runner = new WorkflowRunner({
       workflowsPath: path.join(this.options.dataDir, 'workflows'),
@@ -546,6 +574,56 @@ export class BackendService {
       text: request.text || '',
       html: request.html
     });
+  }
+
+  /**
+   * The Secret node's actual read path (CWF-009).
+   *
+   * Two doors, in this order, and no third:
+   *
+   *   1. `<dataDir>/secrets.json`, `functions` namespace — the store convention
+   *      (config/SecretsStore.ts). Machine-local, mode 0600, never deployed.
+   *   2. `NODEGX_SECRET_<NAME>` in the environment — for deploy targets that
+   *      provision env vars rather than a data directory. Adds a door and not
+   *      an exposure: `process.env` is already fully readable from inside any
+   *      cloud function.
+   *
+   * ⚠️ Every `error` string here names the SECRET and the two places to put it.
+   * None of them can contain a value: the only branch that has one is the
+   * success branch, and the not-provisioned message is built from the name
+   * alone. That wording — "not provisioned **on this machine**" — is the
+   * expected production failure spelled out, because secrets.json does not
+   * travel with a deploy.
+   */
+  private resolveFunctionSecret(name: unknown): SecretLookupResult {
+    if (typeof name !== 'string' || name.length === 0) {
+      return { found: false, error: 'Secret: a Name is required — this node was asked for a secret with no name.' };
+    }
+    if (!FUNCTION_SECRET_NAME_PATTERN.test(name)) {
+      return {
+        found: false,
+        error:
+          `Secret: "${name.slice(0, 64)}" is not a usable secret name. ` +
+          'Use 1-128 characters from letters, digits, "_", "." and "-".'
+      };
+    }
+
+    const stored = new SecretsStore(this.options.dataDir).get(FUNCTION_SECRETS_NAMESPACE, name);
+    if (typeof stored === 'string') return { found: true, value: stored };
+
+    const envName = functionSecretEnvName(name);
+    const fromEnv = process.env[envName];
+    if (typeof fromEnv === 'string') return { found: true, value: fromEnv };
+
+    return {
+      found: false,
+      error:
+        `Secret: "${name}" is not provisioned on this machine. ` +
+        `Add it under the "${FUNCTION_SECRETS_NAMESPACE}" section of ` +
+        `${path.join(this.options.dataDir, 'secrets.json')}, or set the ${envName} environment variable. ` +
+        'secrets.json is machine-local and does not travel with a deploy, so a function that works ' +
+        'locally and fails here is usually a secret nobody provisioned on this target.'
+    };
   }
 
   /**

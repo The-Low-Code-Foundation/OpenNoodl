@@ -79,6 +79,31 @@ and its Request node splits named keys into output ports.
   entirely. The gate it does meet is the node's own check, inside the graph. Opening the rule in the
   panel cannot fix a failing step; ticking the port can.
 
+## Secrets: one namespace a graph may read
+
+A cloud function reaches a credential through the **Secret** node (CWF-009), and the policy behind
+it is short enough to state here in full:
+
+- The backend's secrets all live in one machine-local `<dataDir>/secrets.json`, namespaced by
+  subsystem — `webhooks`, `email`, `auth`, `files`, and a top-level `adminToken`
+  ([SecretsStore](../../packages/nodegx-backend/src/config/SecretsStore.ts)). Those namespaces
+  belong to the *backend*.
+- **`functions` is the one namespace that belongs to the project author**, and the only one a graph
+  can read. The resolver in `service.ts` supplies the namespace; the node supplies a name. So the
+  other namespaces are not merely forbidden to a function — they are unnameable by it. That matters
+  because "the author of a function is the person who deploys the backend" stops being true the day
+  an agent writes one, and a flat trust model is a bad thing to still be relying on when it does.
+- A deploy target that provisions environment variables rather than a data directory can set
+  `NODEGX_SECRET_<NAME>` instead; the resolver falls back to it. This is a second **door**, not a
+  second store — `process.env` is already fully readable from inside any cloud function
+  (TALK-007 §3.1), so it adds no exposure.
+- **`secrets.json` is machine-local and does not travel with a deploy.** A function that works
+  locally and fails in production because nobody provisioned the secret is therefore the *expected*
+  failure, and the node's error message says so in those words.
+- A workflow has no equivalent and needs none: a workflow definition is diffable, deployable JSON,
+  and a credential must never appear in one. Where a step needs a credential, the function it calls
+  reads it.
+
 ## Naming
 
 "Cloud function" is a Noodl-era term; the wire URLs say Parse for compatibility reasons that have

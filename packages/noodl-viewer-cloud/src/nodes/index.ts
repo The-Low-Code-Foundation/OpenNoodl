@@ -5,6 +5,15 @@ export function registerNodes(runtime: NoodlRuntime) {
     require('./cloud/request'),
     require('./cloud/response'),
     require('./cloud/sendemail'),
+
+    /**
+     * CWF-009 — `Secret`. Registered here rather than in `@noodl/runtime`'s
+     * shared list for the one reason that matters: the shared list reaches
+     * every runtime, and a Secret node in a browser bundle is a secret in a
+     * browser bundle. See the module comment on `cloud/secret.ts`.
+     */
+    require('./cloud/secret'),
+
     require('./data/aggregatenode'),
 
     /**

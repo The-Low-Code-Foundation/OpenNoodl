@@ -1,8 +1,46 @@
 # CWF-009 — A cloud function has secrets and no way to ask for one
 
 **From:** [TALK-007](TALK-007-WHAT-CLOUD-FUNCTIONS-SHOULD-HAVE.md) §6 row 3, approved 2026-08-05.
-**Status:** open, unowned. **Sequence this before [CWF-010](CWF-010-THE-CRYPTO-KIT.md) —** JWT,
-payments and every third-party API are notional until there is a door to a credential.
+**Status:** ✅ **shipped 2026-08-06** — slices 1–3 built and driven; slice 4 shipped as *two* doors
+(the store file and `NODEGX_SECRET_<NAME>`), **admin API deferred** — see below.
+**Sequenced before [CWF-010](CWF-010-THE-CRYPTO-KIT.md)**, which now has its signing key.
+
+## What shipped
+
+- **Namespace: `functions`.** Written into `SecretsStore.ts`'s module comment (the policy paragraph
+  is the deliverable, not the constant) and into
+  [BACKEND-AUTHORING-MODEL](../../reference/BACKEND-AUTHORING-MODEL.md).
+- **The seam is a resolver, not the store.** `service.ts` sets `_noodl_get_secret`, copying the
+  `_noodl_send_email` idiom exactly, and **supplies the namespace itself**. So `webhooks`, `email`,
+  `auth`, `files` and `adminToken` are not forbidden to a graph — they are *unnameable* by it.
+  Design question 2, answered by construction rather than by a check.
+- **`noodl.cloud.secret`**, registered only in `noodl-viewer-cloud/src/nodes/index.ts`. Ports: Name
+  in, `Do`, `Value` out, plus the outcome contract's `Done`/`Failure`/`Completed` and an `Error`
+  string.
+- **Two doors in.** `<dataDir>/secrets.json` → `functions` → `<NAME>`, then
+  `NODEGX_SECRET_<NAME>` from the environment. **The admin API is deferred**: every admin route
+  family is constructed and dispatched in `HttpServer.ts`, which this pass was scoped out of. So an
+  editor Secrets panel has no backend route yet — do not assume one exists.
+- `SecretsStore.names(namespace)` exists for that future panel. There is deliberately still no
+  method that hands back a value (design question 4).
+
+## Two doc premises that were wrong
+
+1. ~~"`catalog:check` will record `availableIn: ["cloud"]` — the first node with that value"~~ —
+   **wrong.** `Request`, `Response`, `Send Email` and `Aggregate Records` already carry it; `Secret`
+   is the fifth. The check written into the spec is still the right check (`availableIn` must be
+   exactly `["cloud"]`), and it is now a test assertion — only the "first" claim was false.
+2. ~~"service.ts:53 and its comment at 380-382"~~ — line 53 is right (the `SendEmailNodeRequest`
+   doc comment); the `_noodl_send_email` block is at **387-398**, not 380-382.
+
+## Traps confirmed, not merely repeated
+
+- **Redaction already covers this shape.** `SENSITIVE_KEY_PATTERN` (the one rule, in
+  `noodl-viewer-cloud/src/execution-history/scrub.ts`) already matches `/secret/i`, and nothing
+  needed a third mechanism. More importantly: a cloud function's **internal node outputs are never
+  recorded at all** — `ExecutionLogger.startNode`/`completeNode` have exactly one caller,
+  `WorkflowEngine.ts:509`, which logs *workflow steps*. The function-level record
+  (`WorkflowRunner.run`) stores only the scrubbed request; the response body is not stored either.
 
 ## The two halves, and only one is missing
 
@@ -67,15 +105,19 @@ exactly; it is the precedent for "a cloud node reaching a backend subsystem".
 Minimum: the admin API path plus a documented `secrets.json` shape. Editor UI can follow, but say
 in the task which one shipped so nobody assumes the other exists.
 
-## Done when
+## Done when — all met, by
+[`cloud-secret-node.test.ts`](../../../packages/nodegx-backend/tests/cloud-secret-node.test.ts)
 
 - A cloud function reads a secret by name through the node, uses it in an HTTP call, and **the value
   appears in no export, no log line and no error message** — grep the execution history and the ops
-  log for it as part of the test, not by eye.
-- An unknown name fails loudly with a diagnosable message.
+  log for it as part of the test, not by eye. ✅ The spec scans **every file the service wrote**
+  under `dataDir` (executions.sqlite included) and every captured console line, and asserts the one
+  place the value is allowed to be is `secrets.json`.
+- An unknown name fails loudly with a diagnosable message. ✅ Asserted on the wording: it names the
+  secret, both places to provision it, and says `secrets.json` "does not travel with a deploy".
 - The node is absent from the browser node library (`catalog:check` will record `availableIn:
-  ["cloud"]` — the first node with that value; if it says `browser` you registered it in the wrong
-  list).
+  ["cloud"]`; if it says `browser` you registered it in the wrong list). ✅ Asserted against the
+  committed catalog.
 
 ## Traps
 
