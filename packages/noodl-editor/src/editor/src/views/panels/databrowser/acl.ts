@@ -53,8 +53,22 @@ export interface AclEntry {
 /** A record's ACL: principal key → entry. `null` is a legal, meaningful value. */
 export type AclValue = Record<string, AclEntry>;
 
-/** What {@link parseAclInput} answers. `value: null` clears the ACL. */
-export type AclParseResult = { ok: true; value: AclValue | null } | { ok: false; error: string };
+/**
+ * What {@link parseAclInput} answers: a value to save, or a reason not to.
+ *
+ * Deliberately one shape with a nullable `error` rather than a discriminated
+ * `{ok: true} | {ok: false}` union — the editor's TS config does not narrow the
+ * union (`tsconfig.tests-main.json` proved it: `result.error` after
+ * `if (!result.ok)` is a compile error), and a result type that needs a cast at
+ * every call site is the wrong result type.
+ *
+ * `error === null` means accepted, and `value === null` then means *clear the
+ * ACL*, which is a real instruction and not an absence.
+ */
+export interface AclParseResult {
+  value: AclValue | null;
+  error: string | null;
+}
 
 /**
  * Validate an ACL object exactly as the backend does.
@@ -96,19 +110,19 @@ export function validateAclShape(value: unknown): string | null {
 export function parseAclInput(text: string): AclParseResult {
   const trimmed = (text || '').trim();
   // Empty clears the ACL. `{}` does NOT — see the module note.
-  if (trimmed === '' || trimmed === 'null') return { ok: true, value: null };
+  if (trimmed === '' || trimmed === 'null') return { value: null, error: null };
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(trimmed);
   } catch (err) {
-    return { ok: false, error: `Invalid JSON: ${err instanceof Error ? err.message : String(err)}` };
+    return { value: null, error: `Invalid JSON: ${err instanceof Error ? err.message : String(err)}` };
   }
 
   const shapeError = validateAclShape(parsed);
-  if (shapeError) return { ok: false, error: shapeError };
+  if (shapeError) return { value: null, error: shapeError };
 
-  return { ok: true, value: parsed as AclValue };
+  return { value: parsed as AclValue, error: null };
 }
 
 /**

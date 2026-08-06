@@ -25,14 +25,17 @@ const REAL_ACL = { 'kQ3n8': { read: true, write: true }, '*': { read: true } };
 
 /**
  * The message a refused edit produces — and an assertion that it WAS refused.
- * Written as a helper because the alternative is `if (!result.ok)` at every
- * call site, which passes vacuously if the parser ever starts accepting the
- * input the case exists to reject.
+ * Written as a helper so that "there is an error" is checked at every call
+ * site: asserting only on the message text would pass vacuously (`String(null)`
+ * matches nothing, but a changed regex could) if the parser ever started
+ * accepting the input a case exists to reject.
  */
 function refusal(input: string): string {
-  const result = parseAclInput(input) as { ok: boolean; error?: string; value?: unknown };
-  expect(result.ok).toBe(false);
+  const result = parseAclInput(input);
   expect(typeof result.error).toBe('string');
+  // A refusal must also produce no value to save — the failure mode this whole
+  // module exists to prevent is a half-understood edit reaching the row.
+  expect(result.value).toBeNull();
   return String(result.error);
 }
 
@@ -81,15 +84,15 @@ describe('describeAcl — the answer to "why can\'t this user see this record?"'
 
 describe('parseAclInput — a malformed edit must never be written', () => {
   it('accepts a well-formed ACL', () => {
-    expect(parseAclInput(JSON.stringify(REAL_ACL))).toEqual({ ok: true, value: REAL_ACL });
+    expect(parseAclInput(JSON.stringify(REAL_ACL))).toEqual({ value: REAL_ACL, error: null });
   });
 
   it('clears the ACL on an empty field — null, never {}', () => {
     // `{}` here would silently hide the row from everyone, which is the
     // opposite of what "I cleared the field" means.
-    expect(parseAclInput('')).toEqual({ ok: true, value: null });
-    expect(parseAclInput('   ')).toEqual({ ok: true, value: null });
-    expect(parseAclInput('null')).toEqual({ ok: true, value: null });
+    expect(parseAclInput('')).toEqual({ value: null, error: null });
+    expect(parseAclInput('   ')).toEqual({ value: null, error: null });
+    expect(parseAclInput('null')).toEqual({ value: null, error: null });
   });
 
   it('refuses malformed JSON, with the parser’s own reason', () => {

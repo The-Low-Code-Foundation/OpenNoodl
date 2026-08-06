@@ -105,7 +105,7 @@ export function CellEditor({ value, type, onSave, onCancel, error }: CellEditorP
         // backend would have used rather than saved and silently enforced.
         case ACL_COLUMN_TYPE: {
           const result = parseAclInput(editValue);
-          if (!result.ok) {
+          if (result.error !== null) {
             setJsonError(result.error);
             return;
           }
