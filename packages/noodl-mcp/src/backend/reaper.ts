@@ -42,9 +42,11 @@ import { backendsRoot } from './client';
 import {
   deleteRuntimeRecord,
   heartbeatIsFresh,
+  isOwnedBySelf,
   listRuntimeRecords,
   processCommandLine,
   processIsAlive,
+  selfOwnerStartedAt,
   verifyIsOurBackend
 } from './runtimeRecord';
 
@@ -81,6 +83,11 @@ export interface ReapOptions {
   root?: string;
   /** The pid that counts as "me" — records owned by it are never reaped. */
   selfPid?: number;
+  /**
+   * This session's start time, paired with {@link selfPid} to identify "me".
+   * Test seam; defaults to this process's actual start time.
+   */
+  selfStartedAt?: string;
   now?: number;
   /** Test seam: the command line of a pid. */
   commandLineOf?: (pid: number) => string | null;
@@ -136,6 +143,7 @@ async function terminate(
 export async function reapOrphanedBackends(options: ReapOptions = {}): Promise<ReapRow[]> {
   const root = options.root ?? backendsRoot();
   const selfPid = options.selfPid ?? process.pid;
+  const selfStartedAt = options.selfStartedAt ?? selfOwnerStartedAt();
   const now = options.now ?? Date.now();
   const isAlive = options.isAlive ?? processIsAlive;
   const commandLineOf = options.commandLineOf ?? processCommandLine;
@@ -154,7 +162,14 @@ export async function reapOrphanedBackends(options: ReapOptions = {}): Promise<R
       ...(detail ? { detail } : {})
     });
 
-    if (record.owner?.pid === selfPid) {
+    // ⚠️ All three of kind/pid/startedAt, not the pid alone. A bare pid match
+    // answers "is this record's owner pid mine now", and the case this module
+    // exists for — a dead session whose pid the OS recycled onto us — answers
+    // *yes* to that while being the very orphan we came to reap. It would have
+    // been skipped as `self` forever. The `kind` half matters too: the record
+    // format is shared with the editor, so without it an editor record whose
+    // owner pid collided with ours would read as our own.
+    if (isOwnedBySelf(record, { pid: selfPid, startedAt: selfStartedAt, kind: 'noodl-mcp' })) {
       rows.push(row('self'));
       continue;
     }

@@ -265,3 +265,43 @@ export function heartbeatIsFresh(record: Pick<BackendRuntimeRecord, 'heartbeatAt
 export function ownerIsLive(record: BackendRuntimeRecord, now = Date.now()): boolean {
   return processIsAlive(record.owner?.pid) && heartbeatIsFresh(record, now);
 }
+
+/**
+ * This process's own start time, as a stable session identity.
+ *
+ * ⚠️ **A pid is not a session.** The reaper's fast path has to answer "did *I*
+ * start this?", and a bare `owner.pid === process.pid` answers a different
+ * question: "does this record name a pid that happens to be mine *now*". Those
+ * differ in exactly the case this whole module exists for — a previous session
+ * died and the OS recycled its pid onto us — and there the fast path would
+ * classify that dead session's record as `self` and skip it **forever**, which
+ * is the `--parent-pid` hole rebuilt one branch higher.
+ *
+ * Derived from `process.uptime()` rather than stamped per write: every record a
+ * session writes must carry the *same* owner identity, or the comparison tells
+ * you which record you are looking at rather than which session wrote it.
+ * Memoised so the value cannot drift between two calls in one process.
+ */
+let selfOwnerStartedAtCache: string | undefined;
+export function selfOwnerStartedAt(): string {
+  if (selfOwnerStartedAtCache === undefined) {
+    selfOwnerStartedAtCache = new Date(Date.now() - Math.round(process.uptime() * 1000)).toISOString();
+  }
+  return selfOwnerStartedAtCache;
+}
+
+/**
+ * Does this record name *this* session as its owner?
+ *
+ * All three must agree. `kind` is not ceremony: the format is deliberately
+ * shared with the editor, so without it an editor-written record whose owner pid
+ * collides with ours would be read as our own and skipped.
+ */
+export function isOwnedBySelf(
+  record: Pick<BackendRuntimeRecord, 'owner'>,
+  self: { pid: number; startedAt: string; kind: BackendRuntimeOwner['kind'] }
+): boolean {
+  const owner = record.owner;
+  if (!owner) return false;
+  return owner.kind === self.kind && owner.pid === self.pid && owner.startedAt === self.startedAt;
+}

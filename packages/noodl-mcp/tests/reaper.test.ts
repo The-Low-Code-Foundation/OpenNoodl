@@ -116,10 +116,69 @@ describe('AAQ-011/F13 reaper', () => {
 
   it('never reaps its own record', async () => {
     const root = tempRoot();
-    record(root, { owner: { kind: 'noodl-mcp', pid: 4711, startedAt: '' } });
-    const rows = await reapOrphanedBackends({ root, selfPid: 4711, isAlive: () => false, kill: never });
+    const mine = '2026-08-06T09:00:00.000Z';
+    record(root, { owner: { kind: 'noodl-mcp', pid: 4711, startedAt: mine } });
+    const rows = await reapOrphanedBackends({
+      root,
+      selfPid: 4711,
+      selfStartedAt: mine,
+      isAlive: () => false,
+      kill: never
+    });
     expect(rows.map((r) => r.outcome)).toEqual(['self']);
     expect(listRuntimeRecords(root)).toHaveLength(1);
+  });
+
+  // The hole this whole module exists to close, rebuilt one branch higher: the
+  // `self` fast path used to compare the owner pid alone, so a dead session's
+  // record whose pid the OS had recycled onto us was classified `self` and
+  // skipped forever — never reaped, by the reaper.
+  it('reaps a dead session whose owner pid has been recycled onto this one', async () => {
+    const root = tempRoot();
+    record(root, {
+      backendId: 'backend_ghost',
+      // Same pid we are running as, a different session.
+      owner: { kind: 'noodl-mcp', pid: 4711, startedAt: '2026-08-06T08:00:00.000Z' },
+      heartbeatAt: '2026-08-06T08:00:05.000Z'
+    });
+
+    const killed: number[] = [];
+    const rows = await reapOrphanedBackends({
+      root,
+      selfPid: 4711,
+      selfStartedAt: '2026-08-06T09:30:00.000Z',
+      now: Date.parse('2026-08-06T09:31:00.000Z'),
+      isAlive: (pid) => pid === 4711 || (pid === 4242 && !killed.includes(4242)),
+      commandLineOf: () => ourCommandLine('backend_ghost'),
+      kill: (pid) => killed.push(pid)
+    });
+
+    expect(rows.map((r) => r.outcome)).toEqual(['reaped']);
+    expect(killed).toContain(4242);
+    expect(listRuntimeRecords(root)).toHaveLength(0);
+  });
+
+  // The format is shared with the editor, so a pid-only check would let one
+  // spawner adopt the other's record as its own and never reap it.
+  it("does not claim an editor's record as self on a pid collision", async () => {
+    const root = tempRoot();
+    const now = '2026-08-06T09:00:00.000Z';
+    record(root, {
+      backendId: 'backend_editor',
+      owner: { kind: 'editor', pid: 4711, startedAt: now }
+    });
+
+    const rows = await reapOrphanedBackends({
+      root,
+      selfPid: 4711,
+      selfStartedAt: now,
+      isAlive: () => true,
+      commandLineOf: () => ourCommandLine('backend_editor'),
+      kill: never
+    });
+
+    // Judged on the editor's liveness, not adopted as ours.
+    expect(rows.map((r) => r.outcome)).toEqual(['owner-alive']);
   });
 
   it('treats a stale heartbeat as a dead owner even when the owner pid resolves', async () => {

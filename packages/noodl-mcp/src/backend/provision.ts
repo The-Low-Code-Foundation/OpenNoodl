@@ -69,6 +69,7 @@ import {
   deleteRuntimeRecord,
   HEARTBEAT_INTERVAL_MS,
   readRuntimeRecord,
+  selfOwnerStartedAt,
   touchRuntimeRecord,
   verifyIsOurBackend,
   processIsAlive,
@@ -370,7 +371,10 @@ export async function startBackend(
     owner: {
       kind: 'noodl-mcp',
       pid: process.pid,
-      startedAt: new Date().toISOString(),
+      // This session's start time, not this record's — see `selfOwnerStartedAt`.
+      // Stamping `new Date()` here would give two records from one session two
+      // different owner identities, so the reaper could not recognise its own.
+      startedAt: selfOwnerStartedAt(),
       ...(options.projectDir ? { projectDir: options.projectDir } : {})
     },
     heartbeatAt: new Date().toISOString()
