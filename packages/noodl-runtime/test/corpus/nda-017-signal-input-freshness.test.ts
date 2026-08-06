@@ -595,6 +595,72 @@ describe('NDA-017: what must keep working', () => {
     expect(result(graph)).toBe(9);
   });
 
+  /**
+   * ⚠️ **The second thing only a saved project does: it applies the governed value too.**
+   *
+   * The row above proved a saved `runOnChange-a` reaches the checkbox. It says nothing about
+   * *when*. `NodeScope.setNodeParameters` queues one entry per parameter and `_performDirtyUpdate`
+   * drains them in `Object.keys(_inputValuesQueue)` order — i.e. the order they were queued, which
+   * is the parameter bag's own key order. So an unticked input whose value also lives in the bag
+   * loses the race: `a` lands first, `shouldRunOnValueChange('a')` reads the *absent means ticked*
+   * rule because the checkbox has not been applied yet, and the node evaluates at load. Exactly
+   * once, quietly, on a node the author had made passive.
+   *
+   * `setInputValue` cannot reach this and neither can the row above — it unticks an input whose
+   * only value arrives over a *connection*, and connections are made after every parameter is
+   * queued, so the checkbox always wins by construction.
+   *
+   * This predates NDA-017's on-load migration by a fortnight: it has been true for every
+   * hand-unticked box since §2 shipped, on every governed input that also carries a stored
+   * parameter (`Text Input.startValue`, `Condition.condition`, `Variable.value` — the common
+   * shape, not an exotic one). The migration is what made it matter, because it writes exactly
+   * these parameters across every pre-§2 project at once. Fixed in `setNodeParameters`, which now
+   * gives a `runOnChange-…` name priority over everything else in the bag.
+   */
+  test('a saved checkbox is applied before the saved value it governs, whatever the key order', async () => {
+    const graph = await createCorpusGraph({
+      modules: [PulseModule, RecorderModule, ExpressionNode as unknown as NodeModule],
+      rootComponent: '/root',
+      data: {
+        components: [
+          {
+            name: '/root',
+            nodes: [
+              { id: 'pulse', type: 'corpus.Pulse' },
+              { id: 'rec', type: 'corpus.Recorder' },
+              {
+                id: 'expr',
+                type: 'Expression',
+                // Key order is the adversarial one on purpose: both governed values sit ahead
+                // of their own checkboxes, which is what a bag written by anything other than
+                // this migration looks like.
+                parameters: {
+                  expression: 'a + b',
+                  a: 1,
+                  b: 2,
+                  'runOnChange-a': false,
+                  'runOnChange-b': false
+                }
+              }
+            ],
+            connections: [{ sourceId: 'pulse', sourcePort: 'signal', targetId: 'expr', targetPort: 'run' }]
+          }
+        ]
+      } as never
+    });
+    await graph.settle(4);
+
+    // Both inputs are unticked, so nothing may have evaluated at load. `isTrueEv`/`isFalseEv`
+    // fire on every evaluation, so an empty signal log is the proof — and `result` abstains
+    // rather than reporting the `3` the author never asked for.
+    expect(graph.signalsFor('expr')).toEqual([]);
+    expect(result(graph)).toBeNull();
+
+    // …and the graph still works the way its author built it: `Run` is what runs it.
+    runNow(graph);
+    expect(result(graph)).toBe(3);
+  });
+
   test('the connect-time push is now an abstention rather than a confident zero', async () => {
     const graph = await expressionGraph();
 

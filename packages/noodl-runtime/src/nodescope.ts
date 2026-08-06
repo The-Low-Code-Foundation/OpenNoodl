@@ -146,14 +146,39 @@ NodeScope.prototype.setNodeParameters = function (node, nodeModel) {
 
     var inputNames = Object.keys(parameters);
 
-    if (this.context.nodeRegister.hasNode(node.name)) {
-      var metadata = this.context.nodeRegister.getNodeMetadata(node.name);
-      inputNames.sort(function (a, b) {
-        var inputA = metadata.inputs[a];
-        var inputB = metadata.inputs[b];
-        return (inputB ? inputB.inputPriority : 0) - (inputA ? inputA.inputPriority : 0);
-      });
-    }
+    /**
+     * NDA-017 — a `runOnChange-…` answer must be applied before the input it governs.
+     *
+     * These parameters are queued in this order and drained in it (`Object.keys` of
+     * `_inputValuesQueue`, which is insertion-ordered), so a governed value that lands before
+     * its own checkbox is read against `runOnValueChange`'s *absent means ticked* rule and
+     * schedules a run — at load, on a node the author had made passive. The checkbox setter
+     * only records a boolean, so hoisting it can do nothing else.
+     *
+     * ⚠️ This is not the migration's bug, it is §2's: an author who unticked a box by hand has
+     * had this race since the checkboxes shipped, on every governed input that also carries a
+     * stored parameter (`Text Input.startValue`, `Condition.condition`, `Variable.value` — the
+     * common case, not the exotic one). It surfaces now because NDA-017's on-load migration
+     * writes exactly these parameters at scale.
+     *
+     * A priority rather than a pre-pass because the sort below already exists for precisely
+     * this kind of ordering claim, and because `inputPriority` cannot express it: a metadata
+     * lookup answers `undefined` for every checkbox on the four dynamic-port families
+     * (Expression, Function, Query Records, Filter Records), whose ports are minted per
+     * instance and never reach the register.
+     */
+    const RUN_ON_CHANGE_PREFIX = 'runOnChange-';
+    const metadata = this.context.nodeRegister.hasNode(node.name)
+      ? this.context.nodeRegister.getNodeMetadata(node.name)
+      : undefined;
+    const priorityOf = function (name: string): number {
+      if (name.indexOf(RUN_ON_CHANGE_PREFIX) === 0) return Number.MAX_SAFE_INTEGER;
+      const input = metadata ? metadata.inputs[name] : undefined;
+      return input ? input.inputPriority : 0;
+    };
+    inputNames.sort(function (a, b) {
+      return priorityOf(b) - priorityOf(a);
+    });
 
     inputNames.forEach((inputName) => {
       node.registerInputIfNeeded(inputName);
