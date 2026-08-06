@@ -92,6 +92,10 @@ export function SchemaPanel({ backendId, backendName, isRunning, onClose }: Sche
   const [expandedTable, setExpandedTable] = useState<string | null>(null);
   const [recordCounts, setRecordCounts] = useState<Record<string, number>>({});
   const [showCreateTable, setShowCreateTable] = useState(false);
+  // Which table's schema is open for editing (F88). Separate from
+  // `expandedTable` because expanding is a read and editing is a write; the
+  // two were conflated, which is how Edit came to mean "expand, again".
+  const [editingTable, setEditingTable] = useState<string | null>(null);
 
   // Load schema from backend
   const loadSchema = useCallback(async () => {
@@ -145,13 +149,38 @@ export function SchemaPanel({ backendId, backendName, isRunning, onClose }: Sche
   // Handle table expand/collapse
   const handleToggleExpand = useCallback((tableName: string) => {
     setExpandedTable((prev) => (prev === tableName ? null : tableName));
+    // Only one row is open at a time, so any toggle closes whatever was being
+    // edited. Leaving `editingTable` set would put a collapsed row straight
+    // back into edit mode the next time it was merely opened to be read.
+    setEditingTable(null);
   }, []);
 
-  // Handle edit table - expands table to show columns
+  /**
+   * F88 — press Edit on an existing table.
+   *
+   * This was a stub:
+   *
+   * ```
+   * setExpandedTable((prev) => (prev === tableName ? tableName : tableName));
+   * ```
+   *
+   * Both ternary branches are the same value, so the handler's whole effect
+   * was `setExpandedTable(tableName)`. On a row that was already expanded —
+   * which it is, as soon as you have clicked it once to look at its fields —
+   * React bails out of a set to the identical value and nothing renders. The
+   * button was bound, could not throw, and opened no dialog: it simply had no
+   * edit path behind it. Meanwhile `AddColumnForm` and `ColumnRenameInput`
+   * were finished, styled, exported from `index.ts`, and rendered by nothing.
+   *
+   * Editing is only meaningful on an open row, so this expands as well as
+   * arms edit mode.
+   */
   const handleEditTable = useCallback((tableName: string) => {
-    // Expand the table to show columns - full editing (add/remove columns) will be added in a future task
-    setExpandedTable((prev) => (prev === tableName ? tableName : tableName));
+    setExpandedTable(tableName);
+    setEditingTable(tableName);
   }, []);
+
+  const handleEndEdit = useCallback(() => setEditingTable(null), []);
 
   // Delete a table and all its data (WF-004: wires the previously-dead
   // backend:deleteTable handler to a UI caller).
@@ -163,6 +192,7 @@ export function SchemaPanel({ backendId, backendName, isRunning, onClose }: Sche
 
       try {
         await invokeIPC('backend:deleteTable', backendId, tableName);
+        setEditingTable((prev) => (prev === tableName ? null : prev));
         await loadSchema();
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Failed to delete table';
@@ -252,10 +282,14 @@ export function SchemaPanel({ backendId, backendName, isRunning, onClose }: Sche
             <TableRow
               key={table.name}
               table={table}
+              backendId={backendId}
               recordCount={recordCounts[table.name]}
               expanded={expandedTable === table.name}
+              editing={editingTable === table.name}
               onToggleExpand={() => handleToggleExpand(table.name)}
               onEdit={() => handleEditTable(table.name)}
+              onEndEdit={handleEndEdit}
+              onSchemaChanged={loadSchema}
               onDelete={() => handleDeleteTable(table.name)}
             />
           ))
