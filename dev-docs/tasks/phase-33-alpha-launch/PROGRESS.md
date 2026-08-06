@@ -13,7 +13,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | Task | Tier | Status | Notes |
 |---|---|---|---|
 | [ALPHA-001](./ALPHA-001-FIRST-HOUR.md) The cold-install first hour | 1 | 🟡 **Part A started 2026-08-06, §1 passed, then paused** | Discharges seven tasks' owed live-QA in one pass. **Started against a genuinely clean tree at `91fcd680` with a fresh `userData`** (the live one moved aside and restored afterwards). **§1 — launcher and first run: PASS.** Empty state renders correctly, `Welcome to NodeGX`, 0 projects, the first-run legal dialog appears and links to the legal docs (ALPHA-005's claim verified live), footer links resolve through `EXTERNAL_LINKS` to the three surviving destinations with no Noodl-era URLs. **§2–§6 not run.** Paused at Richard's instruction: driving the editor himself in parallel, he filed **thirteen findings in one message**, now [phase 42bis](../phase-42bis-alpha-driving-sprint/README.md). Resumes at §2 after that phase. ⚠️ **The lesson is the pause itself** — an hour of a human building a real app found thirteen first sightings the scripted pass had not reached |
-| [ALPHA-002](./ALPHA-002-RELEASE-CUT.md) A release that reaches a Mac | 1 | 🟡 **Engineering done — credentials human-gated** | 2026-08-06. Everything that must be true *before* the certificates land is now verified statically and gated. Found and fixed **F77** (the Windows leg signing with the Apple `.p12`), **F76** (the artefact check anchored on a file CI never runs), a `merge-mac-update-feed` that exited 0 on "nothing to merge" and shipped a single-arch feed green, and an install guide sending Mac testers after a universal `.dmg` that is not built. Publish target (A8/B3) deliberately **not** changed — the complete old-name edit list is in the task file §4. **Still needs A1 + A2 + B3 from Richard** |
+| [ALPHA-002](./ALPHA-002-RELEASE-CUT.md) A release that reaches a Mac | 1 | 🟡 **Engineering done — credentials human-gated** | 2026-08-06. Everything that must be true *before* the certificates land is now verified statically and gated. Found and fixed **F77** (the Windows leg signing with the Apple `.p12`), **F76** (the artefact check anchored on a file CI never runs), a `merge-mac-update-feed` that exited 0 on "nothing to merge" and shipped a single-arch feed green, and an install guide sending Mac testers after a universal `.dmg` that is not built. Publish target (A8/B3) **now changed** — see 2026-08-06 log entry below. **Still needs A1 + A2 from Richard** |
 | [ALPHA-003](./ALPHA-003-CRASH-AND-FEEDBACK.md) Find out when it breaks | 2 | 🟢 **Built 2026-08-06 — driven live** | **Its premise was wrong and that was the finding.** Packaged *and dev* builds have written `<userData>/debug/log-<date>.txt` since the fork, teeing every `console.log` with 10,000 chars of attached data, un-redacted, un-timestamped, never pruned — nobody was told and nobody asked. So the task was scoping, not adding. Now errors/warnings only through ALPHA-007's `redact`, timestamped, capped; retention 14d/40 files/20 MB swept in **main** (the merge driver is a second writer, in another process); `Help → Open log folder` + `Open crash report folder`; `crashReporter` local-only (`uploadToServer: false` — **there is no server**, and transmission needs a policy that names it); main-process fatals to `main-errors.txt`. `PRIVACY.md` §5 rewritten, criterion 6's apology deleted. 50 tests. **ALPHA-005's gate is satisfied by never transmitting.** Not built: scope §4 (the no-provider state — it belongs to ALPHA-001) |
 | [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 📋 Specced | **Re-scoped 2026-07-31** — platform half moved to ALPHA-006; retains the authored concept set, getting-started and troubleshooting. Blocked on ALPHA-006 |
 | [ALPHA-005](./ALPHA-005-LEGAL-SURFACE.md) The paperwork that ships with a binary | 2 | ✅ **Complete** | 2026-07-30. `PRIVACY.md` + `TERMS.md` written from the code, licence fields added, both reachable from the Application/Help menus and shown at first run. **Criterion 5 (an outside reader) is owed** — see below |
@@ -290,3 +290,35 @@ evidence, not speculation — each was measured.
   **Still owed, and unmoved: the exit criterion.** Nothing here was demonstrated by
   someone who is not Richard. **A3 — recruiting testers — remains the long pole, and
   no amount of engineering shortens it.**
+
+- **2026-08-06 (later same day) — three Tier B decisions closed.** Richard decided
+  B3, B4 and B7 in one pass; all three executed and verified live rather than left
+  as decisions on paper.
+
+  **B3.** `The-Low-Code-Foundation/OpenNoodl` renamed to `.../NodeGX` (`gh repo
+  rename`; old name now redirects). Six files updated to match — `package.json`'s
+  `build.publish.repo`, `issueForm.ts`'s `ISSUE_REPO`, `legal-window.js`'s fallback
+  doc link, the issue template's contact link, the README badge/release link, and
+  `create-labels.sh`'s `REPO` var — `e8a53c94`. `tests-unit/alpha-007` (87) and the
+  `tests-main` suites covering `legal-window`/`issueForm` (210) re-run green.
+  Deliberately not touched: the README's product-name prose and the sibling
+  `opennoodl-hosting.com`/`opennoodl-cloudservice`/`opennoodl-better-backend` repo
+  names — REV-007 already scoped the rebrand to branding + packaging identity, not
+  prose or sibling repos.
+
+  **B4.** `scripts/alpha-007/create-labels.sh` run for real. Nine labels now live:
+  `needs-triage`, `node-library`, four `severity:*`, `triaged`, `needs-info`,
+  `cannot-reproduce`. F72's queue contract (`gh issue list --label needs-triage`) is
+  no longer empty by construction.
+
+  **B7.** Richard confirmed the Discord invite (`discord.gg/dZw4w5pKf9`) is live and
+  staffed — no product change needed. Found in passing: the issue template's
+  "Question or general discussion" link still points at `/discussions`, which is
+  off (`has_discussions: false`) — the same dead-link shape B7 was written to avoid,
+  just on the other channel. Left unowned in `HUMAN-GATED-ITEMS.md`, not filed as an
+  F-number (one-line config choice, not a mechanism defect).
+
+  **Not done this pass, and still the actual gates:** A1/A2 (signing secrets), B1
+  (legal entity/contact/jurisdiction), B2's two GitHub admin actions (revoke the
+  leaked secret, enable device flow), B5 (docs-CDN disposition), B6 (prefill probe —
+  needs a signed-in browser session), and A3 (testers). None of them are engineering.

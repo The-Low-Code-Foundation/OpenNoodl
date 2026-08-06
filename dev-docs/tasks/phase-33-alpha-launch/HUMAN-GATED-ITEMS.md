@@ -155,32 +155,27 @@ Related and unowned: **F64** — `GitHubTokenStore.ts`'s docstring claims Electr
 so the two credential stores disagree. `PRIVACY.md` §8 documents the real behaviour.
 Decide whether to converge them before or after alpha.
 
-### B3. A8 — the publish target's name → ALPHA-002
+### B3. A8 — the publish target's name → ALPHA-002 ✅ **Done 2026-08-06**
 
-`packages/noodl-editor/package.json` publishes to
-`The-Low-Code-Foundation/OpenNoodl` for a product called NodeGX, so every download
-URL and the auto-update feed say the old name.
+**Decided: rename now, before the first tag.** `The-Low-Code-Foundation/OpenNoodl`
+was renamed to `The-Low-Code-Foundation/NodeGX` (`gh repo rename`, old name now
+redirects). `packages/noodl-editor/package.json`'s `build.publish.repo`,
+`issueForm.ts`'s `ISSUE_REPO`, `legal-window.js`'s fallback doc link, the issue
+template's contact link, the README badge and release-download link, and
+`scripts/alpha-007/create-labels.sh`'s `REPO` var all updated to match, `e8a53c94`.
+Deliberately **not** touched: the README's product-name prose and the sibling
+`opennoodl-hosting.com`/`opennoodl-cloudservice`/`opennoodl-better-backend` repo
+names — that is a separate content decision, already made in REV-007 (rename scope
+was branding + packaging identity only).
 
-Not safe to change casually: pointing `publish` at a repository that does not exist
-breaks releases, and moving the repo breaks anything already published under the old
-name. **Decide once, before the first tag anyone installs**, because the feed URL is
-baked into each binary and alpha testers will not re-download for months.
+### B4. Permission to create the issue labels → ALPHA-007 §6 (F72) ✅ **Done 2026-08-06**
 
-### B4. Permission to create the issue labels → ALPHA-007 §6 (F72)
-
-**Verified live today:** the repo's label set is still GitHub's stock nine. All three
-issue forms have been declaring `needs-triage` since 2026-07-30, and
-`node_report.yml` also declares `node-library`. GitHub silently drops labels it
-cannot resolve, so every report filed since then is unlabelled and
-`gh issue list --label needs-triage` returns nothing by construction.
-
-There is also **no severity vocabulary at all** — no form field, no label — so the
-queue can only be ranked by date.
-
-The ALPHA-007 agent is preparing the exact `gh label create` commands as a script
-rather than running them, because that repo is public. This needs a *"yes, create
-these"* plus a look at the severity vocabulary before it is applied. Thirty seconds
-of work behind one decision — do it before any tester files anything, not after.
+**Decided: create both, plus the severity vocabulary.** `bash
+scripts/alpha-007/create-labels.sh` run against the (now-renamed) repo. Nine labels
+live: `needs-triage`, `node-library`, `severity:blocker/serious/annoying/cosmetic`,
+`triaged`, `needs-info`, `cannot-reproduce` — verified with `gh label list`.
+`gh issue list --label needs-triage` now returns a real (empty) queue instead of
+failing by construction.
 
 ### B5. The content origin's disposition → ALPHA-006 §5
 
@@ -225,7 +220,7 @@ move into the body and the field contract changes shape.**
 Two minutes of work, and it is the only thing standing between ALPHA-007 Part A and
 its acceptance criterion 3.
 
-### B7. Discord / Discussions — does either exist? → ALPHA-006 §6, ALPHA-007
+### B7. Discord / Discussions — does either exist? → ALPHA-006 §6, ALPHA-007 ✅ **Answered 2026-08-06**
 
 The Help Center's old "community Discord" and "support forum" links pointed at
 **Noodl's**, not ours, so ALPHA-006 removed them rather than guess a replacement
@@ -248,6 +243,17 @@ URL. GitHub Discussions is also off (`has_discussions: false`, checked 2026-08-0
 alpha whose whole purpose is hearing back from testers, that is worth a deliberate
 answer: confirm the Discord and staff it, enable Discussions, or accept that issues are
 the only channel and say so in the Help Center.
+
+**Richard confirmed 2026-08-06: the Discord invite is live and staffed.** No product
+change needed — the Help Center and launcher footer links stay as they are.
+
+⚠️ **New, found while resolving this item:** `.github/ISSUE_TEMPLATE/config.yml`'s
+"Question or general discussion" contact link points at `.../discussions`, but GitHub
+Discussions is still off (`has_discussions: false`). A reporter who clicks it hits
+GitHub's "Discussions aren't enabled" page — the same bad experience B7 was written to
+avoid for Discord, just on the other channel. Either enable Discussions or repoint that
+link at the Discord invite / a discussion-shaped issue form. Unowned — not filed as an
+F-number because it's a one-line config fix, not a mechanism defect.
 
 ---
 
