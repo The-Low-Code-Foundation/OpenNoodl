@@ -36,6 +36,39 @@ const { initializeGitHubOAuthHandlers } = require('./github-oauth-handler');
 const { handleProjectMerge } = require('./src/merge-driver');
 const { openLegalWindow } = require('./src/legal-window');
 const { setupReportIPC } = require('./src/report-window');
+const { initialiseDebugDirectory, pruneCrashDirectory, setupDebugLogActions } = require('./src/debug-log');
+
+// ALPHA-003 §3 — native crashes, captured locally and sent nowhere.
+//
+// A renderer that dies takes the JS error handler with it, so `window.onerror`,
+// `errorTail` and the on-disk log all record exactly nothing about the worst
+// class of failure. A minidump is the only record that survives it.
+//
+// `uploadToServer: false` is not a default we are accepting, it is the whole
+// design. **We have no server.** Electron's crashReporter exists to POST to a
+// Crashpad endpoint, and building one would need a transmission policy that
+// ALPHA-005 does not currently grant — so the dumps land in
+// `app.getPath('crashDumps')`, the Help menu reveals that folder, and a user
+// who wants us to see one attaches it to their own report. That keeps
+// PRIVACY.md §5's "nothing about a crash is transmitted" true as written.
+//
+// Must run before `app.ready`, and before any renderer exists, or the child
+// processes never inherit it. `compress: false` because a gzipped `.dmp` is a
+// worse thing to ask a tester to attach than a plain one, and there is no
+// upload to save bandwidth on.
+try {
+  electron.crashReporter.start({
+    productName: 'NodeGX',
+    companyName: 'NodeGX',
+    submitURL: '',
+    uploadToServer: false,
+    compress: false
+  });
+} catch (e) {
+  // Not fatal, and not worth a dialog: the app runs, it simply will not have
+  // minidumps. Linux without a working Crashpad is the realistic case.
+  console.warn('[crash] Local crash capture is unavailable:', e && e.message);
+}
 
 //fixes problem with reloading the viewer when it's
 //running in a separate browser window (file:// cross origin warning)
@@ -582,6 +615,30 @@ function launchApp() {
    */
   let openReportComposer = () => {};
 
+  /**
+   * ALPHA-003 §2 — assigned at `ready`, used by the Help menu.
+   *
+   * The `debug/` directory has a second writer in a different process (the Git
+   * merge driver), so both the sweep and the reveal live in `debug-log.js`
+   * where they cannot disagree about where things are.
+   */
+  let debugLogActions = { openLogFolder: () => {}, openCrashFolder: () => {}, hasCrashFolder: () => false };
+
+  function setupDebugLog() {
+    debugLogActions = setupDebugLogActions({ app, shell });
+
+    // Creating the directory here is not incidental: `merge-driver.js` writes
+    // into it without `mkdir` and swallows the failure, so before this a first
+    // failed project merge produced no dump at all.
+    const debugSweep = initialiseDebugDirectory(app);
+    const crashSweep = pruneCrashDirectory(app);
+    if (debugSweep.deleted || crashSweep.deleted) {
+      console.log(
+        `[debug] Retention swept ${debugSweep.deleted} log file(s) and ${crashSweep.deleted} crash dump(s).`
+      );
+    }
+  }
+
   function setupReportIpc() {
     openReportComposer = setupReportIPC({
       ipcMain,
@@ -681,15 +738,30 @@ function launchApp() {
     // ALPHA-007 §1 puts "Report a problem…" at the top of it. No accelerator in
     // v1: every convenient key is taken in an editor, and picking a bad one is
     // worse than a menu item.
-    template.push({
-      label: 'Help',
-      submenu: [
-        { label: 'Report a problem…', click: () => openReportComposer() },
-        { type: 'separator' },
-        { label: 'Privacy Policy', click: () => openLegalWindow('privacy', resolveStartupTheme().resolved) },
-        { label: 'Alpha Terms', click: () => openLegalWindow('terms', resolveStartupTheme().resolved) }
-      ]
-    });
+    //
+    // ALPHA-003 criterion 1 puts the two diagnostic folders directly under it,
+    // in that order, because that is the order they are needed in: the reporter
+    // is already here, and the next question is "what do I attach". Two clicks,
+    // and the reveal selects the newest file so nobody has to read timestamps.
+    // The wording says "folder" rather than naming a path — `getPath('logs')`
+    // resolves to three different places and none of them is memorable.
+    const helpSubmenu = [
+      { label: 'Report a problem…', click: () => openReportComposer() },
+      { type: 'separator' },
+      { label: 'Open log folder', click: () => debugLogActions.openLogFolder() }
+    ];
+
+    if (debugLogActions.hasCrashFolder()) {
+      helpSubmenu.push({ label: 'Open crash report folder', click: () => debugLogActions.openCrashFolder() });
+    }
+
+    helpSubmenu.push(
+      { type: 'separator' },
+      { label: 'Privacy Policy', click: () => openLegalWindow('privacy', resolveStartupTheme().resolved) },
+      { label: 'Alpha Terms', click: () => openLegalWindow('terms', resolveStartupTheme().resolved) }
+    );
+
+    template.push({ label: 'Help', submenu: helpSubmenu });
 
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
   }
@@ -858,7 +930,11 @@ function launchApp() {
 
     setupMainWindowControlIpc();
 
-    // Before setupMenu: it is what gives the Help menu item something to call.
+    // Both before setupMenu: they are what give the Help menu items something
+    // to call, and `setupDebugLog` also decides whether the crash-folder item
+    // exists at all.
+    setupDebugLog();
+
     setupReportIpc();
 
     setupMenu();
