@@ -169,16 +169,34 @@ function deepEqual(a: unknown, b: unknown): boolean {
  * is what an author reading JSON means) and lexicographically otherwise; dates
  * and ISO date strings compare as instants. Anything else is INCOMPARABLE and
  * throws rather than guessing.
+ *
+ * ⚠️ CWF-004 slice 2 exported this, because the `sort` step needs an order and
+ * a SECOND ordering would disagree with `gt`/`lt` at exactly the edges this one
+ * was written for — `"10"` against `"9"`, an ISO date against an epoch number.
+ * One order for the whole workflow layer, or authors learn two.
  */
-function compare(a: unknown, b: unknown, op: ConditionOp): number {
+export function compareOrdered(a: unknown, b: unknown): number {
   const na = toComparableNumber(a);
   const nb = toComparableNumber(b);
   if (na !== null && nb !== null) return na === nb ? 0 : na < nb ? -1 : 1;
   if (typeof a === 'string' && typeof b === 'string') return a === b ? 0 : a < b ? -1 : 1;
   throw new ConditionError(
-    `Cannot order-compare ${describe(a)} and ${describe(b)} with "${op}" — ` +
+    `Cannot order-compare ${describe(a)} and ${describe(b)} — ` +
       'both operands must be numbers, numeric strings, dates, or both strings.'
   );
+}
+
+function compare(a: unknown, b: unknown, op: ConditionOp): number {
+  try {
+    return compareOrdered(a, b);
+  } catch {
+    // Re-raised naming the operator, which is what a condition's author is
+    // looking at. The wording is unchanged from before the export existed.
+    throw new ConditionError(
+      `Cannot order-compare ${describe(a)} and ${describe(b)} with "${op}" — ` +
+        'both operands must be numbers, numeric strings, dates, or both strings.'
+    );
+  }
 }
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/;

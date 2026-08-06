@@ -29,6 +29,7 @@ import { RetryBackoffRow } from '../components/WorkflowCondition/RetryBackoffRow
 import { SwitchCasesEditor } from '../components/WorkflowCondition/SwitchCasesEditor';
 import { TransformOutputEditor } from '../components/WorkflowCondition/TransformOutputEditor';
 import { TriggerInfoRow } from '../components/WorkflowCondition/TriggerInfoRow';
+import { ValidateRulesEditor } from '../components/WorkflowCondition/ValidateRulesEditor';
 import { WorkflowParamsEditor } from '../components/WorkflowCondition/WorkflowParamsEditor';
 import { WorkflowValueInput } from '../components/WorkflowCondition/WorkflowValueInput';
 import { TypeView } from '../TypeView';
@@ -213,6 +214,51 @@ export class WorkflowTransformType extends WorkflowTypeView {
           value,
           onChange: (next: Record<string, unknown>) => this.write(next),
           ops: this.ops,
+          scope: this.scope,
+          graph: this.graph,
+          stepId: this.stepId
+        })
+      })
+    );
+  }
+}
+
+/**
+ * `validate.rules` — what must be true before the run goes on (CWF-004 slice 2).
+ *
+ * The one row in this panel that reads TWO served vocabularies off its port
+ * type: the condition operators (a `when` rule is an ordinary condition, edited
+ * by the very same `ConditionEditor` a branch uses) and the closed type list (a
+ * `path` rule asserts one of them). Both were put there by the translator from
+ * the served catalog, so neither is a copy — which is what makes "remove a type
+ * from the backend and it leaves the dropdown" true with no editor change.
+ *
+ * Like `WorkflowTransformType` and unlike `WorkflowParamsType`, this edits ONE
+ * param's value, so an ordinary `write()` through the undo queue is the whole
+ * story and `isChanged` / `onReset` mean what they mean everywhere else.
+ */
+export class WorkflowValidateType extends WorkflowTypeView {
+  static fromPort(args: TSFixme) {
+    return WorkflowTypeView.fill(new WorkflowValidateType(), args);
+  }
+
+  /** The types this backend will actually check. */
+  private get types() {
+    return this.type?.types || [];
+  }
+
+  renderReact() {
+    if (!this.root) return;
+    this.root.render(
+      React.createElement(PropertyPanelRow, {
+        label: this.displayName,
+        isChanged: !this.isDefault,
+        onReset: () => this.write(undefined),
+        children: React.createElement(ValidateRulesEditor, {
+          value: this.parent.model.getParameter(this.name),
+          onChange: (value: unknown) => this.write(value),
+          ops: this.ops,
+          types: this.types,
           scope: this.scope,
           graph: this.graph,
           stepId: this.stepId

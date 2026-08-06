@@ -336,8 +336,13 @@ describe('WFA-003 the served spec describes the value language', () => {
     // `transform` step's `output` may use — served for the same reason the
     // operators are, so an editor cannot offer an operation this backend does
     // not perform and an agent cannot invent one.
+    // CWF-004 slice 2 then added `validateLanguage`, the closed type vocabulary
+    // a `validate` step's path rules may assert — the third served language, and
+    // served for the third time for the same reason. Its four sibling kinds
+    // (`filter`, `sort`, `deduplicate`, `split`) needed NO new language, which is
+    // why four new kinds are not four bumps: a shape bump is for a shape change.
     // Bumping this line is the deliberate act the catalog's `version` is for.
-    expect(catalog.version).toBe('1.6.0');
+    expect(catalog.version).toBe('1.7.0');
   });
 
   it('marks every DSL param raw, and nothing else', () => {
@@ -349,7 +354,18 @@ describe('WFA-003 the served spec describes the value language', () => {
     // always meant — the engine does NOT value-resolve it — and it is load-
     // bearing in a way CWF-001's proposed `raw` param would not have been: only
     // the transform executor holds the operation table, so only it can walk it.
-    expect(raw.sort()).toEqual(['branch.condition', 'for-each.filter', 'switch.cases', 'transform.output']);
+    // CWF-004 slice 2 added the fifth and sixth: `validate.rules` (an array of
+    // rules the executor evaluates lazily, exactly as `switch.cases` is) and
+    // `filter.condition` (a condition, evaluated once per item against a scope
+    // the engine cannot build).
+    expect(raw.sort()).toEqual([
+      'branch.condition',
+      'filter.condition',
+      'for-each.filter',
+      'switch.cases',
+      'transform.output',
+      'validate.rules'
+    ]);
     // Every raw param is one the value language calls a structure, which is what
     // the served note tells a property editor to render differently.
     expect(stepKindCatalog().valueLanguage.rawParamNote).toMatch(/raw: true/);

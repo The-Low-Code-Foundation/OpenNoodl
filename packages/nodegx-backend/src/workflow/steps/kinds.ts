@@ -52,6 +52,9 @@ import {
   validateTransformOutput
 } from './transform';
 import type { TransformLanguageSpec } from './transform';
+import { CONTROL_VALIDATE_RULES, VALIDATE_LANGUAGE, VALIDATE_TYPE_NAMES, validateValidateRules } from './validate';
+import type { ValidateLanguageSpec } from './validate';
+import { DEFAULT_MAX_BATCHES } from './data';
 import { isPlainObject, VALUE_LANGUAGE } from './values';
 
 /**
@@ -99,8 +102,25 @@ import { isPlainObject, VALUE_LANGUAGE } from './values';
  * its `output` param falls back to the control for its declared `object` type
  * (that is exactly what `control` being a served STRING rather than an enum is
  * for).
+ * 1.7.0 — CWF-004 slice 2 added `validateLanguage`: the closed type vocabulary a
+ * `validate` step's path rules may assert. Served for the third time now for the
+ * same reason as the first two — an editor holding its own copy of the list could
+ * offer `"type": "email"`, which this backend does not check, and an agent
+ * working from memory would simply invent it.
+ *
+ * The four other kinds slice 2 added (`filter`, `sort`, `deduplicate`, `split`)
+ * needed NO new served language, which is the point: `filter` and `sort` reuse
+ * the condition language and its ordering whole, and the other two need no
+ * vocabulary at all. A shape bump is for a shape change, and four kinds is not
+ * one.
+ *
+ * Degradation: an older editor talking to a 1.7.0 backend gets the five kinds
+ * and renders every param from its declared `type` — `rules` falls back to the
+ * `array` control, which is a JSON list rather than a rules editor, but is not
+ * broken. A newer editor talking to a pre-1.7.0 backend is served none of the
+ * kinds, so there is no card whose rules editor would have nothing to offer.
  */
-export const STEP_KIND_CATALOG_VERSION = '1.6.0';
+export const STEP_KIND_CATALOG_VERSION = '1.7.0';
 
 export interface StepParamSpec {
   name: string;
@@ -222,6 +242,25 @@ const REF_PARAM: StepParamSpec = {
   type: 'string',
   required: true,
   description: 'The cloud function to invoke (a step field, not a param).'
+};
+
+/**
+ * The array param the four CWF-004 slice-2 array kinds share.
+ *
+ * One declaration rather than four, so `filter`, `sort`, `deduplicate` and
+ * `split` cannot drift into describing the same thing differently — and so the
+ * default (`previous.items`) is written once beside the one the executors
+ * supply. `for-each`'s `items` is deliberately NOT this constant: its
+ * description carries its own iteration warning, and merging them would make one
+ * of the two say something untrue about itself.
+ */
+const ITEMS_PARAM: StepParamSpec = {
+  name: 'items',
+  type: 'any',
+  default: { $path: 'previous.items' },
+  description:
+    'The array to work on — usually `{"$path": "previous.items"}`, but any path or literal array. A value that ' +
+    'is not an array is a step FAILURE and not an empty list: an absent list and an empty one are different bugs.'
 };
 
 /**
@@ -586,6 +625,233 @@ export const STEP_KIND_SPECS: Record<StepKind, StepKindSpec> = {
     ]
   },
 
+  validate: {
+    kind: 'validate',
+    displayName: 'Validate',
+    category: 'Workflow Data',
+    source: 'CWF-004',
+    summary: "Checks that the run's data is the shape you expect, and fails the step loudly when it is not.",
+    whenToUse:
+      'Guard the top of a workflow that a third party can start. A webhook from someone else\'s system is exactly ' +
+      'where a silent `undefined` ruins an afternoon three weeks later — this turns it into one loud failure, at ' +
+      'the step whose job was to notice, with the path named.',
+    invokesFunction: false,
+    params: [
+      {
+        name: 'rules',
+        type: 'array',
+        required: true,
+        raw: true,
+        control: CONTROL_VALIDATE_RULES,
+        displayName: 'Rules',
+        description:
+          'What must be true. Each rule has EXACTLY ONE of `path` (assert a path is present, and optionally that ' +
+          `it is one of ${VALIDATE_TYPE_NAMES.join(', ')}) or \`when\` (assert any condition the branch language ` +
+          'can express). `required` defaults to TRUE on a path rule; set it false for "optional, but this type ' +
+          'when present". A `message` replaces the generated one.'
+      },
+      {
+        name: 'mode',
+        type: 'enum',
+        enums: ['all', 'first'],
+        default: 'all',
+        description:
+          '`all` (default): check every rule and report every broken one in a single failure — usually what you ' +
+          'want, because fixing one supplier field at a time is four deploys. `first`: stop at the first.'
+      }
+    ],
+    routes: [],
+    output: '`{ ok: true, checked: number }` when every rule held. A broken rule is a step FAILURE, not an output.',
+    clientEquivalent:
+      'None. In the browser you would wire Conditions and an Expression; here the rules are declarative data, ' +
+      'because a workflow definition is deployable, agent-authored JSON running with admin authority.',
+    notes: [
+      'There is no `invalid` route, deliberately: a failure routes down `onError`, and error edges already ARE ' +
+        'try/catch. A second way to express "the data was bad" would be one way too many.',
+      'A condition rule that cannot be EVALUATED is reported as a broken rule rather than as a different kind of ' +
+        'failure, so `mode: "all"` still tells you about the other four rules.',
+      'The type vocabulary is CLOSED and served as `validateLanguage`. Anything richer than a JSON type — an ' +
+        'email shape, a range, one of three values — is a `when` rule, using the operator set that is already ' +
+        'served and already implemented.',
+      'A rule with `"required": false` and no `type` asserts nothing, and is refused at write time rather than ' +
+        'passing silently.'
+    ]
+  },
+
+  filter: {
+    kind: 'filter',
+    displayName: 'Filter',
+    category: 'Workflow Data',
+    source: 'CWF-004',
+    summary: 'Keeps only the array items that match a declarative condition.',
+    whenToUse:
+      'Narrow a list before doing anything expensive with it — only the unpaid invoices, only the EU customers. ' +
+      'Reach for it before a For Each, so the per-item function is called for the items that matter and the ' +
+      'filtered list is visible in the execution record.',
+    invokesFunction: false,
+    params: [
+      ITEMS_PARAM,
+      {
+        name: 'condition',
+        type: 'condition',
+        required: true,
+        raw: true,
+        description:
+          'Kept when this is true. The item is in scope under `itemKey` and its position under `indexKey`, so ' +
+          '`{"$path": "item.status"}` reads the item — the same condition that works in a For Each filter.'
+      },
+      { name: 'itemKey', type: 'string', default: 'item', description: 'Key the item is in scope under.' },
+      {
+        name: 'indexKey',
+        type: 'string',
+        default: 'index',
+        description: 'Key the zero-based position is in scope under.'
+      }
+    ],
+    routes: [
+      { name: 'empty', description: 'Taken when nothing matched.' },
+      { name: 'nonempty', description: 'Taken when at least one item matched.' }
+    ],
+    output: '`{ items: unknown[], count, dropped, total }` — `items` is the kept list, in its original order.',
+    clientEquivalent:
+      'Array Filter, which runs a JavaScript predicate per item. Here the predicate is a declarative condition ' +
+      'for the reason nothing on this tier evaluates a string.',
+    notes: [
+      'This is the ONE array step with routes, because it is the one that can change whether the list is empty. ' +
+        'Sorting, de-duplicating and splitting cannot, so ports for it there would answer a question the ' +
+        'previous step already knew.',
+      '`for-each` has had a `filter` param since WF-002 and still does. As a STEP the filtered list is an ' +
+        'output — recorded, readable downstream, and usable for something other than a per-item call.',
+      'A condition that cannot be evaluated on an item is a LOUD step failure naming the index, not a silent drop.'
+    ]
+  },
+
+  sort: {
+    kind: 'sort',
+    displayName: 'Sort',
+    category: 'Workflow Data',
+    source: 'CWF-004',
+    summary: "Orders an array by a path inside each item, using the condition language's own ordering.",
+    whenToUse:
+      'Put a list in a deliberate order before it is written, sent or batched — oldest first, largest last. ' +
+      'Cheap, declarative, and it makes the next step reproducible instead of dependent on whatever order a ' +
+      'supplier happened to send.',
+    invokesFunction: false,
+    params: [
+      ITEMS_PARAM,
+      {
+        name: 'by',
+        type: 'string',
+        displayName: 'Sort by (a path inside each item)',
+        description:
+          'A dotted path INTO each item — `payment.total`, `createdAt`. Leave it empty to order the items ' +
+          'themselves, which is what you want for a list of strings or numbers.'
+      },
+      {
+        name: 'order',
+        type: 'enum',
+        enums: ['ascending', 'descending'],
+        default: 'ascending',
+        description: 'Which end the smallest value goes. Items with no sort key stay last either way.'
+      }
+    ],
+    routes: [],
+    output: '`{ items: unknown[], count }` — a new array; the input is never reordered in place.',
+    clientEquivalent:
+      'Array Sort in the browser takes a JavaScript comparator. This takes a path, and the order is the one ' +
+      '`gt` / `lt` already use, so a sort and a condition can never disagree about which value is larger.',
+    notes: [
+      'Numbers order numerically, numeric strings order numerically (so `"10"` is after `"9"`), ISO dates order ' +
+        'as instants, and two plain strings order lexicographically — the condition language\'s rules exactly.',
+      'The sort is STABLE: equal keys keep the order they arrived in.',
+      'An item whose key is missing or null sorts LAST in BOTH directions. Absence is not a value, so reversing ' +
+        'the order must not move it.',
+      'Two items that cannot be ordered — a number against an object — FAIL the step. Inventing an order there ' +
+        'is how a report comes out wrong rather than missing.'
+    ]
+  },
+
+  deduplicate: {
+    kind: 'deduplicate',
+    displayName: 'Deduplicate',
+    category: 'Workflow Data',
+    source: 'CWF-004',
+    summary: 'Drops repeated array items, compared by a path inside each item.',
+    whenToUse:
+      'A supplier that re-sends, a join that fanned out, a webhook delivered twice. Collapse the repeats before ' +
+      'the list reaches anything that charges a card or sends an email.',
+    invokesFunction: false,
+    params: [
+      ITEMS_PARAM,
+      {
+        name: 'by',
+        type: 'string',
+        displayName: 'Same when (a path inside each item)',
+        description:
+          'A dotted path INTO each item — `id`, `customer.email`. Leave it empty to compare whole items by value.'
+      },
+      {
+        name: 'keep',
+        type: 'enum',
+        enums: ['first', 'last'],
+        default: 'first',
+        description:
+          'Which of a repeated pair survives. Either way the surviving item holds its FIRST position, so the ' +
+          'list order does not shuffle under you.'
+      }
+    ],
+    routes: [],
+    output: '`{ items: unknown[], count, removed, keyless }` — `keyless` counts the items that had no key at all.',
+    clientEquivalent: 'None. In the browser this is a Function node over an array.',
+    notes: [
+      'Keys are compared BY VALUE, with object keys sorted first — so `{a:1,b:2}` and `{b:2,a:1}` are one value ' +
+        'and not two, which is what "the same data" means to an author.',
+      '⚠️ An item whose key is MISSING is always kept. Absence is not a value anywhere in this language, so it ' +
+        'cannot be a duplicate — and bucketing every key-less item together would silently delete every row the ' +
+        'supplier forgot an id for, which is the data you most want when you go looking for what went wrong. ' +
+        '`keyless` in the output says how many there were.'
+    ]
+  },
+
+  split: {
+    kind: 'split',
+    displayName: 'Split into Batches',
+    category: 'Workflow Data',
+    source: 'CWF-004',
+    summary: 'Chunks an array into batches of a fixed size, for a rate-limited downstream.',
+    whenToUse:
+      'An API that accepts 50 records per call, or a For Each you want to run in waves rather than all at once. ' +
+      'Split first, then For Each over `previous.batches` with a function that takes a batch.',
+    invokesFunction: false,
+    params: [
+      ITEMS_PARAM,
+      {
+        name: 'size',
+        type: 'number',
+        required: true,
+        displayName: 'Items per batch',
+        description: 'How many items go in each batch. A whole number of 1 or more. The last batch may be shorter.'
+      },
+      {
+        name: 'maxBatches',
+        type: 'number',
+        default: DEFAULT_MAX_BATCHES,
+        description:
+          'Hard cap on how many batches this may produce. Exceeding it is a step FAILURE, not a truncation — ' +
+          'silently producing the first thousand batches of a hundred thousand is data loss that looks like ' +
+          'success. Raise it deliberately.'
+      }
+    ],
+    routes: [],
+    output: '`{ batches: unknown[][], count, size, total }` — `count` is how many batches, `total` how many items.',
+    clientEquivalent: 'None.',
+    notes: [
+      'An empty list produces zero batches and succeeds. There are no `empty` / `nonempty` routes here because a ' +
+        'For Each over `previous.batches` already has that pair, and the answer is the same one.',
+      'Batches hold the items in their original order, so a Sort before a Split is a Sort that survives it.'
+    ]
+  },
+
   stop: {
     kind: 'stop',
     displayName: 'Stop / Error',
@@ -773,6 +1039,14 @@ export interface StepKindCatalog {
    */
   transformLanguage: TransformLanguageSpec;
   /**
+   * CWF-004 slice 2: the closed type vocabulary a `validate` step's path rules
+   * may assert, and the two rule forms. Served for the reason the other three
+   * languages are — a rules editor holding its own list could offer a check this
+   * backend does not perform, and an agent will invent `"type": "email"` unless
+   * something tells it what the types are.
+   */
+  validateLanguage: ValidateLanguageSpec;
+  /**
    * CWF-005: step kinds this backend no longer SERVES but still reads and
    * converts, as `{ oldKind: newKind }`.
    *
@@ -794,6 +1068,7 @@ export function stepKindCatalog(): StepKindCatalog {
     valueLanguage: VALUE_LANGUAGE,
     conditionLanguage: CONDITION_LANGUAGE,
     transformLanguage: TRANSFORM_LANGUAGE,
+    validateLanguage: VALIDATE_LANGUAGE,
     migratedKinds: { ...MIGRATED_STEP_KINDS }
   };
 }
@@ -1026,6 +1301,66 @@ export function validateStepShape(step: WorkflowStep): string[] {
       // ever actually applies — so a transform with nothing to produce is
       // refused at the one place a refusal costs nothing.
       errors.push(...validateTransformOutput(p.output, at));
+      break;
+    }
+
+    case 'validate': {
+      // Same doctrine as `transform`'s `output`: the thing the step exists to
+      // do is REQUIRED at write time, with no declared default and no executor
+      // fallback, because a validate step with no rules asserts nothing while
+      // looking exactly like a guard.
+      errors.push(...validateValidateRules(p.rules, at));
+      if (p.mode !== undefined && p.mode !== 'all' && p.mode !== 'first') {
+        errors.push(`${at}.params.mode must be "all" or "first"`);
+      }
+      break;
+    }
+
+    case 'filter': {
+      if (p.condition === undefined) errors.push(`${at}: filter needs a "condition" param — it would keep everything`);
+      else errors.push(...validateCondition(p.condition, `${at}.params.condition`));
+      if (p.itemKey !== undefined && typeof p.itemKey !== 'string') errors.push(`${at}.params.itemKey must be a string`);
+      if (p.indexKey !== undefined && typeof p.indexKey !== 'string') {
+        errors.push(`${at}.params.indexKey must be a string`);
+      }
+      for (const r of routeNames) {
+        if (r !== 'empty' && r !== 'nonempty') errors.push(`${at}: filter route "${r}" must be "empty" or "nonempty"`);
+      }
+      break;
+    }
+
+    case 'sort': {
+      if (p.by !== undefined && typeof p.by !== 'string') {
+        errors.push(`${at}.params.by must be a dotted path string into each item`);
+      }
+      if (p.order !== undefined && p.order !== 'ascending' && p.order !== 'descending') {
+        errors.push(`${at}.params.order must be "ascending" or "descending"`);
+      }
+      break;
+    }
+
+    case 'deduplicate': {
+      if (p.by !== undefined && typeof p.by !== 'string') {
+        errors.push(`${at}.params.by must be a dotted path string into each item`);
+      }
+      if (p.keep !== undefined && p.keep !== 'first' && p.keep !== 'last') {
+        errors.push(`${at}.params.keep must be "first" or "last"`);
+      }
+      break;
+    }
+
+    case 'split': {
+      requirePositiveNumber(p.maxBatches, `${at}.params.maxBatches`, errors);
+      // A size written as a reference cannot be range-checked here — the value
+      // does not exist yet. `wait.duration` set this precedent and for the same
+      // reason: refusing it at write time made a legal definition unwritable,
+      // and the executor already fails loudly on a bad one.
+      if (isValueSpec(p.size)) break;
+      if (p.size === undefined) {
+        errors.push(`${at}: split needs a "size" param — how many items go in each batch`);
+      } else if (typeof p.size !== 'number' || !Number.isInteger(p.size) || p.size < 1) {
+        errors.push(`${at}.params.size must be a whole number of 1 or more`);
+      }
       break;
     }
 

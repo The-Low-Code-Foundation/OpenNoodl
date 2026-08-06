@@ -29,7 +29,13 @@ export type StepKind =
   /** CWF-002: sets what the run answers with, and ends its path. */
   | 'return'
   /** CWF-004: builds a new object out of the run's data, with no code. */
-  | 'transform';
+  | 'transform'
+  /** CWF-004 slice 2 — the rest of the declarative data family. */
+  | 'validate'
+  | 'filter'
+  | 'sort'
+  | 'deduplicate'
+  | 'split';
 
 /** A param's declared type, which is what picks a property-editor control. */
 export type StepParamType =
@@ -173,6 +179,27 @@ export interface TransformLanguageSpec {
   notes: string[];
 }
 
+/** One type a `validate` path rule may assert, as the backend describes it. */
+export interface ValidateTypeSpec {
+  name: string;
+  /** What the dropdown shows. */
+  label: string;
+  description: string;
+}
+
+/**
+ * The closed type vocabulary a `validate` step's path rules may assert
+ * (CWF-004 slice 2), served rather than bundled for the reason the other three
+ * languages are: removing a type from the backend removes it from the rules
+ * editor's dropdown with no editor change.
+ */
+export interface ValidateLanguageSpec {
+  summary: string;
+  types: ValidateTypeSpec[];
+  ruleForms: { form: string; example: unknown; description: string }[];
+  notes: string[];
+}
+
 /** The body of `GET /admin/workflow-step-kinds`. */
 export interface StepKindCatalog {
   version: string;
@@ -188,6 +215,12 @@ export interface StepKindCatalog {
    * picker would be empty.
    */
   transformLanguage?: TransformLanguageSpec;
+  /**
+   * CWF-004 slice 2: the validate step's type vocabulary. Absent from a
+   * pre-1.7.0 backend — which also serves no `validate` kind, so there is no
+   * card whose dropdown this could empty.
+   */
+  validateLanguage?: ValidateLanguageSpec;
   /**
    * CWF-005: kinds this backend no longer serves but still reads and converts,
    * as `{ oldKind: newKind }`. Absent from a pre-1.5.0 backend.

@@ -287,7 +287,10 @@ describe('CWF-004 the shared resolver did NOT gain the ability to compute', () =
 describe('CWF-004 the catalog', () => {
   it('serves the vocabulary, with arity and operand labels, over the wire', () => {
     const wire = JSON.parse(JSON.stringify(stepKindCatalog())) as ReturnType<typeof stepKindCatalog>;
-    expect(wire.version).toBe('1.6.0');
+    // 1.6.0 when slice 1 shipped; 1.7.0 since slice 2 added `validateLanguage`.
+    // Kept as a literal rather than read from the constant, so a shape change
+    // has to be a deliberate edit here as well as there.
+    expect(wire.version).toBe('1.7.0');
     expect(wire.transformLanguage.ops.map((o) => o.name).sort()).toEqual([...TRANSFORM_OP_NAMES].sort());
     // The table and its served description cannot drift: removing an op from
     // the backend has to remove it from the editor's picker with no editor

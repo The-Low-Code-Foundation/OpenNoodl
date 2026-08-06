@@ -32,6 +32,12 @@ const EXPECTED_KINDS = [
   'for-each',
   'merge',
   'transform',
+  // CWF-004 slice 2 — the rest of the declarative data family.
+  'validate',
+  'filter',
+  'sort',
+  'deduplicate',
+  'split',
   'stop',
   'return',
   'wait',
@@ -196,6 +202,21 @@ describe('WF-002 author documentation coverage', () => {
     // The doctrine line has to survive contact with a step that reshapes data,
     // or the next person reads the op table and assumes arithmetic is coming.
     expect(doc).toMatch(/no arithmetic/i);
+  });
+
+  it('documents every validate type the catalog serves (CWF-004 slice 2)', () => {
+    // Third instance of the same gate, and the reason has not changed: the
+    // rules editor builds its type dropdown from the served `validateLanguage`,
+    // so a type can reach a user's screen without anyone writing it down.
+    const { validateLanguage } = stepKindCatalog();
+    expect(validateLanguage.types.length).toBeGreaterThan(0);
+    for (const t of validateLanguage.types) {
+      expect(doc).toContain(`\`${t.name}\``);
+      expect(t.label.length).toBeGreaterThan(0);
+    }
+    // Both rule forms have to be findable by someone reading the page rather
+    // than the catalog — a rules array with neither documented is unwritable.
+    for (const form of validateLanguage.ruleForms) expect(doc).toContain(`\`${form.form}\``);
   });
 
   it('tells an author how to build one on the canvas (WFA-004, F10)', () => {

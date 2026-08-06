@@ -193,11 +193,13 @@ export function registerBackendReadTools(server: McpServer): void {
       title: 'List backend workflow step kinds',
       description:
         'The step vocabulary a backend can run (WF-002): every step `kind` with its params, routes, output shape ' +
-        'and when to use it — call-function, branch, switch, for-each, merge, transform, stop, return, wait, ' +
-        'wait-until — PLUS `valueLanguage` (WFA-003): how a param references data ($path / $literal), what a ' +
-        '$path may address (body, trigger, previous, upstream.<stepId>), and the one payload shape every entry ' +
-        'point delivers, `conditionLanguage` (the closed comparison operators) and `transformLanguage` ' +
-        '(CWF-004: the closed operation vocabulary a transform step may use, with each operation\'s arity). ' +
+        'and when to use it — call-function, branch, switch, for-each, merge, transform, validate, filter, sort, ' +
+        'deduplicate, split, stop, return, wait, wait-until — PLUS `valueLanguage` (WFA-003): how a param ' +
+        'references data ($path / $literal), what a $path may address (body, trigger, previous, ' +
+        'upstream.<stepId>), and the one payload shape every entry point delivers, `conditionLanguage` (the ' +
+        'closed comparison operators), `transformLanguage` (CWF-004: the closed operation vocabulary a transform ' +
+        'step may use, with each operation\'s arity) and `validateLanguage` (CWF-004 slice 2: the closed type ' +
+        'vocabulary a validate step\'s path rules may assert, and its two rule forms). ' +
         'CALL THIS BEFORE AUTHORING A WORKFLOW. A workflow step is not a canvas node, so these are ' +
         'NOT in the node catalog (list_node_types); this is where their contract lives, and it is served by the ' +
         'running backend so it can never drift from what that backend actually executes.',
@@ -943,8 +945,9 @@ export function registerBackendWriteTools(server: McpServer): void {
     kind: z
       .string()
       .describe(
-        'What the step runs, e.g. call-function / branch / switch / for-each / merge / transform / stop / ' +
-          'return / wait / wait-until. THE AUTHORITY IS THE TARGET BACKEND: call list_backend_step_kinds against the backend ' +
+        'What the step runs, e.g. call-function / branch / switch / for-each / merge / transform / validate / ' +
+          'filter / sort / deduplicate / split / stop / return / wait / wait-until. THE AUTHORITY IS THE TARGET ' +
+          'BACKEND: call list_backend_step_kinds against the backend ' +
           "you are authoring for, and use what it returns — for each kind's params, routes and output shape, " +
           'and because the vocabulary differs between backend versions. A kind this backend does not serve is ' +
           'refused before anything is written.'
@@ -973,7 +976,19 @@ export function registerBackendWriteTools(server: McpServer): void {
           'CLOSED and SERVED: read `transformLanguage` from list_backend_step_kinds and use only what is in it. ' +
           'Do NOT invent an operation — an unknown $op is refused at write time, not passed through. An ' +
           'operation with one operand takes it verbatim; one with two or more takes an array of exactly that ' +
-          'many. There is no arithmetic: compute in a cloud function.'
+          'many. There is no arithmetic: compute in a cloud function.\n' +
+          'CWF-004 slice 2: a `validate` step\'s `rules` is a non-empty array where each rule has EXACTLY ONE of ' +
+          '`path` ({"path":"body.email","type":"string","message":"…"} — `required` defaults to TRUE, so set it ' +
+          'false for "optional, but this type when present") or `when` (any condition the branch language can ' +
+          'express). The TYPE list is CLOSED and SERVED: read `validateLanguage` from list_backend_step_kinds and ' +
+          'use only what is in it — anything richer than a JSON type (an email shape, a range, one of three ' +
+          'values) is a `when` rule, NOT a new type. Do not invent one; an unknown type is refused at write time. ' +
+          'A validate step has NO `invalid` route: wire `next` for the good path and `onError` for the bad one.\n' +
+          'The array steps — `filter`, `sort`, `deduplicate`, `split` — all take `items` (default ' +
+          '{"$path":"previous.items"}); a value that is not an array FAILS the step rather than being treated as ' +
+          'an empty list. `filter` also takes a `condition` and is the ONLY one with routes (`empty` / ' +
+          '`nonempty`). `sort` and `deduplicate` take `by`, a dotted path INSIDE each item — not a $path into the ' +
+          'run. `split` takes a required `size`.'
       ),
     timeoutMs: z.number().optional().describe('Per-step timeout (0/omitted = the workflow default)'),
     next: z

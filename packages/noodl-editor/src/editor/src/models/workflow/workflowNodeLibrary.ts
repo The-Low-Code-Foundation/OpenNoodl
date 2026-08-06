@@ -49,7 +49,9 @@ import {
   PORT_TYPE_PATH,
   PORT_TYPE_TRANSFORM,
   PORT_TYPE_TRIGGER_INFO,
+  PORT_TYPE_VALIDATE,
   PORT_TYPE_VALUE,
+  CONTROL_VALIDATE_RULES,
   routePortName,
   triggerTypeName,
   typeNameForKind,
@@ -92,6 +94,8 @@ export {
   PORT_TYPE_BACKOFF,
   PORT_TYPE_TRANSFORM,
   CONTROL_TRANSFORM_OUTPUT,
+  PORT_TYPE_VALIDATE,
+  CONTROL_VALIDATE_RULES,
   PORT_TYPE_FOR_CONTROL
 } from './workflowPorts';
 
@@ -205,6 +209,18 @@ function portTypeForRawParam(param: StepParamSpec, catalog?: StepKindCatalog): u
   if (param.control === CONTROL_TRANSFORM_OUTPUT) {
     return { name: PORT_TYPE_TRANSFORM, ops: transformOps(catalog), scope: scopeRoots(catalog) };
   }
+  // CWF-004 slice 2: a `validate` step's rules. It needs BOTH served
+  // vocabularies — the condition operators (a `when` rule is a condition) and
+  // the closed type list (a `path` rule asserts one) — because a rule is one of
+  // exactly two things and the editor must be able to draw either.
+  if (param.control === CONTROL_VALIDATE_RULES) {
+    return {
+      name: PORT_TYPE_VALIDATE,
+      ops: conditionOps(catalog),
+      types: validateTypes(catalog),
+      scope: scopeRoots(catalog)
+    };
+  }
   if (param.name === 'cases') {
     return { name: PORT_TYPE_CASES, ops: conditionOps(catalog), scope: scopeRoots(catalog) };
   }
@@ -223,6 +239,19 @@ function portTypeForRawParam(param: StepParamSpec, catalog?: StepKindCatalog): u
  */
 function transformOps(catalog?: StepKindCatalog) {
   return catalog?.transformLanguage?.ops || [];
+}
+
+/**
+ * The types this backend will actually check (CWF-004 slice 2).
+ *
+ * Empty when a pre-1.7.0 backend served no `validateLanguage` — which is also a
+ * backend serving no `validate` kind, so no card's dropdown is emptied by it. As
+ * with the operators and the operations, the control admits it does not know
+ * rather than guessing a list: a type this backend cannot check is a 400 at save
+ * time or a run that fails at 3am, and both are worse than an honest control.
+ */
+function validateTypes(catalog?: StepKindCatalog) {
+  return catalog?.validateLanguage?.types || [];
 }
 
 /** A signal output that paints its name on the wire. */

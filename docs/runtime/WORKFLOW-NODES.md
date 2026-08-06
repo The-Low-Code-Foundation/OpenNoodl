@@ -664,6 +664,8 @@ with no editor change.
 | `$default` | `value`, `fallback` | Uses the fallback when the value is missing or null. **This is how a field is declared optional.** |
 | `$length` | `value` | Length of text or an array; key count of an object. |
 | `$get` | `value`, `path` | Reads a dotted path out of a value — `$path` for something already computed. |
+| `$parseJson` | `text` | Reads a string that is really JSON. Invalid JSON **fails the step**. |
+| `$stringifyJson` | `value` | Writes a value as JSON text, for a field that must carry a string. |
 | `$pick` | `object`, `keys` | Keeps only the named keys. |
 
 How the operands are written follows from the arity, so it is never ambiguous:
@@ -701,6 +703,29 @@ depend on. That is what keeps a transform diffable, order-independent and safe
 for an agent to write. Where one field genuinely depends on another, chain two
 transform steps — the second reads the first as `previous.<field>`.
 
+#### The supplier who sends you JSON inside JSON
+
+`$parseJson` and `$stringifyJson` are the "Parse / Stringify JSON" row of
+CWF-004's family table, and they landed as **operations rather than as a step
+kind** on purpose. The case is *"a string field that is really JSON — suppliers
+do this constantly"*, and the word doing the work is **field**: a step would
+parse one whole value and hand it on, so reading anything out of it would take a
+second step. As an operation it composes with `$get` and with the rest of the
+table inside one reshape:
+
+```jsonc
+{ "output": {
+    "orderId":  { "$get": [{ "$parseJson": { "$path": "body.payload" } }, "order.id"] },
+    "auditBlob": { "$stringifyJson": { "$path": "body.Envelope" } }
+} }
+```
+
+Nothing is lost by not having a step: `{"order": {"$parseJson": {"$path":
+"body.raw"}}}` is the whole-payload case, written as one field. And nothing
+served is falsified by having it — parsing is not arithmetic, not string
+interpolation and not a function call. It is the one operation that can look
+*inside* data a supplier flattened.
+
 #### What is deliberately not here
 
 - **No arithmetic.** `$add` / `$subtract` / `$multiply` / `$divide` were proposed
@@ -720,6 +745,239 @@ transform steps — the second reads the first as `previous.<field>`.
 
 **Client equivalent:** nothing exact. In the browser you would wire an Object
 node or compute in a Function; server-side there is no code here on purpose.
+
+---
+
+### `validate`
+
+Checks that the run's data is the shape you expect, and **fails the step** when
+it is not. Reach for it at the top of any workflow a third party can start.
+
+| Param | Default | Description |
+|---|---|---|
+| `rules` | — (required) | What must be true. A non-empty array; each rule has **exactly one** of `path` or `when`. |
+| `mode` | `all` | `all`: check every rule and report every broken one in a single failure. `first`: stop at the first. |
+
+**Output:** `{ ok: true, checked }` when every rule held. A broken rule is a step
+**failure**, not an output.
+
+```jsonc
+{
+  "id": "guard", "kind": "validate",
+  "params": {
+    "rules": [
+      { "path": "body.customer.email", "type": "string", "message": "The supplier sent no email address." },
+      { "path": "body.orders", "type": "array" },
+      { "path": "body.note", "required": false, "type": "string" },
+      { "when": { "left": { "$path": "body.total" }, "op": "gt", "right": 0 },
+        "message": "Order total must be positive." }
+    ]
+  },
+  "next": ["shape"],
+  "onError": ["tellTheSupplier"]
+}
+```
+
+#### The two rule forms
+
+A **`path`** rule asserts that a path is present, and optionally that it is of a
+type:
+
+| Field | Default | Description |
+|---|---|---|
+| `path` | — | A dotted path into the run's data, exactly as `$path` addresses it. |
+| `required` | `true` | **Defaults to true.** Set it `false` for "optional, but this type when present". |
+| `type` | — | One of the closed list below. Omit it to check presence only. |
+| `message` | — | Replaces the generated message. Write it for whoever reads the execution record at 3am. |
+
+The type vocabulary is **closed and served** as `validateLanguage`, alongside the
+condition and transform vocabularies:
+
+| Type | Means |
+|---|---|
+| `string` | A JSON string. A number that happens to look like text is not one. |
+| `number` | A finite JSON number. The string `"42"` is **not** a number here. |
+| `boolean` | A JSON boolean. |
+| `object` | A JSON object. An array is not one. |
+| `array` | A JSON array. |
+
+A **`when`** rule asserts any condition the `branch` language can express,
+against the same run scope — so anything richer than a JSON type (an email
+shape, a range, one of three values) is a condition rather than a new type. That
+is deliberate: widening the type list would be building a second, weaker
+condition language beside the one already served and already implemented.
+
+A rule with `"required": false` and no `type` asserts nothing at all, and is
+**refused at write time** rather than passing silently.
+
+#### Why there is no `invalid` route
+
+Because `onError` already is one. Error edges **are** try/catch on this tier, and
+a `valid` / `invalid` pair would be a second way to write the thing edges already
+say. Wire `next` for the good path and `onError` for the bad one.
+
+A `when` rule that cannot be *evaluated* — an incomparable operand, a bad regex —
+is reported as a **broken rule** rather than as a different kind of failure, so
+`mode: "all"` still tells you about the other four rules.
+
+**Client equivalent:** none. In the browser you would wire Conditions and an
+Expression; here the rules are declarative data, because a workflow definition is
+deployable, agent-authored JSON running with admin authority.
+
+---
+
+### `filter`
+
+Keeps only the array items that match a declarative condition.
+
+| Param | Default | Description |
+|---|---|---|
+| `items` | `{"$path": "previous.items"}` | The array to work on. A value that is not an array is a step **failure**, not an empty list. |
+| `condition` | — (required) | Kept when this is true. A declarative condition, not a value. |
+| `itemKey` | `item` | Key the item is in scope under. |
+| `indexKey` | `index` | Key the zero-based position is in scope under. |
+
+**Routes:** `empty` (nothing matched) / `nonempty` (at least one item did).
+
+**Output:** `{ items, count, dropped, total }` — `items` is the kept list, in its
+original order.
+
+```jsonc
+{
+  "id": "unpaid", "kind": "filter",
+  "params": {
+    "items": { "$path": "previous.orders" },
+    "condition": { "left": { "$path": "item.status" }, "op": "neq", "right": "paid" }
+  },
+  "routes": { "nonempty": ["chase"], "empty": ["done"] }
+}
+```
+
+`for-each` has had a `filter` param since WF-002 and still does. As a **step**
+the filtered list is an output — recorded in the execution history, readable
+downstream, and usable for something other than a per-item function call.
+
+This is the **one array step with routes**, because it is the one that can change
+whether the list is empty. Sorting, de-duplicating and splitting cannot, so ports
+for it there would answer a question the previous step already knew.
+
+A condition that cannot be evaluated on an item is a **loud step failure naming
+the index**, not a silent drop.
+
+**Client equivalent:** Array Filter, which runs a JavaScript predicate per item.
+Here the predicate is declarative, for the reason nothing on this tier evaluates
+a string.
+
+---
+
+### `sort`
+
+Orders an array by a path inside each item.
+
+| Param | Default | Description |
+|---|---|---|
+| `items` | `{"$path": "previous.items"}` | The array to order. |
+| `by` | — | A dotted path **into each item** — `payment.total`, `createdAt`. Leave it empty to order the items themselves. |
+| `order` | `ascending` | `ascending` or `descending`. |
+
+**Output:** `{ items, count }` — a new array; the input is never reordered in
+place.
+
+```jsonc
+{ "id": "oldestFirst", "kind": "sort",
+  "params": { "items": { "$path": "previous.items" }, "by": "createdAt" },
+  "next": ["batch"] }
+```
+
+Three properties, each chosen rather than inherited:
+
+- **The order is the condition language's order.** The same comparison `gt` and
+  `lt` use: numbers order numerically, numeric strings order numerically (so
+  `"10"` is after `"9"`), ISO date strings order as instants, and two plain
+  strings order lexicographically. Two orders in one layer would disagree at
+  exactly the edges that matter.
+- **The sort is stable.** Equal keys keep the order they arrived in.
+- **An item with no sort key sorts LAST, in both directions.** Absence is not a
+  value, so reversing the order must not move it.
+
+Two items that cannot be ordered — a number against an object — **fail the
+step**. Inventing an order there is how a report comes out wrong rather than
+missing.
+
+**Client equivalent:** Array Sort takes a JavaScript comparator. This takes a
+path, and shares the condition language's ordering, so a sort and a condition can
+never disagree about which value is larger.
+
+---
+
+### `deduplicate`
+
+Drops repeated array items, compared by a path inside each item.
+
+| Param | Default | Description |
+|---|---|---|
+| `items` | `{"$path": "previous.items"}` | The array to de-duplicate. |
+| `by` | — | A dotted path **into each item** — `id`, `customer.email`. Leave it empty to compare whole items by value. |
+| `keep` | `first` | Which of a repeated pair survives. Either way the survivor holds its **first** position. |
+
+**Output:** `{ items, count, removed, keyless }`.
+
+```jsonc
+{ "id": "once", "kind": "deduplicate",
+  "params": { "items": { "$path": "previous.items" }, "by": "customer.email" },
+  "next": ["send"] }
+```
+
+Keys are compared **by value**, with object keys sorted first — so `{a:1,b:2}`
+and `{b:2,a:1}` are one value and not two, which is what "the same data" means to
+an author.
+
+⚠️ **An item whose key is missing is always kept.** Absence is not a value
+anywhere in this language, so it cannot be a duplicate — and bucketing every
+key-less item together would silently delete every row the supplier forgot an id
+for, which is precisely the data you most want when you go looking for what went
+wrong. `keyless` in the output says how many there were.
+
+**Client equivalent:** none. In the browser this is a Function node over an
+array.
+
+---
+
+### `split`
+
+Chunks an array into batches of a fixed size.
+
+| Param | Default | Description |
+|---|---|---|
+| `items` | `{"$path": "previous.items"}` | The array to chunk. |
+| `size` | — (required) | How many items go in each batch. A whole number of 1 or more; the last batch may be shorter. |
+| `maxBatches` | `1000` | Hard cap. Exceeding it is a step **failure**, not a truncation. |
+
+**Output:** `{ batches, count, size, total }` — `count` is how many batches,
+`total` how many items.
+
+```jsonc
+{ "id": "batch", "kind": "split",
+  "params": { "items": { "$path": "previous.items" }, "size": 50 },
+  "next": ["sendBatches"] }
+```
+
+Then `for-each` over `previous.batches` with a function that takes a batch — the
+shape a rate-limited API wants.
+
+`size` may be written as a reference — `{"$path": "body.batchSize"}` — like
+`wait`'s `duration`. It cannot be range-checked at write time (the value does not
+exist yet), so a bad one is a loud step failure rather than a 400.
+
+The cap is a failure and not a truncation for the same reason `for-each`'s
+`maxIterations` is: silently producing the first thousand batches of a hundred
+thousand is data loss that looks like success.
+
+An empty list produces zero batches and succeeds. There are no `empty` /
+`nonempty` routes here because a `for-each` over `previous.batches` already has
+that pair, and the answer is the same one.
+
+**Client equivalent:** none.
 
 ---
 

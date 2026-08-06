@@ -170,6 +170,20 @@ export const PORT_TYPE_TRANSFORM = 'workflow-transform';
 export const CONTROL_TRANSFORM_OUTPUT = 'transform-output';
 
 /**
+ * CWF-004 slice 2: a `validate` step's `rules` — one row per rule, each either a
+ * path assertion or a condition.
+ *
+ * Its own port type rather than `array`, for the reason `switch.cases` has one:
+ * the served `array` control is a JSON list, and WFA-004 was explicit that a JSON
+ * textarea in this panel fails the task. A rule is three controls (path, present,
+ * type) or one condition editor, and both are things this panel already draws.
+ */
+export const PORT_TYPE_VALIDATE = 'workflow-validate';
+
+/** The `control` name the backend serves for that param (CWF-005's mechanism). */
+export const CONTROL_VALIDATE_RULES = 'validate-rules';
+
+/**
  * CWF-005: the served `control` names this editor has a bespoke port type for.
  *
  * A name that is not in here falls back to the control for the param's `type` —
@@ -179,5 +193,6 @@ export const CONTROL_TRANSFORM_OUTPUT = 'transform-output';
  */
 export const PORT_TYPE_FOR_CONTROL: Record<string, string> = {
   'retry-backoff': PORT_TYPE_BACKOFF,
-  [CONTROL_TRANSFORM_OUTPUT]: PORT_TYPE_TRANSFORM
+  [CONTROL_TRANSFORM_OUTPUT]: PORT_TYPE_TRANSFORM,
+  [CONTROL_VALIDATE_RULES]: PORT_TYPE_VALIDATE
 };

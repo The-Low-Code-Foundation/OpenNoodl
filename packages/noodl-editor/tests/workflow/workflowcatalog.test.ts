@@ -18,6 +18,7 @@ import {
   PORT_PARAM_MAPPING,
   PORT_TYPE_CONDITION,
   PORT_TYPE_TRANSFORM,
+  PORT_TYPE_VALIDATE,
   routeNameFromPort,
   routePortName,
   typeNameForKind,
@@ -32,12 +33,30 @@ const CATALOG: StepKindCatalog = {
   source: 'test',
   docs: 'test',
   valueLanguage: {},
+  // The condition operators, served. Kept to one so the specs that read a port
+  // type's `ops` are asserting what was SERVED rather than a bundled list.
+  conditionLanguage: {
+    summary: '',
+    ops: [{ name: 'eq', label: 'is', unary: false }]
+  },
   transformLanguage: {
     summary: '',
     notes: [],
     ops: [
       { name: '$lower', label: 'lowercase', arity: 1, args: ['text'], description: '' },
       { name: '$concat', label: 'join text', arity: 'variadic', args: ['parts'], description: '' }
+    ]
+  },
+  // CWF-004 slice 2. Two types, deliberately NOT the five the real backend
+  // serves — the specs below assert the picker offers exactly what was SERVED,
+  // which is only meaningful while the fixture and the backend differ.
+  validateLanguage: {
+    summary: '',
+    notes: [],
+    ruleForms: [],
+    types: [
+      { name: 'string', label: 'text', description: '' },
+      { name: 'array', label: 'a list', description: '' }
     ]
   },
   kinds: [
@@ -112,6 +131,47 @@ const CATALOG: StepKindCatalog = {
         }
       ],
       routes: [],
+      output: ''
+    },
+    {
+      kind: 'validate',
+      displayName: 'Validate',
+      category: 'Workflow Data',
+      source: 'CWF-004',
+      summary: '',
+      whenToUse: '',
+      invokesFunction: false,
+      params: [
+        {
+          name: 'rules',
+          type: 'array',
+          raw: true,
+          required: true,
+          control: 'validate-rules',
+          displayName: 'Rules',
+          description: 'What must be true.'
+        },
+        { name: 'mode', type: 'enum', enums: ['all', 'first'], default: 'all', description: '' }
+      ],
+      routes: [],
+      output: ''
+    },
+    {
+      kind: 'filter',
+      displayName: 'Filter',
+      category: 'Workflow Data',
+      source: 'CWF-004',
+      summary: '',
+      whenToUse: '',
+      invokesFunction: false,
+      params: [
+        { name: 'items', type: 'any', default: { $path: 'previous.items' }, description: '' },
+        { name: 'condition', type: 'condition', raw: true, required: true, description: '' }
+      ],
+      routes: [
+        { name: 'empty', description: '' },
+        { name: 'nonempty', description: '' }
+      ],
       output: ''
     },
     {
@@ -256,6 +316,39 @@ describe('WFA-004 step kinds become node types', () => {
     expect(output.displayName).toBe('Fields');
   });
 
+  it("gives validate's rules its own port type, carrying BOTH served vocabularies (CWF-004 slice 2)", () => {
+    const rules = portsOf('validate').find((p) => p.name === 'rules');
+    const type = rules.type as { name: string; ops: { name: string }[]; types: { name: string }[]; scope: unknown };
+    // Keyed on the served `control`, not on the param being called "rules".
+    expect(type.name).toBe(PORT_TYPE_VALIDATE);
+    // A rule is one of exactly two things, so the row needs both lists: the
+    // operators (a `when` rule is a condition) and the closed type list (a
+    // `path` rule asserts one). Both come from the SERVED catalog, which is what
+    // makes "remove a type from the backend and it leaves the dropdown" true
+    // with no editor change at all.
+    expect(type.types.map((t) => t.name)).toEqual(['string', 'array']);
+    expect(type.ops.map((o) => o.name)).toEqual(['eq']);
+    expect(rules.displayName).toBe('Rules');
+  });
+
+  it("gives filter's condition the ordinary condition control, and its two routes", () => {
+    // The point of the slice: four of the five new kinds needed NO new editor.
+    // `condition` is a condition wherever it appears, and `items` is a value.
+    const condition = portsOf('filter').find((p) => p.name === 'condition');
+    expect((condition.type as { name: string }).name).toBe(PORT_TYPE_CONDITION);
+    const items = portsOf('filter').find((p) => p.name === 'items') as unknown as {
+      type: { name: string };
+      default: unknown;
+    };
+    expect(items.type.name).toBe('workflow-value');
+    expect(items.default).toEqual({ $path: 'previous.items' });
+
+    const routes = portsOf('filter')
+      .filter((p) => isRoutePort(p.name))
+      .map((p) => routeNameFromPort(p.name));
+    expect(routes).toEqual(['empty', 'nonempty']);
+  });
+
   it('adds no mapping port to a kind that does not declare one', () => {
     // A pre-1.3.0 backend serves no `paramMapping` at all, and this is the same
     // shape: no row, and the definitions that already carry a mapping still run.
@@ -267,6 +360,8 @@ describe('WFA-004 step kinds become node types', () => {
     expect(typeFor('branch').color).toBe('logic');
     // CWF-004's new family. `data` from the existing taxonomy — no new colour.
     expect(typeFor('transform').color).toBe('data');
+    expect(typeFor('validate').color).toBe('data');
+    expect(typeFor('filter').color).toBe('data');
   });
 
   it('builds a picker category per served category, listing its kinds', () => {

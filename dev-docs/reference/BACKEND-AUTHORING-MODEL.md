@@ -16,7 +16,7 @@ page changes.
 | What it is | A component in your project, named `/#__cloud__/…`, authored with nodes and wires | A JSON definition stored **in the backend**, drawn as step cards |
 | What runs it | The cloud runtime (`noodl-viewer-cloud`), bundled into `nodegx-backend` and executed in-process | The backend's `WorkflowEngine` |
 | Shape | Request in → graph → Response out. Runs once, answers once | A step DAG with branching, retries, waits and a durable execution record |
-| Vocabulary | ~57 general nodes: records, HTTP, strings, Expression, JavaScript, Logic Builder | 9 step kinds: Call Function, Branch, Switch, For Each, Merge, Retry, Stop/Error, Wait, Wait Until |
+| Vocabulary | ~57 general nodes: records, HTTP, strings, Expression, JavaScript, Logic Builder | 15 step kinds: Call Function, Branch, Switch, For Each, Merge, Transform, Validate, Filter, Sort, Deduplicate, Split, Stop/Error, Return, Wait, Wait Until |
 | Started by | Your app (Cloud Function node), an HTTP POST, **or a workflow step** | A trigger: webhook, schedule, record change — or run manually |
 | Auth | The Request node's `Allow Unauthenticated` declares it; backend config can override per function | Runs as system, with admin authority |
 | Data it holds | Whatever its graph computes, for one request | The run payload plus each step's output, for the life of the run |
@@ -51,11 +51,22 @@ Two independent reasons, both load-bearing:
 
 ## What this rules in and out
 
+⚠️ **That row has been wrong twice.** It said "9 step kinds" and listed `Retry` for a day after
+CWF-005 folded retry into Call Function, and it kept saying it after CWF-002 added Return and
+CWF-004 added Transform and its five-kind family. The authority is
+[`steps/kinds.ts`](../../packages/nodegx-backend/src/workflow/steps/kinds.ts) and the served
+`GET /admin/workflow-step-kinds`, which is exactly why the vocabulary is served rather than written
+down — a prose list of a served contract is a copy, and copies drift. Read the count here as a
+sketch, never as the list.
+
 **In, at the workflow level:** anything that *references, routes or reshapes* data without
-evaluating a string — paths, conditions, branching, iteration, merging, retry policy, waits, and
-declarative transforms (see [CWF-004](../tasks/phase-42-first-hour/CWF-004-THE-TRANSFORM-STEP.md)).
-Reshaping an awkward supplier payload before handing it to a function is workflow work: it is pure
-JSON plumbing, and doing it in the function would mean every function carries its caller's mess.
+evaluating a string — paths, conditions, branching, iteration, merging, retry policy, waits, and the
+declarative data steps (see
+[CWF-004](../tasks/phase-42-first-hour/CWF-004-THE-TRANSFORM-STEP.md)): reshaping, validating,
+filtering, ordering, de-duplicating and batching. Reshaping an awkward supplier payload before
+handing it to a function is workflow work: it is pure JSON plumbing, and doing it in the function
+would mean every function carries its caller's mess. Validating it before anything acts on it is the
+same argument one step earlier.
 
 **Out, at the workflow level, permanently:** a free JavaScript/expression step, an HTTP step, a
 database step. Not because they'd be hard — because each one recreates the melting pot, and each has

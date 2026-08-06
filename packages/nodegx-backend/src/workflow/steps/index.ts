@@ -20,6 +20,8 @@ export {
 } from './values';
 export type { FoundPath, ScopeEntrySpec, ValueFormSpec, ValueLanguageSpec, ValueOp, ValueOpTable } from './values';
 export * from './transform';
+export * from './validate';
+export * from './data';
 export * from './kinds';
 export * from './sleep';
 export * from './logic';

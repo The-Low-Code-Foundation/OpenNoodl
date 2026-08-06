@@ -18,12 +18,14 @@ import type { StepExecContext, StepExecutor, StepExecReturn } from '../StepExecu
 import { FunctionStepExecutor, StepExecutionError } from '../StepExecutor';
 import type { WorkflowRunner } from '../WorkflowRunner';
 import type { StepKind } from '../types';
+import { DeduplicateStepExecutor, FilterStepExecutor, SortStepExecutor, SplitStepExecutor } from './data';
 import { StopStepExecutor } from './errors';
 import { STEP_KINDS } from './kinds';
 import { BranchStepExecutor, ForEachStepExecutor, MergeStepExecutor, SwitchStepExecutor } from './logic';
 import { ReturnStepExecutor } from './returns';
 import { WaitStepExecutor, WaitUntilStepExecutor } from './timing';
 import { TransformStepExecutor } from './transform';
+import { ValidateStepExecutor } from './validate';
 
 export interface CompositeStepExecutorDeps {
   getRunner: () => WorkflowRunner | null;
@@ -43,6 +45,11 @@ export class CompositeStepExecutor implements StepExecutor {
       'for-each': new ForEachStepExecutor({ getRunner }),
       merge: new MergeStepExecutor(),
       transform: new TransformStepExecutor(),
+      validate: new ValidateStepExecutor(),
+      filter: new FilterStepExecutor(),
+      sort: new SortStepExecutor(),
+      deduplicate: new DeduplicateStepExecutor(),
+      split: new SplitStepExecutor(),
       stop: new StopStepExecutor(),
       wait: new WaitStepExecutor(),
       'wait-until': new WaitUntilStepExecutor(),

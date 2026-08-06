@@ -80,9 +80,9 @@ function describe(v: unknown): string {
  *
  * Numbers and booleans are taken because a supplier's `postcode` arriving as a
  * number is normal and `$trim` of it is obviously meant. Objects, arrays, `null`
- * and `undefined` are refused, because "stringify this structure" is the Parse /
- * Stringify JSON step of the wider family — a thing to build deliberately, not
- * to fall out of `$string` producing `"[object Object]"`.
+ * and `undefined` are refused, because "stringify this structure" is
+ * `$stringifyJson` (added in slice 2) — a thing an author asks for by name, not
+ * something that falls out of `$string` producing `"[object Object]"`.
  */
 function stringish(v: unknown, op: string, where: string): string {
   if (typeof v === 'string') return v;
@@ -184,6 +184,66 @@ export const TRANSFORM_OPS: ValueOpTable = {
     }
   },
   /**
+   * CWF-004 slice 2 — the "Parse / Stringify JSON" row of the family table,
+   * landed as two OPERATIONS rather than as a step kind, and that is a
+   * deliberate departure from the table:
+   *
+   * The case is Richard's — *"a string field that is really JSON (suppliers do
+   * this constantly)"* — and the word doing the work is **field**. A step kind
+   * would parse one whole value and hand it on, so reading anything out of it
+   * would take a second step; as an operation it composes with `$get` and with
+   * the rest of the table inside one reshape, which is where the problem
+   * actually lives. Nothing is lost: `{"body": {"$parseJson": {"$path":
+   * "body.raw"}}}` is the whole-payload case, written as one field.
+   *
+   * It falsifies no served sentence. Parsing is not arithmetic, not string
+   * interpolation and not a function call — `JSON.parse` on a string is exactly
+   * the "reference and reshape" side of the line, and it is the one place this
+   * language can look INSIDE data a supplier flattened.
+   */
+  $parseJson: {
+    arity: 1,
+    apply: ([v]) => {
+      if (typeof v !== 'string') {
+        throw new TransformError(
+          `"$parseJson" needs text holding JSON, got ${describe(v)}. ` +
+            'Use "$default" to supply a value when the path may be missing.'
+        );
+      }
+      try {
+        return JSON.parse(v);
+      } catch (e) {
+        // The text is quoted (truncated) because "invalid JSON" with nothing to
+        // look at is the least useful failure message a webhook can produce.
+        const snippet = v.length > 80 ? `${v.slice(0, 80)}…` : v;
+        throw new TransformError(
+          `"$parseJson" could not read ${JSON.stringify(snippet)} as JSON: ${e instanceof Error ? e.message : String(e)}`
+        );
+      }
+    }
+  },
+  /**
+   * The inverse. `undefined` is refused rather than producing the `undefined`
+   * that `JSON.stringify` answers with — which is not a string, and would put a
+   * non-string into a field an author asked to be text.
+   */
+  $stringifyJson: {
+    arity: 1,
+    apply: ([v]) => {
+      if (v === undefined) {
+        throw new TransformError(
+          '"$stringifyJson" has nothing to write (the path resolved to undefined). ' +
+            'Use "$default" to supply a value when the path may be missing.'
+        );
+      }
+      const text = JSON.stringify(v);
+      if (typeof text !== 'string') {
+        throw new TransformError(`"$stringifyJson" cannot write ${describe(v)} as JSON.`);
+      }
+      return text;
+    }
+  },
+  /**
    * Keep only these keys. Absent keys are OMITTED rather than set to
    * `undefined`, because the result is JSON handed to a function and a key that
    * is present-but-undefined is not a thing JSON can express.
@@ -259,6 +319,16 @@ const OP_DOCS: Record<string, { label: string; args: string[]; description: stri
     label: 'read a path',
     args: ['value', 'path'],
     description: 'Read a dotted path out of a value. A missing segment is nothing, not a failure.'
+  },
+  $parseJson: {
+    label: 'read JSON text',
+    args: ['text'],
+    description: 'Read a string that is really JSON. Compose with "read a path" to pull one field out of it.'
+  },
+  $stringifyJson: {
+    label: 'write JSON text',
+    args: ['value'],
+    description: 'Write a value as JSON text, for a field that must carry a string.'
   },
   $pick: { label: 'keep only', args: ['object', 'keys'], description: 'Keep only the named keys of an object.' }
 };

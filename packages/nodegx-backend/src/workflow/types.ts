@@ -51,7 +51,15 @@ export type StepKind =
   // CWF-002: what the caller gets back
   | 'return'
   // CWF-004: reshape a payload without a round trip through a function
-  | 'transform';
+  | 'transform'
+  // CWF-004 slice 2 — the rest of the declarative data family. Every one of
+  // these REFERENCES or ROUTES data and none of them computes, which is the
+  // test that let them in (BACKEND-AUTHORING-MODEL.md).
+  | 'validate'
+  | 'filter'
+  | 'sort'
+  | 'deduplicate'
+  | 'split';
 
 export interface WorkflowStep {
   /** Unique within the workflow. Doubles as the execution-history `nodeId`. */

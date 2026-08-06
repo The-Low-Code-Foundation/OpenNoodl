@@ -10,10 +10,14 @@ is Richard's:
 > of `'paymentObject': 'previous.user.order.payment'` transformation lightens the load of the cloud
 > function."*
 
-**Status:** **SLICE 1 SHIPPED** 2026-08-06 — the `transform` step alone (S1–S5). The wider family
-(Validate, Filter, Split, Sort, Dedupe, Parse JSON) and **S6**, the "new function from this step"
-gesture, are still open. CWF-001 landed first and its `WorkflowValueInput` is reused for every
-operand, so no second value editor exists.
+**Status:** **SLICES 1 AND 2 SHIPPED** 2026-08-06. Slice 1 was the `transform` step alone (S1–S5);
+slice 2 is the rest of the declarative data family — **Validate, Filter, Sort, Deduplicate, Split**
+as step kinds, and **Parse / Stringify JSON as two transform OPERATIONS** rather than a step (the
+reasoning is below, and it is a departure from this page's own table). **Aggregate is deliberately
+unbuilt and is Richard's decision** — the input he asked for is in the table below. **S6**, the "new
+function from this step" gesture, is still open and is being sequenced separately on the workflow
+canvas. CWF-001 landed first and its `WorkflowValueInput` is reused for every operand, so no second
+value editor exists.
 
 ## ⚠️ CORRECTIONS, 2026-08-06 — what this doc got wrong, and the three questions answered
 
@@ -100,19 +104,62 @@ perform.
 ## The wider family — "helpful nodes in the workflow chain"
 
 Richard asked for more than one step, within the discipline. Candidates that are all
-reference-or-route, never compute. **Slice 1 is Transform alone**; the rest are a menu to pick from
-once it lands:
+reference-or-route, never compute.
 
-| Step | What it does | Verdict |
+| Step | What it does | Verdict → outcome |
 |---|---|---|
-| **Transform** | Reshape into a new object using paths + a small op vocabulary | **Build first** — the case above |
-| **Validate** | Assert the incoming shape (required paths, types); fail the run loudly with a readable message | Strong — webhooks from third parties are exactly where a silent `undefined` ruins an afternoon |
-| **Filter** | Drop array items not matching a declarative condition | Strong — `for-each` already has a `filter` param, so this is mostly surfacing an existing capability |
-| **Split / Batch** | Chunk an array into groups of N | Useful with `for-each` concurrency and rate-limited APIs |
-| **Sort** | Order an array by a path | Cheap, declarative |
-| **Deduplicate** | Drop repeats by a path | Cheap, declarative |
-| **Aggregate** | count / sum / min / max / group-by over an array | Borderline — declarative, but it *is* computing. Decide deliberately |
-| **Parse / Stringify JSON** | A string field that is really JSON (suppliers do this constantly) | Useful, and pure |
+| **Transform** | Reshape into a new object using paths + a small op vocabulary | **SHIPPED, slice 1** — the case above |
+| **Validate** | Assert the incoming shape (required paths, types); fail the run loudly with a readable message | **SHIPPED, slice 2** — two rule forms, a served closed type list, no `invalid` route (`onError` already is one) |
+| **Filter** | Drop array items not matching a declarative condition | **SHIPPED, slice 2** — and it turned out to be more than surfacing `for-each`'s param: as a step the filtered list is an *output*, so it is recorded, readable downstream and usable for something other than a per-item call |
+| **Split / Batch** | Chunk an array into groups of N | **SHIPPED, slice 2** as `split`; the cap is a failure, not a truncation |
+| **Sort** | Order an array by a path | **SHIPPED, slice 2** — reusing the *condition language's* ordering, so a sort and a `gt` can never disagree |
+| **Deduplicate** | Drop repeats by a path | **SHIPPED, slice 2** — a key-less item is always kept, because absence is not a value here |
+| **Aggregate** | count / sum / min / max / group-by over an array | **NOT BUILT — Richard's call.** See below |
+| **Parse / Stringify JSON** | A string field that is really JSON (suppliers do this constantly) | **SHIPPED, slice 2, but as two OPERATIONS** (`$parseJson` / `$stringifyJson`) rather than a step kind. See below |
+
+### Why Parse/Stringify JSON is an operation and not a step
+
+A departure from the table above, decided during slice 2 and worth stating rather than absorbing.
+The case is Richard's — *"a string field that is really JSON"* — and the word doing the work is
+**field**. A step parses one whole value and hands it on, so reading anything out of it takes a
+second step; as an operation it composes with `$get` and the rest of the table inside one reshape,
+which is where the problem actually is:
+
+```jsonc
+{ "orderId": { "$get": [{ "$parseJson": { "$path": "body.payload" } }, "order.id"] } }
+```
+
+Nothing is lost. `{"order": {"$parseJson": {"$path": "body.raw"}}}` is the whole-payload case,
+written as one field. And nothing served is falsified: parsing is not arithmetic, not string
+interpolation and not a function call. It is the one operation in the vocabulary that can look
+*inside* data a supplier flattened. `stringish()` in `transform.ts` had already anticipated it by
+name — it refuses objects "because that is the Parse / Stringify JSON step of the wider family".
+
+### Aggregate — the input Richard asked for, not a decision
+
+The table says *"declarative, but it* is *computing. Decide deliberately"*, and slice 2 deliberately
+did **not** decide. Three things it clarified, offered as input:
+
+1. **The doctrine test it fails is a real one, and it is the only entry in the table that fails
+   it.** Every kind shipped in slice 2 can be described as "the data you already had, minus some of
+   it or in a different order". `count` is the boundary — it is one number the data did not contain —
+   and `sum` / `min` / `max` are unambiguously past it. `$length` already ships in the transform
+   vocabulary and is exactly `count` under another name, so the line is not where it looks: it is
+   between *"how many"* and *"how much"*.
+2. **The served sentence is the concrete cost, exactly as it was for `$add`.** `VALUE_LANGUAGE.limits`
+   serves *"No arithmetic, string interpolation or function calls. Compute in a cloud function"*, and
+   `docs/runtime/WORKFLOW-NODES.md` says it twice more. `sum` is arithmetic by any reading. Shipping
+   it means editing that sentence in three served places first, which is a fine thing to do
+   deliberately and a terrible thing to do as a side effect.
+3. **The alternative is now cheaper than it was.** A one-node cloud function reached from a
+   `call-function` step is the answer, and after slice 2 the workflow can hand that function a
+   guarded, filtered, sorted, batched list — so the function it calls is a three-line `reduce` with
+   a stable input contract rather than a payload-parsing chore. That is the case *for* leaving
+   aggregation where compute lives; it is not an argument that nobody will want the step.
+
+**If it is built**, the shape that costs least is `{ over: <items>, as: { total: {"$sum": "amount"} } }` —
+one step, an output object like `transform`'s, a closed function table with fixed arity, and
+`groupBy` as a separate param. Not built here.
 
 ## On a free Function step at workflow level — my advice: **no**
 
@@ -156,6 +203,28 @@ time (asserted from both ends); removing an op from the backend removes it from 
 with no editor change (the picker is built from the served list, pinned by a spec). **Not done:** the
 live drive against a real POST — asserted end-to-end through the real engine instead.
 
+## What shipped (slice 2)
+
+| Layer | What |
+|---|---|
+| Vocabulary | [`steps/validate.ts`](../../../packages/nodegx-backend/src/workflow/steps/validate.ts) — `VALIDATE_TYPES` (5 closed types), `VALIDATE_LANGUAGE`, `validateValidateRules`, `ValidateStepExecutor`. [`steps/data.ts`](../../../packages/nodegx-backend/src/workflow/steps/data.ts) — `Filter` / `Sort` / `Deduplicate` / `Split` executors, sharing one `resolveItems`. **Neither introduces a language of its own**: `filter` borrows the condition language whole, and `sort` borrows its ORDERING |
+| Shared order | `compareOrdered` exported from `conditions.ts`. One order for the layer, or `"10" > "9"` under `gt` and `"10"` before `"9"` under `sort` — the same data, two answers |
+| Transform | `$parseJson` / `$stringifyJson` added to the closed table (14 ops), taking the family table's last row as operations rather than a step |
+| Catalog | Five kinds in category `Workflow Data`; `validateLanguage` served; `STEP_KIND_CATALOG_VERSION` → **`1.7.0`**. Four of the five needed no shape change at all |
+| Editor | `PORT_TYPE_VALIDATE` / `CONTROL_VALIDATE_RULES`, `WorkflowValidateType`, `ValidateRulesEditor.tsx` — the ONE new control. `filter`/`sort`/`deduplicate`/`split` needed no editor work: a `condition` is a condition wherever it appears, `items` is a value, and the rest are enums, strings and numbers |
+| MCP | `list_backend_step_kinds` and the step schema name the five kinds and `validateLanguage`, and tell an agent the type list is served and closed — *anything richer than a JSON type is a `when` rule, not a new type* |
+| Docs | `docs/runtime/WORKFLOW-NODES.md` §§ `validate` / `filter` / `sort` / `deduplicate` / `split`, plus the two JSON ops. Gated by the same coverage suite, now extended to every served **validate type and rule form** |
+
+**Done-when, checked (slice 2):** an unknown validate `type` is a loud 400 at write time *and* a loud
+step failure at run time (asserted from both ends); removing a type from the backend removes it from
+the editor's dropdown with no editor change (the dropdown is built from the served list, and a spec
+pins that the served list is generated from the one table that implements it). **Not done:** the live
+drive — asserted end to end through the real engine instead, with a five-step supplier intake
+(guard → filter → dedupe → sort → batch → call).
+
+**One design departure from this page, stated rather than absorbed:** Parse/Stringify JSON is two
+transform operations, not a step kind. The argument is in "The wider family" above.
+
 ## Slices
 
 **S1** — ~~Settle the op vocabulary, the wildcard question, and where ops live (below), with
@@ -168,7 +237,15 @@ validation, catalog entry, version bump.
 the editor is CWF-001's rows editor plus an op picker per row.
 **S4** — MCP: the agent must be served the vocabulary or it will invent operations.
 **S5** — Docs + one worked webhook-reshaping example.
-**S6** — The "new function from this step" gesture (see above).
+**S6** — The "new function from this step" gesture (see above). **STILL OPEN** — it lands on the
+workflow canvas and is sequenced separately; slice 2 deliberately did not touch it.
+
+⚠️ **A third mechanism this page named turned out to be stale, in the page it points AT.**
+`BACKEND-AUTHORING-MODEL.md`'s two-surface table said *"9 step kinds: … Retry …"* — wrong since
+CWF-005 folded `retry` into `call-function`, and wrong again after CWF-002's `return` and CWF-004's
+`transform`. Fixed, with a warning on the row: the vocabulary is **served**, so a prose list of it is
+a copy and copies drift. That is the same argument this task makes about the operator list, applied
+to the doc that states the doctrine.
 
 ## The three open design questions — ALL THREE DECIDED, see the corrections block at the top
 

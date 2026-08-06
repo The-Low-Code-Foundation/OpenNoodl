@@ -29,7 +29,7 @@ import { BackendService } from '../src/service';
 import { signWebhookHmac } from '../src/triggers/webhook';
 import type { WorkflowRunResult } from '../src/workflow/types';
 
-import { ErrorBody, httpClient } from './helpers/http';
+import { adminHeaders, ErrorBody, httpClient } from './helpers/http';
 
 jest.setTimeout(40000);
 
@@ -75,7 +75,15 @@ describe('WFA-003 step data mapping over a real backend', () => {
   let service: BackendService;
   let base: string;
 
-  const http = httpClient(() => base);
+  // FH-024: the admin credential rides every call. Dev-open still relaxes the
+  // data and function gates on loopback, but no longer the admin one — a web
+  // page can reach 127.0.0.1 on the developer's behalf, so loopback was never
+  // the boundary it was being read as. The editor's supervisor already attaches
+  // this token to every proxied request.
+  const http = httpClient(
+    () => base,
+    () => adminHeaders(dataDir)
+  );
   const req = <T = unknown>(method: string, p: string, body?: unknown) => http.request<T>(method, p, { body });
 
   const executionOf = (executionId: string) => http.get<ExecutionWithSteps>(`/executions/${executionId}`);

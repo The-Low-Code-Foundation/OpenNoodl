@@ -44,6 +44,7 @@ import {
   WorkflowParamsType,
   WorkflowTransformType,
   WorkflowTriggerInfoType,
+  WorkflowValidateType,
   WorkflowValueType
 } from './WorkflowTypes';
 import { QuerySortingType } from './QuerySortingType';
@@ -526,6 +527,12 @@ export class Ports extends View {
       return NodeLibrary.nameForPortType(type) === 'workflow-transform';
     }
 
+    // CWF-004 slice 2: a validate step's `rules` — one row per thing that must
+    // be true, each a path assertion or a condition.
+    function isOfWorkflowValidateType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-validate';
+    }
+
     // CWF-005: an attempt count that shows the delay sequence it implies.
     function isOfWorkflowBackoffType() {
       return NodeLibrary.nameForPortType(type) === 'workflow-backoff';
@@ -583,6 +590,7 @@ export class Ports extends View {
     else if (isOfWorkflowValueType()) return WorkflowValueType;
     else if (isOfWorkflowParamsType()) return WorkflowParamsType;
     else if (isOfWorkflowTransformType()) return WorkflowTransformType;
+    else if (isOfWorkflowValidateType()) return WorkflowValidateType;
     else if (isOfWorkflowBackoffType()) return WorkflowBackoffType;
     else if (isOfWorkflowTriggerInfoType()) return WorkflowTriggerInfoType;
     else if (isOfWorkflowFunctionRefType()) return WorkflowFunctionRefType;
