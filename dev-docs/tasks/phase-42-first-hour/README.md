@@ -112,7 +112,7 @@ building on one.
 |---|---|
 | **Nine Config nodes in four shipped prefabs** (send-grid, mail-gun, stripe, email-verification) now paint as missing-type | Deliberately not rewired to a `String` node — that ships an empty API key that looks like it works. The replacement is CWF-009's Secret node, which landed the same day. **Wants a task.** |
 | `Array Filter`'s `enabled` and `Array Map`'s `mapScript` are inert `default`s | A hand-authored filter passes **everything** through; the map reports "unknown error". Affects the browser identically, so the fix is a behaviour change that wants its own task. |
-| `ProvenancePanel`'s `timeOf()` does `new Date(row.event.t)` | With `t` counting from page load, every walk row prints a confident wrong clock time. Wants a relative render or a `t0` handshake. |
+| ~~`ProvenancePanel`'s `timeOf()` does `new Date(row.event.t)`~~ | ✅ **ALREADY FIXED — this row was stale when written.** HUD-003's criterion 7 demanded exactly the relative render this row asks for, and shipped it: [ProvenancePanel.tsx:650-656](../../../packages/noodl-editor/src/editor/src/views/panels/ProvenancePanel/ProvenancePanel.tsx#L650) is now `+${seconds}s` / `+${minutes}m SSs`, and `new Date(row.event.t)` appears nowhere. **Confirmed live 2026-08-06**: a walk on the QA fixture rendered `fired 3× · +9m 38s`. The row survived into the register because it was filed from a different task's notes than the one that fixed it. |
 | A node whose graph **id** is `add` fails the whole bundle load | `Collection` patches `Array.prototype.add` read-only; every function in that bundle then 500s with "Can't find component model". |
 | CWF-009 has no admin route, so an editor Secrets panel has nothing to call | `HttpServer.ts` was outside that agent's scope. |
 | CWF-018's `timeoutMs` has no row in the Permissions panel | Backend + config + admin API are done; the editor control is not. |
@@ -143,8 +143,41 @@ was always fine. Backend suite is now 79/79 green.
 | **FH-019 slice 3** — the language service | Blocked on **a dependency call from Richard**: `typescript` is a devDependency and everything in `node_modules` is externalised, so it resolves in dev and would silently not in the packaged app. Moving it to `dependencies` is ~11 MB on a 23 MB package. Slices 1–2 shipped and are useful without it. |
 | **MCP-004** — the docs page | ⚠️ A change to the **docs repo**, not this one. MCP-001 already probes the URL once per session and renders the link only if it answers, so the page turns itself on when published — no editor release needed. The exact path, sidebar entry and content are specified at the foot of MCP-004. |
 
-**Nothing in any batch has been driven in the editor.** Every task doc carries its own live-QA
-recipe; that pass is still owed, in both themes.
+## The live-QA pass — 2026-08-06
+
+**The "nothing has been driven in the editor" debt is now mostly paid.** Driven against the
+**NodeGX QA Fixture** in a real editor with a real preview, in **both themes**, across **two full
+editor restarts** (not HMR). What follows is what was actually observed, not what was expected.
+
+### Driven and passing
+
+| What | Evidence |
+|---|---|
+| **HUD-001** criterion 1 — Record works with the Provenance panel never opened | Restarted the editor with the **Components** panel active, confirmed `provenanceMounted: false`, then pressed Record: `recording · 0 events · Stop` + *"Nothing has fired yet — use the app in the preview."* The poll lives in `TraceSession`, exactly as FH-011's amended slice 2 requires. |
+| **HUD-001** step 7 / criterion 4 | Stop → pill returns to `Record` immediately, `pollTimer: false` (idle really is free). |
+| **HUD-002** criteria 1–5 | 5 clicks → rig counters `5 5 5 5`, `traceEvents: 50`, badges rendered as **one per `data-node-id` with a count** (`18×`, `27×`, `9×`…). Badges fade and are gone (criterion 4 — a later sample read 0). Navigating mid-recording: header held at **130 events** and gained `· 150 on /erg-rig` (criterion 2); on a component where nothing fired it read *"Nothing has fired on this component. Open /erg-rig to watch it happen."* (criterion 5). |
+| **HUD-003** criteria 1, 3, 4, 7 | `▴` opens *"Interactions — click one to see where it went"*, rows naming cause and blast radius. Clicking a root opened Provenance **on that root's forward walk**, with **"Back to interactions"** — criterion 4's new case. Rows read `fired 3× · +9m 38s`, the relative render criterion 7 demands. |
+| **HUD-004 — the data-loss fix, proven** | Editor recording at **60 events**; agent `start_trace` from a real `nodegx-observe` on the same relay → **count did not drop** (before this it went to 0, unrecoverably), `otherOwners: ["observe-…"]`, header `also traced by an agent`. Kept clicking → 60 → **90**. Agent `stop_trace` → *"Stopped. 30 event(s) captured"* (its own share only), editor header `the agent has stopped tracing · still recording`. Editor Stop → **90 events kept**, 20 root rows in Provenance including everything from before the agent joined. |
+| **FH-011** | Stop pulls *before* disarming: events went **150 → 160** across the Stop. "Recorded interactions" populated (`PRESS.onClick · 2 events`, `Object.failure`, `Array Filter.completed`), and **no Record button in the panel toolbar**. |
+| **MCP-003 — reconnect, proven** | An `nodegx-observe` launched from an unrelated cwd, held open across a full editor restart. Its own log: `connected` → `lost the editor connection (code 1006)` → backoff `500→1000→2000→4000→8000→10000ms` → **`reconnected`**. `list_nodes` worked afterwards, under a **new token** (`6b1d5bc2…` → `0dcd23b4…`) re-read from disk. Before MCP-003 all tools threw `Not connected to the NodeGX relay.` forever. |
+| **MCP-001** | The "Connect an AI agent" settings section renders with its captions and a filled-in Copy command. |
+| **FH-020 + FH-022 together** | The **Ports** tab is there (`Properties \| Ports`), reading *"Every port on this node, whether or not it has a property. Read-only"*, `INPUTS 42`, each port with a description, a type chip, an **`Accepts …`** cast line and **"Nothing drives this yet"**. The cast line for a signal reads **`Accepts signal, boolean`** — the corrected rule, not the wrong `signal → boolean, number` the doc warned about. And FH-022's wording is live: `Completed` = *"Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error."* **Triage item 0 is closed.** |
+| **The cloud vocabulary** | Counted from the live `NodeLibrary`: **81** cloud-allowed node types of 172 total (browser 160). The 48 → 81 claim holds. |
+| **AAQ-011 F2** | **Closed as superseded** — see below. |
+
+### Found by driving
+
+- **AAQ-011 F1 is confirmed, and its mechanism is now certain.** `getComputedStyle('.popup-layer-dragger')`: light → background `rgba(0,0,0,0.8)`, colour `rgb(24,33,43)` (**≈1.2:1**); dark → same background, colour `rgb(238,242,246)`. The background is a **`--base-color-*` primitive** that never flips ([popuplayer.css:239](../../../packages/noodl-editor/src/editor/src/styles/popuplayer.css#L239)) paired with a **`--theme-color-*` semantic** foreground that does (`:242`). One rule; it is the *same singleton element* for all three drag surfaces (components panel, component ports, prop-list reorder).
+- **AAQ-011 F2 is dead — both halves, driven.** Label: reads the full `"CSS Style"`, `clipped: false`, no `nowrap`, no ellipsis (FH-013). Popup: trigger at `y=852` in a 900px viewport, popout rendered `y=337 → bottom=890`, **fits on screen** (FH-005's `flushSync` + clamp). Close the row.
+- ⚠️ **A fixture trap worth knowing.** `erg-rig`'s root-level nodes (`c1–c4`, `obj`, `filt`) all report `getNodeBounds → (0,0)` because the component was never laid out, so their badges pile on one pixel and the canvas draws the nodes overlapping too. That is the *fixture*, not the HUD — but it makes `erg-rig` a poor surface for judging badge layout by eye. Lay it out, or use a different component.
+- **The topbar crowds at wide side-panel widths.** At ~458px the topbar measures clean (breadcrumb `528→835`, warnings chip `849→885`, zoom `952→984`); with the wider Settings panel open the zoom readout and the fit-zoom control visibly paint over each other. **Observed in a screenshot, not yet measured at the wide width** — owned and being measured now.
+
+### Still owed
+
+**HUD-003 criterion 2** (clicking a root with the Provenance panel *never* opened this session —
+needs a fresh editor), **HUD-001 step 2** (Record with no preview running), **FH-011's
+preview-reload re-arm**, **HUD-004's crashed-agent and legacy paths**, **FH-010** (the VC dialogs),
+**FH-019** (completions in a Function vs an Expression popout), **FH-023** (the four prefabs).
 
 ## The six conversations, in the order I'd have them
 
