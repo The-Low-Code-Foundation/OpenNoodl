@@ -220,12 +220,19 @@
   margin-bottom: 3px;
 }
 
+/*
+ * AAQ-011 F1, the same defect one rule up: a theme-invariant
+ * `--base-color-black-transparent-70` background under a theme-flipping
+ * `fg-highlight`. `showToast` is deprecated but not dead —
+ * `EditorClipboard.ts:267` still raises it when a node cannot be copied.
+ * Was 1.92:1 light / 17.94:1 dark; fg-highlight on bg-4 is 11.04:1 dark /
+ * 13.18:1 light.
+ */
 .popup-layer-toast {
   position: absolute;
-  background-color: var(--base-color-black-transparent-70);
+  background-color: var(--theme-color-bg-4);
   border-radius: 3px;
-  border-color: var(--base-color-black-transparent-70);
-  border-width: 3px;
+  border: 1px solid var(--theme-color-border-strong);
   padding: 5px;
   color: var(--theme-color-fg-highlight);
   opacity: 0;
@@ -234,11 +241,26 @@
   z-index: 90;
 }
 
+/*
+ * The drag ghost — one permanently-mounted singleton (`popuplayer.ts:289`) that
+ * every drag in the editor borrows: the components panel, component-port
+ * reordering and the property-editor prop list all call `startDragging()`.
+ *
+ * AAQ-011 F1: this rule used to pair a `--base-color-*` primitive background
+ * (`black-transparent-80`, defined once and never redefined for light) with a
+ * `--theme-color-*` foreground that does flip. The two halves painted for
+ * different themes, so in light mode the pill was near-black text on near-black
+ * — measured 1.29:1 in the running editor. `bg-4` is the raised-surface step and
+ * flips with the theme, so the pill now reads on both: fg-highlight on bg-4 is
+ * 11.04:1 dark / 13.18:1 light. The border replaces a dead `border-width: 3px`
+ * (no `border-style`, so it never painted) and keeps the pill a distinct shape
+ * now that its background is close to the panels it floats over.
+ */
 .popup-layer-dragger {
   position: absolute;
-  background-color: var(--base-color-black-transparent-80);
+  background-color: var(--theme-color-bg-4);
   border-radius: 3px;
-  border-width: 3px;
+  border: 1px solid var(--theme-color-border-strong);
   color: var(--theme-color-fg-highlight);
   font-size: 12px;
   -webkit-transition: opacity 0.25s ease-out;
@@ -409,12 +431,17 @@
   height: 25px;
 }
 
+/*
+ * AAQ-011 F1, third instance of the same pairing. `PopupLayer.showActivity` has
+ * no caller left — `ToastLayer` replaced it — so this one was not reachable and
+ * is corrected rather than "fixed": a rule that is wrong in exactly the way its
+ * two neighbours were is what the next person copies.
+ */
 .popup-layer-activity {
   position: absolute;
-  background-color: var(--base-color-black-transparent-70);
+  background-color: var(--theme-color-bg-4);
   border-radius: 3px;
-  border-color: var(--base-color-black-transparent-70);
-  border-width: 3px;
+  border: 1px solid var(--theme-color-border-strong);
   padding: 10px;
   color: var(--theme-color-fg-highlight);
   opacity: 0;
