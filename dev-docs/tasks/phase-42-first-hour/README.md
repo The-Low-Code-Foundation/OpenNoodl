@@ -347,8 +347,19 @@ editor back to the launcher). It needs a preview reloaded the way a user does it
 Then: **HUD-004's crashed-agent (slice 3) and legacy paths**, **FH-010** (the VC dialogs),
 **FH-019** (completions in a Function vs an Expression popout), **FH-023** (the four prefabs).
 
-⚠️ **Everything in this second pass is dark theme only.** The light theme was not checked, except by
-`pol004-doc-diff.js`, which measured both and passed both. The panels above want a light-theme pass.
+### Both themes
+
+The four backend panels were re-opened in **light** after the dark pass (`ThemeManager` + the
+`nodegx:themechanged` event, the same switch `pol004-doc-diff.js` uses). **Backend Services**
+(`ACTIVE ✓ Running`, cloud functions, all six controls), **Data Browser** (typed column chips, and
+`views 1017` / `updatedAt 06/08/2026, 17:36:30` still there — the cell edit survived a full backend
+restart), **Execution History** (the run list with its green/red status dots — the fix holds in both
+themes) and **Permissions** all render legibly with nothing lost. `pol004-doc-diff.js` measured both
+themes in its own right and passed both.
+
+The **HUD** one-shots above were driven in **dark only** — they are one-shot per editor session and
+the session was spent on them. HUD-001's own recipe asks for both, so the light pass on the pill,
+the interactions list and the disclosure is still owed with the rest of the HUD work.
 
 ## The six conversations, in the order I'd have them
 
