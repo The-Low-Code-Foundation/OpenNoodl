@@ -1,131 +1,112 @@
 /**
- * BackendProcessRegistry — the durable record of every backend child process
- * this machine has spawned, and the sweep that reaps the ones nobody owns
- * (AAQ-011 / F10, slice 1).
+ * BackendProcessRegistry — the editor's half of the shared spawn record, and the
+ * sweep that reaps backends nobody owns (AAQ-011 / F10).
  *
  * ## Why this exists
  *
- * F10 asks for the project's backend to start when the project opens. Starting
- * a child process automatically is only defensible if stopping it is
- * *guaranteed*, and Richard's constraint is explicit that a close handler is not
- * a guarantee: a crash, a force-quit, a `SIGKILL` and a power cut all run no
- * handler by definition. What is owed is orphan **reaping**.
+ * F10 asks for the project's backend to start when the project opens. Starting a
+ * child process automatically is only defensible if stopping it is *guaranteed*,
+ * and Richard's constraint is explicit that a close handler is not a guarantee: a
+ * crash, a force-quit, a `SIGKILL` and a power cut all run no handler. What is
+ * owed is orphan **reaping**.
  *
- * ## What already existed, and why it is not enough on its own
+ * ## ⚠️ Two premises the task doc got wrong, and one this file got wrong first
  *
- * ⚠️ The task doc's premise here is incomplete and has been corrected in it.
- * There *is* already an orphan guard: `ServiceSupervisor` passes `--parent-pid`
- * (ServiceSupervisor.js:169) and `nodegx-backend`'s `runServe` polls it every
- * five seconds, draining itself when the supervisor disappears
- * (nodegx-backend/src/cli.ts:350-364). So the common force-quit case is already
- * covered, and F10's "an orphan holds the project's port" is not the everyday
- * outcome it describes.
+ * 1. **An orphan guard already existed.** `ServiceSupervisor` has passed
+ *    `--parent-pid` since WF-004 (`ServiceSupervisor.js:169`) and
+ *    `nodegx-backend`'s `runServe` polls it every five seconds, draining itself
+ *    when the supervisor disappears (`nodegx-backend/src/cli.ts:350-364`). So
+ *    F10's "an orphan holds the project's port" is not the everyday outcome it
+ *    describes — the ordinary force-quit is already covered.
+ * 2. **It has three holes**, and each is a process that never exits: the guard's
+ *    liveness test is a bare `process.kill(pid, 0)`, so a **recycled parent pid**
+ *    reports alive forever; **`EPERM` is deliberately read as alive**
+ *    (`cli.ts:356`), so a recycled pid owned by root is permanently "alive"; and
+ *    a **wedged** backend never runs the timer that lives inside it.
+ * 3. **This file's first version wrote its own record format**, under
+ *    `~/.noodl/backend-runtime/`, with its own owner-claim files. `noodl-mcp`
+ *    landed F13's provisioning the same afternoon with a *different* record —
+ *    `runtime.json` inside each backend's own directory — and two records that
+ *    cannot see each other is precisely the failure the F13 row names: each
+ *    spawner reaps only its own, so an MCP orphan survives every editor launch
+ *    and an editor orphan survives every MCP launch. This is now the **same**
+ *    record: `<backendsRoot>/<backendId>/runtime.json`, in the shape
+ *    `noodl-mcp/src/backend/runtimeRecord.ts` defines, judged by the same rules
+ *    `noodl-mcp/src/backend/reaper.ts` applies.
  *
- * It has three holes, and every one of them is a process that never exits:
+ * There is no shared module and there cannot be: the two live in different
+ * packages with different builds, and the MCP server ships as its own bundle.
+ * This is the `workflow-proposals` arrangement exactly — two processes, one
+ * directory, one JSON shape, and a suite on each side that asserts a file
+ * written the way the *other* writes it is read back whole.
  *
- * 1. **Parent pid reuse.** The guard's liveness test is `process.kill(pid, 0)`.
- *    Once the editor's pid has been recycled by an unrelated process, that test
- *    succeeds forever and the backend serves forever. Recycling is slow on
- *    macOS/Linux and fast on Windows.
- * 2. **`EPERM` is read as alive** (cli.ts:356) — deliberately, because a parent
- *    under another user is still a parent. A recycled pid owned by root is
- *    therefore permanently "alive".
- * 3. **A wedged backend.** The guard is a timer inside the process it is meant
- *    to stop. A backend spinning a core does not run it.
+ * ## The design, and what was rejected
  *
- * A self-guard also cannot cover a spawner that never passed `--parent-pid`, and
- * F13 (`noodl-mcp` may provision backends) is about to add a second spawner with
- * no window to close. F13's note asks for the reaping record to be *the same*
- * record, which is why nothing in this module is editor-specific: it takes an
- * owner `kind` and stores under `~/.noodl`, not under the editor's userData.
+ * **Reap on startup**, not a reaper on a timer.
  *
- * ## The design, and the alternative that was rejected
+ * - A *timed reaper* would have to be a daemon, and the only process guaranteed
+ *   not to be running is the one that just died.
+ * - **Reap on startup** is deterministic and costs nothing while the editor
+ *   runs: the next launch of *either* spawner settles every record.
  *
- * **Reap on startup**, not a heartbeat.
+ * Its weakness is that an orphan survives until something launches again — which
+ * is exactly what the `--parent-pid` self-guard already covers. The two are
+ * complementary rather than redundant, and neither is asked to cover the other's
+ * blind spot.
  *
- * - A *heartbeat* means the owner writes a timestamp on an interval and a reaper
- *   kills anything whose timestamp is stale. It needs a liveness threshold —
- *   which is a guess about how long a laptop may sleep, a debugger may pause the
- *   main process, or a machine may be suspended — and getting it wrong kills a
- *   live user's backend. It also needs a reaper that is *running*, and the only
- *   process guaranteed to be running is the one that just died.
- * - **Reap on startup** needs no threshold and no daemon. It is deterministic:
- *   the next launch of any spawner reads the records and settles them. It costs
- *   nothing while the editor runs.
+ * **A heartbeat, but only as evidence of owner liveness** — not as a schedule.
+ * The owner refreshes `heartbeatAt` every ten seconds while it owns a backend,
+ * and a stale stamp means a dead owner even when the owner's pid still resolves.
+ * That is the only thing that closes hole (2) above, because a recycled owner pid
+ * is indistinguishable from a live one by pid alone.
  *
- * Its weakness is the mirror of the heartbeat's strength — an orphan survives
- * until *something* launches again. That weakness is exactly what the
- * `--parent-pid` self-guard already covers, so the two are complementary rather
- * than redundant, and neither is asked to cover the other's blind spot.
+ * ⚠️ **It costs a threshold, and the threshold is a guess** — sixty seconds, six
+ * missed beats. A machine suspended for longer, waking a moment before another
+ * spawner's startup sweep, could have a live editor's backend judged unowned.
+ * The window is at most one beat wide and it was accepted deliberately: an
+ * editor-only design with no threshold existed (a session id in a separate owner
+ * file, which is immune to pid reuse without a clock) and it was **discarded in
+ * favour of interoperating**, because a record the other spawner cannot read is a
+ * guaranteed failure, and this is a narrow race.
  *
  * ## Never kill on a pid
  *
- * A recorded pid may belong to an unrelated process by the time the sweep reads
- * it, and killing it would be a far worse defect than the one this fixes. So a
- * record is only ever killed once the process at that pid is **proven** to be
- * the backend the record describes:
+ * A recorded pid may belong to an unrelated process by sweep time, and killing it
+ * would be a far worse defect than the one this fixes. A kill requires the
+ * process's own command line to name `--backend-id <id>` **and** look like the
+ * service. `GET /health` on the recorded port corroborates and is what the
+ * editor's adopt path uses, but it is refused as kill proof: it identifies a
+ * *port*, not a *pid*.
  *
- * - **Command line** (`--backend-id <id>` in the process's own argv) is the only
- *   proof accepted for a kill. It identifies *that pid*, and it works on a
- *   wedged process that answers nothing.
- * - **`GET /health`** on the recorded port, checked for
- *   `service: 'nodegx-backend'` and the recorded `backendId`, corroborates and
- *   is what slice 2 uses to *adopt* a backend that is already up. It is
- *   deliberately **not** accepted as kill proof: it identifies a port, not a
- *   pid, so on its own it could send `SIGKILL` to whatever inherited the pid.
- *
- * When identity cannot be proven the record is **dropped without a kill**. That
- * is a conservative failure — at worst an orphan lives on — and the failure in
- * the other direction is killing a stranger's process.
- *
- * ## Ownership, and the two-spawner case
- *
- * Each record names its owner: `{ pid, sessionId, kind }`. Each live spawner
- * writes `owners/<pid>.json` at startup and deletes it on an orderly exit. A
- * record is *owned* — and therefore left alone — only when an owner file exists
- * for its owner pid, that file's `sessionId` matches the record's, and the pid
- * is alive. All three, because:
- *
- * - the `sessionId` match is what stops a *recycled owner pid* from protecting a
- *   dead session's backends (a new spawner taking pid 4242 overwrites
- *   `owners/4242.json` with its own session, so the stale record no longer
- *   matches and is correctly reaped);
- * - the liveness check is what stops a *crashed* owner's leftover file from
- *   protecting them.
- *
- * A recycled owner pid taken by a *non-spawner* process still reads as alive and
- * the record is kept. That is the conservative direction again, and slice 2's
- * adoption path means the practical harm (a held port) is absorbed rather than
- * hit.
- *
- * ## Where the files live, and why not under `backends/`
- *
- * `~/.noodl/backend-runtime/{processes,owners}`. Not under `~/.noodl/backends/`,
- * which `BackendManager.listBackends` enumerates directory-by-directory and logs
- * `Skipping invalid backend` for anything without a `config.json` — a runtime
- * directory there would be a permanent line of noise in every listing.
- *
- * One file per record rather than one shared index: two spawners writing the
- * same JSON array is a lost-update race, and the whole point of this file is to
- * be right when a process dies mid-write.
+ * The three failing verdicts differ, and the difference is deliberate:
+ * - *not ours* (command line readable, does not match) — drop the record, signal
+ *   nothing. The pid was recycled.
+ * - *unverifiable* (no command line at all) — **keep** the record and signal
+ *   nothing, so a later sweep on a machine where `ps` works can settle it.
+ * - *process gone* — drop the record.
  *
  * @module local-backend/BackendProcessRegistry
  */
 
 const { execFile } = require('child_process');
-const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-/** Bump when the on-disk shape changes; records of another version are ignored. */
-const RECORD_VERSION = 1;
+/** File name inside `<backendsRoot>/<backendId>/`. Must match noodl-mcp's `RUNTIME_FILE`. */
+const RUNTIME_FILE = 'runtime.json';
+
+/** How often a live owner rewrites `heartbeatAt`. Must match noodl-mcp's. */
+const HEARTBEAT_INTERVAL_MS = 10_000;
+
+/** How long a heartbeat may go unrefreshed before the owner counts as gone. */
+const HEARTBEAT_STALE_MS = 60_000;
 
 /** How long a health probe may take before it counts as unreachable. */
 const HEALTH_TIMEOUT_MS = 1500;
 
-/** SIGTERM, then SIGKILL after this. Short: this runs on the startup path. */
-const REAP_GRACE_MS = 2000;
+/** SIGTERM, then SIGKILL after this. */
+const STOP_GRACE_MS = 3000;
 
 function safeLog(...args) {
   try {
@@ -138,21 +119,19 @@ function safeLog(...args) {
 /**
  * Is there a process at this pid?
  *
- * `EPERM` means yes-but-not-ours, which is still yes. Anything else (`ESRCH`)
- * means no. Note this is the same test `nodegx-backend`'s parent guard uses, and
- * it has the same pid-reuse weakness — which is why it is never the *only* test
- * before a kill.
+ * `EPERM` means yes-but-not-ours, which is still yes — the same reading as the
+ * backend's own parent guard and as `noodl-mcp`'s `processIsAlive`.
  *
  * @param {number} pid
  * @returns {boolean}
  */
-function isAlive(pid) {
-  if (!Number.isInteger(pid) || pid <= 1) return false;
+function processIsAlive(pid) {
+  if (!Number.isFinite(pid) || pid <= 1) return false;
   try {
     process.kill(pid, 0);
     return true;
   } catch (e) {
-    return e && e.code === 'EPERM';
+    return !!e && e.code === 'EPERM';
   }
 }
 
@@ -162,16 +141,19 @@ function isAlive(pid) {
  * `null` is "unknown", never "does not match" — the caller must not treat an
  * unreadable command line as a licence to kill.
  *
+ * `-ww` is not decoration: `ps` truncates at the terminal width by default, the
+ * backend id sits near the end of a long argv, and a truncated read would fail
+ * to match a process that really is ours.
+ *
  * @param {number} pid
  * @returns {Promise<string|null>}
  */
-function readCommandLine(pid) {
+function processCommandLine(pid) {
   return new Promise((resolve) => {
-    const done = (value) => resolve(value);
     try {
       if (process.platform === 'win32') {
         // `wmic` is deprecated and absent from recent Windows builds; CIM is the
-        // supported route and is present wherever PowerShell is.
+        // supported route and ships wherever PowerShell does.
         execFile(
           'powershell.exe',
           [
@@ -181,45 +163,62 @@ function readCommandLine(pid) {
             `(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").CommandLine`
           ],
           { timeout: 5000, windowsHide: true },
-          (err, stdout) => done(err ? null : String(stdout || '').trim() || null)
+          (err, stdout) => resolve(err ? null : String(stdout || '').trim() || null)
         );
         return;
       }
-      // -ww: do not truncate at the terminal width. The backend id sits near the
-      // end of a long argv, and a truncated read would silently fail to match.
-      execFile('ps', ['-ww', '-o', 'args=', '-p', String(pid)], { timeout: 5000 }, (err, stdout) =>
-        done(err ? null : String(stdout || '').trim() || null)
+      execFile('ps', ['-ww', '-o', 'command=', '-p', String(pid)], { timeout: 5000 }, (err, stdout) =>
+        resolve(err ? null : String(stdout || '').trim() || null)
       );
     } catch (e) {
-      done(null);
+      resolve(null);
     }
   });
 }
 
 /**
- * Does this command line belong to the backend the record describes?
+ * Is the process at `record.pid` really the backend this record describes?
  *
- * Both halves are required. `--backend-id <id>` alone would match this very
- * sweep's own `ps` invocation if it ever carried the id, and the service marker
- * alone would match a *different* backend of ours.
+ * The same three-valued answer `noodl-mcp/src/backend/runtimeRecord.ts` gives,
+ * and deliberately the same test — the argv marker `--backend-id <id>`, which
+ * only our own child can carry, corroborated by the service name or the recorded
+ * entry path (a dev checkout and a packaged app resolve different entries for the
+ * same service, so the entry alone would reject a record written by the other).
  *
+ * @param {{ pid: number, backendId: string, entry?: string }} record
  * @param {string|null} commandLine
- * @param {string} backendId
- * @returns {boolean}
+ * @returns {'verified'|'not-ours'|'unverifiable'}
  */
-function commandLineMatches(commandLine, backendId) {
-  if (!commandLine || !backendId) return false;
-  if (!commandLine.includes('nodegx-backend')) return false;
-  // Tolerate `--backend-id x`, `--backend-id=x` and a quoted id.
-  const escaped = backendId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`--backend-id[=\\s]+["']?${escaped}["']?(\\s|$)`).test(commandLine);
+function verifyIsOurBackend(record, commandLine) {
+  if (commandLine === null || commandLine === undefined) return 'unverifiable';
+  const namesBackend = commandLine.includes(`--backend-id ${record.backendId}`);
+  const looksLikeService =
+    commandLine.includes('nodegx-backend') || (!!record.entry && commandLine.includes(record.entry));
+  return namesBackend && looksLikeService ? 'verified' : 'not-ours';
+}
+
+/**
+ * Has the owner refreshed this record recently enough to still count?
+ *
+ * **A record with no `heartbeatAt` is fresh by definition.** That is what makes
+ * the format safe for a spawner that has not adopted heartbeats — including
+ * every record either side wrote before this convergence.
+ *
+ * @param {{ heartbeatAt?: string }} record
+ * @param {number} [now]
+ */
+function heartbeatIsFresh(record, now = Date.now()) {
+  if (!record || !record.heartbeatAt) return true;
+  const beat = Date.parse(record.heartbeatAt);
+  if (!Number.isFinite(beat)) return true;
+  return now - beat < HEARTBEAT_STALE_MS;
 }
 
 /**
  * `GET http://127.0.0.1:<port>/health`, or `null` when it does not answer.
- * `/health` is public on the backend (HttpServer.ts:419), so no credential is
+ * `/health` is public on the backend (`HttpServer.ts:419`), so no credential is
  * needed — which matters, because the sweep runs before anything has read a
- * backend's secrets.
+ * backend's secrets. Corroboration only; never kill proof.
  *
  * @param {number} port
  * @returns {Promise<object|null>}
@@ -236,380 +235,308 @@ async function probeHealth(port) {
 }
 
 /**
- * SIGTERM, then SIGKILL after the grace period. Resolves `true` once the process
- * is gone, `false` if it outlived both.
+ * SIGTERM, then SIGKILL after the grace period. Resolves with how it ended, or
+ * `'escaped'` — reported rather than swallowed, because a backend that survives
+ * `SIGKILL` is something a human needs to know about.
  *
  * @param {number} pid
- * @returns {Promise<boolean>}
+ * @param {(pid: number) => boolean} isAlive
+ * @param {(pid: number, signal: string) => void} kill
+ * @returns {Promise<string>}
  */
-async function terminate(pid) {
+async function terminate(pid, isAlive, kill) {
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   try {
-    process.kill(pid, 'SIGTERM');
+    kill(pid, 'SIGTERM');
   } catch (e) {
-    return !isAlive(pid);
+    return 'SIGTERM (already gone)';
   }
-
-  const deadline = Date.now() + REAP_GRACE_MS;
+  const deadline = Date.now() + STOP_GRACE_MS;
   while (Date.now() < deadline) {
-    if (!isAlive(pid)) return true;
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    if (!isAlive(pid)) return 'SIGTERM';
+    await sleep(100);
   }
-
   try {
-    process.kill(pid, 'SIGKILL');
+    kill(pid, 'SIGKILL');
   } catch (e) {
-    /* already gone */
+    return 'SIGKILL (already gone)';
   }
-
-  // SIGKILL is not instantaneous — the process becomes a zombie until reaped,
-  // and on a machine under load the transition takes a few ticks.
+  // SIGKILL is not instantaneous: the process is a zombie until it is reaped.
   const killDeadline = Date.now() + 1000;
   while (Date.now() < killDeadline) {
-    if (!isAlive(pid)) return true;
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    if (!isAlive(pid)) return 'SIGKILL';
+    await sleep(25);
   }
-  return !isAlive(pid);
+  return 'escaped';
 }
 
-/** Write JSON so a reader never sees half of it. */
+/** Write JSON so a reader never sees half of it. 0600, like everything under a backend dir. */
 function writeJsonAtomic(filePath, value) {
-  const tmp = `${filePath}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(value, null, 2));
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const tmp = `${filePath}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
   fs.renameSync(tmp, filePath);
+  try {
+    fs.chmodSync(filePath, 0o600);
+  } catch (e) {
+    // chmod is best-effort on platforms without POSIX modes.
+  }
 }
-
-/**
- * @typedef {Object} SpawnRecord
- * @property {number} version
- * @property {string} backendId
- * @property {string} [name]
- * @property {number} pid - The backend child's pid.
- * @property {number} port
- * @property {string} [dataDir]
- * @property {string} [projectId] - The project the backend was started for, when known.
- * @property {string} spawnedAt - ISO8601.
- * @property {{ pid: number, sessionId: string, kind: string }} owner
- */
 
 class BackendProcessRegistry {
   /**
    * @param {Object} [options]
-   * @param {string} [options.rootDir] - Override the storage root (tests).
-   * @param {string} [options.kind] - Owner kind: 'editor', 'mcp', …
+   * @param {string} [options.rootDir] - The backends root (`~/.noodl/backends`).
+   * @param {string} [options.kind] - Owner kind written into the record.
+   * @param {number} [options.ownerPid]
    * @param {Object} [options.deps] - Injectable probes, for tests.
    */
   constructor(options = {}) {
-    this.rootDir = options.rootDir || path.join(os.homedir(), '.noodl', 'backend-runtime');
-    this.processesDir = path.join(this.rootDir, 'processes');
-    this.ownersDir = path.join(this.rootDir, 'owners');
+    this.rootDir = options.rootDir || path.join(os.homedir(), '.noodl', 'backends');
     this.kind = options.kind || 'editor';
-    this.sessionId = options.sessionId || crypto.randomUUID();
     this.ownerPid = options.ownerPid || process.pid;
+    this.startedAt = new Date().toISOString();
+
+    /** backendId -> heartbeat timer, for the backends this session owns. */
+    this.heartbeats = new Map();
 
     const deps = options.deps || {};
-    this.isAlive = deps.isAlive || isAlive;
-    this.readCommandLine = deps.readCommandLine || readCommandLine;
+    this.isAlive = deps.isAlive || processIsAlive;
+    this.readCommandLine = deps.readCommandLine || processCommandLine;
     this.probeHealth = deps.probeHealth || probeHealth;
-    this.terminate = deps.terminate || terminate;
-  }
-
-  /** @private */
-  ensureDirs() {
-    fs.mkdirSync(this.processesDir, { recursive: true });
-    fs.mkdirSync(this.ownersDir, { recursive: true });
+    this.kill = deps.kill || ((pid, signal) => process.kill(pid, signal));
   }
 
   /** @private */
   recordPath(backendId) {
-    // Backend ids are generated (`backend_<base36>`), but this file name is
-    // attacker-adjacent the moment `noodl-mcp` writes records too, so a
-    // traversal in the id must not become a write outside the directory.
-    return path.join(this.processesDir, `${String(backendId).replace(/[^a-zA-Z0-9_.-]/g, '_')}.json`);
-  }
-
-  /** @private */
-  ownerPath(pid) {
-    return path.join(this.ownersDir, `${String(pid).replace(/[^0-9]/g, '')}.json`);
-  }
-
-  // ── Owner lifecycle ───────────────────────────────────────────────────────
-
-  /**
-   * Claim this process as a live spawner. Overwrites any file left behind by a
-   * previous process that had this pid — which is the mechanism that lets the
-   * sweep tell a recycled owner pid from a live one.
-   */
-  registerOwner() {
-    this.ensureDirs();
-    writeJsonAtomic(this.ownerPath(this.ownerPid), {
-      version: RECORD_VERSION,
-      pid: this.ownerPid,
-      sessionId: this.sessionId,
-      kind: this.kind,
-      startedAt: new Date().toISOString()
-    });
-    return { pid: this.ownerPid, sessionId: this.sessionId, kind: this.kind };
-  }
-
-  /** Release the claim. Called on an orderly exit; a crash simply skips it. */
-  releaseOwner() {
-    try {
-      fs.unlinkSync(this.ownerPath(this.ownerPid));
-    } catch (e) {
-      /* already gone */
-    }
-  }
-
-  /** @returns {{pid: number, sessionId: string, kind: string}[]} */
-  listOwners() {
-    let names = [];
-    try {
-      names = fs.readdirSync(this.ownersDir);
-    } catch (e) {
-      return [];
-    }
-    const owners = [];
-    for (const name of names) {
-      if (!name.endsWith('.json')) continue;
-      try {
-        const owner = JSON.parse(fs.readFileSync(path.join(this.ownersDir, name), 'utf-8'));
-        if (owner && owner.version === RECORD_VERSION && Number.isInteger(owner.pid)) owners.push(owner);
-      } catch (e) {
-        /* unreadable or half-written — treat as absent */
-      }
-    }
-    return owners;
+    // Backend ids are generated, but this path is attacker-adjacent the moment a
+    // second process writes records too, so a traversal must not escape.
+    return path.join(this.rootDir, String(backendId).replace(/[^a-zA-Z0-9_.-]/g, '_'), RUNTIME_FILE);
   }
 
   // ── Spawn records ─────────────────────────────────────────────────────────
 
   /**
-   * Record a spawned backend.
+   * Record a spawned backend, and start heartbeating it.
    *
    * ⚠️ Call this **synchronously** after `spawn()` returns and before any
-   * `await`: the pid is available on the returned handle immediately, and any
-   * awaited work in between is a window in which a `SIGKILL` of the spawner
-   * leaves a child with no record. The window is not zero — nothing short of the
-   * kernel could make it zero — but it is microseconds, and it is the one case
-   * the backend's own `--parent-pid` guard is best at, since a child that young
-   * has certainly not wedged.
+   * `await`: the pid is on the returned handle immediately, and awaited work in
+   * between is a window in which a `SIGKILL` of the spawner leaves a child with
+   * no record. The window is not zero — nothing short of the kernel could make it
+   * zero — but it is microseconds, and it is the one case the backend's own
+   * `--parent-pid` guard is best at, since a child that young cannot have wedged.
    *
    * @param {Object} spawn
    * @param {string} spawn.backendId
+   * @param {string} [spawn.backendName]
    * @param {number} spawn.pid
    * @param {number} spawn.port
-   * @param {string} [spawn.name]
-   * @param {string} [spawn.dataDir]
-   * @param {string} [spawn.projectId]
-   * @returns {SpawnRecord}
+   * @param {string} [spawn.entry] - The `cli.js` the child was spawned with.
+   * @param {string} [spawn.projectDir]
    */
-  recordSpawn({ backendId, pid, port, name, dataDir, projectId }) {
-    this.ensureDirs();
-    /** @type {SpawnRecord} */
+  recordSpawn({ backendId, backendName, pid, port, entry, projectDir }) {
     const record = {
-      version: RECORD_VERSION,
+      version: 1,
       backendId,
-      name,
+      backendName: backendName || backendId,
       pid,
       port,
-      dataDir,
-      projectId,
-      spawnedAt: new Date().toISOString(),
-      owner: { pid: this.ownerPid, sessionId: this.sessionId, kind: this.kind }
+      endpoint: `http://127.0.0.1:${port}`,
+      entry: entry || '',
+      startedAt: new Date().toISOString(),
+      owner: {
+        kind: this.kind,
+        pid: this.ownerPid,
+        startedAt: this.startedAt,
+        ...(projectDir ? { projectDir } : {})
+      },
+      heartbeatAt: new Date().toISOString()
     };
     writeJsonAtomic(this.recordPath(backendId), record);
+    this.startHeartbeat(backendId);
     return record;
   }
 
-  /** Drop the record for a backend that stopped in an orderly way. */
-  forgetSpawn(backendId) {
-    try {
-      fs.unlinkSync(this.recordPath(backendId));
-    } catch (e) {
-      /* already gone */
+  /**
+   * Refresh `heartbeatAt` every {@link HEARTBEAT_INTERVAL_MS} while we own this
+   * backend. `unref()` so a live timer can never be the reason the editor's main
+   * process refuses to exit — a reaping mechanism that prevents a clean quit
+   * would be creating the problem it exists to solve.
+   * @private
+   */
+  startHeartbeat(backendId) {
+    this.stopHeartbeat(backendId);
+    const timer = setInterval(() => this.touch(backendId), HEARTBEAT_INTERVAL_MS);
+    if (typeof timer.unref === 'function') timer.unref();
+    this.heartbeats.set(backendId, timer);
+  }
+
+  /** @private */
+  stopHeartbeat(backendId) {
+    const timer = this.heartbeats.get(backendId);
+    if (timer) {
+      clearInterval(timer);
+      this.heartbeats.delete(backendId);
     }
   }
 
-  /** @returns {SpawnRecord[]} */
-  listRecords() {
-    let names = [];
+  /** Rewrite `heartbeatAt` in place, leaving everything else alone. */
+  touch(backendId) {
+    const record = this.readRecord(backendId);
+    if (!record) return;
     try {
-      names = fs.readdirSync(this.processesDir);
+      writeJsonAtomic(this.recordPath(backendId), { ...record, heartbeatAt: new Date().toISOString() });
+    } catch (e) {
+      safeLog(`Could not refresh the heartbeat of ${backendId}: ${e.message}`);
+    }
+  }
+
+  /** Drop the record for a backend that stopped in an orderly way. Idempotent. */
+  forgetSpawn(backendId) {
+    this.stopHeartbeat(backendId);
+    try {
+      fs.rmSync(this.recordPath(backendId), { force: true });
+    } catch (e) {
+      // A record we cannot delete is a record the next sweep re-evaluates.
+    }
+  }
+
+  /** Stop every heartbeat without touching any record or process. */
+  stopAllHeartbeats() {
+    for (const backendId of Array.from(this.heartbeats.keys())) this.stopHeartbeat(backendId);
+  }
+
+  /** The record for one backend, or null when absent/corrupt. Never throws. */
+  readRecord(backendId) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(this.recordPath(backendId), 'utf-8'));
+      if (!parsed || typeof parsed !== 'object') return null;
+      if (typeof parsed.backendId !== 'string' || typeof parsed.pid !== 'number') return null;
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /** Every readable record under the root. A corrupt one is skipped, not fatal. */
+  listRecords() {
+    let entries = [];
+    try {
+      entries = fs.readdirSync(this.rootDir);
     } catch (e) {
       return [];
     }
     const records = [];
-    for (const name of names) {
-      if (!name.endsWith('.json')) continue;
-      const file = path.join(this.processesDir, name);
-      try {
-        const record = JSON.parse(fs.readFileSync(file, 'utf-8'));
-        if (record && record.version === RECORD_VERSION && record.backendId && Number.isInteger(record.pid)) {
-          records.push(record);
-        } else {
-          // A record we cannot understand describes a process we cannot verify,
-          // so it can never be acted on. Dropping it stops it accumulating.
-          fs.unlinkSync(file);
-        }
-      } catch (e) {
-        try {
-          fs.unlinkSync(file);
-        } catch (e2) {
-          /* leave it */
-        }
-      }
+    for (const id of entries) {
+      const record = this.readRecord(id);
+      if (record) records.push(record);
     }
     return records;
   }
 
+  // ── The sweep ─────────────────────────────────────────────────────────────
+
   /**
-   * Is a live spawner responsible for this record?
+   * Settle every record under the root and reap the orphans.
    *
-   * @param {SpawnRecord} record
-   * @param {{pid: number, sessionId: string}[]} owners
-   * @returns {boolean}
-   * @private
-   */
-  isOwnerLive(record, owners) {
-    const owner = record.owner;
-    if (!owner || !Number.isInteger(owner.pid)) return false;
-    const claim = owners.find((o) => o.pid === owner.pid);
-    // No file: the owner never registered, or exited in an orderly way (and then
-    // the record should have gone too — a leftover means it crashed).
-    if (!claim) return false;
-    // A file for the same pid but a different session is a *recycled* pid: some
-    // later spawner took it and wrote its own claim. The record is orphaned.
-    if (claim.sessionId !== owner.sessionId) return false;
-    return this.isAlive(owner.pid);
-  }
-
-  /**
-   * Prove — or fail to prove — that the process at `record.pid` is the backend
-   * the record describes.
+   * The outcome vocabulary is `noodl-mcp/src/backend/reaper.ts`'s, verbatim, so
+   * the two sweeps can be compared: `self`, `owner-alive`, `already-gone`,
+   * `stale-record`, `unverifiable`, `reaped`, `escaped`.
    *
-   * @param {SpawnRecord} record
-   * @returns {Promise<{ killable: boolean, healthy: boolean, reason: string }>}
-   * @private
-   */
-  async proveIdentity(record) {
-    const commandLine = await this.readCommandLine(record.pid);
-    const killable = commandLineMatches(commandLine, record.backendId);
-
-    const health = await this.probeHealth(record.port);
-    const healthy = !!(health && health.service === 'nodegx-backend' && health.backendId === record.backendId);
-
-    if (killable) return { killable: true, healthy, reason: healthy ? 'command-line+health' : 'command-line' };
-    if (healthy) {
-      return {
-        killable: false,
-        healthy: true,
-        reason: 'health-only (a backend answers on the port, but the pid could not be identified)'
-      };
-    }
-    return {
-      killable: false,
-      healthy: false,
-      reason: commandLine === null ? 'command line unreadable' : 'command line does not match'
-    };
-  }
-
-  /**
-   * Settle every record on disk. Returns a report rather than logging alone, so
-   * a test can assert on it and a caller can surface it.
+   * ⚠️ One deliberate difference from the MCP reaper, and it is stricter rather
+   * than looser: `self` means *a backend this session actually started*, not
+   * merely a record whose owner pid equals ours. At startup we own nothing, so a
+   * record left by a previous editor that happened to hold this pid is judged on
+   * its heartbeat like any other — where the MCP reaper's `owner.pid === selfPid`
+   * shortcut would skip it forever. It can only ever reap more, and only records
+   * whose heartbeat is stale.
    *
-   * @returns {Promise<{
-   *   reaped: {backendId: string, pid: number, reason: string}[],
-   *   kept: {backendId: string, pid: number, reason: string}[],
-   *   dropped: {backendId: string, pid: number, reason: string}[],
-   *   failed: {backendId: string, pid: number, reason: string}[]
-   * }>}
+   * Nothing here throws. A sweep that fails a startup is worse than one that
+   * misses a process, so every outcome is a row in the report.
+   *
+   * @param {{ now?: number }} [options]
+   * @returns {Promise<{backendId: string, pid: number, port: number, ownerKind: string, ownerPid: number, outcome: string, detail?: string}[]>}
    */
-  async sweep() {
-    const report = { reaped: [], kept: [], dropped: [], failed: [] };
-    const records = this.listRecords();
-    if (records.length === 0) {
-      this.pruneOwners();
-      return report;
-    }
+  async sweep(options = {}) {
+    const now = options.now ?? Date.now();
+    const rows = [];
 
-    const owners = this.listOwners();
+    for (const record of this.listRecords()) {
+      const row = (outcome, detail) => ({
+        backendId: record.backendId,
+        backendName: record.backendName,
+        pid: record.pid,
+        port: record.port,
+        ownerKind: (record.owner && record.owner.kind) || 'unknown',
+        ownerPid: (record.owner && record.owner.pid) || 0,
+        outcome,
+        ...(detail ? { detail } : {})
+      });
 
-    await Promise.all(
-      records.map(async (record) => {
-        const at = { backendId: record.backendId, pid: record.pid };
-
-        if (!this.isAlive(record.pid)) {
-          this.forgetSpawn(record.backendId);
-          report.dropped.push({ ...at, reason: 'process is already gone' });
-          return;
-        }
-
-        if (this.isOwnerLive(record, owners)) {
-          report.kept.push({ ...at, reason: `owned by live ${record.owner.kind} session ${record.owner.sessionId}` });
-          return;
-        }
-
-        const identity = await this.proveIdentity(record);
-        if (!identity.killable) {
-          // Never kill an unidentified pid. Drop the record so it does not
-          // accumulate — but say so, because a health-only match means an orphan
-          // really is holding the port and we chose not to shoot at it.
-          this.forgetSpawn(record.backendId);
-          report.dropped.push({ ...at, reason: `identity not proven: ${identity.reason}` });
-          if (identity.healthy) {
-            safeLog(
-              `Backend ${record.backendId} is answering on port ${record.port} with no live owner, but pid ` +
-                `${record.pid} could not be identified as its process. Left running rather than risk killing ` +
-                'an unrelated process. Stop it from Backend Services if it is unwanted.'
-            );
-          }
-          return;
-        }
-
-        const died = await this.terminate(record.pid);
-        if (died) {
-          this.forgetSpawn(record.backendId);
-          report.reaped.push({ ...at, reason: `orphaned (${identity.reason})` });
-          safeLog(`Reaped orphaned backend ${record.backendId} (pid ${record.pid}, port ${record.port})`);
-        } else {
-          report.failed.push({ ...at, reason: 'process survived SIGTERM and SIGKILL' });
-          safeLog(`Could not reap orphaned backend ${record.backendId} (pid ${record.pid})`);
-        }
-      })
-    );
-
-    this.pruneOwners();
-    return report;
-  }
-
-  /**
-   * Delete owner claims whose process is gone. Runs after the sweep, never
-   * before: the sweep's ownership test reads these files, and pruning first
-   * would make every crashed owner's record indistinguishable from an orderly
-   * one — which happens to give the same answer today, but only by accident.
-   * @private
-   */
-  pruneOwners() {
-    for (const owner of this.listOwners()) {
-      if (owner.pid === this.ownerPid) continue;
-      if (this.isAlive(owner.pid)) continue;
-      try {
-        fs.unlinkSync(this.ownerPath(owner.pid));
-      } catch (e) {
-        /* already gone */
+      // Ours, in this session. Never our own live children.
+      if (this.heartbeats.has(record.backendId) && record.owner && record.owner.pid === this.ownerPid) {
+        rows.push(row('self'));
+        continue;
       }
+
+      if (this.isAlive((record.owner && record.owner.pid) || 0) && heartbeatIsFresh(record, now)) {
+        rows.push(row('owner-alive'));
+        continue;
+      }
+
+      if (!this.isAlive(record.pid)) {
+        this.forgetSpawn(record.backendId);
+        rows.push(row('already-gone'));
+        continue;
+      }
+
+      const verdict = verifyIsOurBackend(record, await this.readCommandLine(record.pid));
+      if (verdict === 'not-ours') {
+        // The pid was recycled onto an unrelated process. Dropping the record is
+        // the whole action: signalling it is the exact accident this avoids.
+        this.forgetSpawn(record.backendId);
+        rows.push(row('stale-record', `pid ${record.pid} is no longer our backend — record dropped, nothing signalled`));
+        continue;
+      }
+      if (verdict === 'unverifiable') {
+        rows.push(
+          row(
+            'unverifiable',
+            `could not read the command line of pid ${record.pid}; left running and left recorded rather than ` +
+              'signalling a pid we cannot prove is ours'
+          )
+        );
+        continue;
+      }
+
+      const how = await terminate(record.pid, this.isAlive, this.kill);
+      if (how === 'escaped') {
+        rows.push(row('escaped', `pid ${record.pid} survived SIGTERM and SIGKILL`));
+        safeLog(`Could not reap orphaned backend ${record.backendId} (pid ${record.pid})`);
+        continue;
+      }
+      this.forgetSpawn(record.backendId);
+      rows.push(
+        row('reaped', `owner (${(record.owner && record.owner.kind) || 'unknown'} pid ${(record.owner && record.owner.pid) || 0}) is gone; stopped with ${how}`)
+      );
+      safeLog(`Reaped orphaned backend ${record.backendId} (pid ${record.pid}, port ${record.port})`);
     }
+
+    return rows;
   }
 }
 
 module.exports = {
   BackendProcessRegistry,
-  // Exported for tests and for `noodl-mcp` when F13 lands — the identity rules
-  // are the part the two spawners must agree on, not just the file layout.
-  isAlive,
-  readCommandLine,
-  commandLineMatches,
+  // Exported so the identity rules — the part the two spawners must agree on —
+  // can be asserted directly, and reused rather than re-derived.
+  processIsAlive,
+  processCommandLine,
+  verifyIsOurBackend,
+  heartbeatIsFresh,
   probeHealth,
   terminate,
-  RECORD_VERSION
+  RUNTIME_FILE,
+  HEARTBEAT_INTERVAL_MS,
+  HEARTBEAT_STALE_MS
 };

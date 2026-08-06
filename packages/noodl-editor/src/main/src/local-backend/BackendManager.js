@@ -78,12 +78,14 @@ class BackendManager {
     this.ipcHandlersSetup = false;
 
     // AAQ-011/F10. The durable half of the lifecycle: a record per spawned child
-    // that outlives this process, so the next launch can reap what a crash left
-    // behind. Sibling of `backends/` rather than inside it — `listBackends`
-    // enumerates that directory and would log every runtime file as an invalid
-    // backend. See BackendProcessRegistry for the whole design.
+    // that outlives this process, so the next launch — of THIS editor or of
+    // `noodl-mcp`, which spawns backends too since F13 — can reap what a crash
+    // left behind. One `runtime.json` per backend directory, in the shape
+    // `noodl-mcp/src/backend/runtimeRecord.ts` defines. See
+    // BackendProcessRegistry for the whole design and for why it is that file
+    // rather than a format of the editor's own.
     this.registry = new BackendProcessRegistry({
-      rootDir: path.join(path.dirname(this.backendsPath), 'backend-runtime'),
+      rootDir: this.backendsPath,
       kind: 'editor',
       deps: options.registryDeps
     });
@@ -92,49 +94,65 @@ class BackendManager {
   }
 
   /**
-   * Claim this process as the owner of the backends it is about to spawn, and
-   * settle whatever a previous session left behind (AAQ-011/F10).
+   * Settle whatever a previous session — or a dead `noodl-mcp` — left behind
+   * (AAQ-011/F10).
    *
-   * Called once from `app.on('ready')`. `startBackend` awaits the sweep before
-   * spawning anything, so a backend that is about to be started can never race
-   * the reaper that is deciding whether its predecessor is an orphan.
+   * Called once from `app.on('ready')`. `startBackend` awaits it before spawning
+   * anything, so a backend about to be started can never race the reaper that is
+   * deciding whether its predecessor is an orphan.
    *
-   * @returns {Promise<object>} the sweep report
+   * There is no separate "claim": ownership is written into each spawn record and
+   * kept alive by that record's heartbeat, so a session with no backends has
+   * nothing to claim and nothing to release.
+   *
+   * @returns {Promise<object[]>} the sweep report, one row per record
    */
   claimAndSweep() {
     if (this.sweepPromise) return this.sweepPromise;
-    try {
-      this.registry.registerOwner();
-    } catch (e) {
-      safeLog(`Could not claim backend ownership: ${e.message}`);
-    }
     this.sweepPromise = this.registry
       .sweep()
-      .then((report) => {
-        const { reaped, kept, dropped, failed } = report;
-        if (reaped.length || failed.length || dropped.length || kept.length) {
+      .then((rows) => {
+        if (rows.length) {
+          const counts = rows.reduce((acc, row) => ({ ...acc, [row.outcome]: (acc[row.outcome] || 0) + 1 }), {});
           safeLog(
-            `Orphan sweep: ${reaped.length} reaped, ${kept.length} owned elsewhere, ` +
-              `${dropped.length} stale records dropped, ${failed.length} could not be stopped`
+            'Orphan sweep: ' +
+              Object.entries(counts)
+                .map(([outcome, n]) => `${n} ${outcome}`)
+                .join(', ')
           );
+          for (const row of rows) {
+            if (row.detail) safeLog(`  ${row.backendId}: ${row.outcome} — ${row.detail}`);
+          }
         }
-        return report;
+        return rows;
       })
       .catch((e) => {
         // A sweep that throws must not stop the editor starting: the worst case
         // is the orphan the backend's own `--parent-pid` guard is still watching.
         safeLog(`Orphan sweep failed: ${e.message}`);
-        return { reaped: [], kept: [], dropped: [], failed: [] };
+        return [];
       });
     return this.sweepPromise;
   }
 
-  /** Give up this process's ownership claim. Orderly exits only, by definition. */
+  /**
+   * Stop heartbeating the records this session owns.
+   *
+   * Called on an orderly exit AFTER the backends are actually stopped. Order
+   * matters and it is the opposite of what it looks like: a record whose
+   * heartbeat is fresh is protected from every reaper, so stopping the beats
+   * before the processes are down would open a window in which a crash here
+   * leaves live children that the next sweep reaps *sooner* — which is the
+   * direction we want, but it would also mean a slow-but-successful `stopAll`
+   * could have its own live backends judged unowned by a concurrent `noodl-mcp`
+   * sweep. After the stops, every record has already been deleted anyway, and
+   * this is the tidy-up for the ones that could not be.
+   */
   releaseOwnership() {
     try {
-      this.registry.releaseOwner();
+      this.registry.stopAllHeartbeats();
     } catch (e) {
-      safeLog(`Could not release backend ownership: ${e.message}`);
+      safeLog(`Could not stop backend heartbeats: ${e.message}`);
     }
   }
 
@@ -731,15 +749,16 @@ class BackendManager {
       // ceiling, and a crash inside that window would otherwise leave a live
       // child with no record of it anywhere.
       const started = supervisor.start();
+      const entry = (supervisor.child && supervisor.child.spawnargs && supervisor.child.spawnargs[1]) || '';
       try {
         if (supervisor.child && supervisor.child.pid) {
           this.registry.recordSpawn({
             backendId: id,
-            name: config.name,
+            backendName: config.name,
             pid: supervisor.child.pid,
             port: config.port,
-            dataDir: backendPath,
-            projectId: (config.projectIds || [])[0]
+            entry,
+            projectDir: backendPath
           });
         }
       } catch (e) {
@@ -756,11 +775,11 @@ class BackendManager {
         try {
           this.registry.recordSpawn({
             backendId: id,
-            name: config.name,
+            backendName: config.name,
             pid: supervisor.child.pid,
             port: boundPort,
-            dataDir: backendPath,
-            projectId: (config.projectIds || [])[0]
+            entry,
+            projectDir: backendPath
           });
         } catch (e) {
           safeLog(`Could not update the spawn record of ${id}: ${e.message}`);

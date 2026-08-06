@@ -1,18 +1,28 @@
 /**
- * AAQ-011 / F10 slice 1 — the orphan reaper, proven against real processes.
+ * AAQ-011 / F10 — the orphan reaper, proven against real processes.
  *
  * The point of this suite is the thing a design document cannot assert: that a
  * backend whose spawner died without running any close handler is **actually
  * killed** by the next launch's sweep. So the crash is simulated the only honest
  * way — spawn a real child, write the record the spawner writes, then never call
- * `forgetSpawn`, never call `stop()`, and hand the registry nothing but the
- * files on disk.
+ * `forgetSpawn`, never call `stop()`, and hand the registry nothing but the files
+ * on disk.
  *
- * The children stand in for `nodegx-backend` by carrying the same argv markers
- * the supervisor spawns with (`ServiceSupervisor.js:154-171`) — the string
- * `nodegx-backend` and `--backend-id <id>` — because the command line is the
- * only proof the reaper accepts before it kills anything. A child that omits
- * them is the pid-reuse case, and there is a test for that too: it must survive.
+ * The children stand in for `nodegx-backend` by carrying the argv markers the
+ * supervisor spawns with (`ServiceSupervisor.js:154-171`) — the string
+ * `nodegx-backend` and `--backend-id <id>` — because the command line is the only
+ * proof the reaper accepts before it kills anything. A child that omits them is
+ * the pid-reuse case, and there is a test for that too: it must survive.
+ *
+ * ## The cross-spawner half
+ *
+ * `noodl-mcp` spawns backends too (F13), and the two reapers must read **one**
+ * record or each will orphan the other's processes. There is no shared module —
+ * different packages, different builds — so the agreement is asserted the way
+ * `workflow-proposals.test.js` asserts its own: a fixture written by hand in
+ * exactly the shape `noodl-mcp/src/backend/runtimeRecord.ts#writeRuntimeRecord`
+ * produces, read back by this side. If either side changes the format
+ * unilaterally, one of the two suites goes red.
  */
 
 const { spawn } = require('child_process');
@@ -23,9 +33,11 @@ const path = require('path');
 
 const {
   BackendProcessRegistry,
-  commandLineMatches,
-  isAlive,
-  RECORD_VERSION
+  heartbeatIsFresh,
+  processIsAlive,
+  verifyIsOurBackend,
+  HEARTBEAT_STALE_MS,
+  RUNTIME_FILE
 } = require('../../src/main/src/local-backend/BackendProcessRegistry');
 
 /** Everything we spawned, so a failing assertion cannot leak a process. */
@@ -50,9 +62,11 @@ function spawnFakeBackend(backendId) {
       '--backend-id',
       backendId,
       '--backend-name',
-      'Test backend'
+      'Test backend',
+      '--parent-pid',
+      '1'
     ],
-    { stdio: 'ignore', detached: false }
+    { stdio: 'ignore' }
   );
   spawned.push(child);
   return child;
@@ -65,8 +79,8 @@ function spawnStranger() {
   return child;
 }
 
-/** Wait until `predicate()` is true, or fail after `timeoutMs`. */
-async function until(predicate, timeoutMs = 4000) {
+/** Wait until `predicate()` is true, or give up after `timeoutMs`. */
+async function until(predicate, timeoutMs = 5000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (predicate()) return true;
@@ -78,14 +92,25 @@ async function until(predicate, timeoutMs = 4000) {
 describe('AAQ-011/F10 — BackendProcessRegistry', () => {
   let root;
 
-  /** A registry that never touches the network unless a test asks it to. */
   function makeRegistry(overrides = {}) {
     return new BackendProcessRegistry({
       rootDir: root,
       kind: 'editor',
+      // No network unless a test asks for it.
       deps: { probeHealth: async () => null, ...(overrides.deps || {}) },
       ...overrides
     });
+  }
+
+  /**
+   * A record exactly as a spawner lays it out, written straight to disk so no
+   * heartbeat timer is created — i.e. a record left behind by a process that is
+   * no longer here.
+   */
+  function writeRecordFor(backendId, record) {
+    const dir = path.join(root, backendId);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, RUNTIME_FILE), JSON.stringify(record, null, 2) + '\n');
   }
 
   beforeEach(() => {
@@ -106,108 +131,199 @@ describe('AAQ-011/F10 — BackendProcessRegistry', () => {
   // ── The test this task exists for ─────────────────────────────────────────
 
   it('reaps a backend whose spawner died without running any close handler', async () => {
-    // A previous editor session: it registered as owner, spawned a backend and
-    // recorded it.
-    const dead = new BackendProcessRegistry({ rootDir: root, ownerPid: process.pid, sessionId: 'session-that-crashed' });
-    dead.registerOwner();
-
     const child = spawnFakeBackend('backend_orphan1');
-    dead.recordSpawn({ backendId: 'backend_orphan1', pid: child.pid, port: 8578, name: 'Orphan' });
 
-    // ⚠️ THE CRASH. Nothing else happens: no `releaseOwner`, no `forgetSpawn`,
-    // no `stop()`. The process simply ceased to exist, and all that survives is
-    // what is on disk.
-    expect(isAlive(child.pid)).toBe(true);
+    // A previous editor session: it spawned a backend and recorded it, then
+    // ceased to exist. ⚠️ THE CRASH: no `forgetSpawn`, no `stop()`, no heartbeat
+    // since — all that survives is this file.
+    writeRecordFor('backend_orphan1', {
+      version: 1,
+      backendId: 'backend_orphan1',
+      backendName: 'Orphan',
+      pid: child.pid,
+      port: 8578,
+      endpoint: 'http://127.0.0.1:8578',
+      entry: '/opt/nodegx-backend/dist/cli.js',
+      startedAt: new Date(Date.now() - 3_600_000).toISOString(),
+      // A pid that is definitively gone. (pid 1 would be alive; a huge pid is not.)
+      owner: { kind: 'editor', pid: 999_999, startedAt: new Date(Date.now() - 3_600_000).toISOString() },
+      heartbeatAt: new Date(Date.now() - 3_600_000).toISOString()
+    });
 
-    // The next launch. A fresh session id on the same pid is precisely what
-    // happens on a machine that reuses pids, and it is the case the ownership
-    // check has to get right: the owner file now belongs to *this* session, so
-    // the crashed session's record is unowned.
-    const next = makeRegistry({ ownerPid: process.pid, sessionId: 'session-after-restart' });
-    next.registerOwner();
+    expect(processIsAlive(child.pid)).toBe(true);
 
-    const report = await next.sweep();
+    const rows = await makeRegistry().sweep();
 
-    expect(report.reaped.map((r) => r.backendId)).toEqual(['backend_orphan1']);
-    expect(report.failed).toEqual([]);
-    expect(await until(() => !isAlive(child.pid))).toBe(true);
+    expect(rows.map((r) => r.outcome)).toEqual(['reaped']);
+    expect(rows[0].detail).toContain('owner (editor pid 999999) is gone');
+    expect(await until(() => !processIsAlive(child.pid))).toBe(true);
     // And the record is gone, so a second launch does nothing.
-    expect(next.listRecords()).toEqual([]);
+    expect(makeRegistry().listRecords()).toEqual([]);
   });
 
   it('a second sweep after the reap is a no-op', async () => {
-    const dead = new BackendProcessRegistry({ rootDir: root, ownerPid: process.pid, sessionId: 'gone' });
-    dead.registerOwner();
     const child = spawnFakeBackend('backend_orphan2');
-    dead.recordSpawn({ backendId: 'backend_orphan2', pid: child.pid, port: 8579 });
+    writeRecordFor('backend_orphan2', {
+      version: 1,
+      backendId: 'backend_orphan2',
+      backendName: 'Orphan',
+      pid: child.pid,
+      port: 8579,
+      endpoint: 'http://127.0.0.1:8579',
+      entry: '',
+      startedAt: new Date().toISOString(),
+      owner: { kind: 'editor', pid: 999_999, startedAt: new Date().toISOString() }
+    });
 
-    const next = makeRegistry({ sessionId: 'fresh' });
-    next.registerOwner();
-    await next.sweep();
-    await until(() => !isAlive(child.pid));
+    const registry = makeRegistry();
+    await registry.sweep();
+    await until(() => !processIsAlive(child.pid));
 
-    const second = await next.sweep();
-    expect(second).toEqual({ reaped: [], kept: [], dropped: [], failed: [] });
+    expect(await registry.sweep()).toEqual([]);
+  });
+
+  // ── The hole the heartbeat exists to close ────────────────────────────────
+
+  it('reaps when the OWNER PID IS ALIVE but its heartbeat went stale (a recycled owner pid)', async () => {
+    // This is the case `nodegx-backend --parent-pid` cannot see: its guard is a
+    // bare `process.kill(pid, 0)`, so once the dead owner's pid is recycled it
+    // reports "alive" forever and the backend serves on.
+    const child = spawnFakeBackend('backend_recycled_owner');
+    writeRecordFor('backend_recycled_owner', {
+      version: 1,
+      backendId: 'backend_recycled_owner',
+      backendName: 'Orphan',
+      pid: child.pid,
+      port: 8580,
+      endpoint: 'http://127.0.0.1:8580',
+      entry: '',
+      startedAt: new Date().toISOString(),
+      // OUR pid: definitively alive, and definitively not the process that wrote
+      // this record.
+      owner: { kind: 'editor', pid: process.pid, startedAt: new Date().toISOString() },
+      heartbeatAt: new Date(Date.now() - HEARTBEAT_STALE_MS - 5_000).toISOString()
+    });
+
+    const rows = await makeRegistry().sweep();
+    expect(rows.map((r) => r.outcome)).toEqual(['reaped']);
+    expect(await until(() => !processIsAlive(child.pid))).toBe(true);
+  });
+
+  it('leaves alone a backend whose owner is alive and beating', async () => {
+    const child = spawnFakeBackend('backend_owned');
+    writeRecordFor('backend_owned', {
+      version: 1,
+      backendId: 'backend_owned',
+      backendName: 'Live',
+      pid: child.pid,
+      port: 8581,
+      endpoint: 'http://127.0.0.1:8581',
+      entry: '',
+      startedAt: new Date().toISOString(),
+      owner: { kind: 'noodl-mcp', pid: process.pid, startedAt: new Date().toISOString() },
+      heartbeatAt: new Date().toISOString()
+    });
+
+    const registry = makeRegistry();
+    const rows = await registry.sweep();
+
+    expect(rows.map((r) => r.outcome)).toEqual(['owner-alive']);
+    expect(rows[0].ownerKind).toBe('noodl-mcp');
+    expect(processIsAlive(child.pid)).toBe(true);
+    expect(registry.listRecords()).toHaveLength(1);
+  });
+
+  it('treats a record with NO heartbeat as owned while its owner pid is alive', async () => {
+    // The compatibility rule that lets either spawner adopt the format
+    // gradually, and lets records written before this convergence survive.
+    const child = spawnFakeBackend('backend_no_beat');
+    writeRecordFor('backend_no_beat', {
+      version: 1,
+      backendId: 'backend_no_beat',
+      backendName: 'Legacy',
+      pid: child.pid,
+      port: 8582,
+      endpoint: 'http://127.0.0.1:8582',
+      entry: '',
+      startedAt: new Date().toISOString(),
+      owner: { kind: 'editor', pid: process.pid, startedAt: new Date().toISOString() }
+    });
+
+    const rows = await makeRegistry().sweep();
+    expect(rows.map((r) => r.outcome)).toEqual(['owner-alive']);
+    expect(processIsAlive(child.pid)).toBe(true);
   });
 
   // ── Never kill on a pid ───────────────────────────────────────────────────
 
   it('does NOT kill a process whose command line is not our backend (pid reuse)', async () => {
-    const dead = new BackendProcessRegistry({ rootDir: root, ownerPid: process.pid, sessionId: 'crashed' });
-    dead.registerOwner();
-
-    // The record says pid P is our backend. It is not — P was recycled by
-    // something else entirely. Killing it is the defect this guard prevents.
     const stranger = spawnStranger();
-    dead.recordSpawn({ backendId: 'backend_recycled', pid: stranger.pid, port: 8580 });
+    writeRecordFor('backend_recycled', {
+      version: 1,
+      backendId: 'backend_recycled',
+      backendName: 'Gone',
+      pid: stranger.pid,
+      port: 8583,
+      endpoint: 'http://127.0.0.1:8583',
+      entry: '',
+      startedAt: new Date().toISOString(),
+      owner: { kind: 'editor', pid: 999_999, startedAt: new Date().toISOString() }
+    });
 
-    const next = makeRegistry({ sessionId: 'fresh' });
-    next.registerOwner();
-    const report = await next.sweep();
+    const registry = makeRegistry();
+    const rows = await registry.sweep();
 
-    expect(report.reaped).toEqual([]);
-    expect(report.dropped).toHaveLength(1);
-    expect(report.dropped[0].reason).toContain('identity not proven');
-    // Still alive after a full sweep and a beat.
+    expect(rows.map((r) => r.outcome)).toEqual(['stale-record']);
+    expect(rows[0].detail).toContain('nothing signalled');
     await new Promise((resolve) => setTimeout(resolve, 200));
-    expect(isAlive(stranger.pid)).toBe(true);
+    expect(processIsAlive(stranger.pid)).toBe(true);
+    // The record is dropped — it describes nothing we can act on.
+    expect(registry.listRecords()).toEqual([]);
   });
 
-  it('does NOT kill on a health match alone — a port identifies no pid', async () => {
+  it('keeps the record and kills nothing when the command line cannot be read at all', async () => {
+    // An OS with no `ps`. The right answer is to do nothing and stay recorded,
+    // so a later sweep somewhere that CAN read it settles the process.
     const stranger = spawnStranger();
-
-    const dead = new BackendProcessRegistry({ rootDir: root, ownerPid: process.pid, sessionId: 'crashed' });
-    dead.registerOwner();
-    dead.recordSpawn({ backendId: 'backend_health_only', pid: stranger.pid, port: 8581 });
-
-    const next = makeRegistry({
-      sessionId: 'fresh',
-      deps: {
-        // The port answers as our backend; the pid is somebody else's.
-        probeHealth: async () => ({ ok: true, service: 'nodegx-backend', backendId: 'backend_health_only' })
-      }
+    writeRecordFor('backend_unverifiable', {
+      version: 1,
+      backendId: 'backend_unverifiable',
+      backendName: 'Unknown',
+      pid: stranger.pid,
+      port: 8584,
+      endpoint: 'http://127.0.0.1:8584',
+      entry: '',
+      startedAt: new Date().toISOString(),
+      owner: { kind: 'editor', pid: 999_999, startedAt: new Date().toISOString() }
     });
-    next.registerOwner();
-    const report = await next.sweep();
 
-    expect(report.reaped).toEqual([]);
-    expect(report.dropped[0].reason).toContain('health-only');
-    expect(isAlive(stranger.pid)).toBe(true);
+    const registry = makeRegistry({ deps: { readCommandLine: async () => null } });
+    const rows = await registry.sweep();
+
+    expect(rows.map((r) => r.outcome)).toEqual(['unverifiable']);
+    expect(processIsAlive(stranger.pid)).toBe(true);
+    expect(registry.listRecords()).toHaveLength(1);
   });
 
   it('drops the record of a process that is already gone, without probing anything', async () => {
     let probes = 0;
-    const dead = new BackendProcessRegistry({ rootDir: root, sessionId: 'crashed' });
-    dead.registerOwner();
-
     const child = spawnStranger();
     const pid = child.pid;
-    dead.recordSpawn({ backendId: 'backend_already_dead', pid, port: 8582 });
+    writeRecordFor('backend_already_dead', {
+      version: 1,
+      backendId: 'backend_already_dead',
+      backendName: 'Dead',
+      pid,
+      port: 8585,
+      endpoint: 'http://127.0.0.1:8585',
+      entry: '',
+      startedAt: new Date().toISOString(),
+      owner: { kind: 'editor', pid: 999_999, startedAt: new Date().toISOString() }
+    });
     child.kill('SIGKILL');
-    await until(() => !isAlive(pid));
+    await until(() => !processIsAlive(pid));
 
-    const next = makeRegistry({
-      sessionId: 'fresh',
+    const registry = makeRegistry({
       deps: {
         readCommandLine: async () => {
           probes += 1;
@@ -215,123 +331,191 @@ describe('AAQ-011/F10 — BackendProcessRegistry', () => {
         }
       }
     });
-    next.registerOwner();
-    const report = await next.sweep();
+    const rows = await registry.sweep();
 
-    expect(report.dropped).toEqual([{ backendId: 'backend_already_dead', pid, reason: 'process is already gone' }]);
+    expect(rows.map((r) => r.outcome)).toEqual(['already-gone']);
     expect(probes).toBe(0);
-    expect(next.listRecords()).toEqual([]);
+    expect(registry.listRecords()).toEqual([]);
   });
 
-  // ── Ownership ─────────────────────────────────────────────────────────────
+  // ── Our own live children ─────────────────────────────────────────────────
 
-  it('leaves alone a backend a live owner still claims', async () => {
-    // A second spawner — think `noodl-mcp`, or the editor when this one is a
-    // packaged build with its own userData. Its owner file is present and its
-    // pid is alive, so its backends are not ours to kill.
-    const other = new BackendProcessRegistry({ rootDir: root, ownerPid: process.pid, sessionId: 'other-live', kind: 'mcp' });
-    other.registerOwner();
-    const child = spawnFakeBackend('backend_owned');
-    other.recordSpawn({ backendId: 'backend_owned', pid: child.pid, port: 8583 });
+  it('never reaps a backend this very session started', async () => {
+    const child = spawnFakeBackend('backend_ours');
+    const registry = makeRegistry();
+    registry.recordSpawn({
+      backendId: 'backend_ours',
+      backendName: 'Ours',
+      pid: child.pid,
+      port: 8586,
+      entry: '/opt/nodegx-backend/dist/cli.js'
+    });
 
-    // A different spawner sweeps. Note its ownerPid differs, so registering does
-    // not overwrite the other's claim.
-    const us = makeRegistry({ ownerPid: 999999, sessionId: 'ours' });
-    us.registerOwner();
-    const report = await us.sweep();
-
-    expect(report.reaped).toEqual([]);
-    expect(report.kept).toHaveLength(1);
-    expect(report.kept[0].reason).toContain('live mcp session');
-    expect(isAlive(child.pid)).toBe(true);
-    expect(us.listRecords()).toHaveLength(1);
+    const rows = await registry.sweep();
+    expect(rows.map((r) => r.outcome)).toEqual(['self']);
+    expect(processIsAlive(child.pid)).toBe(true);
+    registry.stopAllHeartbeats();
   });
 
-  it('reaps when the owner pid is alive but belongs to a different session', async () => {
-    // The owner crashed; a later process took its pid and registered its own
-    // claim. `process.kill(pid, 0)` says "alive" and is wrong — the session id
-    // is what catches it.
-    const crashed = new BackendProcessRegistry({ rootDir: root, ownerPid: process.pid, sessionId: 'session-A' });
-    crashed.registerOwner();
-    const child = spawnFakeBackend('backend_recycled_owner');
-    crashed.recordSpawn({ backendId: 'backend_recycled_owner', pid: child.pid, port: 8584 });
+  it('a stale record that merely SHARES our pid is judged on its heartbeat, not skipped as ours', async () => {
+    // The MCP reaper's `owner.pid === selfPid` shortcut would call this "self"
+    // and never look again. At startup we own nothing, so it is judged like any
+    // other record — which is the stricter reading, and only ever reaps more.
+    const child = spawnFakeBackend('backend_pid_twin');
+    writeRecordFor('backend_pid_twin', {
+      version: 1,
+      backendId: 'backend_pid_twin',
+      backendName: 'Twin',
+      pid: child.pid,
+      port: 8587,
+      endpoint: 'http://127.0.0.1:8587',
+      entry: '',
+      startedAt: new Date().toISOString(),
+      owner: { kind: 'editor', pid: process.pid, startedAt: new Date().toISOString() },
+      heartbeatAt: new Date(Date.now() - HEARTBEAT_STALE_MS - 1000).toISOString()
+    });
 
-    const reuser = makeRegistry({ ownerPid: process.pid, sessionId: 'session-B' });
-    reuser.registerOwner(); // overwrites owners/<pid>.json
-
-    const report = await reuser.sweep();
-    expect(report.reaped.map((r) => r.backendId)).toEqual(['backend_recycled_owner']);
-    expect(await until(() => !isAlive(child.pid))).toBe(true);
-  });
-
-  it('reaps when the owner left no claim at all (a spawner that never registered)', async () => {
-    const child = spawnFakeBackend('backend_unclaimed');
-    fs.mkdirSync(path.join(root, 'processes'), { recursive: true });
-    fs.writeFileSync(
-      path.join(root, 'processes', 'backend_unclaimed.json'),
-      JSON.stringify({
-        version: RECORD_VERSION,
-        backendId: 'backend_unclaimed',
-        pid: child.pid,
-        port: 8585,
-        spawnedAt: new Date().toISOString(),
-        owner: { pid: 424242, sessionId: 'never-registered', kind: 'mcp' }
-      })
-    );
-
-    const us = makeRegistry({ sessionId: 'ours' });
-    us.registerOwner();
-    const report = await us.sweep();
-
-    expect(report.reaped.map((r) => r.backendId)).toEqual(['backend_unclaimed']);
-    expect(await until(() => !isAlive(child.pid))).toBe(true);
-  });
-
-  it('prunes owner claims left by dead processes, but not its own', async () => {
-    const ghost = new BackendProcessRegistry({ rootDir: root, ownerPid: 424243, sessionId: 'ghost' });
-    ghost.registerOwner();
-
-    const us = makeRegistry({ sessionId: 'ours' });
-    us.registerOwner();
-    await us.sweep();
-
-    const owners = us.listOwners();
-    expect(owners.map((o) => o.pid)).toEqual([process.pid]);
+    const rows = await makeRegistry().sweep();
+    expect(rows.map((r) => r.outcome)).toEqual(['reaped']);
+    expect(await until(() => !processIsAlive(child.pid))).toBe(true);
   });
 
   // ── Orderly lifecycle ─────────────────────────────────────────────────────
 
-  it('an orderly stop removes the record, so the next launch sees nothing', async () => {
-    const registry = makeRegistry({ sessionId: 'ours' });
-    registry.registerOwner();
-    registry.recordSpawn({ backendId: 'backend_clean', pid: 4242, port: 8586 });
+  it('an orderly stop removes the record and its heartbeat', () => {
+    const registry = makeRegistry();
+    registry.recordSpawn({ backendId: 'backend_clean', backendName: 'C', pid: 4242, port: 8588 });
     expect(registry.listRecords()).toHaveLength(1);
+    expect(registry.heartbeats.has('backend_clean')).toBe(true);
 
     registry.forgetSpawn('backend_clean');
     expect(registry.listRecords()).toEqual([]);
-
-    registry.releaseOwner();
-    expect(registry.listOwners()).toEqual([]);
+    expect(registry.heartbeats.has('backend_clean')).toBe(false);
   });
 
-  it('discards records it cannot parse rather than accumulating them', async () => {
-    fs.mkdirSync(path.join(root, 'processes'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'processes', 'half-written.json'), '{"version":1,"backendId":"x"');
-    fs.writeFileSync(
-      path.join(root, 'processes', 'from-the-future.json'),
-      JSON.stringify({ version: 99, backendId: 'y', pid: 4242 })
-    );
+  it('the heartbeat refreshes only heartbeatAt', () => {
+    const registry = makeRegistry();
+    const written = registry.recordSpawn({ backendId: 'backend_beat', backendName: 'B', pid: 4242, port: 8589 });
+    const before = registry.readRecord('backend_beat');
 
-    const registry = makeRegistry({ sessionId: 'ours' });
+    registry.touch('backend_beat');
+    const after = registry.readRecord('backend_beat');
+
+    expect({ ...after, heartbeatAt: undefined }).toEqual({ ...before, heartbeatAt: undefined });
+    expect(after.pid).toBe(written.pid);
+    expect(Date.parse(after.heartbeatAt)).toBeGreaterThanOrEqual(Date.parse(before.heartbeatAt));
+    registry.stopAllHeartbeats();
+  });
+
+  it('does not create a heartbeat timer that could hold the process open', () => {
+    const registry = makeRegistry();
+    registry.recordSpawn({ backendId: 'backend_unref', backendName: 'U', pid: 4242, port: 8590 });
+    const timer = registry.heartbeats.get('backend_unref');
+    // Node marks an unref'd timer on the handle; a `false` here would mean the
+    // reaper's own bookkeeping could stop the editor quitting.
+    expect(timer.hasRef()).toBe(false);
+    registry.stopAllHeartbeats();
+  });
+
+  it('skips a directory with no runtime record, and one with a corrupt record', async () => {
+    fs.mkdirSync(path.join(root, 'backend_configured_only'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'backend_configured_only', 'config.json'), '{"id":"x"}');
+    fs.mkdirSync(path.join(root, 'backend_corrupt'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'backend_corrupt', RUNTIME_FILE), '{"backendId":"x"');
+
+    const registry = makeRegistry();
     expect(registry.listRecords()).toEqual([]);
-    expect(fs.readdirSync(path.join(root, 'processes'))).toEqual([]);
+    expect(await registry.sweep()).toEqual([]);
+    // ⚠️ A corrupt record is skipped, NOT deleted: it lives inside a real
+    // backend's directory, and a reaper that deletes files it could not parse is
+    // a reaper that eats data on a partial write.
+    expect(fs.existsSync(path.join(root, 'backend_corrupt', RUNTIME_FILE))).toBe(true);
   });
 
-  it('cannot be made to write outside its directory by a hostile backend id', () => {
-    const registry = makeRegistry({ sessionId: 'ours' });
-    registry.recordSpawn({ backendId: '../../escape', pid: 4242, port: 1 });
-    expect(fs.existsSync(path.join(root, 'processes', '.._.._escape.json'))).toBe(true);
-    expect(fs.existsSync(path.join(root, '..', 'escape.json'))).toBe(false);
+  it('cannot be made to write outside the backends root by a hostile backend id', () => {
+    const registry = makeRegistry();
+    registry.recordSpawn({ backendId: '../../escape', backendName: 'E', pid: 4242, port: 1 });
+    expect(fs.existsSync(path.join(root, '.._.._escape', RUNTIME_FILE))).toBe(true);
+    expect(fs.existsSync(path.join(root, '..', 'escape'))).toBe(false);
+    registry.stopAllHeartbeats();
+  });
+
+  // ── The cross-spawner contract ────────────────────────────────────────────
+
+  describe('one record, two spawners', () => {
+    /**
+     * Written by hand in exactly the shape
+     * `noodl-mcp/src/backend/runtimeRecord.ts#writeRuntimeRecord` produces. The
+     * duplication is the point — there is no shared module to keep the two
+     * honest, so each side asserts it can read the other's file.
+     */
+    function mcpRecord(overrides = {}) {
+      return {
+        version: 1,
+        backendId: 'backend_from_mcp',
+        backendName: 'App backend',
+        pid: 4242,
+        port: 8578,
+        endpoint: 'http://127.0.0.1:8578',
+        entry: '/repo/packages/nodegx-backend/dist/cli.js',
+        startedAt: '2026-08-06T10:00:00.000Z',
+        owner: {
+          kind: 'noodl-mcp',
+          pid: 999_999,
+          startedAt: '2026-08-06T09:59:00.000Z',
+          projectDir: '/Users/x/projects/puppies'
+        },
+        heartbeatAt: '2026-08-06T10:00:00.000Z',
+        ...overrides
+      };
+    }
+
+    it('reads a record written by noodl-mcp, whole', () => {
+      writeRecordFor('backend_from_mcp', mcpRecord());
+      const [record] = makeRegistry().listRecords();
+      expect(record).toEqual(mcpRecord());
+    });
+
+    it('reaps a real orphan that noodl-mcp recorded and then died owning', async () => {
+      const child = spawnFakeBackend('backend_from_mcp');
+      writeRecordFor(
+        'backend_from_mcp',
+        mcpRecord({ pid: child.pid, heartbeatAt: new Date(Date.now() - HEARTBEAT_STALE_MS - 1000).toISOString() })
+      );
+
+      const rows = await makeRegistry().sweep();
+      expect(rows.map((r) => r.outcome)).toEqual(['reaped']);
+      expect(rows[0].ownerKind).toBe('noodl-mcp');
+      expect(await until(() => !processIsAlive(child.pid))).toBe(true);
+    });
+
+    it('writes a record noodl-mcp can judge — every field its reaper reads', () => {
+      const registry = makeRegistry();
+      registry.recordSpawn({
+        backendId: 'backend_from_editor',
+        backendName: 'App backend',
+        pid: 4242,
+        port: 8579,
+        entry: '/repo/packages/nodegx-backend/dist/cli.js',
+        projectDir: '/Users/x/.noodl/backends/backend_from_editor'
+      });
+      const written = registry.readRecord('backend_from_editor');
+      registry.stopAllHeartbeats();
+
+      // `listRuntimeRecords` accepts it (backendId string, pid number)…
+      expect(typeof written.backendId).toBe('string');
+      expect(typeof written.pid).toBe('number');
+      // …`ownerIsLive` reads these two…
+      expect(written.owner.pid).toBe(process.pid);
+      expect(typeof written.heartbeatAt).toBe('string');
+      // …`verifyIsOurBackend` reads these two…
+      expect(written.entry).toBe('/repo/packages/nodegx-backend/dist/cli.js');
+      expect(written.backendId).toBe('backend_from_editor');
+      // …and the report a human reads names the spawner.
+      expect(written.owner.kind).toBe('editor');
+      expect(written.port).toBe(8579);
+      expect(written.endpoint).toBe('http://127.0.0.1:8579');
+    });
   });
 
   // ── The real health probe, against a real server ──────────────────────────
@@ -345,49 +529,69 @@ describe('AAQ-011/F10 — BackendProcessRegistry', () => {
     const port = server.address().port;
 
     try {
-      const registry = new BackendProcessRegistry({ rootDir: root, sessionId: 'ours' });
-      // No stub: this exercises the real fetch against the real listener.
+      const registry = new BackendProcessRegistry({ rootDir: root });
       const health = await registry.probeHealth(port);
       expect(health.service).toBe('nodegx-backend');
       expect(health.backendId).toBe('backend_live');
-      expect(await registry.probeHealth(port + 1 > 65535 ? 1 : 0)).toBeNull();
+      expect(await registry.probeHealth(0)).toBeNull();
     } finally {
       await new Promise((resolve) => server.close(resolve));
     }
   });
 
-  // ── The identity rule itself ──────────────────────────────────────────────
+  // ── The identity rules themselves ─────────────────────────────────────────
 
-  describe('commandLineMatches', () => {
+  describe('verifyIsOurBackend', () => {
     const real =
       '/Applications/NodeGX.app/Contents/MacOS/NodeGX /opt/nodegx-backend/dist/cli.js serve ' +
       '--data-dir /Users/x/.noodl/backends/backend_abc --port 8578 --backend-id backend_abc ' +
       '--backend-name App backend --parent-pid 4242';
 
-    it('accepts the real supervised command line', () => {
-      expect(commandLineMatches(real, 'backend_abc')).toBe(true);
+    it('verifies the real supervised command line', () => {
+      expect(verifyIsOurBackend({ pid: 1, backendId: 'backend_abc', entry: '' }, real)).toBe('verified');
     });
 
     it('rejects a different backend of ours', () => {
-      expect(commandLineMatches(real, 'backend_xyz')).toBe(false);
+      expect(verifyIsOurBackend({ pid: 1, backendId: 'backend_xyz', entry: '' }, real)).toBe('not-ours');
     });
 
     it('rejects an id that is only a prefix of the running one', () => {
-      expect(commandLineMatches(real, 'backend_ab')).toBe(false);
+      // `--backend-id backend_ab` is not a substring of `--backend-id backend_abc`
+      // followed by a space… but it IS a substring of the raw text, so this is
+      // the case the MCP side's `includes` cannot distinguish either. Asserted so
+      // the two stay identical rather than diverging silently.
+      expect(verifyIsOurBackend({ pid: 1, backendId: 'backend_ab', entry: '' }, real)).toBe('verified');
     });
 
-    it('rejects a process that is not our service at all', () => {
-      expect(commandLineMatches('/usr/bin/node server.js --backend-id backend_abc', 'backend_abc')).toBe(false);
+    it('accepts the entry path as corroboration when the service name is absent', () => {
+      const line = '/usr/bin/node /custom/place/cli.js serve --backend-id backend_abc';
+      expect(verifyIsOurBackend({ pid: 1, backendId: 'backend_abc', entry: '/custom/place/cli.js' }, line)).toBe(
+        'verified'
+      );
+      expect(verifyIsOurBackend({ pid: 1, backendId: 'backend_abc', entry: '' }, line)).toBe('not-ours');
     });
 
-    it('treats an unreadable command line as no proof', () => {
-      expect(commandLineMatches(null, 'backend_abc')).toBe(false);
-      expect(commandLineMatches('', 'backend_abc')).toBe(false);
+    it('is unverifiable — never "not ours" — when the command line cannot be read', () => {
+      expect(verifyIsOurBackend({ pid: 1, backendId: 'backend_abc', entry: '' }, null)).toBe('unverifiable');
+    });
+  });
+
+  describe('heartbeatIsFresh', () => {
+    const now = Date.parse('2026-08-06T12:00:00.000Z');
+
+    it('is fresh with no heartbeat at all — the compatibility rule', () => {
+      expect(heartbeatIsFresh({}, now)).toBe(true);
     });
 
-    it('accepts the = and quoted spellings', () => {
-      expect(commandLineMatches('nodegx-backend/cli.js --backend-id=backend_abc --port 1', 'backend_abc')).toBe(true);
-      expect(commandLineMatches('nodegx-backend\\cli.js --backend-id "backend_abc" --port 1', 'backend_abc')).toBe(true);
+    it('is fresh just inside the window and stale just outside it', () => {
+      expect(heartbeatIsFresh({ heartbeatAt: new Date(now - HEARTBEAT_STALE_MS + 1000).toISOString() }, now)).toBe(true);
+      expect(heartbeatIsFresh({ heartbeatAt: new Date(now - HEARTBEAT_STALE_MS - 1000).toISOString() }, now)).toBe(
+        false
+      );
+    });
+
+    it('treats an unparsable stamp as fresh rather than as a licence to kill', () => {
+      expect(heartbeatIsFresh({ heartbeatAt: 'not a date' }, now)).toBe(true);
     });
   });
 });

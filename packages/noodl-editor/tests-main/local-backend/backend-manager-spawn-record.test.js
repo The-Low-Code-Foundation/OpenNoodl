@@ -109,7 +109,7 @@ describe('AAQ-011/F10 — BackendManager writes and drops spawn records', () => 
         isAlive: () => false,
         readCommandLine: async () => null,
         probeHealth: async () => null,
-        terminate: async () => true
+        kill: () => undefined
       }
     });
   });
@@ -126,17 +126,19 @@ describe('AAQ-011/F10 — BackendManager writes and drops spawn records', () => 
     expect(records).toHaveLength(1);
     expect(records[0]).toEqual(
       expect.objectContaining({
+        version: 1,
         backendId: 'backend_a',
-        name: 'App backend',
+        backendName: 'App backend',
         pid: supervisors[0].child.pid,
         port: 8578,
-        projectId: 'proj_1',
+        endpoint: 'http://127.0.0.1:8578',
         owner: expect.objectContaining({ pid: process.pid, kind: 'editor' })
       })
     );
-    // Written beside the metadata, never inside it — `listBackends` walks that
-    // directory and logs anything without a config.json as invalid.
-    expect(fs.existsSync(path.join(root, 'backend-runtime', 'processes'))).toBe(true);
+    // ONE record, shared with noodl-mcp: `runtime.json` inside the backend's own
+    // directory, not a format of the editor's own. `listBackends` reads
+    // config.json per directory, so an extra file there changes nothing.
+    expect(fs.existsSync(path.join(root, 'backends', 'backend_a', 'runtime.json'))).toBe(true);
     expect(fs.readdirSync(path.join(root, 'backends'))).toEqual(['backend_a']);
   });
 
@@ -213,7 +215,7 @@ describe('AAQ-011/F10 — BackendManager writes and drops spawn records', () => 
       new Promise((resolve) => {
         releaseSweep = () => {
           order.push('sweep');
-          resolve({ reaped: [], kept: [], dropped: [], failed: [] });
+          resolve([]);
         };
       });
 
@@ -229,16 +231,13 @@ describe('AAQ-011/F10 — BackendManager writes and drops spawn records', () => 
     expect(order).toEqual(['sweep', 'start']);
   });
 
-  it('claims ownership on claimAndSweep and releases it on an orderly exit', async () => {
-    manager.registry.sweep = async () => ({ reaped: [], kept: [], dropped: [], failed: [] });
-    await manager.claimAndSweep();
-
-    expect(manager.registry.listOwners()).toEqual([
-      expect.objectContaining({ pid: process.pid, kind: 'editor' })
-    ]);
+  it('stops every heartbeat on an orderly exit', async () => {
+    giveBackend('backend_l', 8578);
+    await manager.startBackend('backend_l');
+    expect(manager.registry.heartbeats.size).toBe(1);
 
     manager.releaseOwnership();
-    expect(manager.registry.listOwners()).toEqual([]);
+    expect(manager.registry.heartbeats.size).toBe(0);
   });
 
   it('starts anyway when the sweep throws', async () => {
