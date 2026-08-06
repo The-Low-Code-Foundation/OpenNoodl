@@ -15,7 +15,7 @@ const _shouldShowDocsForPort = {}; // Ugly fix for not showing duplicate docs on
 export function PortItem(props: TSFixme) {
   const ref = useRef(null);
   const [showDocs, setShowDocs] = useState(false);
-  const [docs, setDocs] = useState();
+  const [docs, setDocs] = useState<string | undefined>(undefined);
 
   let tooltipTimeout;
   const onMouseOver = () => {
@@ -34,34 +34,22 @@ export function PortItem(props: TSFixme) {
     const p = props.port;
     _shouldShowDocsForPort[p.name] = true;
 
-    if (p.parent.type.docs) {
-      docsParser.getDocsForType(p.parent.type, (docs) => {
-        if (!_shouldShowDocsForPort[p.name]) return; // Make sure we should still show docs for port
-        const ports = p.section === 'from' ? docs.outputs : docs.inputs;
+    // ALPHA-006 §1: a bundled-catalog lookup on the port's canonical name.
+    // The three-step display-name / name / longest-regexp cascade this replaced
+    // existed because the old markdown markers were hand-keyed and sometimes
+    // wildcards; the catalog's keys are the port names themselves.
+    docsParser.getDocsForType(p.parent?.type, (docs) => {
+      if (!_shouldShowDocsForPort[p.name]) return; // Make sure we should still show docs for port
 
-        const name = (p.displayName || p.name).toLowerCase();
-        let d = ports[name];
+      const ports = p.section === 'from' ? docs.outputs : docs.inputs;
+      const d = ports[p.name];
 
-        if (d === undefined) {
-          // No docs found, try only the port name (not display name)
-          d = ports[p.name];
-        }
-
-        if (d === undefined) {
-          // Still no docs found, try using regexp
-          const keys = Object.keys(ports);
-          keys.sort((a, b) => b.length - a.length); // Match "longest" regexp first, so "*" becomes the last to match
-          const matchingPort = keys.find((key) => p.name.match(new RegExp(key)));
-          if (matchingPort) d = ports[matchingPort];
-        }
-
-        if (d) {
-          // There is documentation for this port
-          setDocs(d);
-          setShowDocs(true);
-        }
-      });
-    }
+      if (d) {
+        // There is documentation for this port
+        setDocs(d);
+        setShowDocs(true);
+      }
+    });
   };
 
   const onMouseOut = () => {

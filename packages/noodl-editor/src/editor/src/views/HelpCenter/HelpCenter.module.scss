@@ -21,7 +21,8 @@
   overflow: hidden;
 }
 
-/* POL-002 removed the Algolia search modal that owned the rest of this file:
-   .SearchHit / .HitTitle / .MessageContainer / .Buttons and the :global
-   .ais-* overrides all styled hits from index `docs_2-9`, which was never
-   ours. The `?` is three links now and needs nothing but .Root. */
+/* POL-002 removed the Algolia search modal that owned the rest of this file
+   (ALPHA-006 §6 reached the same verdict independently): .SearchHit /
+   .HitTitle / .MessageContainer / .Buttons and the :global .ais-* overrides
+   all styled hits from index `docs_2-9`, which was never ours. The `?` is a
+   plain link menu now and needs nothing but .Root. */

@@ -1,7 +1,7 @@
 # NodeGX Privacy Policy
 
 **Applies to:** NodeGX 0.1.0 (alpha), the desktop application.
-**Last updated:** 2026-07-30.
+**Last updated:** 2026-08-03.
 
 This document was written by reading the source, not by filling in a template.
 Every claim below names the thing in the product that makes it true, so that a
@@ -212,6 +212,21 @@ it first — you are choosing to share whatever is in it.
 
 Development builds run from source do not write these files.
 
+### "Report a problem"
+
+**Help → Report a problem…** does not transmit anything either. It writes a
+report folder under `reports/` in the same application-data directory (§7),
+containing a screenshot of the editor window, the description you typed, and a
+block of diagnostics — version, operating system, and *counts* of the things in
+your project. It never includes your project's content, node settings,
+component or page names, file contents, API keys, or the address of any backend
+you have configured.
+
+It then opens GitHub's new-issue form **in your web browser** with all of that
+already filled in. Nothing is filed until you read it and press Submit, under
+your own GitHub account. If you close the browser instead, nothing has left your
+machine and the folder is still there for you to delete.
+
 ---
 
 ## 6. Other network connections
@@ -224,20 +239,28 @@ content.
 | **Update check** | At launch, and repeatedly while running. macOS and Windows only — the Linux build never checks. | The project's GitHub releases | Your IP, app version, platform |
 | **Changelog** | When you open a project | The project's documentation site, on GitHub Pages | Your IP |
 | **Library modules, prefabs and project templates** | When you browse the library or templates, and when you install one | Same documentation site | Your IP, and which module you chose |
-| **Help search** | Only while the "Quick search docs" box is open and you are typing | Algolia (a hosted search service) | Your IP and **the words you type into the search box** |
 | **GitHub** | Only if you connect a GitHub account, and then only when you use version control | `api.github.com` | See §8 |
 | **Your own services** | When your app or backend uses them | Wherever you pointed them | Whatever you configured |
 
-The help search is the only one of these that sends anything you typed, and it
-sends it only while that search box is open. The search modal is not loaded into
-the app until you open it, so simply having NodeGX running sends Algolia nothing.
+**None of these sends anything you typed.** Until this release the Help Center
+had a "Quick search docs" box that sent every keystroke to Algolia, a hosted
+search service, to query an index of Noodl 2.9's documentation — a different
+product. That search box has been removed along with the Algolia client, so
+there is no longer any request from NodeGX carrying text you entered.
+
+The node help shown inside the editor — the property panel, the node picker's
+preview pane and the connection popup — is read from a catalog that ships inside
+the application. It makes **no network request at all** and works offline.
 
 The update check can be disabled by starting NodeGX with the environment
 variable `autoUpdate=no`.
 
-Opening documentation, guides, the community Discord or the support forum from
-the Help menu opens them in **your web browser**, at which point that site's own
-privacy policy applies.
+Opening the documentation, the guides, the release notes, an issue form or
+**Report a problem** (§5) — whether from the Help menu or from the Help Center
+inside the editor — opens them in **your web browser**, at which point that
+site's own privacy policy applies. NodeGX itself makes no request in any of
+those cases. Searching the documentation now happens on the website, in your
+browser, rather than in the application.
 
 ---
 
@@ -251,8 +274,8 @@ The application-data directory referred to above is:
 
 It holds `editorSettings.json` (your editor preferences, in plain text — never
 credentials), the credential files described in §2 and §8, the telemetry file
-(§4) and the debug logs (§5), together with the standard caches any Electron
-application keeps.
+(§4), the debug logs and any "Report a problem" folders (§5), together with the
+standard caches any Electron application keeps.
 
 Your **projects** live wherever you chose to put them, and NodeGX does not copy
 them anywhere else.
@@ -341,6 +364,7 @@ source is:
 | The local debug log | `.../src/utils/bugtracker.ts` |
 | The analytics no-op | `.../src/utils/tracker/` |
 | Update check | `packages/noodl-editor/src/main/src/autoupdater.js` |
-| Help search | `.../src/views/HelpCenter/HelpCenter.tsx` |
+| The Help menu links out, and searches nothing | `.../src/views/HelpCenter/HelpCenter.tsx` |
+| Node help comes from a bundled catalog, not the network | `.../src/editor/src/utils/nodeDocs.ts` |
 | GitHub OAuth scope and callback | `packages/noodl-editor/src/main/github-oauth-handler.js` |
 | Backend data directory and binding | `packages/nodegx-backend/src/config.ts` |

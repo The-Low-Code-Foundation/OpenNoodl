@@ -5,7 +5,7 @@
  *
  *  - `usePicker`      — state, derived results and the actions the view calls;
  *  - `usePickerKeys`  — the global key handling (`↑↓` / `←→` / `⏎`);
- *  - `useNodeDocs`    — the debounced docs fetch for the preview pane.
+ *  - `useNodeDocs`    — the preview pane's docs, read from the bundled catalog.
  *
  * The search *matching* lives in `NodePicker.search.ts` and the state
  * transitions in `NodePicker.reducer.ts`; this file only wires them to React.
@@ -15,8 +15,8 @@ import { RefObject, useCallback, useEffect, useMemo, useReducer, useRef, useStat
 
 import { INodeType } from '@noodl-types/nodeTypes';
 
-import { DocsParser } from '@noodl-utils/docs-parser';
 import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
+import { getNodeDocs } from '@noodl-utils/nodeDocs';
 import { INodeIndex } from '@noodl-utils/createnodeindex';
 
 import { initialPickerState, PickerActionType, pickerReducer, PickerState } from './NodePicker.reducer';
@@ -250,62 +250,41 @@ export function useSearchFocus(searchInput: RefObject<HTMLInputElement>) {
 /* -------------------------------------------------------------------------- */
 
 export interface NodeDocs {
-  /** Parsed documentation HTML, empty until it arrives (or if there is none). */
+  /** Rendered documentation HTML, empty when the catalog does not know the node. */
   content: string;
-  /** Public docs page for the node, empty when the fetch found nothing. */
+  /** "Read more" page for the node, empty when it has none. */
   url: string;
+  /**
+   * Always false. Kept so the preview pane's props do not change shape: the
+   * docs are now a synchronous read of a bundled artifact, so there is no
+   * moment at which they are pending. See {@link useNodeDocs}.
+   */
   isLoading: boolean;
 }
 
 const EMPTY_DOCS: NodeDocs = { content: '', url: '', isLoading: false };
 
 /**
- * Documentation for the previewed node, debounced so arrowing through a
- * category does not fire a request per card.
+ * Documentation for the previewed node.
+ *
+ * ALPHA-006 §1: this used to debounce 250 ms and then fetch the node's markdown
+ * page off the docs site, so arrowing through a category fired a request per
+ * card, the pane was blank offline, and the 35% of nodes whose page is missing
+ * or moved rendered as "No documentation yet." forever. It is now a lookup in
+ * the enriched catalog that ships in the binary — synchronous, offline, and
+ * unable to disagree with the ports the same pane lists below it.
  */
 export function useNodeDocs(type: INodeType | undefined): NodeDocs {
-  const [docs, setDocs] = useState<NodeDocs>(EMPTY_DOCS);
-  const requestId = useRef(0);
+  return useMemo(() => {
+    const docs = getNodeDocs(type?.name);
+    if (!docs) return EMPTY_DOCS;
 
-  useEffect(() => {
-    const id = ++requestId.current;
-    const docsPath = type?.docs;
-
-    if (!docsPath) {
-      setDocs(EMPTY_DOCS);
-      return;
-    }
-
-    setDocs({ ...EMPTY_DOCS, isLoading: true });
-
-    const timer = setTimeout(() => {
-      let docsUrl = String(docsPath);
-
-      // Rewrite the legacy absolute docs host onto the configured endpoint,
-      // which may be a local docs build.
-      docsUrl = docsUrl.replace('https://docs.noodl.net', getDocsEndpoint());
-      docsUrl = docsUrl.replace('#/', '');
-
-      const fullDocsUrl = docsUrl.replace('README', '').replace('.md', '');
-      if (!docsUrl.endsWith('.md')) docsUrl += '.md';
-
-      new DocsParser().fetchPage(docsUrl, (el: HTMLElement) => {
-        // A slower response for a node the cursor has already left must not
-        // overwrite the current one.
-        if (id !== requestId.current) return;
-
-        setDocs({
-          content: el?.outerHTML || '',
-          url: el?.outerHTML ? fullDocsUrl : '',
-          isLoading: false
-        });
-      });
-    }, 250);
-
-    return () => clearTimeout(timer);
+    return {
+      content: docs.html,
+      url: docs.path ? getDocsEndpoint() + docs.path : '',
+      isLoading: false
+    };
   }, [type]);
-
-  return docs;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -5,6 +5,7 @@ import { platform } from '@noodl/platform';
 import { Keybindings } from '@noodl-constants/Keybindings';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
+import { getNodeDocs } from '@noodl-utils/nodeDocs';
 import { ParameterValueResolver } from '@noodl-utils/ParameterValueResolver';
 import { tracker } from '@noodl-utils/tracker';
 
@@ -106,11 +107,27 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
     };
   }, []);
 
-  function onOpenDocs() {
-    if (!model.type.docs) return;
+  /**
+   * ALPHA-006 §1. The help button used to be gated on `model.type.docs` and to
+   * string-replace the legacy host out of it. Two things were wrong with that:
+   * 17 node types carry no `docs` URL at all, so their button simply did not
+   * exist, and 39 of the URLs that do exist point at a page that has moved or
+   * was never written — a link that opens a 404.
+   *
+   * The bundled enriched catalog documents every node, so the button is now
+   * present for all of them, its tooltip carries the node's summary (help you
+   * can read without leaving the editor, and without a network), and the
+   * external page is demoted to what it now is: a "read more".
+   */
+  const nodeDocs = getNodeDocs(model.type?.name);
 
-    // Update no version tag with version tag (and potentially switch to local docs)
-    const docsUrl = model.type.docs.replace('https://docs.noodl.net', getDocsEndpoint());
+  function onOpenDocs() {
+    // The catalog stores the page as an absolute legacy URL; `nodeDocs.path` is
+    // the site-relative rewrite of it, joined here to the configured endpoint
+    // (which `useLocalDocs` may point at a local docs build).
+    if (!nodeDocs?.path) return;
+
+    const docsUrl = getDocsEndpoint() + nodeDocs.path;
     tracker.track('Open Node Docs Clicked', { url: docsUrl });
     platform.openExternal(docsUrl);
   }
@@ -268,9 +285,21 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
 
         {!isEditingLabel && (
           <div className="sidebar-panel-edit-bar hide-on-edit property-panel-header-edit-bar">
-            {showHelp && Boolean(model.type.docs) && (
+            {showHelp && Boolean(nodeDocs) && (
               <div className="property-header-icon-button">
-                <Tooltip content="Open Node Docs" fineType={Keybindings.PROPERTY_PANEL_OPEN_DOCS.label}>
+                {/* The summary is the help; the fine-type line says whether
+                    there is a page behind the click, so a button that opens
+                    nothing is never offered as one that does. */}
+                <Tooltip
+                  content={nodeDocs.summary || 'Open Node Docs'}
+                  fineType={
+                    nodeDocs.path
+                      ? `Read more · ${Keybindings.PROPERTY_PANEL_OPEN_DOCS.label}`
+                      : undefined
+                  }
+                  // A catalog summary is a full sentence, not a two-word label.
+                  UNSAFE_tooltipMaxWidth="320px"
+                >
                   <IconButton
                     icon={IconName.Question}
                     size={IconSize.Tiny}
