@@ -88,20 +88,31 @@ function createFiles(componentPath: string): ComponentFiles {
   return result.files!;
 }
 
+/**
+ * ⚠️ The ids are per-component (`article-upd-root`, not `upd-root`) since
+ * AAQ-011 F12, and that is a correction, not a style choice: this helper was
+ * writing the SAME three ids into both updated components, so the 3-component
+ * plan was quietly planting a cross-component node-id collision — the exact
+ * defect F12 closed, in the spec named for the transaction rather than for ids.
+ * It passed only because nothing checked. With the apply path now deconflicting
+ * ids, the second update's `upd-text` became `upd-text-2` and the assertion
+ * below caught it. Distinct ids keep this spec about what it is named for.
+ */
 function updateFiles(project: ProjectModel, legacyName: string, referencing?: string): ComponentFiles {
   const existing = project.getComponentWithName(legacyName)!;
   expect(existing).toBeDefined();
   const base = buildComponentV2Files(existing.toJSON(), '2026-01-01T00:00:00.000Z') as ComponentFiles;
   const request: AuthoringRequest = { description: 'plan-revised', componentPath: legacyName };
+  const stem = legacyName.split('/').pop()!.toLowerCase();
   const result = buildCandidate(
     request,
     {
       nodes: [
-        { id: 'upd-root', type: 'Group', label: 'Revised root' },
-        ...(referencing ? [{ id: 'upd-ref', type: referencing, parent: 'upd-root' }] : []),
-        { id: 'upd-text', type: 'Text', parent: 'upd-root', parameters: { text: 'revised' } }
+        { id: `${stem}-upd-root`, type: 'Group', label: 'Revised root' },
+        ...(referencing ? [{ id: `${stem}-upd-ref`, type: referencing, parent: `${stem}-upd-root` }] : []),
+        { id: `${stem}-upd-text`, type: 'Text', parent: `${stem}-upd-root`, parameters: { text: 'revised' } }
       ],
-      visualRoots: ['upd-root']
+      visualRoots: [`${stem}-upd-root`]
     },
     undefined,
     base
@@ -280,8 +291,8 @@ describe('AIX-011 plan staging (the transaction)', () => {
 
     // The plan landed…
     expect(project.getComponentWithName('/Pages/Checkout')).toBeDefined();
-    expect(project.getComponentWithName('/Pages/Article')!.graph.findNodeWithId('upd-ref')).toBeDefined();
-    expect(project.getComponentWithName('/Pages/Profile')!.graph.findNodeWithId('upd-text')).toBeDefined();
+    expect(project.getComponentWithName('/Pages/Article')!.graph.findNodeWithId('article-upd-ref')).toBeDefined();
+    expect(project.getComponentWithName('/Pages/Profile')!.graph.findNodeWithId('profile-upd-text')).toBeDefined();
     const afterApply = JSON.stringify(project.toJSON());
 
     // …as ONE undo step.

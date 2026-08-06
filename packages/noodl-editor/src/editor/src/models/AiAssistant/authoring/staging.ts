@@ -19,6 +19,7 @@ import { ComponentModel } from '../../componentmodel';
 import type { NodeGraphNode } from '../../nodegraphmodel';
 import type { ProjectModel } from '../../projectmodel';
 import { UndoActionGroup, UndoQueue } from '../../undo-queue-model';
+import { currentNodeIds, deconflictNodeIds, type NodeIdRemap } from './nodeIds';
 import type { PageRegistration, RegistrationComponent, RegistrationNode, RouterLocation } from './pageRegistration';
 import {
   findRoutersInComponents,
@@ -57,6 +58,17 @@ export class StagingError extends Error {
 export interface AcceptOptions {
   /** Undo stack label; defaults to naming the component. */
   label?: string;
+  /**
+   * AAQ-011 F12 — called when the candidate's node ids had to move to stay
+   * unique project-wide. Never called when nothing collided, which is the
+   * ordinary case.
+   *
+   * The rewrite is silent by design (see `nodeIds.ts`: a node id is never
+   * referenced from outside its own component, so nothing downstream can
+   * notice), but it must not be *unobservable* — a panel, a log line or a
+   * telemetry event should be able to say it happened.
+   */
+  onNodeIdsRemapped?: (remapped: readonly NodeIdRemap[]) => void;
 }
 
 /**
@@ -72,23 +84,15 @@ export function acceptAuthoredComponent(
   files: ComponentFiles,
   options: AcceptOptions = {}
 ): ComponentModel {
-  const registryPath = legacyNameToPath(files.component.path ?? files.component.name);
-  const legacyName = toLegacyName(files.component, registryPath);
-
-  if (project.getComponentWithName(legacyName)) {
-    throw new StagingError(
-      `Component "${legacyName}" already exists in the project — it was created after authoring started.`
-    );
-  }
-
-  const legacy = reconstructLegacyComponent(registryPath, files.component, files.nodes, files.connections);
-  const component = ComponentModel.fromJSON(legacy);
-
-  project.addComponent(component, {
-    undo: true,
-    label: options.label ?? `add AI component ${legacyName}`
-  });
-
+  // AAQ-011 F12: one mutation, not two. This used to reimplement
+  // `addAuthoredComponentToGroup` inline (same collision check, same
+  // reconstruct, same add) and the two copies were the reason the node-id fix
+  // would have had to be written twice. `project.addComponent({ undo: true })`
+  // builds exactly this group internally, so the behaviour is unchanged.
+  const legacyName = stagedLegacyName(files);
+  const undo = new UndoActionGroup({ label: options.label ?? `add AI component ${legacyName}` });
+  const component = addAuthoredComponentToGroup(project, files, undo, options);
+  UndoQueue.instance.push(undo);
   return component;
 }
 
@@ -113,7 +117,7 @@ export function updateAuthoredComponent(
 ): ComponentModel {
   const legacyName = stagedLegacyName(files);
   const undo = new UndoActionGroup({ label: options.label ?? `update AI component ${legacyName}` });
-  const component = updateAuthoredComponentInGroup(project, files, undo);
+  const component = updateAuthoredComponentInGroup(project, files, undo, options);
   UndoQueue.instance.push(undo);
   return component;
 }
@@ -133,7 +137,8 @@ export function stagedLegacyName(files: ComponentFiles): string {
 export function addAuthoredComponentToGroup(
   project: ProjectModel,
   files: ComponentFiles,
-  undo: UndoActionGroup
+  undo: UndoActionGroup,
+  options: AcceptOptions = {}
 ): ComponentModel {
   const registryPath = legacyNameToPath(files.component.path ?? files.component.name);
   const legacyName = toLegacyName(files.component, registryPath);
@@ -144,10 +149,54 @@ export function addAuthoredComponentToGroup(
     );
   }
 
-  const legacy = reconstructLegacyComponent(registryPath, files.component, files.nodes, files.connections);
+  // AAQ-011 F12. Nothing preserved: every id in a create is introduced by this
+  // write, so every one of them is a candidate for reallocation.
+  const staged = deconflict(project, legacyName, files, new Set(), options);
+
+  const legacy = reconstructLegacyComponent(registryPath, staged.component, staged.nodes, staged.connections);
   const component = ComponentModel.fromJSON(legacy);
   project.addComponent(component, { undo });
   return component;
+}
+
+/**
+ * AAQ-011 F12 — the one place an AI write's node ids are made collision-free.
+ *
+ * ## Why here, and not at the authoring gate
+ *
+ * The MCP twin deconflicts in its write gate. The editor's analogous moment
+ * would be `AuthoringSession.handleSubmit`, and it was rejected for a reason
+ * worth recording: the session validates against an `ExplainGraph` snapshot
+ * taken when authoring *started*, and the apply is the only moment that sees the
+ * project as it actually is. Every entry point converges here — a single accept,
+ * an update, a plan transaction, and a plan session restored from disk days
+ * later (`PlanSessionStore`), which reaches `applyAuthoredPlan` with candidates
+ * that were authored against a project that has since moved. A gate-time pass
+ * would have covered the first three and silently missed the fourth.
+ *
+ * It also gets the multi-operation case for free. `applyAuthoredPlan` applies
+ * component operations in sequence through these two functions, so by the time
+ * the second page is staged the first one's ids are already in the project and
+ * already count as taken. No overlay bookkeeping, because the project is the
+ * overlay.
+ *
+ * ⚠️ The cost of choosing here is that review sees the pre-remap ids. That is
+ * acceptable and would not be at the gate: the review renders nodes by label and
+ * type (`ChangeSet` → SUB-007's diff), node ids appear nowhere a user reads, and
+ * an update preserves every id the component already had — which is precisely
+ * the set the diff keys on. A remap can therefore never turn a modification into
+ * a remove+add in the review the user approved.
+ */
+function deconflict(
+  project: ProjectModel,
+  legacyName: string,
+  files: ComponentFiles,
+  preserved: ReadonlySet<string>,
+  options: AcceptOptions
+): ComponentFiles {
+  const result = deconflictNodeIds(project.getComponents(), legacyName, files, preserved);
+  if (result.remapped.length > 0) options.onNodeIdsRemapped?.(result.remapped);
+  return result.files;
 }
 
 /**
@@ -158,7 +207,8 @@ export function addAuthoredComponentToGroup(
 export function updateAuthoredComponentInGroup(
   project: ProjectModel,
   files: ComponentFiles,
-  undo: UndoActionGroup
+  undo: UndoActionGroup,
+  options: AcceptOptions = {}
 ): ComponentModel {
   const registryPath = legacyNameToPath(files.component.path ?? files.component.name);
   const legacyName = toLegacyName(files.component, registryPath);
@@ -170,7 +220,13 @@ export function updateAuthoredComponentInGroup(
     );
   }
 
-  const legacy = reconstructLegacyComponent(registryPath, files.component, files.nodes, files.connections);
+  // AAQ-011 F12. An update preserves every id the live component already
+  // carries, whatever it collides with: a pre-existing collision is not this
+  // write's doing, and rewriting kept ids would turn the diff the user approved
+  // into a wholesale remove-and-re-add.
+  const staged = deconflict(project, legacyName, files, currentNodeIds(existing), options);
+
+  const legacy = reconstructLegacyComponent(registryPath, staged.component, staged.nodes, staged.connections);
   const component = ComponentModel.fromJSON(legacy);
   const wasRoot = project.getRootComponent() === existing;
 
@@ -187,7 +243,10 @@ export function updateAuthoredComponentInGroup(
   // type lookup.
   const index = project.getComponents().indexOf(existing);
   const originalRootNode = wasRoot ? project.getRootNode() : undefined;
-  const newRootId = files.nodes.visualRoots?.[0] ?? originalRootNode?.id;
+  // `staged`, not `files`: a remapped visual root must resolve on the component
+  // that actually landed, or updating the home page would silently drop the
+  // project root.
+  const newRootId = staged.nodes.visualRoots?.[0] ?? originalRootNode?.id;
   const restoreOrder = (current: ComponentModel) => {
     const components = project.getComponents();
     const at = components.indexOf(current);

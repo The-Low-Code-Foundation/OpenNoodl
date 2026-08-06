@@ -44,6 +44,15 @@ export {
   updateAuthoredComponentInGroup
 } from './staging';
 export type { AcceptOptions } from './staging';
+// AAQ-011 F12 — node ids an AI write introduces are allocated, not asserted.
+export {
+  allocateCollisionFreeIds,
+  currentNodeIds,
+  deconflictNodeIds,
+  nodeIdsInUse,
+  remapNote
+} from './nodeIds';
+export type { IdSource, NodeIdRemap } from './nodeIds';
 // AAQ-001 — a page component is not a page until a Router lists it.
 export {
   chooseRouter,

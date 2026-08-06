@@ -38,6 +38,7 @@
 import type { ComponentModel } from '../../componentmodel';
 import type { ProjectModel } from '../../projectmodel';
 import { UndoActionGroup, UndoQueue } from '../../undo-queue-model';
+import type { NodeIdRemap } from './nodeIds';
 import type { PageRegistration } from './pageRegistration';
 import type { PlanOperation, PlanProvisionSpec } from './plan';
 import {
@@ -235,6 +236,17 @@ export interface AppliedPlanResult {
   registration?: PageRegistration;
   /** AAQ-003 — project settings this apply wrote, by name. Absent when it wrote none. */
   settings?: string[];
+  /**
+   * AAQ-011 F12 — node ids this apply had to move so ids stay unique
+   * project-wide, keyed by operation id. Absent when nothing collided.
+   *
+   * The rewrite is safe to do silently (a node id is never referenced from
+   * outside its own component — see `nodeIds.ts`) but it is not safe to make
+   * *unobservable*: a plan that authored two pages with the model's favourite
+   * words is the ordinary case, not the exotic one, and the fact that the second
+   * page's `title` is now `title-2` belongs somewhere a log can find it.
+   */
+  remappedNodeIds?: Map<string, NodeIdRemap[]>;
   undoLabel: string;
 }
 
@@ -343,6 +355,7 @@ export async function applyAuthoredPlan(
   let backend: ProvisionedBackend | undefined;
   let registration: PageRegistration | undefined;
   let settingsWritten: string[] = [];
+  const remaps = new Map<string, NodeIdRemap[]>();
 
   // AIB-001 slice 4: which operation the transaction is inside. A mutation that
   // throws is nearly always about ONE operation's candidate — the crash this
@@ -368,11 +381,18 @@ export async function applyAuthoredPlan(
     }
     for (const op of componentOps) {
       applying = op;
+      // AAQ-011 F12: each operation is deconflicted against the project as it
+      // stands *at that moment*, which is why the multi-operation case needs no
+      // overlay bookkeeping — operation 1's ids are in the project by the time
+      // operation 2 is staged, so they simply count as taken.
+      const onNodeIdsRemapped = (remapped: readonly NodeIdRemap[]): void => {
+        remaps.set(op.operation.id, [...remapped]);
+      };
       components.set(
         op.operation.id,
         op.kind === 'create'
-          ? addAuthoredComponentToGroup(project, op.files, undo)
-          : updateAuthoredComponentInGroup(project, op.files, undo)
+          ? addAuthoredComponentToGroup(project, op.files, undo, { onNodeIdsRemapped })
+          : updateAuthoredComponentInGroup(project, op.files, undo, { onNodeIdsRemapped })
       );
     }
     // AAQ-001, last: a page component is not a page until a Router lists it, and
@@ -415,6 +435,7 @@ export async function applyAuthoredPlan(
     ...(backend ? { backend } : {}),
     ...(registration ? { registration } : {}),
     ...(settingsWritten.length > 0 ? { settings: settingsWritten } : {}),
+    ...(remaps.size > 0 ? { remappedNodeIds: remaps } : {}),
     undoLabel
   };
 }
