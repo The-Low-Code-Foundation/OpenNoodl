@@ -232,7 +232,7 @@ export function SearchPanel({ backendId, backendName, onClose }: SearchPanelProp
         <div className={css.Section}>
           <div className={css.SpreadRow}>
             <VStack>
-              <Text textType={TextType.DefaultContrast}>Search</Text>
+              <Text textType={TextType.DefaultContrast}>How search works here</Text>
               <Text textType={TextType.Shy} style={{ fontSize: '11px', marginTop: '4px' }}>
                 Let the people using your app find records by typing words — <em>blue running shoes</em> — instead of
                 matching a field exactly. Pick a collection below, tick the fields worth searching, and press{' '}
