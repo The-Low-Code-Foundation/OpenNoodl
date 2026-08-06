@@ -99,8 +99,9 @@ function typeLabelFor(type: TSFixme): string {
   const name = NodeLibrary.nameForPortType(type) || 'unknown';
   if (typeof type !== 'object' || type === null || name !== 'enum' || !Array.isArray(type.enums)) return name;
 
-  // Spelled out the way `DocsPopup` does, trimmed because a font-weight enum is
-  // longer than the row it sits in.
+  // Spelled out the way `DocsPopup` does, capped for readability rather than
+  // for width — see {@link MAX_ENUM_VALUES}, which SPR-003 §3 re-argued once the
+  // label stopped having to share a line with the port name.
   const values = type.enums.map((e: TSFixme) => (typeof e === 'object' && e !== null ? e.label : e));
   const shown = values.slice(0, MAX_ENUM_VALUES).join(', ');
   return values.length > MAX_ENUM_VALUES ? `enum: ${shown}, …` : `enum: ${shown}`;
