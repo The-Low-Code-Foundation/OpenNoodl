@@ -1,0 +1,83 @@
+.Preview {
+  margin-bottom: 12px;
+
+  img {
+    display: block;
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    object-position: top left;
+    border: 1px solid var(--theme-color-bg-3);
+    border-radius: 4px;
+    margin-bottom: 4px;
+  }
+}
+
+.Disclosure {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+  opacity: 0.75;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+/*
+ * The payload, verbatim. Scrolls rather than growing: on a public repository
+ * the reporter reading this *before* it posts is the control that stops a
+ * tester's API key becoming a permanent search result, so it has to be
+ * readable — but a 200-line error tail must not push the Send button off the
+ * bottom of the screen.
+ */
+.Payload {
+  max-height: 220px;
+  overflow: auto;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--theme-color-fg-default);
+}
+
+.Field {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.FieldLabel {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--theme-color-fg-default);
+  opacity: 0.8;
+}
+
+.Select {
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 2px;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+}

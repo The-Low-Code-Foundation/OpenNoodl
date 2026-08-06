@@ -35,6 +35,12 @@
     // MCP-001: `mcpCommands.ts` is the same shape again — the settings section's command builder
     // imports nothing at all, which is what lets the plain-Node runner assert the exact strings
     // the two Copy buttons put on the clipboard. Its component neighbour is not reached.
-    "src/editor/src/views/panels/SettingsPanel/sections/mcpCommands.ts"
+    "src/editor/src/views/panels/SettingsPanel/sections/mcpCommands.ts",
+    // ALPHA-006 §1: `utils/nodeDocs.ts` is the same shape again — it renders the
+    // bundled enriched catalog into help HTML and imports nothing but
+    // `validation/enrichedCatalog` (already here). The docs *origin* is
+    // deliberately resolved by its renderer call sites rather than inside it,
+    // which is exactly what keeps `@electron/remote` out of this runner.
+    "src/editor/src/utils/nodeDocs.ts"
   ]
 }

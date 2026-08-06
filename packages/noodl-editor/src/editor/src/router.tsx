@@ -17,6 +17,7 @@ import { AppRouteOptions, AppRouter } from './pages/AppRouter';
 import { EditorPage } from './pages/EditorPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { DialogLayerContainer } from './views/DialogLayer';
+import { installReportProblemListener } from './views/DialogLayer/components/ReportProblemDialog';
 import { ToastLayerContainer } from './views/ToastLayer';
 
 // Store roots globally for HMR reuse
@@ -66,6 +67,11 @@ function createDialogLayer() {
       }
     });
   }
+
+  // ALPHA-007: listen for `Help → Report a problem…`, and arm the error tail.
+  // Here rather than in the dialog, because the tail has to be collecting
+  // *before* the thing being reported goes wrong.
+  installReportProblemListener();
 }
 
 export default class Router
