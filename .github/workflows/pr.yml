@@ -176,3 +176,8 @@ jobs:
       - uses: actions/checkout@v4
       # No install: the check only shells out to `git ls-files`.
       - run: node scripts/check-build-artefacts.js
+      # The release-completeness rules only run on a tag, where there is a draft
+      # to read — so their own logic would otherwise be exercised for the first
+      # time during a release. The self-test runs them against fixtures,
+      # including the measured v0.1.0 asset list, on every PR.
+      - run: node scripts/check-release-assets.js --self-test

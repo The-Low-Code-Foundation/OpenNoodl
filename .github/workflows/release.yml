@@ -102,13 +102,17 @@ jobs:
       # last wins, so the auto-update feed would only serve one architecture
       # (REV-007 known issue; DEBT-007). Preserve each leg's feed file as a
       # build artifact so the merge job below can combine them.
+      # `if-no-files-found: error` is deliberate and costs no false reds: if the
+      # build step above failed, this step is skipped entirely (the job is
+      # already red). It fires only when the build *succeeded* and produced no
+      # feed — which the merge job below would then quietly paper over.
       - name: Save per-arch mac update feed
         if: startsWith(matrix.platform, 'darwin-')
         uses: actions/upload-artifact@v4
         with:
           name: mac-feed-${{ matrix.platform }}
           path: packages/noodl-editor/dist/latest-mac.yml
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # Rebuild latest-mac.yml so its `files` list covers BOTH architectures —
   # electron-updater picks the entry matching the running arch. Only meaningful
@@ -132,8 +136,13 @@ jobs:
           import glob, sys, yaml
           paths = sorted(glob.glob('feeds/*/latest-mac.yml'))
           if len(paths) < 2:
-              print(f'Only {len(paths)} per-arch feed(s) found - nothing to merge.')
-              sys.exit(0)
+              # This used to exit 0. A green "nothing to merge" on a tag build is
+              # the quietest possible way to ship a single-architecture update
+              # feed: every Mac on the other arch stops receiving updates, with
+              # no symptom on the machine that cut the release.
+              print(f'ERROR: only {len(paths)} per-arch mac feed(s) found; both are required.')
+              print('One of the darwin legs did not produce a latest-mac.yml. Read its log before retagging.')
+              sys.exit(1)
           feeds = [yaml.safe_load(open(p)) for p in paths]
           merged = feeds[0]
           seen = {f['url'] for f in merged.get('files', [])}
@@ -156,3 +165,33 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # F73's general lesson, made into a job: **electron-builder uploads as it goes,
+  # so a draft with files in it is not evidence of a green run.** The v0.1.0
+  # Linux leg uploaded its AppImage and then aborted on the `.deb`; the release
+  # was read as "succeeded, no update feed" for over a week. `fail-fast: false`
+  # means a failed leg does go red, and that is the only signal there was — one
+  # nobody looks at when the draft in front of them has files in it.
+  #
+  # `if: always()` is load-bearing: the point is to run precisely when something
+  # above failed, and name what is missing from the draft rather than leaving it
+  # to be discovered on a tester's machine.
+  verify-release-assets:
+    name: verify draft release is complete
+    needs: [release, merge-mac-update-feed]
+    if: always() && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the draft's asset list and update feed
+        run: |
+          gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json assets > assets.json
+          # Best-effort: a missing feed is one of the things being asserted, so
+          # a failed download must not fail the step before the check runs.
+          gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
+            --pattern 'latest-mac.yml' --clobber || echo "latest-mac.yml not downloadable"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Assert every expected artifact is on the draft
+        run: node scripts/check-release-assets.js --assets assets.json --mac-feed latest-mac.yml
