@@ -4,7 +4,7 @@
 noticed its own 401 spec returning 200 and correctly reworked the spec to drive under enforcement).
 The row it was found under is closed; **this is not that row**, and it is bigger than it.
 
-**Status:** ☑ **DRIVEN, then FIXED**, 2026-08-06. Richard's decision: options **(a) + (b)**, drive
+**Status:** ☑ **DRIVEN, FIXED, then DRIVEN THROUGH THE EDITOR**, 2026-08-06. Richard's decision: options **(a) + (b)**, drive
 first. §9 is the drive record — before and after, from a real page in a real browser. §10 is what
 this file got wrong and §11 is what was given up.
 
@@ -216,6 +216,43 @@ inside it answers 200. Without a credential the same call answers 401.
   so a web page can still read a dev-open backend's **collections**. That is dev-open's cost, not
   this row's, and turning `devOpen` off removes it. It is written down at
   `HttpServer.assertDataAccess`'s doc comment so the next reader meets it there.
+
+## 12. Driven through the editor — 2026-08-06, and it found one thing
+
+§9's drive was against a **hand-spawned** backend. This is the same fix seen from the editor, against
+a backend the **Backend Services panel** started (`SQLite backend`, port 8578, `devOpen: true`).
+
+The posture holds where it matters: `GET /admin/schema` with no credential → **401**; with the
+`adminToken` from `<dataDir>/secrets.json` → **200**; with `Origin: http://evil.example` → still no
+`Access-Control-Allow-Origin` at all; and `GET /api/Articles` keeps `ACAO: *`, the named residual.
+
+**Four editor surfaces pass** — Backend Services (list, start, `ACTIVE ✓ Running`, cloud-function
+listing), Data Browser (tables, typed rows, and a cell edit confirmed at the wire: `views` 10 → 1017
+with `updatedAt` moved), Permissions (collections, function rules, roles, API keys), and the secrets
+listing over IPC. All four go through `ServiceSupervisor.request`, which has attached a bearer since
+BAK-003.
+
+**One did not.** The **Execution History** panel rendered *"SQLite backend is running but could not
+be read: HTTP 401."* `ExecutionHistoryManager.fetchRemoteList` / `fetchRemoteGet` fetch
+`GET /executions` and `GET /executions/:id` **directly**, not through the supervisor — and those are
+`access: { kind: 'admin' }` routes, which is precisely the fact §9 recorded when it explained why the
+CORS suppression had to be answered from the route table. They answered before (b) only because
+dev-open relaxed the gate. Fixed in **`cd644628`** by putting the credential on
+`RemoteExecutionSource`; a source with no token is still asked and reported unreachable *with its
+401*. Red-then-green in `ExecutionHistoryManager.merge.test.ts`, and driven live afterwards: runs
+list, and opening one renders `chargeCard · SUCCESS · Ran on SQLite backend`.
+
+**The generalisable lesson**, and the reason this section exists rather than a one-line amendment:
+a fix decided from a **route table** must be checked against every caller that does **not** go
+through the one client that knows the table. Four of the editor's five backend surfaces did; the
+fifth had its own `fetch` and no one had reason to look at it.
+
+§11's "given up" is also re-confirmed and is **not** a regression: `GET /_admin` still serves 200
+HTML, its boot probe still answers **401** without a credential (so the sign-in form appears), and
+the `adminToken` from `secrets.json` **signs in** — `GET /_admin/whoami` with that bearer returns the
+full whoami payload, and a wrong token returns 401. Exercised at the wire this time rather than by
+typing into the form; `signIn()` *is* that request (`admin/ui/index.html:1781-1788`, `api()` at
+`:147-149`).
 
 **Where the fix lives:** `HttpServer.applyCorsFor` / `isAdminControlPlane` (a),
 `HttpServer.checkAccess` step 2a (b), with `pathSegments`/`segmentsMatch` shared with `matchRoute`

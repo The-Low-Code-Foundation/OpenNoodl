@@ -177,6 +177,9 @@ ownership only stayed recoverable because each change carried a marker naming it
 | ~~**The editor's own AI write path allocates node ids the way `noodl-mcp` used to**~~ | ✅ **MEASURED, then FIXED 2026-08-06 — `ef95e9b1` (the drive) + `d15c841f` (the fix).** The row was filed as a question and the question had a definite answer: **it is a live defect**. None of the four `rekeyAllIds()` callers is on the AI path — `duplicateComponent` ([projectmodel.ts:341](../../../packages/noodl-editor/src/editor/src/models/projectmodel.ts#L341)) is *duplicate*, the other three are templates, the Router adapter and the import engine — the apply path is `reconstructLegacyComponent` → `ComponentModel.fromJSON` → `project.addComponent`, and none of those touches an id. **The drive landed FIRST, as a commit, asserting the collisions**, so the defect is on the record as measured rather than as claimed: two pages authored in ONE plan transaction both landed carrying `page`/`layout`/`title`, and so did two sequential accepts. ⚠️ **The consequence is bigger than a validator complaint.** `ProjectModel.findNodeWithId` ([projectmodel.ts:428](../../../packages/noodl-editor/src/editor/src/models/projectmodel.ts#L428)) is **project-wide and FIRST-MATCH**, and it is what `ViewerConnection`, the debug inspector and the Provenance panel resolve a runtime node id through — so the second page's nodes were unreachable and the first page's answered in their place. The editor highlights, inspects and labels the **wrong node**. And the editor's write gate said the candidate was clean while a project-wide check of the same project reported `duplicate-node-id`: `SemanticValidator.validateComponent` filters diagnostics to one component, and the cross-component rule locates itself on the FIRST carrier — F12's gate-scope hole, in the editor's own gate. **Fixed as F12 fixed it: allocation, not refusal** ([nodeIds.ts](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/nodeIds.ts)) — `title` → `title-2`, with `parent`, `children[]`, `visualRoots[]` and `connections[].fromId/toId` rewritten. **The safety claim was re-verified on the editor side, not inherited**: `rekeyAllIds()` itself rewrites node ids, recursed children and connection endpoints and *nothing else*, so every editor copy path already depends on that closure being complete; `visualRoots` is derived in the live model (`getVisualRootIds()`) and stored only in the v2 files; cross-component references are by component **name**. The one project-level pointer at a node id is `project.rootNodeId` — resolved through the same first-match lookup, which argues *for* uniqueness, and never at risk here because an update preserves every id the component already had. **Placed at the apply seam, not the authoring gate** (the difference from `noodl-mcp`, deliberately): the session validates against an `ExplainGraph` snapshot taken when authoring started, while the apply is the only moment that sees the project as it is — and it is where a plan session restored from disk days later arrives without re-authoring. It also makes the multi-operation case free, since operations apply in sequence. ⚠️ **A pre-existing spec was itself planting the collision and nobody had noticed** — `authoring-plan-staging.test.ts`'s 3-component plan wrote `upd-root`/`upd-text` into BOTH updated components, the same thing F12 found in `noodl-mcp`'s `roundtrip.test.ts`. ⚠️ **Two things left open on purpose**: the gate-scope class (still component-scoped, now *asserted* by a spec rather than assumed), and the fact that `noodl-mcp/src/project/nodeIds.ts` is a **twin** of this algorithm rather than a shared import — the editor module is deliberately Electron-free so the MCP side can import it along the `plan.ts`/`editor-deps.ts` seam, which is a two-line change in a package this task was scoped out of. Jasmine 2359 → **2382 specs, 0 failures**. |
 | 🆕 **`tests-unit/workflow/workflowChangeSet.test.ts` does not compile, so a `test:main` suite has been silently red since CWF-005** — ⚠️ **measured, not fixed** | Found 2026-08-06 while running the adjacent suite for CWF-004 S6. Three lines still write `kind: 'retry'` ([126](../../../packages/noodl-editor/tests-unit/workflow/workflowChangeSet.test.ts#L126), [256](../../../packages/noodl-editor/tests-unit/workflow/workflowChangeSet.test.ts#L256), 263) and CWF-005 removed `retry` from `StepKind` — so ts-jest fails the **whole suite to run**: `Tests: 0 total`, which reads as a compile error rather than as thirty missing assertions. `npm run test:main` is a PR CI gate ([pr.yml:107](../../../.github/workflows/pr.yml#L107)), and this is the **second** red in it found this week. **Not fixed here deliberately**: it is WFA-007's spec, and the first case needs a step whose *kind* differs from `BASE`'s while still carrying `ref` and `maxAttempts` — so the replacement kind is a decision about what that case is testing, not a rename. Whoever owns WFA-007 or CWF-005 should take it; it is minutes of work with the file in front of them and a guess without it. |
 | 🆕 **A test run rewrites `tests/testfs/import_proj5/project.json`** | Noticed 2026-08-06 when it appeared dirty mid-session having been clean at the start. The change is a **pure reformat** — byte-identical JSON, minified → pretty-printed — so nothing is semantically at risk, which is exactly why it will keep happening unnoticed. Some editor spec (or the sibling session's `ProjectImporter`/`analyze.ts` work) re-serialises the fixture through a project save. **Left uncommitted and unreverted** rather than guessed at: reverting a file this session did not write is the rule this repo keeps for good reason. Whoever owns the import specs should decide whether the fixture should be pretty-printed on disk or the writer should stop touching it. |
+| ✅ **FH-024 (b) broke the Execution History panel — the one admin caller in the editor with no token** | **FOUND BY DRIVING AND FIXED 2026-08-06 — `cd644628`.** Against a running editor-spawned backend the panel rendered *"SQLite backend is running but could not be read: HTTP 401."* and nothing else. `GET /executions` and `GET /executions/:id` are `access: { kind: 'admin' }` routes that **do not start with `admin/`** — the exact fact that made FH-024 answer the CORS suppression from the route table — and until (b) they answered anyway because dev-open relaxed every admin gate on loopback. [`ExecutionHistoryManager`](../../../packages/noodl-editor/src/main/src/execution-history/ExecutionHistoryManager.ts) fetches those two paths **directly** rather than through `ServiceSupervisor.request`, so it was the only admin call in the editor without a bearer token; every other backend panel (Backend Services, Data Browser, Permissions, the secrets listing) goes through the supervisor and was **never affected**. Fixed by putting the credential on `RemoteExecutionSource`, supplied by `BackendManager.getRunningEndpoints()` — the injection point that already exists to keep the manager free of a module cycle. A source with no token is still **asked** and still reported unreachable **with its 401**: "no runs" and "cannot read the runs" are different facts and the panel says which. ⚠️ Second half worth keeping: `ServiceSupervisor.adminToken()` cached `null` on a *failed* read as eagerly as a successful one — and secrets.json is minted by the backend on its **first** start, so a read landing before the child wrote it pinned `null` for the whole session, a permanent silent 401 on every admin surface. It now caches only a successful read. Red-then-green in `ExecutionHistoryManager.merge.test.ts` against a stand-in server that enforces exactly as a post-FH-024 backend does; 46/46 in `tests-main/execution-history`. **The lesson generalises past this row: a fix decided from a route table has to be checked against every caller that does not go through the one client that knows the table.** |
+| 🆕 **A preview whose webview navigates away cannot be brought back from the editor** | Found 2026-08-06 while driving HUD-001 step 2. Once the preview guest is on another URL, **nothing in the editor re-navigates it**: the topbar reload reloads the *project*, and the Design/Preview segmented control re-lays-out the pane without touching the guest's location. `Preview live` stays off and the recording HUD keeps refusing, correctly, forever. ⚠️ **Reached by a driver** (`location.href='about:blank'` on the webview target) rather than by a user, which is why it is a row and not a defect claim — but a user's own app navigating to an external URL is the same state, and there is no way out of it short of reopening the project. Whoever owns the preview should decide whether the reload control should re-point the guest. |
+| 🆕 **Every icon button in the side navigation has no accessible name** | Found 2026-08-06 while driving: all eleven panel buttons in `SideNavigation-module__Toolbar` return `null` for both `aria-label` and `title`, and carry no text — only `BrandExit` ("Back to projects") has one. So a screen reader announces eleven unlabelled buttons, and a driver cannot address a panel except by pixel position, which is how this was noticed. Not filed as its own task because it is squarely **[phase 41](../phase-41-accessibility/README.md)** material and its Part B is retroactive by design — but it gets a row here so the phase-41 session does not have to rediscover it. |
 | Badges stay `pointer-events: none` even now HUD-003 gives the click a destination | A badge is canvas-space, arrives on a 1.5s poll and fades after 3s — a live target under the cursor at unpredictable moments during the exact interaction being recorded. Revisit if the canvas grows hit-testing. |
 
 ### Fixed on the way, worth knowing
@@ -228,12 +231,124 @@ editor restarts** (not HMR). What follows is what was actually observed, not wha
 - ⚠️ **A fixture trap worth knowing.** `erg-rig`'s root-level nodes (`c1–c4`, `obj`, `filt`) all report `getNodeBounds → (0,0)` because the component was never laid out, so their badges pile on one pixel and the canvas draws the nodes overlapping too. That is the *fixture*, not the HUD — but it makes `erg-rig` a poor surface for judging badge layout by eye. Lay it out, or use a different component.
 - **The topbar crowds at wide side-panel widths.** At ~458px the topbar measures clean (breadcrumb `528→835`, warnings chip `849→885`, zoom `952→984`); with the wider Settings panel open the zoom readout and the fit-zoom control visibly paint over each other. **Observed in a screenshot, not yet measured at the wide width** — owned and being measured now.
 
+## The live-QA pass, second session — 2026-08-06
+
+A second pass, in a **fresh editor against a real editor-spawned backend**, taking FH-024's fix
+first because it had never been driven through the editor at all — the drive that found the hole was
+against a hand-spawned backend. **It found one regression, shipped the previous day, and fixed it.**
+
+### FH-024 through the editor — the supervisor's claim, checked
+
+The claim being tested: *"the supervisor already attaches the admin token, so the editor's panels are
+unaffected by (b)."* **It is true of four surfaces out of five.** Every panel that talks to a backend
+goes through `ServiceSupervisor.request`, which has attached a bearer since BAK-003 — except the
+Execution History panel, which fetches `/executions` itself.
+
+First, the posture on the **editor's own** backend (`SQLite backend`, port 8578, started from the
+panel, `devOpen: true` per `/health`):
+
+| Probe | Result |
+|---|---|
+| `GET /admin/schema`, no credential | **401** |
+| same, with the `adminToken` from `<dataDir>/secrets.json` | **200** |
+| same, `Origin: http://evil.example` | 200 — and **no `Access-Control-Allow-Origin` at all** |
+| `GET /api/Articles`, `Origin: http://evil.example` | 200 with `ACAO: *` — the residual, unchanged |
+
+So (a) and (b) both hold on the backend a developer actually runs, not only on the one the fix was
+driven against.
+
+| Panel | Verdict |
+|---|---|
+| **Backend Services** | ✅ Lists three backends; **Start** brought `SQLite backend` up (`/health` 200 in ~9s); the card flipped to `ACTIVE ✓ Running` with its endpoint, and the **Cloud functions** section rendered `chargeCard` plus *"chargeCard — on this backend, not in the project"*. |
+| **Data Browser** | ✅ Table picker, `Articles`, 2 rows with typed column chips (`objectId STRING`, `createdAt DATE`, `views NUMBER`). **Edited a cell**: `views` 10 → 1017, committed on blur, and confirmed *at the wire* — `GET /api/Articles` returns `"views":1017` with `updatedAt` moved to `2026-08-06T15:36:30.397Z`. Reads and writes both hold. |
+| **Permissions** (the card's *Access*) | ✅ Dev-open notice + *"Turn enforcement on"*, six collections with `creator-owns` and their five verbs, the cloud-function section (`chargeCard — from the graph: public`, rule/limit/timeout controls), Roles and API keys. |
+| **Secrets** | ⚠️ **There is no Secrets panel.** CWF-009 shipped the route and the IPC and no UI. The door works — `ipcRenderer.invoke('backend:listSecrets', …)` from the renderer answers `{"namespace":"functions","secrets":[],"environment":[],"readable":false,"envPrefix":"NODEGX_SECRET_"}` — so this is an unbuilt panel, **not** an FH-024 regression. |
+| **Execution History** | ❌ **BROKEN — regression, fixed. See below.** |
+
+### The regression: *"SQLite backend is running but could not be read: HTTP 401"*
+
+Opening Execution History against a running local backend rendered exactly that sentence and an
+empty list. **`GET /executions` and `GET /executions/:id` are `access: { kind: 'admin' }` routes that
+do not start with `admin/`** — the very fact that made FH-024 decide the CORS suppression from the
+route table rather than the path. Until (b) they answered anyway, because dev-open relaxed every
+admin gate on loopback and the editor's backends are dev-open.
+`ExecutionHistoryManager.fetchRemoteList` / `fetchRemoteGet` fetch those two paths **directly**, not
+through `ServiceSupervisor.request`, so they were the only admin calls in the editor with no bearer
+token. Both the list and *opening a run* were dead.
+
+**Fixed in `cd644628`**: the credential rides on `RemoteExecutionSource`, supplied by
+`BackendManager.getRunningEndpoints()` — the injection point that already exists to keep the manager
+free of a module cycle. A source with no token is still asked and still reported unreachable *with
+its 401*, because "no runs" and "cannot read the runs" are different facts. Also:
+`ServiceSupervisor.adminToken()` now caches only a **successful** read — secrets.json is minted by
+the backend on its first start, so a read landing before the child wrote it used to pin `null` for
+the whole session, a permanent silent 401 on every admin surface.
+
+**Red-then-green** in `ExecutionHistoryManager.merge.test.ts` against a stand-in server that enforces
+exactly as a post-FH-024 backend does (without the header the two credentialed cases fail; with it,
+46/46 in `tests-main/execution-history`). **Driven live after a full restart**: the panel lists runs
+(`chargeCard`, six `Order Pipeline`, `orderPipeline`, `Both Ways`, …) and opening one renders
+`chargeCard · SUCCESS · 25ms · manual · Ran on SQLite backend` with its trigger data — so
+`fetchRemoteGet`, the second fetch, works too.
+
+### BAK-005's `/_admin` dashboard — reachable, and the token signs in
+
+FH-024 §11 gave up password-free entry on a dev-open backend. Re-checked against the running
+editor-spawned backend:
+
+| Probe | Result |
+|---|---|
+| `GET /_admin` | **200** `text/html` — the page still serves |
+| `GET /_admin/whoami`, no credential (the boot probe) | **401** — so the sign-in form appears, as §11 says |
+| `GET /_admin/whoami` with the `adminToken` from `secrets.json` | **200**, full payload: `ok:true`, `readonly:false`, `backend{id,name,host,port}`, `security{devOpen:true,enforced:false}`, `firstRun:false`, and the 16-key `features` block |
+| the same with a wrong token | **401** |
+
+That *is* the sign-in path, not a proxy for it: `signIn(token)` sets `S.token` and calls
+`api('GET','/_admin/whoami')`, and `api()` sends `authorization: 'Bearer ' + S.token`
+(`admin/ui/index.html:1781-1788`, `:147-149`). **The dashboard is not lost.** ⚠️ Stated precisely:
+this was exercised **at the wire this session**, not by typing into the form — FH-024 §9 did that
+half, in a real browser, and it agreed.
+
+### The HUD one-shots
+
+| What | Evidence |
+|---|---|
+| **HUD-003 criterion 2 — PASS** | A genuinely fresh editor with Provenance never opened: `!!document.querySelector('[class*=ProvenancePanel]')` read **`false`** immediately before the click. Recorded, clicked the app, pressed `▴` → *"Interactions — click one to see where it went"* with 12 rows. **One click** on the top row → the panel mounted on that root's **forward** walk: *"Text.text is where the chain ends."*, `2 rows · cause chain`, `Counter.increase` and `Text.text` on `/erg-rig`, with **"Back to interactions"** (criterion 4's new case) and `fired 3× · +2m 09s` (criterion 7's relative render). First time, no second click — so `provenanceRequest`'s stash-then-switch is being used. |
+| **HUD-001 step 2 — PASS** | Preview stopped (`Preview live` gone, no viewer target). Pressing Record left `data-recording="false"` and the pill on `Record`, with the line *"No preview is running — open the app, then press Record."* above it. |
+| **HUD-001 step 3 — PASS** | Bringing the preview back cleared that line **by itself**, with no further click — the `ViewerRegistered` listener at `RecordingOverlay.tsx:159`. |
+| **The HUD counting, again** | 3 clicks → `30 events`, and the interaction rows name cause and blast radius (`PRESS.onClick · 1 event`, `Object.completed · 2 events`, `Array Filter.completed · 2 events`). |
+
+### ⚠️ Four driving traps, each of which cost time here
+
+- **`cdp --target=editor` can attach to the LAUNCHER.** They are the same file — `appTarget` matches
+  `/src/editor/index.html` and takes whichever `/json/list` returns first. A full page of DOM was
+  read as the editor's while it was the launcher's. Check for `LauncherHeader-module__Tab` before
+  believing a query, or assert on something only the editor has.
+- **A sibling's edit full-reloads the editor and closes the project.** Three times in ~90 minutes:
+  `[HMR] Aborted because ./…/newFunctionFromStep.ts is not accepted`, then two
+  `[HMR] Waiting for update signal from WDS...`. Every one-shot state — a recording, an unopened
+  Provenance panel, an armed session — dies with it. **In a shared checkout, drive a one-shot the
+  minute the editor is up, not after the other measurements.**
+- **An occluded preview repaints late, and reading its DOM is not measuring the graph.**
+  `document.body.innerText` on the preview read `PRESS 0 0 0 0` for several minutes while the
+  Counter's own `_internal.currentValue` was already `5`. That cost the better part of an hour
+  chasing a runtime defect that did not exist. **Read the node, not the text**: walk `__reactFiber`
+  to `memoizedProps.noodlNode` and inspect `getOutput('onClick').connections[n].node._internal`.
+- **`cdp screenshot --target=viewer` hung past 120s** against that same occluded preview, and
+  `cdp reload --target=viewer` twice coincided with the editor returning to the launcher. Neither is
+  a safe way to simulate a user reloading their app.
+
 ### Still owed
 
-**HUD-003 criterion 2** (clicking a root with the Provenance panel *never* opened this session —
-needs a fresh editor), **HUD-001 step 2** (Record with no preview running), **FH-011's
-preview-reload re-arm**, **HUD-004's crashed-agent and legacy paths**, **FH-010** (the VC dialogs),
+**FH-011's preview-reload re-arm** — attempted twice and *not established* either time: the
+recording held at `30 events` up to the reload, and both runs were destroyed before the after-count
+could be read (once by a sibling's HMR full reload, once by `cdp reload --target=viewer` taking the
+editor back to the launcher). It needs a preview reloaded the way a user does it, from the app.
+Then: **HUD-004's crashed-agent (slice 3) and legacy paths**, **FH-010** (the VC dialogs),
 **FH-019** (completions in a Function vs an Expression popout), **FH-023** (the four prefabs).
+
+⚠️ **Everything in this second pass is dark theme only.** The light theme was not checked, except by
+`pol004-doc-diff.js`, which measured both and passed both. The panels above want a light-theme pass.
 
 ## The six conversations, in the order I'd have them
 
