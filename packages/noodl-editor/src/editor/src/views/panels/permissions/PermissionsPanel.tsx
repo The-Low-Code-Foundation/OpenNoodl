@@ -80,8 +80,53 @@ interface FunctionRules {
    * which is why this cannot collapse to a number with a falsy default.
    */
   timeoutMs: number | null;
+  /**
+   * CWF-016. `null` = this function does not honour `Idempotency-Key` at all,
+   * which is what every function does until someone says otherwise — so unlike
+   * the rule above there is no effective-value question to answer here.
+   */
+  idempotency: FunctionIdempotency | null;
   /** The two gates disagreeing: open at the door, closed inside the graph. */
   graphRefusesAnonymous: boolean;
+}
+
+/** CWF-016's per-function block, exactly as `security.json` stores it. */
+interface FunctionIdempotency {
+  enabled: boolean;
+  requireKey?: boolean;
+  hashBody?: boolean;
+}
+
+/**
+ * The five states the row's one control can be in.
+ *
+ * Deliberately ONE select rather than a checkbox trio: the backend refuses
+ * `enabled: false` alongside `requireKey`/`hashBody` (a setting that says two
+ * things at once), and a control that cannot express the refused combination is
+ * better than a control that offers it and then reports an error.
+ */
+type IdempotencyChoice = 'off' | 'key' | 'key-body' | 'required' | 'required-body';
+
+function idempotencyChoice(value: FunctionIdempotency | null): IdempotencyChoice {
+  if (!value || !value.enabled) return 'off';
+  if (value.requireKey) return value.hashBody ? 'required-body' : 'required';
+  return value.hashBody ? 'key-body' : 'key';
+}
+
+/** `null` clears the entry; anything else is the exact block to store. */
+function idempotencyValue(choice: IdempotencyChoice): FunctionIdempotency | null {
+  switch (choice) {
+    case 'off':
+      return null;
+    case 'key':
+      return { enabled: true };
+    case 'key-body':
+      return { enabled: true, hashBody: true };
+    case 'required':
+      return { enabled: true, requireKey: true };
+    case 'required-body':
+      return { enabled: true, requireKey: true, hashBody: true };
+  }
 }
 
 interface ApiKey {
@@ -120,6 +165,15 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
   const [classRateLimit, setClassRateLimit] = useState<RateLimit | null>(null);
   /** CWF-018: what an undeclared timeout means, answered by the backend. */
   const [defaultTimeoutMs, setDefaultTimeoutMs] = useState<number | null>(null);
+  /**
+   * CWF-016 service facts. `available: false` means the claim store did not open
+   * (no sqlite), and the control is disabled rather than offering a promise the
+   * backend could not keep — that is the whole lesson of TALK-007: a capability
+   * that exists invisibly, and a control that implies one that does not.
+   */
+  const [idempotencyService, setIdempotencyService] = useState<{ available: boolean; ttlHours: number } | null>(
+    null
+  );
   const [roles, setRoles] = useState<Role[]>([]);
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -142,6 +196,7 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
       setFunctions(fns.functions || []);
       setClassRateLimit(fns.classRateLimit || null);
       setDefaultTimeoutMs(typeof fns.defaultTimeoutMs === 'number' ? fns.defaultTimeoutMs : null);
+      setIdempotencyService(fns.idempotency || null);
       setRoles((await ipcRenderer.invoke('backend:listRoles', backendId)).roles || []);
       setKeys((await ipcRenderer.invoke('backend:listApiKeys', backendId)).keys || []);
     } catch (err) {
@@ -319,6 +374,29 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
       );
     },
     [defaultTimeoutMs, reportError, writeFunctionRules]
+  );
+
+  /**
+   * CWF-016's per-function idempotency, written as the exact block the backend
+   * validates — no editor-side shape, no editor-side default.
+   *
+   * The notice names what CHANGED for the caller rather than echoing the value,
+   * because "quick: key" tells an author nothing about whether their webhook is
+   * now safe to retry.
+   */
+  const setFunctionIdempotency = useCallback(
+    async (name: string, choice: IdempotencyChoice) => {
+      const value = idempotencyValue(choice);
+      const ttl = idempotencyService ? `${idempotencyService.ttlHours}h` : 'the retention window';
+      const message =
+        value === null
+          ? `${name}: every delivery runs — duplicates are not detected`
+          : value.requireKey
+            ? `${name}: an Idempotency-Key is now required; a repeat replays for ${ttl}`
+            : `${name}: a repeated Idempotency-Key replays the first answer for ${ttl}`;
+      await writeFunctionRules(name, { idempotency: value }, message);
+    },
+    [idempotencyService, writeFunctionRules]
   );
 
   // ---- Roles ---------------------------------------------------------------
@@ -533,6 +611,24 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
               {defaultTimeoutMs === null ? '' : `, ${defaultTimeoutMs / 1000}s unless you set one`} — write{' '}
               <em>0</em> for a function that legitimately holds its connection open.
             </Text>
+            {/* CWF-016. Two things an author cannot work out from the control
+                itself, so both are said here: what "replay" actually returns,
+                and the one duplicate path this does not cover. */}
+            <Text textType={TextType.Shy} style={{ fontSize: '11px', marginBottom: '10px' }}>
+              Every webhook provider retries. Set <em>duplicate deliveries</em> to replay, and a repeat carrying the
+              same <em>Idempotency-Key</em> header gets the first delivery&apos;s exact answer back without the graph
+              running again
+              {idempotencyService ? ` — for ${idempotencyService.ttlHours}h, then the key is forgotten` : ''}. Only a
+              successful call claims a key: a failure is never replayed, so retrying still fixes it. Add{' '}
+              <em>+ body</em> only if your caller reuses keys — a payload that carries a changing timestamp would
+              otherwise look like a new request every time.{' '}
+              {idempotencyService && !idempotencyService.available
+                ? 'This backend could not open its claim store, so the setting is unavailable here.'
+                : ''}
+              <br />
+              ⚠️ This is an HTTP door. A workflow&apos;s <em>Call Function</em> step reaches the function in process,
+              so a step retry is a real second run and no key applies to it.
+            </Text>
             {functions.map((fn) => (
               <div key={fn.name} className={css.CollectionRow} data-test={`function-rules-${fn.name}`}>
                 <div className={css.CollectionName}>
@@ -622,6 +718,27 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
                         setFunctionTimeout(fn.name, e.target.value);
                       }}
                     />
+                  </label>
+                  {/* CWF-016: the same delivery twice. The graph does not run a
+                      second time — that is the whole reason this is a setting
+                      here and not a node on the canvas, which would already have
+                      run everything upstream of itself by the time it fired. */}
+                  <label className={css.OpField}>
+                    <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
+                      duplicate deliveries
+                    </Text>
+                    <select
+                      className={css.RuleInput}
+                      disabled={idempotencyService !== null && !idempotencyService.available}
+                      value={idempotencyChoice(fn.idempotency)}
+                      onChange={(e) => setFunctionIdempotency(fn.name, e.target.value as IdempotencyChoice)}
+                    >
+                      <option value="off">Run every time</option>
+                      <option value="key">Replay on a repeated key</option>
+                      <option value="key-body">Replay on key + body</option>
+                      <option value="required">Require a key, then replay</option>
+                      <option value="required-body">Require a key + body</option>
+                    </select>
                   </label>
                 </div>
                 {fn.graphRefusesAnonymous && (
