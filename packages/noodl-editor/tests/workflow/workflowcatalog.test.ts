@@ -106,8 +106,18 @@ function typeFor(kind: string) {
   return library().nodetypes.find((t) => t.name === typeNameForKind(kind));
 }
 
-function portsOf(kind: string): { name: string; plug: string; type: unknown }[] {
-  return (typeFor(kind) as unknown as { ports: { name: string; plug: string; type: unknown }[] }).ports;
+/**
+ * ⚠️ `displayName` is optional here and load-bearing: CWF-001's synthetic param-mapping port
+ * carries one, and this local shape is a hand-written cast rather than the real port type — so
+ * leaving it out compiles the source and breaks the *suite build*, which takes every other
+ * spec down with it.
+ */
+function portsOf(kind: string): { name: string; plug: string; displayName?: string; type: unknown }[] {
+  return (
+    typeFor(kind) as unknown as {
+      ports: { name: string; plug: string; displayName?: string; type: unknown }[];
+    }
+  ).ports;
 }
 
 describe('WFA-004 step kinds become node types', () => {
