@@ -15,6 +15,7 @@ import { RuntimeVersionInfo } from '../models/migration/types';
 import { projectFromDirectory, unzipIntoDirectory } from '../models/projectmodel.editor';
 import { installStarterAssets } from '../models/template/starterAssets';
 import { GitHubOAuthService } from '../services/GitHubOAuthService';
+import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
 import FileSystem from './filesystem';
 import { tracker } from './tracker';
 import { guid } from './utils';
@@ -264,11 +265,11 @@ export class LocalProjectsModel extends Model {
         // forcing it to generate a project id
         this._addProject(project);
         project.toDirectory(project._retainedProjectDirectory, (res) => {
-          if (res.result === 'success') {
-            fn(project);
-          } else {
+          if (res.result !== 'success') {
             fn();
+            return;
           }
+          this._adoptV2Format(project).then(() => fn(project));
         });
       });
     } else {
@@ -299,15 +300,44 @@ export class LocalProjectsModel extends Model {
         project.runtimeVersion = 'react19'; // NEW projects default to React 19
         this._addProject(project);
         project.toDirectory(project._retainedProjectDirectory, (res) => {
-          if (res.result === 'success') {
-            console.log('Project created successfully:', name);
-            fn(project);
-          } else {
+          if (res.result !== 'success') {
             console.error('Failed to save project to directory');
             fn();
+            return;
           }
+          this._adoptV2Format(project).then(() => {
+            console.log('Project created successfully:', name);
+            fn(project);
+          });
         });
       });
+    }
+  }
+
+  /**
+   * Converts a freshly-created project to the v2 decomposed format — one file per
+   * component instead of a single monolithic `project.json`.
+   *
+   * Templates (embedded and downloaded alike) ship as legacy single-file projects,
+   * so a new project is born legacy and converted here, immediately after its
+   * first save. Doing it at creation is the only point where the conversion is
+   * risk-free: the project is a template with no user work in it yet.
+   *
+   * Non-fatal by construction. The migrator restores the legacy project on any
+   * failure, so a project that cannot be converted is still a perfectly good
+   * legacy project — the user gets their project either way, and the reason lands
+   * in the console rather than in a dialog they cannot act on.
+   */
+  private async _adoptV2Format(project: ProjectModel): Promise<void> {
+    if (!isV2FormatEnabled()) return;
+
+    try {
+      const result = await project.initializeAsV2();
+      if (result.result === 'failure') {
+        console.warn(`[v2] New project kept the legacy format: ${result.message}`);
+      }
+    } catch (err) {
+      console.warn('[v2] New project kept the legacy format:', err);
     }
   }
 

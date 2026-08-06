@@ -1,5 +1,5 @@
 import _ from 'underscore';
-import { filesystem } from '@noodl/platform';
+import { filesystem, platform } from '@noodl/platform';
 
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
 import { WarningsModel } from '@noodl-models/warningsmodel';
@@ -804,6 +804,44 @@ export class ProjectModel extends Model {
       this._projectFormat = 'v2';
       this.notifyListeners('projectMigratedToV2', { backupPath: result.backupPath });
     }
+    return result;
+  }
+
+  /**
+   * Converts a *just-created* project to v2 in place — the new-project path, not
+   * the user-facing migration.
+   *
+   * Same engine as {@link migrateToV2} (convert → verify → roll back on failure),
+   * with one difference: the backup goes to the temp directory and is deleted on
+   * success. The retained backup that `migrateToV2` leaves beside the project is
+   * there because the user had work to lose; a project created seconds ago from a
+   * template does not, and a `<name>.nodegx-backup` folder appearing in Documents
+   * next to every new project is noise, not safety.
+   *
+   * The rollback path still needs a real backup: `writeV2Files` runs before the
+   * legacy `project.json` is removed, so an unverified conversion would otherwise
+   * leave the directory looking like a half-written v2 project to the detector.
+   */
+  async initializeAsV2(): Promise<MigrationResult> {
+    if (!this._retainedProjectDirectory) {
+      return { result: 'failure', message: 'No project directory is open.' };
+    }
+
+    const backupPath = filesystem.makeUniquePath(
+      filesystem.join(platform.getTempPath(), `${filesystem.basename(this._retainedProjectDirectory)}.nodegx-new`)
+    );
+
+    const result = await projectMigrator.migrate(this._retainedProjectDirectory, { backupPath });
+
+    if (result.result === 'success') {
+      this._projectFormat = 'v2';
+      try {
+        filesystem.removeDirRecursive(backupPath);
+      } catch {
+        /* temp cleanup is best-effort; the OS reclaims it */
+      }
+    }
+
     return result;
   }
 

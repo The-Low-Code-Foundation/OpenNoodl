@@ -79,18 +79,19 @@ export function projectFromDirectory(projectdir: string, callback: (project?: Pr
     });
   };
 
-  // v2 decomposed format is gated behind a feature flag during rollout. When off,
-  // behaviour is identical to before (legacy single-file read only) — except that
-  // a directory that IS a v2 project must not fail silently (DEBT-009 / SUB-010:
-  // "the hand-off silently fails without it"). An externally-authored project
+  // The v2 decomposed format is on by default; the flag is a kill switch. When it
+  // has been turned off explicitly, behaviour reverts to legacy single-file reads
+  // — except that a directory that IS a v2 project must not fail silently
+  // (DEBT-009 / SUB-010: "the hand-off silently fails without it"). A v2 project
   // has only nodegx.project.json + components/, so the legacy read finds nothing
   // and the user gets a blank failure with no cause. Say what is wrong instead.
   if (!isV2FormatEnabled()) {
     const looksV2 = filesystem.exists(filesystem.join(projectdir, 'nodegx.project.json'));
     if (looksV2) {
       const message =
-        'This project uses the v2 decomposed format, but the "formatV2.enabled" editor setting is off. ' +
-        'Enable it in Editor Settings (or set localStorage nodegx.formatV2 = "true") and reopen the project.';
+        'This project uses the v2 decomposed format, which has been turned off for this install. ' +
+        'Clear the "formatV2.enabled" editor setting (or set localStorage nodegx.formatV2 = "true", ' +
+        'or unset NODEGX_DISABLE_V2) and reopen the project.';
       console.error('[v2] ' + message, { dir: projectdir });
       ToastLayer.showError(message);
       callback(); // Still a failed open — but a loud, actionable one.
