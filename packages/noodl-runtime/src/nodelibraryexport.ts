@@ -848,6 +848,16 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
             'noodl.cloud.deleteuser',
             'noodl.cloud.verifysessiontoken'
           ]
+        },
+        {
+          // F86: role membership. A category of its own rather than three more
+          // entries under Users, because the two families are separated on
+          // purpose all the way down — `users/SystemUsers.ts` has a documented,
+          // tested property that it writes no roles, and these are the nodes
+          // that do. An author scanning the picker should be able to see that
+          // granting privilege is its own thing.
+          name: 'Roles',
+          items: ['noodl.cloud.addusertorole', 'noodl.cloud.removeuserfromrole', 'noodl.cloud.getuserroles']
         }
       ]
     }
