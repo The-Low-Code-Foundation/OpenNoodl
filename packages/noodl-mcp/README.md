@@ -11,9 +11,65 @@ and the validator's feedback — never the entire project.*
 
 ## Quick start
 
+**The easiest way to get this right is not to type it.** NodeGX's
+**Settings → Editor → Connect an AI agent** has a Copy button that emits the command below with
+your installation's path and your open project's path already filled in, and a per-project server
+name (MCP-001). Everything here is the same thing, written out.
+
+There is no URL and nothing to start: this is a **stdio** server that your MCP client spawns
+itself. Create the project in NodeGX first, then point the agent at it — this server authors
+inside a project that already exists; it will not make you one.
+
+### Client configuration
+
+Claude Code:
+
 ```bash
-# build once
-npm run build --workspace @noodl/mcp
+claude mcp add --scope user nodegx-<project-slug> -- node <path-to>/noodl-mcp.cjs <project-dir> --allow-writes
+```
+
+Two details that are not decoration:
+
+- **`nodegx-<project-slug>`, not `nodegx`.** The server is bound to the project path in argv at
+  spawn time and never rebinds, so one registration is one project. A fixed name means the second
+  project you add silently replaces the first. The editor slugs the project **directory basename**
+  for this.
+- **`--scope user`.** `claude mcp add` defaults to `local`, which ties the registration to the
+  directory you happened to run it in — from anywhere else it looks as though it vanished.
+
+Generic MCP host config, for clients that are not Claude Code:
+
+```json
+{
+  "mcpServers": {
+    "nodegx-<project-slug>": {
+      "command": "node",
+      "args": ["<path-to>/noodl-mcp.cjs", "<project-dir>", "--allow-writes"]
+    }
+  }
+}
+```
+
+Drop `--allow-writes` for a read-only server.
+
+### Where the bundle is
+
+Shipped inside the app by MCP-002:
+
+```
+macOS     /Applications/NodeGX.app/Contents/Resources/noodl-mcp/noodl-mcp.cjs
+Windows   %LOCALAPPDATA%\Programs\NodeGX\resources\noodl-mcp\noodl-mcp.cjs
+Linux     /opt/NodeGX/resources/noodl-mcp/noodl-mcp.cjs   (deb)
+```
+
+A Linux AppImage mounts itself at a different path on every launch, so there is no fixed answer
+there — take the path from the settings section, which asks the running app.
+
+### Contributors, working in a checkout
+
+```bash
+# build both MCP bundles once
+npm run build:sidecars
 
 # read-only (default)
 node packages/noodl-mcp/dist/noodl-mcp.cjs /path/to/project
@@ -25,30 +81,13 @@ node packages/noodl-mcp/dist/noodl-mcp.cjs /path/to/project --allow-writes
 The `dist/noodl-mcp.cjs` bundle is self-contained (format engines and the
 enriched node catalog are compiled in) — only Node ≥ 18 is required.
 
-### Client configuration
-
-Claude Code:
-
-```bash
-claude mcp add nodegx -- node /path/to/OpenNoodl/packages/noodl-mcp/dist/noodl-mcp.cjs /path/to/project --allow-writes
-```
-
-Generic MCP host config:
-
-```json
-{
-  "mcpServers": {
-    "nodegx": {
-      "command": "node",
-      "args": ["/path/to/dist/noodl-mcp.cjs", "/path/to/project", "--allow-writes"]
-    }
-  }
-}
-```
+### The project has to be v2
 
 The target must be a **v2 project directory** (`nodegx.project.json` /
 `components/_registry.json`). Legacy monolithic `project.json` projects are
-detected and refused with a pointer to the editor's migration.
+detected and refused with a pointer to the editor's migration — and the settings
+section performs the same check before it offers you a command, so a legacy
+project is a message on screen rather than a spawn failure in your terminal.
 
 ## Component identity
 

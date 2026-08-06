@@ -26,9 +26,53 @@ not understand.
 
 The editor must be running with a project open and the preview started.
 
-```json
-{ "mcpServers": { "nodegx-observe": { "command": "nodegx-observe" } } }
+**The easiest way to get this right is not to type it.** NodeGX's
+**Settings → Editor → Connect an AI agent** has a Copy button that emits the command below with
+the path for *your* installation already filled in (MCP-001). Everything here is the same thing,
+written out.
+
+There is no URL and nothing to start: this is a **stdio** server that your MCP client spawns
+itself. The only thing it needs from you is the path to the bundle.
+
+```bash
+claude mcp add --scope user nodegx-observe -- node <path-to>/nodegx-observe.cjs
 ```
+
+`--scope user` matters: `claude mcp add` otherwise defaults to `local`, which ties the
+registration to the directory you happened to run it in.
+
+Generic MCP host config, for clients that are not Claude Code:
+
+```json
+{
+  "mcpServers": {
+    "nodegx-observe": {
+      "command": "node",
+      "args": ["<path-to>/nodegx-observe.cjs"]
+    }
+  }
+}
+```
+
+⚠️ **Not `{ "command": "nodegx-observe" }`.** That is what this README used to say and it does not
+work: the `nodegx-observe` bin is a workspace symlink inside this monorepo and is on nobody's
+PATH, so following it gets you a spawn failure with no clue why.
+
+### Where the bundle is
+
+Shipped inside the app by MCP-002:
+
+```
+macOS     /Applications/NodeGX.app/Contents/Resources/nodegx-observe/nodegx-observe.cjs
+Windows   %LOCALAPPDATA%\Programs\NodeGX\resources\nodegx-observe\nodegx-observe.cjs
+Linux     /opt/NodeGX/resources/nodegx-observe/nodegx-observe.cjs   (deb)
+```
+
+A Linux AppImage mounts itself at a different path on every launch, so there is no fixed answer
+there — take the path from the settings section, which asks the running app.
+
+Working in a checkout instead: `npm run build:sidecars` from the repo root, then point at
+`packages/nodegx-observe/dist/nodegx-observe.cjs`.
 
 Authentication is automatic: the editor mints a relay token each launch and writes it to
 `<userData>/relay-token` (mode 0600), and this server reads it from there.
@@ -42,8 +86,10 @@ Windows  %APPDATA%\NodeGX\relay-token
 ⚠️ The directory is named after the app's **product name** (`NodeGX`), not the npm package
 name. Override with `--token <token>` or `NODEGX_RELAY_TOKEN` if your build differs.
 
-⚠️ **The token changes every time the editor restarts.** If the server was started against an
-older launch it will refuse to connect and say so; restart it.
+⚠️ **The token changes every time the editor restarts** — and since MCP-003 that no longer costs
+you anything. A server that was already running reconnects when the editor comes back, re-reading
+the token through the same `--token` / `$NODEGX_RELAY_TOKEN` / file precedence it used at startup.
+What is still refused is *starting* with no editor there at all, which says so plainly.
 
 ## The loop it is built for
 

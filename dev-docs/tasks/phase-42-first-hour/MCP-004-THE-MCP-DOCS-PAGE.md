@@ -1,7 +1,9 @@
 # MCP-004 — The page the front door links to, and the two READMEs that contradict it
 
 **Created:** 2026-08-05, out of [TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) decision 5.
-**Status:** specified, not started. **Pairs with:**
+**Status:** **half done, 2026-08-06.** Slice 2 (both package READMEs) is shipped. Slices 1 and 3 —
+the page itself — are a change to **another repository** and are specified below, at
+"What still has to be written, and where". **Pairs with:**
 [MCP-001](MCP-001-CONNECT-AN-AI-AGENT.md) — its "how this works" link must resolve.
 
 Nothing user-facing explains what the two MCP servers are, what each needs, or what to do when one
@@ -99,3 +101,99 @@ button) tell one story.
 - **`useLocalDocs` makes everything work locally.** A page that resolves at `localhost:3000` proves
   nothing about the deployed link.
 - Do not write the page in this repo's `docs/` and call it done — nothing serves it to users.
+
+---
+
+## What shipped in this repo — 2026-08-06
+
+### Slice 2 — both READMEs, done
+
+**`packages/nodegx-observe/README.md`.** The bare `{ "command": "nodegx-observe" }` is gone,
+replaced by the `claude mcp add --scope user … -- node <path>` form, the generic
+`{ "command": "node", "args": [...] }` form, the three packaged-app paths, and an explicit note
+saying *why* the old one failed (a workspace symlink on nobody's PATH) so nobody restores it.
+
+A **second stale claim in the same file** was found and fixed while there: it said that a server
+started against an older launch *"will refuse to connect and say so; restart it"*. MCP-003 landed
+an hour before this and changed that — an already-running server reconnects and re-reads the
+token; only *startup* with no editor present still refuses.
+
+**`packages/noodl-mcp/README.md`.** The cloned-repo path is now the contributor note, under
+"Contributors, working in a checkout", and it says `npm run build:sidecars` rather than the
+per-package build. The primary form is the packaged-app path with the **per-project server name**
+and `--scope user`, both with a sentence saying what goes wrong without them.
+
+Both files now open by pointing at **Settings → Editor → Connect an AI agent**, because that is
+the only surface that knows the path for the reader's actual installation — a Linux AppImage
+mounts at a different path on every launch, so no document can state it.
+
+### One premise of this doc's own to correct
+
+The docs origin is **Docusaurus v3**, not a docsify site. Routes are real paths
+(`/opennoodl-docs/docs/guides/…`), not `#/` hash routes. This matters for slice 1 — a page added
+at a hash route would not exist — and it is worth knowing that the `{@link
+https://docs.noodl.net/#/javascript/…}` URLs still in `global.d.ts.keep` are therefore pointing at
+a route shape the live site no longer serves. That is not this task's to fix; it is filed here so
+the next person does not "confirm" the hash form from those.
+
+Everything else this doc asserted was verified true: `getDocsEndpoint.ts` is three lines resolving
+to `the-low-code-foundation.github.io/opennoodl-docs`; the observe README's config was on line 30
+and the noodl-mcp one on line 33; `ProjectStore`'s two refusals are where it says.
+
+## What still has to be written, and where
+
+**Repository:** the docs repo behind `https://the-low-code-foundation.github.io/opennoodl-docs`
+(the origin `getDocsEndpoint()` returns — *not* this monorepo's `docs/`, which serves nobody).
+
+### The exact path — this is load-bearing
+
+```
+docs/getting-started/ai-assisted-dev/mcp
+```
+
+so that it publishes at
+
+```
+https://the-low-code-foundation.github.io/opennoodl-docs/docs/getting-started/ai-assisted-dev/mcp/
+```
+
+⚠️ **The editor probes that URL literally, trailing slash and all**, and shows its "How this
+works" button only when the probe returns `ok`
+(`McpSettingsSection.tsx`, `MCP_DOCS_PATH`). Publish it anywhere else and the button never
+appears; publish it there and the button turns itself on with no editor release. If the path has
+to change, change it in `MCP_DOCS_PATH` in the same breath.
+
+It is a sibling of the three pages that already exist in that section — `overview`, `chat-gpt`,
+`rest` (confirmed from the site's sitemap, 2026-08-06) — so it also needs its **sidebar entry**,
+or it will publish and be unreachable by navigation.
+
+### The content
+
+Sections 1–6 of "What the page has to say" above, unchanged, plus these corrections now that the
+buttons exist and their strings are settled:
+
+- The commands must be **byte-identical in shape** to what ships:
+
+  ```
+  claude mcp add --scope user nodegx-<project-slug> -- node <path>/noodl-mcp.cjs <project-dir> --allow-writes
+  claude mcp add --scope user nodegx-observe        -- node <path>/nodegx-observe.cjs
+  ```
+
+  Including `--scope user` and its explanation. A page that omits it teaches a registration that
+  appears to vanish.
+- The packaged-app paths (macOS / Windows / Linux deb) and the AppImage caveat — copy them from
+  either README, which now agree.
+- The failure modes: the v2-format requirement in `noodl-mcp`'s own words including the migration
+  path; "the editor is not running" for observe; and — corrected by MCP-003 — that an
+  already-running observe server now **recovers by itself** after an editor restart, so the old
+  advice to re-register is wrong.
+- The first-run flow (TALK-004 decision 3), stated plainly: create the project in NodeGX, then
+  point the agent at it.
+
+### How to check it, given the traps
+
+The `useLocalDocs` global makes everything resolve at `localhost:3000` and proves nothing about
+the deployed link. The only check that counts is `curl -I` against the published origin returning
+200 for the URL above — the same request the editor makes. GitHub Pages caches for ten minutes
+(`cache-control: max-age=600`), and the editor probes once per session, so allow for both before
+concluding the button is broken.
