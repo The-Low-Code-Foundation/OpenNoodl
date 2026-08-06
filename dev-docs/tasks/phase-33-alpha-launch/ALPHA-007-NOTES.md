@@ -411,5 +411,9 @@ severity field needs.
    There is a `TODO(ALPHA-007 open question 3)` on it. This is the same decision
    ALPHA-005 owes for `PRIVACY.md` §12 and `TERMS.md` §11 — one decision, three
    places.
-4. **Discord** — untouched.
+4. **Discord** — ~~untouched~~ **answered elsewhere.** Phase 39's POL-002
+   (`d9c0f37c`) landed a NodeGX server, `https://discord.gg/dZw4w5pKf9`, in
+   `noodl-core-ui/src/constants/externalLinks.ts`; the launcher footer and the
+   editor's `?` menu both link to it. Corrected 2026-08-06 when this branch was
+   merged, 215 commits after it was written.
 5. **§8** — out of scope, untouched.

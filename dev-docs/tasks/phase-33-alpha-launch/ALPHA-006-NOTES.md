@@ -15,6 +15,46 @@ Commits:
 
 ---
 
+## ⚠️ Landed 2026-08-06, 215 commits later — four premises below are now false
+
+This branch sat unmerged while `cline-dev` advanced 215 commits. Phase 39's
+**POL-002** (`d9c0f37c`, 2026-08-03 22:11 — three hours *after* `bc0d15b0`)
+solved most of §6 independently and, in two places, better. Corrections, each
+verified at file:line on the merge:
+
+1. **Deviation 8 and register row 8 are resolved.** `algoliasearch` and
+   `react-instantsearch` are gone from `packages/noodl-editor/package.json`;
+   POL-002 was not under the "never run `npm install`" constraint this run was,
+   and committed the regenerated lockfile. Nothing to do.
+2. **Register row 3 is resolved.** `LauncherFooter.tsx:42–44` reads
+   `EXTERNAL_LINKS` from `noodl-core-ui/src/constants/externalLinks.ts`; the
+   `discord.gg/noodl` literal is gone.
+3. **Deviation 6 is stale: there *is* now an "our Discord".**
+   `EXTERNAL_LINKS.discord` is `https://discord.gg/dZw4w5pKf9`, and both the
+   launcher footer and the `?` menu link to it. ALPHA-007's open question 4
+   ("Discord — untouched") was answered by POL-002 rather than by this task.
+4. **`bc0d15b0` landed as a no-op.** POL-002 found the same Preact `JSX`
+   declaration by the same route (deleting the InstantSearch import) and made
+   the identical `React.JSX.Element` rewrite. The finding below is still worth
+   reading; the diff is not. Zero bare `JSX.Element` annotations remain in
+   either package.
+
+What survived the merge from §6: the three `issues/new?template=…` entries,
+below a divider under POL-002's three links. What did **not**: the
+`getDocsEndpoint()` deep links (`/search`, `/docs/getting-started/overview`,
+`/docs/learn`, `/whats-new/`). POL-002 deleted the previous generation of docs
+deep links because nothing verified they resolved, and `EXTERNAL_LINKS.docs` is
+now the single source of truth the launcher shares — reintroducing per-page
+paths would undo that. They were verified 200 on 2026-08-03 and can come back as
+`EXTERNAL_LINKS` entries if someone wants them.
+
+Register rows 1, 2, 4, 6 and 7 were re-checked on the merge and still hold:
+`AiSettingsSection.tsx:333` and `projectmodel.editor.ts:44` still carry live
+`noodl.net` links at exactly those lines, and `README.md:69` still names
+`noodl.net/community`.
+
+---
+
 ## What changed
 
 ### §1 — the help panel is off the network
@@ -49,11 +89,20 @@ Collateral in the same commit, because the fetch shape was baked into them:
 
 ### §6 — the Help Center
 
-The menu is now: search the docs · getting started · guides · release notes · report a bug · report
-a node behaving wrongly · suggest a feature. The first four go through `getDocsEndpoint()`, so
-`useLocalDocs` reaches a local docs build for all of them; the last three are this repo's issue
-forms. The Algolia client and the whole InstantSearch modal are deleted, along with the four now-dead
-SCSS blocks and the `.ais-*` overrides.
+*(As built on this branch — see the ⚠️ block at the top for what actually
+landed.)* The menu is now: search the docs · getting started · guides · release
+notes · report a bug · report a node behaving wrongly · suggest a feature. The
+first four go through `getDocsEndpoint()`, so `useLocalDocs` reaches a local docs
+build for all of them; the last three are this repo's issue forms. The Algolia
+client and the whole InstantSearch modal are deleted, along with the four
+now-dead SCSS blocks and the `.ais-*` overrides.
+
+**On the merge (2026-08-06)** the first four were dropped in favour of POL-002's
+single `EXTERNAL_LINKS.docs` entry, which the launcher footer shares; the last
+three landed unchanged, below a divider. `getDocsEndpoint()` is no longer
+reachable from this file, so `useLocalDocs` no longer redirects the `?` menu — it
+still redirects §1's "read more" links in `NodeLabel` and the node picker, which
+is where it matters.
 
 `PRIVACY.md` updated in the same commit (criterion 7): the Algolia row leaves the data-flow table,
 the "help search is the only request carrying anything you typed" claim becomes "nothing now does",
@@ -218,12 +267,12 @@ Help Center destinations, all checked: `/search`, `/docs/getting-started/overvie
 |---|---|---|
 | 1 | **A live dead link to Noodl's site in the AI settings panel.** The "AI docs → Open docs" button opens `https://docs.noodl.net/#/docs/getting-started/noodl-ai/` — the real Noodl site, describing "Noodl AI", a product we do not ship (ours is provider-agnostic BYO-key). This is the same class as F69 and it **blocks acceptance criterion 6**. Not fixed here: it is neither §1 nor §6, it is AI-settings territory that AIB-009 touched recently, and there is no NodeGX AI docs page to point it at, so the fix is a decision (remove the card, or write the page) rather than a rewrite | `packages/noodl-editor/src/editor/src/views/panels/AiSettings/AiSettingsSection.tsx:333` |
 | 2 | **A second live `noodl.net` link**, in the "project saved with a newer version" dialog: *"This project was saved with a newer version of Noodl. Click here to download"* → `https://noodl.net`. Also blocks criterion 6. **Not touched — the file is fenced**, another session has it dirty | `packages/noodl-editor/src/editor/src/models/projectmodel.editor.ts:44` |
-| 3 | **The launcher footer links to `https://discord.gg/noodl`** — Noodl's server again, a third instance of F69's class outside the Help Center | `packages/noodl-core-ui/src/preview/launcher/Launcher/components/LauncherFooter/LauncherFooter.tsx:42` |
+| 3 | ✅ **RESOLVED by POL-002 (`d9c0f37c`), verified on the merge 2026-08-06.** ~~The launcher footer links to `https://discord.gg/noodl`~~ — it reads `EXTERNAL_LINKS.discord` now | `packages/noodl-core-ui/src/preview/launcher/Launcher/components/LauncherFooter/LauncherFooter.tsx:42` |
 | 4 | **`README.md` names `noodl.net/community` as the main support channel** | `README.md:69` |
 | 5 | **`.github/ISSUE_TEMPLATE/config.yml` offers a Discussions link that 404s.** `has_discussions` is `false` on the repository, so the "Question or general discussion" contact link on the new-issue page goes nowhere. Either enable Discussions or remove the entry | `.github/ISSUE_TEMPLATE/config.yml` |
 | 6 | **`npm run colors` is red on `cline-dev`**, entirely from `ProvenancePanel.module.scss` (+15 over baseline). Pre-dates this run | `packages/noodl-editor/src/editor/src/views/panels/ProvenancePanel/ProvenancePanel.module.scss` |
 | 7 | **`npm run typecheck:core-ui` is red on `cline-dev`** — 86 errors, 75 of them `TS2307` unresolved editor path aliases, because `noodl-core-ui`'s tsconfig reaches editor and viewer sources without the editor's `paths`. Pre-dates this run | `packages/noodl-core-ui/tsconfig.json` |
-| 8 | **`algoliasearch` and `react-instantsearch` are now unreferenced dependencies** — see deviation 8 above; needs an install run to drop cleanly | `packages/noodl-editor/package.json` |
+| 8 | ✅ **RESOLVED by POL-002 (`d9c0f37c`), verified on the merge 2026-08-06.** ~~`algoliasearch` and `react-instantsearch` are now unreferenced dependencies~~ — both dropped, lockfile regenerated | `packages/noodl-editor/package.json` |
 
 ---
 
