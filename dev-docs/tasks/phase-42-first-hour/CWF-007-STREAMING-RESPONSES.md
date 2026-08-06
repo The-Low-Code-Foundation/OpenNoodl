@@ -69,7 +69,38 @@ channel. Cheap once layer 1 exists, and it is what makes long workflows watchabl
   Any new long-lived stream must register with the same shutdown path or production ops regresses.
 - ⚠️ A `wait`-style long-lived workflow already holds a process and a concurrency slot for its whole
   duration (WF-001 residual). A streaming step must not multiply that.
-- The isolate's bridged `fetch` ([sandbox.isolate.js:101](../../../packages/noodl-viewer-cloud/src/sandbox.isolate.js#L101))
-  is request/response shaped. A function that calls a *streaming* upstream API (the actual LLM) may
-  not be able to consume it inside the sandbox at all — check this early, because it decides whether
-  layer 2 is even reachable from user code.
+- ✅ ~~The isolate's bridged `fetch` is request/response shaped — check this early, because it decides
+  whether layer 2 is even reachable from user code.~~ **CHECKED 2026-08-06. Layer 2 IS reachable, and
+  the trap does not apply to the runtime we ship.**
+
+  Both halves measured:
+
+  1. **The trap is accurate about the isolate.** `global.fetch` at
+     [sandbox.isolate.js:101-124](../../../packages/noodl-viewer-cloud/src/sandbox.isolate.js#L101)
+     resolves **one** `res` whose `body` is a finished **string**; `.json()` is `JSON.parse(res.body)`
+     and `.text()` is `Promise.resolve(res.body)`. There is no `ReadableStream`, no `getReader()`, no
+     async iterator. Inside the isolate a streaming upstream API is fully buffered before user code
+     sees a byte, so it genuinely cannot be consumed incrementally.
+  2. **But the isolate is not the path.** `sandbox.isolate.js` is referenced by exactly three things —
+     `webpack-configs/webpack.isolate.{dev,prod}.js` and the prebuilt `dist/main.js` — and
+     **`nodegx-backend` contains zero references to `isolate`, `isolated-vm` or a vm sandbox.** Its
+     `@cloud-runtime` alias resolves to
+     [`noodl-viewer-cloud/src/index.ts`](../../../packages/noodl-viewer-cloud/src/index.ts)
+     (`scripts/build.js:38`, `tsconfig.json:26`, `jest.config.js:16`), which references no sandbox and
+     does not shadow `fetch`. So `WorkflowRunner`'s `CloudRunner` runs functions **in the host Node 22
+     process with the real global `fetch`**, whose `Response.body` *is* a `ReadableStream`.
+
+  This is the same finding [TALK-007](TALK-007-WHAT-CLOUD-FUNCTIONS-SHOULD-HAVE.md) reached from the
+  other side — *a Function node is an unsandboxed Node 22 script*. **Consequence for this design:**
+  layer 2's hard question is not "can user code consume a stream" (it can) but "what does a node
+  expose", which is a vocabulary decision rather than an engine limit. ⚠️ **The isolate path is still
+  real for whatever deploys through it** — if a streaming node ships, it must either refuse there
+  loudly or the two paths will differ silently, which is the failure mode this repo keeps rediscovering.
+
+- ⚠️ **Question 2 is the same question as [FH-024](FH-024-THE-LOCAL-ADMIN-API-IS-CROSS-ORIGIN-READABLE.md),
+  and this would be the THIRD instance of the class.** This page already says *"do not ship the second
+  one"* about OBS-004's relay. FH-024 was filed 2026-08-06 and is the second — a local admin API
+  readable cross-origin by any web page, for the same reason both times: a transport whose reachability
+  was mistaken for its access control. `GET /realtime` being `{ kind: 'public' }` is that shape
+  pre-loaded. **Whatever FH-024's fix establishes about who may read a local endpoint, this channel
+  inherits it** — decide question 2 against that fix rather than on its own.
