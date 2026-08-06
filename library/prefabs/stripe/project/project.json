@@ -554,12 +554,6 @@
             "graph": {
                 "connections": [
                     {
-                        "fromId": "e1fdc823-1009-e250-590c-d62733c58040",
-                        "fromProperty": "Do",
-                        "toId": "63f5b44c-9450-533c-9df6-d3e68504fce9",
-                        "toProperty": "run"
-                    },
-                    {
                         "fromId": "b3412f5f-621a-4fff-1467-7e78af62a65e",
                         "fromProperty": "API Key",
                         "toId": "63f5b44c-9450-533c-9df6-d3e68504fce9",
@@ -636,6 +630,24 @@
                         "fromProperty": "Customer Name",
                         "toId": "63f5b44c-9450-533c-9df6-d3e68504fce9",
                         "toProperty": "in-CustomerName"
+                    },
+                    {
+                        "fromId": "e1fdc823-1009-e250-590c-d62733c58040",
+                        "fromProperty": "Do",
+                        "toId": "b3412f5f-621a-4fff-1467-7e78af62a65e",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "b3412f5f-621a-4fff-1467-7e78af62a65e",
+                        "fromProperty": "Ready",
+                        "toId": "63f5b44c-9450-533c-9df6-d3e68504fce9",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "b3412f5f-621a-4fff-1467-7e78af62a65e",
+                        "fromProperty": "Failure",
+                        "toId": "9e495b23-2149-5cc3-1dc0-dc4e756b98cf",
+                        "toProperty": "Failure"
                     }
                 ],
                 "roots": [
@@ -780,7 +792,16 @@
                                     "label": "Mode"
                                 }
                             ],
-                            "in-Mode": "payment"
+                            "in-Mode": "payment",
+                            "runOnChange-in-APIKey": false,
+                            "runOnChange-in-SuccessUrl": false,
+                            "runOnChange-in-CancelUrl": false,
+                            "runOnChange-in-Mode": false,
+                            "runOnChange-in-LineItems": false,
+                            "runOnChange-in-CustomerEmail": false,
+                            "runOnChange-in-Metadata": false,
+                            "runOnChange-in-CustomerId": false,
+                            "runOnChange-in-CustomerName": false
                         },
                         "ports": [],
                         "dynamicports": [
@@ -1049,12 +1070,6 @@
             "graph": {
                 "connections": [
                     {
-                        "fromId": "21ceb427-4582-676c-2189-f19cbf576187",
-                        "fromProperty": "Do",
-                        "toId": "b7477e26-081b-ce29-bbce-cea894990bd4",
-                        "toProperty": "run"
-                    },
-                    {
                         "fromId": "cdb60576-d3dd-47a4-723c-1da1a9c055f9",
                         "fromProperty": "API Key",
                         "toId": "b7477e26-081b-ce29-bbce-cea894990bd4",
@@ -1083,6 +1098,24 @@
                         "fromProperty": "out-PaymentOwnerId",
                         "toId": "7ca96288-3ab5-421f-4737-56bb5e7ca593",
                         "toProperty": "Payment Owner Id"
+                    },
+                    {
+                        "fromId": "21ceb427-4582-676c-2189-f19cbf576187",
+                        "fromProperty": "Do",
+                        "toId": "cdb60576-d3dd-47a4-723c-1da1a9c055f9",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "cdb60576-d3dd-47a4-723c-1da1a9c055f9",
+                        "fromProperty": "Ready",
+                        "toId": "b7477e26-081b-ce29-bbce-cea894990bd4",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "cdb60576-d3dd-47a4-723c-1da1a9c055f9",
+                        "fromProperty": "Failure",
+                        "toId": "7ca96288-3ab5-421f-4737-56bb5e7ca593",
+                        "toProperty": "Failure"
                     }
                 ],
                 "roots": [
@@ -1141,6 +1174,12 @@
                                     "name": "*"
                                 },
                                 "index": 5
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 4
                             }
                         ],
                         "dynamicports": [],
@@ -1152,7 +1191,8 @@
                         "x": -70.5,
                         "y": -8,
                         "parameters": {
-                            "functionScript": "const request = Noodl.Objects.Request;\nconst params = request.Parameters;\n\nif(params.type === \"checkout.session.completed\" && params.data.object.mode === 'payment') {\n\n    // Get the event from stripe, this also verifies that the\n    // event is actually sent by stripe\n    const eventRes = await fetch(\"https://api.stripe.com/v1/events/\" + params.id,{\n        headers:{\n            \"authorization\":\"Bearer \" + Inputs.APIKey\n        }\n    })\n\n    if(!eventRes.ok) {\n        throw Error(\"Could not retrieve stripe event with id: \" + params.id)\n    }\n    const eventJson = await eventRes.json();\n\n    // Fetch the customer for the payment\n    const customerRes = await fetch(\"https://api.stripe.com/v1/customers/\" + eventJson.data.object.customer,{\n        headers:{\n            \"authorization\":\"Bearer \" + Inputs.APIKey\n        }\n    })\n\n    if(!customerRes.ok) {\n        throw Error(\"Could not retrieve customer for payment\")\n    }\n\n    // Fetch the session again so we can get the line items\n    const sessionRes = await fetch(\"https://api.stripe.com/v1/checkout/sessions/\" + eventJson.data.object.id + \"?expand[]=line_items\",{\n        headers:{\n            \"authorization\":\"Bearer \" + Inputs.APIKey\n        }\n    })\n\n    if(!sessionRes.ok) {\n        throw Error(\"Could not retrieve session for payment\")\n    }\n\n    const customer = await customerRes.json();\n    const session = await sessionRes.json();\n    Noodl.Object.create(session)\n    Noodl.Object.create(customer)\n\n    Outputs.CustomerId = eventJson.data.object.customer;\n\n    try {\n        Outputs.PaymentOwnerId = customer.metadata.payOwnerId;\n        Outputs.Items = (session.line_items.data||[]).map(i => ({\n            Quantity:i.quantity,\n            PriceId:i.price.id,\n            ProductId:i.price.product\n        }))\n    }\n    catch(e) {}\n\n    console.log(`Stripe ${params.type} event CustomerId:${eventJson.data.object.customer} OwnerId:${Outputs.PaymentOwnerId}`)\n\n\n    Outputs.PaymentCompleted()\n}\n"
+                            "functionScript": "const request = Noodl.Objects.Request;\nconst params = request.Parameters;\n\nif(params.type === \"checkout.session.completed\" && params.data.object.mode === 'payment') {\n\n    // Get the event from stripe, this also verifies that the\n    // event is actually sent by stripe\n    const eventRes = await fetch(\"https://api.stripe.com/v1/events/\" + params.id,{\n        headers:{\n            \"authorization\":\"Bearer \" + Inputs.APIKey\n        }\n    })\n\n    if(!eventRes.ok) {\n        throw Error(\"Could not retrieve stripe event with id: \" + params.id)\n    }\n    const eventJson = await eventRes.json();\n\n    // Fetch the customer for the payment\n    const customerRes = await fetch(\"https://api.stripe.com/v1/customers/\" + eventJson.data.object.customer,{\n        headers:{\n            \"authorization\":\"Bearer \" + Inputs.APIKey\n        }\n    })\n\n    if(!customerRes.ok) {\n        throw Error(\"Could not retrieve customer for payment\")\n    }\n\n    // Fetch the session again so we can get the line items\n    const sessionRes = await fetch(\"https://api.stripe.com/v1/checkout/sessions/\" + eventJson.data.object.id + \"?expand[]=line_items\",{\n        headers:{\n            \"authorization\":\"Bearer \" + Inputs.APIKey\n        }\n    })\n\n    if(!sessionRes.ok) {\n        throw Error(\"Could not retrieve session for payment\")\n    }\n\n    const customer = await customerRes.json();\n    const session = await sessionRes.json();\n    Noodl.Object.create(session)\n    Noodl.Object.create(customer)\n\n    Outputs.CustomerId = eventJson.data.object.customer;\n\n    try {\n        Outputs.PaymentOwnerId = customer.metadata.payOwnerId;\n        Outputs.Items = (session.line_items.data||[]).map(i => ({\n            Quantity:i.quantity,\n            PriceId:i.price.id,\n            ProductId:i.price.product\n        }))\n    }\n    catch(e) {}\n\n    console.log(`Stripe ${params.type} event CustomerId:${eventJson.data.object.customer} OwnerId:${Outputs.PaymentOwnerId}`)\n\n\n    Outputs.PaymentCompleted()\n}\n",
+                            "runOnChange-in-APIKey": false
                         },
                         "ports": [],
                         "dynamicports": [
@@ -1225,12 +1265,6 @@
             "graph": {
                 "connections": [
                     {
-                        "fromId": "8e73c504-41fe-726b-64cf-1502b1e41899",
-                        "fromProperty": "Do",
-                        "toId": "d8be607f-e2fb-62eb-3693-8132844b4e31",
-                        "toProperty": "run"
-                    },
-                    {
                         "fromId": "bd3d0e01-2323-4e9c-8818-d5ccc37211fd",
                         "fromProperty": "API Key",
                         "toId": "d8be607f-e2fb-62eb-3693-8132844b4e31",
@@ -1295,6 +1329,24 @@
                         "fromProperty": "out-Status",
                         "toId": "26328b96-700a-3b43-3a07-82869b2310d8",
                         "toProperty": "Status"
+                    },
+                    {
+                        "fromId": "8e73c504-41fe-726b-64cf-1502b1e41899",
+                        "fromProperty": "Do",
+                        "toId": "bd3d0e01-2323-4e9c-8818-d5ccc37211fd",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "bd3d0e01-2323-4e9c-8818-d5ccc37211fd",
+                        "fromProperty": "Ready",
+                        "toId": "d8be607f-e2fb-62eb-3693-8132844b4e31",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "bd3d0e01-2323-4e9c-8818-d5ccc37211fd",
+                        "fromProperty": "Failure",
+                        "toId": "26328b96-700a-3b43-3a07-82869b2310d8",
+                        "toProperty": "Failure"
                     }
                 ],
                 "roots": [
@@ -1401,6 +1453,12 @@
                                     "name": "*"
                                 },
                                 "index": 12
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 10
                             }
                         ],
                         "dynamicports": [],
@@ -1412,7 +1470,8 @@
                         "x": -70.5,
                         "y": -7,
                         "parameters": {
-                            "functionScript": "const request = Noodl.Objects.Request;\nconst params = request.Parameters;\n\nif(params.type === \"customer.subscription.created\" || \n    params.type === \"customer.subscription.updated\" || \n    params.type === \"customer.subscription.deleted\") {\n\n    // Get the event from stripe, this also verifies that the\n    // event is actually sent by stripe\n    const eventRes = await fetch(\"https://api.stripe.com/v1/events/\" + params.id,{\n        headers:{\n            \"authorization\":\"Bearer \" + Inputs.APIKey\n        }\n    })\n\n    if(!eventRes.ok) {\n        throw Error(\"Could not retrieve stripe event with id: \" + params.id)\n    }\n    const eventJson = await eventRes.json();\n\n    // Fetch the customer for the subscription\n    const customerRes = await fetch(\"https://api.stripe.com/v1/customers/\" + eventJson.data.object.customer,{\n        headers:{\n            \"authorization\":\"Bearer \" + Inputs.APIKey\n        }\n    })\n\n    if(!customerRes.ok) {\n        throw Error(\"Could not retrieve customer for subscription\")\n    }\n\n    const customer = await customerRes.json();\n    const sub = eventJson.data.object;\n    Noodl.Object.create(sub)\n    Noodl.Object.create(customer)\n\n    Outputs.CustomerId = sub.customer;\n    Outputs.SubscriptionId = sub.id;\n    Outputs.Status = sub.status;\n    Outputs.CancelAtPeriodEnd = sub.cancel_at_period_end;\n\n    try {\n        Outputs.PriceId = sub.items.data[0].price.id;\n        Outputs.ProductId = sub.items.data[0].price.product;\n        Outputs.SubscriptionOwnerId = customer.metadata.subOwnerId;\n    }\n    catch(e) {}\n\n    console.log(`Stripe ${params.type} event CustomerId:${sub.customer} SubscriptionId:${sub.id} OwnerId:${Outputs.SubscriptionOwnerId}`)\n\n    if(params.type === \"customer.subscription.created\") Outputs.SubscriptionCreated()\n    else if(params.type === \"customer.subscription.updated\") Outputs.SubscriptionUpdated()\n    else if(params.type === \"customer.subscription.deleted\") Outputs.SubscriptionDeleted()\n}\n"
+                            "functionScript": "const request = Noodl.Objects.Request;\nconst params = request.Parameters;\n\nif(params.type === \"customer.subscription.created\" || \n    params.type === \"customer.subscription.updated\" || \n    params.type === \"customer.subscription.deleted\") {\n\n    // Get the event from stripe, this also verifies that the\n    // event is actually sent by stripe\n    const eventRes = await fetch(\"https://api.stripe.com/v1/events/\" + params.id,{\n        headers:{\n            \"authorization\":\"Bearer \" + Inputs.APIKey\n        }\n    })\n\n    if(!eventRes.ok) {\n        throw Error(\"Could not retrieve stripe event with id: \" + params.id)\n    }\n    const eventJson = await eventRes.json();\n\n    // Fetch the customer for the subscription\n    const customerRes = await fetch(\"https://api.stripe.com/v1/customers/\" + eventJson.data.object.customer,{\n        headers:{\n            \"authorization\":\"Bearer \" + Inputs.APIKey\n        }\n    })\n\n    if(!customerRes.ok) {\n        throw Error(\"Could not retrieve customer for subscription\")\n    }\n\n    const customer = await customerRes.json();\n    const sub = eventJson.data.object;\n    Noodl.Object.create(sub)\n    Noodl.Object.create(customer)\n\n    Outputs.CustomerId = sub.customer;\n    Outputs.SubscriptionId = sub.id;\n    Outputs.Status = sub.status;\n    Outputs.CancelAtPeriodEnd = sub.cancel_at_period_end;\n\n    try {\n        Outputs.PriceId = sub.items.data[0].price.id;\n        Outputs.ProductId = sub.items.data[0].price.product;\n        Outputs.SubscriptionOwnerId = customer.metadata.subOwnerId;\n    }\n    catch(e) {}\n\n    console.log(`Stripe ${params.type} event CustomerId:${sub.customer} SubscriptionId:${sub.id} OwnerId:${Outputs.SubscriptionOwnerId}`)\n\n    if(params.type === \"customer.subscription.created\") Outputs.SubscriptionCreated()\n    else if(params.type === \"customer.subscription.updated\") Outputs.SubscriptionUpdated()\n    else if(params.type === \"customer.subscription.deleted\") Outputs.SubscriptionDeleted()\n}\n",
+                            "runOnChange-in-APIKey": false
                         },
                         "ports": [],
                         "dynamicports": [
@@ -1749,12 +1808,6 @@
             "graph": {
                 "connections": [
                     {
-                        "fromId": "fe70dd05-1f78-5ef4-b7bd-e36fe5c489c4",
-                        "fromProperty": "Do",
-                        "toId": "3194bf8b-5430-f070-0027-b0e49ac15049",
-                        "toProperty": "run"
-                    },
-                    {
                         "fromId": "c0c4584e-be3d-9866-568a-436502f671ef",
                         "fromProperty": "API Key",
                         "toId": "3194bf8b-5430-f070-0027-b0e49ac15049",
@@ -1783,6 +1836,24 @@
                         "fromProperty": "Customer Id",
                         "toId": "3194bf8b-5430-f070-0027-b0e49ac15049",
                         "toProperty": "in-CustomerId"
+                    },
+                    {
+                        "fromId": "fe70dd05-1f78-5ef4-b7bd-e36fe5c489c4",
+                        "fromProperty": "Do",
+                        "toId": "c0c4584e-be3d-9866-568a-436502f671ef",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "c0c4584e-be3d-9866-568a-436502f671ef",
+                        "fromProperty": "Ready",
+                        "toId": "3194bf8b-5430-f070-0027-b0e49ac15049",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "c0c4584e-be3d-9866-568a-436502f671ef",
+                        "fromProperty": "Failure",
+                        "toId": "40cdd048-d68f-9b6a-aec8-014e0c20a8b3",
+                        "toProperty": "Failure"
                     }
                 ],
                 "roots": [
@@ -1856,7 +1927,9 @@
                                 }
                             ],
                             "intype-AtEndOfPeriod": "boolean",
-                            "in-AtEndOfPeriod": true
+                            "in-AtEndOfPeriod": true,
+                            "runOnChange-in-APIKey": false,
+                            "runOnChange-in-CustomerId": false
                         },
                         "ports": [],
                         "dynamicports": [
@@ -2087,12 +2160,6 @@
             "graph": {
                 "connections": [
                     {
-                        "fromId": "26f3ee82-12e7-55aa-dec3-ebdb426c4355",
-                        "fromProperty": "Do",
-                        "toId": "6fa1be8f-d3ff-f7b7-884e-cdd7bdf35cd4",
-                        "toProperty": "Do"
-                    },
-                    {
                         "fromId": "0062484d-a999-37bd-005c-6bc2062e9c90",
                         "fromProperty": "out-LineItems",
                         "toId": "6fa1be8f-d3ff-f7b7-884e-cdd7bdf35cd4",
@@ -2169,6 +2236,24 @@
                         "fromProperty": "Checkout Cancel Url",
                         "toId": "6fa1be8f-d3ff-f7b7-884e-cdd7bdf35cd4",
                         "toProperty": "CancelUrl"
+                    },
+                    {
+                        "fromId": "26f3ee82-12e7-55aa-dec3-ebdb426c4355",
+                        "fromProperty": "Do",
+                        "toId": "e027e0ef-f4a5-9a6e-80df-30ccda64f5b5",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "e027e0ef-f4a5-9a6e-80df-30ccda64f5b5",
+                        "fromProperty": "Ready",
+                        "toId": "6fa1be8f-d3ff-f7b7-884e-cdd7bdf35cd4",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "e027e0ef-f4a5-9a6e-80df-30ccda64f5b5",
+                        "fromProperty": "Failure",
+                        "toId": "85d4d215-4493-2ba8-1aa4-25a472b8afe7",
+                        "toProperty": "Failure"
                     }
                 ],
                 "roots": [
@@ -2473,6 +2558,48 @@
                         "fromProperty": "value",
                         "toId": "58429c6e-c2fa-0db4-c2cd-de1d686f1ee7",
                         "toProperty": "Checkout Cancel Url"
+                    },
+                    {
+                        "fromId": "1ef7fdb1-85cf-db36-32cf-58fb9dec83d4",
+                        "fromProperty": "Fetch",
+                        "toId": "b46b31ef-3c11-706b-b4c7-eb492c213afd",
+                        "toProperty": "fetch"
+                    },
+                    {
+                        "fromId": "b46b31ef-3c11-706b-b4c7-eb492c213afd",
+                        "fromProperty": "done",
+                        "toId": "0640aa12-fa74-4ced-0e24-48a3558ed136",
+                        "toProperty": "fetch"
+                    },
+                    {
+                        "fromId": "0640aa12-fa74-4ced-0e24-48a3558ed136",
+                        "fromProperty": "done",
+                        "toId": "6172b2f3-6106-ceb9-d966-16269a40ef4e",
+                        "toProperty": "fetch"
+                    },
+                    {
+                        "fromId": "6172b2f3-6106-ceb9-d966-16269a40ef4e",
+                        "fromProperty": "done",
+                        "toId": "58429c6e-c2fa-0db4-c2cd-de1d686f1ee7",
+                        "toProperty": "Ready"
+                    },
+                    {
+                        "fromId": "b46b31ef-3c11-706b-b4c7-eb492c213afd",
+                        "fromProperty": "failure",
+                        "toId": "58429c6e-c2fa-0db4-c2cd-de1d686f1ee7",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "0640aa12-fa74-4ced-0e24-48a3558ed136",
+                        "fromProperty": "failure",
+                        "toId": "58429c6e-c2fa-0db4-c2cd-de1d686f1ee7",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "6172b2f3-6106-ceb9-d966-16269a40ef4e",
+                        "fromProperty": "failure",
+                        "toId": "58429c6e-c2fa-0db4-c2cd-de1d686f1ee7",
+                        "toProperty": "Failure"
                     }
                 ],
                 "roots": [
@@ -2506,6 +2633,18 @@
                                     "name": "*"
                                 },
                                 "index": 4
+                            },
+                            {
+                                "name": "Ready",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 3
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 4
                             }
                         ],
                         "dynamicports": [],
@@ -2513,211 +2652,58 @@
                     },
                     {
                         "id": "b46b31ef-3c11-706b-b4c7-eb492c213afd",
-                        "type": "DbConfig",
+                        "type": "noodl.cloud.secret",
                         "x": -1.25,
                         "y": -195,
                         "parameters": {
-                            "configKey": "StripeAPIKey"
+                            "name": "STRIPE_API_KEY"
                         },
                         "ports": [],
-                        "dynamicports": [
-                            {
-                                "name": "configKey",
-                                "displayName": "Parameter",
-                                "group": "General",
-                                "type": {
-                                    "name": "enum",
-                                    "enums": [
-                                        {
-                                            "value": "StripeAPIKey",
-                                            "label": "StripeAPIKey"
-                                        },
-                                        {
-                                            "value": "WelcomeMessage",
-                                            "label": "WelcomeMessage"
-                                        },
-                                        {
-                                            "value": "OAuth2RedirectUri",
-                                            "label": "OAuth2RedirectUri"
-                                        },
-                                        {
-                                            "value": "StripeCheckoutSuccessUrl",
-                                            "label": "StripeCheckoutSuccessUrl"
-                                        },
-                                        {
-                                            "value": "StripeCheckoutCancelUrl",
-                                            "label": "StripeCheckoutCancelUrl"
-                                        }
-                                    ],
-                                    "allowEditOnly": true
-                                },
-                                "plug": "input",
-                                "index": 0
-                            },
-                            {
-                                "name": "value",
-                                "displayName": "Value",
-                                "group": "General",
-                                "type": "string",
-                                "plug": "output",
-                                "index": 1
-                            },
-                            {
-                                "name": "useDevValue",
-                                "displayName": "Enable",
-                                "group": "Local Override",
-                                "type": "boolean",
-                                "default": false,
-                                "plug": "input",
-                                "index": 2
-                            }
-                        ],
-                        "children": []
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "STRIPE_API_KEY"
                     },
                     {
                         "id": "0640aa12-fa74-4ced-0e24-48a3558ed136",
-                        "type": "DbConfig",
+                        "type": "noodl.cloud.secret",
                         "x": -1.625,
                         "y": -65,
                         "parameters": {
-                            "configKey": "StripeCheckoutSuccessUrl",
-                            "useDevValue": true,
-                            "devValue": "http://localhost:8574/checkout-success"
+                            "name": "STRIPE_CHECKOUT_SUCCESS_URL"
                         },
                         "ports": [],
-                        "dynamicports": [
-                            {
-                                "name": "configKey",
-                                "displayName": "Parameter",
-                                "group": "General",
-                                "type": {
-                                    "name": "enum",
-                                    "enums": [
-                                        {
-                                            "value": "StripeAPIKey",
-                                            "label": "StripeAPIKey"
-                                        },
-                                        {
-                                            "value": "WelcomeMessage",
-                                            "label": "WelcomeMessage"
-                                        },
-                                        {
-                                            "value": "OAuth2RedirectUri",
-                                            "label": "OAuth2RedirectUri"
-                                        },
-                                        {
-                                            "value": "StripeCheckoutSuccessUrl",
-                                            "label": "StripeCheckoutSuccessUrl"
-                                        },
-                                        {
-                                            "value": "StripeCheckoutCancelUrl",
-                                            "label": "StripeCheckoutCancelUrl"
-                                        }
-                                    ],
-                                    "allowEditOnly": true
-                                },
-                                "plug": "input",
-                                "index": 0
-                            },
-                            {
-                                "name": "value",
-                                "displayName": "Value",
-                                "group": "General",
-                                "type": "string",
-                                "plug": "output",
-                                "index": 1
-                            },
-                            {
-                                "name": "useDevValue",
-                                "displayName": "Enable",
-                                "group": "Local Override",
-                                "type": "boolean",
-                                "default": false,
-                                "plug": "input",
-                                "index": 2
-                            },
-                            {
-                                "name": "devValue",
-                                "displayName": "Value",
-                                "group": "Local Override",
-                                "type": "string",
-                                "plug": "input",
-                                "index": 3
-                            }
-                        ],
-                        "children": []
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "STRIPE_CHECKOUT_SUCCESS_URL"
                     },
                     {
                         "id": "6172b2f3-6106-ceb9-d966-16269a40ef4e",
-                        "type": "DbConfig",
+                        "type": "noodl.cloud.secret",
                         "x": -0.2734375,
                         "y": 78.6484375,
                         "parameters": {
-                            "configKey": "StripeCheckoutCancelUrl",
-                            "useDevValue": true,
-                            "devValue": "http://localhost:8574/checkout-cancel"
+                            "name": "STRIPE_CHECKOUT_CANCEL_URL"
                         },
                         "ports": [],
-                        "dynamicports": [
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "STRIPE_CHECKOUT_CANCEL_URL"
+                    },
+                    {
+                        "id": "1ef7fdb1-85cf-db36-32cf-58fb9dec83d4",
+                        "type": "Component Inputs",
+                        "x": -301.25,
+                        "y": -195,
+                        "parameters": {},
+                        "ports": [
                             {
-                                "name": "configKey",
-                                "displayName": "Parameter",
-                                "group": "General",
-                                "type": {
-                                    "name": "enum",
-                                    "enums": [
-                                        {
-                                            "value": "StripeAPIKey",
-                                            "label": "StripeAPIKey"
-                                        },
-                                        {
-                                            "value": "WelcomeMessage",
-                                            "label": "WelcomeMessage"
-                                        },
-                                        {
-                                            "value": "OAuth2RedirectUri",
-                                            "label": "OAuth2RedirectUri"
-                                        },
-                                        {
-                                            "value": "StripeCheckoutSuccessUrl",
-                                            "label": "StripeCheckoutSuccessUrl"
-                                        },
-                                        {
-                                            "value": "StripeCheckoutCancelUrl",
-                                            "label": "StripeCheckoutCancelUrl"
-                                        }
-                                    ],
-                                    "allowEditOnly": true
-                                },
-                                "plug": "input",
-                                "index": 0
-                            },
-                            {
-                                "name": "value",
-                                "displayName": "Value",
-                                "group": "General",
-                                "type": "string",
+                                "name": "Fetch",
                                 "plug": "output",
-                                "index": 1
-                            },
-                            {
-                                "name": "useDevValue",
-                                "displayName": "Enable",
-                                "group": "Local Override",
-                                "type": "boolean",
-                                "default": false,
-                                "plug": "input",
-                                "index": 2
-                            },
-                            {
-                                "name": "devValue",
-                                "displayName": "Value",
-                                "group": "Local Override",
-                                "type": "string",
-                                "plug": "input",
-                                "index": 3
+                                "type": "*",
+                                "index": 0
                             }
                         ],
+                        "dynamicports": [],
                         "children": []
                     }
                 ]
@@ -2728,12 +2714,6 @@
             "id": "9cb84ea5-5db6-232d-aca2-bae7a562e9c9",
             "graph": {
                 "connections": [
-                    {
-                        "fromId": "c3c5ae4c-2d40-0a77-b42e-a61564c5d84e",
-                        "fromProperty": "Do",
-                        "toId": "41912288-257a-37fe-c4e9-d4562b56d359",
-                        "toProperty": "Do"
-                    },
                     {
                         "fromId": "c3c5ae4c-2d40-0a77-b42e-a61564c5d84e",
                         "fromProperty": "Price Id",
@@ -2817,6 +2797,24 @@
                         "fromProperty": "Checkout Cancel Url",
                         "toId": "41912288-257a-37fe-c4e9-d4562b56d359",
                         "toProperty": "CancelUrl"
+                    },
+                    {
+                        "fromId": "c3c5ae4c-2d40-0a77-b42e-a61564c5d84e",
+                        "fromProperty": "Do",
+                        "toId": "09299846-ec4a-b78f-cf18-8683ebb56ca0",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "09299846-ec4a-b78f-cf18-8683ebb56ca0",
+                        "fromProperty": "Ready",
+                        "toId": "41912288-257a-37fe-c4e9-d4562b56d359",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "09299846-ec4a-b78f-cf18-8683ebb56ca0",
+                        "fromProperty": "Failure",
+                        "toId": "6005685a-5499-2573-38b5-1e09ead02166",
+                        "toProperty": "Failure"
                     }
                 ],
                 "roots": [
@@ -3032,12 +3030,6 @@
                 "connections": [
                     {
                         "fromId": "a8fa9151-41a6-9e60-9723-36ae9bc609bc",
-                        "fromProperty": "Do",
-                        "toId": "0a48c484-5550-012c-1eeb-a4d6fef84883",
-                        "toProperty": "run"
-                    },
-                    {
-                        "fromId": "a8fa9151-41a6-9e60-9723-36ae9bc609bc",
                         "fromProperty": "At End Of Period",
                         "toId": "0a48c484-5550-012c-1eeb-a4d6fef84883",
                         "toProperty": "in-AtEndOfPeriod"
@@ -3063,6 +3055,24 @@
                     {
                         "fromId": "0a48c484-5550-012c-1eeb-a4d6fef84883",
                         "fromProperty": "out-Failure",
+                        "toId": "0522b634-a8ad-508d-d0de-8a663ad2a7dc",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "a8fa9151-41a6-9e60-9723-36ae9bc609bc",
+                        "fromProperty": "Do",
+                        "toId": "ab5c40c2-de1d-65b2-256f-85d3a35a1dd2",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "ab5c40c2-de1d-65b2-256f-85d3a35a1dd2",
+                        "fromProperty": "Ready",
+                        "toId": "0a48c484-5550-012c-1eeb-a4d6fef84883",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "ab5c40c2-de1d-65b2-256f-85d3a35a1dd2",
+                        "fromProperty": "Failure",
                         "toId": "0522b634-a8ad-508d-d0de-8a663ad2a7dc",
                         "toProperty": "Failure"
                     }
@@ -3138,7 +3148,10 @@
                                 }
                             ],
                             "intype-AtEndOfPeriod": "boolean",
-                            "in-AtEndOfPeriod": true
+                            "in-AtEndOfPeriod": true,
+                            "runOnChange-in-AtEndOfPeriod": false,
+                            "runOnChange-in-APIKey": false,
+                            "runOnChange-in-SubscriptionId": false
                         },
                         "ports": [],
                         "dynamicports": [
@@ -3255,12 +3268,6 @@
             "graph": {
                 "connections": [
                     {
-                        "fromId": "425d6efc-990c-1e0b-2340-4b417ff42129",
-                        "fromProperty": "Do",
-                        "toId": "4f59827b-795a-3248-e613-d72fbea42cc0",
-                        "toProperty": "run"
-                    },
-                    {
                         "fromId": "4f59827b-795a-3248-e613-d72fbea42cc0",
                         "fromProperty": "out-Failure",
                         "toId": "df1d6c15-e67b-3a91-77d4-855c4f696f37",
@@ -3313,6 +3320,24 @@
                         "fromProperty": "out-Quantity",
                         "toId": "df1d6c15-e67b-3a91-77d4-855c4f696f37",
                         "toProperty": "Quantity"
+                    },
+                    {
+                        "fromId": "425d6efc-990c-1e0b-2340-4b417ff42129",
+                        "fromProperty": "Do",
+                        "toId": "10207624-fd3d-992f-f92e-213a95c463a3",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "10207624-fd3d-992f-f92e-213a95c463a3",
+                        "fromProperty": "Ready",
+                        "toId": "4f59827b-795a-3248-e613-d72fbea42cc0",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "10207624-fd3d-992f-f92e-213a95c463a3",
+                        "fromProperty": "Failure",
+                        "toId": "df1d6c15-e67b-3a91-77d4-855c4f696f37",
+                        "toProperty": "Failure"
                     }
                 ],
                 "roots": [
@@ -3418,7 +3443,9 @@
                                 }
                             ],
                             "intype-AtEndOfPeriod": "boolean",
-                            "in-AtEndOfPeriod": true
+                            "in-AtEndOfPeriod": true,
+                            "runOnChange-in-APIKey": false,
+                            "runOnChange-in-CustomerId": false
                         },
                         "ports": [],
                         "dynamicports": [
@@ -3576,12 +3603,6 @@
                 "connections": [
                     {
                         "fromId": "ce6fee55-eb47-c991-9d7f-948b7199e959",
-                        "fromProperty": "Do",
-                        "toId": "20549e42-98e3-bf1c-1477-82784e748626",
-                        "toProperty": "run"
-                    },
-                    {
-                        "fromId": "ce6fee55-eb47-c991-9d7f-948b7199e959",
                         "fromProperty": "Id",
                         "toId": "20549e42-98e3-bf1c-1477-82784e748626",
                         "toProperty": "in-SubscriptionId"
@@ -3621,6 +3642,24 @@
                         "fromProperty": "Quantity",
                         "toId": "20549e42-98e3-bf1c-1477-82784e748626",
                         "toProperty": "in-Quantity"
+                    },
+                    {
+                        "fromId": "ce6fee55-eb47-c991-9d7f-948b7199e959",
+                        "fromProperty": "Do",
+                        "toId": "bb3f5cf2-5808-2103-4a48-0fcad7fc422e",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "bb3f5cf2-5808-2103-4a48-0fcad7fc422e",
+                        "fromProperty": "Ready",
+                        "toId": "20549e42-98e3-bf1c-1477-82784e748626",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "bb3f5cf2-5808-2103-4a48-0fcad7fc422e",
+                        "fromProperty": "Failure",
+                        "toId": "10b37dfe-2b23-927a-779c-3ec10418705f",
+                        "toProperty": "Failure"
                     }
                 ],
                 "roots": [
@@ -3721,7 +3760,12 @@
                                     "label": "CancelAtPeriodEnd"
                                 }
                             ],
-                            "intype-CancelAtPeriodEnd": "boolean"
+                            "intype-CancelAtPeriodEnd": "boolean",
+                            "runOnChange-in-SubscriptionId": false,
+                            "runOnChange-in-APIKey": false,
+                            "runOnChange-in-CancelAtPeriodEnd": false,
+                            "runOnChange-in-PriceId": false,
+                            "runOnChange-in-Quantity": false
                         },
                         "ports": [],
                         "dynamicports": [

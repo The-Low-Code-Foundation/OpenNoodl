@@ -8,13 +8,24 @@
  *      the SUB-006 CLI uses
  *   3. the SUB-006 semantic validator reports zero *errors* (see note below)
  *   4. FH-006 — fonts: no dangling font-file reference, and no retired family
+ *   5. FH-023 — no missing-type node, and no connection to a component port
+ *      that component does not declare
  *
  * Content here was seeded as-is from the live docs-site library (LIB-001
  * step 3) — repair and restyling is LIB-002/003's job, not this gate's. So
- * this only fails CI on errors (broken references — an unknown node type, a
- * nonexistent port), not on warnings (style/quality issues LIB-002/003 own).
- * A future entry authored directly in this repo is expected to be
- * warning-clean too; nothing here stops tightening that later.
+ * this only fails CI on errors, not on warnings (style/quality issues
+ * LIB-002/003 own). A future entry authored directly in this repo is expected
+ * to be warning-clean too; nothing here stops tightening that later.
+ *
+ * ⚠️ **This comment used to claim rule 5 as part of rule 3, and it was not.**
+ * It read *"this only fails CI on errors (broken references — an unknown node
+ * type, a nonexistent port)"*, which is what the validator's own rule names
+ * suggest. In fact `unknownNodeType` is `severity: warning` unless `--strict`,
+ * and `nonexistentPort` skips component instances by design. The gate therefore
+ * reported **58/58 clean** while nine shipped prefab nodes had no type at all
+ * (FH-018 deleted `DbConfig` out from under four prefabs) — a comment
+ * describing the check somebody meant to write reads exactly like one
+ * describing the check they did. Rule 5 below is that check, written.
  *
  * Usage:
  *   npm run library:check
@@ -28,7 +39,10 @@ import * as path from 'path';
 import Ajv from 'ajv';
 
 import { SemanticValidator, formatReport } from '../../packages/noodl-editor/src/editor/src/validation';
+import { CatalogIndex } from '../../packages/noodl-editor/src/editor/src/validation/CatalogIndex';
+import { loadDefaultCatalog } from '../../packages/noodl-editor/src/editor/src/validation/catalog';
 import { loadProject } from '../../packages/noodl-editor/src/editor/src/validation/loadV2Project';
+import { NormComponent, NormProject, isComponentRef } from '../../packages/noodl-editor/src/editor/src/validation/model';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const LIBRARY_DIR = path.join(REPO_ROOT, 'library');
@@ -224,6 +238,100 @@ function checkFonts(projectDir: string): string[] {
   return problems;
 }
 
+// ---------------------------------------------------------------------------
+// FH-023 — the shipped library contains no node that has lost its type, and no
+// wire to a component port that component does not have.
+//
+// Both halves exist because the SUB-006 validator deliberately declines them,
+// and both had already shipped a real defect by the time they were written.
+//
+// (a) **Missing type.** `unknownNodeType` is a *warning* (rules/unknownNodeType.ts)
+//     and correctly so in the editor: a real project legitimately carries
+//     module-provided nodes the catalog cannot enumerate. But the shipped
+//     library is not a real project — it is content we author, and a prefab
+//     whose node type does not exist installs as a red dashed placeholder. The
+//     one honest exception is an entry that **bundles a code module**
+//     (`project/noodl_modules/`), because providing node types is exactly what
+//     such an entry is for and its manifest names only `index.js`, never the
+//     types inside. Measured when written: `modules/avatar` (47 × `Avatar`) and
+//     `modules/pdf-viewer` (1 × `module.inlineHtml`) are the only entries that
+//     need it, and **no prefab ships a `noodl_modules/` directory at all**.
+//
+// (b) **Component-instance ports.** `nonexistentPort` skips every endpoint on a
+//     component reference — *"component ports are per-instance/dynamic"*. Across
+//     a whole *project* that is true. Inside one library entry it is not: the
+//     referenced component is right there in the same file, and its ports are
+//     whatever its `Component Inputs`/`Component Outputs` nodes declare. So a
+//     typo'd wire between two components of a prefab is invisible to every gate
+//     in this repo, which is precisely the wire FH-023 had to add nine of.
+//
+//     Visual components are exempt: their instance also carries the entire
+//     visual port set (`position`, `marginTop`, style props …), which is not
+//     written down anywhere in the project file, so an unmatched port on one is
+//     unprovable rather than wrong.
+// ---------------------------------------------------------------------------
+
+/** The ports a component reference exposes on its instances, from its own IO nodes. */
+function declaredComponentPorts(component: NormComponent): { inputs: Set<string>; outputs: Set<string> } {
+  const inputs = new Set<string>();
+  const outputs = new Set<string>();
+  for (const node of component.nodes) {
+    // The plug flips: a `Component Inputs` port is an *output* inside the
+    // component and an *input* on every instance of it.
+    if (node.type === 'Component Inputs') for (const port of node.instancePorts) inputs.add(port);
+    else if (node.type === 'Component Outputs') for (const port of node.instancePorts) outputs.add(port);
+  }
+  return { inputs, outputs };
+}
+
+function checkGraphIntegrity(project: NormProject, catalog: CatalogIndex, providesNodes: boolean): string[] {
+  const problems: string[] = [];
+  const byName = new Map(project.components.map((c) => [c.name, c]));
+  const portsByComponent = new Map<string, { inputs: Set<string>; outputs: Set<string> }>();
+  /** True when instances of this component also carry the visual port set. */
+  const isVisualComponent = (component: NormComponent): boolean =>
+    component.nodes.some((n) => !n.parent && !isComponentRef(n.type) && !!catalog.getNode(n.type)?.isVisual);
+
+  for (const component of project.components) {
+    const byId = new Map(component.nodes.map((n) => [n.id, n]));
+
+    if (!providesNodes) {
+      for (const node of component.nodes) {
+        if (isComponentRef(node.type)) continue; // unresolvedComponentRef owns these
+        if (catalog.hasType(node.type)) continue;
+        problems.push(
+          `missing type: node ${node.id} in "${component.name}" has type "${node.type}", which is not a node ` +
+            `this editor has. It installs as a red dashed placeholder.`
+        );
+      }
+    }
+
+    for (const conn of component.connections) {
+      const endpoints: Array<[string, string, 'input' | 'output']> = [
+        [conn.fromId, conn.fromProperty, 'output'],
+        [conn.toId, conn.toProperty, 'input']
+      ];
+      for (const [nodeId, port, plug] of endpoints) {
+        const node = byId.get(nodeId);
+        if (!node || !isComponentRef(node.type)) continue;
+        const target = byName.get(node.type);
+        if (!target) continue; // unresolvedComponentRef owns this
+        if (isVisualComponent(target)) continue;
+        if (!portsByComponent.has(target.name)) portsByComponent.set(target.name, declaredComponentPorts(target));
+        const declared = portsByComponent.get(target.name)!;
+        const set = plug === 'input' ? declared.inputs : declared.outputs;
+        if (set.has(port)) continue;
+        problems.push(
+          `component port: "${component.name}" wires ${plug === 'input' ? 'into' : 'out of'} ` +
+            `${node.type}.${port}, but that component declares no such ${plug}` +
+            (set.size ? ` (it has: ${[...set].sort().join(', ')})` : ' (it declares none at all)')
+        );
+      }
+    }
+  }
+  return problems;
+}
+
 interface EntryResult {
   type: string;
   slug: string;
@@ -285,6 +393,11 @@ function checkEntry(type: string, slug: string, ajv: InstanceType<typeof Ajv>, v
       if (report.summary.errors > 0) {
         problems.push(`validator: ${report.summary.errors} error(s)\n${formatReport(report)}`);
       }
+      // FH-023. `providesNodes` is entry-level and not per-type on purpose: a
+      // bundled module's manifest names `index.js` and nothing else, so which
+      // types it registers is genuinely not readable from the tree.
+      const providesNodes = fs.existsSync(path.join(projectDir, 'noodl_modules'));
+      problems.push(...checkGraphIntegrity(project, loadDefaultCatalog(), providesNodes));
     } catch (err) {
       problems.push(`project failed to load: ${(err as Error).message}`);
     }

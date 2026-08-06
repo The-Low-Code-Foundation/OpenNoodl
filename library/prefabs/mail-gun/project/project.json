@@ -8,12 +8,6 @@
                 "connections": [
                     {
                         "fromId": "c1395518-c710-3443-8172-b34c27139161",
-                        "fromProperty": "Do",
-                        "toId": "7d77e876-9dec-eb13-c313-73d40ceaf1fe",
-                        "toProperty": "run"
-                    },
-                    {
-                        "fromId": "c1395518-c710-3443-8172-b34c27139161",
                         "fromProperty": "From",
                         "toId": "7d77e876-9dec-eb13-c313-73d40ceaf1fe",
                         "toProperty": "in-From"
@@ -77,6 +71,24 @@
                         "fromProperty": "Html",
                         "toId": "7d77e876-9dec-eb13-c313-73d40ceaf1fe",
                         "toProperty": "in-Html"
+                    },
+                    {
+                        "fromId": "c1395518-c710-3443-8172-b34c27139161",
+                        "fromProperty": "Do",
+                        "toId": "b99216be-ea59-6864-35b5-1153aaa62ff3",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "b99216be-ea59-6864-35b5-1153aaa62ff3",
+                        "fromProperty": "Ready",
+                        "toId": "7d77e876-9dec-eb13-c313-73d40ceaf1fe",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "b99216be-ea59-6864-35b5-1153aaa62ff3",
+                        "fromProperty": "Failure",
+                        "toId": "b97232a6-4767-af2c-ab65-a9eb09c4a3a2",
+                        "toProperty": "Failure"
                     }
                 ],
                 "roots": [
@@ -212,7 +224,16 @@
                                     "id": "nv2a",
                                     "label": "BCC"
                                 }
-                            ]
+                            ],
+                            "runOnChange-in-From": false,
+                            "runOnChange-in-To": false,
+                            "runOnChange-in-Subject": false,
+                            "runOnChange-in-Text": false,
+                            "runOnChange-in-DomainName": false,
+                            "runOnChange-in-APIKey": false,
+                            "runOnChange-in-CC": false,
+                            "runOnChange-in-BCC": false,
+                            "runOnChange-in-Html": false
                         },
                         "ports": [],
                         "dynamicports": [
@@ -651,6 +672,36 @@
                         "fromProperty": "value",
                         "toId": "e452dbd6-69f0-5f5b-2886-5868f0dc60fb",
                         "toProperty": "Domain Name"
+                    },
+                    {
+                        "fromId": "d7ce0aea-bf15-3f3b-122e-992cc92119a7",
+                        "fromProperty": "Fetch",
+                        "toId": "1ad94f87-6e9a-fc0f-3d6f-ce164ba4cefd",
+                        "toProperty": "fetch"
+                    },
+                    {
+                        "fromId": "1ad94f87-6e9a-fc0f-3d6f-ce164ba4cefd",
+                        "fromProperty": "done",
+                        "toId": "7552ed9f-e5e2-e6d3-6345-af2af0541b7c",
+                        "toProperty": "fetch"
+                    },
+                    {
+                        "fromId": "7552ed9f-e5e2-e6d3-6345-af2af0541b7c",
+                        "fromProperty": "done",
+                        "toId": "e452dbd6-69f0-5f5b-2886-5868f0dc60fb",
+                        "toProperty": "Ready"
+                    },
+                    {
+                        "fromId": "1ad94f87-6e9a-fc0f-3d6f-ce164ba4cefd",
+                        "fromProperty": "failure",
+                        "toId": "e452dbd6-69f0-5f5b-2886-5868f0dc60fb",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "7552ed9f-e5e2-e6d3-6345-af2af0541b7c",
+                        "fromProperty": "failure",
+                        "toId": "e452dbd6-69f0-5f5b-2886-5868f0dc60fb",
+                        "toProperty": "Failure"
                     }
                 ],
                 "roots": [
@@ -674,6 +725,18 @@
                                     "name": "*"
                                 },
                                 "index": 1
+                            },
+                            {
+                                "name": "Ready",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 2
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 3
                             }
                         ],
                         "dynamicports": [],
@@ -681,112 +744,45 @@
                     },
                     {
                         "id": "1ad94f87-6e9a-fc0f-3d6f-ce164ba4cefd",
-                        "type": "DbConfig",
+                        "type": "noodl.cloud.secret",
                         "x": 8.75,
                         "y": -74.91666666666669,
                         "parameters": {
-                            "configKey": "MailGunAPIKey"
+                            "name": "MAILGUN_API_KEY"
                         },
                         "ports": [],
-                        "dynamicports": [
-                            {
-                                "name": "configKey",
-                                "displayName": "Parameter",
-                                "group": "General",
-                                "type": {
-                                    "name": "enum",
-                                    "enums": [
-                                        {
-                                            "value": "MailGunAPIKey",
-                                            "label": "MailGunAPIKey"
-                                        },
-                                        {
-                                            "value": "MailGunDomainName",
-                                            "label": "MailGunDomainName"
-                                        },
-                                        {
-                                            "value": "SendGridAPIKey",
-                                            "label": "SendGridAPIKey"
-                                        }
-                                    ],
-                                    "allowEditOnly": true
-                                },
-                                "plug": "input",
-                                "index": 0
-                            },
-                            {
-                                "name": "value",
-                                "displayName": "Value",
-                                "group": "General",
-                                "type": "string",
-                                "plug": "output",
-                                "index": 1
-                            },
-                            {
-                                "name": "useDevValue",
-                                "displayName": "Enable",
-                                "group": "Local Override",
-                                "type": "boolean",
-                                "default": false,
-                                "plug": "input",
-                                "index": 2
-                            }
-                        ],
-                        "children": []
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "MAILGUN_API_KEY"
                     },
                     {
                         "id": "7552ed9f-e5e2-e6d3-6345-af2af0541b7c",
-                        "type": "DbConfig",
+                        "type": "noodl.cloud.secret",
                         "x": 10.75,
                         "y": 34.083333333333314,
                         "parameters": {
-                            "configKey": "MailGunDomainName"
+                            "name": "MAILGUN_DOMAIN"
                         },
                         "ports": [],
-                        "dynamicports": [
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "MAILGUN_DOMAIN"
+                    },
+                    {
+                        "id": "d7ce0aea-bf15-3f3b-122e-992cc92119a7",
+                        "type": "Component Inputs",
+                        "x": -291.25,
+                        "y": -74.91666666666669,
+                        "parameters": {},
+                        "ports": [
                             {
-                                "name": "configKey",
-                                "displayName": "Parameter",
-                                "group": "General",
-                                "type": {
-                                    "name": "enum",
-                                    "enums": [
-                                        {
-                                            "value": "MailGunAPIKey",
-                                            "label": "MailGunAPIKey"
-                                        },
-                                        {
-                                            "value": "MailGunDomainName",
-                                            "label": "MailGunDomainName"
-                                        },
-                                        {
-                                            "value": "SendGridAPIKey",
-                                            "label": "SendGridAPIKey"
-                                        }
-                                    ],
-                                    "allowEditOnly": true
-                                },
-                                "plug": "input",
-                                "index": 0
-                            },
-                            {
-                                "name": "value",
-                                "displayName": "Value",
-                                "group": "General",
-                                "type": "string",
+                                "name": "Fetch",
                                 "plug": "output",
-                                "index": 1
-                            },
-                            {
-                                "name": "useDevValue",
-                                "displayName": "Enable",
-                                "group": "Local Override",
-                                "type": "boolean",
-                                "default": false,
-                                "plug": "input",
-                                "index": 2
+                                "type": "*",
+                                "index": 0
                             }
                         ],
+                        "dynamicports": [],
                         "children": []
                     }
                 ]

@@ -1,6 +1,6 @@
 {
   "label": "Stripe",
-  "description": "Cloud functions and UI for Stripe payments and subscriptions — checkout, plan picker, and invoice handling.",
+  "description": "Cloud functions and UI for Stripe payments and subscriptions — checkout, plan picker, and invoice handling. Configure by provisioning the backend function secrets STRIPE_API_KEY, STRIPE_CHECKOUT_SUCCESS_URL and STRIPE_CHECKOUT_CANCEL_URL — see the prefab README.",
   "type": "prefab",
   "tags": [
     "Cloud",
@@ -9,7 +9,7 @@
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/stripe/",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

@@ -421,6 +421,17 @@ ways** — every referenced font/SVG resolves *and* every shipped asset is refer
    node, which would have shipped an empty API key that looks like it works. The replacement is
    CWF-009's `Secret` node (server-side, `SecretsStore`); these prefabs should be rewired onto it
    in the same pass that node lands.
+
+   ✅ **Closed 2026-08-06 (FH-023).** All nine are now `noodl.cloud.secret`, each `…/Settings`
+   component is a fetcher (`Fetch` in, `Ready`/`Failure` out) and all 14 consumers sequence it.
+   Corrections to the record above: it was **not** nine API keys — four are credentials and five are
+   per-deployment configuration (a Mailgun domain, two Stripe checkout URLs, a verification domain
+   and a From address), and all nine were read *server-side*, so no browser path ever existed.
+   `/#__cloud__/Sign Up/Actions/Format Email` had to be restructured rather than rewired: it carried
+   no signal at all, so there was nothing to trigger a fetch from. Each of the four prefabs now
+   ships a `README.md` naming its secrets, and `library:check` gained the missing-type rule that
+   would have caught this on the day it landed. See
+   [FH-023](../../dev-docs/tasks/phase-42-first-hour/FH-023-THE-PREFABS-LOST-THEIR-KEYS.md).
 7. **The charter's "apply an alpha over the token" is not expressible.** `resolveColor` is a
    name→value dictionary lookup with no alpha form, so a tint genuinely cannot track its token.
    Tokenising the tint (`Toast/* Tint`, `Supabase/Header Tint`) is the best available fix: it does

@@ -1,6 +1,6 @@
 {
   "label": "Send Grid",
-  "description": "A simple prefab for sending emails with Send Grid.",
+  "description": "Send emails with SendGrid from a cloud function. Configure by provisioning the backend function secret SENDGRID_API_KEY — see the prefab README.",
   "type": "prefab",
   "tags": [
     "Cloud",
@@ -8,7 +8,7 @@
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/sendgrid/",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

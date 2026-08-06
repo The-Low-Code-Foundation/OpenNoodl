@@ -1,6 +1,6 @@
 {
   "label": "Email Verification",
-  "description": "Cloud functions for email verification and reset password.",
+  "description": "Cloud functions for email verification and reset password. Configure by provisioning the backend function secrets SENDGRID_API_KEY, EMAIL_VERIFICATION_DOMAIN and EMAIL_VERIFICATION_FROM — see the prefab README.",
   "type": "prefab",
   "tags": [
     "Cloud",
@@ -9,7 +9,7 @@
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/email-verification/",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

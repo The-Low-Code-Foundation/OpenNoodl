@@ -1,6 +1,6 @@
 {
   "label": "Mail Gun",
-  "description": "A simple prefab for sending emails with Mail Gun.",
+  "description": "Send emails with Mailgun from a cloud function. Configure by provisioning the backend function secrets MAILGUN_API_KEY and MAILGUN_DOMAIN — see the prefab README.",
   "type": "prefab",
   "tags": [
     "Cloud",
@@ -8,7 +8,7 @@
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/mailgun/",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

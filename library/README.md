@@ -17,6 +17,7 @@ library/
     <slug>/
       library.json     # metadata — see scripts/library/schema.json
       icon.png          # card icon (optional; filename is whatever library.json.icon says)
+      README.md         # optional — how to configure this entry after install (FH-023)
       project/           # unpacked Noodl project — project.json (+ assets), or a v2 directory
   modules/
     <slug>/
