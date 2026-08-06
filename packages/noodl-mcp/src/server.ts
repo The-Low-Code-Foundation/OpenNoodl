@@ -17,6 +17,7 @@ import { registerReadTools } from './tools/read';
 import { registerStyleReadTools, registerStyleWriteTools } from './tools/styleTools';
 import { registerValidateTools } from './tools/validateTools';
 import { registerCreateProjectTools } from './tools/createProject';
+import { registerProvisionTools } from './tools/provisionTools';
 import { registerReviewTools } from './tools/review';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -58,7 +59,15 @@ export function createServer(options: ServerOptions): CreatedServer {
         'need to edit the router yourself, and re-registering an already-listed page is a no-op. ' +
         'For a multi-component build use create_plan / stage_plan_operation / apply_plan — nothing touches ' +
         'disk until the one apply — and pass its `scroll` argument ("page" or "app"), because the underlying ' +
-        'default clips every page at the viewport with no scrollbar.'
+        'default clips every page at the viewport with no scrollbar. ' +
+        // AAQ-011/F13. Stated because it is the step an agent otherwise skips:
+        // a graph with Record nodes and no backend validates, builds, and then
+        // does nothing at run time, and the agent has no panel to notice in.
+        'BACKENDS: an app with Record, User or Cloud Function nodes needs one. Call provision_backend FIRST ' +
+        '(it creates, starts and binds a local backend and pre-seeds the collections you name — declare their ' +
+        'columns, or the Record nodes get no prop-* ports), then plan the components against it. It is ' +
+        'deliberately not a plan operation: it starts a process and creates a database, which a plan cannot ' +
+        'roll back.'
     }
   );
 
@@ -80,6 +89,11 @@ export function createServer(options: ServerOptions): CreatedServer {
     registerStyleWriteTools(server, store);
     registerDocsWriteTools(server, store);
     registerBackendWriteTools(server);
+    // AAQ-011/F13. Write-gated, and it is the strongest write in the server: it
+    // starts a process and creates a database. Read-only callers get the
+    // diagnosis (checkBackendRequirements says a graph needs a backend) without
+    // the ability to act on it, which is the same posture as everything else.
+    registerProvisionTools(server, store);
     // AIX-012. Takes no store: it creates a project at a directory the caller
     // names, which is by definition not the one this server is pointed at.
     registerCreateProjectTools(server);

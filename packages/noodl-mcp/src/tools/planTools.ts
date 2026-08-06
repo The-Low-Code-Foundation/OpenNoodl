@@ -294,20 +294,26 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
       // AAQ-005 — one vocabulary, an honest capability. The editor's plan model
       // has carried `provision` since AIB-007 and this package imports that very
       // module, so silently rejecting the kind at the schema edge told an agent
-      // its plan was malformed when the truth is that this server cannot create
-      // a backend: provisioning starts and supervises a `nodegx-backend` child
-      // process, which is the editor's backend manager over IPC, and
-      // `backend/client.ts` here only lists and talks to backends that already
-      // run. Refused with the sentence that actually helps.
+      // its plan was malformed.
+      //
+      // AAQ-011/F13 — the capability now exists (`provision_backend`), and the
+      // refusal stays anyway, with a different reason. A provision is the one
+      // operation that spawns a process and creates a database; `apply_plan`'s
+      // contract is that nothing touches disk until one call and that discarding
+      // leaves the project byte-identical, and neither is true of a running
+      // backend. The editor reaches the same conclusion from the other side:
+      // `provisionBackend.ts` puts ONLY the binding in the undo group, because
+      // deleting a database on Cmd+Z destroys durable output nobody asked to
+      // destroy. So the irreversible step is its own call.
       const provisionOps = args.operations.filter((op) => op.kind === 'provision');
       if (provisionOps.length > 0) {
         throw new ToolError(
           'invalid-argument',
-          'This server cannot provision a backend — it can read and administer backends that are already ' +
-            'running, but creating one means starting and supervising a new backend process, which only the ' +
-            'editor does. Create the backend in the editor (Backend Services), or in this project via ' +
-            'nodegx-backend directly, then plan the components against it. Nothing was created.',
-          { unsupportedOperations: provisionOps.map((op) => op.target) }
+          'A backend is provisioned by its own tool, not inside a plan: call provision_backend first (it ' +
+            'creates, starts and binds the backend, and takes the collections you would have put here), then ' +
+            'create_plan for the components that use it. A plan is all-or-nothing and discardable; starting a ' +
+            'process and creating a database is neither, so it does not belong inside one. Nothing was created.',
+          { unsupportedOperations: provisionOps.map((op) => op.target), use: 'provision_backend' }
         );
       }
       const operations: PlanOperation[] = args.operations.map((op, index) => ({

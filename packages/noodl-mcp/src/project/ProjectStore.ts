@@ -206,6 +206,49 @@ export class ProjectStore {
     return written;
   }
 
+  /**
+   * AAQ-011/F13 — the project's backend binding, in the editor's own shape.
+   *
+   * ⚠️ `metadata.cloudservices` stores `{instanceId, endpoint, appId, type}` —
+   * `instanceId`, not `id`. `projectmodel.editor.getCloudServices` projects that
+   * to `{id, endpoint, appId, type}` on the way out, and AIB-007 already caught
+   * one bug from confusing the two (an undo that snapshotted the *projection*
+   * silently dropped `workspaceId`). This reads and writes the RAW metadata.
+   */
+  readCloudServices(): { instanceId?: string; endpoint?: string; appId?: string; type?: string } {
+    const project = this.readProjectFile() as (ProjectV2File & { metadata?: Record<string, unknown> }) | undefined;
+    const raw = project?.metadata?.cloudservices;
+    return raw && typeof raw === 'object' ? (raw as Record<string, string>) : {};
+  }
+
+  /**
+   * Bind the project to a backend.
+   *
+   * **Refuses rather than repointing** when the project already points
+   * somewhere, which is `provisionBackend.endpointRefusal`'s rule and carries
+   * its reasoning: overwriting an endpoint is how a user loses a deployed
+   * backend to a change they approved for something else, and the repair for a
+   * silently repointed project is finding out at runtime. Pass `force` to mean
+   * it.
+   */
+  writeCloudServices(binding: { instanceId: string; endpoint: string; appId: string; type: string }, force = false): void {
+    const current = this.readCloudServices();
+    if (!force && current.endpoint && current.endpoint !== binding.endpoint) {
+      throw new ToolError(
+        'invalid-argument',
+        `This project already points at ${current.endpoint}. Nothing was changed — disconnect it first ` +
+          '(editor: Backend Services), or pass force to repoint it deliberately.'
+      );
+    }
+    const p = this.projectFilePath;
+    if (!fs.existsSync(p)) {
+      throw new ToolError('not-found', `Missing nodegx.project.json in ${this.projectDir}; cannot bind a backend.`);
+    }
+    const project = readJson<ProjectV2File & { metadata?: Record<string, unknown> }>(p);
+    const metadata = { ...(project.metadata ?? {}), cloudservices: { ...current, ...binding } };
+    writeJsonAtomic(p, { ...project, metadata, modified: new Date().toISOString() });
+  }
+
   readRoutes(): RoutesV2File | undefined {
     const p = path.join(this.projectDir, 'nodegx.routes.json');
     return fs.existsSync(p) ? readJson<RoutesV2File>(p) : undefined;

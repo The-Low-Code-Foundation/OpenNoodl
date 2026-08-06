@@ -9,8 +9,9 @@
  * isn't scrollable"*, and an external agent got neither.
  *
  * Registration is covered in `pageRegistration.test.ts`. This file covers the
- * settings half and the one effect that genuinely does NOT port — provisioning a
- * backend — where the requirement is an honest refusal rather than a silent one.
+ * settings half, and the third effect — provisioning a backend — which used not
+ * to port at all. AAQ-011/F13 gave it its own tool (`provision.test.ts`); what
+ * is asserted here is that a plan still refuses it, and now says where to go.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -121,7 +122,7 @@ describe('AAQ-005 — project effects of an applied plan', () => {
     });
   });
 
-  describe('AAQ-005 — provision is one vocabulary and an honest capability', () => {
+  describe('AAQ-005 / AAQ-011 F13 — provision is one vocabulary, and it has its own tool', () => {
     it('refuses a provision operation with the reason, not a schema rejection', async () => {
       const res = await call<ErrorPayload>(session, 'create_plan', {
         request: 'Build a shop with a backend',
@@ -133,9 +134,10 @@ describe('AAQ-005 — project effects of an applied plan', () => {
 
       expect(res.isError).toBe(true);
       expect(res.data.error?.code).toBe('invalid-argument');
-      expect(res.data.error?.message).toContain('cannot provision a backend');
-      // The sentence has to point somewhere the agent can actually go.
-      expect(res.data.error?.message).toContain('Backend Services');
+      // F13: the capability exists now, so the refusal is about WHERE it lives —
+      // a plan is all-or-nothing and discardable, and a spawned process is not.
+      expect(res.data.error?.message).toContain('provision_backend');
+      expect(res.data.error?.details?.use).toBe('provision_backend');
       expect(res.data.error?.details?.unsupportedOperations).toEqual(['App backend']);
     });
 
