@@ -1,7 +1,6 @@
 //import CloudStore from '@noodl/runtime/src/api/cloudstore'
 import Model from '@noodl/runtime/src/model';
 import NoodlRuntime from '@noodl/runtime';
-import ConfigService from '@noodl/runtime/src/api/configservice'
 
 export const node = {
   name: 'noodl.cloud.request',
@@ -130,8 +129,11 @@ export const node = {
         }
       } else if (!this._internal.allowNoAuth) throw Error('Unauthenticated requests not accepted.');
 
-      // Make sure config is cached before processing request
-      await ConfigService.instance.getConfig()
+      // FH-018: an `await ConfigService.instance.getConfig()` used to sit here, priming
+      // the cache so the Config node's synchronous getter had something to read. That node
+      // is gone, and with it the only reader — so this was an HTTP round-trip on every
+      // single request whose sole remaining effect was to fail the whole function if
+      // `/config` was slow or unhappy.
 
       // Create request object
       const requestModel = (this.nodeScope.modelScope || Model).get('Request');

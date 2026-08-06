@@ -1,12 +1,11 @@
 {
   "id": "cloud-create-record-with-upload",
   "title": "Create a record with an uploaded file attachment",
-  "description": "The create-with-attachment flow: Open File Picker hands the picked browser file to Upload File, which stores it in cloud storage and outputs a `cloudFile`. Cloud File exposes that file's `url`, previewed in an Image (the cloudfile\u2192image cast). When the upload succeeds, Create Record (NewDbModelProperties) writes a new 'Attachment' record whose properties \u2014 including the file \u2014 are set on the node's schema-generated inputs. Database Config (DbConfig) is the singleton that points the app at its cloud backend; it has no wires, its presence and parameters configure the connection.",
+  "description": "The create-with-attachment flow: Open File Picker hands the picked browser file to Upload File, which stores it in cloud storage and outputs a `cloudFile`. Cloud File exposes that file's `url`, previewed in an Image (the cloudfile→image cast). When the upload succeeds, Create Record (NewDbModelProperties) writes a new 'Attachment' record whose properties — including the file — are set on the node's schema-generated inputs.",
   "demonstrates": [
     "Upload File",
     "Cloud File",
     "NewDbModelProperties",
-    "DbConfig",
     "Open File Picker"
   ],
   "components": [
@@ -49,11 +48,6 @@
           "parameters": {
             "text": "Attachment saved."
           }
-        },
-        {
-          "id": "db_config",
-          "type": "DbConfig",
-          "label": "Cloud backend"
         },
         {
           "id": "file_picker",

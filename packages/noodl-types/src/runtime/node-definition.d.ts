@@ -1556,7 +1556,6 @@ export interface ProjectMetaData {
   backendServices?: unknown;
   dbCollections?: unknown;
   systemCollections?: unknown;
-  dbConfigSchema?: unknown;
   dbVersionMajor?: unknown;
   appConfig?: unknown;
   styles?: unknown;

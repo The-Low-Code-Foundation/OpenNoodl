@@ -411,6 +411,16 @@ ways** — every referenced font/SVG resolves *and* every shipped asset is refer
    load from the host project's `dbConfigSchema` metadata. send-grid ships `MailGunAPIKey` and
    `MailGunDomainName` in its dropdown and mail-gun ships `SendGridAPIKey` — leakage from a shared
    authoring project. Deliberately **not** stripped: the values never reach a user.
+
+   ⚠️ **Superseded 2026-08-06 (FH-018): the `DbConfig` node type has been deleted.** Four prefabs
+   still contain one — `send-grid` (1), `email-verification` (3), `mail-gun` (2), `stripe` (3), all
+   inside a `…/Settings` cloud-function component that fed an API key to a Component Output. Those
+   nodes now load as an **unknown type**: the editor paints a red dashed placeholder and an
+   "The node type of this instance DbConfig is missing." warning, the runtime logs and skips them,
+   and nothing else in the prefab breaks. Left loud on purpose rather than rewired to a String
+   node, which would have shipped an empty API key that looks like it works. The replacement is
+   CWF-009's `Secret` node (server-side, `SecretsStore`); these prefabs should be rewired onto it
+   in the same pass that node lands.
 7. **The charter's "apply an alpha over the token" is not expressible.** `resolveColor` is a
    name→value dictionary lookup with no alpha form, so a tint genuinely cannot track its token.
    Tokenising the tint (`Toast/* Tint`, `Supabase/Header Tint`) is the best available fix: it does

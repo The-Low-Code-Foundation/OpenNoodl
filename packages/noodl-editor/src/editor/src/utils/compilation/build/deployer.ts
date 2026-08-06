@@ -82,11 +82,10 @@ export async function deployToFolder({
     return Promise.reject({ result: 'failure', message: 'Failed to export project.' });
   }
 
-  // Remove all keys from config that require master key
-  const configSchema = exportJson.metadata['dbConfigSchema'];
-  for (const key in configSchema) {
-    if (configSchema[key].masterKeyOnly) delete configSchema[key];
-  }
+  // FH-018: the `dbConfigSchema` strip that used to run here is gone with the
+  // Config node. It only ever hid *key names* from an exported bundle, never a
+  // value — the values were served by a public `GET /config`, which is where the
+  // real filter now lives.
 
   // Read deploy description
   const index = await loadDeployIndex(`${runtimeType}/index.json`);

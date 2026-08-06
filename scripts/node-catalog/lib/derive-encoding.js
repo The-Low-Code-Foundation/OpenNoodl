@@ -40,7 +40,6 @@ const RESIDUE_REASONS = {
   'net.noodl.HTTP': 'Ports are parsed from the configured headers, query parameters and response mappings in the node parameters.',
   Globals: 'Ports follow the global variables the project defines at runtime.',
   'Script Downloader': 'Ports follow the script loaded at runtime.',
-  DbConfig: 'Ports follow the database configuration schema fetched from the backend.',
   'Filter Collection': 'Ports follow the filter script in the node parameters.',
   'Set Variable':
     'The `name` parameter selects which variable is written; it does not appear in any port name. The single dynamic port is `value`, whose *type* follows the `setWith` parameter.',

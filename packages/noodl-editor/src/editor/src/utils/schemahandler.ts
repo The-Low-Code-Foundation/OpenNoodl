@@ -51,6 +51,15 @@ import { getIpc } from './ipc';
  * The provision path needs no separate write: `setCloudServices` raises
  * `cloudServicesChanged`, which is one of this handler's two triggers, so the
  * cache fills the moment the binding lands.
+ *
+ * ## FH-018 — the `configSchema` field is gone, not moved
+ *
+ * A third field used to sit here, `configSchema`, written to the project's
+ * `dbConfigSchema` metadata on every `_store()`. Nothing ever **assigned** it —
+ * the Parse Dashboard page that did went with WF-007 — so the metadata was
+ * always `undefined` and the Config node it fed could never offer a key. The
+ * node has since been deleted outright (front-end config that holds secrets is
+ * unsafe by construction), and with it the last reader of that metadata.
  */
 export default class SchemaHandler {
   public static instance: SchemaHandler | undefined;
@@ -58,7 +67,6 @@ export default class SchemaHandler {
   public haveCloudServices: boolean;
   public dbCollections: TSFixme[];
   public systemCollections: TSFixme[];
-  public configSchema: TSFixme;
   public parseServerVersion: string;
 
   constructor() {
@@ -106,7 +114,6 @@ export default class SchemaHandler {
       if (this.haveCloudServices) {
         ProjectModel.instance.setMetaData('dbCollections', this.dbCollections);
         ProjectModel.instance.setMetaData('systemCollections', this.systemCollections);
-        ProjectModel.instance.setMetaData('dbConfigSchema', this.configSchema);
 
         const versionNumbers = this.parseServerVersion?.split(".")
         if (versionNumbers && versionNumbers.length > 0) {
@@ -119,7 +126,6 @@ export default class SchemaHandler {
       } else {
         ProjectModel.instance.setMetaData('dbCollections', undefined);
         ProjectModel.instance.setMetaData('systemCollections', undefined);
-        ProjectModel.instance.setMetaData('dbConfigSchema', undefined);
         ProjectModel.instance.setMetaData('dbVersionMajor', undefined);
       }
     }
