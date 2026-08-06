@@ -54,6 +54,24 @@ module.exports = async function notarizeHook(context) {
     return;
   }
 
+  // Apple will not notarise an app that is not signed with a Developer ID, and
+  // the error it returns for one is unhelpful and arrives after a long upload.
+  // On CI the *only* source of a Developer ID is CSC_LINK, so "Apple
+  // credentials but no certificate" is knowable here, cheaply, and is the exact
+  // half-provisioned state a human lands in when the five secrets are added one
+  // at a time. Fail with the reason instead of with Apple's.
+  //
+  // Deliberately CI-only: a local build can legitimately sign from the
+  // developer's own keychain, where there is no CSC_LINK to look at.
+  if (process.env.CI && !process.env.CSC_LINK) {
+    throw new Error(
+      '[notarize] Apple notarisation credentials are set, but CSC_LINK is not — there is no Developer ID ' +
+        'certificate to sign with, and Apple cannot notarise an unsigned app. Add the CSC_LINK and ' +
+        'CSC_KEY_PASSWORD repository secrets (see dev-docs/guidelines/RELEASE-PROCESS.md §1a), or remove ' +
+        'APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID to go back to publishing an unsigned draft.'
+    );
+  }
+
   console.log(`[notarize] Notarising ${appPath} (${appBundleId}) with Apple — this can take several minutes...`);
 
   const options = hasApiKey
