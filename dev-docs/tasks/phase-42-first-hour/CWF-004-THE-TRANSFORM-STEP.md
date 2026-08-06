@@ -157,9 +157,27 @@ did **not** decide. Three things it clarified, offered as input:
    a stable input contract rather than a payload-parsing chore. That is the case *for* leaving
    aggregation where compute lives; it is not an argument that nobody will want the step.
 
+4. ⚠️ **A fourth input, found in the gate output after slice 2 landed and NOT known when the three
+   above were written: we already ship an aggregation node, and it is not the same thing.**
+   `noodl.cloud.aggregate` — *"Aggregate Records"*, category **Cloud Services**
+   ([`aggregatenode.js:13`](../../../packages/noodl-viewer-cloud/src/nodes/data/aggregatenode.js#L13))
+   — takes a **Class** and a **Filter** and aggregates over a *stored collection query*. It is a
+   database operation, not an array operation, and it cannot see a payload that is merely passing
+   through a workflow.
+
+   That sharpens the question rather than answering it. It means "can NodeGX sum things" is already
+   **yes** for data at rest, so a new step would be buying aggregation for data **in flight** — a
+   supplier's webhook array that is never stored. Read one way that is the remaining gap and the
+   case for building it; read the other way it is evidence that the cases people actually hit are
+   already served, and the in-flight case is the one where `call-function` is cheapest. **Both
+   readings are honest and the choice is still Richard's** — this bullet exists so the decision is
+   not taken in ignorance of a node that already carries the word.
+
 **If it is built**, the shape that costs least is `{ over: <items>, as: { total: {"$sum": "amount"} } }` —
 one step, an output object like `transform`'s, a closed function table with fixed arity, and
-`groupBy` as a separate param. Not built here.
+`groupBy` as a separate param. Not built here. ⚠️ Whatever it is called, it must not be called
+**Aggregate** unqualified while `Aggregate Records` exists — two things one word apart, one over a
+collection and one over an array, is a naming collision that will cost more than the step saves.
 
 ## On a free Function step at workflow level — my advice: **no**
 
