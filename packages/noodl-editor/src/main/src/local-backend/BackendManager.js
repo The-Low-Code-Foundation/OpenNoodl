@@ -332,6 +332,20 @@ class BackendManager {
       )
     );
 
+    // CWF-009: the credentials a cloud function's Secret node reads. Names come
+    // back and values only go in — the backend has no route that returns one, so
+    // there is deliberately no `getSecret` here to proxy. A renderer that wants
+    // to show a value has nothing to call, which is the design and not a gap.
+    ipcMain.handle('backend:listSecrets', async (_, id) =>
+      this.requireRunning(id, 'list secrets').request('GET', '/admin/secrets')
+    );
+    ipcMain.handle('backend:setSecret', async (_, id, name, value) =>
+      this.requireRunning(id, 'set a secret').request('PUT', `/admin/secrets/${encodeURIComponent(name)}`, { value })
+    );
+    ipcMain.handle('backend:deleteSecret', async (_, id, name) =>
+      this.requireRunning(id, 'delete a secret').request('DELETE', `/admin/secrets/${encodeURIComponent(name)}`)
+    );
+
     // ==========================================================================
     // FULL-TEXT SEARCH (BAK-008) — the search panel proxies to /admin/search
     // ==========================================================================

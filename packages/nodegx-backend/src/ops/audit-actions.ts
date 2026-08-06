@@ -34,6 +34,12 @@ const ACTIONS: Record<string, string> = {
   'DELETE admin/roles/:name/users/:userId': 'role.user.remove',
   'POST admin/keys': 'apikey.create',
   'DELETE admin/keys/:id': 'apikey.revoke',
+  // CWF-009. The entry records the NAME and never the value — the trail is a
+  // queryable table, and a credential in one would defeat the point of a store
+  // that refuses to read a value back at all. "Who provisioned STRIPE_KEY, and
+  // when did it change?" is the question a live-key incident starts with.
+  'PUT admin/secrets/:name': 'secret.set',
+  'DELETE admin/secrets/:name': 'secret.delete',
 
   // Schema + data shape
   'POST api/_schema': 'schema.mutate',

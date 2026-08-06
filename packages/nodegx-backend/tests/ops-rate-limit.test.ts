@@ -220,8 +220,14 @@ describe('BAK-009 rate limiting over real sockets', () => {
     // Reviewed and left in the `admin` budget for the same reason as the
     // collection routes it sits beside — the panel reads the list once when it
     // opens and writes one entry per human decision.
+    // CWF-009 moved it by 3: the function-secrets door (`GET /admin/secrets`,
+    // `PUT`/`DELETE /admin/secrets/:name`). Reviewed and left in the `admin`
+    // budget, with one thing worth saying out loud: a budget is not what stops a
+    // secret being read here — nothing reads a secret back at all, by
+    // construction (admin-secrets.ts). The write is an operator action taken
+    // once per credential, which is the shape the admin budget is for.
     expect(counts).toEqual({
-      admin: 76,
+      admin: 79,
       auth: 15,
       data: 17,
       files: 4,

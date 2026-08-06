@@ -47,6 +47,8 @@ import type { AuthConfigState } from '../auth/AuthConfigState';
 import { OAuthRoutes } from './oauth-routes';
 import { AdminAuthRoutes } from './admin-auth';
 import { AdminSecurityRoutes } from './admin-security';
+import { AdminSecretsRoutes } from './admin-secrets';
+import { SecretsStore } from '../config/SecretsStore';
 import { AdminTriggerRoutes } from './admin-triggers';
 import { AdminWorkflowRoutes } from './admin-workflows';
 import { AdminEmailRoutes } from './admin-email';
@@ -256,6 +258,8 @@ export class HttpServer {
   private readonly users: UserRoutes;
   private readonly files: FileRoutes;
   private readonly adminSecurity: AdminSecurityRoutes;
+  /** CWF-009 slice 4: the `functions` secrets door, names out and values in. */
+  private readonly adminSecrets: AdminSecretsRoutes;
   private readonly adminTriggers: AdminTriggerRoutes;
   private readonly adminWorkflows: AdminWorkflowRoutes;
   private readonly adminBackups: AdminBackupRoutes;
@@ -335,6 +339,12 @@ export class HttpServer {
       deps.getRunner,
       () => deps.ops.config.rateLimit.policies.functions
     );
+    // Its own SecretsStore over the same dataDir, the way TriggerSubsystem and
+    // FileSubsystem each hold one: the store is a whole-file read-modify-write
+    // over a path, deliberately stateless, so sharing an instance would buy
+    // nothing and threading one through HttpServerDeps would only add a way for
+    // a caller to pass a store pointed somewhere else.
+    this.adminSecrets = new AdminSecretsRoutes(new SecretsStore(deps.options.dataDir));
     this.adminTriggers = new AdminTriggerRoutes(deps.triggers);
     this.adminWorkflows = new AdminWorkflowRoutes(() => deps.workflows);
     this.adminBackups = new AdminBackupRoutes({
@@ -406,6 +416,7 @@ export class HttpServer {
     const users = this.users;
     const files = this.files;
     const adminSec = this.adminSecurity;
+    const adminSecrets = this.adminSecrets;
     const adminTriggers = this.adminTriggers;
     const adminWorkflows = this.adminWorkflows;
     const adminBackups = this.adminBackups;
@@ -788,6 +799,23 @@ export class HttpServer {
         pattern: 'admin/permissions/functions/:name',
         access: { kind: 'admin' },
         handler: (ctx) => adminSec.deleteFunction(ctx)
+      },
+      // CWF-009: the `functions` secrets namespace — names out, values only in.
+      // No `:namespace` segment, ever: the namespace is supplied by the handler
+      // exactly as it is for the graph, so the backend's own namespaces stay
+      // unnameable through this door too. See admin-secrets.ts.
+      { method: 'GET', pattern: 'admin/secrets', access: { kind: 'admin' }, handler: (ctx) => adminSecrets.list(ctx) },
+      {
+        method: 'PUT',
+        pattern: 'admin/secrets/:name',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminSecrets.put(ctx)
+      },
+      {
+        method: 'DELETE',
+        pattern: 'admin/secrets/:name',
+        access: { kind: 'admin' },
+        handler: (ctx) => adminSecrets.delete(ctx)
       },
       { method: 'GET', pattern: 'admin/roles', access: { kind: 'admin' }, handler: (ctx) => adminSec.listRoles(ctx) },
       { method: 'POST', pattern: 'admin/roles', access: { kind: 'admin' }, handler: (ctx) => adminSec.createRole(ctx) },
