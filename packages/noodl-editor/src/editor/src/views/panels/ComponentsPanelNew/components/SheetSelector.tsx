@@ -6,7 +6,7 @@
  */
 
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 
@@ -98,6 +98,35 @@ export function SheetSelector({
   const [isOpen, setIsOpen] = useState(false);
   const [activeSheetMenu, setActiveSheetMenu] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
+  const dropdownContentRef = useRef<HTMLDivElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
+  /**
+   * The dropdown was anchored purely in CSS (`right: 0` on `.Dropdown`,
+   * relative to this control) with no awareness of the viewport. In a
+   * narrowed Components panel the trigger sits close enough to the panel's
+   * left edge that a right-anchored, 160–200px-wide dropdown overflowed past
+   * it, drawing over the icon rail. Re-anchor here, in fixed coordinates,
+   * clamped to stay on screen either way.
+   */
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const trigger = triggerButtonRef.current;
+    const content = dropdownContentRef.current;
+    if (!trigger || !content) return;
+
+    const margin = 8;
+    const triggerRect = trigger.getBoundingClientRect();
+    const contentWidth = content.offsetWidth;
+
+    // Keep today's right-anchored default, then slide left just enough to
+    // clear the viewport's edges — never past either one.
+    const maxLeft = Math.max(margin, window.innerWidth - contentWidth - margin);
+    const left = Math.min(Math.max(triggerRect.right - contentWidth, margin), maxLeft);
+
+    setDropdownStyle({ position: 'fixed', top: triggerRect.bottom + 4, left });
+  }, [isOpen]);
 
   // Close dropdown and action menu when clicking outside
   useEffect(() => {
@@ -181,6 +210,7 @@ export function SheetSelector({
     <div className={css['SheetSelector']} ref={dropdownRef}>
       {/* Trigger Button */}
       <button
+        ref={triggerButtonRef}
         className={classNames(css['TriggerButton'], { [css['Open']]: isOpen })}
         onClick={handleToggle}
         disabled={disabled}
@@ -199,7 +229,12 @@ export function SheetSelector({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className={css['Dropdown']} data-test="sheet-selector-dropdown">
+        <div
+          ref={dropdownContentRef}
+          className={css['Dropdown']}
+          style={dropdownStyle}
+          data-test="sheet-selector-dropdown"
+        >
           {/* SPR-005: what the list below is a list OF. Without it the entries
               read as filter presets rather than as places. */}
           <div className={css['DropdownHeading']}>Author in sheet</div>

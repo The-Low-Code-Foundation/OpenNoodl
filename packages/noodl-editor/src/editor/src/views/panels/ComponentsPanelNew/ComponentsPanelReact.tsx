@@ -63,6 +63,16 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
    */
   const sheetName = currentSheet ? currentSheet.name : DEFAULT_SHEET_NAME;
 
+  /**
+   * The disabled "Create Cloud Function Component" row names the fix
+   * ("choose Cloud Functions in the sheet selector") but could not do it —
+   * clicking it did nothing. This is the sheet-switch half of that fix.
+   */
+  const handleGoToCloudSheet = useCallback(() => {
+    const cloudSheet = sheets.find((s) => s.isCloud);
+    if (cloudSheet) selectSheet(cloudSheet);
+  }, [sheets, selectSheet]);
+
   const {
     handleMakeHome,
     handleDelete,
@@ -242,13 +252,14 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
         title: createMenuTitle(rootCreateContext),
         items: buildCreateMenuItems(rootCreateContext, {
           onAddComponent: handleAddComponent,
-          onAddFolder: handleAddFolder
+          onAddFolder: handleAddFolder,
+          onGoToCloudSheet: handleGoToCloudSheet
         }),
         width: MenuDialogWidth.Default,
         attachTo
       });
     },
-    [rootCreateContext, handleAddComponent, handleAddFolder]
+    [rootCreateContext, handleAddComponent, handleAddFolder, handleGoToCloudSheet]
   );
 
   // Handle right-click on empty space - Show create menu
@@ -350,6 +361,7 @@ export function ComponentsPanel({ options }: ComponentsPanelProps) {
             canAcceptDrop={canDrop}
             onAddComponent={handleAddComponent}
             onAddFolder={handleAddFolder}
+            onGoToCloudSheet={handleGoToCloudSheet}
             renamingItem={renamingItem}
             renameValue={renameValue}
             onRenameChange={setRenameValue}

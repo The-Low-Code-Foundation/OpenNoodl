@@ -82,6 +82,13 @@ export interface CreateHandlers {
   onAddComponent: (template: TSFixme, parentPath?: string) => void;
   /** Omit to leave "Create Folder" off the menu — the canvas trail has no folders. */
   onAddFolder?: (parentPath?: string) => void;
+  /**
+   * Switch to the Cloud Functions sheet. Wired only where a sheet switch is
+   * possible (the panel's folder contexts); omitted where it is not (nested
+   * inside a component, or a surface with no sheet selector), in which case
+   * the disabled row falls back to stating the reason with no action.
+   */
+  onGoToCloudSheet?: () => void;
 }
 
 /**
@@ -154,7 +161,7 @@ function cloudUnavailableHint(context: Pick<CreateContext, 'forParentType' | 'ru
  */
 export function buildCreateMenuItems(
   context: CreateContext,
-  { onAddComponent, onAddFolder }: CreateHandlers
+  { onAddComponent, onAddFolder, onGoToCloudSheet }: CreateHandlers
 ): (MenuDialogItem | 'divider')[] {
   const templates = ComponentTemplates.instance.getTemplates({
     forParentType: context.forParentType,
@@ -170,14 +177,20 @@ export function buildCreateMenuItems(
 
   const blocked = cloudFunctionUnavailableReason(context);
   if (blocked) {
+    // The nesting reason ("top level only") has no sheet to switch to that
+    // would fix it — you'd still be inside the same component. Only the
+    // wrong-sheet reason names an action, so only it gets one.
+    const canJumpToCloudSheet = context.forParentType === 'folder' && Boolean(onGoToCloudSheet);
     items.push({
       icon: IconName.CloudFunction,
-      label: `Create ${CLOUD_TEMPLATE_LABEL}`,
+      label: canJumpToCloudSheet ? `Go to ${CLOUD_SHEET.displayName}` : `Create ${CLOUD_TEMPLATE_LABEL}`,
       // `isDisabled`, not `disabled`: MenuDialog reads the former and ignores
       // the latter, which is how "Make Home" on the home component has been
-      // rendering enabled all along.
-      isDisabled: true,
-      endSlot: cloudUnavailableHint(context),
+      // rendering enabled all along. Left `false` here on purpose when a jump
+      // is offered — a truly disabled row never fires `onClick` at all.
+      isDisabled: !canJumpToCloudSheet,
+      endSlot: canJumpToCloudSheet ? 'then create there' : cloudUnavailableHint(context),
+      onClick: canJumpToCloudSheet ? onGoToCloudSheet : undefined,
       tooltip: blocked,
       tooltipShowAfterMs: 0,
       testId: 'create-cloud-function-unavailable'

@@ -73,9 +73,12 @@
 }
 
 .Dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
+  /* PNL: `top`/`left` are set inline from a viewport-clamped measurement — a
+     narrow Components panel can put the trigger close enough to the panel's
+     left edge that a plain `right: 0` anchor (relative to this control)
+     overflowed past it, drawing over the icon rail. `position: fixed` here
+     is load-bearing: the inline coordinates are in viewport space. */
+  position: fixed;
   min-width: 160px;
   max-width: 200px;
   background-color: var(--theme-color-bg-2);

@@ -37,6 +37,8 @@ interface FolderItemProps {
   onDoubleClick?: (node: TreeNode) => void;
   onAddComponent?: (template: TSFixme, parentPath?: string) => void;
   onAddFolder?: (parentPath?: string) => void;
+  /** Switch to the Cloud Functions sheet, offered from the create menu's disabled row. */
+  onGoToCloudSheet?: () => void;
   isRenaming?: boolean;
   renameValue?: string;
   onRenameChange?: (value: string) => void;
@@ -73,6 +75,7 @@ export function FolderItem({
   onDoubleClick,
   onAddComponent,
   onAddFolder,
+  onGoToCloudSheet,
   isRenaming,
   renameValue,
   onRenameChange,
@@ -184,7 +187,7 @@ export function FolderItem({
         items.push(
           ...buildCreateMenuItems(
             { forParentType: 'folder', runtimeType, sheetName, parentPath },
-            { onAddComponent, onAddFolder }
+            { onAddComponent, onAddFolder, onGoToCloudSheet }
           )
         );
 
@@ -293,6 +296,7 @@ export function FolderItem({
       onDelete,
       onAddComponent,
       onAddFolder,
+      onGoToCloudSheet,
       sheets,
       onMoveToSheet,
       onOpen,

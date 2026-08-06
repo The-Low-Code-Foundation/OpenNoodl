@@ -27,6 +27,8 @@ interface ComponentTreeProps {
   canAcceptDrop?: (node: TreeNode) => boolean;
   onAddComponent?: (template: TSFixme, parentPath?: string) => void;
   onAddFolder?: (parentPath?: string) => void;
+  /** Switch to the Cloud Functions sheet, offered from a folder row's create menu. */
+  onGoToCloudSheet?: () => void;
   // Rename mode props
   renamingItem?: TreeNode | null;
   renameValue?: string;
@@ -73,6 +75,7 @@ export function ComponentTree({
   canAcceptDrop,
   onAddComponent,
   onAddFolder,
+  onGoToCloudSheet,
   renamingItem,
   renameValue,
   onRenameChange,
@@ -115,6 +118,7 @@ export function ComponentTree({
               onDoubleClick={onDoubleClick}
               onAddComponent={onAddComponent}
               onAddFolder={onAddFolder}
+              onGoToCloudSheet={onGoToCloudSheet}
               isRenaming={isRenaming}
               renameValue={renameValue}
               onRenameChange={onRenameChange}
@@ -147,6 +151,7 @@ export function ComponentTree({
                   canAcceptDrop={canAcceptDrop}
                   onAddComponent={onAddComponent}
                   onAddFolder={onAddFolder}
+                  onGoToCloudSheet={onGoToCloudSheet}
                   renamingItem={renamingItem}
                   renameValue={renameValue}
                   onRenameChange={onRenameChange}
