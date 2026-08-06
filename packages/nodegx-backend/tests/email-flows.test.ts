@@ -472,8 +472,13 @@ describe('BAK-002 email subsystem', () => {
           connections: [
             { sourceId: 'req1', sourcePort: 'receive', targetId: 'mail1', targetPort: 'send' },
             { sourceId: 'req1', sourcePort: 'pm-to', targetId: 'mail1', targetPort: 'to' },
-            { sourceId: 'mail1', sourcePort: 'sent', targetId: 'res1', targetPort: 'send' },
-            { sourceId: 'mail1', sourcePort: 'failed', targetId: 'resFail', targetPort: 'send' },
+            // ⚠️ `done`/`failure`, not `sent`/`failed`. ERG-001 §4 renamed this node's outcome
+            // ports to the shared `outcomeOutputs` set, and this fixture kept the old names — which
+            // `addConnection` accepts in silence, because it never checks that a port exists. Both
+            // wires went nowhere, no Response node was ever reached, and the two specs below hung
+            // to jest's 30s limit instead of failing. Red for days, and read as "flaky email tests".
+            { sourceId: 'mail1', sourcePort: 'done', targetId: 'res1', targetPort: 'send' },
+            { sourceId: 'mail1', sourcePort: 'failure', targetId: 'resFail', targetPort: 'send' },
             { sourceId: 'mail1', sourcePort: 'error', targetId: 'resFail', targetPort: 'errorMessage' }
           ],
           roots: []
