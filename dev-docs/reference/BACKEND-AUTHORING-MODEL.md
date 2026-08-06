@@ -145,7 +145,48 @@ the model above rather than from the nodes:
   the open internet. Set `functions.<name>.call` in the Permissions panel (CWF-017).
 - **They cannot manufacture privilege.** Admin authority is a credential, not a user row; a user's
   privilege is role membership in `_Role`, which nothing in this family writes; and `ACL`,
-  `objectId` and every `_`-prefixed column are refused by name rather than dropped.
+  `objectId` and every `_`-prefixed column are refused by name rather than dropped. Since F86
+  something else *does* write roles — see the next section, which is a separate family for exactly
+  this reason.
+
+## Roles: how an account acquires privilege
+
+**Membership in a role is the only way a `_User` row gains any authority on this backend.** Admin
+authority is a credential (`security.adminToken`), never a row; everything else a user may do comes
+from a CLP, a function `call` rule or a record ACL naming `role:<name>`, resolved per request by
+`SecurityState.rolesForUser`. Three nodes write it, and they are cloud-only:
+
+| Node | What it does |
+| --- | --- |
+| `Add User To Role` | Puts a named user in a named role, idempotently |
+| `Remove User From Role` | Takes them out, idempotently |
+| `Get User Roles` | Reads their roles through the resolver the access check itself uses |
+
+Four facts that follow from the model rather than from the nodes:
+
+- **There is no browser version and there will not be one.** A client-side node that adds the
+  current user to a role is one wire from a button to "make me staff". Role mutation is
+  backend-authoritative; the seam is a process global (`_noodl_system_roles`), it adds no HTTP
+  route, and the only gate is the function's own `call` rule — the same shape as CWF-015's, and the
+  same ⚠️ applies: **with no rule it falls back to `Allow Unauthenticated`.**
+- **⚠️ It is a separate module from the CWF-015 family on purpose.** `users/SystemUsers.ts` carries
+  a documented, tested property that it writes neither `_Role` nor the membership junction — the
+  property that makes "a node that can create a user" provably not "a node that can create an
+  admin". Granting privilege therefore has its own module (`roles/SystemRoles.ts`), its own process
+  global and its own audit actions (`role.system.*`, distinct from the operator's `role.*`), so
+  "what in this process can grant privilege?" has one file as the answer. A function that needs
+  both wires Create User's `Done` into Add User To Role, which is a graph an author can see.
+- **Creating a role grants nothing.** A role nothing references is inert; privilege comes from a
+  *rule* naming it, and rules are written in the Permissions panel and nowhere else. `Add User To
+  Role` still refuses an unknown role by default: a role name is written by two people at two times
+  — the rule that grants through it and the call that fills it — and creating on demand would turn
+  a typo into a member of a role no rule names, which is a grant that silently never happens. Tick
+  `Create Role If Missing` for the case that is genuinely not a typo (a function deployed to a
+  fresh backend).
+- **Roles are flat.** Parse allowed roles to contain roles; this backend does not.
+  `SecurityState.rolesForUser` is a single non-recursive JOIN over `_Join_users__Role`, so a
+  role-in-role edge would be stored and never resolved. Nothing offers to write one, and the change
+  would start at that JOIN.
 
 ## Per-record access control: yes, it works
 
@@ -176,10 +217,9 @@ code is the bug.*
   or API rules instead. It is **not** invisible in the editor: `data.acl` is bound to this port in
   `nodegx-backend-contract/src/nodeCapabilities.ts`, so the property row is gated with its reason by
   `capability-gating/gateForPort`. The console warning is the second line of defence, not the first.
-- ⚠️ **Nothing puts a user in a role at runtime.** A rule may say `role:member`; membership lives in
-  `_Role`, and no node in the library writes it (see also §Users above — the CWF-015 family
-  deliberately cannot manufacture privilege). Until that gap is closed, the role half of the model
-  is reachable only by hand in the editor's Permissions panel. Tracked as F86.
+- ⚠️ **A role ACL only means something if something can fill the role.** It could not until F86 —
+  membership was reachable only by pasting an objectId into the Permissions panel by hand. `Add User
+  To Role` closes it; see §Roles above for why that node is cloud-only.
 
 ## Naming
 
