@@ -41,6 +41,42 @@ Three kinds of doc in this folder:
 | 18, 19 | Code editor: autocomplete, linting, selection, "DIY mistake?" | **It's not DIY — it's CodeMirror 6**, and all six symptoms are located config gaps (a bad guard, a duplicate un-debounced error system, a hardcoded `dark: true`, a hover-only gutter). ~A day, mostly deletion. The real ask underneath is typed intellisense — reachable on CM6. ✅ **Talked 2026-08-05: no switch.** | [TALK-002](TALK-002-THE-CODE-EDITOR-IS-NOT-DIY.md) + [FH-017](FH-017-CODE-EDITOR-FIXES.md) + [FH-019](FH-019-TYPED-INTELLISENSE.md) |
 | 20 | Execution history / data explorer for deployed apps | Noted for the deployment phase as asked: execution history is coupled by *address* (cheap to remote), the Data Browser by *architecture* (needs a BackendHandle route); the admin-credential tier must be decided first; BAK-005's served `/_admin` already exists as the v1 answer. | [phase-26 NOTE-REMOTE-PANELS](../phase-26-deployment/NOTE-REMOTE-PANELS.md) |
 
+## Where this phase stands (updated 2026-08-06)
+
+**Shipped, 2026-08-05 — the twelve-task FH batch:** FH-003, 004, 005, 006, 008, 009, 012, 013,
+014, 015, 016, 017, 022 (commits `7a9ddc30`…`328a025d`). Five of those docs' stated mechanisms
+turned out to be wrong — the docs here are researched, not infallible; verify at file:line before
+building on one.
+
+**Shipped, 2026-08-06 — the second batch (six parallel agents, eleven commits `9b1e8ca5`…`9b2de481`):**
+
+| Task | What landed | Notable |
+|---|---|---|
+| **FH-010** | The VC dialogs portal their **backdrop** out of the panel subtree (`PanelOverlay`) | The stacking context is `container-type`'s implied `contain: layout` — one property, not the three the doc named. `isolation: isolate` appears nowhere in the repo. A drag started inside a dialog and released outside used to close it. |
+| **FH-011** | Record actually records — the poll lives in `TraceSession`, `stop()` pulls *before* disarming, re-arm on `ViewerRegistered` | The disarm **drops the runtime's TraceBuffer outright**, so pulling after it would have pulled nothing. And Stop un-recorded the recording: every `✕ never fired` reverted to `· unknown` the moment you released Record. |
+| **FH-020** | A read-only **Ports** tab in the property panel — where anyone finally reads FH-022's wording | The cast table says `signal → boolean, number`; `ConnectionBar` then refuses those wires by a rule that is *nowhere in the table*. Built to the doc, the tab would have taught the exact wrong answer. |
+| **CWF-017** | You can say who may call each cloud function, and how often (+ a Permissions panel section) | A `call-function` step runs **in process** and never reaches the dispatcher — so `nobody` still runs from a workflow step. The doc's stated trap was backwards. |
+| **CWF-008** | The cloud picker goes 48 → 62: the whole Array family, Variable, Component Object, Switch, Number Remapper | The move was the easy half. All four state nodes used the module-level `Model`, not `nodeScope.modelScope` — **Variable was a live cross-request leak** between concurrent function calls. |
+| **CWF-003** | HTTP Request works in a cloud function (multipart included) | Before this a cloud author could reach **no** HTTP node at all — REST2 is `deprecated: true` and never offered. |
+| **MCP-003** | `nodegx-observe` reconnects and re-reads its token, so a copied command survives an editor restart | — |
+| **MCP-002** | Both MCP servers actually build and ship (`npm run build:sidecars`) | ⚠️ **electron-builder only *warns* on a missing `extraResources` source.** Every published NodeGX artifact is almost certainly missing `Resources/nodegx-backend/cli.js` today — green build and all. Fixed as a side effect; deserves its own look. |
+
+**Decisions taken 2026-08-06 (Richard):**
+- **FH-018 → delete the Config node outright** (option (a)). Front-end config that holds secrets is
+  unsafe by construction. The server-side `/config` filter lands regardless.
+- **ERG-005 §2 → add explicit type selection on Component I/O, inference stays the default.**
+  Blocked on sequencing only: the other session's §1 changes the same seams.
+
+**Two defects filed, not fixed, by that batch:** `Array Filter`'s `enabled` and `Array Map`'s
+`mapScript` are inert `default`s (a hand-authored filter passes everything through) — and they
+affect the browser identically, so the fix is a behaviour change that wants its own task.
+
+**Still open:** FH-007 (decided, blocked on ERG-005 §1), FH-018, FH-019, FH-021, HUD-001…004,
+MCP-001, MCP-004, CWF-001, 002, 004, 005, 006, 009…016, 018.
+
+**Nothing in either batch has been driven in the editor.** Every task doc carries its own live-QA
+recipe; that pass is still owed, in both themes.
+
 ## The six conversations, in the order I'd have them
 
 1. 🔄 **[TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) — cloud workflows. HAD 2026-08-05, then

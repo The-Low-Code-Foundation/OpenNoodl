@@ -38,11 +38,14 @@ commit.
 
 ## What to do
 
-1. **Richard answers ERG-005 §2** (this is the talk-shaped nub — one question, so it lives here
-   rather than a TALK doc): add explicit type selection with inference as the default, or stay
-   inference-only? The §2 write-up's own recommendation is *add the explicit option, keep inference
-   as the default*. Relevant new fact since §2 was written: an alpha user (you) expected the
-   feature to exist — which is evidence for the explicit option.
+1. ✅ **ERG-005 §2 is ANSWERED — Richard, 2026-08-06: add explicit type selection, with inference
+   as the default.** The §2 write-up's own recommendation, and the alpha drive is the evidence for
+   it: a user expected the feature to exist. Inference-only projects must behave exactly as today
+   (criterion 4) — the explicit type is an *option that wins when set*, never a migration.
+
+   ⚠️ **Still blocked on sequencing, not on the decision.** ERG-005 §1 is mid-flight in another
+   session (untracked `tests-unit/erg-005/` in this checkout, written against an API that does not
+   exist here yet) and it changes the same seams. Do not start the build until §1 is committed.
 2. If yes: the build is a type dropdown in the Port Editor rows
    (`componentports.tsx`/`ComponentPortsView.tsx`), a stored type that wins over `_deriveType` when
    present, serialisation of chosen types, and validator awareness — **sequenced after the other
