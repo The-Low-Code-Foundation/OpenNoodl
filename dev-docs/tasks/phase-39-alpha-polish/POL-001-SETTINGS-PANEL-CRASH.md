@@ -1,5 +1,11 @@
 # POL-001 — The settings panel crashes on open
 
+**Status:** ✅ **done 2026-08-03** (`c6d5f9f8`). All 5 criteria, verified live on "AIB38 Live Chat" —
+the project that actually crashed. Slice 2 is answered and the answer is *not* a defect: the key is
+not lost, because **v2 elides an empty `settings: {}` by design on both sides of the round-trip**, so
+the guard at construction is the whole fix. See *"What is not yet confirmed"* below, which this
+answers.
+
 **Severity:** alpha-blocking. This is the only route to the theme switch and the AI provider key
 (see the comment at `router.setup.ts:376`). A user who cannot open it cannot configure the product.
 

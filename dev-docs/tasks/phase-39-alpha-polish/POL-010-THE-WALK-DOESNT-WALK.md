@@ -27,7 +27,12 @@ And on the canvas, plainly visible: `Query Messages` → `Items` output, wired t
 `Filter Messages By Conversation` → `Items` input. The wire the walk should have followed is drawn
 two inches to the right of the panel saying there is one row.
 
-## Status: DONE — 2026-08-04 (slices 3, 2b and 4; slice 2 deferred as decided)
+## Status: DONE — 2026-08-04 (slices 3, 2b and 4; slice 2 deferred as decided → [POL-018](POL-018-A-PROJECT-SOURCED-TOPOLOGY.md))
+
+⚠️ **This is the current status of this task, and it is the only one.** Further down there is a
+section headed *"The diagnosis, as recorded on 2026-08-04 (slice 1)"* — that is a historical
+stratum, kept because the diagnosis is the reusable part, and it is **not** a competing status.
+It used to be a second `## Status:` heading and was renamed on 2026-08-06 for exactly that reason.
 
 All six criteria met and verified live on Richard's chat project. `scripts/pol39-live/pol010-walk.js`
 reports **15/15**; the same driver against `HEAD` reported **5/14**, which is the mechanism stated as
@@ -82,11 +87,17 @@ renders **no rows and no row count**: those are the two where a row is not a res
 
 ### What was NOT done, and is unchanged
 
-Slice 2 (project-sourced topology) stays deferred, per Richard's decision. So walking back to
+Slice 2 (project-sourced topology) stays deferred, per Richard's decision, and it is
+**[POL-018](POL-018-A-PROJECT-SOURCED-TOPOLOGY.md)** — filed 2026-08-06, after two days in which the
+deferral had a decision and no row. So walking back to
 `Query Messages` from `messagesText.text` still needs the Chat page mounted — with it mounted the
 walk works and is in the test; without it, the panel now says why instead of showing one row.
 
-## Status: DIAGNOSED — 2026-08-04
+## The diagnosis, as recorded on 2026-08-04 (slice 1)
+
+**Historical, and superseded by the DONE status above — not a second status.** Kept in full because
+the diagnosis is the reusable part and because the way the wrong candidate died is worth more than
+the answer: a candidate built on an assumption about what a value *looks like*.
 
 **It is candidate (1), and candidate (2) is wrong.** The walk engine is correct, the ids join fine,
 and the topology it is handed genuinely does not contain the wire. Evidence below; slices rewritten
@@ -222,7 +233,9 @@ stops presenting one row as though it were a result. The fourth state in slice 3
 is not in the topology at all* — is the one Richard actually hit, is free to detect, and is the
 whole of the visible fix.
 
-**Slice 2 — the structure should come from the project, not from the preview. DEFERRED.**
+**Slice 2 — the structure should come from the project, not from the preview. DEFERRED →
+[POL-018](POL-018-A-PROJECT-SOURCED-TOPOLOGY.md).** The reasoning below is kept here as written; the
+task file carries the seams, the two questions owed to Richard, and the criteria.
 
 The walk makes a claim about *the user's graph*. The graph is the editor's artefact and the editor
 has all of it, mounted or not: every component, every declared connection, at all times. The runtime
@@ -311,7 +324,8 @@ hand-written fixture would have hidden. It is also the strongest argument for sl
 made so far.
 
 **Deferred with slice 2:** walking back to `Query Messages` and reporting what it emitted. That
-needs a project-sourced topology and is a separate task.
+needs a project-sourced topology and is a separate task —
+[POL-018](POL-018-A-PROJECT-SOURCED-TOPOLOGY.md).
 
 ## Traps
 

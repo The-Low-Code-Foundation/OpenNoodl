@@ -115,21 +115,39 @@ nobody re-derives them:
 If user feedback after launch says a surface needs more room, the cheap option is the second one —
 per-panel `defaultWidth` is already supported and PNL-003 already remembers what a user drags to.
 
-### Three findings from the layout pass — filed, not fixed
+### Three findings from the layout pass — all three now closed
 
-1. **[POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md) — the Data Browser reads
+Filed here on 2026-08-03 as *"filed, not fixed"*. **All three are fixed and verified live as of
+2026-08-04**; two of them only because Richard noticed that findings 2 and 3 were living as prose in
+a done task's notes cell with nothing tracking them, which is the phase's pol-013 lesson and the
+reason [POL-016](POL-016-THE-TWO-FINDINGS-POL-005-FILED.md) exists at all.
+
+1. ✅ **[POL-014](POL-014-THE-DATA-BROWSER-READS-A-KEY-NOTHING-SENDS.md) — the Data Browser reads
    `record.id`; records carry `objectId`.** Blank id column, a React key warning on every load,
    one cell click opening editors in all eight rows, and a delete that silently does nothing.
-   Its own task; it is not a layout defect and it is not width-dependent.
-2. **"Save policy" on the Sign-in surface is invisible as a button.** It is a real `PrimaryButton`,
+   Its own task; it is not a layout defect and it is not width-dependent. **Closed by POL-014** —
+   `objectId` is the one name, all 7 criteria live, and the drive found a sixth consequence (the
+   search clause sent `{ id: { contains } }`, which the adapter turned into `"id" LIKE ?` against a
+   table with no such column, so every search failed at the database).
+2. ✅ **"Save policy" on the Sign-in surface is invisible as a button.** It is a real `PrimaryButton`,
    90×30, `is-variant-muted`: computed background `rgb(247,249,251)` against a panel that is
    essentially the same colour, with `border-width: 0`. The only save control on that surface reads
-   as plain text, in both themes. Every sibling surface uses a normal button for its action ("Add
-   role", "Issue key", "Add provider"). One-line variant change; needs a decision about whether
-   `muted` is wrong here or wrong generally.
-3. **Schema's header is bespoke.** Six surfaces use icon + title + subtitle + X; Schema uses a plain
+   as plain text, in both themes. **Closed by [POL-016](POL-016-THE-TWO-FINDINGS-POL-005-FILED.md)**
+   — and the question this finding poses at the end of it (*"is `muted` wrong here or wrong
+   generally?"*) **was the wrong question**. The three siblings cited below as working
+   counter-examples are the *identical* `Muted` variant; a muted fill measures **1.00–1.24:1 against
+   every surface it can land on**, in both themes. So `muted` was wrong **everywhere**, at 143 call
+   sites, and this was never a one-line variant change. Richard's answer 9 gave the variant an inset
+   ring in a new `--theme-color-border-control`.
+   > ~~Every sibling surface uses a normal button for its action ("Add role", "Issue key", "Add
+   > provider"). One-line variant change; needs a decision about whether `muted` is wrong here or
+   > wrong generally.~~ — kept struck through rather than deleted, because counting the call sites
+   > before answering it is what showed the premise was false.
+3. ✅ **Schema's header is bespoke.** Six surfaces use icon + title + subtitle + X; Schema uses a plain
    title with a `+ New Table / Refresh / Close` group and no backend subtitle. Cosmetic,
    pre-existing, and the odd one out now that the surfaces are the only thing in the panel.
+   **Closed by [POL-016](POL-016-THE-TWO-FINDINGS-POL-005-FILED.md)** — schema now uses the shared
+   header and its actions moved to a `.Toolbar`, the shape `DataBrowser` already had.
 
 The Data grid **scrolls rather than clips** at 860 (row width 1550px, horizontal scrollbar present)
 and shows five of twelve columns, of which two are `createdAt`/`updatedAt`. Usable; noted.

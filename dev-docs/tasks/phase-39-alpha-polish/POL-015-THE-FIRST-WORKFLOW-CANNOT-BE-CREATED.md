@@ -1,5 +1,10 @@
 # POL-015 — The first workflow on a backend cannot be created
 
+**Status:** ✅ **done 2026-08-04** (`480ade46`). All 5 criteria verified live on a backend with
+`workflowCount: 0`. The backend list comes from `listWorkflowDefinitions()` — the call the panel
+already makes, already scoped to *running* backends with `error` on the unreachable — rather than the
+spec's suggested `useLocalBackends`, which also lists stopped ones. See **BUILT AND VERIFIED** below.
+
 Found on 2026-08-03 while setting up the fixture **POL-009** needed. POL-009's criteria all begin
 "pin a run on a workflow canvas", so the first thing that session did was press `+` in the Workflows
 panel. It has never worked.

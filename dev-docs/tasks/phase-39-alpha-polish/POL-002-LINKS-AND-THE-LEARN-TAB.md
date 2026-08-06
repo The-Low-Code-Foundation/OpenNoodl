@@ -1,5 +1,11 @@
 # POL-002 — Three real links, and one tab that goes away
 
+**Status:** ✅ **done** (`d9c0f37c`). **All 6 criteria, no residual.** Criteria 1–5 landed
+2026-08-03; criterion 6 — the packaged build — was carried for four sessions as *"human-gated"*,
+which was **wrong**, and it was run and met in the seventh session on 2026-08-04. See the criterion-6
+section at the foot of this file. One defect was found and fixed on the way (`autoupdater.js`'s
+unhandled rejection on every launch, 2 → 0 verified by repackaging).
+
 Covers reported items **1** (hide the Learn tab), **2** (launcher footer links) and **5** (the `?`
 in the editor's bottom-right).
 

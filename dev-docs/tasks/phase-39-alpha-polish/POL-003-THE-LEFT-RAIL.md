@@ -1,5 +1,12 @@
 # POL-003 — The left rail: legible glyphs, and the right ones
 
+**Status:** ✅ **done** (`d32b3d13`, `fc10449a`), **slice 2 deferred by Richard's answer 3 →
+[POL-013](POL-013-ICONSIZE-SWEEP.md)** (which is itself now done). Contrast measured live at
+**8.26:1 dark / 7.49:1 light**, five Lucide glyphs in. ⚠️ **Criterion 4 belongs to POL-013, not to
+this file** — the both-theme sweep for unintentionally-resized icons could not be run here, because
+`IconSize` was still inert everywhere except the hide-panel button that this task sized from its own
+container.
+
 Covers reported items **3** (dark-mode contrast; the hide-panel icon's size and centring), **4**
 (three glyph swaps) and **6** (narrow/widen → fold/unfold).
 

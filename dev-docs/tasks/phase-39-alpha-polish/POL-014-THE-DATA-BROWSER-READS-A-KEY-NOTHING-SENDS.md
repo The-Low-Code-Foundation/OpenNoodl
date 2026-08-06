@@ -1,5 +1,11 @@
 # POL-014 — The Data Browser reads a key nothing sends
 
+**Status:** ✅ **done 2026-08-04** (`5c8c43cf`, `0064d520`). All 7 criteria verified live. Option (b):
+`objectId` is the one name. The drive found two further defects and fixed both — Enter in a cell
+editor saved the value the cell *started with* (a `useCallback` closure captured at mount), and a
+failed delete was on screen for ~300ms because the realtime refresh clears `error`. See **BUILT AND
+VERIFIED** below.
+
 Found on 2026-08-03 while running **POL-005 slice 3** — the pass that opens each backend surface at
 860px and asks whether it is usable there. The Data Browser is usable at 860px. It is not usable at
 any width, and that has nothing to do with POL-005.
