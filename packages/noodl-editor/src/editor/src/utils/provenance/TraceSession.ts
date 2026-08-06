@@ -216,6 +216,7 @@ export class TraceSession extends Model {
         if (highest < this.lastSeq) {
           this.traceEvents = events.slice();
           this.lastSeq = highest;
+          this.notifyBufferReset();
           this.notifyListeners('eventsChanged');
           return;
         }
@@ -266,6 +267,7 @@ export class TraceSession extends Model {
     this.recording = true;
     this.hasTrace = true;
     this.armGeneration++;
+    this.notifyBufferReset();
     ViewerConnection.instance?.sendTraceEnabled(true);
     this.startPolling();
     this.notifyListeners('recordingChanged');
@@ -396,7 +398,25 @@ export class TraceSession extends Model {
     // Still a trace if one is running: an emptied buffer under a live recording is "nothing has
     // fired since", which is a ✕, not an "unknown".
     this.hasTrace = this.recording;
+    this.notifyBufferReset();
     this.notifyListeners('eventsChanged');
+  }
+
+  /**
+   * HUD-003 — every event this session held has been replaced, so anything holding one is stale.
+   *
+   * ⚠️ **A held `TraceEvent` is not safe across this, and a held `seq` is worse.** `seq` restarts
+   * at 1 when a preview reloads, so a forward walk focused on "root 7" does not merely go blank
+   * after a reload — it silently re-points at whatever the *new* session numbered 7 and renders
+   * it under the old label, which is a confident wrong answer of exactly the kind this surface
+   * exists not to give.
+   *
+   * Announced rather than acted on, because the things that hold roots are surfaces: the panel's
+   * `focusedRoot`, and the request module's unclaimed stash. Neither is reachable from here
+   * without importing a view, and the session is the only thing that knows.
+   */
+  private notifyBufferReset() {
+    this.notifyListeners('bufferReset');
   }
 
   /**
@@ -427,6 +447,7 @@ export class TraceSession extends Model {
     this.lastSeq = 0;
     this.recording = false;
     this.hasTrace = false;
+    this.notifyBufferReset();
     this.notifyListeners('topologyChanged');
     this.notifyListeners('eventsChanged');
     this.notifyListeners('recordingChanged');

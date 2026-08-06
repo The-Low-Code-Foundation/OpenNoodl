@@ -33,17 +33,37 @@
   pointer-events: none;
 }
 
-.Control {
+/**
+ * HUD-003: the bottom-centre stack — note, interactions list, pill, in that order.
+ *
+ * ⚠️ **The three were independently `position: absolute` with hand-picked offsets**, which held
+ * for exactly as long as there were two of them. A column that lays itself out cannot have the
+ * note and the list land on the same 90px.
+ *
+ * `pointer-events: none` on the stack and `all` on the children that want a click: the canvas
+ * owns every gesture over it and this dock spans the width of whatever it contains.
+ */
+.Dock {
   position: absolute;
   left: 50%;
   bottom: 52px;
   transform: translateX(-50%);
+  pointer-events: none;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+}
+
+.Control {
   pointer-events: all;
 
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  max-width: calc(100% - 32px);
+  max-width: 100%;
 
   background-color: var(--theme-color-bg-1);
   border: 1px solid var(--theme-color-border-default);
@@ -125,6 +145,118 @@
   }
 }
 
+/**
+ * HUD-003: the disclosure.
+ *
+ * Borderless, unlike Record and Stop, and that is not a POL-013 regression — it is a glyph
+ * inside a bordered pill rather than a control on a bare surface, so its contrast is measured
+ * against `--theme-color-bg-1` where the muted-button problem was a control against its own
+ * identical panel. It also carries a hover fill and a real focus ring.
+ */
+.Expand {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background-color: transparent;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/**
+ * The expanded list — HUD-003.
+ *
+ * ⚠️ **This one takes clicks, and it is the only thing in the recording HUD that does apart from
+ * the pill's own buttons.** The badges deliberately do not (HUD-002): they are canvas-space, they
+ * appear and fade on their own schedule, and a click target that materialises under the cursor
+ * for three seconds during a recording would eat the drag, the marquee and the right-click the
+ * user is recording *with*. This panel is screen-space, stationary, and only exists while the
+ * user has explicitly opened it.
+ */
+.Interactions {
+  pointer-events: all;
+
+  display: flex;
+  flex-direction: column;
+  width: min(360px, 100%);
+  max-height: 232px;
+  overflow-y: auto;
+
+  padding: 6px;
+  border-radius: var(--radius-default);
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  box-shadow: var(--shadow-popup);
+
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.InteractionsTitle {
+  padding: 2px 6px 6px;
+  color: var(--theme-color-fg-muted);
+  font-size: 11px;
+}
+
+.InteractionsMore {
+  padding: 6px;
+  color: var(--theme-color-fg-muted);
+  font-size: 11px;
+}
+
+.Interaction {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: var(--radius-default);
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: -2px;
+  }
+}
+
+.InteractionArrow {
+  flex: 0 0 auto;
+  color: var(--theme-color-primary);
+}
+
+.InteractionLabel {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.InteractionSize {
+  flex: 0 0 auto;
+  color: var(--theme-color-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .Label {
   color: var(--theme-color-fg-highlight);
   font-weight: 600;
@@ -148,13 +280,9 @@
  * which is the failure `renderSlot`'s silent no-op makes easy to ship.
  */
 .Note {
-  position: absolute;
-  left: 50%;
-  bottom: 90px;
-  transform: translateX(-50%);
   pointer-events: none;
 
-  max-width: min(520px, calc(100% - 32px));
+  max-width: min(520px, 100%);
   padding: 6px 12px;
   border-radius: var(--radius-default);
 

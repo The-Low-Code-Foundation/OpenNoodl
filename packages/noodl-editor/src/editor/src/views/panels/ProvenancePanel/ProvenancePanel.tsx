@@ -14,7 +14,10 @@ import { LIVE_POLL_MS, TraceSession } from '../../../utils/provenance/TraceSessi
 import { annotateWarnings } from '../../../utils/provenance/annotateWarnings';
 import { editorDiagnoses } from '../../../utils/provenance/editorDiagnoses';
 import {
+  clearPendingProvenanceRequests,
+  clearPendingProvenanceRoot,
   clearPendingProvenanceWalk,
+  takePendingProvenanceRoot,
   takePendingProvenanceWalk
 } from '../../../utils/provenance/provenanceRequest';
 import {
@@ -90,6 +93,20 @@ export function ProvenancePanel() {
     const group = {};
     session.on(['topologyChanged', 'eventsChanged', 'portValuesChanged'], bump, group);
     session.on('recordingChanged', () => setRecording(session.recording), group);
+    // ⚠️ **A focused root does not survive the buffer it came from — HUD-003.** `seq` restarts
+    // at 1 when a preview reloads, and `forwardWalk` finds a root's descendants by `seq`, so a
+    // forward walk left on screen across a reload does not go blank: it re-points at whatever
+    // the *new* session happens to have numbered the same and draws it under the old heading.
+    // The session announces the reset (renumber, re-arm, project change); this is what listens.
+    session.on(
+      'bufferReset',
+      () => {
+        setFocusedRoot(undefined);
+        setSelectedKey(undefined);
+        clearPendingProvenanceRequests();
+      },
+      group
+    );
     return () => {
       session.off(group);
     };
@@ -184,14 +201,39 @@ export function ProvenancePanel() {
     return () => clearInterval(timer);
   }, [recording, target, load]);
 
-  // The entry point. Both right-click surfaces go through `requestProvenanceWalk`; nothing else
-  // drives the panel, so there is no selection listener to race with.
+  /**
+   * Focus one recorded interaction and walk forwards from it.
+   *
+   * ⚠️ `target` is deliberately left alone. A backward walk and a forward one are two answers
+   * about the same graph, and "Back to walk" is only truthful if the walk is still there.
+   */
+  const focusRoot = useCallback(
+    (root: RootEvent) => {
+      setSelectedKey(undefined);
+      setFocusedRoot(root);
+      // The topology is what turns ids into labels, and a panel reached straight from the HUD
+      // may never have asked for one. Quiet: nothing here blocks the walk, which is already
+      // rendered from the events the session has been polling all along.
+      void session.refreshTopology().then(bump);
+    },
+    [session, bump]
+  );
+
+  // The entry point. Every surface goes through `provenanceRequest` — the two canvas right-clicks
+  // with a port, the recording HUD's interactions list with a root (HUD-003). Nothing else drives
+  // the panel, so there is no selection listener to race with.
   //
-  // ⚠️ **The request that arrives before this effect runs is the one that matters.** A right-click
+  // ⚠️ **The request that arrives before this effect runs is the one that matters.** A request
   // has to switch the sidebar to get here, and the panel does not mount until it does — so the
   // very first "Why is this empty?" of a session fired into no listener at all and opened the
-  // panel on its own placeholder. `takePendingProvenanceWalk` claims it on mount; the listener
-  // clears it so a live request is never also replayed.
+  // panel on its own placeholder. `takePending…` claims it on mount; the listeners clear it so a
+  // live request is never also replayed.
+  //
+  // ⚠️ **And the root request is the worse case of the two.** With Record on the canvas an entire
+  // recording can happen without this panel ever being *constructed* (`SidePanel` builds a panel
+  // only when it is first opened), so a click on an interaction is *always* the losing case
+  // rather than merely the first of a session. Every root click would need a second click if
+  // this went through a bare emit.
   useEffect(() => {
     const group = {};
     const start = (ref: EdgeRef) => {
@@ -210,11 +252,23 @@ export function ProvenancePanel() {
       group
     );
 
-    const pending = takePendingProvenanceWalk();
-    if (pending) start(pending);
+    EventDispatcher.instance.on(
+      'provenance:root',
+      (root: RootEvent) => {
+        clearPendingProvenanceRoot();
+        focusRoot(root);
+      },
+      group
+    );
+
+    const pendingWalk = takePendingProvenanceWalk();
+    if (pendingWalk) start(pendingWalk);
+
+    const pendingRoot = takePendingProvenanceRoot();
+    if (pendingRoot) focusRoot(pendingRoot);
 
     return () => EventDispatcher.instance.off(group);
-  }, [load]);
+  }, [load, focusRoot]);
 
   const walk: WalkResult | undefined = useMemo(() => {
     // ⚠️ `previewRunning` is not decoration. The engine holds a topology and never a connection,
@@ -321,7 +375,10 @@ export function ProvenancePanel() {
           />
           {focusedRoot && (
             <PrimaryButton
-              label="Back to walk"
+              // ⚠️ There is not always a walk to go back to. A root clicked in the recording HUD
+              // opens this panel with no backward walk behind it at all, and "Back to walk"
+              // there names a screen the user has never seen.
+              label={target ? 'Back to walk' : 'Back to interactions'}
               size={PrimaryButtonSize.Small}
               variant={PrimaryButtonVariant.Muted}
               onClick={() => setFocusedRoot(undefined)}
@@ -339,7 +396,7 @@ export function ProvenancePanel() {
           <EmptyState
             roots={roots}
             index={index}
-            onPick={setFocusedRoot}
+            onPick={focusRoot}
             recording={recording}
             eventCount={session.traceEvents.length}
           />
@@ -575,10 +632,27 @@ function metaFor(row: WalkRow): string {
   return `fired · ${timeOf(row)}`;
 }
 
+/**
+ * When a row fired, as the runtime actually measures it.
+ *
+ * ⚠️ **`TraceEvent.t` is not a wall clock and `new Date(t)` on it prints nonsense.** It is
+ * `platform.getCurrentTime()`, which in the browser viewer is `window.performance.now()` —
+ * milliseconds since the *preview page* loaded. This column used to render
+ * `new Date(t).getHours():getMinutes():getSeconds()`, i.e. the first few seconds of
+ * 1 January 1970 shifted into the editor's timezone, so every row in every walk read `01:00:04`
+ * and the number was quietly meaningless. Filed against HUD-002 and fixed here, since HUD-003 is
+ * the task that brought the forward walk — where the whole point is the order things happened —
+ * onto this surface.
+ *
+ * What `t` genuinely is is an offset into the preview session, so that is what is printed. It is
+ * comparable between rows, which is the only thing a walk asks of it.
+ */
 function timeOf(row: WalkRow): string {
   if (!row.event) return '';
-  const d = new Date(row.event.t);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const seconds = row.event.t / 1000;
+  if (seconds < 60) return `+${seconds.toFixed(1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `+${minutes}m ${pad(Math.floor(seconds - minutes * 60))}s`;
 }
 
 function pad(n: number): string {

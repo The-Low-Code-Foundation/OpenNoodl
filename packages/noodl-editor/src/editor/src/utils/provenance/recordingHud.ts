@@ -17,6 +17,7 @@
  * ever claimed for it — see `tracebuffer.ts`: "Wall clock, for display only.")
  */
 
+import { RootEvent, WalkIndex, labelFor, rootEvents } from './walkEngine';
 import type { TraceEventLike } from './walkEngine';
 
 /** How long a node stays badged after the last event that touched it. */
@@ -224,6 +225,62 @@ export function offCanvas(
     events,
     components: components.size > 0 && components.size <= maxNamed ? Array.from(components).sort() : []
   };
+}
+
+/**
+ * The most interactions the expanded HUD lists at once.
+ *
+ * Roots are short by construction — a click is *one* root and a cascade of hundreds of
+ * descendants — but "short" is not "bounded": a mouse-move handler or a timer produces one root
+ * per tick, and the HUD is a floating panel over a canvas, not a scrolling document.
+ */
+export const INTERACTION_LIMIT = 12;
+
+export interface InteractionRow {
+  /** The root's identity **within this session**. See {@link interactionRows}. */
+  seq: number;
+  /** `labelFor` of the root's source port — the thing the user did. */
+  label: string;
+  /** Events in this root's causal tree, including itself. */
+  size: number;
+  /** Handed straight to the panel; the walk is `forwardWalk(index, root.event)`. */
+  root: RootEvent;
+}
+
+export interface InteractionList {
+  rows: InteractionRow[];
+  /**
+   * Roots the cap left out.
+   *
+   * ⚠️ Reported rather than dropped. A capped list that says nothing is a list claiming the
+   * recording contained twelve interactions, and the user who moved the mouse has three hundred.
+   */
+  hidden: number;
+}
+
+/**
+ * The expanded HUD's list — HUD-003 slice 1.
+ *
+ * ⚠️ **Newest first, which `rootEvents` is not.** The engine returns causal children in the
+ * order they were indexed, so a recording reads oldest-first there. On a live HUD that is
+ * backwards: the thing the user just did is the thing they are looking for, and it would arrive
+ * at the bottom of a capped list — i.e. never.
+ *
+ * ⚠️ **Nothing is computed here.** `rootEvents` and `labelFor` are the engine's, unchanged and
+ * shared with the panel's own "Recorded interactions" list, so the two surfaces cannot drift
+ * into disagreeing about what happened. The cap is applied *after* the reverse, so it keeps the
+ * newest rather than the first.
+ */
+export function interactionList(index: WalkIndex, options?: { limit?: number }): InteractionList {
+  const limit = options?.limit ?? INTERACTION_LIMIT;
+  const roots = rootEvents(index);
+
+  const rows: InteractionRow[] = [];
+  for (let i = roots.length - 1; i >= 0 && rows.length < limit; i--) {
+    const root = roots[i];
+    rows.push({ seq: root.event.seq, label: labelFor(index, root.event.from), size: root.size, root });
+  }
+  return { rows, hidden: roots.length - rows.length };
 }
 
 /**

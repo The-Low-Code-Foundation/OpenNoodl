@@ -1,5 +1,5 @@
 /**
- * HUD-001 / HUD-002 — Record, on the canvas, with the graph lighting up under it.
+ * HUD-001 / HUD-002 / HUD-003 — Record, on the canvas, with the graph lighting up under it.
  *
  * TALK-003's product split: **the Provenance panel asks questions about wiring; the HUD watches
  * the app run.** Arming a recorder used to live inside a question-answering panel, which is why
@@ -15,13 +15,20 @@
  * the poll there, and it is the same singleton the Provenance panel reads — and every badge and
  * every sentence drawn here is a pure function of it in `utils/provenance/recordingHud`.
  * Anything that looks like analysis in this file is a bug.
+ *
+ * ⚠️ **The click on an interaction goes through `provenanceRequest`, never inline.** Emitting and
+ * then switching the sidebar loses the request, and this handoff is the worst-exposed one in the
+ * editor: with Record on the canvas, a whole recording can happen without the Provenance panel
+ * ever having been *constructed*, so the first click on a root is always the losing case rather
+ * than merely the first of a session.
  */
 
 import { useEventListener } from '@noodl-hooks/useEventListener';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import { TraceSession } from '../../../utils/provenance/TraceSession';
+import { requestProvenanceRootWalk } from '../../../utils/provenance/provenanceRequest';
 import {
   BADGE_FADE_MS,
   BadgeState,
@@ -31,9 +38,11 @@ import {
   canvasNote,
   foldEvents,
   headerSummary,
+  interactionList,
   offCanvas,
   visibleBadges
 } from '../../../utils/provenance/recordingHud';
+import { buildIndex } from '../../../utils/provenance/walkEngine';
 import type { NodeBounds } from '../ExecutionOverlay';
 import { RecordingNodeBadge } from './RecordingNodeBadge';
 import styles from './RecordingOverlay.module.scss';
@@ -77,6 +86,17 @@ export function RecordingOverlay({ viewport, getNodeBounds, enabled }: Recording
   const [, setTick] = useState(0);
   /** Why the last press did nothing. Cleared when a preview shows up. */
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
+  /** HUD-003: whether the interactions list is showing. Off by default; a HUD is not a panel. */
+  const [expanded, setExpanded] = useState(false);
+  /**
+   * Bumped on every arriving batch.
+   *
+   * The badges have their own state and re-render on their own; this exists for the interactions
+   * list, which is derived from the session's arrays and would otherwise never notice them
+   * change — the session mutates in place, so React sees the same reference. Same counter
+   * pattern, and for the same reason, as `ProvenancePanel`'s.
+   */
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
     if (!enabled) return;
@@ -90,10 +110,22 @@ export function RecordingOverlay({ viewport, getNodeBounds, enabled }: Recording
         // ends the "this just happened" claim a badge is making. The events themselves survive
         // both — they are what the Provenance panel's walk reads afterwards.
         setBadges(EMPTY_BADGE_STATE);
+        // ⚠️ And the expansion goes with it. The HUD is the live face of a recording and it is
+        // gone once you stop (TALK-003 Q1); the after-the-fact list lives in the Provenance
+        // panel, fed by this same session. A list left hanging over an idle canvas would be a
+        // second, competing copy of it.
+        if (!session.recording) setExpanded(false);
       },
       group
     );
-    session.on('eventsChanged', () => setBadges((prev) => foldEvents(prev, session.traceEvents, Date.now())), group);
+    session.on(
+      'eventsChanged',
+      () => {
+        setBadges((prev) => foldEvents(prev, session.traceEvents, Date.now()));
+        setRevision((r) => r + 1);
+      },
+      group
+    );
 
     return () => {
       session.off(group);
@@ -141,6 +173,27 @@ export function RecordingOverlay({ viewport, getNodeBounds, enabled }: Recording
   const onCanvasBadges = visible.filter((badge) => boundsOf(badge.nodeId) !== null).length;
   const note = refusal ?? canvasNote({ recording, eventCount, onCanvasBadges, off });
 
+  /**
+   * The interactions list — HUD-003 slice 1.
+   *
+   * ⚠️ **Built only while the list is open, and that gate is not an optimisation.** `buildIndex`
+   * walks the whole buffer — up to a quarter of a million events — and this component re-renders
+   * on every pan, every zoom and every 1.5s poll. A collapsed HUD must cost what it costed
+   * before this task, which is a subscription and nothing else.
+   *
+   * Keyed on the revision rather than on the array: the session mutates its buffer in place, so
+   * React would see the same reference forever and the list would stop growing the moment it was
+   * opened.
+   */
+  const interactions = useMemo(() => {
+    if (!recording || !expanded) return undefined;
+    const index = buildIndex(session.topology, session.traceEvents, session.portValues, {
+      recording: session.hasTrace
+    });
+    return interactionList(index);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, recording, expanded, revision]);
+
   const handleRecord = () => {
     // ⚠️ `start()` answers whether anything was actually armed. `ViewerConnection.send()`
     // no-ops on a closed socket, so without this the pill would flip to "recording", capture
@@ -166,31 +219,82 @@ export function RecordingOverlay({ viewport, getNodeBounds, enabled }: Recording
 
   return (
     <div className={styles.Overlay}>
-      <div className={styles.Control} data-recording={String(recording)} data-test="recording-hud">
-        <span className={styles.Dot} aria-hidden="true" />
-        {recording ? (
-          <>
-            <span className={styles.Label}>recording</span>
-            <span className={styles.Separator}>·</span>
-            <span className={styles.Count} data-test="recording-hud-count">
-              {headerSummary(eventCount, off)}
-            </span>
-            <button className={styles.Stop} onClick={handleStop} data-test="recording-hud-stop">
-              Stop
-            </button>
-          </>
-        ) : (
-          <button className={styles.Record} onClick={handleRecord} data-test="recording-hud-record">
-            Record
-          </button>
+      {/* One bottom-centre stack rather than three independently positioned boxes. The note and
+          the interactions list are both "above the pill", and with fixed offsets they were one
+          feature away from covering each other. */}
+      <div className={styles.Dock}>
+        {note && (
+          <div className={styles.Note} data-test="recording-hud-note">
+            {note}
+          </div>
         )}
-      </div>
 
-      {note && (
-        <div className={styles.Note} data-test="recording-hud-note">
-          {note}
+        {interactions && (
+          <div className={styles.Interactions} data-test="recording-hud-interactions">
+            <div className={styles.InteractionsTitle}>
+              {interactions.rows.length === 0
+                ? 'No interactions yet'
+                : `Interactions — click one to see where it went`}
+            </div>
+            {interactions.rows.map((row) => (
+              <div
+                key={row.seq}
+                className={styles.Interaction}
+                role="button"
+                tabIndex={0}
+                title={`Walk forwards from ${row.label}`}
+                // ⚠️ Opens the panel; it must never *select* the node. Selecting switches the
+                // sidebar to the property editor, which is how the panel's own row detail became
+                // unreachable by the only gesture anyone tries.
+                onClick={() => requestProvenanceRootWalk(row.root)}
+                data-test="recording-hud-interaction"
+              >
+                <span className={styles.InteractionArrow} aria-hidden="true">
+                  →
+                </span>
+                <span className={styles.InteractionLabel}>{row.label}</span>
+                <span className={styles.InteractionSize}>
+                  {row.size} event{row.size === 1 ? '' : 's'}
+                </span>
+              </div>
+            ))}
+            {interactions.hidden > 0 && (
+              <div className={styles.InteractionsMore}>
+                {interactions.hidden} earlier interaction{interactions.hidden === 1 ? '' : 's'} not shown
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className={styles.Control} data-recording={String(recording)} data-test="recording-hud">
+          <span className={styles.Dot} aria-hidden="true" />
+          {recording ? (
+            <>
+              <span className={styles.Label}>recording</span>
+              <span className={styles.Separator}>·</span>
+              <span className={styles.Count} data-test="recording-hud-count">
+                {headerSummary(eventCount, off)}
+              </span>
+              <button
+                className={styles.Expand}
+                onClick={() => setExpanded((value) => !value)}
+                aria-expanded={expanded}
+                title={expanded ? 'Hide the interactions list' : 'Show what has happened so far'}
+                data-test="recording-hud-expand"
+              >
+                {expanded ? '▾' : '▴'}
+              </button>
+              <button className={styles.Stop} onClick={handleStop} data-test="recording-hud-stop">
+                Stop
+              </button>
+            </>
+          ) : (
+            <button className={styles.Record} onClick={handleRecord} data-test="recording-hud-record">
+              Record
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {recording && (
         <div className={styles.TransformContainer} style={{ transform: containerTransform, transformOrigin: '0 0' }}>
