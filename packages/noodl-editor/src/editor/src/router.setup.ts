@@ -11,6 +11,7 @@ import { IconName } from '@noodl-core-ui/components/common/Icon';
 
 import config from '../../shared/config/config';
 import { CloudFunctionDeployer } from './services/CloudFunctionDeployer';
+import { ProjectBackendLifecycle } from './services/ProjectBackendLifecycle';
 import { AuthoringPreviewDocumentProvider } from './views/documents/AuthoringPreviewDocument';
 import { ChangeReviewDocumentProvider } from './views/documents/ChangeReviewDocument';
 import { ComponentDiffDocumentProvider } from './views/documents/ComponentDiffDocument';
@@ -154,6 +155,14 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   // ever been opened. Subscribes to project saves; pushes nothing until there
   // is a running backend and a cloud function to push.
   CloudFunctionDeployer.start();
+
+  // AAQ-011/F10: and at boot for a third variation of the same reason — the
+  // project's backend must be RUNNING before anything asks it for a row, and
+  // nothing started it when the project opened. Starts the open project's local
+  // backend, adopts one that is already up, and stops what it started when the
+  // project closes. The guarantee that a crash leaves nothing behind is the
+  // main process's `BackendProcessRegistry`, not this.
+  ProjectBackendLifecycle.install();
 
   SidebarModel.instance.register({
     experimental: true,

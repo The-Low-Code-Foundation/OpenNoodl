@@ -16,3 +16,6 @@ export * from './StyleAnalyzer.test';
 export * from './StyleAnalyzerQuality.test';
 export * from './SuggestionActionHandler.test';
 export * from './github/GitHubClient.test';
+// AAQ-011/F10: the project's backend follows the project. Every effect injected —
+// this suite has no `window.require`, so real IPC here would pass by doing nothing.
+export * from './ProjectBackendLifecycle.test';
