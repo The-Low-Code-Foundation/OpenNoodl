@@ -188,11 +188,29 @@ Six items. The phase README's tables carry the mechanisms.
 
 These have mechanisms recorded and no owner. Several are small.
 
-- **`runRetentionCleanup()` / `cleanupByAge` have zero call sites** — nothing trims the
-  execution-history table today.
-- **`Array Filter`'s `enabled` and `Array Map`'s `mapScript` are inert `default`s** — a
-  hand-authored filter passes *everything* through. Affects the browser identically, so the fix
-  is a behaviour change and wants its own task.
+> ⚠️ **This list was stale in FOUR of its ten rows when the next session read it**, and it is the
+> same failure the phase-39 and phase-42 registers hit: *a row outlives its own fix.* Three were
+> fixed by `edb8661b` the previous day and the phase-42 README already said so — only this
+> hand-written summary lagged. **The README outranks this prompt; grep before believing a row here.**
+
+- ~~**`runRetentionCleanup()` / `cleanupByAge` have zero call sites**~~ — ✅ fixed `edb8661b`
+  (previous session; this row was already stale when written). `ExecutionStore.prune()` is the
+  production caller — `service.ts:293` at start, then write-driven at most hourly. Retention is
+  `ops.json` → `executions.retentionDays`, default 30, `0` = keep forever.
+- ~~**`Array Filter`'s `enabled` and `Array Map`'s `mapScript` are inert `default`s**~~ — ✅ fixed
+  `9446e6fc`, **and half the row was false.** Both `default`s are indeed inert (a declared `default`
+  never runs its setter — the most-repeated trap in this repo), but `filtercollectionnode.ts:179`
+  sets `this._internal.enabled = true` inside `initialize`, so **a hand-authored filter never passed
+  everything through**. Measured: 3 records in, 1 out, no `enabled` parameter present. That line is
+  now commented as load-bearing and asserted, because deleting it as "redundant beside the `default`"
+  is precisely how this node would acquire its twin's defect. **Array Map was real**: `mapScript`'s
+  setter is what *compiles* the script, so an untouched Script gave `mapFunc: undefined` → `Failure`
+  and *"could not be compiled: unknown error"* — unknown because nothing had ever failed to compile,
+  nothing had compiled at all. The editor meanwhile rendered the declared template into the field, so
+  the node refused a script the author could see. ⚠️ **Behaviour change worth knowing**: an Array Map
+  whose Script was never edited now runs the empty template and emits **one empty record per source
+  record** firing `Done`, where it used to emit nothing and fire `Failure`. A Repeater bound to one
+  goes from rendering nothing to rendering N empty items.
 - ~~**CWF-009 has no admin route**~~ — ✅ fixed `4aba4eb2`. `GET /admin/secrets`, `PUT`/`DELETE
   /admin/secrets/:name`. No `:namespace` segment ever: the handler supplies `functions`, so the
   backend's own namespaces stay *unnameable* through this door as they are from a graph. No route
@@ -200,10 +218,26 @@ These have mechanisms recorded and no owner. Several are small.
 - ~~**CWF-018's `timeoutMs` has no row in the Permissions panel.**~~ — ✅ fixed `25e9696c`. A
   `time limit (seconds)` field beside CWF-017's rate limit; blank = the service default, `0` = no
   limit (CWF-007 streaming's opt-out).
-- **`impersonate()` writes `_Session` rows with `expiresAt` that `findSession` never reads** — an
-  "expiring" impersonation session never expires.
-- **`fireWorkflow` never calls `recordTriggerFire`** — workflow-target fires are missing from
-  trigger metrics.
+- ~~**`impersonate()` writes `_Session` rows with `expiresAt` that `findSession` never reads**~~ —
+  ✅ fixed `edb8661b` (previous session). `findSession` now judges the row (`users.ts:111-113`).
+  ⚠️ The care went into the *other* direction: every session this backend has ever minted has a null
+  `expiresAt`, so absent/null/unparseable must mean **never expires** — reading absent as expired
+  would have signed out every account on every existing backend at deploy. **Still open and NOT
+  covered by that fix**: `impersonate()` writes a `user` *pointer* where this backend reads `userId`,
+  so its rows would not resolve to a user even once found. That is a `noodl-viewer-cloud` change and
+  has no owner.
+- ~~**`fireWorkflow` never calls `recordTriggerFire`**~~ — ✅ fixed `edb8661b` (previous session).
+  `dispatcher.ts` now pairs **every** `registry.recordFire` with exactly one `recordTriggerFire` of
+  the same verdict (`:228`, `:284`, `:322`, `:375`) — an invariant written into the module doc.
+- 🔴 **NEW — [FH-024](phase-42-first-hour/FH-024-THE-LOCAL-ADMIN-API-IS-CROSS-ORIGIN-READABLE.md):
+  any web page can read a developer's local backend admin API.** Filed 2026-08-06, **needs a
+  decision from Richard, candidate alpha-blocker.** `devOpen` defaults true → every admin gate
+  returns early with no token checked; CORS defaults to `origins: ['*']` and is applied before
+  routing. So `GET http://127.0.0.1:<port>/admin/*` is unauthenticated *and* answers
+  `Access-Control-Allow-Origin: *`. The deploy interlock is correct and deployed backends are
+  unaffected — the error is treating `loopback` as "only the developer can reach this". **OBS-004
+  was this exact bug.** F10 made it live all session by starting the backend on project open.
+  ⚠️ Confirmed by construction, **not yet driven** — slice 0 is the real cross-origin `fetch`.
 - ~~The Execution History panel's empty state says a function call is recorded "not node by node"~~
   — ✅ fixed `98096162`. It now names the case the reader is in ("this call reached none"), which is
   true whether or not the function has a Log node.
