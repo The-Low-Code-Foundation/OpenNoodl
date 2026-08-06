@@ -6,7 +6,7 @@
 #  NOT RUN AUTOMATICALLY. Read this before you run it.
 # ─────────────────────────────────────────────────────────────────────────────
 #
-# The-Low-Code-Foundation/OpenNoodl is a **public** repository. Creating a label
+# The-Low-Code-Foundation/NodeGX is a **public** repository. Creating a label
 # is a visible, permanent change to it, and the vocabulary below is a decision
 # about how triage works — not a mechanical fix. It is Richard's call, not the
 # script's. Nothing here was executed when it was written.
@@ -29,8 +29,8 @@
 #
 # Verify before and after:
 #
-#     gh label list  --repo The-Low-Code-Foundation/OpenNoodl
-#     gh issue list  --repo The-Low-Code-Foundation/OpenNoodl --label needs-triage
+#     gh label list  --repo The-Low-Code-Foundation/NodeGX
+#     gh issue list  --repo The-Low-Code-Foundation/NodeGX --label needs-triage
 #
 # Both are read-only.
 #
@@ -68,7 +68,7 @@
 
 set -euo pipefail
 
-REPO="The-Low-Code-Foundation/OpenNoodl"
+REPO="The-Low-Code-Foundation/NodeGX"
 
 # ── The labels the forms already declare (F72) ───────────────────────────────
 

@@ -1,6 +1,6 @@
 # OpenNoodl
 
-[![PR](https://github.com/The-Low-Code-Foundation/OpenNoodl/actions/workflows/pr.yml/badge.svg?branch=cline-dev)](https://github.com/The-Low-Code-Foundation/OpenNoodl/actions/workflows/pr.yml)
+[![PR](https://github.com/The-Low-Code-Foundation/NodeGX/actions/workflows/pr.yml/badge.svg?branch=cline-dev)](https://github.com/The-Low-Code-Foundation/NodeGX/actions/workflows/pr.yml)
 
 OpenNoodl is a fork of the original Noodl open source code under GPL-3.0 license. OpenNoodl / Noodl is a front end React app builder with a visual programming interface.
 
@@ -10,7 +10,7 @@ OpenNoodl will aim to stay entirely in sync with the original repository, includ
 
 ## One-click install
 
-**[Download the latest release](https://github.com/The-Low-Code-Foundation/OpenNoodl/releases/latest)** — pick the artifact for your platform.
+**[Download the latest release](https://github.com/The-Low-Code-Foundation/NodeGX/releases/latest)** — pick the artifact for your platform.
 
 These used to be three direct links to OpenNoodl 1.1.0's `.dmg`/`.exe`. They were
 removed rather than updated: 1.1.0 predates the current editor by a long way, and a

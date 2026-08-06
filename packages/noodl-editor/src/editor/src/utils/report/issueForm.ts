@@ -23,7 +23,7 @@
  */
 
 /** Where issues are filed. Matches `build.publish` in `package.json`. */
-export const ISSUE_REPO = 'The-Low-Code-Foundation/OpenNoodl';
+export const ISSUE_REPO = 'The-Low-Code-Foundation/NodeGX';
 
 /** The form, by file name — GitHub's `template=` parameter takes the file. */
 export const ISSUE_TEMPLATE = 'bug_report.yml';

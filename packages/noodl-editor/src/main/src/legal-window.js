@@ -265,7 +265,7 @@ function openLegalWindow(id, theme) {
     body =
       `<h1>${escapeHtml(doc.title)}</h1>` +
       `<p>${escapeHtml(doc.file)} was not found in this build. You can read it at ` +
-      `<a href="https://github.com/The-Low-Code-Foundation/OpenNoodl/blob/main/${doc.file}">github.com</a>.</p>`;
+      `<a href="https://github.com/The-Low-Code-Foundation/NodeGX/blob/main/${doc.file}">github.com</a>.</p>`;
   }
 
   const resolvedTheme = theme === 'light' ? 'light' : 'dark';
