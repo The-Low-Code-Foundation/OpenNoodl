@@ -68,6 +68,16 @@ around in the driven spec by carrying the values as *parameters*, which is what 
 once an author touches the field. **Filed, not fixed** — the fix is a `props.x ?? fallback` read in
 each node body, and it changes browser behaviour, so it wants its own task.
 
+> ✅ **Corrected and closed 2026-08-06 — `9446e6fc`, see [README § Filed, not fixed](README.md#filed-not-fixed).**
+> The mechanism above is exactly right and **one of the two nodes was not affected by it**. Both
+> `default`s are inert; only Array Map had no other way of establishing the state. **Array Filter's
+> `initialize` sets `this._internal.enabled = true` itself** (`filtercollectionnode.ts:168`), so a
+> hand-authored filter has always filtered — measured, 3 records in and 1 out with no `enabled`
+> parameter anywhere. That line now carries a comment saying it is load-bearing, and a spec asserts
+> it, because deleting it as "redundant beside the `default`" would create the defect this
+> paragraph describes. **Array Map was real**, and is fixed by compiling the declared default in
+> `initialize` — Array Filter's own answer — rather than by a `?? fallback` at the read site.
+
 ⚠️ **A *named* array is process-wide, in the cloud too.** `Model` has a `Scope` and `CloudRunner`
 mints one per request; `Collection` has **no `Scope` at all**, so `Collection.get('cart')` reads one
 module-level table for the life of the server process. Two concurrent requests that both name an
