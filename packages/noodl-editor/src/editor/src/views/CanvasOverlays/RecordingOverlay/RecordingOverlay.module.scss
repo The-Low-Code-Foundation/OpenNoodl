@@ -23,6 +23,16 @@
   overflow: hidden;
 }
 
+/* HUD-002: canvas-space container — children position with raw graph coordinates and the
+   transform here does pan and zoom, exactly as the execution overlay's does. */
+.TransformContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
 .Control {
   position: absolute;
   left: 50%;
