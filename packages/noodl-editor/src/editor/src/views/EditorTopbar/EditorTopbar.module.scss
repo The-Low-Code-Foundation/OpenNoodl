@@ -1,8 +1,23 @@
 /* PAR-003: toolbar per the editor mock — 52px, bg-1, hairline bottom border,
    0 16px padding, 8px gaps, no group separators. All controls keep their
    existing handlers; only presentation changed. */
+
+/* POL-019: the widths the two layouts actually need, measured rather than
+   guessed. They are the source of TOPBAR_ROOMY_MIN_WIDTH / TOPBAR_TINY_MAX_WIDTH
+   in EditorTopbar.tsx; keep the two in step if a control is added or removed.
+
+   roomy  = 32 (root padding) + 450 (left group at its preferred pill width)
+          + 8 (root gap) + 517 (right cluster: warnings, screen size, zoom,
+          three split buttons, Design/Preview, Deploy)                 = 1007
+   compact= 32 + 300 (left group, 150px pill) + 8 + 365 (right cluster with the
+          split buttons collapsed to one dropdown and icon-only mode/deploy)
+                                                                       =  705 */
 .Root {
-  container-name: editortopbar;
+  /* `container-name` used to be declared here with no `container-type`, which
+     makes it inert — nothing queries `editortopbar` and nothing could, because
+     the tiering below changes which elements React renders, not just how they
+     look. Removed rather than completed, so the next reader is not sent looking
+     for a container query that never existed. */
   height: 52px;
   flex: none;
   background-color: var(--theme-color-bg-1);
@@ -12,6 +27,15 @@
   justify-content: space-between;
   gap: 8px;
   padding: 0 16px;
+
+  /* POL-019: at the narrowest tier every pixel of the left group is one the
+     add-node and navigation buttons need, so the toolbar gives back half its
+     own gutter. (This rule is also what makes `is-tiny` a real class — CSS
+     modules only export selectors that exist, so a marker class with no
+     declarations comes back `undefined` and silently never lands on the DOM.) */
+  &.is-tiny {
+    padding: 0 8px;
+  }
 }
 
 .LeftSide,
@@ -27,9 +51,31 @@
   }
 }
 
+/* POL-019: the left group is the only part of the topbar that may give up space,
+   and it must clip rather than spill.
+
+   `min-width: 0` lets the *box* shrink, but on its own it did nothing to the
+   contents: the route pill declared `min-width: 300px`, so it kept its 300px and
+   simply painted outside its parent. With a 458px Settings panel the pill ran
+   from 644 to 944 inside a LeftSide that ended at 827 — straight through the
+   warnings chip, the screen-size dropdown and the `100%` zoom readout, which is
+   what rendered as `1♦0%`. At an 860px backend surface the pill landed at
+   1044–1194, entirely inside the right cluster.
+
+   `overflow: hidden` is the guarantee, not the fix — the pill is genuinely
+   shrinkable now (see `.UrlBarWrapper`). It is here so that no control added to
+   this group in future can reintroduce the same overlap. */
 .LeftSide {
   flex-grow: 1;
   min-width: 0;
+  overflow: hidden;
+}
+
+/* POL-019: every control in here is fixed-size and load-bearing (zoom, mode,
+   Deploy), so the right cluster never shrinks — it was only ever spared by
+   accident, because the left group absorbed the shortfall by overflowing. */
+.RightSide {
+  flex: none;
 }
 
 .is-padded-s {
@@ -44,11 +90,16 @@
   padding: 0 8px;
 }
 
-/* Route pill (mock `.route`): bg-2 well, border-1, radius 8, min-width 300px,
+/* Route pill (mock `.route`): bg-2 well, border-1, radius 8, ~300px wide,
    home glyph + project name + mono path + chevron. */
+/* POL-019: 300px is the width this pill *prefers*, not a floor it may overflow
+   its parent to keep — so it is a flex-basis with `min-width: 0`, and the pill
+   compresses instead of spilling. Below TOPBAR_TINY_MAX_WIDTH the pill is not
+   rendered at all (EditorTopbar.tsx), because a 90px address bar shows no
+   readable part of a route. */
 .UrlBarWrapper {
-  flex-grow: 1;
-  min-width: 300px;
+  flex: 1 1 300px;
+  min-width: 0;
   max-width: 500px;
   height: 32px;
   align-self: center;
@@ -63,7 +114,7 @@
   overflow: hidden;
 
   .Root.is-small & {
-    min-width: 150px;
+    flex-basis: 150px;
   }
 }
 

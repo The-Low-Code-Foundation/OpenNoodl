@@ -34,6 +34,26 @@ import {
   getIconFromScreenSizeGroupName
 } from './ScreenSizes';
 
+/**
+ * POL-019 — the two widths the topbar's layouts actually need.
+ *
+ * These were measured, not chosen. The roomy layout's own content is 1007px wide
+ * (32 root padding + 450 left group at the pill's preferred width + 8 gap + 517
+ * right cluster); the compact one is 705px. The number that used to live here was
+ * `850`, which matched neither — so between 850 and 1007 the topbar rendered the
+ * roomy layout in a space it did not fit, and the route pill's 300px floor made
+ * it overflow the left group and paint over the warnings chip, the screen-size
+ * dropdown and the zoom readout. With a 458px Settings panel on a 1368px window
+ * the topbar is 856px, i.e. six pixels the wrong side of the old breakpoint.
+ *
+ * The CSS is now overlap-proof on its own (`.LeftSide` clips, the pill shrinks),
+ * so these decide *quality* rather than correctness: switch to the compact
+ * cluster while its controls still have room, instead of squeezing the roomy one.
+ * Keep them in step with the arithmetic in EditorTopbar.module.scss.
+ */
+const TOPBAR_ROOMY_MIN_WIDTH = 1010;
+const TOPBAR_TINY_MAX_WIDTH = 710;
+
 export interface EditorTopbarProps {
   instance: TitleBar;
   routes: string[];
@@ -165,7 +185,11 @@ export function EditorTopbar({
   const rootRef = useRef<HTMLDivElement>(null);
 
   const bounds = useTrackBounds(rootRef);
-  const isSmall = bounds?.width < 850;
+  // Before the first measurement `bounds` is null; treat that as "plenty of
+  // room" so the topbar does not flash the compact layout on every mount.
+  const topbarWidth = bounds?.width ?? Number.POSITIVE_INFINITY;
+  const isSmall = topbarWidth < TOPBAR_ROOMY_MIN_WIDTH;
+  const isTiny = topbarWidth < TOPBAR_TINY_MAX_WIDTH;
   const getActiveLayoutIcon = () => {
     switch (documentLayout) {
       case 'vertical':
@@ -187,7 +211,7 @@ export function EditorTopbar({
   ]);
 
   return (
-    <div ref={rootRef} className={classNames(css['Root'], isSmall && css['is-small'])}>
+    <div ref={rootRef} className={classNames(css['Root'], isSmall && css['is-small'], isTiny && css['is-tiny'])}>
       <div className={css['LeftSide']}>
         <div className={css['is-padded-s']}>
           {/* PAR-003: accent-soft + accent glyph per the mock's `.icon-btn.accent`
@@ -229,57 +253,68 @@ export function EditorTopbar({
           </Tooltip>
         </div>
 
-        <MenuDialog
-          title="Preview routes"
-          width={MenuDialogWidth.Large}
-          isVisible={isRouteListVisible}
-          onClose={() => setIsRouteListVisible(false)}
-          triggerRef={urlInputRef}
-          items={routes.map((url) => ({
-            label: url,
-            isHighlighted: routes.length > 1 && navigationState.route === url,
-            onClick: () => onRouteChanged(url)
-          }))}
-        />
-
-        {/* PAR-003: route pill per mock — home glyph, project name (600/fg-1),
-            mono route path, chevron pushed right. Same TextInput/route handlers. */}
-        <div ref={urlInputRef} className={css.UrlBarWrapper}>
-          <Icon
-            size={IconSize.Small}
-            variant={TextType.Default}
-            icon={navigationState.route === '/' ? IconName.Home : IconName.File}
-            UNSAFE_className={css.RoutePillIcon}
-          />
-          {!isSmall && <span className={css.RouteProjectName}>{ProjectModel.instance?.name}</span>}
-          <TextInput
-            onRefChange={(ref) => {
-              urlBarRef.current = ref.current;
-            }}
-            value={routeTextInputValue}
-            onFocus={() => setIsRouteListVisible(true)}
-            onChange={(e) => {
-              setRouteTextInputValue(e.target.value);
-              setIsRouteListVisible(false);
-            }}
-            onEnter={() => onRouteChanged(routeTextInputValue)}
-            UNSAFE_className={css.UrlBarTextInput}
-            variant={TextInputVariant.OpaqueOnHover}
-            slotAfterInput={
-              <Icon icon={IconName.CaretDown} variant={TextType.Default} UNSAFE_style={{ marginTop: -2 }} />
-            }
-          />
-        </div>
-
-        <div className={css['is-padded-s']}>
-          <Tooltip content="Open dev tools" fineType={Keybindings.OPEN_DEVTOOLS.label}>
-            <IconButton
-              icon={IconName.Bug}
-              variant={IconButtonVariant.Transparent}
-              onClick={() => EventDispatcher.instance.emit('viewer-open-devtools')}
+        {/* POL-019: below TOPBAR_TINY_MAX_WIDTH the route pill and the dev-tools
+            button come out altogether, rather than being squeezed to a width
+            where the pill shows no readable part of the route. They are the two
+            least load-bearing controls here — the pill is a preview address bar
+            (⌘L focuses it, and it returns as soon as the side panel narrows) and
+            dev tools has its own keybinding. Unmounted rather than hidden, so
+            neither stays in the tab order while invisible. */}
+        {!isTiny && (
+          <>
+            <MenuDialog
+              title="Preview routes"
+              width={MenuDialogWidth.Large}
+              isVisible={isRouteListVisible}
+              onClose={() => setIsRouteListVisible(false)}
+              triggerRef={urlInputRef}
+              items={routes.map((url) => ({
+                label: url,
+                isHighlighted: routes.length > 1 && navigationState.route === url,
+                onClick: () => onRouteChanged(url)
+              }))}
             />
-          </Tooltip>
-        </div>
+
+            {/* PAR-003: route pill per mock — home glyph, project name (600/fg-1),
+                mono route path, chevron pushed right. Same TextInput/route handlers. */}
+            <div ref={urlInputRef} className={css.UrlBarWrapper}>
+              <Icon
+                size={IconSize.Small}
+                variant={TextType.Default}
+                icon={navigationState.route === '/' ? IconName.Home : IconName.File}
+                UNSAFE_className={css.RoutePillIcon}
+              />
+              {!isSmall && <span className={css.RouteProjectName}>{ProjectModel.instance?.name}</span>}
+              <TextInput
+                onRefChange={(ref) => {
+                  urlBarRef.current = ref.current;
+                }}
+                value={routeTextInputValue}
+                onFocus={() => setIsRouteListVisible(true)}
+                onChange={(e) => {
+                  setRouteTextInputValue(e.target.value);
+                  setIsRouteListVisible(false);
+                }}
+                onEnter={() => onRouteChanged(routeTextInputValue)}
+                UNSAFE_className={css.UrlBarTextInput}
+                variant={TextInputVariant.OpaqueOnHover}
+                slotAfterInput={
+                  <Icon icon={IconName.CaretDown} variant={TextType.Default} UNSAFE_style={{ marginTop: -2 }} />
+                }
+              />
+            </div>
+
+            <div className={css['is-padded-s']}>
+              <Tooltip content="Open dev tools" fineType={Keybindings.OPEN_DEVTOOLS.label}>
+                <IconButton
+                  icon={IconName.Bug}
+                  variant={IconButtonVariant.Transparent}
+                  onClick={() => EventDispatcher.instance.emit('viewer-open-devtools')}
+                />
+              </Tooltip>
+            </div>
+          </>
+        )}
       </div>
 
       <div className={css['RightSide']}>

@@ -1,7 +1,7 @@
 # Phase 39 — Progress
 
-**Status:** **18 numbered tasks — POL-001 … POL-018, and 18 `POL-*.md` files on disk, no gaps.
-16 are done with a committed driver each; 2 are open.** The three loose ends carried across sessions
+**Status:** **19 numbered tasks — POL-001 … POL-019, and 19 `POL-*.md` files on disk, no gaps.
+17 are done with a committed driver each; 2 are open.** The three loose ends carried across sessions
 (POL-002's packaged build, POL-004's diff modal, POL-016's two findings) were all closed in the
 seventh session, so **every criterion of every done task is verified live**.
 
@@ -13,10 +13,12 @@ The two that are open, and neither is alpha-blocking:
 
 **Where the 18 come from, since this line has been miscounted twice.** Richard reported **15 items**
 (the [README](README.md) table). Those became **12** tasks, POL-001 … POL-012 — three tasks each
-cover more than one item. The other **six** were found or spun off during the phase and were never
-reported by anyone: POL-013 (POL-003's deferred `IconSize` sweep), POL-014 and POL-016 (POL-005's
-layout pass), POL-015 (POL-009's fixture setup), POL-017 (POL-004's contrast measurement) and
-POL-018 (POL-010's deferred slice 2). **Reported items are not tasks and the two counts must never
+cover more than one item. The other **seven** were found or spun off during the phase and were never
+reported at the time: POL-013 (POL-003's deferred `IconSize` sweep), POL-014 and POL-016 (POL-005's
+layout pass), POL-015 (POL-009's fixture setup), POL-017 (POL-004's contrast measurement),
+POL-018 (POL-010's deferred slice 2) and POL-019 (Richard, driving the editor on 2026-08-06 —
+reported straight into a task rather than into the README table, which is why the table's count is
+still 15). **Reported items are not tasks and the two counts must never
 be added together** — that is what produced "16" in the first place.
 
 > **The sixth session first reported this phase as "16 of 16, nothing open", and both halves of that
@@ -31,7 +33,8 @@ be added together** — that is what produced "16" in the first place.
 > deferred-by-decision is a state, not an absence, and a state with no row is invisible exactly as a
 > filed-not-fixed finding is. It is [POL-018](POL-018-A-PROJECT-SOURCED-TOPOLOGY.md) now.
 
-**Last updated:** 2026-08-06 (register hygiene pass: three stale status tags corrected, the count
+**Last updated:** 2026-08-06 (POL-019 added — the topbar overlap Richard found driving the editor,
+fixed the same day. Before that: register hygiene pass — three stale status tags corrected, the count
 reconciled, POL-018 given the row Richard's decision 6 always implied)
 
 POL-006 also has a head start nobody had noticed: **`library/modules/lucide-icons/` already ships the
@@ -44,6 +47,7 @@ both a matter of wiring that module in, not of sourcing an icon set.
 
 | Task | Reported items | Status | Notes |
 |---|---|---|---|
+| [POL-019](POL-019-THE-TOPBAR-DOES-NOT-FIT.md) — the topbar does not fit | — | ✅ **done** | Found 2026-08-06 by Richard driving the editor; filed and fixed the same day. Reported as "the zoom readout and the fit-zoom dropdown paint on top of each other" — **nothing on the right-hand side overlaps anything on the right-hand side.** What lands on the `100%` is the **route pill from the LEFT group**: at a 458px Settings panel its right edge is `944` and the zoom readout starts at `944`. `.LeftSide` had `min-width: 0` (the box may shrink) while `.UrlBarWrapper` had `min-width: 300px` (the contents may not) and no `overflow` — so the pill left its parent and painted over the toolbar. **It was never one width.** Measured at five panel widths: **418 and 458 both overlap**, and the worst case is a *shipped default* — the seven backend surfaces open at `860`, where the pill renders at `1044–1194`, entirely inside the right cluster. The `isSmall` breakpoint was `850`; the roomy layout needs **1007** and the compact one **705**, so there was a **157px dead band** in which the component rendered a layout that did not fit, and Settings misses it by **six pixels**. Fixed in three parts: the pill is `flex: 1 1 300px; min-width: 0` (300 is a preference, not a floor), `.LeftSide` clips and `.RightSide` is `flex: none`, and two **derived** tiers (1010 / 710) replace the magic number, with the arithmetic written into both the `.tsx` and the `.scss`. Below the lower tier the pill and the dev-tools button are unmounted rather than hidden, so neither sits in the tab order invisibly. Found on the way: `.Root` declared `container-name: editortopbar` with **no `container-type`**, which is inert — removed rather than completed, since the tiering changes what React renders and no container query could do it. All four criteria measured live in both themes; the tiny tier is verified by `elementFromPoint`, because `overflow: hidden` clips painting and not the rects a probe reads. |
 | [POL-017](POL-017-CODE-GUTTER-LINE-NUMBERS.md) — code gutter line numbers | — | ☐ **filed, not fixed** | Found 2026-08-04 by POL-004's criterion-1 drive, in the same modal but **not** POL-004's defect. `codemirror-theme.ts:60` styles every CodeMirror gutter with `fg-muted` — **3.17:1 dark / 3.16:1 light** against the gutter, against WCAG 1.4.3's 4.5:1 for text. `colors.css` documents that token as *"large/secondary text only"*, so it is the right token at the wrong size, not the token misuse POL-004 was about. Neat coincidence not to misread: `fg-muted` is exactly what POL-016 chose for `--theme-color-border-control`, and that is correct there — **3:1 for a control boundary, 4.5:1 for text**. Replacement already measured: `fg-default-shy` (4.82 / 4.67), the smallest step that clears it. Not alpha-blocking. |
 | [POL-018](POL-018-A-PROJECT-SOURCED-TOPOLOGY.md) — a project-sourced topology | — | ⏸ **deferred by decision** | POL-010 slice 2, given the row it should have had on 2026-08-04. **Deferred, not dropped**: Richard's answer 6 below built slices 3 and 2b and said *"Sourcing the topology from `ProjectModel` is the right destination and its own task — it carries component scoping and a decision about component instances."* Until it lands, the provenance walk answers about **what the preview instantiated**, not about the user's graph: walking back from `messagesText.text` to `Query Messages` still needs the Chat page mounted, and POL-010's own fixture shows the runtime dropping **4 of 12** declared edges even *with* it mounted (a `JavaScriptFunction`'s dynamic ports are never registered). Two open questions belong to Richard, not to the builder — both written up in the task. Not alpha-blocking: POL-010 slice 3 means the panel now says why it cannot answer instead of showing one row as a result. |
 | [POL-001](POL-001-SETTINGS-PANEL-CRASH.md) — settings panel crash | 15 | ✅ **done** | All 5 criteria. Slice 2 answered: the key is not lost — v2 elides an empty `settings: {}` by design on both sides. Verified live on "AIB38 Live Chat", the project that actually crashed. `c6d5f9f8` |
