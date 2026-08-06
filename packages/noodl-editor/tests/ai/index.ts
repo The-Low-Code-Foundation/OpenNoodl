@@ -66,6 +66,11 @@ export * from './authoring-plan-staging.test';
 // that answers it against a real `ProjectModel`.
 export * from './authoring-node-ids.test';
 
+// AAQ-005 criterion 3: a scripted multi-component session (no model) — a page
+// and two sections it instantiates, plus a design-token write, applied as one
+// changeset and undone as one group.
+export * from './authoring-multi-component.test';
+
 // AIX-011 criterion 7: the doc-authoring turn (scripted chat), the
 // graph-restatement lint that keeps AIX-009's design line mechanical, and the
 // plan doc write path on real files.

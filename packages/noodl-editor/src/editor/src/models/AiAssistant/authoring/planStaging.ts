@@ -190,6 +190,32 @@ export interface ProvisionedBackend {
   warnings: string[];
 }
 
+/**
+ * AAQ-005 criterion 3 — the design-token write path, injected on the same seam
+ * as {@link PlanDocWriter} and for the same reason: this module is the
+ * transaction and must not grow a dependency on the styles model, its resolver
+ * and `EventDispatcher`. `createPlanTokenWriter` in `planTokens.ts` is the
+ * editor's implementation, and that module's header carries the AAQ-009
+ * boundary this interface sits on.
+ *
+ * The contract mirrors the doc writer's:
+ *
+ *  - `preflight` may refuse — a token name that is not a CSS custom property, an
+ *    empty value — and runs with nothing yet mutated.
+ *  - `apply` writes and records each inverse into `undoGroup`, so the palette
+ *    rides the SAME single undo step as the plan's components. It returns the
+ *    names it actually wrote (a token already holding the value is not a write).
+ *  - Both must throw on failure, never swallow.
+ *
+ * Without a writer, a plan carrying tokens is REFUSED in preflight, loudly,
+ * before any mutation — the same shape as a missing `docWriter`. A headless
+ * caller must not silently apply the components and leave the app unstyled.
+ */
+export interface PlanTokenWriter {
+  preflight?(tokens: Readonly<Record<string, string>>): void;
+  apply(tokens: Readonly<Record<string, string>>, undoGroup: UndoActionGroup): string[];
+}
+
 export interface ApplyPlanOptions {
   label?: string;
   /**
@@ -219,6 +245,16 @@ export interface ApplyPlanOptions {
    * one should have chosen.
    */
   settings?: Record<string, unknown>;
+  /**
+   * AAQ-005 criterion 3 — the design tokens this plan agreed, written inside the
+   * same undo group as everything else.
+   *
+   * Requires `tokenWriter`; a plan carrying tokens with no writer is refused in
+   * preflight rather than applied unstyled.
+   */
+  tokens?: Record<string, string>;
+  /** AAQ-005 criterion 3. See {@link PlanTokenWriter}. */
+  tokenWriter?: PlanTokenWriter;
 }
 
 export interface AppliedPlanResult {
@@ -236,6 +272,11 @@ export interface AppliedPlanResult {
   registration?: PageRegistration;
   /** AAQ-003 — project settings this apply wrote, by name. Absent when it wrote none. */
   settings?: string[];
+  /**
+   * AAQ-005 criterion 3 — design tokens this apply wrote, by name. Absent when
+   * it wrote none, which includes a plan whose tokens already held those values.
+   */
+  tokens?: string[];
   /**
    * AAQ-011 F12 — node ids this apply had to move so ids stay unique
    * project-wide, keyed by operation id. Absent when nothing collided.
@@ -298,6 +339,30 @@ export async function applyAuthoredPlan(
     }
   }
 
+  // AAQ-005 criterion 3, with the docs: a token write is cheap and in-memory,
+  // but a plan that carries one and cannot perform it must say so here rather
+  // than apply the components and leave the app unstyled — the "AI styling is
+  // discarded by a silent mechanism" failure, in a new place.
+  const tokens = options.tokens ?? {};
+  const hasTokens = Object.keys(tokens).length > 0;
+  if (hasTokens) {
+    if (!options.tokenWriter) {
+      throw new StagingError(
+        `This plan writes ${Object.keys(tokens).length} design token(s), and this caller has no way to write ` +
+          'them. Apply it from the Build panel, or drop the tokens.'
+      );
+    }
+    try {
+      options.tokenWriter.preflight?.(tokens);
+    } catch (error) {
+      throw new StagingError(
+        `The plan's design tokens cannot be applied: ${
+          error instanceof Error ? error.message : String(error)
+        } Nothing was written.`
+      );
+    }
+  }
+
   const seenDocs = new Set<string>();
   for (const op of docOps) {
     if (!options.docWriter) {
@@ -355,6 +420,7 @@ export async function applyAuthoredPlan(
   let backend: ProvisionedBackend | undefined;
   let registration: PageRegistration | undefined;
   let settingsWritten: string[] = [];
+  let tokensWritten: string[] = [];
   const remaps = new Map<string, NodeIdRemap[]>();
 
   // AIB-001 slice 4: which operation the transaction is inside. A mutation that
@@ -408,6 +474,10 @@ export async function applyAuthoredPlan(
     // AAQ-003, in the same group and for the same reason: a page that cannot
     // scroll is as unreachable as a page nobody routed.
     settingsWritten = applySettings(project, options.settings, undo);
+    // AAQ-005 criterion 3, in the same group and the same try. A palette that
+    // survived an undo of the components it was authored for would be the
+    // "atomically" half of the criterion failing quietly.
+    if (hasTokens) tokensWritten = options.tokenWriter!.apply(tokens, undo);
   } catch (error) {
     // Roll back through the inverses recorded so far. This is not a
     // partial-apply path — it is the absence of one.
@@ -435,6 +505,7 @@ export async function applyAuthoredPlan(
     ...(backend ? { backend } : {}),
     ...(registration ? { registration } : {}),
     ...(settingsWritten.length > 0 ? { settings: settingsWritten } : {}),
+    ...(tokensWritten.length > 0 ? { tokens: tokensWritten } : {}),
     ...(remaps.size > 0 ? { remappedNodeIds: remaps } : {}),
     undoLabel
   };
