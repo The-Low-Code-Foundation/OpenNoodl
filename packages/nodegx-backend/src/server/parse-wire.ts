@@ -1,7 +1,7 @@
 /**
  * Parse-wire data routes — the subset the runtime clients actually emit
- * (`cloudstore.js`, `configservice.js`; sessions live in ./users.ts, functions
- * in the HttpServer against the WorkflowRunner):
+ * (`cloudstore.js`; sessions live in ./users.ts, functions in the HttpServer
+ * against the WorkflowRunner):
  *
  *   POST   /classes/:c            query (body._method === 'GET') or create
  *   GET    /classes/:c            query via query-string (count calls)
@@ -9,7 +9,7 @@
  *   PUT    /classes/:c/:id        save / Increment / AddRelation / RemoveRelation
  *   DELETE /classes/:c/:id        delete
  *   GET    /aggregate/:c          group aggregates + distinct
- *   GET    /config                { params }
+ *   GET    /config                { params } — filtered per caller (FH-018)
  *
  * Explicitly NOT implemented (the clients never call them): live queries, push,
  * GraphQL, client schema management.
@@ -99,6 +99,60 @@ function extractOps(body: Record<string, unknown>): {
   }
 
   return { increments, addRelations, removeRelations, plain };
+}
+
+/**
+ * A `config-params.json` entry that declares its own visibility, rather than a
+ * bare value that is visible to everyone.
+ *
+ *     { "welcome": "hi",
+ *       "stripeKey": { "value": "sk_live_…", "masterKeyOnly": true } }
+ *
+ * Only an object that *explicitly carries the flag key* is a wrapper — an
+ * ordinary object param such as `{"theme":{"value":1}}` is left alone, because
+ * guessing would silently rewrite someone's data. `secret` is accepted as a
+ * synonym of `masterKeyOnly`: the flag name comes from Parse, the word people
+ * reach for does not.
+ */
+function visibilityFlag(value: unknown): { secret: boolean; value: unknown } | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const entry = value as Record<string, unknown>;
+  const hasFlag =
+    Object.prototype.hasOwnProperty.call(entry, 'masterKeyOnly') ||
+    Object.prototype.hasOwnProperty.call(entry, 'secret');
+  if (!hasFlag) return null;
+  return { secret: entry.masterKeyOnly === true || entry.secret === true, value: entry.value };
+}
+
+/**
+ * FH-018 — what `GET /config` is allowed to say to *this* caller.
+ *
+ * Parse excluded `masterKeyOnly` params from the public `/config` response and
+ * we did not: the handler used to take only `res`, so it could not filter even
+ * in principle. `privileged` is `principal.kind === 'admin'` — the master key
+ * and the admin bearer token both resolve there, which is what a cloud function
+ * presents (`_noodl_cloudservices.masterKey`).
+ *
+ * Fail-closed on purpose: an entry that declares itself secret is *omitted*, not
+ * blanked, so an unprivileged caller cannot even learn the key exists. There is
+ * no dev-open escape hatch here; the dispatcher's `devOpenActive` relaxes the
+ * route gate, never this.
+ */
+export function visibleConfigParams(
+  raw: Record<string, unknown>,
+  privileged: boolean
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw || {})) {
+    const marked = visibilityFlag(value);
+    if (!marked) {
+      out[key] = value;
+      continue;
+    }
+    if (marked.secret && !privileged) continue;
+    out[key] = marked.value;
+  }
+  return out;
 }
 
 export class ParseWireRoutes {
@@ -282,8 +336,14 @@ export class ParseWireRoutes {
     sendJSON(ctx.res, 200, { results: [result] });
   }
 
-  /** GET /config */
-  config(res: import('http').ServerResponse): void {
-    sendJSON(res, 200, { params: this.getConfigParams() });
+  /**
+   * GET /config — the params this caller is entitled to (FH-018).
+   *
+   * Takes the whole context, not just `res`, because the filter needs a
+   * principal: see {@link visibleConfigParams}.
+   */
+  config(ctx: RequestContext): void {
+    const params = visibleConfigParams(this.getConfigParams(), ctx.principal.kind === 'admin');
+    sendJSON(ctx.res, 200, { params });
   }
 }

@@ -422,7 +422,13 @@ export class HttpServer {
       // loopback when the operator allowed it") is not one of the declared
       // access classes, so it is applied where it can be expressed.
       { method: 'GET', pattern: 'metrics', access: { kind: 'public' }, handler: (ctx) => this.serveMetrics(ctx) },
-      { method: 'GET', pattern: 'config', access: { kind: 'public' }, handler: (ctx) => parse.config(ctx.res) },
+      // FH-018: `public` and SELF-ENFORCING, the same posture as /metrics. The
+      // route stays reachable without credentials because client-boot config is
+      // what it is for — but the handler filters by principal, so a param marked
+      // `masterKeyOnly` is omitted for anyone who is not admin. "Reachable" and
+      // "returns everything" are two different decisions, and only the first was
+      // ever made here.
+      { method: 'GET', pattern: 'config', access: { kind: 'public' }, handler: (ctx) => parse.config(ctx) },
 
       // ---- Realtime (SSE) — BAK-001 ---------------------------------------
       // Both are `public` and SELF-ENFORCING, exactly like the session routes:
