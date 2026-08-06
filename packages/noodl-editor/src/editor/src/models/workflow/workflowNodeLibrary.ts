@@ -39,9 +39,11 @@ import {
   PORT_IN,
   PORT_NEXT,
   PORT_ON_ERROR,
+  PORT_PARAM_MAPPING,
   PORT_TYPE_CASES,
   PORT_TYPE_CONDITION,
   PORT_TYPE_FUNCTION_REF,
+  PORT_TYPE_PARAMS,
   PORT_TYPE_PATH,
   PORT_TYPE_TRIGGER_INFO,
   PORT_TYPE_VALUE,
@@ -81,7 +83,9 @@ export {
   PORT_TYPE_CONDITION,
   PORT_TYPE_PATH,
   PORT_TYPE_VALUE,
-  PORT_TYPE_CASES
+  PORT_TYPE_CASES,
+  PORT_TYPE_PARAMS,
+  PORT_PARAM_MAPPING
 } from './workflowPorts';
 
 /**
@@ -95,6 +99,9 @@ const CATEGORY_COLOR: Record<string, string> = {
   Workflow: 'component', // it schedules a function — a component, one tier down
   'Workflow Logic': 'logic',
   'Workflow Timing': 'logic',
+  // CWF-002's Return. Not `component`: it schedules nothing. It is a structural
+  // decision about the run, which is what the `logic` token means here.
+  'Workflow Result': 'logic',
   'Workflow Error Handling': 'default' // quiet on purpose: these are exception paths
 };
 
@@ -235,6 +242,29 @@ function portsForKind(spec: StepKindSpec, catalog?: StepKindCatalog) {
       index: index++,
       default: param.default,
       tooltip: param.description
+    });
+  }
+
+  // CWF-001: the one SYNTHETIC row — the params the author names, which is a
+  // dictionary and therefore cannot be one-port-per-declared-param. The names
+  // the kind already declares ride on the port type (the way `enum` carries its
+  // values), because the control has to subtract them from the node's parameters
+  // to know which ones are the author's.
+  if (spec.paramMapping) {
+    ports.push({
+      name: PORT_PARAM_MAPPING,
+      displayName: spec.paramMapping.displayName,
+      type: {
+        name: PORT_TYPE_PARAMS,
+        scope: scopeRoots(catalog),
+        declared: spec.params.map((p) => p.name),
+        reserved: spec.paramMapping.reserved || [],
+        shadows: spec.paramMapping.shadows || []
+      },
+      plug: 'input',
+      group: GROUP_PARAMS,
+      index: index++,
+      tooltip: spec.paramMapping.description
     });
   }
 

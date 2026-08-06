@@ -219,6 +219,32 @@ Rules worth knowing before you debug something:
 - References resolve through nested objects and arrays, to a depth of 32. Deeper
   than that is rejected when you save.
 
+### Authoring the mapping on the canvas
+
+Select a Call Function step and its property panel has a **Params** section: one
+row per name, each with the same value control the rest of the panel uses — a
+fixed value, or **from** a reference with a picker over the steps that can have
+run before this one.
+
+This is what the step passes the function, and the names are yours. Pick them to
+suit the *function*, not the step that happens to feed it: a function whose
+Request node declares `amount` can then be called from anywhere, and each caller
+says where its `amount` comes from. Naming them after wherever the data happens to
+sit today (`result`, `total`, `previous`) welds the function to one position in
+one workflow.
+
+One name is refused when you save: **`previous`**. The engine writes it into the
+step input *after* your params, so a param called `previous` would be silently
+discarded — not shadowed, lost.
+
+`body`, `trigger`, `triggerType`, `headers` and `query` are allowed, because
+params merge *after* the run payload and so yours wins. That is an override, and
+sometimes it is exactly what you want; the panel notes that the function will see
+your value instead of the payload's.
+
+Only Call Function takes author-named params. `for-each` shapes its per-item input
+with its own `itemKey` / `indexKey` params instead.
+
 ### `previous` vs `upstream.<stepId>`
 
 Use `previous` for a straight line. Use `upstream.<stepId>` the moment anything
@@ -552,6 +578,68 @@ Ends this path deliberately.
 A non-error stop takes no edges **at all**, not even `next`; everything
 downstream is recorded `skipped`, so "this path ended on purpose" is visible in
 the execution record rather than inferred.
+
+---
+
+### `return`
+
+Ends this path **and** sets the value the run answers with.
+
+| Param | Default | Description |
+|---|---|---|
+| `value` | the upstream step's output | What the run returns: a literal, or `{"$path": "…"}` into any predecessor. |
+
+**Routes:** none — it ends its path like a non-error `stop`. A `return` with a
+`next` edge is refused when you save the workflow.
+
+```jsonc
+{
+  "id": "answer", "kind": "return",
+  "params": { "value": { "orderId": { "$path": "previous.result.id" }, "ok": true } }
+}
+```
+
+#### The Response node's rhyme
+
+A cloud function's graph ends at a **Response** node; a workflow's path ends at
+a **Return** step. They mean the same thing one tier apart — *this is the value
+that leaves* — which is why the workflow layer does not invent a second word for
+it. The difference is direction: Response answers a request it was handed;
+Return sets the **run result**, and whether anyone is listening depends on how
+the run started.
+
+Who actually receives it:
+
+| Started by | Gets the returned value? |
+|---|---|
+| A **webhook** trigger with `responseMode: "sync"` | Yes — it *is* the response body. |
+| A **webhook** trigger in `async` mode (the default) | No — `{executionId, status}`. The value is on the execution record. |
+| `POST /admin/workflow-defs/<id>/run` | Yes, as `run.output`. |
+| A **schedule** or **db-change** trigger | Nobody is listening. Not an error; the value is still recorded. |
+
+See [Triggers → Answering the caller](./TRIGGERS.md#answering-the-caller-responsemode).
+
+#### Without one
+
+A workflow with no `return` step answers with **whichever step finished last** —
+which is what every workflow did before this kind existed, and is unchanged. On
+a straight line that is obvious; through a branch, or a `for-each` with
+concurrency, it is not something you can read off the canvas. That is the whole
+argument for writing it down.
+
+#### Two of them
+
+**Two Return steps is normal** — a success path and an error path, one on each
+branch — and is *not* validated as a mistake. Only one of them runs, so only one
+of them answers.
+
+If two both *run* (a parallel merge), the **first wins**, and the execution
+record carries `returnConflict` naming both. Recorded rather than resolved
+silently: two live Returns is usually a graph that means something the author
+did not intend, and a value chosen by scheduling order should never look
+deliberate.
+
+**Client equivalent:** the cloud function **Response** node.
 
 ---
 

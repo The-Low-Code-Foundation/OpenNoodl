@@ -48,7 +48,9 @@ export type StepKind =
   | 'stop'
   // CF11-003 wait / delay
   | 'wait'
-  | 'wait-until';
+  | 'wait-until'
+  // CWF-002: what the caller gets back
+  | 'return';
 
 export interface WorkflowStep {
   /** Unique within the workflow. Doubles as the execution-history `nodeId`. */
@@ -163,8 +165,28 @@ export interface WorkflowRunResult {
   stepsRun: number;
   /** Steps recorded as skipped (unreached branches / post-halt tail). */
   stepsSkipped: number;
-  /** Output of the last successfully-run step, if any. */
-  output?: Record<string, unknown>;
+  /**
+   * What the run answers with (CWF-002).
+   *
+   * A `return` step sets it explicitly to that step's `value` — which is why
+   * this is `unknown` and not `Record<string, unknown>`: a Return may hand back
+   * a number, a string or an array, and forcing it into an object would be the
+   * engine inventing a wrapper the author never wrote.
+   *
+   * With no `return` step it is the output of the last successfully-run step,
+   * exactly as before — every workflow written before CWF-002 keeps the value
+   * it always had, in the shape it always had.
+   */
+  output?: unknown;
+  /**
+   * True when `output` came from a `return` step rather than from "whichever
+   * step happened to finish last". The distinction is the whole point of the
+   * kind: `lastOutput` is not something an author can read off a branching
+   * canvas, and a caller deserves to know which of the two it is looking at.
+   */
+  returned?: boolean;
+  /** The `return` step that set `output`, when one did (first-wins). */
+  returnedFrom?: string;
   error?: string;
 }
 

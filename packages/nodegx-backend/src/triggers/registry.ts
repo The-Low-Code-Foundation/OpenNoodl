@@ -32,6 +32,28 @@ export type MissedFirePolicy = 'skip' | 'run-once-on-start';
 export type WebhookScheme = 'hmac-sha256' | 'token';
 export type ChangeAction = 'create' | 'update' | 'delete';
 
+/**
+ * What a fire answers the CALLER with (CWF-002).
+ *
+ *  - `async` (default, and what every trigger written before CWF-002 does):
+ *    `{ executionId, status }`. The run's own output is not serialised; the
+ *    execution record is where the result lives.
+ *  - `sync`: the workflow's output IS the response body, capped by
+ *    `responseTimeoutMs`.
+ *
+ * ⚠️ Note what this does NOT change. The dispatcher has ALWAYS awaited the
+ * whole run before answering — `fireWorkflow` awaits `workflows.run()` and the
+ * webhook route awaits `dispatcher.fire()` — so an HTTP connection is already
+ * held open for a run's full duration in BOTH modes. `sync` does not introduce
+ * that; it introduces a cap on it. Only a `sync` trigger has a bounded wait.
+ */
+export type ResponseMode = 'sync' | 'async';
+
+/** Cap applied to a `sync` fire when the trigger names no `responseTimeoutMs`. */
+export const DEFAULT_RESPONSE_TIMEOUT_MS = 30000;
+/** The most a `sync` fire may hold an HTTP connection open. */
+export const MAX_RESPONSE_TIMEOUT_MS = 300000;
+
 export interface TriggerTarget {
   /**
    * 'function' invokes a cloud function directly; 'workflow' runs a WF-001
@@ -102,6 +124,21 @@ export interface TriggerDef {
   name?: string;
   enabled: boolean;
   target: TriggerTarget;
+  /**
+   * CWF-002. Omitted means `async` — so a `triggers.json` written before this
+   * field existed loads unchanged and fires with exactly the behaviour it had.
+   *
+   * It is a TOP-LEVEL field and not part of `webhook` because a manual test
+   * fire from the editor answers a caller too, whatever the trigger's type. On
+   * a schedule or a db-change trigger fired by its own source there is nobody
+   * to answer, and the setting is simply inert there.
+   */
+  responseMode?: ResponseMode;
+  /**
+   * `sync` only: how long a fire may hold the caller's connection before it
+   * gives up on the answer (the run itself continues). Omitted = 30s.
+   */
+  responseTimeoutMs?: number;
   schedule?: ScheduleConfig;
   webhook?: WebhookConfig;
   dbChange?: DbChangeConfig;
@@ -142,6 +179,8 @@ export interface TriggerInput {
   name?: string;
   enabled?: boolean;
   target: TriggerTarget;
+  responseMode?: ResponseMode;
+  responseTimeoutMs?: number;
   schedule?: ScheduleConfig;
   webhook?: Omit<WebhookConfig, 'scheme' | 'maxBodyBytes'> &
     Partial<Pick<WebhookConfig, 'scheme' | 'maxBodyBytes'>>;
@@ -183,7 +222,8 @@ const CHANGE_ACTIONS: ChangeAction[] = ['create', 'update', 'delete'];
  * three. `upsert` never reads them from the input.
  */
 const TRIGGER_KEYS = [
-  'id', 'type', 'name', 'enabled', 'target', 'schedule', 'webhook', 'dbChange', 'createdAt', 'updatedAt', 'status'
+  'id', 'type', 'name', 'enabled', 'target', 'responseMode', 'responseTimeoutMs',
+  'schedule', 'webhook', 'dbChange', 'createdAt', 'updatedAt', 'status'
 ] as const;
 const TARGET_KEYS = ['kind', 'name'] as const;
 const SCHEDULE_KEYS = ['cron', 'missedFirePolicy', 'payload'] as const;
@@ -221,6 +261,24 @@ export function validateTriggerDef(raw: unknown): string[] {
   if (t.enabled !== undefined && typeof t.enabled !== 'boolean') errors.push('enabled must be a boolean');
   if (t.name !== undefined && typeof t.name !== 'string') errors.push('name must be a string');
 
+  // CWF-002 response mode. Range-checked here rather than clamped silently: a
+  // caller asking for a ten-minute synchronous hook has misunderstood something
+  // and should be told, not quietly given five.
+  if (t.responseMode !== undefined && t.responseMode !== 'sync' && t.responseMode !== 'async') {
+    errors.push('responseMode must be "sync" or "async"');
+  }
+  if (t.responseTimeoutMs !== undefined) {
+    if (
+      typeof t.responseTimeoutMs !== 'number' ||
+      !Number.isFinite(t.responseTimeoutMs) ||
+      t.responseTimeoutMs <= 0 ||
+      t.responseTimeoutMs > MAX_RESPONSE_TIMEOUT_MS
+    ) {
+      errors.push(`responseTimeoutMs must be a number > 0 and <= ${MAX_RESPONSE_TIMEOUT_MS} (5 minutes)`);
+    } else if (t.responseMode !== 'sync') {
+      errors.push('responseTimeoutMs only applies to responseMode "sync" — nothing else reads it');
+    }
+  }
   // target
   const target = t.target as Record<string, unknown> | undefined;
   if (!target || typeof target !== 'object') {
@@ -231,6 +289,17 @@ export function validateTriggerDef(raw: unknown): string[] {
       errors.push('target.kind must be "function" or "workflow"');
     }
     if (typeof target.name !== 'string' || !target.name) errors.push('target.name must be a non-empty string');
+  }
+
+  // `sync` is about serialising a WORKFLOW's output. A function target already
+  // relays the function's own HTTP response verbatim, so the flag would be
+  // stored and read by nothing — the exact silence the strict-keys rule exists
+  // to prevent, one level in.
+  if (t.responseMode === 'sync' && target && target.kind !== 'workflow') {
+    errors.push(
+      'responseMode "sync" applies to a workflow target — a function target already answers with the ' +
+        "function's own response"
+    );
   }
 
   // type-specific config presence
@@ -481,6 +550,11 @@ export class TriggerRegistry {
       name: input.name,
       enabled: input.enabled !== undefined ? input.enabled : existing ? existing.enabled : true,
       target: input.target,
+      // CWF-002. Omitted rather than stored as `"async"`, so a trigger that
+      // takes the default reads on disk exactly as it did before this field
+      // existed — and a diff of triggers.json shows a decision, not a default.
+      ...(input.responseMode ? { responseMode: input.responseMode } : {}),
+      ...(input.responseTimeoutMs !== undefined ? { responseTimeoutMs: input.responseTimeoutMs } : {}),
       createdAt: existing ? existing.createdAt : now,
       updatedAt: now,
       status: existing ? existing.status : emptyStatus()

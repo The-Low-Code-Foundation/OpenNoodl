@@ -426,6 +426,14 @@ export class WorkflowEngine {
     let stepsRun = 0;
     let stepsSkipped = 0;
 
+    // CWF-002: what a `return` step decided the run answers with. FIRST WINS —
+    // two Return steps on two branches is the normal shape (a success path and
+    // an error path), and if a parallel merge ever runs both, resolving it
+    // silently is worse than resolving it predictably and saying so. The losers
+    // are recorded on the execution record rather than discarded.
+    let returned: { from: string; value: unknown } | undefined;
+    const returnConflict: string[] = [];
+
     // Which upstream step "reached" a given step (for input `previous`).
     const reachedBy = new Map<string, string>();
     // EVERY upstream step that reached it (for `ctx.upstream` — the `merge`
@@ -493,6 +501,13 @@ export class WorkflowEngine {
         };
         const resolvedParams = resolveStepParams(step.params, paramScope, rawParamNames(step.kind));
 
+        // CWF-001: THIS is the param mapping, and it has worked since WFA-003 —
+        // a step's params are merged in by NAME, so a `call-function` step whose
+        // params are `{ amount: {"$path": "previous.result.total"} }` hands the
+        // function `body.amount`. What was missing was never the engine: it was a
+        // catalog declaration saying the kind takes author-named params, so a
+        // property editor had a row to author them in. `spec.paramMapping` is
+        // that declaration; nothing here changed to add it.
         const input: Record<string, unknown> = {
           ...basePayload,
           ...resolvedParams,
@@ -522,6 +537,10 @@ export class WorkflowEngine {
           outcomes.set(step.id, { status: 'success', output });
           lastOutput = output;
           stepsRun++;
+          if (result.returns) {
+            if (returned) returnConflict.push(step.id);
+            else returned = { from: step.id, value: result.returns.value };
+          }
           // Take the outgoing edges this step selected:
           //   `next`        — unconditional, taken whatever the step decided
           //   `routes[r]`   — for each route name the executor selected
@@ -617,7 +636,12 @@ export class WorkflowEngine {
           timedOut,
           unroutedError,
           stepsRun,
-          stepsSkipped
+          stepsSkipped,
+          // CWF-002: which step decided the answer, and whether any other
+          // Return step also ran and lost. Absent entirely for a workflow with
+          // no Return step, so an existing record's metadata is unchanged.
+          ...(returned ? { returnedFrom: returned.from } : {}),
+          ...(returnConflict.length ? { returnConflict: [returned!.from, ...returnConflict] } : {})
         });
       }
 
@@ -629,7 +653,10 @@ export class WorkflowEngine {
         timedOut,
         stepsRun,
         stepsSkipped,
-        output: lastOutput,
+        // A Return step's value when one ran, else the last step's output —
+        // which is exactly what every workflow written before CWF-002 gets.
+        output: returned ? returned.value : lastOutput,
+        ...(returned ? { returned: true, returnedFrom: returned.from } : {}),
         error: errorMessage
       };
     } finally {

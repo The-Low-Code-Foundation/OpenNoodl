@@ -1989,7 +1989,9 @@ export class HttpServer {
       requestId: ctx.requestId
     });
 
-    ctx.res.writeHead(outcome.statusCode, { 'Content-Type': 'application/json' });
+    // CWF-002: a sync fire answers with the workflow's output as the whole body,
+    // so the execution id rides in a header rather than an envelope.
+    ctx.res.writeHead(outcome.statusCode, { 'Content-Type': 'application/json', ...(outcome.headers || {}) });
     ctx.res.end(outcome.body || JSON.stringify({ ok: outcome.result.ok }));
   }
 }

@@ -28,6 +28,16 @@ export type MissedFirePolicy = 'skip' | 'run-once-on-start';
 export type WebhookScheme = 'hmac-sha256' | 'token';
 export type ChangeAction = 'create' | 'update' | 'delete';
 
+/**
+ * What a fire answers its caller with (CWF-002).
+ *
+ * `async` is the default and is what every trigger created before this existed
+ * does: `{executionId, status}`. `sync` answers with the workflow's own output —
+ * a `return` step's value, or the last step's output — and only applies to a
+ * workflow target, because a function target already relays its own response.
+ */
+export type ResponseMode = 'sync' | 'async';
+
 /** What a trigger invokes. `name` is the function name, or the workflow **id**. */
 export interface TriggerTarget {
   kind: 'function' | 'workflow';
@@ -47,6 +57,8 @@ export interface TriggerDef {
   name?: string;
   enabled: boolean;
   target: TriggerTarget;
+  responseMode?: ResponseMode;
+  responseTimeoutMs?: number;
   schedule?: { cron: string; missedFirePolicy: MissedFirePolicy; payload?: Record<string, unknown> };
   webhook?: { slug: string; scheme: WebhookScheme; maxBodyBytes: number };
   dbChange?: { collection: string; actions: ChangeAction[] };
@@ -62,6 +74,8 @@ export interface TriggerInput {
   name?: string;
   enabled?: boolean;
   target: TriggerTarget;
+  responseMode?: ResponseMode;
+  responseTimeoutMs?: number;
   schedule?: { cron: string; missedFirePolicy: MissedFirePolicy; payload?: Record<string, unknown> };
   webhook?: { slug: string; scheme?: WebhookScheme; maxBodyBytes?: number };
   dbChange?: { collection: string; actions: ChangeAction[] };

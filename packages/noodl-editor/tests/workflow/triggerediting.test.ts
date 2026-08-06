@@ -216,6 +216,61 @@ describe('WFA-008 — the edit form', () => {
       expect('error' in built && built.error).toMatch(/target function is required/);
     });
 
+    /**
+     * CWF-002. `async` is the ABSENCE of the key, not the string "async": a form
+     * that always sent it would write a default into every triggers.json and
+     * make an unchanged setting read as a decision on every diff.
+     */
+    it('sends responseMode only when it is sync AND the target is a workflow', () => {
+      const workflowSync = buildTriggerInput({
+        ...EMPTY_FORM,
+        type: 'webhook',
+        targetKind: 'workflow',
+        targetTyped: 'quote',
+        slug: 'quote',
+        responseMode: 'sync'
+      });
+      if ('error' in workflowSync) throw new Error(workflowSync.error);
+      expect(workflowSync.input.responseMode).toBe('sync');
+
+      // Async is silence.
+      const workflowAsync = buildTriggerInput({
+        ...EMPTY_FORM,
+        type: 'webhook',
+        targetKind: 'workflow',
+        targetTyped: 'quote',
+        slug: 'quote'
+      });
+      if ('error' in workflowAsync) throw new Error(workflowAsync.error);
+      expect('responseMode' in workflowAsync.input).toBe(false);
+
+      // A function target already relays its own response, and the registry
+      // refuses `sync` there — so the form must not send a 400.
+      const fnSync = buildTriggerInput({
+        ...EMPTY_FORM,
+        type: 'webhook',
+        targetKind: 'function',
+        targetTyped: 'hello',
+        slug: 'hello',
+        responseMode: 'sync'
+      });
+      if ('error' in fnSync) throw new Error(fnSync.error);
+      expect('responseMode' in fnSync.input).toBe(false);
+    });
+
+    it('reports a bad response timeout against its own field', () => {
+      const built = buildTriggerInput({
+        ...EMPTY_FORM,
+        type: 'webhook',
+        targetKind: 'workflow',
+        targetTyped: 'quote',
+        slug: 'quote',
+        responseMode: 'sync',
+        responseTimeoutText: '999999'
+      });
+      expect('error' in built && built.error).toMatch(/response timeout/);
+    });
+
     it('trims what it sends', () => {
       const built = buildTriggerInput({ ...EMPTY_FORM, type: 'webhook', targetTyped: ' fn ', slug: ' hook ' });
       if ('error' in built) throw new Error(built.error);

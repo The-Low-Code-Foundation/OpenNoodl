@@ -183,6 +183,48 @@ full language for reading these from a workflow step is in
 
 ---
 
+## Answering the caller (`responseMode`)
+
+A trigger whose target is a **workflow** carries `responseMode`, and it decides
+what a caller gets back.
+
+| `responseMode` | Response body | Status |
+|---|---|---|
+| `async` *(default, and every trigger written before CWF-002)* | `{"executionId": "…", "status": "success"}` | 200 / 500 |
+| `sync` | The workflow's **output** — its [`return` step](./WORKFLOW-NODES.md#return)'s value, or the last step's output. `null` if it produced none. | 200 |
+| `sync`, run failed | `{"executionId": "…", "status": "error", "error": "…"}` — an error **envelope**, never shaped like an output | 500 |
+| `sync`, run too slow | `{"status": "running", "error": "…"}` | 504 |
+
+A `sync` response also carries **`X-Execution-Id`**, so the run is still
+findable without an envelope wrapped round the body.
+
+```console
+$ curl -sS -X POST http://127.0.0.1:8577/hooks/my-backend/quote \
+    -H 'X-Webhook-Token: whsec_…' -d '{"lines":3}'
+{"total":42,"currency":"GBP"}
+```
+
+**It is not the wait that `sync` adds — it is the cap.** The dispatcher has
+always awaited the whole run before answering, in both modes, since triggers
+shipped: a webhook pointed at a workflow with a ten-minute `wait` step has
+always held the connection for ten minutes. What `sync` adds is
+**`responseTimeoutMs`** (default **30 000**, maximum **300 000**). Past it the
+caller gets a `504` and *the run continues* — it finishes, writes its execution
+record and stamps the trigger, just with nobody on the line. Giving up on the
+answer is not giving up on the work.
+
+Two things `responseMode` deliberately does not do:
+
+- **It is refused on a function target.** A trigger pointed at a cloud function
+  already relays that function's own HTTP response verbatim. Setting `sync`
+  there would be a flag stored by the registry and read by nothing, so the write
+  is rejected with that sentence.
+- **It changes nothing for a schedule or a db-change trigger firing normally.**
+  There is no caller to answer. The field is only meaningful when a request is
+  waiting — a webhook, or a manual test fire from the editor.
+
+---
+
 ## DB-change
 
 An `insert` / `update` / `delete` on a chosen collection invokes a function with

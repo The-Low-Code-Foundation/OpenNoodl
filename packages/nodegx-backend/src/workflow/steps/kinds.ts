@@ -56,8 +56,19 @@ import { isPlainObject, VALUE_LANGUAGE } from './values';
  * the backend that will evaluate it — a bundled copy could offer an operator
  * this backend does not implement, which is the drift the served registry
  * exists to prevent.
+ * 1.3.0 — CWF-001 added `paramMapping` on a KIND. It describes something the
+ * engine has done since WFA-003 and nothing declared: a step's params are merged
+ * into its input by name, so a `call-function` step can hand a function a value
+ * under a name the author chose. It went unauthorable because the editor builds
+ * one row per DECLARED param and there were none to declare.
+ *
+ * Degradation, both ways: an editor talking to a pre-1.3.0 backend is served no
+ * `paramMapping`, so it shows no mapping row — and definitions already carrying a
+ * mapping still run, because the engine never needed the declaration. A pre-1.3.0
+ * editor talking to a 1.3.0 backend ignores fields it does not know and renders
+ * exactly what it rendered before.
  */
-export const STEP_KIND_CATALOG_VERSION = '1.2.0';
+export const STEP_KIND_CATALOG_VERSION = '1.3.0';
 
 export interface StepParamSpec {
   name: string;
@@ -85,6 +96,38 @@ export interface StepRouteSpec {
   dynamic?: boolean;
 }
 
+/**
+ * CWF-001 — a kind that takes params the AUTHOR names, beyond the declared ones.
+ *
+ * ⚠️ Read this before you "add param mapping": the engine has merged a step's
+ * params into its input by name since WFA-003, so
+ * `{"kind":"call-function","ref":"charge","params":{"amount":{"$path":"previous.result.total"}}}`
+ * already delivers `body.amount` to the function, and
+ * `tests/workflow-data-mapping.test.ts` has proved it end-to-end all along. What
+ * did not exist was a *declaration*: the editor builds one row per DECLARED
+ * param, so a kind whose only declared param was `ref` had nowhere to author a
+ * mapping and the `$path` picker was reachable by no route in the product.
+ *
+ * This is that declaration, and it deliberately adds no second on-disk form.
+ * There is exactly one way to write a mapping and it is the way that already
+ * worked.
+ */
+export interface StepParamMappingSpec {
+  /** The row label a property editor puts on the mapping. */
+  displayName: string;
+  description: string;
+  /**
+   * Names a mapping may not use — the backend refuses these. Served rather than
+   * bundled so an editor's error and the backend's 400 cannot drift apart.
+   */
+  reserved: string[];
+  /**
+   * Names a mapping MAY use but which replace part of the run payload for the
+   * called function. Legal; worth saying out loud in a property editor.
+   */
+  shadows: string[];
+}
+
 export interface StepKindSpec {
   kind: StepKind;
   displayName: string;
@@ -96,6 +139,8 @@ export interface StepKindSpec {
   /** True when the step invokes a cloud function (and so needs `ref`). */
   invokesFunction: boolean;
   params: StepParamSpec[];
+  /** CWF-001: present when the kind also takes author-named params. */
+  paramMapping?: StepParamMappingSpec;
   routes: StepRouteSpec[];
   /** Prose description of the step's output object (what `previous` becomes). */
   output: string;
@@ -115,6 +160,52 @@ const REF_PARAM: StepParamSpec = {
   description: 'The cloud function to invoke (a step field, not a param).'
 };
 
+/**
+ * Names a param mapping may NOT use (CWF-001 S2). Exactly one, and the reason is
+ * specific: `WorkflowEngine` builds a step's input as
+ * `{ ...payload, ...params, previous }`, so a param called `previous` is
+ * overwritten by the engine and the author is left debugging a value that never
+ * arrived. Refused at write time, where renaming costs nothing.
+ *
+ * ⚠️ The list was drafted longer — the whole canonical payload — and that was
+ * WRONG, caught by `workflow-data-mapping.test.ts`, which has passed
+ * `{ body: {"$path":"body"} }` since WFA-003. A payload root in a mapping is not
+ * lossy: the params merge AFTER the payload, so the author's value wins. That is
+ * an override, and an explicit identity mapping is a legitimate way to say what a
+ * step passes. See `SHADOWED_STEP_INPUT_KEYS` for what an editor should still
+ * mention.
+ */
+export const RESERVED_STEP_INPUT_KEYS: ReadonlySet<string> = new Set(['previous']);
+
+/**
+ * Names a mapping may use but which REPLACE part of the run payload for the
+ * function being called (CWF-001).
+ *
+ * Legal, occasionally intended, and worth a word in a property editor — a
+ * function that stops seeing `body` because a step remapped it is a confusing
+ * thing to debug, and a confusing thing is not the same as an illegal one.
+ */
+export const SHADOWED_STEP_INPUT_KEYS: readonly string[] = ['body', 'trigger', 'triggerType', 'headers', 'query'];
+
+/**
+ * CWF-001 — what a Call Function step hands the function it calls.
+ *
+ * Without it a function could only read data by the name and shape its CALLER
+ * happened to produce — `previous.result.total`, wherever `previous` came from —
+ * which welds a reusable unit of work to one position in one graph. With it, a
+ * function declares `amount` and each step says where `amount` comes from.
+ */
+const CALL_FUNCTION_MAPPING: StepParamMappingSpec = {
+  displayName: 'Params',
+  description:
+    'What this step passes the function, as `{ "<name>": <value> }`. Each value is a literal or a reference — ' +
+    '`{"$path": "previous.result.total"}` — and the names arrive at the top level of the request body, so the ' +
+    'function reads `amount`. A name cannot reference another name of the same step: params resolve against the ' +
+    'run, before they are merged into anything.',
+  reserved: [...RESERVED_STEP_INPUT_KEYS],
+  shadows: [...SHADOWED_STEP_INPUT_KEYS]
+};
+
 export const STEP_KIND_SPECS: Record<StepKind, StepKindSpec> = {
   'call-function': {
     kind: 'call-function',
@@ -127,10 +218,13 @@ export const STEP_KIND_SPECS: Record<StepKind, StepKindSpec> = {
       'is a cloud function graph, and this step schedules it. Prefer it over inventing new step kinds.',
     invokesFunction: true,
     params: [REF_PARAM],
+    paramMapping: CALL_FUNCTION_MAPPING,
     routes: [],
     output: "The function's parsed 2xx response body. A non-2xx response or a missing function is a step FAILURE.",
     notes: [
-      'Runs through the unlogged WorkflowRunner.invokeFunction, so the engine writes the only execution record.'
+      'Runs through the unlogged WorkflowRunner.invokeFunction, so the engine writes the only execution record.',
+      "The request body is the run payload, then this step's params, then `previous` — in that order, so a mapped " +
+        'name overrides a payload key of the same name and `previous` cannot be overridden at all.'
     ]
   },
 
@@ -401,6 +495,42 @@ export const STEP_KIND_SPECS: Record<StepKind, StepKindSpec> = {
     ]
   },
 
+  return: {
+    kind: 'return',
+    displayName: 'Return',
+    category: 'Workflow Result',
+    source: 'CWF-002',
+    summary: 'Ends this path and sets the value the run answers with.',
+    whenToUse:
+      'Say explicitly what a caller gets back — a webhook in sync mode, or anything reading the run result. ' +
+      'Without one, the run answers with whichever step finished last, which a branching canvas cannot show you.',
+    invokesFunction: false,
+    params: [
+      {
+        name: 'value',
+        type: 'any',
+        description:
+          'What the run returns: a literal, or `{"$path": "previous.result.total"}` into any predecessor. ' +
+          'Omitted, the upstream step\'s output is returned (and `null` on the entry step).'
+      }
+    ],
+    routes: [],
+    output: '`{ returned: true, value }` as the STEP output; the run\'s own `output` becomes `value` itself.',
+    clientEquivalent:
+      'The cloud function Response node — same idea one tier up. Response answers an HTTP request it was ' +
+      'handed; Return sets the run result, which reaches a caller only when there is one (a sync webhook, or ' +
+      'the admin run route). A scheduled run with a Return step is not an error; nobody is listening, is all.',
+    notes: [
+      'Takes NO outgoing edges, like a non-error stop — everything downstream is recorded skipped. A `return` ' +
+        'with a `next` edge is refused at write time.',
+      'Two Return steps on two branches (success path, error path) is legal and normal. If two both RUN, the ' +
+        'FIRST wins and the execution record carries `returnConflict` naming both — the ambiguity is recorded, ' +
+        'never silently resolved.',
+      'A `return` value is not validated against a schema: the workflow layer references and reshapes data, it ' +
+        'does not compute it.'
+    ]
+  },
+
   wait: {
     kind: 'wait',
     displayName: 'Wait',
@@ -543,6 +673,35 @@ function params(step: WorkflowStep): Record<string, unknown> {
 /** True for `{"$path": …}` / `{"$literal": …}` — a value that is not known yet. */
 function isValueSpec(v: unknown): boolean {
   return isPlainObject(v) && (typeof v.$path === 'string' || '$literal' in v);
+}
+
+/**
+ * CWF-001: the names a kind's param mapping may use.
+ *
+ * Checked for the kinds that DECLARE a mapping, and only for the params that are
+ * not declared by the kind itself — the declared ones are the kind's own
+ * vocabulary and are not the author's to collide with. What is deliberately NOT
+ * checked is whether a `$path` resolves to anything: a function's output shape is
+ * the function's business, which is the same line `validateValueReferences`
+ * already draws.
+ */
+function validateParamMapping(spec: StepKindSpec, p: Record<string, unknown>, at: string): string[] {
+  if (!spec.paramMapping) return [];
+  const declared = new Set(spec.params.map((param) => param.name));
+  const errors: string[] = [];
+
+  for (const key of Object.keys(p)) {
+    if (declared.has(key)) continue;
+    if (!key.trim()) {
+      errors.push(`${at}: a param needs a name — it is what the function reads the value as`);
+    } else if (RESERVED_STEP_INPUT_KEYS.has(key)) {
+      errors.push(
+        `${at}.params.${key}: the engine writes "${key}" into the step input AFTER the params, so this value ` +
+          'would be silently discarded. Give it another name.'
+      );
+    }
+  }
+  return errors;
 }
 
 function requirePositiveNumber(v: unknown, where: string, errors: string[], min = 1): void {
@@ -693,6 +852,20 @@ export function validateStepShape(step: WorkflowStep): string[] {
       break;
     }
 
+    case 'return': {
+      // A `return` ends its path, so an outgoing edge is dead wiring — the same
+      // class of mistake the `stop`/`isError` rule above catches, and refused
+      // for the same reason: it would never be taken and nothing would say so.
+      if ((step.next || []).length > 0) {
+        errors.push(`${at}: a return step ends its path and can never take "next" — remove the edge`);
+      }
+      // `value` is deliberately optional and deliberately unconstrained: any
+      // JSON, or a `{"$path"}` reference, is a legal thing to hand a caller.
+      // The only structural rule is depth, which the generic value walk in
+      // validateWorkflowDefinition already enforces.
+      break;
+    }
+
     case 'wait': {
       const unit = p.unit === undefined ? 'milliseconds' : String(p.unit);
       if (!WAIT_UNIT_MS[unit]) {
@@ -723,7 +896,15 @@ export function validateStepShape(step: WorkflowStep): string[] {
       break;
     }
 
-    case 'call-function':
+    case 'call-function': {
+      // CWF-001: until this case existed, `call-function` fell through to
+      // `default: break` and any params object at all was legal — which was
+      // tolerable while no UI could author one, and is not now that the mapping
+      // is a declared, documented feature with a row of its own.
+      errors.push(...validateParamMapping(spec, p, at));
+      break;
+    }
+
     default:
       break;
   }

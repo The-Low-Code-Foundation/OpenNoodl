@@ -99,6 +99,20 @@ export interface StepExecResult {
   select?: string[];
   /** Take NO outgoing edges at all — this path ends here (`stop`, isError:false). */
   halt?: boolean;
+  /**
+   * CWF-002: this step decided what the RUN answers with.
+   *
+   * Wrapped in an object rather than sent as a bare `value` so that "returned
+   * `undefined`" and "did not return" are different states — a Return step
+   * whose `value` resolves to nothing must still win over `lastOutput`, or the
+   * caller silently gets whichever step finished last, which is the defect the
+   * kind exists to remove.
+   *
+   * It is a field on the RESULT and not a `kind` check in the engine on
+   * purpose: the engine still never learns what kinds exist (WF-001's seam),
+   * exactly as `select` and `halt` are declared here rather than switched on.
+   */
+  returns?: { value: unknown };
 }
 
 export type StepExecReturn = Record<string, unknown> | StepExecResult;
@@ -106,7 +120,7 @@ export type StepExecReturn = Record<string, unknown> | StepExecResult;
 /** Build a routing result. */
 export function stepResult(
   output: Record<string, unknown>,
-  opts: { select?: string[]; halt?: boolean } = {}
+  opts: { select?: string[]; halt?: boolean; returns?: { value: unknown } } = {}
 ): StepExecResult {
   return { [STEP_RESULT_BRAND]: true, output, ...opts };
 }

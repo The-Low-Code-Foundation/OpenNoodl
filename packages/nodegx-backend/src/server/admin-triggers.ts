@@ -51,7 +51,12 @@ export interface TriggerDeletedResponse {
 export interface TriggerFiredResponse {
   fired: boolean;
   result: unknown;
-  response: { statusCode: number };
+  /**
+   * What a real caller would have received. `body` is CWF-002: a test fire that
+   * reports only a status code cannot show an author what their workflow
+   * answers with, which is the one thing "Test fire" is for.
+   */
+  response: { statusCode: number; body?: string };
 }
 
 export class AdminTriggerRoutes {
@@ -177,7 +182,7 @@ export class AdminTriggerRoutes {
     sendJSON(ctx.res, 200, {
       fired: true,
       result: outcome.result,
-      response: { statusCode: outcome.statusCode }
+      response: { statusCode: outcome.statusCode, ...(outcome.body ? { body: outcome.body } : {}) }
     } satisfies TriggerFiredResponse);
   }
 }

@@ -21,6 +21,7 @@ import type { StepKind } from '../types';
 import { RetryStepExecutor, StopStepExecutor } from './errors';
 import { STEP_KINDS } from './kinds';
 import { BranchStepExecutor, ForEachStepExecutor, MergeStepExecutor, SwitchStepExecutor } from './logic';
+import { ReturnStepExecutor } from './returns';
 import { WaitStepExecutor, WaitUntilStepExecutor } from './timing';
 
 export interface CompositeStepExecutorDeps {
@@ -44,6 +45,7 @@ export class CompositeStepExecutor implements StepExecutor {
       stop: new StopStepExecutor(),
       wait: new WaitStepExecutor(),
       'wait-until': new WaitUntilStepExecutor(),
+      return: new ReturnStepExecutor(),
       ...(deps.overrides || {})
     } as Record<StepKind, StepExecutor>;
   }

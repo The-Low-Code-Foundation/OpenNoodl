@@ -14,8 +14,8 @@ import React from 'react';
 
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
-import { ChangeAction, TriggerTargets, TriggerType } from '@noodl-models/triggers/TriggerBackendClient';
-import { OTHER, TriggerFormState } from '@noodl-models/triggers/triggerEditing';
+import { ChangeAction, ResponseMode, TriggerTargets, TriggerType } from '@noodl-models/triggers/TriggerBackendClient';
+import { DEFAULT_RESPONSE_TIMEOUT_MS, OTHER, TriggerFormState } from '@noodl-models/triggers/triggerEditing';
 
 import css from './TriggersPanel.module.scss';
 
@@ -127,6 +127,48 @@ export function TriggerFormFields({ form, onChange, targets, mode }: TriggerForm
             aria-label="Target name"
           />
         </label>
+      )}
+
+      {/*
+        CWF-002: what the caller gets back. Only offered for a WORKFLOW target —
+        a function target already answers with the function's own response, and
+        the registry refuses `sync` on one, so a control that offered it here
+        would be offering a 400.
+      */}
+      {form.targetKind === 'workflow' && (
+        <>
+          <label className={css.Field}>
+            {label('answers with')}
+            <select
+              className={css.Input}
+              value={form.responseMode}
+              onChange={(e) => onChange({ responseMode: e.target.value as ResponseMode })}
+              aria-label="Response mode"
+            >
+              <option value="async">the run id and status</option>
+              <option value="sync">the workflow&apos;s output (sync)</option>
+            </select>
+          </label>
+          {form.responseMode === 'sync' && (
+            <label className={css.Field}>
+              {label('response timeout (ms)')}
+              <input
+                className={css.Input}
+                value={form.responseTimeoutText}
+                placeholder={String(DEFAULT_RESPONSE_TIMEOUT_MS)}
+                onChange={(e) => onChange({ responseTimeoutText: e.target.value })}
+                aria-label="Response timeout"
+              />
+            </label>
+          )}
+          {form.responseMode === 'sync' && (
+            <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
+              The caller waits for the whole run and receives the value of its Return step (or the last step&apos;s
+              output). A Wait step holds that connection open — past the timeout the caller gets a 504 and the run
+              carries on; its result is in the history.
+            </Text>
+          )}
+        </>
       )}
 
       {form.type === 'schedule' && (

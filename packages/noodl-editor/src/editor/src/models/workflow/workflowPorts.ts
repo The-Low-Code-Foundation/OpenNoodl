@@ -116,3 +116,24 @@ export const PORT_TYPE_PATH = 'workflow-path';
 export const PORT_TYPE_VALUE = 'workflow-value';
 /** `switch`'s case table, which also names its dynamic route ports. */
 export const PORT_TYPE_CASES = 'workflow-cases';
+/**
+ * CWF-001: the param MAPPING — author-chosen names, each holding a value in the
+ * same language every other param speaks.
+ *
+ * It is its own port type rather than an `object` because one-port-per-declared-
+ * param cannot express a dictionary whose KEYS the author invents. `switch.cases`
+ * set the precedent and this follows it.
+ */
+export const PORT_TYPE_PARAMS = 'workflow-params';
+
+/**
+ * The name of the one SYNTHETIC port on a step card (CWF-001).
+ *
+ * Every other port is a declared param and its name is a key in the step's
+ * `params`. This one is not: the mapping it edits IS the set of params the kind
+ * does not declare, so the row writes its siblings and never a parameter of its
+ * own. The double underscores are there so that a step's params — which are
+ * author-named JSON keys — cannot collide with it, and `toInput` drops it
+ * defensively in case anything ever writes one.
+ */
+export const PORT_PARAM_MAPPING = '__paramMapping__';

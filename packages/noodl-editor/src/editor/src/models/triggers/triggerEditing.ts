@@ -18,11 +18,17 @@
 import {
   ChangeAction,
   MissedFirePolicy,
+  ResponseMode,
   TriggerDef,
   TriggerInput,
   TriggerType,
   WebhookScheme
 } from './TriggerBackendClient';
+
+/** CWF-002: the cap a `sync` trigger gets when the form leaves the box empty. */
+export const DEFAULT_RESPONSE_TIMEOUT_MS = 30000;
+/** The backend refuses anything above this, so the form says so first. */
+export const MAX_RESPONSE_TIMEOUT_MS = 300000;
 
 /** Everything the form holds, for every trigger type at once. */
 export interface TriggerFormState {
@@ -39,6 +45,10 @@ export interface TriggerFormState {
   scheme: WebhookScheme;
   collection: string;
   actions: Record<ChangeAction, boolean>;
+  /** CWF-002. Only sent for a workflow target — a function target is refused it. */
+  responseMode: ResponseMode;
+  /** As typed. Empty means "use the backend default". */
+  responseTimeoutText: string;
 }
 
 /** The sentinel the target dropdown uses for "not in the list — let me type it". */
@@ -55,7 +65,9 @@ export const EMPTY_FORM: TriggerFormState = {
   slug: '',
   scheme: 'hmac-sha256',
   collection: '',
-  actions: { create: true, update: false, delete: false }
+  actions: { create: true, update: false, delete: false },
+  responseMode: 'async',
+  responseTimeoutText: ''
 };
 
 /** What will actually be sent: the picked name, or the typed one. */
@@ -82,6 +94,8 @@ export function formStateFromDef(def: TriggerDef): TriggerFormState {
     payloadText: def.schedule?.payload ? JSON.stringify(def.schedule.payload) : '',
     slug: def.webhook?.slug ?? '',
     scheme: def.webhook?.scheme ?? 'hmac-sha256',
+    responseMode: def.responseMode ?? 'async',
+    responseTimeoutText: def.responseTimeoutMs ? String(def.responseTimeoutMs) : '',
     collection: def.dbChange?.collection ?? '',
     actions: {
       create: def.dbChange ? def.dbChange.actions.includes('create') : true,
@@ -116,6 +130,25 @@ export function buildTriggerInput(form: TriggerFormState): BuildResult {
   if (!name) return { error: `A target ${form.targetKind} is required.` };
 
   const input: TriggerInput = { type: form.type, target: { kind: form.targetKind, name } };
+
+  // CWF-002. Sent ONLY when it is `sync` and the target is a workflow: the
+  // registry refuses `sync` on a function target (which already relays its own
+  // response), and `async` is the absence of the key, so a form that always
+  // sent it would write `responseMode: "async"` into every trigger.json ever
+  // saved and make an unchanged default look like a decision.
+  if (form.responseMode === 'sync' && form.targetKind === 'workflow') {
+    input.responseMode = 'sync';
+    const text = form.responseTimeoutText.trim();
+    if (text) {
+      const ms = Number(text);
+      if (!Number.isFinite(ms) || ms <= 0 || ms > MAX_RESPONSE_TIMEOUT_MS) {
+        return {
+          error: `The response timeout must be a number of milliseconds between 1 and ${MAX_RESPONSE_TIMEOUT_MS} (5 minutes).`
+        };
+      }
+      input.responseTimeoutMs = ms;
+    }
+  }
 
   if (form.type === 'schedule') {
     input.schedule = { cron: form.cron.trim(), missedFirePolicy: form.missedPolicy };
@@ -171,6 +204,17 @@ export function describeTriggerChange(before: TriggerDef, after: TriggerDef): st
   if ((before.name || '') !== (after.name || '')) changes.push(`its name is now “${after.name || '(none)'}”`);
   if (before.target.kind !== after.target.kind || before.target.name !== after.target.name) {
     changes.push(`it now runs the ${after.target.kind} “${after.target.name}”`);
+  }
+
+  if ((before.responseMode || 'async') !== (after.responseMode || 'async')) {
+    changes.push(
+      after.responseMode === 'sync'
+        ? 'it now answers its caller with the workflow output (sync)'
+        : 'it now answers its caller with {executionId, status} (async)'
+    );
+  }
+  if ((before.responseTimeoutMs || 0) !== (after.responseTimeoutMs || 0)) {
+    changes.push(`its response timeout is now ${after.responseTimeoutMs || DEFAULT_RESPONSE_TIMEOUT_MS}ms`);
   }
 
   if (before.schedule?.cron !== after.schedule?.cron) changes.push(`its cron is now “${after.schedule?.cron}”`);

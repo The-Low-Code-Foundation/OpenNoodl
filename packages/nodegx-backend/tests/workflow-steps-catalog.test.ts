@@ -33,6 +33,7 @@ const EXPECTED_KINDS = [
   'merge',
   'retry',
   'stop',
+  'return',
   'wait',
   'wait-until'
 ];
@@ -58,8 +59,9 @@ describe('WF-002 step-kind catalog coverage', () => {
       expect(spec.kind).toBe(kind);
       expect(spec.displayName.length).toBeGreaterThan(0);
       expect(spec.category.length).toBeGreaterThan(0);
-      // Traceability back to the phase-11 spec (or WF-001) that specified it.
-      expect(spec.source).toMatch(/^(CF11-00[123]|WF-001)$/);
+      // Traceability back to the spec that specified it: phase 11, WF-001, or —
+      // for a kind added after the fact — the phase-42 task that argued for it.
+      expect(spec.source).toMatch(/^(CF11-00[123]|WF-001|CWF-00[1-9])$/);
       // A summary must be a sentence, not a label — and short enough to skim,
       // mirroring the enrichment corpus's 140-char rule.
       expect(spec.summary.length).toBeGreaterThan(20);

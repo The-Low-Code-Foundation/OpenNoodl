@@ -17,6 +17,23 @@
  * become a second target `kind` here and nothing else changes — the "designed
  * twice" risk closed by one contract.
  *
+ * "NEVER A SILENT DROP" USED TO MEAN ONLY THE RECORD (CWF-002)
+ * -----------------------------------------------------------
+ * The sentence above was written about execution records, and it was true about
+ * them. It was NOT true of the answer: a workflow target computed an output,
+ * the engine put it on the run result, and this file serialised
+ * `{executionId, status}` and threw the value away. Every caller outside the
+ * editor got nothing back. `responseMode: 'sync'` is the fix, and the sentence
+ * now covers what it always read as covering.
+ *
+ * One fact to have straight before reading `fireWorkflow`, because the obvious
+ * reading is wrong: `sync` does not make the dispatcher wait. It ALREADY waits,
+ * in both modes and always has — `fireWorkflow` awaits `workflows.run()`, and
+ * the webhook route awaits `fire()`. So a webhook pointed at a workflow with a
+ * ten-minute `wait` step has been holding an HTTP connection for ten minutes
+ * since WF-005. What `sync` adds is (a) the output in the body and (b) a CAP on
+ * that wait. `async` is unchanged in every respect, including that one.
+ *
  * @module nodegx-backend/triggers/dispatcher
  */
 
@@ -24,6 +41,7 @@ import type { ExecutionHistory } from '../execution/ExecutionStore';
 import type { WorkflowRunner, RunTriggerContext } from '../workflow/WorkflowRunner';
 import type { WorkflowSubsystem } from '../workflow/WorkflowSubsystem';
 import type { TriggerDef, TriggerResult, TriggerRegistry } from './registry';
+import { DEFAULT_RESPONSE_TIMEOUT_MS } from './registry';
 import { recordTriggerFire } from '../ops/metrics';
 
 /**
@@ -75,6 +93,43 @@ export interface FireOutcome {
   result: TriggerResult;
   statusCode: number;
   body: string;
+  /**
+   * Extra response headers the relaying route should set (CWF-002).
+   *
+   * A `sync` fire answers with the workflow's output AS the body — no envelope,
+   * because an envelope is exactly what makes a webhook awkward to consume from
+   * anything that is not this editor. The execution id still has to reach the
+   * caller somehow, so it rides in `X-Execution-Id`, where it is available to
+   * anyone who wants it and invisible to everyone who does not.
+   */
+  headers?: Record<string, string>;
+}
+
+type Settled<T> = { state: 'fulfilled'; value: T } | { state: 'rejected'; reason: unknown } | { state: 'pending' };
+
+/**
+ * Await a promise, but give up on the ANSWER after `ms`.
+ *
+ * The promise is NOT cancelled on a trip: the run continues, writes its
+ * execution record and stamps the trigger when it finishes. Giving up on the
+ * answer and giving up on the work are different decisions, and a webhook that
+ * took too long to reply is not a reason to abandon a half-done run.
+ */
+function withCap<T>(p: Promise<T>, ms: number): Promise<Settled<T>> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve({ state: 'pending' }), ms);
+    if (typeof timer.unref === 'function') timer.unref();
+    p.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve({ state: 'fulfilled', value });
+      },
+      (reason) => {
+        clearTimeout(timer);
+        resolve({ state: 'rejected', reason });
+      }
+    );
+  });
 }
 
 function nowIso(): string {
@@ -184,11 +239,53 @@ export class TriggerDispatcher {
       return { result, statusCode: 503, body: JSON.stringify({ error: result.error }) };
     }
 
-    const { found, result: runResult } = await workflows.run(
+    // CWF-002. `sync` is the ONLY branch that behaves differently; the `async`
+    // path below is the identical `await` it has always been, so an existing
+    // trigger cannot change behaviour by having this feature added around it.
+    const sync = trigger.responseMode === 'sync';
+    const runPromise = workflows.run(
       workflowId,
       { type: triggerType, source, triggerId: trigger.id, requestId },
       payload
     );
+
+    let found: boolean;
+    let runResult: Awaited<typeof runPromise>['result'];
+
+    if (sync) {
+      const capMs =
+        trigger.responseTimeoutMs && trigger.responseTimeoutMs > 0
+          ? trigger.responseTimeoutMs
+          : DEFAULT_RESPONSE_TIMEOUT_MS;
+      const settled = await withCap(runPromise, capMs);
+      if (settled.state === 'pending') {
+        // The answer is late; the RUN is not abandoned. Stamp the trigger when
+        // it eventually finishes so the panel and the history still agree —
+        // just later than the caller did.
+        void runPromise.then(
+          (late) => {
+            if (!late.found || !late.result) return;
+            this.deps.registry.recordFire(trigger.id, { firedAt, result: this.resultOf(late.result) });
+          },
+          () => undefined
+        );
+        const message =
+          `Workflow "${workflowId}" did not finish within ${capMs}ms. It is still running — ` +
+          'its result is in the execution history. Raise responseTimeoutMs, or use responseMode "async".';
+        const result: TriggerResult = { ok: false, at: nowIso(), statusCode: 504, error: message };
+        return {
+          result,
+          statusCode: 504,
+          body: JSON.stringify({ status: 'running', error: message })
+        };
+      }
+      // A rejection propagates exactly as it did before this branch existed.
+      if (settled.state === 'rejected') throw settled.reason;
+      ({ found, result: runResult } = settled.value);
+    } else {
+      ({ found, result: runResult } = await runPromise);
+    }
+
     if (!found || !runResult) {
       const result = this.finishRejected(trigger.id, {
         triggerType,
@@ -203,18 +300,50 @@ export class TriggerDispatcher {
     }
 
     // The engine already wrote the execution records; we only stamp trigger status.
+    const result = this.resultOf(runResult);
+    const ok = result.ok;
+    this.deps.registry.recordFire(trigger.id, { firedAt, result });
+
+    if (!sync) {
+      // Unchanged since WF-005, and deliberately so: this is what every trigger
+      // that does not opt in still answers.
+      return {
+        result,
+        statusCode: ok ? 200 : 500,
+        body: JSON.stringify({ executionId: runResult.executionId, status: runResult.status })
+      };
+    }
+
+    return {
+      result,
+      statusCode: ok ? 200 : 500,
+      ...(runResult.executionId ? { headers: { 'X-Execution-Id': runResult.executionId } } : {}),
+      // SUCCESS answers with the workflow's own output and nothing else — a
+      // Return step's value, or the last step's output when there is no Return
+      // step. `null` when the run produced nothing, which is a true statement
+      // rather than an empty object pretending to be one.
+      //
+      // FAILURE keeps the error ENVELOPE. The 404/503/refused bodies in this
+      // file are envelopes too, and a sync-mode caller parsing "the output"
+      // must never be handed an error that happens to be shaped like one.
+      body: ok
+        ? JSON.stringify(runResult.output === undefined ? null : runResult.output)
+        : JSON.stringify({
+            executionId: runResult.executionId,
+            status: runResult.status,
+            error: result.error
+          })
+    };
+  }
+
+  /** The trigger-status stamp for a finished workflow run. */
+  private resultOf(runResult: { status: string; error?: string }): TriggerResult {
     const ok = runResult.status === 'success';
-    const result: TriggerResult = {
+    return {
       ok,
       at: nowIso(),
       statusCode: ok ? 200 : 500,
       error: ok ? undefined : runResult.error || `workflow ${runResult.status}`
-    };
-    this.deps.registry.recordFire(trigger.id, { firedAt, result });
-    return {
-      result,
-      statusCode: ok ? 200 : 500,
-      body: JSON.stringify({ executionId: runResult.executionId, status: runResult.status })
     };
   }
 

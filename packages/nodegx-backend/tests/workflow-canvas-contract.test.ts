@@ -52,7 +52,11 @@ const KNOWN_CATEGORIES = new Set([
   'Workflow',
   'Workflow Logic',
   'Workflow Error Handling',
-  'Workflow Timing'
+  'Workflow Timing',
+  // CWF-002's `return`. It gets its own family rather than joining `Workflow`
+  // (which is coloured `component` — "it schedules a function", which a Return
+  // does not) and is mapped to `logic` in workflowNodeLibrary's CATEGORY_COLOR.
+  'Workflow Result'
 ]);
 
 describe('WFA-004 — the served step-kind catalog is what the canvas assumes', () => {
@@ -135,6 +139,20 @@ describe('WFA-004 — the served step-kind catalog is what the canvas assumes', 
         expect(param.enums.length).toBeGreaterThan(0);
       }
     }
+  });
+
+  it('gives a kind that takes author-named params everything a row is built from (CWF-001)', () => {
+    // The canvas adds ONE synthetic port for the mapping and reads the kind's
+    // declared names off the port type, so it can tell the author's params from
+    // the kind's own. A mapping served without a reserved list would leave the
+    // editor guessing at what the backend will refuse.
+    const call = catalog.kinds.find((k) => k.kind === 'call-function') as unknown as {
+      paramMapping?: { displayName?: string; description?: string; reserved?: string[] };
+    };
+    expect(call.paramMapping).toBeDefined();
+    expect(call.paramMapping!.displayName).toBeTruthy();
+    expect(call.paramMapping!.description).toBeTruthy();
+    expect(call.paramMapping!.reserved).toContain('previous');
   });
 
   it('marks the DSL-structure params raw, so they get an editor rather than a value control', () => {

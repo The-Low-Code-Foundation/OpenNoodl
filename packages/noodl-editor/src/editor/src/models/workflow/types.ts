@@ -26,7 +26,9 @@ export type StepKind =
   | 'retry'
   | 'stop'
   | 'wait'
-  | 'wait-until';
+  | 'wait-until'
+  /** CWF-002: sets what the run answers with, and ends its path. */
+  | 'return';
 
 /** A param's declared type, which is what picks a property-editor control. */
 export type StepParamType =
@@ -56,6 +58,23 @@ export interface StepParamSpec {
   raw?: boolean;
 }
 
+/**
+ * CWF-001: a kind that also takes params the AUTHOR names.
+ *
+ * The engine has merged a step's params into its input by name since WFA-003;
+ * this is the declaration that finally gives the canvas a row to author them in.
+ * Present from catalog 1.3.0 — absent from an older backend, in which case no
+ * mapping row appears and the definitions that already carry one still run.
+ */
+export interface StepParamMappingSpec {
+  displayName: string;
+  description: string;
+  /** Names the backend REFUSES — the value would be discarded. */
+  reserved: string[];
+  /** Names that are legal but replace part of the run payload for the function. */
+  shadows: string[];
+}
+
 export interface StepRouteSpec {
   name: string;
   description: string;
@@ -73,6 +92,8 @@ export interface StepKindSpec {
   /** True when the step invokes a cloud function, and so needs `ref`. */
   invokesFunction: boolean;
   params: StepParamSpec[];
+  /** CWF-001: present when the kind also takes author-named params. */
+  paramMapping?: StepParamMappingSpec;
   routes: StepRouteSpec[];
   output: string;
   clientEquivalent?: string;
