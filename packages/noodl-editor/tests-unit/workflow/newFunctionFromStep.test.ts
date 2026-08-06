@@ -13,10 +13,12 @@
 
 import {
   authorParamNames,
+  declareRequestParams,
   functionNameFromLabel,
   isDeclarableParamName,
   isLegalFunctionName,
   planFunctionFromStep,
+  REQUEST_NODE_TYPE,
   uniqueFunctionName
 } from '../../src/editor/src/models/workflow/newFunctionFromStep';
 
@@ -168,5 +170,37 @@ describe('CWF-004 S6 — the plan', () => {
     expect(plan.name).toBe('callfunction');
     expect(plan.params).toBe('');
     expect(plan.paramNames).toEqual([]);
+  });
+});
+
+describe('CWF-004 S6 — declaring the contract on the new function', () => {
+  /** The shipped `CloudFunctionComponentTemplate`: a Request node and a Response node. */
+  function graph(nodes: { typename: string; parameters?: Record<string, unknown> }[]) {
+    return {
+      nodes,
+      forEachNode(callback: (node: { typename?: string; parameters?: Record<string, unknown> }) => void) {
+        nodes.forEach(callback);
+      }
+    };
+  }
+
+  it('writes the contract onto the Request node and nothing else', () => {
+    const g = graph([{ typename: 'noodl.cloud.request' }, { typename: 'noodl.cloud.response' }]);
+
+    expect(declareRequestParams(g, 'amount,currency')).toBe(1);
+    expect(g.nodes[0].parameters).toEqual({ params: 'amount,currency' });
+    // The Response node has its own contract question (F27) and this is not it.
+    expect(g.nodes[1].parameters).toBeUndefined();
+  });
+
+  it('keeps whatever the template already put on the node', () => {
+    const g = graph([{ typename: REQUEST_NODE_TYPE, parameters: { allowNoAuth: true } }]);
+
+    declareRequestParams(g, 'amount');
+    expect(g.nodes[0].parameters).toEqual({ allowNoAuth: true, params: 'amount' });
+  });
+
+  it('answers 0 when there is no Request node, so a caller can tell it wrote nothing', () => {
+    expect(declareRequestParams(graph([{ typename: 'noodl.cloud.response' }]), 'amount')).toBe(0);
   });
 });

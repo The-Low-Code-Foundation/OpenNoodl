@@ -106,6 +106,43 @@ export function isDeclarableParamName(name: string): boolean {
   return Boolean(name) && !name.includes(',') && name.trim() === name;
 }
 
+/**
+ * The node a cloud function declares its inputs on (CWF-014).
+ *
+ * `params` on this node is the whole public interface of a function: a
+ * comma-separated list of names, each minting one output port straight onto the
+ * parsed request body.
+ */
+export const REQUEST_NODE_TYPE = 'noodl.cloud.request';
+
+/** As much of a graph as declaring a request contract needs. */
+export interface GraphShapeForDeclare {
+  forEachNode(callback: (node: { typename?: string; parameters?: Record<string, unknown> }) => void): unknown;
+}
+
+/**
+ * Write a request contract onto a freshly created cloud function's graph.
+ *
+ * Structurally typed, and here rather than inside the component template, for
+ * one reason: **which node carries a function's interface is a rule worth a
+ * spec**, and a rule that lives inside a React-importing view module can only be
+ * checked by starting Electron. Written straight onto `parameters` rather than
+ * through `setParameter` because the component is not in the project yet — there
+ * is nothing listening, and undoing the gesture removes the whole component.
+ *
+ * Answers how many nodes it wrote, so a caller that expected exactly one Request
+ * node can tell when it got none.
+ */
+export function declareRequestParams(graph: GraphShapeForDeclare, params: string): number {
+  let written = 0;
+  graph.forEachNode((node) => {
+    if (node.typename !== REQUEST_NODE_TYPE) return;
+    node.parameters = { ...(node.parameters || {}), params };
+    written++;
+  });
+  return written;
+}
+
 /** A step, in as much of its shape as this module needs. */
 export interface StepShapeForPlan {
   id: string;

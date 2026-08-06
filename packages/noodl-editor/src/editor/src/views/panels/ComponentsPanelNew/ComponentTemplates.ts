@@ -8,6 +8,7 @@ import View from '../../../../../shared/ListenableView';
 import { ComponentModel } from '../../../models/componentmodel';
 import { NodeGraphModel } from '../../../models/nodegraphmodel';
 import { RouterAdapter } from '../../../models/NodeTypeAdapters/RouterAdapter';
+import { declareRequestParams } from '../../../models/workflow/newFunctionFromStep';
 import Utils from '../../../utils/utils';
 import PopupLayer from '../../popuplayer';
 import { PageComponentTemplatePopup } from './PageTemplatePopup';
@@ -134,14 +135,6 @@ class LogicComponentTemplate extends ComponentTemplate {
   }
 }
 
-/**
- * The node a cloud function's inputs are declared on (CWF-014).
- *
- * Its `params` parameter is a comma-separated list of names, each minting one
- * output port straight onto the parsed request body.
- */
-const REQUEST_NODE_TYPE = 'noodl.cloud.request';
-
 class CloudFunctionComponentTemplate extends ComponentTemplate {
   constructor() {
     super('Cloud Function Component', IconName.CloudFunction);
@@ -191,21 +184,16 @@ class CloudFunctionComponentTemplate extends ComponentTemplate {
    * node, rekeyed ids — is decided in exactly one place, and the panel's own
    * popup path passes no options and is byte-for-byte unchanged.
    *
-   * Written straight onto the node rather than through `setParameter`: the
-   * component is not in the project yet, nothing is listening, and undoing this
-   * gesture removes the whole component rather than this one parameter.
+   * The write itself is `declareRequestParams`, which lives in
+   * `models/workflow/newFunctionFromStep` — which node carries a function's
+   * public interface is a rule worth a spec, and a rule stated inside this
+   * React-importing module could only be checked by starting Electron.
    */
   createComponent(componentName, options, undoGroup) {
     const component = super.createComponent(componentName, options, undoGroup);
 
     const requestParams = options && options.requestParams;
-    if (requestParams) {
-      component.graph.forEachNode((node) => {
-        if (node.typename === REQUEST_NODE_TYPE) {
-          node.parameters = { ...(node.parameters || {}), params: requestParams };
-        }
-      });
-    }
+    if (requestParams) declareRequestParams(component.graph, requestParams);
 
     return component;
   }
