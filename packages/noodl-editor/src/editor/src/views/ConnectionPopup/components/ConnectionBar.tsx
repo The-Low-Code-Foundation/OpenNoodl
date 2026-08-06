@@ -7,7 +7,8 @@ import { NodeLibrary } from '@noodl-models/nodelibrary';
 import {
   isPortConnectable,
   omitHiddenPorts,
-  PORT_CONDITION_FILTER_MODES
+  PORT_CONDITION_FILTER_MODES,
+  type PortLike
 } from '@noodl-models/nodelibrary/portConnectivity';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -17,7 +18,10 @@ import css from '../ConnectionPopup.module.scss';
 import { PortGroup } from './PortGroup';
 
 function _getPorts(type, model /* NodeGraphNode */) {
-  const declared = type === 'from' ? model.getPorts('output') : model.getPorts('input');
+  // Annotated so `omitHiddenPorts`'s `T` has something to infer from. Left bare,
+  // inference falls back to the generic's own constraint and every row narrows to
+  // `{ name: string }`, which loses `group`, `displayName`, `tab`, `type` and `plug`.
+  const declared: PortLike[] = type === 'from' ? model.getPorts('output') : model.getPorts('input');
   const models = [];
 
   /*

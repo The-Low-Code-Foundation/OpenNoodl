@@ -58,10 +58,24 @@ export interface PortTypeObject {
 
 export type PortTypeLike = string | PortTypeObject | null | undefined;
 
-/** The shape both `model.getPorts()` and a raw port declaration share. */
+/**
+ * The shape both `model.getPorts()` and a raw port declaration share.
+ *
+ * Only `name` and `type` are load-bearing for this module — the rest are here so
+ * a caller that annotates its array as `PortLike[]` keeps the fields it reads off
+ * each row. Without them {@link omitHiddenPorts}'s `T` has nothing to infer from
+ * and falls back to its own constraint, which silently narrows every row to
+ * `{ name: string }` at the call site.
+ */
 export interface PortLike {
   name: string;
   type?: PortTypeLike;
+  group?: string;
+  displayName?: string;
+  plug?: string;
+  /** The property-panel tab a port is filed under, when it declares one. */
+  tab?: { label?: string };
+  [key: string]: unknown;
 }
 
 /**
