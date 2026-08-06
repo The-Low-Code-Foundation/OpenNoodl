@@ -22,7 +22,7 @@ import { BackendService } from '../src/service';
 import type { StepKindCatalog } from '../src/workflow/steps/kinds';
 import type { WorkflowDefinition, WorkflowRunResult } from '../src/workflow/types';
 
-import { ErrorBody, httpClient } from './helpers/http';
+import { adminHeaders, ErrorBody, httpClient } from './helpers/http';
 
 jest.setTimeout(40000);
 
@@ -79,7 +79,15 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
   let service: BackendService;
   let base: string;
 
-  const http = httpClient(() => base);
+  // FH-024: the admin credential rides every call. Dev-open still relaxes the
+  // data and function gates on loopback, but no longer the admin one — a web
+  // page can reach 127.0.0.1 on the developer's behalf, so loopback was never
+  // the boundary it was being read as. The editor's supervisor already attaches
+  // this token to every proxied request.
+  const http = httpClient(
+    () => base,
+    () => adminHeaders(dataDir)
+  );
   const req = <T = unknown>(method: string, p: string, body?: unknown) => http.request<T>(method, p, { body });
 
   /** The full record of one run, steps included. */
@@ -123,6 +131,13 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
       'for-each',
       'merge',
       'transform',
+      // CWF-004 slice 2 — the rest of the declarative data family, served in
+      // catalog order beside the transform they belong with.
+      'validate',
+      'filter',
+      'sort',
+      'deduplicate',
+      'split',
       'stop',
       'return',
       'wait',
@@ -136,7 +151,7 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
     // param may use, and which params are structures rather than values. A
     // client that had to hardcode either would be a client that can disagree
     // with the backend executing the definition.
-    expect(res.json.version).toBe('1.6.0');
+    expect(res.json.version).toBe('1.7.0');
     expect(res.json.valueLanguage.forms.map((f) => f.form)).toEqual(['literal', '$path', '$literal']);
     expect(res.json.valueLanguage.scope.map((s) => s.name)).toContain('upstream.<stepId>');
     expect(branch?.params.find((p) => p.name === 'condition')?.raw).toBe(true);
@@ -389,7 +404,9 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
     const second = new BackendService({ dataDir, port: 0, backendId: 'wf002_reload', backendName: 'Reload' });
     const url = (await second.start()).listen.url;
     try {
-      const res = await fetch(`${url}/admin/workflow-defs`);
+      // Same data dir, so the same minted credential — which is exactly how the
+      // editor finds it after a restart (FH-024: admin routes want it now).
+      const res = await fetch(`${url}/admin/workflow-defs`, { headers: adminHeaders(dataDir) });
       const json = (await res.json()) as { workflows: { id: string }[] };
       expect(json.workflows.map((w) => w.id).sort()).toEqual(['embargo', 'fan-out', 'order-pipeline', 'parked', 'retrying']);
     } finally {

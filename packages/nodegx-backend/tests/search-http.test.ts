@@ -18,7 +18,7 @@ import { BackendService } from '../src/service';
 
 import type { SearchCollectionResponse, SearchConfigResponse } from '../src/server/admin-search';
 
-import { ErrorBody, ParseQueryResult, ParseRecord, request, UserResponse } from './helpers/http';
+import { adminHeaders, ErrorBody, ParseQueryResult, ParseRecord, request, UserResponse } from './helpers/http';
 
 /** A search hit: a record plus the two fields the search path adds. */
 interface SearchHit extends ParseRecord {
@@ -41,6 +41,17 @@ describe('BAK-008 full-text search — dev-open backend', () => {
   let dataDir: string;
   let service: BackendService;
   let base: string;
+
+  /**
+   * `/admin/search/*` with the credential. FH-024: dev-open relaxes the data
+   * and function gates on loopback but no longer the admin one — a browser can
+   * reach 127.0.0.1 on the developer's behalf, so loopback was never the
+   * boundary it was being read as. The editor's search panel already sends this
+   * token; the seeding calls below stay unauthenticated, which is dev-open's
+   * actual ergonomic and still works.
+   */
+  const adm = <T = unknown>(method: string, p: string, body?: unknown) =>
+    req<T>(base, method, p, body, adminHeaders(dataDir));
 
   beforeAll(async () => {
     dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nodegx-bak008-'));
@@ -65,14 +76,14 @@ describe('BAK-008 full-text search — dev-open backend', () => {
   });
 
   it('reports FTS5 availability and an empty config before anything is enabled', async () => {
-    const { status, json } = await req<SearchConfigResponse>(base, 'GET', '/admin/search');
+    const { status, json } = await adm<SearchConfigResponse>('GET', '/admin/search');
     expect(status).toBe(200);
     expect(json.fts5Available).toBe(true);
     expect(json.config.collections).toEqual({});
   });
 
   it('rejects enabling search with an unknown field', async () => {
-    const { status, json } = await req<SearchCollectionResponse & ErrorBody>(base, 'PUT', '/admin/search/collections/Article', {
+    const { status, json } = await adm<SearchCollectionResponse & ErrorBody>('PUT', '/admin/search/collections/Article', {
       fields: ['title', 'doesNotExist']
     });
     expect(status).toBe(400);
@@ -80,12 +91,12 @@ describe('BAK-008 full-text search — dev-open backend', () => {
   });
 
   it('rejects enabling search with no fields', async () => {
-    const { status } = await req<SearchCollectionResponse & ErrorBody>(base, 'PUT', '/admin/search/collections/Article', { fields: [] });
+    const { status } = await adm<SearchCollectionResponse & ErrorBody>('PUT', '/admin/search/collections/Article', { fields: [] });
     expect(status).toBe(400);
   });
 
   it('rejects a system collection', async () => {
-    const { status } = await req<SearchCollectionResponse & ErrorBody>(base, 'PUT', '/admin/search/collections/_User', { fields: ['username'] });
+    const { status } = await adm<SearchCollectionResponse & ErrorBody>('PUT', '/admin/search/collections/_User', { fields: ['username'] });
     expect(status).toBe(400);
   });
 
@@ -96,14 +107,14 @@ describe('BAK-008 full-text search — dev-open backend', () => {
   });
 
   it('enables search on a collection via the admin route and rebuilds', async () => {
-    const { status, json } = await req<SearchCollectionResponse & ErrorBody>(base, 'PUT', '/admin/search/collections/Article', {
+    const { status, json } = await adm<SearchCollectionResponse & ErrorBody>('PUT', '/admin/search/collections/Article', {
       fields: ['title', 'body']
     });
     expect(status).toBe(200);
     expect(json.config).toEqual({ enabled: true, fields: ['title', 'body'] });
     expect(json.rebuild?.rowsIndexed).toBe(3);
 
-    const config = await req<SearchConfigResponse>(base, 'GET', '/admin/search');
+    const config = await adm<SearchConfigResponse>('GET', '/admin/search');
     expect(config.json.config.collections.Article).toEqual({ enabled: true, fields: ['title', 'body'] });
   });
 
@@ -149,11 +160,11 @@ describe('BAK-008 full-text search — dev-open backend', () => {
   });
 
   it('rebuild is explicit and idempotent', async () => {
-    const first = await req<SearchCollectionResponse>(base, 'POST', '/admin/search/collections/Article/rebuild');
+    const first = await adm<SearchCollectionResponse>('POST', '/admin/search/collections/Article/rebuild');
     expect(first.status).toBe(200);
     expect(first.json.rebuild?.rowsIndexed).toBe(4);
 
-    const second = await req<SearchCollectionResponse>(base, 'POST', '/admin/search/collections/Article/rebuild');
+    const second = await adm<SearchCollectionResponse>('POST', '/admin/search/collections/Article/rebuild');
     expect(second.status).toBe(200);
     expect(second.json.rebuild?.rowsIndexed).toBe(4);
 
@@ -162,7 +173,7 @@ describe('BAK-008 full-text search — dev-open backend', () => {
   });
 
   it('disabling search drops the index; searching afterward fails cleanly again', async () => {
-    const del = await req<SearchCollectionResponse>(base, 'DELETE', '/admin/search/collections/Article');
+    const del = await adm<SearchCollectionResponse>('DELETE', '/admin/search/collections/Article');
     expect(del.status).toBe(200);
     expect(del.json.removed).toBe(true);
 
@@ -173,7 +184,7 @@ describe('BAK-008 full-text search — dev-open backend', () => {
 
   it('enabling search on a freshly-created collection works standalone', async () => {
     await req(base, 'POST', '/api/Tag', { label: 'zzz-unique-tag-value' });
-    const enable = await req<SearchCollectionResponse & ErrorBody>(base, 'PUT', '/admin/search/collections/Tag', { fields: ['label'] });
+    const enable = await adm<SearchCollectionResponse & ErrorBody>('PUT', '/admin/search/collections/Tag', { fields: ['label'] });
     expect(enable.status).toBe(200);
     expect(enable.json.rebuild?.rowsIndexed).toBe(1);
 

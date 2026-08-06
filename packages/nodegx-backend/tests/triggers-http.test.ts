@@ -23,7 +23,7 @@ import type {
 import { BackendService } from '../src/service';
 import { signWebhookHmac } from '../src/triggers/webhook';
 
-import { ErrorBody, get, httpClient } from './helpers/http';
+import { adminHeaders, ErrorBody, get, httpClient } from './helpers/http';
 
 jest.setTimeout(30000);
 
@@ -48,7 +48,15 @@ describe('WF-005 triggers over HTTP', () => {
   let service: BackendService;
   let base: string;
 
-  const http = httpClient(() => base);
+  // FH-024: the admin credential rides every call. Dev-open still relaxes the
+  // data and function gates on loopback, but no longer the admin one — a web
+  // page can reach 127.0.0.1 on the developer's behalf, so loopback was never
+  // the boundary it was being read as. The editor's supervisor already attaches
+  // this token to every proxied request.
+  const http = httpClient(
+    () => base,
+    () => adminHeaders(dataDir)
+  );
   const req = <T = unknown>(method: string, p: string, body?: unknown, headers: Record<string, string> = {}) =>
     http.request<T>(method, p, { body, headers });
 
@@ -230,7 +238,7 @@ describe('WF-005 triggers survive a service restart', () => {
       const s1 = await first.start();
       const created = await fetch(`${s1.listen.url}/admin/triggers`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...adminHeaders(dataDir) },
         body: JSON.stringify({
           type: 'db-change',
           target: { kind: 'function', name: 'hello' },
@@ -242,7 +250,9 @@ describe('WF-005 triggers survive a service restart', () => {
 
       const second = new BackendService({ dataDir, port: 0, backendId: 'restart', backendName: 'R' });
       const s2 = await second.start();
-      const list = await get<TriggerListResponse>(s2.listen.url, '/admin/triggers');
+      // The token is minted once and persists in the data dir, so it survives the
+      // restart alongside triggers.json — which is also what the editor relies on.
+      const list = await get<TriggerListResponse>(s2.listen.url, '/admin/triggers', adminHeaders(dataDir));
       expect(
         list.json.triggers.some((t) => t.id === trigger.id && t.dbChange?.collection === 'Orders')
       ).toBe(true);

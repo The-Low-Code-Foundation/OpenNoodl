@@ -92,22 +92,55 @@ export const del = <T = unknown>(base: string, pathName: string, headers?: Recor
   request<T>(base, 'DELETE', pathName, { headers });
 
 /**
+ * The admin credential a running backend minted for itself, read out of its own
+ * data dir — exactly the way the editor's supervisor gets it.
+ *
+ * Needed by every spec that drives an admin route, which since FH-024 means
+ * every spec that drives an admin route on a DEV-OPEN backend too: dev-open
+ * used to relax the admin gate, and that is what made a default local backend's
+ * admin API readable by any web page. Call it after `service.start()` — the
+ * file is written by `SecurityState`'s constructor.
+ */
+export function adminToken(dataDir: string): string {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fs = require('fs') as typeof import('fs');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const path = require('path') as typeof import('path');
+  const secrets = JSON.parse(fs.readFileSync(path.join(dataDir, 'secrets.json'), 'utf-8'));
+  if (!secrets.adminToken) throw new Error(`no adminToken in ${dataDir}/secrets.json`);
+  return secrets.adminToken as string;
+}
+
+/** `adminToken` as the header a request carries it in. */
+export const adminHeaders = (dataDir: string): Record<string, string> => ({
+  authorization: `Bearer ${adminToken(dataDir)}`
+});
+
+/**
  * A client bound to one base URL — the shape most spec files want, since `base`
  * is assigned in `beforeAll` and never changes afterwards. Taking a getter
  * rather than a string is what makes that work: `base` is still empty when the
  * client is constructed at describe-scope.
+ *
+ * `getDefaultHeaders` is the same trick for a credential: it is read per
+ * request, not at construction, so a spec can pass `() => adminHeaders(dataDir)`
+ * from describe-scope before the backend that mints the token exists. Per-call
+ * headers win over it, so a spec can still drive the unauthenticated case.
  */
-export function httpClient(getBase: () => string) {
+export function httpClient(getBase: () => string, getDefaultHeaders?: () => Record<string, string>) {
+  const merge = (headers?: Record<string, string>) =>
+    getDefaultHeaders ? { ...getDefaultHeaders(), ...(headers || {}) } : headers;
   return {
     request: <T = unknown>(method: string, pathName: string, options?: RequestOptions) =>
-      request<T>(getBase(), method, pathName, options),
+      request<T>(getBase(), method, pathName, { ...(options || {}), headers: merge(options?.headers) }),
     get: <T = unknown>(pathName: string, headers?: Record<string, string>) =>
-      get<T>(getBase(), pathName, headers),
+      get<T>(getBase(), pathName, merge(headers)),
     post: <T = unknown>(pathName: string, body?: unknown, headers?: Record<string, string>) =>
-      post<T>(getBase(), pathName, body, headers),
+      post<T>(getBase(), pathName, body, merge(headers)),
     put: <T = unknown>(pathName: string, body?: unknown, headers?: Record<string, string>) =>
-      put<T>(getBase(), pathName, body, headers),
-    del: <T = unknown>(pathName: string, headers?: Record<string, string>) => del<T>(getBase(), pathName, headers)
+      put<T>(getBase(), pathName, body, merge(headers)),
+    del: <T = unknown>(pathName: string, headers?: Record<string, string>) =>
+      del<T>(getBase(), pathName, merge(headers))
   };
 }
 

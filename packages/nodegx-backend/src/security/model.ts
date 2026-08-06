@@ -185,8 +185,17 @@ export interface FileRules {
 
 export interface SecurityConfig {
   version: 1;
-  /** Relax every gate while bound to loopback. Physically cannot deploy: a
-   * non-loopback bind with devOpen refuses to start (state.ts interlock). */
+  /**
+   * Relax the DATA and function gates while bound to loopback — hitting your own
+   * collections without a token, which is the whole point of it. Physically
+   * cannot deploy: a non-loopback bind with devOpen refuses to start (state.ts
+   * interlock).
+   *
+   * ⚠️ It used to relax every gate INCLUDING admin, and FH-024 is what that
+   * cost: with CORS defaulting to `*`, any web page open on the developer's
+   * machine could read and write this backend's admin API over 127.0.0.1.
+   * Loopback is not a boundary against a browser.
+   */
   devOpen: boolean;
   defaults: { permissions: Record<ClpOp, RuleValue>; creatorOwns: boolean };
   collections: Record<string, CollectionRules>;

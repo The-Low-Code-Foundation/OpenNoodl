@@ -277,7 +277,10 @@ async function runServe(options: Partial<BackendServiceOptions>, parentPid?: num
     `[nodegx-backend] security: ${
       started.security.enforced
         ? 'ENFORCED (collection permissions + row ACLs active)'
-        : 'dev-open (all access relaxed; loopback only)'
+        : // FH-024: "all" was true and is no longer. Dev-open relaxes the DATA
+          // and function gates on loopback; the admin gate always wants the
+          // credential, because loopback is not a boundary against a browser.
+          'dev-open (data + function access relaxed on loopback; admin routes still require the credential)'
     }\n`
   );
   if (service.requiresAuth()) {

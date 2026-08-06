@@ -17,7 +17,7 @@ import type {
 import type { ExportResult, ImportReport } from '../src/backup/dataio';
 import { BackendService } from '../src/service';
 
-import { request } from './helpers/http';
+import { adminHeaders, request } from './helpers/http';
 
 jest.setTimeout(30000);
 
@@ -26,7 +26,12 @@ describe('BAK-007 admin surface over HTTP', () => {
   let service: BackendService;
   let base: string;
 
-  const req = <T = unknown>(method: string, p: string, body?: unknown) => request<T>(base, method, p, { body });
+  // The admin credential rides every call. FH-024: dev-open no longer relaxes
+  // the admin gate — loopback is not a boundary against a browser — so an admin
+  // route on a dev-open backend wants the token, exactly as the editor's
+  // supervisor already sends it. Data calls carry it harmlessly.
+  const req = <T = unknown>(method: string, p: string, body?: unknown) =>
+    request<T>(base, method, p, { body, headers: adminHeaders(dataDir) });
 
   beforeAll(async () => {
     dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nodegx-bak007-'));

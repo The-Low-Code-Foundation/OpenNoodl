@@ -146,6 +146,55 @@ function rateLimitKey(principal: Principal, ip: string): string {
 }
 
 /**
+ * A request path as the router sees it: split on `/`, empties dropped, each
+ * segment percent-decoded AFTERWARDS.
+ *
+ * The order matters and is load-bearing — decoding first would let `%2F` invent
+ * a segment boundary. It also means `/%61dmin/ops` reaches the `admin/ops`
+ * route, which is why FH-024's CORS decision goes through this function rather
+ * than testing the raw path for a prefix.
+ *
+ * A malformed escape (`/%`) is left as-is rather than thrown: this now runs on
+ * the connection handler, outside `handle()`'s promise, where a throw would
+ * take the process rather than the request. An undecodable segment matches no
+ * literal route segment, so it 404s — which is what it did before, by a longer
+ * road.
+ */
+function pathSegments(pathname: string): string[] {
+  return pathname
+    .split('/')
+    .filter(Boolean)
+    .map((part) => {
+      try {
+        return decodeURIComponent(part);
+      } catch {
+        return part;
+      }
+    });
+}
+
+/**
+ * Does a route pattern match these segments? Fills `params` with the captured
+ * `:name` segments when one is given.
+ *
+ * Shared by `matchRoute` and FH-024's admin-plane test on purpose: two copies of
+ * "which route is this?" that disagree is precisely how a CORS suppression stops
+ * covering the route it was written for.
+ */
+function segmentsMatch(pattern: string, seg: string[], params?: Record<string, string>): boolean {
+  const parts = pattern.split('/');
+  if (parts.length !== seg.length) return false;
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i].startsWith(':')) {
+      if (params) params[parts[i].slice(1)] = seg[i];
+    } else if (parts[i] !== seg[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * Per-request state the dispatcher fills in and the access log reads (BAK-009).
  * Deliberately a plain object threaded through `handle()` rather than fields
  * bolted onto `http.IncomingMessage` — the request object belongs to Node.
@@ -1146,7 +1195,8 @@ export class HttpServer {
         };
         res.setHeader(REQUEST_ID_HEADER, trace.requestId);
         res.setHeader('Server', serverHeader());
-        applyCors(req, res, this.ops.config.cors);
+        // FH-024: everything EXCEPT the admin control plane. See `applyCorsFor`.
+        this.applyCorsFor(req, res);
         this.inFlight.add(res);
         const finish = () => {
           if (trace.logged) return;
@@ -1351,17 +1401,64 @@ export class HttpServer {
     });
   }
 
+  /**
+   * FH-024 — CORS headers on everything EXCEPT the admin control plane.
+   *
+   * The header set used to go on every response, before routing, which is what
+   * made a default local backend's admin API *readable by any web page*: the
+   * gate was relaxed (dev-open) and `Access-Control-Allow-Origin: *` told the
+   * browser to hand the body over. Driven, before the fix: a page on an
+   * unrelated origin read `/admin/permissions`, `/admin/schema`, `/admin/keys`
+   * and `/_admin/whoami`, and a preflighted `PUT /admin/ops` changed the running
+   * config.
+   *
+   * The admin plane is identified from the ROUTE TABLE, never from the path
+   * string, for two reasons the prefix test gets wrong:
+   *
+   *   - `GET /api/_schema` is an admin route that does not start with `admin/`.
+   *   - `matchRoute` decodes each segment AFTER splitting, so `/%61dmin/ops`
+   *     routes to `admin/ops`; a `pathname.startsWith('/admin/')` test would
+   *     have sent the wildcard on exactly that request.
+   *
+   * The method is deliberately ignored: a CORS preflight arrives as `OPTIONS`
+   * and must reach the same verdict as the request it precedes, so *any* route
+   * on these segments declaring admin access suppresses the headers. That is
+   * fail-closed — the only path where it over-suppresses is a collection
+   * literally named `_schema`, which `GET /api/_schema` already shadows.
+   *
+   * Nothing here changes a deployed backend, where `devOpen` cannot be on: the
+   * admin routes still answer, still require the credential, and simply stop
+   * advertising themselves to other origins. Non-admin routes — the ones a
+   * NodeGX app actually calls from a browser — are untouched, including 404s.
+   */
+  private applyCorsFor(req: http.IncomingMessage, res: http.ServerResponse): void {
+    const { pathname } = parseURL(req.url || '/');
+    if (this.isAdminControlPlane(pathSegments(pathname))) return;
+    applyCors(req, res, this.ops.config.cors);
+  }
+
+  /** Does any route on these segments — any method — declare admin access? */
+  private isAdminControlPlane(seg: string[]): boolean {
+    for (const route of this.routes) {
+      if (route.access.kind !== 'admin') continue;
+      if (segmentsMatch(route.pattern, seg)) return true;
+    }
+    return false;
+  }
+
   private async handle(req: http.IncomingMessage, res: http.ServerResponse, trace: RequestTrace): Promise<void> {
     const { pathname, query } = parseURL(req.url || '/');
     const method = req.method || 'GET';
 
     if (method === 'OPTIONS') {
+      // No CORS headers were set for an admin path (`applyCorsFor`), so this
+      // 204 is a preflight the browser will reject — which is the point.
       res.writeHead(204, { 'Access-Control-Max-Age': '86400' });
       res.end();
       return;
     }
 
-    const seg = pathname.split('/').filter(Boolean).map(decodeURIComponent);
+    const seg = pathSegments(pathname);
     const match = this.matchRoute(method, seg);
     if (!match) {
       throw new HttpError(404, `Not found: ${method} ${pathname}`);
@@ -1526,19 +1623,8 @@ export class HttpServer {
   private matchRoute(method: string, seg: string[]): { route: RouteDef; params: Record<string, string> } | null {
     for (const route of this.routes) {
       if (route.method !== method) continue;
-      const parts = route.pattern.split('/');
-      if (parts.length !== seg.length) continue;
       const params: Record<string, string> = {};
-      let ok = true;
-      for (let i = 0; i < parts.length; i++) {
-        if (parts[i].startsWith(':')) {
-          params[parts[i].slice(1)] = seg[i];
-        } else if (parts[i] !== seg[i]) {
-          ok = false;
-          break;
-        }
-      }
-      if (ok) return { route, params };
+      if (segmentsMatch(route.pattern, seg, params)) return { route, params };
     }
     return null;
   }
@@ -1551,18 +1637,42 @@ export class HttpServer {
   ): void {
     if (access.kind === 'public') return;
 
-    // Step 2: dev-open relaxes every gate — only ever active on loopback
-    // (the startup interlock guarantees a non-loopback bind cannot get here).
+    // Step 2a: the admin gate, which dev-open does NOT relax (FH-024).
+    //
+    // It used to. `devOpenActive` is `devOpen && loopback`, `devOpen` defaults
+    // to true, and loopback was being read as "only the developer can reach
+    // this" — which a browser makes false, because a browser runs untrusted code
+    // from anywhere and will reach 127.0.0.1 on the developer's behalf. Driven
+    // before the fix: an ordinary web page read this backend's permissions,
+    // schema, API keys and ops config, and wrote to it. (Same shape as OBS-004,
+    // where the trace relay was readable by any web page for the same reason.)
+    //
+    // Nothing is lost that dev-open was for. Its point is hitting your own
+    // collections without a token — the data and function gates below, which
+    // still relax. The administrative surface always wants the credential, and
+    // every caller of it already holds one: the editor's supervisor reads
+    // `adminToken` out of the backend's own secrets.json and sends it as a
+    // bearer token on every proxied request, and the MCP tools go through the
+    // same door. What IS given up is the BAK-005 dashboard's password-free entry
+    // on a dev-open backend — it now shows its sign-in form there, and the form
+    // already names secrets.json as where the credential lives.
+    //
+    // Placed BEFORE the dev-open fast-path rather than inside it, so a future
+    // relaxation added to that fast-path cannot reach admin routes by accident.
+    if (access.kind === 'admin') {
+      if (principal.kind !== 'admin') {
+        // One answer for wrong and missing credentials — no admin oracle.
+        throw new HttpError(401, 'Unauthorized.');
+      }
+      return;
+    }
+
+    // Step 2b: dev-open relaxes the remaining gates — only ever active on
+    // loopback (the startup interlock guarantees a non-loopback bind cannot get
+    // here), and never the admin one above.
     if (this.security.devOpenActive) return;
 
     switch (access.kind) {
-      case 'admin':
-        if (principal.kind !== 'admin') {
-          // One answer for wrong and missing credentials — no admin oracle.
-          throw new HttpError(401, 'Unauthorized.');
-        }
-        return;
-
       case 'data': {
         const collection = params[access.collectionParam];
         const op: ClpOp =
@@ -1634,7 +1744,22 @@ export class HttpServer {
     return runner ? runner.functionAllowsNoAuth(name) : false;
   }
 
-  /** CLP assertion shared by the dispatcher and /api/_batch (throws 403/119). */
+  /**
+   * CLP assertion shared by the dispatcher and /api/_batch (throws 403/119).
+   *
+   * The second `devOpenActive` early-return in this file, and FH-024 left it
+   * alone DELIBERATELY. It is not a second door onto the admin plane: it is
+   * reached only from `checkAccess`'s `data` case and from `ctx.checkData` on
+   * `POST /api/_batch`, both data-plane, and the admin gate now returns before
+   * either. Relaxing the data plane on loopback is the ergonomic dev-open
+   * exists to provide, so this one stays open on purpose.
+   *
+   * ⚠️ It stays open across origins too: `/api/*` keeps its CORS headers,
+   * because a NodeGX app is a browser client served from wherever the developer
+   * put it. So on a dev-open backend a web page can still read the developer's
+   * own collections. That is the cost of dev-open, it is not what FH-024 closed,
+   * and turning `devOpen` off is what removes it.
+   */
   private assertDataAccess(principal: Principal, collection: string, op: ClpOp): void {
     if (this.security.devOpenActive) return;
     const decision = this.security.checkClp(principal, collection, op);

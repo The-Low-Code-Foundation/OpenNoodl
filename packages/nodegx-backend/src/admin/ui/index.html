@@ -1844,11 +1844,21 @@
     //
     //  1. A token kept for this tab signs straight back in; a rejected one
     //     falls back to the form rather than looping.
-    //  2. Otherwise probe with NO credential. On a dev-open backend that
-    //     succeeds — dev-open relaxes every gate, loopback only — and putting a
-    //     password box in front of a backend that enforces nothing would be
-    //     theatre. We go straight in and say so, loudly, at the top of every
-    //     page. On an enforcing backend the probe 401s and the form appears.
+    //  2. Otherwise probe with NO credential, and expect that to fail.
+    //
+    //     ⚠️ FH-024 changed what this probe means. It used to SUCCEED on a
+    //     dev-open backend — dev-open relaxed every gate — and the dashboard
+    //     went straight in on the reasoning that a password box in front of a
+    //     backend enforcing nothing is theatre. It was not theatre: dev-open
+    //     plus `Access-Control-Allow-Origin: *` meant any web page on the
+    //     machine could read this backend's admin API, so dev-open no longer
+    //     relaxes the admin gate. The probe therefore 401s on EVERY backend
+    //     now, and the sign-in form is what every operator sees. The kept
+    //     branch above is what makes that cost one paste per tab, and the
+    //     form's own error text names secrets.json as where the token lives.
+    //
+    //     It is left in place rather than deleted: it costs one request, and a
+    //     backend that answers it is a backend that has regressed FH-024.
     var stored = null;
     try { stored = sessionStorage.getItem(STORAGE_KEY); } catch (e) { stored = null; }
     if (stored) {

@@ -20,7 +20,7 @@ import type { TriggerFiredResponse, TriggerResponse } from '../src/server/admin-
 import type { WorkflowResponse } from '../src/server/admin-workflows';
 import { BackendService } from '../src/service';
 
-import { httpClient } from './helpers/http';
+import { adminHeaders, httpClient } from './helpers/http';
 
 jest.setTimeout(30000);
 
@@ -46,7 +46,15 @@ describe('CWF-002 workflow-target fires reach the trigger metrics', () => {
   let service: BackendService;
   let base: string;
 
-  const http = httpClient(() => base);
+  // FH-024: the admin credential rides every call. Dev-open still relaxes the
+  // data and function gates on loopback, but no longer the admin one — a web
+  // page can reach 127.0.0.1 on the developer's behalf, so loopback was never
+  // the boundary it was being read as. The editor's supervisor already attaches
+  // this token to every proxied request.
+  const http = httpClient(
+    () => base,
+    () => adminHeaders(dataDir)
+  );
   const req = <T = unknown>(method: string, p: string, body?: unknown) => http.request<T>(method, p, { body });
 
   /**

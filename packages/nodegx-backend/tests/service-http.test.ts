@@ -21,6 +21,7 @@ import type { WorkflowRunnerStatus } from '../src/workflow/WorkflowRunner';
 import { BackendService } from '../src/service';
 
 import {
+  adminHeaders,
   DeletedResponse,
   ErrorBody,
   ParseQueryResult,
@@ -60,12 +61,16 @@ describe('nodegx-backend HTTP surface', () => {
   let service: BackendService;
   let base: string;
 
+  // The admin credential rides every call unless a test overrides it. FH-024:
+  // dev-open relaxes the data and function gates on loopback and no longer the
+  // admin one, so `/admin/*` and `/executions` want the token here — the same
+  // token the editor's supervisor already sends on every proxied request.
   const req = <T = unknown>(
     method: string,
     pathName: string,
     body?: unknown,
     headers: Record<string, string> = {}
-  ) => request<T>(base, method, pathName, { body, headers });
+  ) => request<T>(base, method, pathName, { body, headers: { ...adminHeaders(dataDir), ...headers } });
 
   beforeAll(async () => {
     dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nodegx-backend-test-'));

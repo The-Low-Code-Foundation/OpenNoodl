@@ -183,7 +183,8 @@ export class SecurityState {
       throw new SecurityStartupError(
         'DEV_OPEN_ON_PUBLIC_BIND',
         `Refusing to start: ${configPath} has "devOpen": true but the service is asked to bind beyond ` +
-          `localhost. Dev-open disables all access control and exists only for local development.\n` +
+          `localhost. Dev-open disables the data and function gates and exists only for local development ` +
+          `(admin routes always require the credential — FH-024).\n` +
           `  Fix: set "devOpen": false in ${SECURITY_FILE} (then configure collection permissions), ` +
           `or bind to 127.0.0.1.`
       );

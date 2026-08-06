@@ -30,7 +30,7 @@ import type {
 } from '../src/server/admin-email';
 import { BackendService } from '../src/service';
 
-import { ErrorBody, request, UserResponse } from './helpers/http';
+import { adminHeaders, ErrorBody, request, UserResponse } from './helpers/http';
 
 jest.setTimeout(30000);
 
@@ -58,12 +58,16 @@ describe('BAK-002 email subsystem', () => {
   let base: string;
   let sent: FakeSentMail[];
 
+  // The admin credential rides every call unless a test overrides it. FH-024:
+  // dev-open no longer relaxes the admin gate, so `/admin/email/*` wants the
+  // token on a dev-open backend too — which is what the editor's Email panel
+  // already sends through the supervisor.
   const req = <T = unknown>(
     method: string,
     pathName: string,
     body?: unknown,
     headers: Record<string, string> = {}
-  ) => request<T>(base, method, pathName, { body, headers });
+  ) => request<T>(base, method, pathName, { body, headers: { ...adminHeaders(dataDir), ...headers } });
 
   async function reqText(
     method: string,
@@ -175,7 +179,7 @@ describe('BAK-002 email subsystem', () => {
       try {
         const res = await fetch(`${started.listen.url}/admin/email/test`, {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          headers: { 'content-type': 'application/json', ...adminHeaders(dir) },
           body: JSON.stringify({ to: 'someone@example.com' })
         });
         expect(res.status).toBe(503);
@@ -519,7 +523,9 @@ describe('BAK-002 email subsystem', () => {
       const json = (await res.json()) as ErrorBody;
       expect(json.error).toMatch(/not configured/i);
 
-      const list = await fetch(`${notifyBase}/executions?limit=1`);
+      // `/executions` is an admin route (on a path that does not start with
+      // `admin/`), so since FH-024 it wants the credential even here.
+      const list = await fetch(`${notifyBase}/executions?limit=1`, { headers: adminHeaders(notifyDir) });
       const executions = (await list.json()) as WorkflowExecution[];
       expect(executions[0].status).toBe('error');
     });
@@ -532,7 +538,7 @@ describe('BAK-002 email subsystem', () => {
       });
       await fetch(`${notifyBase}/admin/email/config`, {
         method: 'PUT',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...adminHeaders(notifyDir) },
         body: JSON.stringify({
           smtpPassword: 'x',
           config: {
@@ -554,7 +560,7 @@ describe('BAK-002 email subsystem', () => {
       expect(notifySent[0].to).toBe('someone@example.com');
       expect(notifySent[0].subject).toBe('Notification');
 
-      const list = await fetch(`${notifyBase}/executions?limit=1`);
+      const list = await fetch(`${notifyBase}/executions?limit=1`, { headers: adminHeaders(notifyDir) });
       const executions = (await list.json()) as WorkflowExecution[];
       expect(executions[0].status).toBe('success');
     });
