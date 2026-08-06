@@ -2,8 +2,41 @@
 
 **From:** [TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) Pile 1.5 + **Q7, decided 2026-08-05**:
 fold Retry into Call Function as a policy group and delete the standalone kind.
-**Status:** open, unowned. Sequence after [CWF-001](CWF-001-CALL-FUNCTION-PARAMS.md) — the fold
-changes call-function's param list, and doing both at once beats migrating twice.
+**Status:** **SHIPPED** 2026-08-06 — S1 alone in `1451bce5` (presentation), then the fold in `d10c5a33`. Sequenced
+after [CWF-001](CWF-001-CALL-FUNCTION-PARAMS.md) as written; `case 'call-function'` was there to
+move the validator into.
+
+## ⚠️ CORRECTIONS, 2026-08-06
+
+1. **The trap fired, and the doc pointed at the wrong half of it.** "Retry's defaults live in the
+   catalog and are applied by the executor's own fallbacks — check which." It is the executor's,
+   always: `numberParam(p.maxAttempts, 3)`. The catalog `default` never set anything, which is the
+   repo's most-repeated trap. The consequence the doc did not draw: the folded policy is gated on
+   `maxAttempts > 1`, so migrating a `{"kind":"retry","ref":"charge"}` step **without writing the
+   number in** would have turned three attempts into one, silently, on every retry step whose author
+   never touched the field. `migrateStep` materialises it; a deliberate `1` is left alone.
+2. **"Validate `1` with a *warning*" has no channel in the backend.** `validateStepShape` returns
+   error strings and any non-empty result REJECTS the write — a warning would have to be a new
+   return shape threaded through the registry, the HTTP layer and MCP. `1` is legal and occasionally
+   meant, so the warning ships where the author is: the property panel says "1 means no retry — the
+   function is called once" beside the field.
+3. **"A collapsed section" is not available.** `Ports.getViewGroupsFromPorts` creates every group
+   with `isExpanded: true`; only a user's own toggle (remembered in `groupExpansions`) collapses one.
+   The policy ships as a named **Retry policy** group, expanded, with the backoff preview making it
+   readable at a glance instead.
+4. Line-number drift: the validator's `case 'retry'` was at **670-683**, not 669-683.
+
+## What shipped
+
+- Catalog `1.4.0` — `displayName` and `control` on a param; `1.5.0` — `group`, the fold, and
+  `migratedKinds` in the served catalog.
+- `steps/retryPolicy.ts` (the loop, unchanged, reached from `FunctionStepExecutor` when the policy
+  is on) and `steps/migrate.ts` (read + write path, and the three cases spelled out).
+- `RetryBackoffRow` + `models/workflow/retryBackoff.ts` — the delay-sequence preview, pinned by
+  `tests-unit/cwf-005/backoffPreview.test.ts` against the executor's formula and **the executor's
+  fallbacks, not the catalog's**.
+- MCP's `refuseUnservedKinds` reads `migratedKinds`, so an agent that writes `retry` is converted
+  rather than refused.
 
 ## The mechanism, exactly
 
