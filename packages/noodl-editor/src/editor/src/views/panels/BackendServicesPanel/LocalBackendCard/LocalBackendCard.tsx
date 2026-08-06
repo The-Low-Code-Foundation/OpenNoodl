@@ -8,6 +8,7 @@
  * @since 1.2.0
  */
 
+import classNames from 'classnames';
 import React, { useCallback, useState } from 'react';
 
 import { dataBrowserAvailability, securityFor } from '@noodl-models/BackendServices';
@@ -35,6 +36,8 @@ export interface LocalBackendCardProps {
   onStop: () => Promise<void> | Promise<boolean>;
   /** Called when delete is requested */
   onDelete: () => void;
+  /** Called when a rename is requested. Absent means renaming is unavailable. */
+  onRename?: () => void;
   /** Called when export is requested */
   onExport?: () => void;
   /** WFA-001: push the project's cloud functions to this backend now. */
@@ -56,6 +59,14 @@ export interface LocalBackendCardProps {
   onDisconnect?: () => void;
   /** BCN-009's sentence for a project that still has a second bound backend. */
   conflictNote?: string;
+  /**
+   * Names of OTHER known local projects whose `cloudservices` also points at
+   * this backend (the open project is never in this list — {@link
+   * isProjectEndpoint} already says that). One backend shared across projects
+   * is normal, not a mistake, but nothing on this card said so before — a
+   * user deleting "an unused-looking backend" had no way to know.
+   */
+  otherProjectNames?: string[];
 }
 
 /**
@@ -85,13 +96,15 @@ export function LocalBackendCard({
   onStart,
   onStop,
   onDelete,
+  onRename,
   onExport,
   onDeployCloudFunctions,
   isProjectEndpoint = false,
   isActive = false,
   onSetActive,
   onDisconnect,
-  conflictNote
+  conflictNote,
+  otherProjectNames
 }: LocalBackendCardProps) {
   const [isOperating, setIsOperating] = useState(false);
   const statusDisplay = getStatusDisplay(backend);
@@ -192,6 +205,16 @@ export function LocalBackendCard({
   const handleShowMore = useCallback(() => {
     const items: (MenuDialogItem | 'divider')[] = [];
 
+    if (onRename) {
+      items.push({
+        label: 'Rename',
+        icon: IconName.Pencil,
+        onClick: onRename,
+        testId: `rename-local-backend-${backend.id}`
+      });
+      items.push('divider');
+    }
+
     if (backend.running) {
       items.push(
         { label: 'Triggers', icon: IconName.Lightning, onClick: () => openSurface('triggers') },
@@ -233,10 +256,13 @@ export function LocalBackendCard({
     });
 
     showContextMenuInPopup({ items, width: MenuDialogWidth.Default });
-  }, [backend.running, backend.id, onDelete, onDisconnect, onExport, openSurface]);
+  }, [backend.running, backend.id, onDelete, onRename, onDisconnect, onExport, openSurface]);
 
   return (
-    <div className={css.Root} data-test={`local-backend-card-${backend.id}`}>
+    <div
+      className={classNames(css.Root, { [css.IsProjectEndpoint]: isProjectEndpoint })}
+      data-test={`local-backend-card-${backend.id}`}
+    >
       {/* Header */}
       <div className={css.Header}>
         <div className={css.Identity}>
@@ -272,11 +298,29 @@ export function LocalBackendCard({
       </div>
 
       {/* AAQ-002: which project this backend is serving, said on the card
-          itself — the fact that used to be the whole content of a second one. */}
+          itself — the fact that used to be the whole content of a second one.
+          Bolded and colour-matched to the card's own highlighted border
+          (above) rather than the same shy 11px as everything else, so it does
+          not read as one more line of fine print. */}
       {isProjectEndpoint && (
         <div className={css.Endpoint} style={{ cursor: 'default' }}>
-          <Text textType={TextType.Shy} style={{ fontSize: '11px' }} testId="local-backend-project-endpoint">
-            This project uses this backend.
+          <Text
+            textType={TextType.DefaultContrast}
+            style={{ fontSize: '11px', color: 'var(--theme-color-primary)' }}
+            testId="local-backend-project-endpoint"
+          >
+            ● This project uses this backend
+          </Text>
+        </div>
+      )}
+      {/* A backend with no data of its own — it is a pointer other projects
+          share. Named here so deleting it is an informed choice, not a
+          surprise for whoever opens the other project next. */}
+      {Boolean(otherProjectNames?.length) && (
+        <div className={css.Endpoint} style={{ cursor: 'default' }}>
+          <Text textType={TextType.Shy} style={{ fontSize: '11px' }} testId="local-backend-other-projects">
+            {isProjectEndpoint ? 'Also used by: ' : 'Used by: '}
+            {otherProjectNames.join(', ')}
           </Text>
         </div>
       )}

@@ -29,6 +29,18 @@
   }
 }
 
+/* The card for the backend the open project actually points at. Before this
+ * the only signal was a line of shy 11px text below the header — easy to miss
+ * in a list of several backends, which is exactly the case someone reaches for
+ * this panel to disambiguate. */
+.IsProjectEndpoint {
+  border-color: var(--theme-color-primary);
+
+  &:hover {
+    border-color: var(--theme-color-primary);
+  }
+}
+
 .Header {
   display: flex;
   flex-wrap: wrap;

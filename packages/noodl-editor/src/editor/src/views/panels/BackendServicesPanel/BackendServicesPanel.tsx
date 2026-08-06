@@ -51,8 +51,10 @@ import {
   endpointDisplayName,
   matchEndpointToManaged
 } from '@noodl-models/BackendServices/backendList';
+import { DialogLayerModel } from '@noodl-models/DialogLayerModel';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { getCloudServices, setCloudServices } from '@noodl-models/projectmodel.editor';
+import { mapBackendsToProjectNames } from '@noodl-utils/backendProjectLinks';
 
 import { ActivityIndicator } from '@noodl-core-ui/components/common/ActivityIndicator';
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -74,6 +76,11 @@ import { CloudServicesEndpointSection } from './CloudServicesEndpointSection/Clo
 import { useLocalBackends } from './hooks/useLocalBackends';
 import { LocalBackendCard } from './LocalBackendCard/LocalBackendCard';
 import { BackendSwitchDialog } from './SecurityDisclosure/BackendSwitchDialog';
+// A small, presentational, project-agnostic dialog — the Components panel
+// built it first for sheet rename/create and nothing about it is specific to
+// that panel. Reused rather than duplicated so a rename dialog looks like
+// every other rename dialog in the app.
+import { StringInputDialog } from '../ComponentsPanelNew/components/StringInputDialog';
 
 export function BackendServicesPanel() {
   const [backends, setBackends] = useState(BackendServices.instance.backends);
@@ -109,11 +116,27 @@ export function BackendServicesPanel() {
     backends: localBackends,
     isLoading: isLoadingLocal,
     createBackend: createLocalBackend,
+    renameBackend: renameLocalBackend,
     deleteBackend: deleteLocalBackend,
     startBackend: startLocalBackend,
     stopBackend: stopLocalBackend,
     deployCloudFunctions
   } = useLocalBackends();
+
+  /**
+   * Which OTHER known local projects point at each of these backends. Recomputed
+   * whenever the backend list itself changes (a new backend cannot yet be linked
+   * to anything, but its arrival is as good a moment as any to re-read); renaming
+   * a project or repointing its `cloudservices` between sessions is the only thing
+   * this can miss while the panel is open, and a stale "used by" list is a much
+   * smaller failure than a synchronous disk scan on every render.
+   */
+  const [projectNamesByBackend, setProjectNamesByBackend] = useState<Map<string, string[]>>(new Map());
+  useEffect(() => {
+    mapBackendsToProjectNames()
+      .then(setProjectNamesByBackend)
+      .catch(() => undefined);
+  }, [localBackends]);
 
   // Initialize backends on mount
   useEffect(() => {
@@ -173,6 +196,25 @@ export function BackendServicesPanel() {
       setIsAddLocalVisible(false);
     }
   }, [newLocalBackendName, createLocalBackend]);
+
+  // Handle rename local backend
+  const handleRenameLocalBackend = useCallback(
+    (id: string, currentName: string) => {
+      DialogLayerModel.instance.showDialog((close) =>
+        React.createElement(StringInputDialog, {
+          title: 'Rename backend',
+          defaultValue: currentName,
+          confirmLabel: 'Rename',
+          onConfirm: (value: string) => {
+            renameLocalBackend(id, value);
+            close();
+          },
+          onCancel: close
+        })
+      );
+    },
+    [renameLocalBackend]
+  );
 
   // Handle delete backend
   const handleDeleteBackend = useCallback(
@@ -483,6 +525,10 @@ export function BackendServicesPanel() {
                   }}
                   onStop={async () => stopLocalBackend(backend.id)}
                   onDelete={() => handleDeleteLocalBackend(backend.id)}
+                  onRename={() => handleRenameLocalBackend(backend.id, backend.name)}
+                  otherProjectNames={(projectNamesByBackend.get(backend.id) ?? []).filter(
+                    (name) => name !== ProjectModel.instance?.name
+                  )}
                 />
               ))}
 

@@ -54,6 +54,8 @@ export interface UseLocalBackendsReturn {
   refresh: () => Promise<void>;
   /** Create a new backend */
   createBackend: (name: string) => Promise<LocalBackendMetadata | null>;
+  /** Rename an existing backend */
+  renameBackend: (id: string, name: string) => Promise<LocalBackendMetadata | null>;
   /** Delete a backend */
   deleteBackend: (id: string) => Promise<boolean>;
   /** Start a backend. Pass `{ ephemeral: true }` to opt into non-persisting mode. */
@@ -145,6 +147,26 @@ export function useLocalBackends(): UseLocalBackendsReturn {
         return result;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to create backend';
+        setError(message);
+        return null;
+      } finally {
+        setIsOperating(false);
+      }
+    },
+    [refresh]
+  );
+
+  // Rename a backend
+  const renameBackend = useCallback(
+    async (id: string, name: string): Promise<LocalBackendMetadata | null> => {
+      setIsOperating(true);
+      setError(null);
+      try {
+        const result = await invokeIPC<LocalBackendMetadata>('backend:rename', id, name);
+        await refresh();
+        return result;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to rename backend';
         setError(message);
         return null;
       } finally {
@@ -262,6 +284,7 @@ export function useLocalBackends(): UseLocalBackendsReturn {
     error,
     refresh,
     createBackend,
+    renameBackend,
     deleteBackend,
     startBackend,
     stopBackend,

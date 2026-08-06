@@ -166,6 +166,7 @@ class BackendManager {
 
     ipcMain.handle('backend:list', async () => this.listBackends());
     ipcMain.handle('backend:create', async (_, name, options) => this.createBackend(name, options));
+    ipcMain.handle('backend:rename', async (_, id, name) => this.renameBackend(id, name));
     ipcMain.handle('backend:delete', async (_, id) => this.deleteBackend(id));
     // Start a backend. options.ephemeral opts in to non-persisting in-memory mode.
     ipcMain.handle('backend:start', async (_, id, options) => this.startBackend(id, options));
@@ -614,6 +615,12 @@ class BackendManager {
       }
     }
 
+    // Most-recently-created first. `readdir`'s order is filesystem-dependent —
+    // on some platforms it is incidentally alphabetical-by-id, which loosely
+    // tracks creation time since ids embed `Date.now().toString(36)`, but that
+    // is an accident nothing here should keep relying on.
+    backends.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
     return backends;
   }
 
@@ -676,6 +683,32 @@ class BackendManager {
 
     safeLog(`Created backend: ${id} (${name}) on port ${port}`);
     this.broadcastStatusChanged(id, 'created');
+    return config;
+  }
+
+  /**
+   * Rename a backend. The only field this ever changes on `config.json` — id,
+   * port and `projectIds` are load-bearing elsewhere and stay untouched.
+   * @param {string} id
+   * @param {string} name
+   * @returns {Promise<BackendMetadata>}
+   */
+  async renameBackend(id, name) {
+    const config = await this.getBackend(id);
+    if (!config) {
+      throw new Error(`Backend not found: ${id}`);
+    }
+
+    const trimmed = String(name || '').trim();
+    if (!trimmed) {
+      throw new Error('A backend needs a name.');
+    }
+
+    config.name = trimmed;
+    await fs.writeFile(path.join(this.backendsPath, id, 'config.json'), JSON.stringify(config, null, 2));
+
+    safeLog(`Renamed backend ${id} to "${trimmed}"`);
+    this.broadcastStatusChanged(id, 'renamed');
     return config;
   }
 
