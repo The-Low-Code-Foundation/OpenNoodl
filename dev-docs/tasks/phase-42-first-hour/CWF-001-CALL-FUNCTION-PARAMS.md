@@ -1,8 +1,50 @@
-# CWF-001 — You cannot pass data into a cloud function
+# CWF-001 — You cannot AUTHOR what a step passes a cloud function
 
 **From:** [TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) Pile 1.1 — the largest hole in the
 cloud-workflow surface, and the gate on everything else in the track.
-**Status:** open, unowned.
+**Status:** **SHIPPED** 2026-08-06 (`97b3fc0e`, with the backend/editor-model halves swept into
+`d3b7f159` by a concurrent session's path-limited commit). Retitled: the original title said "you
+cannot pass data into a cloud function", and that was false — see below.
+
+## ⚠️ CORRECTIONS, 2026-08-06 — three premises in this doc were wrong
+
+1. **The mapping already worked.** A step's params have been merged into its input BY NAME since
+   WFA-003 ([WorkflowEngine.ts:496-508](../../../packages/nodegx-backend/src/workflow/WorkflowEngine.ts#L496-L508)),
+   and [`workflow-data-mapping.test.ts`](../../../packages/nodegx-backend/tests/workflow-data-mapping.test.ts)
+   has proved end-to-end since then that `{"amount": {"$path": "previous.result.total"}}` on a
+   `call-function` step reaches the function as `body.amount`. The §Refinement below says
+   `resolvedParams` is "always empty today" — it is not, and never was. What was missing was the
+   **declaration**, so the property editor (one row per DECLARED param) had nothing to draw.
+2. **S1's `raw: true` would have broken the feature.** `raw` is consumed by `rawParamNames()`, which
+   is exactly what tells the engine NOT to resolve a param
+   ([kinds.ts `rawParamNames`](../../../packages/nodegx-backend/src/workflow/steps/kinds.ts)) — so a
+   `raw` mapping would never have resolved. And a `params` param would have put the mapping at
+   `step.params.params`, a SECOND on-disk form for something that already had one. Shipped instead
+   as `paramMapping` on the KIND (catalog `1.3.0`) plus one synthetic editor port; the on-disk form
+   is unchanged and there is exactly one of it.
+3. **S2's reserved list was too strict.** Refusing every run-payload root broke a shipped spec that
+   maps `{ body: {"$path": "body"} }` on purpose. Params merge AFTER the payload, so the author's
+   value WINS — an override, not a loss. Exactly one name is refused: **`previous`**, which the
+   engine writes after the params and would silently discard. The rest are served as
+   `paramMapping.shadows` and get a note in the panel, not an error.
+
+Also corrected in the code: `values.ts` cited a write-time check called `validateParamDepth`. No
+such function has ever existed — it is `validateValueReferences` in `WorkflowEngine.ts`.
+
+**Where the line numbers drifted:** `WorkflowEngine.ts:212-234` below is `validateValueReferences`
+at 217-255, and `kinds.ts:669-683` (CWF-005) is 670-683. Everything else cited checked out.
+
+## What shipped
+
+- `StepParamMappingSpec` + `StepKindSpec.paramMapping` in the catalog, served at
+  `GET /admin/workflow-step-kinds`, version `1.3.0`.
+- `RESERVED_STEP_INPUT_KEYS` (`previous`) and `SHADOWED_STEP_INPUT_KEYS`, with a real
+  `case 'call-function'` in the validator where there was `default: break`.
+- `PORT_PARAM_MAPPING` — the one synthetic port on a step card — and `WorkflowParamsType` /
+  `WorkflowParamsEditor`, which edit the node's UNDECLARED parameters as siblings, in one undo
+  group, with the declared/reserved/shadow lists riding on the port type.
+- `docs/runtime/WORKFLOW-NODES.md` §Authoring the mapping on the canvas; the MCP step schema tells
+  an agent to name params for the FUNCTION, not for wherever the value sits today.
 
 ## The mechanism, exactly
 
