@@ -5,11 +5,11 @@
 **not** POL-004's defect and was not caused by its fix — the doc-review sheet is correct in both
 themes. This is what the same measurement found sitting on top of it.
 
-**Status:** ☑ **FIXED 2026-08-06**, with one thing owed. Both failing elements are fixed, not just
+**Status:** ☑ **DONE 2026-08-06** — fixed *and* measured. Both failing elements are fixed, not just
 the gutter — see [What was actually changed](#what-was-actually-changed) at the bottom, and note the
 correction to criterion 4, which as originally written asked for more than the proposed fix
-delivered. ⚠️ The `pol004-doc-diff.js` re-run that criterion 4 names has **not** been done; §5 says
-why and what is left.
+delivered. **`pol004-doc-diff.js` has now been re-run** on a restarted stack and reports **zero**
+text nodes below 4.5:1 in both themes; §5 is the run.
 
 It gets a row because that is now the phase's rule: a finding recorded only as prose inside a
 completed task is a finding that has been lost. That is the whole reason
@@ -145,11 +145,25 @@ can out-rank them. Token values read live off `:root` in each theme match `color
 (`fg-default-shy` = `#8b95a1` dark, `#616c79` light). Same check for the three
 `.popup-layer-*` rules AAQ-011 F1 changed in the same pass.
 
-### 5. What is still owed
+### 5. The harness re-run — criterion 4, measured
 
-**`pol004-doc-diff.js` has not been re-run.** Both elements its last run reported below 4.5:1 are
-fixed, and the ratios above are computed from the same token values the harness measured — but that
-is a derivation, not a re-measurement, and this file should not claim otherwise. The re-run needs the
-scripted-provider drive of the AI panel and a restarted stack (see the HMR trap above); the editor
-was in another session's hands when this landed. **Criterion 4 is therefore satisfied by
-construction, not yet by the harness** — re-run it in the next session that owns the editor.
+Run **2026-08-06** on a **restarted** stack (not HMR — see the trap above), scripted provider, both
+themes: `node packages/noodl-editor/scripts/pol39-live/pol004-doc-diff.js --theme=both --json`.
+
+| theme | text nodes | worst node | ratio | below 4.5:1 |
+|---|---|---|---|---|
+| dark | 198 | `"99"` — `#8b95a1` on `#222933` | **4.82:1** | **0** (`unreadable: []`) |
+| light | 198 | `"99"` — `#616c79` on `#ecf0f4` | **4.67:1** | **0** (`unreadable: []`) |
+
+`✓ POL-004 criterion 1: 0 theme(s) failing.` The sheet is `bg-1` in both themes (`#12161b` /
+`#ffffff`) and `secondary` is unused, so POL-004's own criterion holds unchanged in the same run.
+
+**Three things this run establishes that the derivation could not.** First, the worst text node in
+the whole modal *is* a gutter line number — `"99"` on `bg-3` — so the element this task is named
+after is the one the harness is grading, not something incidental. Second, its measured ratios are
+**4.82 / 4.67**, matching the table in §"The answer, already measured" to the second decimal: the
+CSS wins in the browser, not only in the stylesheet. Third, the change-summary line is no longer
+anywhere near the bottom of the list, which is what fixing `TextType.Shy` at the token mapping was
+supposed to buy across all 257 call sites.
+
+**Criterion 4 is now satisfied by the harness, not by construction.** Nothing is owed.

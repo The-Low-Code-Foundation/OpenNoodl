@@ -1,18 +1,19 @@
 # Phase 39 — Progress
 
 **Status:** **19 numbered tasks — POL-001 … POL-019, and 19 `POL-*.md` files on disk, no gaps.
-17 are done with a committed driver each; 1 is fixed with its harness re-run owed; 1 is deferred by
-decision.** The three loose ends carried across sessions (POL-002's packaged build, POL-004's diff
+18 are done with a committed driver each; 1 is deferred by decision.** The three loose ends carried across sessions (POL-002's packaged build, POL-004's diff
 modal, POL-016's two findings) were all closed in the seventh session, so **every criterion of every
-*done* task is verified live** — POL-017 is deliberately not counted among them, see below.
+*done* task is verified live** — and since 2026-08-06 that includes POL-017, whose owed measurement
+has now been taken.
 
-The two that are not plain `done`, and neither is alpha-blocking:
+- **[POL-017](POL-017-CODE-GUTTER-LINE-NUMBERS.md)** — ✅ **done 2026-08-06** (`00adecd5` for the
+  gutter, `47a5987e` for the `TextType.Shy` mapping), and criterion 4 is now **measured, not
+  derived**: `pol004-doc-diff.js` re-run on a restarted stack reports **0 text nodes below 4.5:1 in
+  both themes** — worst node `"99"` (a gutter line number) at **4.82:1 dark / 4.67:1 light**, which
+  matches the derived table to the second decimal. Nothing owed.
 
-- **[POL-017](POL-017-CODE-GUTTER-LINE-NUMBERS.md)** — ☑ **fixed 2026-08-06** (`00adecd5` for the
-  gutter, `47a5987e` for the `TextType.Shy` mapping), **harness re-run owed**. It is *not* plain done:
-  criterion 4 asks for zero text nodes below 4.5:1 measured by `pol004-doc-diff.js`, and that harness
-  has not been re-run — the ratios are derived from the same token values it last measured, which is
-  a derivation, not a measurement. **Satisfied by construction, not by the harness.**
+The one that is not plain `done`, and it is not alpha-blocking:
+
 - **[POL-018](POL-018-A-PROJECT-SOURCED-TOPOLOGY.md)** — **deferred by Richard's decision 6**, not
   done and not abandoned. POL-010 slice 2.
 
@@ -46,8 +47,10 @@ be added together** — that is what produced "16" in the first place.
 > deferred-by-decision is a state, not an absence, and a state with no row is invisible exactly as a
 > filed-not-fixed finding is. It is [POL-018](POL-018-A-PROJECT-SOURCED-TOPOLOGY.md) now.
 
-**Last updated:** 2026-08-06 (POL-017 reconciled against the code — it had been carried as *filed,
-not fixed* while two commits fixed it, the fourth register in this repo to outlive its own fix.
+**Last updated:** 2026-08-06 (POL-017 **closed** — the owed `pol004-doc-diff.js` re-run was taken in
+that day's live-QA pass and reports 0 text nodes below 4.5:1 in both themes. Before that: POL-017
+reconciled against the code — it had been carried as *filed, not fixed* while two commits fixed it,
+the fourth register in this repo to outlive its own fix.
 Before that: POL-019 added — the topbar overlap Richard found driving the editor, fixed the same day;
 and a register hygiene pass — three stale status tags corrected, the count reconciled, POL-018 given
 the row Richard's decision 6 always implied)
@@ -63,7 +66,7 @@ both a matter of wiring that module in, not of sourcing an icon set.
 | Task | Reported items | Status | Notes |
 |---|---|---|---|
 | [POL-019](POL-019-THE-TOPBAR-DOES-NOT-FIT.md) — the topbar does not fit | — | ✅ **done** | Found 2026-08-06 by Richard driving the editor; filed and fixed the same day. Reported as "the zoom readout and the fit-zoom dropdown paint on top of each other" — **nothing on the right-hand side overlaps anything on the right-hand side.** What lands on the `100%` is the **route pill from the LEFT group**: at a 458px Settings panel its right edge is `944` and the zoom readout starts at `944`. `.LeftSide` had `min-width: 0` (the box may shrink) while `.UrlBarWrapper` had `min-width: 300px` (the contents may not) and no `overflow` — so the pill left its parent and painted over the toolbar. **It was never one width.** Measured at five panel widths: **418 and 458 both overlap**, and the worst case is a *shipped default* — the seven backend surfaces open at `860`, where the pill renders at `1044–1194`, entirely inside the right cluster. The `isSmall` breakpoint was `850`; the roomy layout needs **1007** and the compact one **705**, so there was a **157px dead band** in which the component rendered a layout that did not fit, and Settings misses it by **six pixels**. Fixed in three parts: the pill is `flex: 1 1 300px; min-width: 0` (300 is a preference, not a floor), `.LeftSide` clips and `.RightSide` is `flex: none`, and two **derived** tiers (1010 / 710) replace the magic number, with the arithmetic written into both the `.tsx` and the `.scss`. Below the lower tier the pill and the dev-tools button are unmounted rather than hidden, so neither sits in the tab order invisibly. Found on the way: `.Root` declared `container-name: editortopbar` with **no `container-type`**, which is inert — removed rather than completed, since the tiering changes what React renders and no container query could do it. All four criteria measured live in both themes; the tiny tier is verified by `elementFromPoint`, because `overflow: hidden` clips painting and not the rects a probe reads. |
-| [POL-017](POL-017-CODE-GUTTER-LINE-NUMBERS.md) — code gutter line numbers | — | ☑ **fixed, harness re-run owed** | Found 2026-08-04 by POL-004's criterion-1 drive, in the same modal but **not** POL-004's defect. `codemirror-theme.ts:60` styled every CodeMirror gutter with `fg-muted` — **3.17:1 dark / 3.16:1 light**, against WCAG 1.4.3's 4.5:1 for text. Neat coincidence not to misread: `fg-muted` is exactly what POL-016 chose for `--theme-color-border-control`, and that is correct there — **3:1 for a control boundary, 4.5:1 for text**. ⚠️ **The gutter half had already been fixed when this row still said otherwise**: `00adecd5`, *a commit about the linter*, moved `.cm-gutters` to `fg-default-shy` a day earlier. What was genuinely left is the **second** failing element in the task's own measurement table, which its proposed answer never addressed — the doc-review change-summary line at **3.93 dark / 3.62 light**. That is `<Text textType={TextType.Shy}>`, and `is-type-shy` mapped straight to `fg-muted`: the identical misuse one tier up. Fixed at the **token mapping**, not the call site (`47a5987e`) — **257 call sites in 59 files** inherit it, so patching the one dialog leaves 256; `Label`'s `is-variant-shy` moves with it or the enum grows a twin. Safe at that blast radius because `fg-default-shy` is one step *toward* the foreground extreme in **both** themes, so contrast rises against every surface in the palette, while staying dimmer than `fg-default` so the hierarchy `Shy` exists to express survives. ⚠️ **`Icon`'s `is-variant-shy` deliberately stays at `fg-muted`** — a non-text graphic is 1.4.11 at 3:1, which it clears; raising it would mirror the POL-016 mistake this task warns about. **Still owed (`7b9440b8` says so rather than claiming a green harness): `pol004-doc-diff.js` has not been re-run.** Both elements it last reported below 4.5:1 are fixed and the new ratios come from the same token values it measured — but that is a derivation. **Criterion 4 is satisfied by construction, not by the harness.** Re-run it in the next session that owns the editor. Not alpha-blocking. |
+| [POL-017](POL-017-CODE-GUTTER-LINE-NUMBERS.md) — code gutter line numbers | — | ✅ **done** (all 4 criteria) | Found 2026-08-04 by POL-004's criterion-1 drive, in the same modal but **not** POL-004's defect. `codemirror-theme.ts:60` styled every CodeMirror gutter with `fg-muted` — **3.17:1 dark / 3.16:1 light**, against WCAG 1.4.3's 4.5:1 for text. Neat coincidence not to misread: `fg-muted` is exactly what POL-016 chose for `--theme-color-border-control`, and that is correct there — **3:1 for a control boundary, 4.5:1 for text**. ⚠️ **The gutter half had already been fixed when this row still said otherwise**: `00adecd5`, *a commit about the linter*, moved `.cm-gutters` to `fg-default-shy` a day earlier. What was genuinely left is the **second** failing element in the task's own measurement table, which its proposed answer never addressed — the doc-review change-summary line at **3.93 dark / 3.62 light**. That is `<Text textType={TextType.Shy}>`, and `is-type-shy` mapped straight to `fg-muted`: the identical misuse one tier up. Fixed at the **token mapping**, not the call site (`47a5987e`) — **257 call sites in 59 files** inherit it, so patching the one dialog leaves 256; `Label`'s `is-variant-shy` moves with it or the enum grows a twin. Safe at that blast radius because `fg-default-shy` is one step *toward* the foreground extreme in **both** themes, so contrast rises against every surface in the palette, while staying dimmer than `fg-default` so the hierarchy `Shy` exists to express survives. ⚠️ **`Icon`'s `is-variant-shy` deliberately stays at `fg-muted`** — a non-text graphic is 1.4.11 at 3:1, which it clears; raising it would mirror the POL-016 mistake this task warns about. **Criterion 4 is now MEASURED, 2026-08-06.** `pol004-doc-diff.js` re-run on a restarted stack, both themes, scripted provider: **198 text nodes each, `unreadable: []` in both** — worst node `"99"`, `#8b95a1` on `#222933` = **4.82:1** dark and `#616c79` on `#ecf0f4` = **4.67:1** light, matching the derived table to the second decimal. The worst node in the whole modal *is* a gutter line number, so the harness is grading the element this task is named after and not something incidental. POL-004's own criterion 1 re-passed in the same run (sheet `bg-1` in both themes, `secondary` unused). |
 | [POL-018](POL-018-A-PROJECT-SOURCED-TOPOLOGY.md) — a project-sourced topology | — | ⏸ **deferred by decision** | POL-010 slice 2, given the row it should have had on 2026-08-04. **Deferred, not dropped**: Richard's answer 6 below built slices 3 and 2b and said *"Sourcing the topology from `ProjectModel` is the right destination and its own task — it carries component scoping and a decision about component instances."* Until it lands, the provenance walk answers about **what the preview instantiated**, not about the user's graph: walking back from `messagesText.text` to `Query Messages` still needs the Chat page mounted, and POL-010's own fixture shows the runtime dropping **4 of 12** declared edges even *with* it mounted (a `JavaScriptFunction`'s dynamic ports are never registered). Two open questions belong to Richard, not to the builder — both written up in the task. Not alpha-blocking: POL-010 slice 3 means the panel now says why it cannot answer instead of showing one row as a result. |
 | [POL-001](POL-001-SETTINGS-PANEL-CRASH.md) — settings panel crash | 15 | ✅ **done** | All 5 criteria. Slice 2 answered: the key is not lost — v2 elides an empty `settings: {}` by design on both sides. Verified live on "AIB38 Live Chat", the project that actually crashed. `c6d5f9f8` |
 | [POL-002](POL-002-LINKS-AND-THE-LEARN-TAB.md) — links + Learn tab | 1, 2, 5 | ✅ **done** (all 6 criteria) | Removing `react-instantsearch` broke 18 unrelated files: it was the only thing in the tree still declaring a **global `JSX` namespace**, typed for *Preact's* VNode. All 22 annotations moved to `React.JSX`. **Criterion 6 run in the seventh session and it was never human-gated** — signing/notarisation/publishing need a human, a *build* does not, and `build.ts` has a `DISABLE_SIGNING` path that exists for exactly that. Both production bundles compiled clean (renderer 14.3 MB / 200s — the half the removal could break), `electron-builder --mac --arm64` exited 0 with a 182 MB dmg + zip, and **the packaged app starts**: `reactMounted: true`, launcher rendered. The alarming `duplicate dependency references` list of `@algolia/*` in the builder log is stale hoisted `node_modules` that nothing declares — the packaged app ships **none** of it. Found and fixed on the way: `autoupdater.js` wrapped a **promise-returning** `checkForUpdates()` in a `try/catch`, so every failure rejected past it and the packaged app printed an `UnhandledPromiseRejectionWarning` on **every launch** (the v0.1.0 release has no `latest-mac.yml`, so the first check always 404s). The `.catch` deliberately does not retry — the `error` listener already owns that, and doing both would spawn two checks per failure, compounding. Verified by repackaging: **2 → 0**. `d9c0f37c` |
@@ -156,19 +159,21 @@ this). It is the surface a user reaches for first when something looks wrong.
 
 ## Open — the tail
 
-**One deferred task and one measurement owed.** The seventh session closed all three items it
+**One deferred task, and nothing else owed.** The seventh session closed all three items it
 inherited — POL-016, POL-002's criterion 6 (which was **not** human-gated after all) and POL-004's
-criterion 1 — and filed one new finding on the way. POL-017 was then fixed on 2026-08-06. What is
-left is POL-010's deferral, which had been carried as a sentence in answer 6 and nowhere else.
+criterion 1 — and filed one new finding on the way. POL-017 was fixed on 2026-08-06 and **measured
+the same day**. What is left is POL-010's deferral, which had been carried as a sentence in answer 6
+and nowhere else.
 
-1. **[POL-017](POL-017-CODE-GUTTER-LINE-NUMBERS.md) — fixed; one measurement owed, not a fix.**
+1. **[POL-017](POL-017-CODE-GUTTER-LINE-NUMBERS.md) — done, and the measurement was taken.**
    Both failing elements are repaired (`00adecd5` the gutter, `47a5987e` the `TextType.Shy` token
-   mapping at 257 call sites). What is owed is **re-running `pol004-doc-diff.js`**, which criterion 4
-   names by name. The new ratios are derived from the token values that harness last measured, and a
-   derivation is not a measurement — so the criterion is met *by construction* and this file does not
-   claim a green harness. The re-run needs the scripted-provider drive of the AI panel and a
-   **restarted** stack (HMR will not reach an already-mounted panel); the editor was in another
-   session's hands when the fix landed. **Take it with the next live-QA pass.**
+   mapping at 257 call sites), and `pol004-doc-diff.js` — the harness criterion 4 names by name —
+   was **re-run on a restarted stack in the live-QA pass of 2026-08-06**: 198 text nodes per theme,
+   `unreadable: []` in both, worst node `"99"` at **4.82:1 dark / 4.67:1 light**. The derivation this
+   file refused to call a measurement turned out to be right to two decimals — but it is now the
+   harness saying so, which is the whole point. ⚠️ Worth keeping: the worst node in the modal *is* a
+   gutter line number, so the harness is grading the element the task is named after rather than
+   something incidental. **Closed.**
 
 2. **[POL-018](POL-018-A-PROJECT-SOURCED-TOPOLOGY.md) — the provenance walk asks the runtime a
    question only the project can answer.** Deferred by answer 6 on 2026-08-04, and it is deferred
