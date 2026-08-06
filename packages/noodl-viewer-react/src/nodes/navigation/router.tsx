@@ -103,6 +103,24 @@ function getBaseUrlLength(url: string): number {
   return url.length;
 }
 
+/**
+ * AAQ-011 **F9** — every diagnosis `resetAsync` can reach, in one list, so the clear can name
+ * them all.
+ *
+ * The editor's warning subscriber (`runtimeerror.ts::createEditorWarningSubscriber`) keys a
+ * warning by the raised **`code`**, so a clear must spell the same string the raise did — the
+ * lesson `dbmodelcrudbase.clearWarnings` records after a `clearWarning` naming the wrong key
+ * left every Record node holding a warning it could never shed. Adding a fifth `_reportReset`
+ * failure without adding it here reinstates F9 for that code, which is why the list sits beside
+ * the node rather than inside the method that raises.
+ */
+const RESET_DIAGNOSIS_CODES = [
+  'router/no-pages',
+  'router/no-start-page',
+  'router/page-not-found',
+  'router/component-is-not-a-page'
+] as const;
+
 const RouterNode = {
   name: 'Router',
   displayNodeName: 'Page Router',
@@ -331,13 +349,55 @@ const RouterNode = {
       }
     },
     /**
+     * AAQ-011 **F9** — withdraw every reset diagnosis this pass did *not* reach.
+     *
+     * A raise is an **event**; the editor turns it into a **warning**, which is a predicate, and
+     * nothing in this file ever said the predicate had stopped being true. So a Page Router that
+     * was momentarily unconfigured — the mount that runs before its `pages` parameter lands, which
+     * is the ordinary shape of an apply that streams `createNode` before `setParameter` — kept
+     * *"This Router has no Pages configured"* for the life of the editor session, on a router
+     * showing all three of its pages. `⚠ 1`, permanent, false, on every wizard-built app.
+     *
+     * ⚠️ **`keep` is why this is not "clear on success".** Clearing only when the reset succeeds
+     * would leave a router that is *genuinely* empty warned — correct — but so would clearing
+     * unconditionally and re-raising, at the cost of a clear/show round trip on every reset. This
+     * withdraws the three codes that are now false and leaves the one being raised alone, so a
+     * persistent misconfiguration never flickers and never has its warning re-sent
+     * (`sendWarning` deduplicates on `activeWarnings`, so a re-raise after a clear *is* a second
+     * message the editor has to process).
+     *
+     * Editor-only by construction: `clearWarning` exists only on the editor connection, and a
+     * deployed app has none. Every hop is guarded because this method also runs under the unit
+     * harnesses, which build a bare instance with no `context` and no `componentOwner`.
+     */
+    _clearResetWarnings(keep?: string) {
+      const editorConnection = this.context && this.context.editorConnection;
+      if (!editorConnection || typeof editorConnection.clearWarning !== 'function') return;
+
+      const componentOwner = this.nodeScope && this.nodeScope.componentOwner;
+      const component = componentOwner && componentOwner.name;
+      if (!component) return;
+
+      for (const code of RESET_DIAGNOSIS_CODES) {
+        if (code !== keep) editorConnection.clearWarning(component, this.id, code);
+      }
+    },
+    /**
      * End a `Reset` invocation — or, on the mount path, end none.
      *
      * ⚠️ The four `failure` paths below each **already** called `raiseRuntimeError` (NDA-012).
      * `reportOutcome` raises too, so the raise moved *into* it rather than sitting beside it —
      * leave both and one drop puts two events on the error channel.
+     *
+     * The clear runs **before** either branch and for *every* outcome, not just the successful
+     * ones: `done`, `unchanged` and a failure with a *different* code all mean the previous
+     * diagnosis is no longer true. `unchanged` is included deliberately — `Treat Unchanged as`
+     * can remap it to a failure carrying `outcome/unchanged-as-failure`, which is not a reset
+     * diagnosis, so the router's own codes are stale either way.
      */
     _reportReset(outcomes: OutcomeToken[] | undefined, outcome: NodeOutcome, options?: OutcomeFailureOptions) {
+      this._clearResetWarnings(outcome === 'failure' && options ? options.code : undefined);
+
       if (outcomes === undefined || outcomes.length === 0) {
         // No author invocation to report to. The diagnosis still belongs on the channel: an
         // unconfigured Page Router is diagnosed on mount, which is the only time anyone sees it.
