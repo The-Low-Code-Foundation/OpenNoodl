@@ -127,7 +127,21 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailabi
    * panel the plan will be waiting in costs four words.
    */
   const hasPlan = mode === 'ai' && (scoping?.planRows?.length ?? 0) > 0;
-  const nextLabel = isLastStep ? (hasPlan ? 'Create project — the plan waits in Build' : 'Create Project') : 'Next';
+  /**
+   * A conversation left before anything was agreed produces no plan at all —
+   * bare "Create Project" reads identically to the guided/quick path, and
+   * someone who just typed a paragraph into the chat has no reason to suspect
+   * none of it will build anything. Name the empty case as loudly as AIB-005
+   * named the full one, or "it took me into the hello world app" recurs.
+   */
+  const scopeUnfinished = mode === 'ai' && !hasPlan && (scoping?.outline?.length ?? 0) > 0;
+  const nextLabel = isLastStep
+    ? hasPlan
+      ? 'Create project — the plan waits in Build'
+      : scopeUnfinished
+        ? 'Create project — no build plan (unfinished)'
+        : 'Create Project'
+    : 'Next';
   const showBack = !STEPS_WITHOUT_BACK.includes(currentStep);
 
   // A turn in flight must not be walked out from under: the reply would land

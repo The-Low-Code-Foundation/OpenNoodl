@@ -164,8 +164,9 @@ export function ScopingStep({
       </div>
 
       <p className={css['Exit']}>
-        You can stop whenever you like — <strong>Continue</strong> creates the project with whatever has been
-        agreed so far, and writes it down. Nothing is built until you choose to start the plan.
+        You can stop whenever you like — <strong>Continue</strong> takes what has been agreed so far to a final
+        review, then creates the project and writes it down. If you leave before agreeing on any pages, your notes
+        are still saved, but there will be no build plan waiting for you.
       </p>
     </div>
   );
