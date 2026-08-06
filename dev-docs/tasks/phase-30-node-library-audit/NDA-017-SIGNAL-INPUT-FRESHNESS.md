@@ -538,8 +538,8 @@ default would now do to it. A graph with no `Run` connected is untouched, becaus
 not change.
 
 > ✅ **BUILT, 2026-08-06.** See [§4 — the migration, built](#4--the-migration-built). The blast
-> radius was measured before a line of it shipped: **7,196 parameters on 4,100 nodes across 55 of
-> 81 real projects.**
+> radius was measured before a line of it shipped: **7,196 parameters on 3,507 nodes across 55 of
+> 81 real projects — 29% of every node in the class.**
 
 ### Why it matters more than a default change usually would
 
@@ -597,8 +597,8 @@ that does not already have an answer.
 
 | Corpus | Projects | Family nodes | …with the signal wired | Parameters written | Already answered |
 |---|---|---|---|---|---|
-| In-repo (`**/project.json`: prefabs, examples, test fixtures, QA fixtures) | 91 | 788 | 148 | **174** on 96 nodes, in 19 projects | 50 |
-| Real user projects (`~/vscode_projects/Noodl projects`) | 81 | 14,027 | 4,100 | **7,196** on 2,908 nodes, in 55 projects | 0 |
+| In-repo (`**/project.json`: prefabs, examples, test fixtures, QA fixtures) | 91 | 788 | 148 | **174** on 97 nodes, in 19 projects | 50 |
+| Real user projects (`~/vscode_projects/Noodl projects`) | 81 | 14,027 | 4,100 | **7,196** on 3,507 nodes, in 55 projects | 0 |
 
 By type, on the real corpus: `JavaScriptFunction` 3,344 · `DbCollection2` 1,290 · `Expression` 835 ·
 `DbModel2` 732 · `Condition` 212 · `Filter Collection` 180 · `Model2` 130 · `Variable2` 122 ·

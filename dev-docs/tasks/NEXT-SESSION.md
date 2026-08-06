@@ -87,7 +87,7 @@ that session is live before starting anything that overlaps.
 - **NDA-017 migration → yes, migrate on load.** Decided 2026-08-06 and ✅ **built the same day** —
   [NDA-017 §4](phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md#4--the-migration-built).
   A pure function in `ProjectPatches/runOnValueChangeMigration.ts`, wired into `applyPatches`.
-  **7,196 parameters on 2,908 nodes across 55 of 81 real projects** — 29% of the class. ⚠️ Two things
+  **7,196 parameters on 3,507 nodes across 55 of 81 real projects** — 29% of the class. ⚠️ Two things
   worth carrying: the ordering that actually bit was **drain order inside the parameter bag**, not
   §3's port-exists race (that one is already fixed in `defineNode`, and jest *can* reach it); and
   **Text Input has no run-on-change checkbox at all**, because `createNodeFromReactComponent` never
