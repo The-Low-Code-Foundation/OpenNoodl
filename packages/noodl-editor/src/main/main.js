@@ -1221,9 +1221,7 @@ function startUDPMulticast() {
 // Find domain name argument if existing
 process.env.noodlArgs = JSON.stringify(args);
 for (var i = 0; i < args.length; i++) {
-  if (args[i].indexOf('--api=') === 0) {
-    process.env.apiEndpoint = args[i].split('=')[1];
-  } else if (args[i].indexOf('--autoupdate=') === 0) {
+  if (args[i].indexOf('--autoupdate=') === 0) {
     process.env.autoUpdate = args[i].split('=')[1];
   } else if (args[i].indexOf('--lessons=') === 0) {
     process.env.lessons = path.resolve(args[i].split('=')[1]);
