@@ -11,6 +11,7 @@
 import { javascript } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';
 
+import { setCodeAuthoringContext } from '@noodl-core-ui/components/code-editor/authoringContext';
 import { javascriptDiagnostics, lintMessages } from '@noodl-core-ui/components/code-editor/utils/esLintDiagnostics';
 
 function stateFor(doc: string): EditorState {
@@ -154,5 +155,45 @@ describe('javascriptDiagnostics', () => {
   it('leaves JSON to the parse-tree walk', () => {
     const state = EditorState.create({ doc: '{ a: 1 }' });
     expect(javascriptDiagnostics(state, 'json')).toEqual([]);
+  });
+});
+
+/**
+ * FH-019 — the half of ERG-002 §2 finding #4 that is not completion. A
+ * registered library's global is a real `window` property once the app runs, so
+ * `no-undef` reporting it was the linter being confidently wrong about working
+ * code.
+ */
+describe('a registered library’s global', () => {
+  afterEach(() => setCodeAuthoringContext(null));
+
+  it('is reported as undefined when the project has no such library', () => {
+    const messages = lintMessages('const c = new PocketBase();', 'function');
+    expect(messages.map((m) => m.ruleId)).toContain('no-undef');
+  });
+
+  it('is accepted once the open project has registered it', () => {
+    setCodeAuthoringContext({
+      libraries: [{ name: 'PocketBase', global: 'PocketBase' }],
+      variables: [],
+      objects: [],
+      arrays: []
+    });
+
+    expect(lintMessages('const c = new PocketBase();', 'function')).toEqual([]);
+  });
+
+  it('is re-read per lint pass, so registering one fixes an editor already open', () => {
+    const code = 'tinymce.init({});';
+    expect(lintMessages(code, 'function').length).toBeGreaterThan(0);
+
+    setCodeAuthoringContext({
+      libraries: [{ name: 'tinyMCE', global: 'tinymce' }],
+      variables: [],
+      objects: [],
+      arrays: []
+    });
+
+    expect(lintMessages(code, 'function')).toEqual([]);
   });
 });

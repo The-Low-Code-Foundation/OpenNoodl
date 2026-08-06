@@ -30,10 +30,12 @@
  *   variable in an expression, and `no-undef` is off for that mode. Turning it
  *   on would underline every input the author just created.
  *
- * `no-undef` is a **warning**, never an error, in the modes that do run it: a
- * project can put a registered library's global on `window`
- * (`library-completions.ts`), and until [FH-019] threads those names in, a
- * confident red mark on working code would be worse than the gap it closes.
+ * `no-undef` is a **warning**, never an error, in the modes that do run it.
+ * FH-019 threads the registered libraries' globals in (see
+ * {@link projectGlobals}), which removes the most common false positive — but
+ * not the last one, because a project can also attach a global from a Script
+ * node at runtime, which no static reading of the project can see. A warning is
+ * the honest severity for a rule that depends on what is in scope.
  *
  * @module code-editor/utils
  */
@@ -43,6 +45,7 @@ import type { EditorState } from '@codemirror/state';
 import { Linter } from 'eslint-linter-browserify';
 import globals from 'globals';
 
+import { getCodeAuthoringContext } from '../authoringContext';
 import { widen } from './syntaxDiagnostics';
 import type { ValidationType } from './types';
 
@@ -93,6 +96,25 @@ const STRUCTURAL_RULES = {
 
 const linter = new Linter();
 
+/**
+ * The globals the open project adds — a registered library's `global` is a real
+ * `window` property once the app runs, so `no-undef` reporting it is the linter
+ * being wrong about working code (ERG-002 §2 finding #4, the diagnostics half).
+ *
+ * Read per lint pass rather than captured, for the same reason the completion
+ * sources read per keystroke: the popout mounts once and outlives any number of
+ * changes to Settings → Libraries.
+ */
+function projectGlobals(): Record<string, 'readonly'> {
+  const declared: Record<string, 'readonly'> = {};
+
+  for (const library of getCodeAuthoringContext().libraries) {
+    if (library.global && library.global.trim()) declared[library.global.trim()] = 'readonly';
+  }
+
+  return declared;
+}
+
 /** The flat config for a mode, or `null` if this mode is not JavaScript. */
 function configFor(validationType: ValidationType) {
   const shared = {
@@ -105,7 +127,8 @@ function configFor(validationType: ValidationType) {
       },
       globals: {
         ...globals.browser,
-        ...NOODL_FUNCTION_GLOBALS
+        ...NOODL_FUNCTION_GLOBALS,
+        ...projectGlobals()
       }
     }
   };

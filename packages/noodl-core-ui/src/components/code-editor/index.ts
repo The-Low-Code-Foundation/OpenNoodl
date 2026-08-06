@@ -22,3 +22,9 @@ export { lintMessages } from './utils/esLintDiagnostics';
 export type { LintMessage } from './utils/esLintDiagnostics';
 export { summariseDiff } from './utils/diffSummary';
 export type { DiffSummary } from './utils/diffSummary';
+// FH-019: what the editor tells the code editor about the open project. The
+// editor writes it once at boot (`models/CodeAuthoringContext`); every code
+// editor in the app reads it, which is what keeps the four call sites identical
+// without any of them being edited.
+export { setCodeAuthoringContext, getCodeAuthoringContext, EMPTY_AUTHORING_CONTEXT } from './authoringContext';
+export type { CodeAuthoringContext, AuthoringLibrary } from './authoringContext';

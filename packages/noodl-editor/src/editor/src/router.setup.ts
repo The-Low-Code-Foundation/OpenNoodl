@@ -1,5 +1,6 @@
 import { installPlanSessionPersistence } from '@noodl-models/AiAssistant/authoring/installPlanSessionPersistence';
 import { AppRegistry } from '@noodl-models/app_registry';
+import { installCodeAuthoringContext } from '@noodl-models/CodeAuthoringContext';
 import { installProjectDocs } from '@noodl-models/ProjectDocs';
 import { installImportReport } from '@noodl-utils/import-engine/legacy/loadReport';
 import { SidebarModel } from '@noodl-models/sidebar';
@@ -200,6 +201,13 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   // whether or not the Build panel is mounted, so the thing that writes them to
   // disk cannot be installed by a mount.
   installPlanSessionPersistence();
+
+  // FH-019: and once more. The code popout is constructed the first time
+  // someone clicks a code port, so a mount-time subscription would mean the
+  // first editor of a session completes against the previous project. All four
+  // code-editor call sites read this one surface, which is what keeps them
+  // identical without any of them being edited.
+  installCodeAuthoringContext();
 
   SidebarModel.instance.register({
     experimental: true,

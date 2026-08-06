@@ -38,7 +38,8 @@ import {
 } from '@codemirror/view';
 
 import { openNoodlTheme } from './codemirror-theme';
-import { noodlCompletionSource } from './noodl-completions';
+import { libraryCompletionSource } from './library-completions';
+import { createNoodlCompletionSource } from './noodl-completions';
 import { javascriptDiagnostics } from './utils/esLintDiagnostics';
 import { isExternalValueSync } from './utils/externalValueSync';
 import { defaultPlaceholder } from './utils/modes';
@@ -284,9 +285,16 @@ function customKeybindings(options: ExtensionOptions) {
 /**
  * Language support, plus the completion sources that belong to it.
  *
- * The Noodl source is registered *alongside* the language's own rather than through
+ * The Noodl sources are registered *alongside* the language's own rather than through
  * `autocompletion({ override })`, which replaces every other source — that one word
  * was costing local variables, keywords and snippets (CED-001, A2).
+ *
+ * Two sources, not one, and separate on purpose: the Noodl source knows what the
+ * runtime puts in scope in this mode, and the library source knows what the
+ * *project* has registered. Both read the open project through
+ * `authoringContext.ts` when asked rather than when built, so neither is
+ * captured at mount — which is what lets the popout stay `[]`-deps and still
+ * complete a library registered a minute ago (FH-019 slice 1).
  */
 function languageSupport(validationType: ValidationType): Extension {
   if (validationType === 'json') {
@@ -304,7 +312,11 @@ function languageSupport(validationType: ValidationType): Extension {
     return [];
   }
 
-  return [javascript(), javascriptLanguage.data.of({ autocomplete: noodlCompletionSource })];
+  return [
+    javascript(),
+    javascriptLanguage.data.of({ autocomplete: createNoodlCompletionSource(validationType) }),
+    javascriptLanguage.data.of({ autocomplete: libraryCompletionSource })
+  ];
 }
 
 /**
