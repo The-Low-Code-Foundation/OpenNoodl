@@ -848,6 +848,12 @@ function launchApp() {
     // the Execution History Panel's hooks call.
     setupExecutionHistoryIPC();
 
+    // MCP-001: where the two MCP server bundles are, and whether the open
+    // project is one the authoring server will accept. Both answers need the
+    // filesystem and `app.getAppPath()`, so they cannot be worked out in the
+    // renderer that renders them.
+    require('./src/mcp/mcpFrontDoor').setupMcpIPC(electron.ipcMain);
+
     // WF-004: executions now happen inside nodegx-backend child processes,
     // each with its own store — the panel's IPC merges them with the local one.
     const { executionHistoryManager } = require('./src/execution-history/ExecutionHistoryManager');

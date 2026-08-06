@@ -37,11 +37,11 @@ const path = require('path');
 const MCP_SERVERS = {
   'noodl-mcp': {
     label: 'Authoring',
-    what: 'Reads and writes the project directory on disk. Does not need the editor running.'
+    what: 'Reads and writes this project’s components and files on disk. Does not need the editor running.'
   },
   'nodegx-observe': {
     label: 'Observe',
-    what: 'Observes and drives the running app over the editor’s relay. Needs the editor running.'
+    what: 'Watches and drives your running app over the editor’s relay. Needs the editor running, with the preview started.'
   }
 };
 

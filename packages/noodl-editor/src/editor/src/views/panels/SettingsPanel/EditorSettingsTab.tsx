@@ -13,6 +13,7 @@ import { Text, TextSize } from '@noodl-core-ui/components/typography/Text';
 
 import { AiSettingsSection } from '../AiSettings/AiSettingsSection';
 import { AppearanceSettingsSection } from './sections/AppearanceSettingsSection';
+import { McpSettingsSection } from './sections/McpSettingsSection';
 
 /**
  * PNL-008 — everything scoped to *this editor*, on *this machine*, in one tab.
@@ -70,6 +71,9 @@ export function EditorSettingsTab() {
         </>
       )}
       <AiSettingsSection />
+      {/* MCP-001: beside the AI keys the user has just configured — the agent
+          they connect here is the one those keys are for. */}
+      <McpSettingsSection />
     </>
   );
 }

@@ -31,6 +31,10 @@
     "src/editor/src/models/nodelibrary/dynamicPortRules.ts",
     "src/editor/src/models/nodelibrary/cloud-node-library.json",
     "src/editor/src/utils/import-engine/legacy",
-    "src/editor/src/validation"
+    "src/editor/src/validation",
+    // MCP-001: `mcpCommands.ts` is the same shape again — the settings section's command builder
+    // imports nothing at all, which is what lets the plain-Node runner assert the exact strings
+    // the two Copy buttons put on the clipboard. Its component neighbour is not reached.
+    "src/editor/src/views/panels/SettingsPanel/sections/mcpCommands.ts"
   ]
 }

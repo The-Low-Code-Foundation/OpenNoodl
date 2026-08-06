@@ -104,6 +104,14 @@ export class ProjectStore {
   readonly projectDir: string;
   private snapshots = new Map<string, Snapshot>();
 
+  /**
+   * ⚠️ **The two refusal messages below are mirrored in the editor**, in
+   * `packages/noodl-editor/src/main/src/mcp/mcpFrontDoor.js` (MCP-001). That is what lets the
+   * "Connect an AI agent" settings section withhold the copy button for exactly the projects this
+   * constructor would reject, saying the same thing — rather than emitting a command that dies at
+   * spawn time. The editor cannot import this module (`@noodl/mcp` is not one of its
+   * dependencies), so if you change the wording here, change it there too.
+   */
   constructor(projectDir: string) {
     this.projectDir = path.resolve(projectDir);
     if (!fs.existsSync(this.projectDir) || !fs.statSync(this.projectDir).isDirectory()) {
