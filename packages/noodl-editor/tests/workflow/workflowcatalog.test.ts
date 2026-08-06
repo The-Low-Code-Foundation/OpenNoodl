@@ -15,6 +15,7 @@ import {
   PORT_IN,
   PORT_NEXT,
   PORT_ON_ERROR,
+  PORT_PARAM_MAPPING,
   PORT_TYPE_CONDITION,
   routeNameFromPort,
   routePortName,
@@ -40,6 +41,12 @@ const CATALOG: StepKindCatalog = {
       whenToUse: 'The workhorse step.',
       invokesFunction: true,
       params: [{ name: 'ref', type: 'string', required: true, description: 'The cloud function.' }],
+      paramMapping: {
+        displayName: 'Params',
+        description: 'What this step passes the function.',
+        reserved: ['previous'],
+        shadows: ['body']
+      },
       routes: [],
       output: ''
     },
@@ -176,6 +183,28 @@ describe('WFA-004 step kinds become node types', () => {
     // Exactly one: the catalog lists it as a param AND it is a step field.
     expect(refPorts.length).toBe(1);
     expect(inputs[1].name).toBe('ref');
+  });
+
+  it('adds ONE synthetic port for a kind that takes author-named params (CWF-001)', () => {
+    const inputs = portsOf('call-function').filter((p) => p.plug === 'input');
+    const mapping = inputs.filter((p) => p.name === PORT_PARAM_MAPPING);
+    expect(mapping.length).toBe(1);
+    expect(mapping[0].displayName).toBe('Params');
+
+    // The control has to subtract the kind's OWN params from the node's
+    // parameters to find the author's, so the declared names ride on the port
+    // type — the same place `enum` carries its values.
+    const type = mapping[0].type as { name: string; declared: string[]; reserved: string[]; shadows: string[] };
+    expect(type.name).toBe('workflow-params');
+    expect(type.declared).toContain('ref');
+    expect(type.reserved).toEqual(['previous']);
+    expect(type.shadows).toEqual(['body']);
+  });
+
+  it('adds no mapping port to a kind that does not declare one', () => {
+    // A pre-1.3.0 backend serves no `paramMapping` at all, and this is the same
+    // shape: no row, and the definitions that already carry a mapping still run.
+    expect(portsOf('branch').some((p) => p.name === PORT_PARAM_MAPPING)).toBe(false);
   });
 
   it('colours by the served category, using only the canvas taxonomy', () => {

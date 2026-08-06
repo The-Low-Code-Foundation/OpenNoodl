@@ -32,7 +32,9 @@
  * value. Resolution is recursive through objects and arrays, so
  * `{ "order": { "lines": [ { "id": { "$path": "…" } } ] } }` resolves; past this
  * depth a subtree is left VERBATIM at run time and rejected at write time
- * (`validateParamDepth`), so nothing is silently half-resolved.
+ * (`validateValueReferences` in WorkflowEngine.ts, via `exceedsValueDepth`
+ * below), so nothing is silently half-resolved. There has never been a function
+ * called `validateParamDepth`; this comment named one for a year.
  *
  * 32 is far past any hand-authored or agent-authored param and exists to bound
  * the recursion, not to constrain authors.

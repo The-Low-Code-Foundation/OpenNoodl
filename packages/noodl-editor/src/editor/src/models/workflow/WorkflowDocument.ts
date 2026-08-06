@@ -60,6 +60,7 @@ import {
   PORT_IN,
   PORT_NEXT,
   PORT_ON_ERROR,
+  PORT_PARAM_MAPPING,
   routeNameFromPort,
   routePortName,
   typeNameForKind
@@ -75,8 +76,16 @@ import {
 
 import type { StepKindCatalog, StepKindSpec, WorkflowDefinition, WorkflowInput, WorkflowRef, WorkflowStep } from './types';
 
-/** Params the editor stores on the node but which are step *fields*, not params. */
-const STEP_FIELD_PARAMS = new Set(['ref']);
+/**
+ * Node parameters that are NOT step params.
+ *
+ * `ref` is a step FIELD that edits like a param. `__paramMapping__` is CWF-001's
+ * synthetic port: the row that edits the author-named params never stores a value
+ * of its own, so nothing should ever appear under it — this is the belt to that
+ * braces, because a stray key here would be written into the definition and the
+ * backend would reject the save with a name no author ever typed.
+ */
+const STEP_FIELD_PARAMS = new Set(['ref', PORT_PARAM_MAPPING]);
 
 /** The warning key a step's unresolved `ref` is filed under (WFA-006 §3). */
 const REF_WARNING_KEY = 'workflow-step-ref';

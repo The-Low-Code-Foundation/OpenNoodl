@@ -960,7 +960,12 @@ export function registerBackendWriteTools(server: McpServer): void {
           '{"$path":"previous.result.x"} the last step\'s output, {"$path":"upstream.<stepId>.x"} a named earlier ' +
           'step (use this when a branch sits in between), {"$literal":…} escapes. No arithmetic — compute in a ' +
           'cloud function. A reference to a step that does not exist, or is not upstream, is REJECTED at write ' +
-          'time. Full spec in list_backend_step_kinds → valueLanguage.'
+          'time. Full spec in list_backend_step_kinds → valueLanguage.\n' +
+          'CWF-001: for a kind whose catalog entry carries `paramMapping` (call-function), names OTHER than that ' +
+          "kind's own params are yours to choose and arrive at the top level of the function's request body — so " +
+          'name them for the function ("amount"), not for wherever the value sits today ("previous"). The names ' +
+          'in `paramMapping.reserved` are refused at write time; `previous` in particular would be silently ' +
+          'discarded, because the engine writes it after your params.'
       ),
     timeoutMs: z.number().optional().describe('Per-step timeout (0/omitted = the workflow default)'),
     next: z

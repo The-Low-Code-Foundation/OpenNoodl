@@ -40,6 +40,7 @@ import {
   WorkflowCasesType,
   WorkflowConditionType,
   WorkflowFunctionRefType,
+  WorkflowParamsType,
   WorkflowTriggerInfoType,
   WorkflowValueType
 } from './WorkflowTypes';
@@ -511,6 +512,12 @@ export class Ports extends View {
       return name === 'workflow-value' || name === 'workflow-path';
     }
 
+    // CWF-001: `call-function`'s param mapping — a dictionary of author-chosen
+    // names, each holding one of the values above.
+    function isOfWorkflowParamsType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-params';
+    }
+
     // WFA-005: a read-only fact about a trigger — a backend object drawn on the
     // canvas as an entry node. A row, not a control.
     function isOfWorkflowTriggerInfoType() {
@@ -561,6 +568,7 @@ export class Ports extends View {
     else if (isOfWorkflowConditionType()) return WorkflowConditionType;
     else if (isOfWorkflowCasesType()) return WorkflowCasesType;
     else if (isOfWorkflowValueType()) return WorkflowValueType;
+    else if (isOfWorkflowParamsType()) return WorkflowParamsType;
     else if (isOfWorkflowTriggerInfoType()) return WorkflowTriggerInfoType;
     else if (isOfWorkflowFunctionRefType()) return WorkflowFunctionRefType;
   }

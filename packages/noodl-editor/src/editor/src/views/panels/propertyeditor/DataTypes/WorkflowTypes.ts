@@ -17,7 +17,9 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
+import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
 import { WorkflowEditorService } from '@noodl-models/workflow/WorkflowEditorService';
+import { PORT_PARAM_MAPPING } from '@noodl-models/workflow/workflowPorts';
 
 import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
 
@@ -25,6 +27,7 @@ import { ConditionEditor } from '../components/WorkflowCondition/ConditionEditor
 import { FunctionRefRow } from '../components/WorkflowCondition/FunctionRefRow';
 import { SwitchCasesEditor } from '../components/WorkflowCondition/SwitchCasesEditor';
 import { TriggerInfoRow } from '../components/WorkflowCondition/TriggerInfoRow';
+import { WorkflowParamsEditor } from '../components/WorkflowCondition/WorkflowParamsEditor';
 import { WorkflowValueInput } from '../components/WorkflowCondition/WorkflowValueInput';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
@@ -168,6 +171,130 @@ export class WorkflowCasesType extends WorkflowTypeView {
           value: this.parent.model.getParameter(this.name),
           onChange: (value: unknown) => this.write(value),
           ops: this.ops,
+          scope: this.scope,
+          graph: this.graph,
+          stepId: this.stepId
+        })
+      })
+    );
+  }
+}
+
+/**
+ * The param MAPPING — what a Call Function step hands the function (CWF-001).
+ *
+ * ⚠️ **This row does not edit a parameter of its own.** It is the one synthetic
+ * port on a step card, and the mapping it edits IS the set of the node's
+ * parameters that the kind does not declare. That is not a trick: a step's
+ * params have been merged into its input by name since WFA-003, so the mapping
+ * has always been "the undeclared params" — what was missing was a row to author
+ * them in, because the property editor builds one row per DECLARED port and
+ * `call-function` declared only `ref`.
+ *
+ * Editing siblings has three consequences worth stating rather than discovering:
+ *   - `this.value` / `isDefault` are meaningless here (nothing is ever stored
+ *     under this port's name), so `isChanged` and `onReset` are computed from
+ *     the mapping instead,
+ *   - the whole gesture goes into ONE `UndoActionGroup`, because a rename is a
+ *     delete plus a set and undoing half of it would leave a param the author
+ *     never wrote, and
+ *   - a change from elsewhere (undo, MCP, a proposal) does not rebuild the row,
+ *     so it subscribes to `parametersChanged` the way `WorkflowFunctionRefType`
+ *     already does.
+ */
+export class WorkflowParamsType extends WorkflowTypeView {
+  static fromPort(args: TSFixme) {
+    return WorkflowTypeView.fill(new WorkflowParamsType(), args);
+  }
+
+  /** Param names this kind declares — they belong to the kind, not the author. */
+  private get declared(): string[] {
+    return this.type?.declared || [];
+  }
+
+  private get reserved(): string[] {
+    return this.type?.reserved || [];
+  }
+
+  private get shadows(): string[] {
+    return this.type?.shadows || [];
+  }
+
+  /**
+   * The author's params, in stored order.
+   *
+   * Read off the raw parameters map rather than through `getParameter`, because
+   * the whole point is the keys that have NO port — `getParameter` needs a name
+   * and there is nothing to enumerate names from but this map.
+   */
+  private get rows(): [string, unknown][] {
+    const node = this.graph?.findNodeWithId(this.stepId);
+    const params = (node?.parameters || {}) as Record<string, unknown>;
+    const declared = new Set([...this.declared, PORT_PARAM_MAPPING]);
+    return Object.entries(params).filter(([k, v]) => !declared.has(k) && v !== undefined);
+  }
+
+  /**
+   * Apply the new mapping as parameter writes — one undo group for the gesture.
+   *
+   * Deletes first, then sets, so a rename that reuses a name in the same gesture
+   * (swap two params) cannot delete the value it has just written.
+   */
+  private applyRows(next: [string, unknown][]) {
+    const before = new Map(this.rows);
+    const after = new Map(next);
+    const undo = new UndoActionGroup({ label: 'set step params' });
+
+    const label = 'set step params';
+    for (const name of before.keys()) {
+      if (!after.has(name)) this.parent.model.setParameter(name, undefined, { undo, label, oldValue: before.get(name) });
+    }
+    for (const [name, value] of after) {
+      if (before.get(name) !== value) {
+        this.parent.model.setParameter(name, value, { undo, label, oldValue: before.get(name) });
+      }
+    }
+
+    // `push` (not `pushAndDo`): the writes above already happened, and this
+    // records their inverse — the distinction the UndoActionGroup docblock
+    // exists to make.
+    if (!undo.isEmpty()) UndoQueue.instance.push(undo);
+    this.renderReact();
+  }
+
+  /**
+   * Rebuild when the params change from anywhere — including this row's own
+   * writes, which is why `renderReact` is idempotent and the name fields hold
+   * their own draft state.
+   */
+  render() {
+    const el = super.render();
+    this.graph?.findNodeWithId(this.stepId)?.on('parametersChanged', () => this.renderReact(), this);
+    return el;
+  }
+
+  dispose() {
+    this.graph?.findNodeWithId(this.stepId)?.off(this);
+    super.dispose();
+  }
+
+  resetToDefault() {
+    this.renderReact();
+  }
+
+  renderReact() {
+    if (!this.root) return;
+    const rows = this.rows;
+    this.root.render(
+      React.createElement(PropertyPanelRow, {
+        label: this.displayName,
+        isChanged: rows.length > 0,
+        onReset: () => this.applyRows([]),
+        children: React.createElement(WorkflowParamsEditor, {
+          value: rows,
+          onChange: (next: [string, unknown][]) => this.applyRows(next),
+          reserved: this.reserved,
+          shadows: this.shadows,
           scope: this.scope,
           graph: this.graph,
           stepId: this.stepId
