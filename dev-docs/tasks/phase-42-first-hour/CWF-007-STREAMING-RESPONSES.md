@@ -4,6 +4,46 @@
 now, build it after the Pile 1 plumbing. This is the one genuinely *new* capability in the audit —
 everything else in the track is a hole to fill.
 **Status:** design doc, unowned, **not a build task yet**. Argue with it before anyone codes.
+**All four questions are now answered** — see the block immediately below. What is left is the build,
+scheduled after alpha.
+
+## ✅ DECISIONS — 2026-08-06 (Richard). Do not relitigate these.
+
+| Q | Decision |
+|---|---|
+| **Q1 — transport** | **Channel first.** The app fires a normal request, then subscribes to a named channel on the existing `GET /realtime` SSE hub. Chosen for the three properties the HTTP-response variant cannot have: it **survives a page reload**, it **works when no caller is waiting**, and it inherits auth, reconnection, connection counting and `closeWithGoodbye` shutdown rather than reinventing them. Layer 4 (a workflow publishing *"step 3 of 7"*) then falls out nearly free. **Accepted cost:** two round trips, and it is *not* what an LLM SDK looks like — so expect to want the HTTP-response variant eventually. It is not ruled out; it is not first, and adding it later must not produce two paths that differ silently. |
+| **Q2 — who may read a channel** | **The authenticated session that started it.** Nobody else may subscribe, whatever channel id they know. Record-change subscriptions keep their existing posture; **only the new channel kind gets this rule.** The reasoning is FH-024's, one day old: *reachability is not access control*, and a transport whose reachability was mistaken for its access control is now this repo's most-repeated security defect. Explicitly **rejected: a capability URL** (the id is the secret) — that is the OBS-004 relay and the FH-024 admin API pattern, and shipping it would be the third instance of one class. |
+| **Q3 — one node family with Subscribe To Changes?** | Answered 2026-08-05 — **separately, deliberately.** See below; unchanged. |
+| **Q4 — when** | **After alpha.** Streaming stays a design doc; phase 41 (accessibility) keeps its place as the scheduled phase, on the ground that a runtime emitting one aria attribute and deleting every focus ring is a launch-quality problem in a way that a missing new capability is not. Streaming is the **first substantial post-alpha capability**. |
+
+### ⚠️ Q1 and Q2 interact, and the build must resolve it rather than discover it
+
+Q1 was chosen partly because a channel **works when no caller is waiting** — a scheduled workflow
+publishing progress. Q2 binds read access to **the authenticated session that started it**. A
+scheduled workflow has no session: it runs as system, on a trigger, with nobody signed in.
+
+So the two answers do not compose for exactly the case Q1 named as a reason to prefer channels, and
+**neither answer is wrong** — the gap is real and is recorded here rather than resolved by whoever
+happens to write layer 1 first. Restated as the question the build owes:
+
+> **Who may read a channel that no session created?**
+
+Candidates, unranked and undecided: the channel is admin-only (the History Panel already shows runs
+to an admin, so workflow progress may simply be an admin surface); or a workflow-published channel
+declares a reader at publish time, which is Q2's rejected ACL re-entering by the back door for a case
+where there is no session to bind to; or workflow progress is a *different* channel kind from a
+function's user-facing stream, with the admin posture, and the two never mix.
+
+⚠️ **Do not settle this by widening Q2.** The failure shape to avoid is a "system channels are public
+because there's no session" branch, which is instance three of the class arriving through a case
+nobody was looking at.
+
+### What layer 2 still owes, now that Q1 is settled
+
+The isolate finding below means user code *can* consume a streaming upstream API, so layer 2's hard
+question is **what a node exposes**, not whether the engine allows it. And the isolate path stays
+real for whatever deploys through it — a streaming node must **refuse there loudly**, or the two
+paths differ silently.
 
 ## Why it is impossible today, at all three layers
 
@@ -46,11 +86,14 @@ this doc and TALK-005 should be answered together.
 **Layer 4 — workflows.** A workflow step that publishes progress ("step 3 of 7") on the run's
 channel. Cheap once layer 1 exists, and it is what makes long workflows watchable.
 
-## Questions for Richard
+## Questions for Richard — ALL ANSWERED 2026-08-06, see the decisions block at the top
 
-1. Channel-based (survives reload, works without a caller) or HTTP-response-based (what an LLM SDK
-   looks like)? Or both, and in which order?
-2. Who may read a channel — the authenticated user who started it, an ACL, or anyone with the id?
+Kept with their original wording, because the options that were rejected are part of the record.
+
+1. ~~Channel-based (survives reload, works without a caller) or HTTP-response-based (what an LLM SDK
+   looks like)? Or both, and in which order?~~ ✅ **Channel first.**
+2. ~~Who may read a channel — the authenticated user who started it, an ACL, or anyone with the id?~~
+   ✅ **The authenticated session that started it.** The capability-URL option was rejected by name.
 3. ~~Does this ship with the Subscribe To Changes node as one family, or separately?~~
    ✅ **Answered 2026-08-05 ([TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md)): separately, and
    deliberately.** Two nodes sharing `RealtimeSubscription` but not a node definition — a record
@@ -59,8 +102,9 @@ channel. Cheap once layer 1 exists, and it is what makes long workflows watchabl
    query routes' posture). Recorded as a decision so the pair is not later mistaken for a twin and
    collapsed. [FH-021](FH-021-SUBSCRIBE-TO-CHANGES.md) builds the record-change half now; nothing
    in it forecloses this doc's shape.
-4. Is streaming alpha-facing, or the first thing after alpha? (Decided: after Pile 1 — confirm that
-   still holds once you see the shape.)
+4. ~~Is streaming alpha-facing, or the first thing after alpha?~~ ✅ **After alpha**, confirmed
+   2026-08-06 now that Pile 1 has landed and the shape is visible. Accessibility (phase 41) keeps
+   its place ahead of it.
 
 ## Traps to carry into the build
 
