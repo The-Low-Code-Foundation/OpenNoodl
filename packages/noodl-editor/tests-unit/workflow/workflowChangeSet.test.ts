@@ -123,15 +123,38 @@ describe('WFA-007 — what the reviewer is shown', () => {
       BASE,
       input([
         { id: 'receive', kind: 'call-function', ref: 'saveOrder', next: ['charge'], ui: { x: 80, y: 80 } },
-        { id: 'charge', kind: 'retry', ref: 'chargeCard', params: { maxAttempts: 3 }, ui: { x: 340, y: 80 } }
+        // CWF-005: this was `kind: 'retry'` until retry folded into
+        // `call-function` as a policy group. A `retry` step is still legal on the
+        // wire — `WorkflowProposalClient` migrates it on the way in — but it can
+        // never reach THIS module un-migrated, so a fixture written that way was
+        // asserting against a shape the code under test cannot receive.
+        { id: 'charge', kind: 'call-function', ref: 'chargeCard', params: { maxAttempts: 3 }, ui: { x: 340, y: 80 } }
       ])
     );
     // The whole point of §5's id-keeping: one step changed, nothing removed and
     // nothing added.
     expect(idsOfKind(changeSet, 'node-removed')).toEqual([]);
     expect(idsOfKind(changeSet, 'node-added')).toEqual([]);
-    expect(idsOfKind(changeSet, 'node-type-changed', 'charge').length).toBe(1);
+    // The kind no longer changes — post-CWF-005 a retry IS a call-function — so
+    // the parameters are what carry this case. The kind-change path keeps its own
+    // case below rather than riding on this one.
+    expect(idsOfKind(changeSet, 'node-type-changed', 'charge')).toEqual([]);
     expect(idsOfKind(changeSet, 'node-parameters-changed', 'charge').length).toBe(1);
+  });
+
+  it('a step that genuinely changes kind reads as a type change', () => {
+    // Kept as its own case because the retry migration took the coverage away
+    // from the case above: nothing else in this file asserts `node-type-changed`.
+    const changeSet = buildWorkflowChangeSet(
+      BASE,
+      input([
+        { id: 'receive', kind: 'call-function', ref: 'saveOrder', next: ['charge'], ui: { x: 80, y: 80 } },
+        { id: 'charge', kind: 'wait', params: { duration: 5, unit: 'seconds' }, ui: { x: 340, y: 80 } }
+      ])
+    );
+    expect(idsOfKind(changeSet, 'node-removed')).toEqual([]);
+    expect(idsOfKind(changeSet, 'node-added')).toEqual([]);
+    expect(idsOfKind(changeSet, 'node-type-changed', 'charge').length).toBe(1);
   });
 
   it('files a moved step as cosmetic, so a re-layout is not presented as change', () => {
@@ -253,14 +276,22 @@ describe('WFA-007 — what an accept writes', () => {
   it('accepting everything reproduces the candidate', () => {
     const target = input([
       { id: 'receive', kind: 'call-function', ref: 'saveOrder', next: ['charge'], ui: { x: 80, y: 80 } },
-      { id: 'charge', kind: 'retry', ref: 'chargeCard', params: { maxAttempts: 3 }, onError: ['logfail'], ui: { x: 340, y: 80 } },
+      // CWF-005: was `kind: 'retry'`. See the note on the update case above.
+      {
+        id: 'charge',
+        kind: 'call-function',
+        ref: 'chargeCard',
+        params: { maxAttempts: 3 },
+        onError: ['logfail'],
+        ui: { x: 340, y: 80 }
+      },
       { id: 'logfail', kind: 'call-function', ref: 'logFailure', ui: { x: 600, y: 200 } }
     ]);
     const { workflow } = materializeWorkflowSelection(buildWorkflowChangeSet(BASE, target), []);
 
     expect(workflow.entry).toBe('receive');
     expect(workflow.steps.map((s) => s.id)).toEqual(['receive', 'charge', 'logfail']);
-    expect(workflow.steps[1]).toMatchObject({ kind: 'retry', ref: 'chargeCard', params: { maxAttempts: 3 } });
+    expect(workflow.steps[1]).toMatchObject({ kind: 'call-function', ref: 'chargeCard', params: { maxAttempts: 3 } });
     expect(workflow.steps[1].onError).toEqual(['logfail']);
     // Positions survive — an accept must not re-lay-out what it accepted.
     expect(workflow.steps[2].ui).toEqual({ x: 600, y: 200 });
