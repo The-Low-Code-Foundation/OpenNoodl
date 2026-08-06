@@ -161,7 +161,11 @@ export function CollectionPermissions({
                 onClick={() => toggle(table)}
               >
                 <Icon icon={isOpen ? IconName.CaretDown : IconName.CaretRight} size={IconSize.Tiny} />
-                <Text textType={TextType.DefaultContrast}>{table}</Text>
+                {/* isSpan: `Text` is a <p> by default, and a <p> inside a
+                    <button> is not a nesting the DOM allows. */}
+                <Text textType={TextType.DefaultContrast} isSpan>
+                  {table}
+                </Text>
               </button>
               <label className={css.CreatorOwns}>
                 <input
@@ -189,7 +193,7 @@ export function CollectionPermissions({
                     title={`${op}: ${describeSelection(column.selection)}${column.inherited ? ' (the default)' : ''}`}
                     onClick={() => toggle(table)}
                   >
-                    <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
+                    <Text textType={TextType.Shy} style={{ fontSize: '10px' }} isSpan>
                       {op}
                     </Text>
                     <span className={css.OpSummaryValue}>{describeSelection(column.selection)}</span>
