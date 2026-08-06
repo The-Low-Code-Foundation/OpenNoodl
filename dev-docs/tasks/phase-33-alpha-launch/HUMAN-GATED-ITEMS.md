@@ -208,8 +208,19 @@ actually honours a prefill into a **dropdown** (`surface`, `severity`, `os`,
 header both return the login page.
 
 Run `node scripts/alpha-007/prefill-probe.js`, open the URL it prints, and check the
-eight points listed beside it. **If all four dropdowns come back empty, the payload
-has to move into the body and the field contract changes shape.**
+eight points listed beside it. **If the dropdowns come back empty, the payload has to
+move into the body and the field contract changes shape.**
+
+> **Two corrections, 2026-08-06.** The script **now exists at `HEAD`** — it was on an
+> unmerged branch until the ALPHA-007 merge (`80d221c0`), so anyone who tried this
+> instruction before then found nothing and had no way to tell why.
+>
+> ⚠️ And this item named **four** dropdowns — `surface`, `severity`, `os`,
+> `fresh-project`. **There is no `severity` field.** `bug_report.yml` has `surface`
+> (:26), `os` (:51) and `fresh-project` (:63) and nothing else. Check three, not four,
+> or "the severity dropdown came back empty" will read as a prefill failure when it is
+> a field that was never there. (The absence is itself F72's second half: there is no
+> severity vocabulary anywhere, so the queue can only be ranked by date.)
 
 Two minutes of work, and it is the only thing standing between ALPHA-007 Part A and
 its acceptance criterion 3.
@@ -220,9 +231,22 @@ The Help Center's old "community Discord" and "support forum" links pointed at
 **Noodl's**, not ours, so ALPHA-006 removed them rather than guess a replacement
 URL. GitHub Discussions is also off (`has_discussions: false`, checked 2026-08-03).
 
-So NodeGX currently has **no community channel of any kind** in the product. For an
+> ⚠️ **This item's premise stopped being true on 2026-08-03 and it took three days to
+> notice.** POL-002 (phase 39) put a Discord invite in the product:
+> `packages/noodl-core-ui/src/constants/externalLinks.ts:82` is
+> `https://discord.gg/dZw4w5pKf9`, and both the Help Center and the launcher footer
+> link it. So the claim below — "no community channel of any kind" — is **wrong at
+> HEAD**.
+>
+> **The question is therefore different, and smaller:** is that invite live, is it
+> ours, and does it have anyone in it? A dead invite link in the Help Center of an
+> alpha build is worse than no link, because a tester who clicks it concludes the
+> project is abandoned rather than that the channel is elsewhere. GitHub Discussions
+> is still off (`has_discussions: false`, 2026-08-03).
+
+~~So NodeGX currently has **no community channel of any kind** in the product.~~ For an
 alpha whose whole purpose is hearing back from testers, that is worth a deliberate
-answer: create a Discord and link it, enable Discussions, or accept that issues are
+answer: confirm the Discord and staff it, enable Discussions, or accept that issues are
 the only channel and say so in the Help Center.
 
 ---
