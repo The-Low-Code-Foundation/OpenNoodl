@@ -15,7 +15,18 @@ positions, axis by axis — **the one to read if you read one**).
 > Estimates in this file went **up**, not down, and the revision found two omissions that matter more
 > than any estimate. Read [§What this actually costs](#what-this-actually-costs) before the ordering.
 
-## The six new phases
+## Two kinds of phase
+
+Phases 44–49 **deepen the middle**: they make NodeGX better at what it already does, and they close
+the capability 🔴s the comparison found.
+
+Phases 50–53 **widen the boundary**: they move a row of
+[the fitness envelope](../reviews/NODEGX-WHAT-IT-IS-FOR.md#1-the-fitness-function-as-thresholds) and
+therefore change *which projects are viable at all*. They came out of the adversarial review and the
+envelope work, and — per unit of effort — several of them are worth more than anything in the first
+group.
+
+## Deepening the middle (44–49)
 
 | Phase | Track | Weeks | Closes |
 |---|---|---|---|
@@ -26,6 +37,15 @@ positions, axis by axis — **the one to read if you read one**).
 | [48 — The Data Ceiling](phase-48-data-ceiling/README.md) | D | **~12** | No vector search, no multi-collection reads, no schema history. ⚠️ DAT-002/006 re-estimated. |
 | [49 — Discovery](phase-49-discovery/README.md) | W | **~6–7** | Sitemap, robots, JSON-LD — and ⚠️ **rewriting the SSR server**, which races on process globals and caches forever. |
 
+## Widening the boundary (50–53)
+
+| Phase | Track | Weeks | Envelope row it moves |
+|---|---|---|---|
+| [50 — Legibility](phase-50-legibility/README.md) | L | ~4 | **Nodes per component**, and the *hand-it-to-a-human* promise. `agent-chat` is 262 nodes with **0 labelled** — the substrate exists (`metadata.comment`, `label`), nothing produces it. LEG-001+002 is ~1 week. |
+| [51 — Collaboration](phase-51-collaboration/README.md) | C | ~7 | **Concurrent builders, 1 → 3+.** Structural conflicts are *dismissed, not resolved*. COL-004 (advisory claiming) is **3 days** and prevents most collisions on its own. |
+| [52 — Distribution Contract](phase-52-distribution-contract/README.md) | P | ~4 | **Blast radius.** npm + semver + a compatibility contract + a second maintainer. ⚠️ **PUB-001 and PUB-002 are measured in hours.** |
+| [53 — Trust & Compliance](phase-53-trust-and-compliance/README.md) | T | ~7.5 | **Compliance load.** Unlocks HR tools, charity casework, education records. Does **not** unlock payroll or medical, and the envelope should keep saying so. |
+
 Plus three already-specced phases that the comparison independently found load-bearing:
 
 | Phase | Weeks | Why the comparison cares |
@@ -34,9 +54,24 @@ Plus three already-specced phases that the comparison independently found load-b
 | [18 — Code Export v2](phase-18-code-export-v2/PROGRESS.md) | 20–26 | Kills the lock-in objection outright, which is the first thing every technical evaluator raises. 0/7 built. |
 | [26 — Deployment](phase-26-deployment/README.md) | ~7 | Today "deploy" writes a frontend folder and leaves the backend as a shell script you're expected to find. |
 
+## ⚡ The cheap items, extracted
+
+Because they are buried in four phase docs and together they are under two weeks:
+
+| | Item | Cost | Buys |
+|---|---|---|---|
+| 1 | **PUB-001** — push the branch | hours | 1,486 commits stop being a single-point-of-failure on one laptop |
+| 2 | **PUB-002** — CI on the branch people use | hours | Good gates that have never seen 95% of the code they gate |
+| 3 | **LEG-001 + LEG-002** — the agent labels what it builds, and a check | ~1 wk | The *hand-it-to-a-human* promise starts being kept by the output |
+| 4 | **COL-004** — advisory component claiming | 3 d | Most two-person collisions never happen |
+| 5 | **TRU-006 + TRU-007** — access-review export, threat model written down | ~1.5 wks | Most of a security questionnaire; and an auditor who reads our own disclosure concludes we knew |
+
+**Under two weeks, four envelope rows touched, no architecture changed.** If nothing else on this
+page happens this quarter, this should.
+
 ## Recommended order, and the reasoning
 
-**Q1 — the unblocking quarter (~12 weeks).** 44 → 45 → 46 Tier 1.
+**Q1 — the unblocking quarter (~12 weeks).** **PUB-001 + PUB-002 on day one** (hours, see above), then 44 → 45 → 46 Tier 1.
 
 Rationale: 44 is the cheapest item with the loudest demand and unblocks the most (three 🔴s in the
 comparison). 45 is ~3 weeks and gates a *category* rather than a feature — no streaming, no credible
@@ -48,12 +83,24 @@ jumps sharply. Shipping 44 first is defensible on demand and cost, but **46 Tier
 quarter, not the same year**. Reversing the order is also defensible and nobody should fight about
 it — what is not defensible is shipping 44 and letting 46 slip two quarters.
 
-**Q2 — the differentiation quarter (~12 weeks).** 47 → 48 first half (DAT-001/002/003) → 49.
+**Q2 — the differentiation quarter (~16 weeks).** **50** → 47 → 48 first half (DAT-001/002/003) → 49.
+
+⚠️ **Phase 50 goes first in Q2, ahead of i18n**, and it is a change from the original ordering. It is
+four weeks, its first two tasks are one week, and until it lands the platform's central claim — an
+agent builds it and a non-engineer maintains it — is **not kept by the output**. Shipping more
+capability on top of anonymous output compounds the problem rather than deferring it.
 
 Rationale: i18n is where the substrate beats code rather than matching it, and it opens every
 non-English market at once. DAT-001–003 closes RAG and multi-collection reads — the last two
 capability 🔴s. 49 is small, mostly polish on an engine that already exists, and makes anything built
 findable.
+
+**Q3 — the boundary quarter (~13 weeks).** 51 → 53, with 52's remainder folded in.
+
+Rationale: by here the capability story is done and the constraint is who is allowed to *use* it.
+51 takes the team size from one to a real team, which is what agencies and any second maintainer
+need. 53 takes the compliance row from red to amber, which is what unlocks HR, charity casework and
+education — categories the platform is otherwise ideal for and currently has to refuse.
 
 **Then, on evidence:** 46 Tier 2 (trace replay — also unblocks EXP-003), DAT-005 (Postgres, for
 scale not capability), DAT-006 (schema history), 18 (code export), 26 (deployment).
@@ -70,13 +117,13 @@ counting six phases while the built-world comparison evaluated **ten**. Complete
 | Phase | Estimate |
 |---|---|
 | 44 · 45 · 46 · 47 · 48 · 49 (revised) | **~41 wks** |
+| 50 · 51 · 52 · 53 (the boundary phases) | **~23 wks** |
 | [18 — Code Export v2](phase-18-code-export-v2/PROGRESS.md) | **20–26 wks, 0/7 started** |
 | [26 — Deployment](phase-26-deployment/README.md) | ~9 wks serial ("5–6 realistic") |
 | [41 — Accessibility](phase-41-accessibility/README.md) | **no task list, no estimate** |
 | [40 — AI Authoring Quality](phase-40-ai-authoring-quality/README.md) | **no estimate; exit = "Richard judges"** |
 
-**~70 weeks of estimated work plus two unestimated phases, at a team size of one.** Eighteen months
-to two years, optimistically — and 40 and 41 are the two the built-world comparison leans on hardest.
+**~93 weeks of estimated work plus two unestimated phases, at a team size of one.** Two years or more, optimistically — and 40 and 41 are the two the built-world comparison leans on hardest.
 Phase 40 supplies AAQ-007, which that document calls one of *"the two rows that mattered"* in the
 entire agent argument, and it has the least defined completion condition on the roadmap.
 
@@ -129,10 +176,21 @@ The comparison's own answer, re-stated as a checklist:
 > With **47, 49, 41 and 18** as well, it flips to *"probably NodeGX"*, because the platform's
 > existing advantages do not go away when the gaps close.
 
+⚠️ **And the adversarial review's answer to that, which stands:** capability was never the binding
+constraint for a serious project. The reviewer's confidence against adoption moved further on
+**PUB-003 + PUB-007 alone** (publish to npm, get a second maintainer) than on any capability phase —
+95% → ~70%. Phases 50–53 exist because of that finding. **The bill above is not what changes minds;
+the two-week list is.**
+
 ## What none of this fixes
 
 Worth writing down at the top of the road rather than discovering at the end. These survive
 everything in this index:
+
+⚠️ **Two of these now have phases** — 2 is [phase 50](phase-50-legibility/README.md) and 5 is
+[phase 51](phase-51-collaboration/README.md) — so they are no longer permanent, only unscheduled-until-now.
+1 and 3 remain genuinely permanent. 6 is [phase 52](phase-52-distribution-contract/README.md) PUB-004.
+7 stays out of scope by decision.
 
 1. **Canvas density — and the honest number is worse than this file first said.** The reference app's
    largest page is 4,129 LOC, which extrapolates to **700–1,500 nodes on one component**. For
