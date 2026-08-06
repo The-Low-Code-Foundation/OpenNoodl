@@ -147,6 +147,14 @@ export const DELIBERATELY_BACKEND_FREE: Readonly<Record<string, string>> = Objec
   'noodl.cloud.deleteuser': 'Runs inside a cloud function, against the backend it is already deployed to.',
   'noodl.cloud.verifysessiontoken':
     'Runs inside a cloud function; it checks a token against the session store of the backend hosting it.',
+  // SPR-001 F86's role membership, deliberately a *separate* family from the four
+  // above: `SystemUsers` documents and tests that it writes neither `_Role` nor
+  // the join table, so role mutation got its own seam rather than invalidating
+  // that invariant. Same backend-free argument though — they act on the role
+  // store of the backend hosting the function.
+  'noodl.cloud.addusertorole': 'Runs inside a cloud function, against the backend it is already deployed to.',
+  'noodl.cloud.removeuserfromrole': 'Runs inside a cloud function, against the backend it is already deployed to.',
+  'noodl.cloud.getuserroles': 'Runs inside a cloud function, against the backend it is already deployed to.',
   // CWF-009's Secret. Not the same claim as the group above: it reads the
   // hosting *process*’s own secret store through the `functions` namespace, so
   // it is not a request to a configured backend at all. Its real failure —
