@@ -35,6 +35,11 @@ export interface FunctionRefRowProps {
   onOpen?: () => void;
   /** Push the project's functions to this backend. Absent unless that would help. */
   onDeploy?: () => void;
+  /**
+   * CWF-004 S6: create the function this step is asking for. Absent unless the
+   * step resolves to nothing, and labelled with the name it will create.
+   */
+  onCreate?: { name: string; run: () => void };
   ariaLabel?: string;
 }
 
@@ -45,6 +50,7 @@ export function FunctionRefRow({
   suggestions,
   onOpen,
   onDeploy,
+  onCreate,
   ariaLabel
 }: FunctionRefRowProps) {
   const [draft, setDraft] = useState(value);
@@ -104,11 +110,28 @@ export function FunctionRefRow({
         </div>
       )}
 
-      {(onOpen || onDeploy) && (
+      {(onOpen || onDeploy || onCreate) && (
         <div className={styles.RootActions}>
           {onOpen && (
             <button type="button" className={styles.SmallButton} onClick={onOpen} data-test="workflow-step-ref-open">
               Open graph
+            </button>
+          )}
+          {/*
+            The repair for the state the sentence above just described, next to
+            the sentence. It names the function it will create rather than
+            saying "Create it", because for a step with no `ref` at all the name
+            comes from the step's label and an author should see it before
+            clicking, not after.
+          */}
+          {onCreate && (
+            <button
+              type="button"
+              className={styles.SmallButton}
+              onClick={onCreate.run}
+              data-test="workflow-step-ref-create"
+            >
+              {`Create "${onCreate.name}"`}
             </button>
           )}
           {onDeploy && (

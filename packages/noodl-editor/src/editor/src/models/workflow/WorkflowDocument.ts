@@ -20,9 +20,11 @@ import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { NodeLibraryImporter } from '@noodl-models/nodelibrary/NodeLibraryImporter';
 import { ProjectModel } from '@noodl-models/projectmodel';
+import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 
 import { NodeGraphContextTmp } from '../../contexts/NodeGraphContext/NodeGraphContext';
+import { ComponentTemplates } from '../../views/panels/ComponentsPanelNew/ComponentTemplates';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 import {
   OPEN_TRIGGERS_SURFACE
@@ -48,6 +50,7 @@ import {
   resolveFunctionRef,
   isBrokenState
 } from './functionRefResolution';
+import { FunctionPlan, planFunctionFromStep } from './newFunctionFromStep';
 import { setDescent } from './workflowDescent';
 import { fetchStepKinds, fetchWorkflow, saveWorkflow } from './WorkflowBackendClient';
 import { WorkflowComponentModel } from './WorkflowComponentModel';
@@ -244,6 +247,17 @@ export class WorkflowDocument extends Model {
       const descent = this.descentActionFor(id);
       if (descent) actions.push(descent);
 
+      // CWF-004 S6: and, when there is nothing to descend INTO, the way to make
+      // one. Its label names the function it will create, because a menu entry
+      // that mints a component should say what the component will be called.
+      const create = this.plannedFunctionForStep(id);
+      if (create) {
+        actions.push({
+          label: `New cloud function "${create.name}" from this step`,
+          onClick: () => this.createFunctionFromStep(id)
+        });
+      }
+
       if (id !== this.entry) {
         actions.push({
           label: `Start the run at "${node?.label || id}"`,
@@ -311,6 +325,140 @@ export class WorkflowDocument extends Model {
     }
 
     return suggestions;
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /* CWF-004 S6 — a new function from this step                                */
+  /* ------------------------------------------------------------------------ */
+
+  /**
+   * What "New function from this step" would create here, or `null` when it is
+   * not on offer.
+   *
+   * One answer for the menu label, the property-editor button, the toast action
+   * and the gesture itself — the same discipline `resolveFunctionRef` is under,
+   * and for the same reason: four surfaces that compute a function name
+   * separately are four surfaces that can disagree about which one you will get.
+   *
+   * **Offered for exactly the two broken states**, which is what makes this the
+   * repair for a step rather than a second way to add a component:
+   *
+   *  - `unresolved` — the step names a function that is in neither store. It is
+   *    asking for something; this makes it.
+   *  - `unnamed` — the step names nothing yet, and the backend will refuse to
+   *    save it. The name comes from the step's own label.
+   *
+   * And deliberately not for the other three. `resolved-in-project` already has
+   * a graph to open. `deployed-only` is WFA-006's "offer nothing clever": a
+   * function of that name is being served from somewhere else, and minting a
+   * local one that will overwrite it on the next push is a decision an author
+   * should take in the Components panel, with that consequence in front of them.
+   * `unknown` means the backend could not be asked — creating a function that
+   * may collide with one already deployed is the wrong thing to do on an
+   * unanswered question, which is the whole reason that third value exists.
+   */
+  plannedFunctionForStep(stepId: string): FunctionPlan | null {
+    const node = this.graph.findNodeWithId(stepId);
+    if (!node) return null;
+
+    const resolution = this.resolveRef(node);
+    if (!resolution || !isBrokenState(resolution.state)) return null;
+
+    const kind = kindFromTypeName(node.typename);
+    const spec = kind ? this.specFor(kind) : undefined;
+
+    return planFunctionFromStep(
+      { id: node.id, label: node.label, ref: node.parameters?.ref, parameters: node.parameters },
+      {
+        // The kind's own knobs are not the function's inputs — `maxAttempts` is
+        // a retry policy, not something the function receives. (It IS merged
+        // into the request body by the engine, along with every other param;
+        // declaring it on the Request node would be declaring the step's
+        // plumbing as part of the function's public contract.)
+        declared: (spec?.params || []).map((p) => p.name),
+        existing: projectFunctionNames()
+      }
+    );
+  }
+
+  /**
+   * Create the cloud function this step is asking for, point the step at it, and
+   * land inside its graph.
+   *
+   * This is CWF-004's answer to "sometimes I just need a bit of code here": a
+   * free JavaScript step at the workflow level would be an eval inside a
+   * persisted, deployable, agent-authored definition that runs with admin
+   * authority, and the thing it would be is a one-node cloud function. So the
+   * escape hatch is not moving code up, it is making reaching down frictionless
+   * — one gesture, no dialog, no prompt for a name the step already carries.
+   *
+   * **One undo group for the whole gesture**, and that is not tidiness: creating
+   * the component and retargeting the step are one thought, and undoing half of
+   * it would leave either a step pointing at a function nobody asked for or an
+   * orphan component named after a step.
+   */
+  createFunctionFromStep(stepId: string): boolean {
+    const plan = this.plannedFunctionForStep(stepId);
+    const node = this.graph.findNodeWithId(stepId);
+    if (!plan || !node) return false;
+
+    const project = ProjectModel.instance;
+    if (!project) return false;
+
+    const undo = new UndoActionGroup({ label: 'new function from step' });
+
+    // The Components panel's own template, with one option — not a second
+    // "what a new cloud function looks like".
+    const component = ComponentTemplates.instance.cloudFunction.createComponent(
+      CLOUD_COMPONENT_PREFIX + plan.name,
+      { requestParams: plan.params },
+      undo
+    );
+    project.addComponent(component, { undo });
+
+    // After the component exists, so the card resolves the moment it repaints.
+    node.setParameter('ref', plan.name, {
+      undo,
+      label: 'new function from step',
+      oldValue: node.parameters?.ref
+    });
+
+    // `push`, not `pushAndDo`: both writes have already happened and this
+    // records their inverse — the same distinction CWF-001's params row makes.
+    UndoQueue.instance.push(undo);
+
+    ToastLayer.showSuccess(this.newFunctionMessage(plan), {
+      title: `Created "${plan.name}"`,
+      id: 'cwf004-new-function'
+    });
+
+    // WFA-006's descent, unchanged — which is the point: the create half is the
+    // only new mechanism, and the trail crumb back to this workflow comes free.
+    this.descendInto(stepId);
+    return true;
+  }
+
+  /** What the toast says, which is everything the gesture decided on your behalf. */
+  private newFunctionMessage(plan: FunctionPlan): string {
+    const parts: string[] = [];
+
+    parts.push(
+      plan.paramNames.length
+        ? `Its Request node declares ${plan.paramNames.map((n) => `"${n}"`).join(', ')} — the params this step sends.`
+        : `Its Request node declares nothing yet: this step sends no params of its own.`
+    );
+
+    if (plan.retargets) parts.push(`This step now calls "${plan.name}".`);
+
+    if (plan.undeclarable.length) {
+      parts.push(
+        `${plan.undeclarable.map((n) => `"${n}"`).join(', ')} could not be declared — a Request node's parameter ` +
+          `list is comma-separated and is not trimmed, so a name holding a comma or an edge space cannot appear in it.`
+      );
+    }
+
+    parts.push(`It is not deployed to ${this.ref.backendName} yet.`);
+    return parts.join(' ');
   }
 
   /** Push this project's cloud functions to THIS workflow's backend, then re-resolve. */
@@ -397,7 +545,21 @@ export class WorkflowDocument extends Model {
      */
     const title = resolution.state === 'unnamed' ? 'This step has no function yet' : `Cannot open "${resolution.ref}"`;
     if (isBrokenState(resolution.state)) {
-      ToastLayer.showWarning(resolution.message, { title, id: 'wfa006-descend' });
+      /**
+       * CWF-004 S6: the toast that says there is nothing to open carries the
+       * way to make it.
+       *
+       * This is the moment the gesture exists for — a double-click that found
+       * nothing is exactly when an author wants the function to exist — and it
+       * is why the action lives on the toast rather than only on a right-click
+       * menu nobody opens on a step that looks broken.
+       */
+      const plan = this.plannedFunctionForStep(stepId);
+      ToastLayer.showWarning(resolution.message, {
+        title,
+        id: 'wfa006-descend',
+        actions: plan ? [{ label: `Create "${plan.name}"`, onClick: () => this.createFunctionFromStep(stepId) }] : undefined
+      });
     } else {
       ToastLayer.showInfo(resolution.message, { title, id: 'wfa006-descend' });
     }

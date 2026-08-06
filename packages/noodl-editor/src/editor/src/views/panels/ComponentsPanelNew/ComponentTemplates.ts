@@ -134,6 +134,14 @@ class LogicComponentTemplate extends ComponentTemplate {
   }
 }
 
+/**
+ * The node a cloud function's inputs are declared on (CWF-014).
+ *
+ * Its `params` parameter is a comma-separated list of names, each minting one
+ * output port straight onto the parsed request body.
+ */
+const REQUEST_NODE_TYPE = 'noodl.cloud.request';
+
 class CloudFunctionComponentTemplate extends ComponentTemplate {
   constructor() {
     super('Cloud Function Component', IconName.CloudFunction);
@@ -166,6 +174,40 @@ class CloudFunctionComponentTemplate extends ComponentTemplate {
         }
       ]
     };
+  }
+
+  /**
+   * CWF-004 S6 — the same template, optionally arriving with its inputs already
+   * declared.
+   *
+   * "New function from this step" creates a function for a workflow step, and
+   * the step already says what it will send it (CWF-001's param mapping). So the
+   * gesture passes those names as `requestParams` and the author lands in a
+   * graph whose Request node already has one output port per value the step
+   * sends, rather than in an empty one they have to re-type the contract into.
+   *
+   * It is an OPTION on the existing template rather than a second creation path
+   * on purpose: the shape of a new cloud function — a Request node, a Response
+   * node, rekeyed ids — is decided in exactly one place, and the panel's own
+   * popup path passes no options and is byte-for-byte unchanged.
+   *
+   * Written straight onto the node rather than through `setParameter`: the
+   * component is not in the project yet, nothing is listening, and undoing this
+   * gesture removes the whole component rather than this one parameter.
+   */
+  createComponent(componentName, options, undoGroup) {
+    const component = super.createComponent(componentName, options, undoGroup);
+
+    const requestParams = options && options.requestParams;
+    if (requestParams) {
+      component.graph.forEachNode((node) => {
+        if (node.typename === REQUEST_NODE_TYPE) {
+          node.parameters = { ...(node.parameters || {}), params: requestParams };
+        }
+      });
+    }
+
+    return component;
   }
 }
 
@@ -254,6 +296,18 @@ export class ComponentTemplates {
       new LogicComponentTemplate(),
       new CloudFunctionComponentTemplate()
     ];
+  }
+
+  /**
+   * The one cloud-function template (CWF-004 S6).
+   *
+   * By identity rather than by label or by list position: a caller that has to
+   * find it with `getTemplates({forRuntimeType: 'cloud'})` gets the Logic
+   * Component too, and picking out of that by `label` would break the day
+   * someone rewords a menu entry.
+   */
+  get cloudFunction(): ComponentTemplate {
+    return this.templates.find((t) => t instanceof CloudFunctionComponentTemplate);
   }
 
   getTemplates(args) {

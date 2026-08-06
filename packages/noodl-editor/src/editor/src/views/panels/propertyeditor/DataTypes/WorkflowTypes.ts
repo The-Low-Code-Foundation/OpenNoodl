@@ -547,6 +547,11 @@ export class WorkflowFunctionRefType extends WorkflowTypeView {
     const canOpen = resolution?.state === 'resolved-in-project';
     const canDeploy = Boolean(resolution?.inProject) && resolution?.deployed === false;
 
+    // CWF-004 S6. The document decides whether the gesture is on offer and what
+    // it would create — the same single answer the menu and the toast read, so
+    // three surfaces cannot name three different functions.
+    const plan = document && stepId ? document.plannedFunctionForStep(stepId) : null;
+
     this.root.render(
       React.createElement(PropertyPanelRow, {
         label: this.displayName,
@@ -564,6 +569,10 @@ export class WorkflowFunctionRefType extends WorkflowTypeView {
                 this.renderReact();
               }
             : undefined,
+          onCreate:
+            plan && stepId
+              ? { name: plan.name, run: () => void document?.createFunctionFromStep(stepId) }
+              : undefined,
           ariaLabel: this.displayName
         })
       })
