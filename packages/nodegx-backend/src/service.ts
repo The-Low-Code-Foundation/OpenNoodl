@@ -274,14 +274,23 @@ export class BackendService {
       }
     });
 
-    // 2. Execution history beside the data.
-    const executionHistory = this.executions.open(this.options.dataDir);
+    // 2. Execution history beside the data. Retention is late-bound to ops.json
+    //    so `PUT /admin/ops` changes it without a restart, and pruned once here
+    //    for the same reason the audit trail is (1.7): a backend stopped for a
+    //    year must not come back holding a year of records the retention setting
+    //    says should be gone. After this, prunes are driven by writes — see
+    //    ExecutionHistory.maybePrune for why this service does not grow a fourth
+    //    timer to do it.
+    const executionHistory = this.executions.open(this.options.dataDir, {
+      getRetentionDays: () => this.ops!.config.executions.retentionDays
+    });
     if (!executionHistory.enabled) {
       // eslint-disable-next-line no-console
       console.warn(
         `[nodegx-backend] execution history DISABLED: ${executionHistory.error} — function runs proceed unlogged.`
       );
     }
+    this.executions.prune();
 
     // 2.2 Workflows (WF-001): the definition registry loads workflow-defs/ (loud
     //     on an invalid definition, same doctrine as triggers.json). The engine
@@ -710,9 +719,23 @@ export class BackendService {
       name: '_Session',
       columns: [
         { name: 'sessionToken', type: 'String' },
-        { name: 'userId', type: 'String' }
+        { name: 'userId', type: 'String' },
+        // CWF-015: an optional expiry instant. Nothing this server mints sets
+        // it — `POST /login` and `POST /users` write a session that lives until
+        // it is revoked, and that is still the contract. It exists because
+        // something else does write it: the cloud runtime's
+        // `Users.impersonate()` creates a `_Session` with a duration, and until
+        // `findSession` learned to read this column that "expiring" session
+        // never expired.
+        { name: 'expiresAt', type: 'Date' }
       ]
     });
+    // `createTable` is create-if-absent and does NOTHING to a table that already
+    // exists, so the column above only reaches a data dir that has never been
+    // started. Every backend created before CWF-015 needs the ALTER, and
+    // `addColumn` swallows "duplicate column name", so this is the idempotent
+    // half of the same statement rather than a second policy.
+    sm.addColumn('_Session', { name: 'expiresAt', type: 'Date' });
     // BAK-003: roles (flat; membership via the users Relation's junction
     // table) and API keys (hashed secrets, never recoverable).
     sm.createTable({

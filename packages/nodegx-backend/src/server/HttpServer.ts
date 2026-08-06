@@ -1732,7 +1732,7 @@ export class HttpServer {
    */
   private async putOps(ctx: RequestContext): Promise<void> {
     const body = await readJSONBody(ctx.req);
-    const known = ['logging', 'rateLimit', 'cors', 'audit', 'metrics'];
+    const known = ['logging', 'rateLimit', 'cors', 'audit', 'executions', 'metrics'];
     const given = Object.keys(body).filter((k) => k !== 'version');
     if (given.length === 0 || given.some((k) => !known.includes(k))) {
       throw new HttpError(

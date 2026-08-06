@@ -65,6 +65,55 @@ function newSessionToken(): string {
   return 'r:' + crypto.randomBytes(24).toString('hex');
 }
 
+/**
+ * When does this `_Session` row stop being valid? `null` = never.
+ *
+ * CWF-015 filed this as "`impersonate()` writes `expiresAt` and `findSession`
+ * never reads it", and that was exactly true: an impersonation session minted
+ * with a one-hour duration outlived the process. This is the read half.
+ *
+ * It is deliberately liberal about the stored shape, because the writers do not
+ * agree and never did. `POST /login` and `POST /users` write no `expiresAt` at
+ * all. The cloud runtime's `Users.impersonate()` writes a real `Date` through
+ * `Records.create`, which reaches the adapter as an ISO string, and a
+ * Parse-wire client can send `{__type: 'Date', iso}`. A hand-written admin row
+ * may carry epoch milliseconds. All four are legible here.
+ *
+ * ⚠️ **An unreadable value means "no expiry", not "expired".** Every session
+ * this backend has ever minted has a null `expiresAt`, and the whole point of
+ * making expiry real is that it must not log those users out. The failure mode
+ * of guessing wrong in the other direction is every account on every existing
+ * backend signed out at once by a deploy — so an absent, null, empty or
+ * unparseable value keeps the session alive and only a value we can genuinely
+ * read as a past instant kills it.
+ */
+export function sessionExpiryMs(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (value instanceof Date) {
+    const t = value.getTime();
+    return Number.isFinite(t) ? t : null;
+  }
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string') {
+    const t = Date.parse(value);
+    return Number.isNaN(t) ? null : t;
+  }
+  if (typeof value === 'object') {
+    const iso = (value as Record<string, unknown>).iso;
+    if (typeof iso === 'string') {
+      const t = Date.parse(iso);
+      return Number.isNaN(t) ? null : t;
+    }
+  }
+  return null;
+}
+
+/** True only when the row carries a readable `expiresAt` that has passed. */
+export function isSessionExpired(session: Record<string, unknown>, now: number = Date.now()): boolean {
+  const expiry = sessionExpiryMs(session.expiresAt);
+  return expiry !== null && expiry <= now;
+}
+
 export class UserRoutes {
   private readonly facade: AdapterFacade;
   // Reserved for session-policy decisions (the signup rule itself is enforced
@@ -87,11 +136,32 @@ export class UserRoutes {
   // Session resolution
   // ==========================================================================
 
-  /** Resolve a session token to its `_Session` row, or null. */
+  /**
+   * Resolve a session token to its `_Session` row, or null.
+   *
+   * The expiry check is done on the ROW, not in the `where` — a predicate on
+   * `expiresAt` would be a SQL error on every backend created before that
+   * column existed, and would exclude the null-`expiresAt` rows that are, today,
+   * every session this backend has ever issued. Reading the value back and
+   * judging it here is the only version that is safe on an existing data dir.
+   */
   private async findSession(token: string | undefined): Promise<Record<string, unknown> | null> {
     if (!token) return null;
     const { results } = await this.facade.rawQuery('_Session', { where: { sessionToken: token }, limit: 1 });
-    return results[0] || null;
+    const session = results[0] || null;
+    if (!session) return null;
+    if (isSessionExpired(session)) {
+      // Best-effort tidy: an expired row is dead weight and keeping it around
+      // only invites a future reader to resolve it. A failed delete must not
+      // turn "your session expired" into a 500.
+      try {
+        await this.facade.rawDelete('_Session', session.objectId as string);
+      } catch {
+        /* the row stays; it is still refused above */
+      }
+      return null;
+    }
+    return session;
   }
 
   /** Resolve the request's session token header to a user record, or throw 209. */

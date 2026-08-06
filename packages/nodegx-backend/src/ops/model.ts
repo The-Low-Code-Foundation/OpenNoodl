@@ -98,6 +98,28 @@ export interface AuditConfig {
   retentionDays: number;
 }
 
+/**
+ * Execution history retention (CWF-013's loose end).
+ *
+ * `executions.sqlite` grew forever: `runRetentionCleanup()` and
+ * `cleanupByAge()` were both fully implemented and neither had a caller, so a
+ * backend that had run a function every minute for a year still held every
+ * record and every step — which is what made CWF-013 cap a single run's Log
+ * lines at 200 rather than trust the table to stay a sensible size.
+ *
+ * 30 days is the default because it is the number the substrate already
+ * carried (`ExecutionLogger`'s own `retentionDays: 30`) — a default that
+ * disagreed with the one other component holding an opinion would be a second
+ * vocabulary for no gain. `audit.retentionDays` stays at 90 deliberately: an
+ * audit entry is one small row about who did what, an execution is a record
+ * plus every step plus their payloads, and they should not be tuned by the
+ * same number.
+ */
+export interface ExecutionsConfig {
+  /** Days to keep `workflow_executions` rows (steps cascade). 0 = keep forever. */
+  retentionDays: number;
+}
+
 export interface MetricsConfig {
   /** Serve `GET /metrics`. */
   enabled: boolean;
@@ -114,6 +136,7 @@ export interface OpsConfig {
   rateLimit: RateLimitConfig;
   cors: CorsConfig;
   audit: AuditConfig;
+  executions: ExecutionsConfig;
   metrics: MetricsConfig;
 }
 
@@ -152,6 +175,7 @@ export function defaultOpsConfig(): OpsConfig {
     },
     cors: { origins: ['*'], credentials: false },
     audit: { enabled: true, retentionDays: 90 },
+    executions: { retentionDays: 30 },
     metrics: { enabled: true, allowLoopback: true }
   };
 }
@@ -179,7 +203,9 @@ function checkStringArray(errors: string[], where: string, value: unknown): void
 /** Strict validation. Returns error strings; empty = valid. */
 export function validateOpsConfig(raw: unknown): string[] {
   const errors: string[] = [];
-  if (!checkKeys(errors, 'ops config', raw, ['version', 'logging', 'rateLimit', 'cors', 'audit', 'metrics'])) {
+  if (
+    !checkKeys(errors, 'ops config', raw, ['version', 'logging', 'rateLimit', 'cors', 'audit', 'executions', 'metrics'])
+  ) {
     return errors;
   }
   const cfg = raw as Record<string, unknown>;
@@ -256,6 +282,18 @@ export function validateOpsConfig(raw: unknown): string[] {
     }
   }
 
+  if (cfg.executions !== undefined && checkKeys(errors, 'executions', cfg.executions, ['retentionDays'])) {
+    const executions = cfg.executions as Record<string, unknown>;
+    if (
+      executions.retentionDays !== undefined &&
+      (typeof executions.retentionDays !== 'number' ||
+        !Number.isFinite(executions.retentionDays) ||
+        executions.retentionDays < 0)
+    ) {
+      errors.push('executions.retentionDays must be a number >= 0 (0 = keep forever)');
+    }
+  }
+
   if (cfg.metrics !== undefined && checkKeys(errors, 'metrics', cfg.metrics, ['enabled', 'allowLoopback'])) {
     const metrics = cfg.metrics as Record<string, unknown>;
     for (const field of ['enabled', 'allowLoopback']) {
@@ -292,6 +330,7 @@ export function mergeOpsOver(base: OpsConfig, partial: unknown): OpsConfig {
     rateLimit: { ...base.rateLimit, ...(raw.rateLimit || {}), policies },
     cors: { ...base.cors, ...(raw.cors || {}) },
     audit: { ...base.audit, ...(raw.audit || {}) },
+    executions: { ...base.executions, ...(raw.executions || {}) },
     metrics: { ...base.metrics, ...(raw.metrics || {}) }
   };
 }

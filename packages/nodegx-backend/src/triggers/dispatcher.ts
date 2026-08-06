@@ -34,6 +34,20 @@
  * since WF-005. What `sync` adds is (a) the output in the body and (b) a CAP on
  * that wait. `async` is unchanged in every respect, including that one.
  *
+ * THE METRIC MOVES EXACTLY WHERE THE STATUS STAMP DOES
+ * ----------------------------------------------------
+ * `nodegx_trigger_fires_total` used to count function-target fires and refusals
+ * and NOTHING ELSE: `fireWorkflow` stamped the registry and never called
+ * `recordTriggerFire`, so a backend whose triggers all point at workflows
+ * reported zero fires forever while the History Panel showed hundreds. The
+ * invariant that closes it — and the one to keep — is that **every**
+ * `registry.recordFire` in this file is paired with exactly one
+ * `recordTriggerFire`, with the same ok/failure verdict. That gives
+ * exactly-once counting for free in the awkward case: a `sync` fire that trips
+ * its answer cap stamps nothing at 504 (the run is still going) and stamps once
+ * later, when the run really finishes — so the 504 is not counted twice, and
+ * the late completion is not lost.
+ *
  * @module nodegx-backend/triggers/dispatcher
  */
 
@@ -265,7 +279,9 @@ export class TriggerDispatcher {
         void runPromise.then(
           (late) => {
             if (!late.found || !late.result) return;
-            this.deps.registry.recordFire(trigger.id, { firedAt, result: this.resultOf(late.result) });
+            const lateResult = this.resultOf(late.result);
+            this.deps.registry.recordFire(trigger.id, { firedAt, result: lateResult });
+            recordTriggerFire(triggerType, lateResult.ok);
           },
           () => undefined
         );
@@ -303,6 +319,7 @@ export class TriggerDispatcher {
     const result = this.resultOf(runResult);
     const ok = result.ok;
     this.deps.registry.recordFire(trigger.id, { firedAt, result });
+    recordTriggerFire(triggerType, result.ok);
 
     if (!sync) {
       // Unchanged since WF-005, and deliberately so: this is what every trigger

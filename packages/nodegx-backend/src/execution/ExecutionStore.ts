@@ -20,6 +20,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { logger } from '../ops/logger';
+
 // Bundled from noodl-viewer-cloud/src/execution-history by esbuild (test-time:
 // jest moduleNameMapper), so the CONSTRUCTION stays a runtime `require` — this
 // package must not pull the cloud runtime into its own module graph.
@@ -49,6 +51,18 @@ export interface ExecutionHistoryStatus {
   error: string | null;
 }
 
+export interface ExecutionHistoryOpenOptions {
+  /**
+   * Live retention window, read on every prune so `PUT /admin/ops` takes effect
+   * without a restart — same late-binding as `AuditLog`'s `getConfig`.
+   * Omitted (older embedders, specs that only read) = keep forever.
+   */
+  getRetentionDays?: () => number;
+}
+
+/** How often a write may trigger a prune. Matches `AuditLog`'s hourly floor. */
+const PRUNE_INTERVAL_MS = 3_600_000;
+
 export interface ExecutionListQuery {
   workflowId?: string;
   status?: string;
@@ -62,9 +76,12 @@ export interface ExecutionListQuery {
 export class ExecutionHistory {
   private store: CloudExecutionStore | null = null;
   private status: ExecutionHistoryStatus = { enabled: false, dbPath: null, error: null };
+  private getRetentionDays: (() => number) | null = null;
+  private lastPrune = 0;
 
   /** Open (or create) `<dataDir>/executions.sqlite` and init the schema. */
-  open(dataDir: string): ExecutionHistoryStatus {
+  open(dataDir: string, options: ExecutionHistoryOpenOptions = {}): ExecutionHistoryStatus {
+    this.getRetentionDays = options.getRetentionDays || null;
     const dbPath = path.join(dataDir, 'executions.sqlite');
     try {
       fs.mkdirSync(dataDir, { recursive: true });
@@ -94,7 +111,75 @@ export class ExecutionHistory {
    */
   createLogger(): CloudExecutionLogger | null {
     if (!this.store) return null;
+    // Every execution record on this backend is born here, so this is the one
+    // place a write-driven prune can sit and be sure of seeing traffic.
+    this.maybePrune();
     return new executionHistory.ExecutionLogger(this.store);
+  }
+
+  // ==========================================================================
+  // Retention
+  // ==========================================================================
+
+  /**
+   * Drop executions older than the retention window. Returns the number of
+   * execution records deleted; their steps go with them via the schema's
+   * `ON DELETE CASCADE` (node:sqlite enables foreign keys by default, which is
+   * the reason this can be one DELETE rather than two).
+   *
+   * ⚠️ **Nothing trimmed this table until CWF-013's loose end was closed.**
+   * `ExecutionLogger.runRetentionCleanup()` and `ExecutionStore.cleanupByAge()`
+   * were both fully written in the shared cloud substrate and neither had a
+   * production caller anywhere in the repo, so `executions.sqlite` grew without
+   * bound for the life of a backend. This method is that caller. It reaches
+   * `cleanupByAge` directly rather than through `runRetentionCleanup()` on
+   * purpose: the logger's retention comes from its own per-instance config
+   * default, and the number an operator actually edits lives in
+   * `ops.json` — routing through a second, unset default would have been a
+   * retention policy that quietly disagreed with the file.
+   *
+   * `retentionDays: 0` (or no retention callback at all) = keep forever.
+   *
+   * Deliberately takes no `now`: the cutoff is computed inside `cleanupByAge`
+   * from its own clock, so a `now` parameter here would look like it moved the
+   * window and would move nothing. `AuditLog.prune(now)` really does take one —
+   * they are not the same shape, and pretending they were is how a spec ends up
+   * asserting against a knob that is not connected.
+   */
+  prune(): number {
+    if (!this.store || !this.getRetentionDays) return 0;
+    this.lastPrune = Date.now();
+    try {
+      // Inside the try on purpose: the callback reads live service state, and a
+      // record written while the service is tearing down must not throw here.
+      const retentionDays = this.getRetentionDays();
+      if (!retentionDays || retentionDays <= 0) return 0;
+      const removed = this.store.cleanupByAge(retentionDays * 86_400_000);
+      if (removed > 0) logger.info('executions.pruned', { removed, retentionDays });
+      return removed;
+    } catch (e) {
+      // A retention sweep that fails must never take a function run with it.
+      logger.warn('executions.prune-failed', { error: e instanceof Error ? e.message : String(e) });
+      return 0;
+    }
+  }
+
+  /**
+   * Prune at most hourly, driven by writes rather than a timer.
+   *
+   * This is `AuditLog.maybePrune`'s pattern, and it is deliberately the same
+   * one: the service already runs a trigger scheduler, a backup scheduler and a
+   * realtime heartbeat, and a fourth timer whose entire job is a once-a-day
+   * DELETE would be a fourth thing to remember to clear at shutdown. There is a
+   * live example of why that matters in this package — `server.close()` already
+   * hangs on an open SSE stream — so a retention sweep that cannot possibly
+   * hold the process open is worth more than a punctual one. The startup prune
+   * covers the backend that is stopped for a year and comes back.
+   */
+  private maybePrune(): void {
+    if (!this.getRetentionDays) return;
+    if (Date.now() - this.lastPrune < PRUNE_INTERVAL_MS) return;
+    this.prune();
   }
 
   list(query: ExecutionListQuery): WorkflowExecution[] {
