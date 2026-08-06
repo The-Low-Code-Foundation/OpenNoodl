@@ -159,6 +159,22 @@ export interface FunctionRules {
    * token-bucket vocabulary and not a twin of it.
    */
   rateLimit?: RateLimitPolicy;
+  /**
+   * CWF-018: how long this function may run before the request is abandoned,
+   * in milliseconds. Absent = the service default
+   * (`DEFAULT_FUNCTION_TIMEOUT_MS`); `0` = **no limit at all**.
+   *
+   * `timeoutMs` rather than a new word, because the workflow definition already
+   * spells the same idea that way at two levels (`timeoutMs` per run,
+   * `stepTimeoutMs` per step) and a second vocabulary for "how long may this
+   * take" is how a panel ends up showing seconds where the engine reads
+   * milliseconds.
+   *
+   * The explicit `0` matters: a streaming response (CWF-007) legitimately holds
+   * its connection open, and the honest way to say so is a declaration on the
+   * function, not a default loose enough that nothing is ever bounded.
+   */
+  timeoutMs?: number;
 }
 
 export interface FileRules {
@@ -298,7 +314,7 @@ export function validateSecurityConfig(raw: unknown): string[] {
       }
       const e = entry as Record<string, unknown>;
       for (const key of Object.keys(e)) {
-        if (key !== 'call' && key !== 'runAs' && key !== 'rateLimit') {
+        if (key !== 'call' && key !== 'runAs' && key !== 'rateLimit' && key !== 'timeoutMs') {
           errors.push(`unknown key "${key}" in functions.${name}`);
         }
       }
@@ -309,6 +325,12 @@ export function validateSecurityConfig(raw: unknown): string[] {
       if (e.rateLimit !== undefined) {
         const err = validateFunctionRateLimit(e.rateLimit);
         if (err) errors.push(`functions.${name}.rateLimit: ${err}`);
+      }
+      if (
+        e.timeoutMs !== undefined &&
+        (typeof e.timeoutMs !== 'number' || !Number.isFinite(e.timeoutMs) || e.timeoutMs < 0)
+      ) {
+        errors.push(`functions.${name}.timeoutMs must be a number >= 0 (0 = no limit)`);
       }
       if (e.runAs !== undefined && e.runAs !== 'system') {
         errors.push(
@@ -532,6 +554,21 @@ export function functionRateLimit(config: SecurityConfig, functionName: string):
   const policy = entry && entry.rateLimit;
   if (!policy || policy.burst <= 0 || policy.ratePerMinute <= 0) return undefined;
   return policy;
+}
+
+/**
+ * This function's DECLARED execution timeout, or undefined when it has none and
+ * the service default applies (CWF-018).
+ *
+ * Deliberately not resolved to a number here: `undefined` ("nobody said") and
+ * `0` ("explicitly unbounded") are different answers, and collapsing them would
+ * make an opted-out streaming function indistinguishable from an ordinary one.
+ * The default itself lives with the thing that enforces it — `WorkflowRunner` —
+ * so there is exactly one number to change.
+ */
+export function functionTimeoutMs(config: SecurityConfig, functionName: string): number | undefined {
+  const entry = config.functions[functionName];
+  return entry && typeof entry.timeoutMs === 'number' ? entry.timeoutMs : undefined;
 }
 
 // ============================================================================

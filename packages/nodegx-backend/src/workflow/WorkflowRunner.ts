@@ -28,12 +28,41 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 
 import type { ExecutionHistory } from '../execution/ExecutionStore';
+import { logger } from '../ops/logger';
 
 // Bundled from noodl-viewer-cloud/src by esbuild (test-time: jest mapper).
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { CloudRunner } = require('@cloud-runtime');
+const { CloudRunner, isCloudFunctionTimeout } = require('@cloud-runtime') as {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  CloudRunner: any;
+  isCloudFunctionTimeout(e: unknown): boolean;
+};
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { scrubRequestForLogging } = require('@cloud-runtime/execution-history');
+
+/**
+ * How long a cloud function may run before its request is abandoned (CWF-018).
+ *
+ * **30 seconds**, and the number is a floor-and-ceiling argument rather than a
+ * guess:
+ *
+ *   - It is comfortably under every reverse proxy an operator is likely to put
+ *     in front of this (nginx's `proxy_read_timeout` is 60s by default), so the
+ *     limit that fires is OURS — one that names the function and logs — instead
+ *     of a 502 from a proxy that knows nothing about cloud functions.
+ *   - It is above anything a request-shaped function does. A function is "run
+ *     this now and give the user an answer" (BACKEND-AUTHORING-MODEL); work that
+ *     genuinely takes minutes is a workflow, which has had per-step and per-run
+ *     timeouts, retries and waits all along.
+ *   - It is short enough that a graph with an unwired `Failure` port is found in
+ *     development rather than in production, which is the mistake this exists
+ *     for.
+ *
+ * A function that legitimately needs longer says so per function
+ * (`functions.<name>.timeoutMs` in security.json, CWF-017's panel); `0` there
+ * means no limit, which is what a streaming response will need (CWF-007).
+ */
+export const DEFAULT_FUNCTION_TIMEOUT_MS = 30000;
 
 function safeLog(...args: unknown[]): void {
   try {
@@ -50,6 +79,14 @@ export interface WorkflowRunnerOptions {
   backendId: string;
   backendName: string;
   enableDebugInspectors?: boolean;
+  /**
+   * This function's DECLARED timeout in ms, or undefined for the default
+   * (CWF-018). Late-bound and asked per call, exactly like `getRunner`
+   * elsewhere, so an edit through CWF-017's panel takes effect on the next
+   * request rather than the next restart — and so a spec can bound a run
+   * without waiting the real duration.
+   */
+  getFunctionTimeoutMs?: (functionName: string) => number | undefined;
 }
 
 export interface RunnerResponse {
@@ -96,6 +133,7 @@ export class WorkflowRunner {
   private readonly backendId: string;
   private readonly backendName: string;
   private readonly enableDebugInspectors: boolean;
+  private readonly getFunctionTimeoutMs?: (functionName: string) => number | undefined;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private cloudRunner: any = null;
@@ -108,6 +146,38 @@ export class WorkflowRunner {
     this.backendId = options.backendId;
     this.backendName = options.backendName;
     this.enableDebugInspectors = options.enableDebugInspectors || false;
+    this.getFunctionTimeoutMs = options.getFunctionTimeoutMs;
+  }
+
+  /**
+   * The bound this run gets. `undefined` from the resolver means "nobody
+   * declared one" and takes the default; a declared `0` means no limit and is
+   * passed through as such.
+   */
+  private timeoutFor(functionName: string): number {
+    const declared = this.getFunctionTimeoutMs ? this.getFunctionTimeoutMs(functionName) : undefined;
+    return typeof declared === 'number' && declared >= 0 ? declared : DEFAULT_FUNCTION_TIMEOUT_MS;
+  }
+
+  /**
+   * The answer a caller gets when a function never responded — a 504 naming the
+   * function, the limit, and the mistake that produces this nine times out of
+   * ten. Not a 500: the whole point is that an author can tell "my graph never
+   * reached a Response node" apart from "my graph crashed".
+   */
+  private timeoutResponse(functionName: string, timeoutMs: number): RunnerResponse {
+    return {
+      statusCode: 504,
+      body: JSON.stringify({
+        error:
+          `Cloud function "${functionName}" did not send a response within ${timeoutMs}ms and was stopped. ` +
+          'Check that every path through the graph reaches a Response node — an outcome node whose ' +
+          '`Failure` or `Unchanged` port is unwired answers nothing.',
+        code: 'function/timeout',
+        function: functionName,
+        timeoutMs
+      })
+    };
   }
 
   private createCloudRunner(): void {
@@ -246,9 +316,11 @@ export class WorkflowRunner {
     }
 
     const startTime = Date.now();
-    const logger = this.executions.createLogger();
-    if (logger) {
-      logger.startExecution({
+    const timeoutMs = this.timeoutFor(functionName);
+    const execLogger = this.executions.createLogger();
+    let executionId = '';
+    if (execLogger) {
+      executionId = execLogger.startExecution({
         workflowId: functionName,
         workflowName: functionName,
         triggerType: trigger ? trigger.type : 'webhook',
@@ -265,19 +337,60 @@ export class WorkflowRunner {
 
     try {
       safeLog(`Executing function: ${functionName}`);
-      const response = await this.cloudRunner.run(functionName, request);
+      const response = await this.cloudRunner.run(functionName, request, { timeoutMs });
       const duration = Date.now() - startTime;
       safeLog(`Function ${functionName} completed in ${duration}ms`);
 
       const success = response.statusCode >= 200 && response.statusCode < 300;
-      if (logger) logger.completeExecution(success, success ? undefined : new Error(`HTTP ${response.statusCode}`));
+      if (execLogger)
+        execLogger.completeExecution(success, success ? undefined : new Error(`HTTP ${response.statusCode}`));
 
       return response;
     } catch (e) {
       const duration = Date.now() - startTime;
       const message = e instanceof Error ? e.message : String(e);
+      const timedOut = isCloudFunctionTimeout(e);
+
+      // CWF-018: the operator-facing line. It goes through the ops logger, not
+      // `safeLog`, because that is the one door that is levelled, structured and
+      // shipped by whatever supervises this process — a `console.log` here is a
+      // line nobody can filter for or alert on.
+      //
+      // ⚠️ The request BODY is not logged, and `redact()` is the reason rather
+      // than an excuse: redaction is KEY-based (`ops/redact.ts` says so in as
+      // many words), so `{ note: "the password is hunter2" }` survives it
+      // untouched. A function's request body is arbitrary caller data whose
+      // field names we do not choose. What is logged is what an operator needs
+      // to act — which function, which limit, which request — and the request id
+      // joins this line to the access log and to the execution record.
+      if (timedOut) {
+        logger.error('function.timeout', {
+          function: functionName,
+          timeoutMs,
+          durationMs: duration,
+          requestId: trigger && trigger.requestId,
+          triggerType: trigger ? trigger.type : 'webhook',
+          triggerSource: trigger && trigger.source,
+          hint: 'no Response node was reached — check the graph has no path that ends without one'
+        });
+      } else {
+        logger.error('function.failed', {
+          function: functionName,
+          durationMs: duration,
+          requestId: trigger && trigger.requestId,
+          error: message
+        });
+      }
       safeLog(`Function ${functionName} failed after ${duration}ms:`, message);
-      if (logger) logger.completeExecution(false, e instanceof Error ? e : new Error(message));
+
+      if (execLogger) {
+        execLogger.completeExecution(false, e instanceof Error ? e : new Error(message));
+        // The same `timedOut` key the workflow engine stamps, so the History
+        // panel reads one disposition vocabulary and not two.
+        if (timedOut) this.executions.stampMetadata(executionId, { timedOut: true, timeoutMs });
+      }
+
+      if (timedOut) return this.timeoutResponse(functionName, timeoutMs);
       return { statusCode: 500, body: JSON.stringify({ error: message }) };
     }
   }
@@ -288,6 +401,11 @@ export class WorkflowRunner {
    * one per-step record, so a nested function-level record here would be a
    * double-record and break the "one execution-record path" rule. Behaviourally
    * identical to `run()` minus the logging.
+   *
+   * The CWF-018 timeout applies here too, and it is not redundant with the
+   * engine's per-step timeout: a step timeout abandons the step's promise and
+   * leaves the function's component instance running forever (the engine's own
+   * cancellation-honesty note). This bound is the one that tears the graph down.
    */
   async invokeFunction(functionName: string, request: RunnerRequest): Promise<RunnerResponse> {
     if (!this.cloudRunner) {
@@ -296,9 +414,19 @@ export class WorkflowRunner {
     if (!this.hasFunction(functionName)) {
       return { statusCode: 404, body: JSON.stringify({ error: `Function '${functionName}' not found` }) };
     }
+    const timeoutMs = this.timeoutFor(functionName);
     try {
-      return await this.cloudRunner.run(functionName, request);
+      return await this.cloudRunner.run(functionName, request, { timeoutMs });
     } catch (e) {
+      if (isCloudFunctionTimeout(e)) {
+        logger.error('function.timeout', {
+          function: functionName,
+          timeoutMs,
+          caller: 'workflow-step',
+          hint: 'no Response node was reached — check the graph has no path that ends without one'
+        });
+        return this.timeoutResponse(functionName, timeoutMs);
+      }
       const message = e instanceof Error ? e.message : String(e);
       return { statusCode: 500, body: JSON.stringify({ error: message }) };
     }

@@ -30,6 +30,7 @@ import { HttpServer, ListenInfo } from './server/HttpServer';
 import { WorkflowRunner } from './workflow/WorkflowRunner';
 import { WorkflowSubsystem } from './workflow/WorkflowSubsystem';
 import { SecurityState, SecurityStartupError } from './security/state';
+import { functionTimeoutMs } from './security/model';
 import { SearchState, SearchStartupError } from './search/SearchState';
 import { SearchIndexer, SearchCapabilityError } from './search/SearchIndexer';
 import { ChangeBus } from './realtime/ChangeBus';
@@ -396,7 +397,10 @@ export class BackendService {
       workflowsPath: path.join(this.options.dataDir, 'workflows'),
       executions: this.executions,
       backendId: this.options.backendId,
-      backendName: this.options.backendName
+      backendName: this.options.backendName,
+      // CWF-018: read live, so a timeout edited through CWF-017's panel applies
+      // to the next call — same stance as the realtime cap above.
+      getFunctionTimeoutMs: (name) => (this.security ? functionTimeoutMs(this.security.config, name) : undefined)
     });
     await this.runner.initialize();
     await this.runner.loadWorkflows();

@@ -6,7 +6,7 @@
  *   PUT    /admin/permissions/collections/:name     set one collection's rules
  *   DELETE /admin/permissions/collections/:name     revert to defaults
  *   GET    /admin/permissions/functions             every function + its EFFECTIVE call rule
- *   PUT    /admin/permissions/functions/:name       set call / runAs / rateLimit
+ *   PUT    /admin/permissions/functions/:name       set call / runAs / rateLimit / timeoutMs
  *   DELETE /admin/permissions/functions/:name       back to the graph's own declaration
  *   POST   /admin/permissions/check                 dry-run a decision
  *   GET    /admin/roles          POST /admin/roles          DELETE /admin/roles/:name
@@ -24,6 +24,7 @@ import type { BackendServiceOptions } from '../config';
 import { requiresAuth } from '../config';
 import type { AdapterFacade } from '../persistence/AdapterFacade';
 import type { WorkflowRunner } from '../workflow/WorkflowRunner';
+import { DEFAULT_FUNCTION_TIMEOUT_MS } from '../workflow/WorkflowRunner';
 import type { SecurityState } from '../security/state';
 import type { RequestContext } from './HttpServer';
 import type { RateLimitPolicy } from '../ops/model';
@@ -225,6 +226,12 @@ export class AdminSecurityRoutes {
         allowNoAuth,
         runAs: (entry && entry.runAs) || null,
         rateLimit: (entry && entry.rateLimit) || null,
+        /**
+         * CWF-018. `null` = undeclared, and the panel should say what applies
+         * instead — `defaultTimeoutMs` below. A declared `0` is "no limit" and
+         * must survive as `0` rather than collapsing into "undeclared".
+         */
+        timeoutMs: entry && typeof entry.timeoutMs === 'number' ? entry.timeoutMs : null,
         graphRefusesAnonymous: anonymousAllowed && !allowNoAuth
       };
     });
@@ -233,7 +240,9 @@ export class AdminSecurityRoutes {
       functions,
       enforced: !this.security.devOpenActive,
       /** The shared budget a per-function limit tightens, for the panel's copy. */
-      classRateLimit: this.getFunctionClassPolicy()
+      classRateLimit: this.getFunctionClassPolicy(),
+      /** What an undeclared `timeoutMs` means, in the same units (CWF-018). */
+      defaultTimeoutMs: DEFAULT_FUNCTION_TIMEOUT_MS
     });
   }
 
@@ -247,20 +256,25 @@ export class AdminSecurityRoutes {
     const name = ctx.params.name;
     const body = await readJSONBody(ctx.req);
 
-    const KNOWN = ['call', 'runAs', 'rateLimit'];
+    const KNOWN = ['call', 'runAs', 'rateLimit', 'timeoutMs'];
     const unknown = Object.keys(body).filter((k) => !KNOWN.includes(k));
     if (unknown.length > 0) {
       throw new HttpError(
         400,
         `Unknown field(s) ${unknown.map((k) => `"${k}"`).join(', ')} for function "${name}". ` +
           `Expected { "call": "public" | "authenticated" | "nobody" | "role:<name>" | [those], ` +
-          `"runAs": "system", "rateLimit": { "ratePerMinute", "burst" } }.`
+          `"runAs": "system", "rateLimit": { "ratePerMinute", "burst" }, "timeoutMs": <ms, 0 = no limit> }.`
       );
     }
-    if (body.call === undefined && body.runAs === undefined && body.rateLimit === undefined) {
+    if (
+      body.call === undefined &&
+      body.runAs === undefined &&
+      body.rateLimit === undefined &&
+      body.timeoutMs === undefined
+    ) {
       throw new HttpError(
         400,
-        `Nothing to set for function "${name}". Send "call", "runAs" and/or "rateLimit"; ` +
+        `Nothing to set for function "${name}". Send "call", "runAs", "rateLimit" and/or "timeoutMs"; ` +
           `to fall back to the graph's own Allow Unauthenticated declaration use DELETE.`
       );
     }
