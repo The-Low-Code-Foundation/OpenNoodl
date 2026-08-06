@@ -90,6 +90,13 @@
   color: white;
 }
 
+/* SPR-001/F84 — the ACL column's badge. Its own tone rather than Object's,
+   because it is a system column and not one of the schema's types. */
+.TypeAcl {
+  background-color: var(--theme-color-node-category-data);
+  color: white;
+}
+
 .CheckboxCol {
   width: 40px;
   text-align: center;

@@ -10,6 +10,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { ACL_COLUMN_TYPE, formatAclForEditing, parseAclInput } from './acl';
 import css from './CellEditor.module.scss';
 
 export interface CellEditorProps {
@@ -25,11 +26,15 @@ export interface CellEditorProps {
   error?: string | null;
 }
 
+/** What an empty ACL cell offers as a starting point (SPR-001/F84). */
+const ACL_PLACEHOLDER = '{\n  "*": { "read": true },\n  "<userObjectId>": { "read": true, "write": true }\n}';
+
 /**
  * CellEditor component - type-aware inline editor
  */
 export function CellEditor({ value, type, onSave, onCancel, error }: CellEditorProps) {
   const [editValue, setEditValue] = useState<string>(() => {
+    if (type === ACL_COLUMN_TYPE) return formatAclForEditing(value);
     if (value === null || value === undefined) return '';
     if (typeof value === 'object') return JSON.stringify(value, null, 2);
     return String(value);
@@ -92,6 +97,22 @@ export function CellEditor({ value, type, onSave, onCancel, error }: CellEditorP
           }
           break;
 
+        // SPR-001/F84. Deliberately NOT folded into the Object case above:
+        // that one turns an empty field into `{}`, and for an ACL `{}` means
+        // *nobody* while absent means *public* — clearing the field would
+        // otherwise hide the row from everyone. Shape is checked here as well
+        // as JSON validity, so `{"alice": 5}` is refused with the sentence the
+        // backend would have used rather than saved and silently enforced.
+        case ACL_COLUMN_TYPE: {
+          const result = parseAclInput(editValue);
+          if (!result.ok) {
+            setJsonError(result.error);
+            return;
+          }
+          finalValue = result.value;
+          break;
+        }
+
         default:
           // String - use as-is
           finalValue = editValue;
@@ -120,7 +141,7 @@ export function CellEditor({ value, type, onSave, onCancel, error }: CellEditorP
    */
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey && type !== 'Object' && type !== 'Array') {
+      if (e.key === 'Enter' && !e.shiftKey && type !== 'Object' && type !== 'Array' && type !== ACL_COLUMN_TYPE) {
         e.preventDefault();
         handleSave();
       } else if (e.key === 'Escape') {
@@ -167,8 +188,8 @@ export function CellEditor({ value, type, onSave, onCancel, error }: CellEditorP
     );
   }
 
-  // Object/Array - render textarea
-  if (type === 'Object' || type === 'Array') {
+  // Object/Array/ACL - render textarea
+  if (type === 'Object' || type === 'Array' || type === ACL_COLUMN_TYPE) {
     return (
       <div className={css.CellEditor}>
         <textarea
@@ -184,7 +205,16 @@ export function CellEditor({ value, type, onSave, onCancel, error }: CellEditorP
           }}
           rows={5}
           spellCheck={false}
+          placeholder={type === ACL_COLUMN_TYPE ? ACL_PLACEHOLDER : undefined}
         />
+        {/* SPR-001/F84 — the vocabulary, said where it is typed. The keys are
+            not free text: `*`, a user objectId, or `role:<name>`. */}
+        {type === ACL_COLUMN_TYPE && (
+          <div className={css.Hint}>
+            Keys: <code>*</code> (everyone), a user objectId, or <code>role:name</code>. Empty clears the ACL, which
+            makes the row public; <code>{'{}'}</code> grants nobody anything.
+          </div>
+        )}
         <div className={css.JsonActions}>
           <button className={css.SaveButton} onClick={handleSave}>
             Save

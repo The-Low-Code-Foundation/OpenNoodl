@@ -20,6 +20,7 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { BACKEND_SERVICES_PANEL_ID } from '../BackendServicesPanel/backendServicesPanelId';
 
+import { ACL_COLUMN_TYPE, ACL_FIELD } from './acl';
 import css from './DataBrowser.module.scss';
 import { DataGrid } from './DataGrid';
 import { NewRecordModal } from './NewRecordModal';
@@ -133,6 +134,13 @@ export function DataBrowser({
       // wire all name the primary key `objectId`; this column header used to say
       // `id` and render blank in every row because no record carries that field.
       { name: 'objectId', type: 'String', required: true },
+      // SPR-001/F84: the ACL is a system column exactly like the three around
+      // it — SchemaManager stamps it onto every table and keeps it out of
+      // `_Schema`, so it appears in neither half of `allColumns` unless it is
+      // named here. It sits second because the question it answers ("why can't
+      // this user see this record?") is asked about a row you can already see,
+      // and a column beyond the horizontal scroll answers nothing.
+      { name: ACL_FIELD, type: ACL_COLUMN_TYPE },
       { name: 'createdAt', type: 'Date', required: true },
       { name: 'updatedAt', type: 'Date', required: true }
     ],

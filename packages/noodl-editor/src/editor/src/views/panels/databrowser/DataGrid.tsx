@@ -13,9 +13,11 @@ import React, { useCallback, useState } from 'react';
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
 
+import { ACL_COLUMN_TYPE, describeAcl, formatAclCell } from './acl';
 import { CellEditor } from './CellEditor';
 import { ColumnDef } from './DataBrowser';
 import css from './DataGrid.module.scss';
+import { stripIpcErrorPrefix } from './schemaFailure';
 
 export interface DataGridProps {
   /** Column definitions */
@@ -78,7 +80,12 @@ export function isCellEditing(editing: EditingCell | null, recordId: string | un
 /**
  * Format a cell value for display
  */
-function formatCellValue(value: unknown, type: string): string {
+export function formatCellValue(value: unknown, type: string): string {
+  // The ACL is the one column where *absent* has to be rendered, not left
+  // blank: no ACL means public and `{}` means nobody, and a blank cell would
+  // read as either (SPR-001/F84).
+  if (type === ACL_COLUMN_TYPE) return formatAclCell(value);
+
   if (value === null || value === undefined) return '';
 
   switch (type) {
@@ -118,6 +125,8 @@ function getTypeBadgeClass(type: string): string {
     case 'Pointer':
     case 'Relation':
       return css.TypePointer;
+    case ACL_COLUMN_TYPE:
+      return css.TypeAcl;
     default:
       return '';
   }
@@ -158,7 +167,13 @@ export function DataGrid({
         setEditingCell(null);
         setSavingError(null);
       } catch (err) {
-        setSavingError('Failed to save');
+        // SPR-001/F84: say what the backend said. This was a flat "Failed to
+        // save", which throws away the only useful sentence in the failure —
+        // `Invalid ACL: ACL flag alice.read must be a boolean` — and leaves an
+        // editable ACL cell with no way to learn why an edit was refused. The
+        // message arrives wrapped in Electron's IPC framing, hence the strip.
+        const detail = stripIpcErrorPrefix(err instanceof Error ? err.message : String(err));
+        setSavingError(detail || 'Failed to save');
         // Don't close editor on error
       }
     },
@@ -233,7 +248,13 @@ export function DataGrid({
                           error={savingError}
                         />
                       ) : (
-                        <div className={css.CellValue} title={String(value ?? '')}>
+                        <div
+                          className={css.CellValue}
+                          // The ACL's tooltip is the answer to F84's question,
+                          // in words — `[object Object]` was what `String()`
+                          // made of it.
+                          title={col.type === ACL_COLUMN_TYPE ? describeAcl(value) : String(value ?? '')}
+                        >
                           {formatCellValue(value, col.type)}
                         </div>
                       )}
