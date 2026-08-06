@@ -68,19 +68,28 @@ export class AdminSecurityRoutes {
   private readonly getRunner: () => WorkflowRunner | null;
   /** Read through a getter so an ops.json edit shows up without a restart. */
   private readonly getFunctionClassPolicy: () => RateLimitPolicy;
+  /**
+   * CWF-016 service-level facts: is the claim store up, and how long is an
+   * answered key replayed. Both are live reads (ops.json is editable at
+   * runtime), and `available` matters because a panel that offers the switch
+   * while sqlite is unavailable offers a promise the backend cannot keep.
+   */
+  private readonly getIdempotencyInfo: () => { available: boolean; ttlHours: number };
 
   constructor(
     security: SecurityState,
     facade: AdapterFacade,
     options: BackendServiceOptions,
     getRunner: () => WorkflowRunner | null,
-    getFunctionClassPolicy: () => RateLimitPolicy
+    getFunctionClassPolicy: () => RateLimitPolicy,
+    getIdempotencyInfo: () => { available: boolean; ttlHours: number }
   ) {
     this.security = security;
     this.facade = facade;
     this.options = options;
     this.getRunner = getRunner;
     this.getFunctionClassPolicy = getFunctionClassPolicy;
+    this.getIdempotencyInfo = getIdempotencyInfo;
   }
 
   // ==========================================================================
@@ -232,6 +241,11 @@ export class AdminSecurityRoutes {
          * must survive as `0` rather than collapsing into "undeclared".
          */
         timeoutMs: entry && typeof entry.timeoutMs === 'number' ? entry.timeoutMs : null,
+        /**
+         * CWF-016. `null` = the function does not honour `Idempotency-Key` at
+         * all, which is what every function does until someone says otherwise.
+         */
+        idempotency: (entry && entry.idempotency) || null,
         graphRefusesAnonymous: anonymousAllowed && !allowNoAuth
       };
     });
@@ -242,7 +256,13 @@ export class AdminSecurityRoutes {
       /** The shared budget a per-function limit tightens, for the panel's copy. */
       classRateLimit: this.getFunctionClassPolicy(),
       /** What an undeclared `timeoutMs` means, in the same units (CWF-018). */
-      defaultTimeoutMs: DEFAULT_FUNCTION_TIMEOUT_MS
+      defaultTimeoutMs: DEFAULT_FUNCTION_TIMEOUT_MS,
+      /**
+       * CWF-016: how long an answered key is replayed, and whether the store is
+       * up at all. A panel that offers the switch while sqlite is unavailable
+       * would be offering a promise the backend cannot keep.
+       */
+      idempotency: this.getIdempotencyInfo()
     });
   }
 
@@ -256,25 +276,28 @@ export class AdminSecurityRoutes {
     const name = ctx.params.name;
     const body = await readJSONBody(ctx.req);
 
-    const KNOWN = ['call', 'runAs', 'rateLimit', 'timeoutMs'];
+    const KNOWN = ['call', 'runAs', 'rateLimit', 'timeoutMs', 'idempotency'];
     const unknown = Object.keys(body).filter((k) => !KNOWN.includes(k));
     if (unknown.length > 0) {
       throw new HttpError(
         400,
         `Unknown field(s) ${unknown.map((k) => `"${k}"`).join(', ')} for function "${name}". ` +
           `Expected { "call": "public" | "authenticated" | "nobody" | "role:<name>" | [those], ` +
-          `"runAs": "system", "rateLimit": { "ratePerMinute", "burst" }, "timeoutMs": <ms, 0 = no limit> }.`
+          `"runAs": "system", "rateLimit": { "ratePerMinute", "burst" }, "timeoutMs": <ms, 0 = no limit>, ` +
+          `"idempotency": { "enabled", "requireKey"?, "hashBody"? } }.`
       );
     }
     if (
       body.call === undefined &&
       body.runAs === undefined &&
       body.rateLimit === undefined &&
-      body.timeoutMs === undefined
+      body.timeoutMs === undefined &&
+      body.idempotency === undefined
     ) {
       throw new HttpError(
         400,
-        `Nothing to set for function "${name}". Send "call", "runAs", "rateLimit" and/or "timeoutMs"; ` +
+        `Nothing to set for function "${name}". Send "call", "runAs", "rateLimit", "timeoutMs" and/or ` +
+          `"idempotency"; ` +
           `to fall back to the graph's own Allow Unauthenticated declaration use DELETE.`
       );
     }

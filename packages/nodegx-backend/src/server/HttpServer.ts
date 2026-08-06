@@ -23,6 +23,7 @@
  * @module nodegx-backend/server/HttpServer
  */
 
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as http from 'http';
 
@@ -30,12 +31,23 @@ import type { BackendServiceOptions } from '../config';
 import type { PersistenceHandle } from '../persistence/createAdapter';
 import type { AdapterFacade, AclOption } from '../persistence/AdapterFacade';
 import type { ExecutionHistory } from '../execution/ExecutionStore';
+import type { IdempotencyStore } from '../execution/IdempotencyStore';
 import { buildRunPayload } from '../workflow/runPayload';
 import type { WorkflowRunner } from '../workflow/WorkflowRunner';
+import { DEFAULT_FUNCTION_TIMEOUT_MS } from '../workflow/WorkflowRunner';
 import type { SecurityState } from '../security/state';
 import type { SearchState } from '../search/SearchState';
 import type { RealtimeHub, Subscription } from '../realtime/RealtimeHub';
-import { ClpOp, Principal, checkFunctionCall, functionRateLimit, ruleAllows, validateAclShape } from '../security/model';
+import {
+  ClpOp,
+  Principal,
+  checkFunctionCall,
+  functionIdempotency,
+  functionRateLimit,
+  functionTimeoutMs,
+  ruleAllows,
+  validateAclShape
+} from '../security/model';
 import type { TriggerSubsystem } from '../triggers/TriggerSubsystem';
 import type { WorkflowSubsystem } from '../workflow/WorkflowSubsystem';
 import type { BackupSubsystem } from '../backup/BackupSubsystem';
@@ -238,6 +250,8 @@ export interface HttpServerDeps {
   persistence: PersistenceHandle;
   facade: AdapterFacade;
   executions: ExecutionHistory;
+  /** CWF-016: the idempotency claim table. Disabled when sqlite is unavailable. */
+  idempotency: IdempotencyStore;
   security: SecurityState;
   /** Search config state — BAK-008 (per-collection FTS5 opt-in). */
   search: SearchState;
@@ -267,6 +281,51 @@ export interface HttpServerDeps {
   audit: AuditLog;
 }
 
+// ============================================================================
+// CWF-016 — idempotency at the function endpoint
+// ============================================================================
+
+/** Node lower-cases incoming header names; this is the lookup key. */
+const IDEMPOTENCY_HEADER = 'idempotency-key';
+/** The same header the way a human writes it, for error messages. */
+const IDEMPOTENCY_HEADER_NAME = 'Idempotency-Key';
+
+/**
+ * What this response's relationship to the key was: `stored` (this call ran the
+ * graph and its answer is now the one that replays), `replayed` (an earlier
+ * call's answer, byte for byte), `not-stored` (it ran and failed, so the key was
+ * released), or `unkeyed` (idempotency is on for this function but the caller
+ * sent no key, so nothing protected this call).
+ *
+ * A header rather than a body field: the body is the function author's, and
+ * adding a wrapper to it would break every caller that already parses it. And it
+ * is said out loud rather than inferred, because "did my retry actually get
+ * deduped?" is otherwise unanswerable from outside.
+ */
+const IDEMPOTENCY_STATUS_HEADER = 'Idempotency-Status';
+
+/** Long enough for any provider's event id; short enough not to be a payload. */
+const MAX_IDEMPOTENCY_KEY_LENGTH = 255;
+
+/** How often a losing delivery re-reads the winner's claim. */
+const IDEMPOTENCY_POLL_MS = 25;
+
+/** Grace on top of the winner's own timeout, for its completing write. */
+const IDEMPOTENCY_WAIT_SLACK_MS = 2000;
+
+/**
+ * The longest a loser will ever wait, whatever the function's timeout says.
+ * Reached only by a function declared `timeoutMs: 0` — the CWF-007 streaming
+ * opt-out — where "wait as long as the winner takes" has no bound at all.
+ */
+const IDEMPOTENCY_WAIT_CEILING_MS = 120_000;
+
+/** `WorkflowRunner.run`'s answer, named locally so the handler can be split up. */
+interface RunnerResponseLike {
+  statusCode: number;
+  body: string;
+}
+
 /** Result of a successful listen(). */
 export interface ListenInfo {
   host: string;
@@ -285,6 +344,8 @@ export class HttpServer {
   private readonly backups: BackupSubsystem;
   private readonly ops: OpsState;
   private readonly auditLog: AuditLog;
+  /** CWF-016. */
+  private readonly idempotency: IdempotencyStore;
   private server: http.Server | null = null;
   /**
    * The port actually BOUND, which is not `options.port` when that was 0.
@@ -341,6 +402,7 @@ export class HttpServer {
     this.backups = deps.backups;
     this.ops = deps.ops;
     this.auditLog = deps.audit;
+    this.idempotency = deps.idempotency;
 
     this.byob = new ByobAdminRoutes(deps.facade, deps.executions, deps.getRunner);
     this.parse = new ParseWireRoutes(deps.facade, deps.getConfigParams || (() => ({})));
@@ -386,7 +448,15 @@ export class HttpServer {
       deps.facade,
       deps.options,
       deps.getRunner,
-      () => deps.ops.config.rateLimit.policies.functions
+      () => deps.ops.config.rateLimit.policies.functions,
+      // CWF-016: both live reads. `available` is the store's real state, so the
+      // panel cannot offer a switch the backend could not honour, and the TTL
+      // comes from the same ops.json field the sweep uses — one number, one
+      // door, no second retention policy to disagree with.
+      () => ({
+        available: deps.idempotency.enabled,
+        ttlHours: deps.ops.config.executions.idempotencyTtlHours
+      })
     );
     // Its own SecretsStore over the same dataDir, the way TriggerSubsystem and
     // FileSubsystem each hold one: the store is a whole-file read-modify-write
@@ -1911,20 +1981,171 @@ export class HttpServer {
       throw new HttpError(503, 'Workflows are still starting up');
     }
 
+    const name = ctx.params.name;
     // The runner receives the request in CloudRunner's shape: raw JSON string
     // body + headers verbatim (session tokens ride along in headers).
     const body = await readJSONBody(ctx.req);
-    const response = await runner.run(
-      ctx.params.name,
-      { body: JSON.stringify(body), headers: ctx.req.headers as Record<string, unknown> },
-      // BAK-009: 'webhook' is the historical trigger type for a direct call
-      // (see RunTriggerContext); what is new is the request id, so the
-      // execution this call creates can be found from the access log.
-      { type: 'webhook', source: `POST /functions/${ctx.params.name}`, requestId: ctx.requestId }
-    );
+    const request = { body: JSON.stringify(body), headers: ctx.req.headers as Record<string, unknown> };
+    const invoke = (): Promise<RunnerResponseLike> =>
+      runner.run(
+        name,
+        request,
+        // BAK-009: 'webhook' is the historical trigger type for a direct call
+        // (see RunTriggerContext); what is new is the request id, so the
+        // execution this call creates can be found from the access log.
+        { type: 'webhook', source: `POST /functions/${name}`, requestId: ctx.requestId }
+      );
 
-    ctx.res.writeHead(response.statusCode, { 'Content-Type': 'application/json' });
-    ctx.res.end(response.body);
+    // CWF-016. Resolved HERE, beside the security-rule resolution the dispatcher
+    // has already done, because the whole point of the endpoint shape is "don't
+    // run the graph at all" — which is only expressible before `invoke()`.
+    const policy = functionIdempotency(this.security.config, name);
+    if (!policy || !this.idempotency.enabled) {
+      const response = await invoke();
+      ctx.res.writeHead(response.statusCode, { 'Content-Type': 'application/json' });
+      ctx.res.end(response.body);
+      return;
+    }
+
+    await this.runFunctionIdempotently(ctx, name, request.body, policy, invoke);
+  }
+
+  /**
+   * The claim-then-run loop (CWF-016 question 5).
+   *
+   * Three outcomes, and the loop exists because the third can become the first:
+   *
+   *  - **claimed** — we are the one delivery that runs the graph. On success the
+   *    claim is completed and every later delivery replays this body; on
+   *    ANYTHING else the claim is released, because a 500 must not be cached and
+   *    a key that can never be retried is the same defect with a longer fuse.
+   *  - **replay** — someone already answered. Send their bytes, unchanged.
+   *  - **inflight** — someone is running it right now. Poll until they finish
+   *    (→ replay) or fail (→ the row is gone, so the next pass claims it and we
+   *    become the runner). A loser never inherits a failure as a cached answer.
+   *
+   * Waiting is polled rather than signalled on purpose: the claim is durable and
+   * cross-process by design, and an in-process EventEmitter would only ever
+   * notify the half of the callers that happen to share this heap.
+   */
+  private async runFunctionIdempotently(
+    ctx: RequestContext,
+    name: string,
+    rawBody: string,
+    policy: { requireKey?: boolean; hashBody?: boolean },
+    invoke: () => Promise<RunnerResponseLike>
+  ): Promise<void> {
+    const header = ctx.req.headers[IDEMPOTENCY_HEADER];
+    const key = (typeof header === 'string' ? header : Array.isArray(header) ? header[0] : '').trim();
+
+    if (!key) {
+      if (policy.requireKey) {
+        throw new HttpError(
+          400,
+          `Function "${name}" requires an ${IDEMPOTENCY_HEADER_NAME} header. Send a value unique to this ` +
+            'delivery (the event id your provider gives you is the right one).'
+        );
+      }
+      // Enabled but unkeyed: run it, and SAY SO in a header rather than letting
+      // the caller assume protection it did not ask for.
+      const response = await invoke();
+      ctx.res.writeHead(response.statusCode, {
+        'Content-Type': 'application/json',
+        [IDEMPOTENCY_STATUS_HEADER]: 'unkeyed'
+      });
+      ctx.res.end(response.body);
+      return;
+    }
+
+    if (key.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
+      throw new HttpError(
+        400,
+        `${IDEMPOTENCY_HEADER_NAME} must be at most ${MAX_IDEMPOTENCY_KEY_LENGTH} characters.`
+      );
+    }
+
+    // `hashBody` folds the body into the IDENTITY rather than guarding it: same
+    // key + different body = a different request that runs again. Off by
+    // default — see FunctionIdempotency.hashBody for why turning it on silently
+    // defeats most provider retries.
+    const requestHash = createHash('sha256').update(rawBody).digest('hex');
+    const identity = policy.hashBody ? `${key} ${requestHash}` : key;
+
+    // The winner cannot outlive its own CWF-018 timeout, so that is the bound —
+    // plus a moment for the completing write. A function declared `0` (no limit,
+    // the streaming opt-out) meets the ceiling instead of waiting forever.
+    const declared = functionTimeoutMs(this.security.config, name);
+    const runBound = declared === undefined ? DEFAULT_FUNCTION_TIMEOUT_MS : declared;
+    const waitMs =
+      runBound <= 0
+        ? IDEMPOTENCY_WAIT_CEILING_MS
+        : Math.min(IDEMPOTENCY_WAIT_CEILING_MS, runBound + IDEMPOTENCY_WAIT_SLACK_MS);
+    const deadline = Date.now() + waitMs;
+
+    for (;;) {
+      const claim = this.idempotency.claim(name, identity, requestHash);
+
+      if (claim.outcome === 'replay') {
+        ctx.res.writeHead(claim.statusCode, {
+          'Content-Type': 'application/json',
+          [IDEMPOTENCY_STATUS_HEADER]: 'replayed'
+        });
+        ctx.res.end(claim.body);
+        return;
+      }
+
+      if (claim.outcome === 'disabled') {
+        const response = await invoke();
+        ctx.res.writeHead(response.statusCode, { 'Content-Type': 'application/json' });
+        ctx.res.end(response.body);
+        return;
+      }
+
+      if (claim.outcome === 'claimed') {
+        let response: RunnerResponseLike;
+        try {
+          response = await invoke();
+        } catch (e) {
+          // The graph blew up in a way `run()` did not turn into a response.
+          // The claim goes back: nothing was answered, so nothing may be
+          // replayed.
+          this.idempotency.release(name, identity, claim.claimId);
+          throw e;
+        }
+
+        const success = response.statusCode >= 200 && response.statusCode < 300;
+        if (success) {
+          this.idempotency.complete(name, identity, claim.claimId, response.statusCode, response.body);
+        } else {
+          // ⚠️ A 500 must not be cached. Replaying a failure for 24 hours is
+          // worse than running twice, and the caller retrying is exactly the
+          // behaviour that fixes a transient failure.
+          this.idempotency.release(name, identity, claim.claimId);
+        }
+        ctx.res.writeHead(response.statusCode, {
+          'Content-Type': 'application/json',
+          [IDEMPOTENCY_STATUS_HEADER]: success ? 'stored' : 'not-stored'
+        });
+        ctx.res.end(response.body);
+        return;
+      }
+
+      if (Date.now() >= deadline) {
+        logger.warn('function.idempotency.waitTimeout', {
+          function: name,
+          requestId: ctx.requestId,
+          waitMs,
+          heldSinceMs: Date.now() - claim.claimedAt
+        });
+        ctx.res.setHeader('Retry-After', '1');
+        throw new HttpError(
+          409,
+          `A request with this ${IDEMPOTENCY_HEADER_NAME} is still running on "${name}". Retry shortly.`
+        );
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, IDEMPOTENCY_POLL_MS));
+    }
   }
 
   // ==========================================================================

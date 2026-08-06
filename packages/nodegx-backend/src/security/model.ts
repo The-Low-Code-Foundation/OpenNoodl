@@ -99,6 +99,32 @@ export function validateFunctionRateLimit(value: unknown): string | null {
   return null;
 }
 
+/**
+ * CWF-016's per-function idempotency block. Strict like the rate-limit one, plus
+ * one extra refusal: `enabled: false` with `requireKey` or `hashBody` set is a
+ * setting that says two things at once, and a config that accepts it is a config
+ * that will one day be read as if the second thing applied.
+ */
+export function validateFunctionIdempotency(value: unknown): string | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return 'must be an object { enabled, requireKey?, hashBody? }';
+  }
+  const v = value as Record<string, unknown>;
+  for (const key of Object.keys(v)) {
+    if (key !== 'enabled' && key !== 'requireKey' && key !== 'hashBody') {
+      return `unknown key "${key}" (expected enabled, requireKey, hashBody)`;
+    }
+  }
+  if (typeof v.enabled !== 'boolean') return 'enabled is required and must be a boolean';
+  for (const field of ['requireKey', 'hashBody'] as const) {
+    if (v[field] !== undefined && typeof v[field] !== 'boolean') return `${field} must be a boolean`;
+  }
+  if (v.enabled === false && (v.requireKey === true || v.hashBody === true)) {
+    return 'enabled is false, so requireKey/hashBody would never apply — remove them or enable it';
+  }
+  return null;
+}
+
 export function validateRuleValue(value: unknown): string | null {
   if (Array.isArray(value)) {
     if (value.length === 0) return 'empty rule arrays are not allowed (use "nobody")';
@@ -175,6 +201,54 @@ export interface FunctionRules {
    * function, not a default loose enough that nothing is ever bounded.
    */
   timeoutMs?: number;
+  /**
+   * CWF-016: honour `Idempotency-Key` on this function, so the same delivery
+   * twice runs the graph once.
+   *
+   * **A per-function setting rather than a node**, and the reason is decisive:
+   * the correct behaviour is *don't run the graph at all*, and a node inside the
+   * graph has, by the time it fires, already run everything upstream of it. (A
+   * node that dedupes a SECTION of a graph is a different, additional thing —
+   * not a replacement for this.)
+   *
+   * Absent = off, which is what every function does today.
+   */
+  idempotency?: FunctionIdempotency;
+}
+
+/**
+ * CWF-016's per-function shape. Three fields because there are three separate
+ * questions, and the validator refuses the combinations that mean nothing.
+ */
+export interface FunctionIdempotency {
+  /** Honour the header at all. */
+  enabled: boolean;
+  /**
+   * Refuse a call that arrives WITHOUT a key (400), instead of running it
+   * unprotected.
+   *
+   * Off by default because a function is usually reached by more than its
+   * webhook — the app calls it too, and those calls have no key and no reason to
+   * have one. On is for the function whose only caller is a provider, where an
+   * unkeyed delivery is a misconfiguration you want to hear about rather than a
+   * duplicate you find out about later.
+   */
+  requireKey?: boolean;
+  /**
+   * Fold a hash of the request body into the identity, so the same key with a
+   * different body is a different request.
+   *
+   * **Off by default, deliberately.** A body hash makes a provider retry whose
+   * payload carries a changed timestamp look like a brand-new request — which is
+   * the failure people actually hit, and it defeats the whole feature silently.
+   * Turn it on when the caller reuses keys carelessly and you would rather run
+   * twice than answer the wrong body.
+   *
+   * ⚠️ The hash is over the re-serialised JSON, so two bodies that differ only
+   * in key ORDER hash differently. Every implementation of this has that limit;
+   * it is stated rather than hidden.
+   */
+  hashBody?: boolean;
 }
 
 export interface FileRules {
@@ -323,7 +397,13 @@ export function validateSecurityConfig(raw: unknown): string[] {
       }
       const e = entry as Record<string, unknown>;
       for (const key of Object.keys(e)) {
-        if (key !== 'call' && key !== 'runAs' && key !== 'rateLimit' && key !== 'timeoutMs') {
+        if (
+          key !== 'call' &&
+          key !== 'runAs' &&
+          key !== 'rateLimit' &&
+          key !== 'timeoutMs' &&
+          key !== 'idempotency'
+        ) {
           errors.push(`unknown key "${key}" in functions.${name}`);
         }
       }
@@ -340,6 +420,10 @@ export function validateSecurityConfig(raw: unknown): string[] {
         (typeof e.timeoutMs !== 'number' || !Number.isFinite(e.timeoutMs) || e.timeoutMs < 0)
       ) {
         errors.push(`functions.${name}.timeoutMs must be a number >= 0 (0 = no limit)`);
+      }
+      if (e.idempotency !== undefined) {
+        const err = validateFunctionIdempotency(e.idempotency);
+        if (err) errors.push(`functions.${name}.idempotency: ${err}`);
       }
       if (e.runAs !== undefined && e.runAs !== 'system') {
         errors.push(
@@ -578,6 +662,23 @@ export function functionRateLimit(config: SecurityConfig, functionName: string):
 export function functionTimeoutMs(config: SecurityConfig, functionName: string): number | undefined {
   const entry = config.functions[functionName];
   return entry && typeof entry.timeoutMs === 'number' ? entry.timeoutMs : undefined;
+}
+
+/**
+ * This function's idempotency setting, or undefined when it has none (CWF-016).
+ *
+ * A block with `enabled: false` normalises to undefined for the same reason
+ * `functionRateLimit` normalises a zeroed policy: the dispatcher should have one
+ * question to ask ("is there a policy?") rather than two.
+ */
+export function functionIdempotency(
+  config: SecurityConfig,
+  functionName: string
+): FunctionIdempotency | undefined {
+  const entry = config.functions[functionName];
+  const policy = entry && entry.idempotency;
+  if (!policy || !policy.enabled) return undefined;
+  return policy;
 }
 
 // ============================================================================

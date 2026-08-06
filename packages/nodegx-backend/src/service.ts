@@ -433,6 +433,7 @@ export class BackendService {
       persistence: this.persistence,
       facade: this.facade,
       executions: this.executions,
+      idempotency: this.idempotency,
       security: this.security,
       search: this.search,
       getRunner: () => this.runner,
