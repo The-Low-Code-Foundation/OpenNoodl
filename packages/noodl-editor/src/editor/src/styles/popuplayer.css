@@ -524,11 +524,21 @@
   background-color: var(--theme-color-border-strong);
 }
 
+/* SPR-003 §4 (F94): a zero-size positioning host, nothing more.
+
+   It used to be `position: absolute; bottom: 2px` with no `left` or `right`.
+   Both auto means the used value is the static position, and as the first child
+   of a full-viewport containing block that is 0 — so the port explainer drew in
+   the bottom-left corner of the window whatever port was hovered. `DocsPopup`
+   now positions itself against the hovered row with `position: fixed`, so this
+   host must contribute no box of its own and clip nothing. */
 .popup-small-docs {
-  position: absolute;
-  background-color: var(--theme-color-bg-2);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
   z-index: 2;
-  bottom: 2px;
 }
 
 /* Confim modal */

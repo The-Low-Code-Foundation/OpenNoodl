@@ -16,6 +16,13 @@ export function PortItem(props: TSFixme) {
   const ref = useRef(null);
   const [showDocs, setShowDocs] = useState(false);
   const [docs, setDocs] = useState<string | undefined>(undefined);
+  /*
+   * SPR-003 §4 (F94): the explainer used to have no anchor at all and landed in
+   * the bottom-left corner of the window. It is read here rather than inside
+   * `DocsPopup` because by the time the catalog lookup returns this row is the
+   * only thing that still knows which element was hovered.
+   */
+  const [docsAnchor, setDocsAnchor] = useState<DOMRect | undefined>(undefined);
 
   let tooltipTimeout;
   const onMouseOver = () => {
@@ -47,6 +54,10 @@ export function PortItem(props: TSFixme) {
       if (d) {
         // There is documentation for this port
         setDocs(d);
+        // Measured at show time, not at hover time: the list scrolls itself
+        // (`scrollIntoView` on selection) and the popup follows the node, so a
+        // rect taken earlier can already be stale by the time the docs arrive.
+        setDocsAnchor(ref.current ? ref.current.getBoundingClientRect() : undefined);
         setShowDocs(true);
       }
     });
@@ -57,6 +68,7 @@ export function PortItem(props: TSFixme) {
     PopupLayer.instance.hideTooltip();
     clearTimeout(tooltipTimeout);
     setDocs(undefined);
+    setDocsAnchor(undefined);
     setShowDocs(false);
   };
 
@@ -91,7 +103,7 @@ export function PortItem(props: TSFixme) {
         ) : (
           <span>{p.displayName}</span>
         )}
-        {showDocs ? <DocsPopup name={p.displayName} type={p.type} body={docs} /> : null}
+        {showDocs ? <DocsPopup name={p.displayName} type={p.type} body={docs} anchor={docsAnchor} /> : null}
       </div>
     </div>
   );

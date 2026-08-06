@@ -34,6 +34,11 @@
     // the runner can grade it against the real runtime port declarations
     // (which are themselves type-only-import modules) without Electron.
     "src/editor/src/models/nodelibrary/portConnectivity.ts",
+    // SPR-003 §4: `docsPopupPlacement.ts` is the same shape once more — the port
+    // explainer's flip-and-clamp arithmetic, lifted out of the React component
+    // so the edge cases are graded here instead of only by hovering the right
+    // port at the right window width.
+    "src/editor/src/views/ConnectionPopup/docsPopupPlacement.ts",
     "src/editor/src/models/nodelibrary/cloud-node-library.json",
     "src/editor/src/utils/import-engine/legacy",
     "src/editor/src/validation",

@@ -148,9 +148,20 @@
   margin-top: 2px;
 }
 
+/* SPR-003 §4 (F94): positioned by `DocsPopup` against the hovered port row.
+   ⚠️ `width` is duplicated as `WIDTH` in `DocsPopup.tsx` — it decides which side
+   of the anchor the box goes on, before the box exists to be measured. Change
+   one and change the other.
+   The border and shadow are new: at the bottom-left corner of the window it did
+   not have to read as a floating layer, and beside a port row it does. */
 .docsPopup {
+  position: fixed;
   width: 300px;
+  overflow-y: auto;
   background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card-hover);
   padding: 10px;
   color: var(--theme-color-fg-highlight);
 }
