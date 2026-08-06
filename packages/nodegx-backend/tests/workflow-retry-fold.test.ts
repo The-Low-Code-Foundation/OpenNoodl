@@ -148,6 +148,34 @@ describe('CWF-005 — reading a saved workflow does not rewrite it', () => {
     expect(JSON.parse(fs.readFileSync(file(), 'utf-8')).steps[0].kind).toBe('call-function');
   });
 
+  it('answers the dry run with the definition it WOULD store, not the submission', () => {
+    // The editor draws a proposal on a review canvas before anything is saved,
+    // and a proposal comes off disk from noodl-mcp — it never passes through the
+    // read path that migrates. Drawing the submission meant drawing a card for a
+    // kind this backend no longer has, and reporting a type change for a
+    // proposal that changes nothing. The migration rule is this backend's, so
+    // this is where the question is answered.
+    const registry = new WorkflowRegistry(dataDir);
+    const preview = registry.preview({
+      id: 'wf',
+      entry: 'r',
+      steps: [{ id: 'r', name: 'Charge card', kind: 'retry' as 'call-function', ref: 'charge' }]
+    });
+    expect(preview.errors).toEqual([]);
+    expect(preview.definition!.steps[0].kind).toBe('call-function');
+    // Materialised, so a reviewer sees the retry that will actually happen.
+    expect(preview.definition!.steps[0].params).toEqual({ maxAttempts: 3 });
+    // And nothing was written by asking.
+    expect(fs.readdirSync(path.join(dataDir, 'workflow-defs'))).toEqual([]);
+  });
+
+  it('offers NO definition when it would refuse one, so nothing draws an unacceptable candidate', () => {
+    const registry = new WorkflowRegistry(dataDir);
+    const preview = registry.preview({ id: 'wf', entry: 'nope', steps: [{ id: 'r', kind: 'retry' as 'call-function' }] });
+    expect(preview.errors.length).toBeGreaterThan(0);
+    expect(preview.definition).toBeNull();
+  });
+
   it('accepts a `retry` step over the write path rather than rejecting it', () => {
     // An agent that learned the old vocabulary keeps writing it, and a deployed
     // backend holds definitions nobody is about to re-save. The reader accepts

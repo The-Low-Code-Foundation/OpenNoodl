@@ -129,4 +129,66 @@ describe('WFA-007 — AIX-003’s review component takes a workflow', () => {
     expect(workflow.steps[1].kind).toBe('call-function');
     expect(workflow.steps[1].onError).toEqual(['logfail']);
   });
+
+  /**
+   * CWF-005 — a proposal written against the OLD step vocabulary.
+   *
+   * A proposal comes off DISK, written by `noodl-mcp`. It never passes through
+   * the backend read path that migrates, so an agent that still writes
+   * `kind: "retry"` used to produce a review that drew a `workflow.retry` card
+   * the node library no longer contains, and reported a `node-type-changed` for
+   * a proposal the backend would migrate straight back — a semantic change
+   * announced for a change that is not being made.
+   *
+   * `openWorkflowProposal` now diffs what the backend says it WOULD STORE
+   * (`validateWorkflow(...).definition`), which is the same dry run it already
+   * made. These specs pin the two halves of that: what the old form does, and
+   * that the stored form is a no-op against a base that already migrated.
+   */
+  describe('a proposal in the pre-fold vocabulary', () => {
+    /** What the backend answers the dry run with — see its own `preview` spec. */
+    const WOULD_STORE: WorkflowDefinition = {
+      ...BASE,
+      steps: [
+        { id: 'receive', kind: 'call-function', ref: 'saveOrder', next: ['charge'], ui: { x: 80, y: 80 } },
+        { id: 'charge', kind: 'call-function', ref: 'chargeCard', params: { maxAttempts: 3 }, ui: { x: 340, y: 80 } }
+      ]
+    };
+
+    /** The base, as the backend already holds it: migrated on read. */
+    const MIGRATED_BASE: WorkflowDefinition = { ...WOULD_STORE };
+
+    it('reports NOTHING for a proposal that only restates what is stored', () => {
+      // The whole point. Diffing the submission instead reported a type change
+      // from call-function to retry.
+      expect(buildWorkflowChangeSet(MIGRATED_BASE, WOULD_STORE).changes.length).toBe(0);
+    });
+
+    it('draws the folded card, not a kind the node library no longer has', () => {
+      // Built into a real ComponentModel, because the claim is about what the
+      // review canvas RENDERS. `typename` is the name as authored; `type` on a
+      // built node is the resolved library entry, which for an unregistered kind
+      // is `UnknownNodeType` — i.e. exactly the red card this closes.
+      const model = ComponentModel.fromJSON(
+        buildReviewComponent(buildWorkflowChangeSet(MIGRATED_BASE, WOULD_STORE)) as TSFixme
+      );
+      const charge = model.graph.roots.find((n: TSFixme) => n.id === 'charge');
+      expect(charge.typename).toBe('workflow.call-function');
+      // And the policy the old kind carried is on the step it became, so the
+      // review shows a retry that will actually happen.
+      expect(charge.parameters.maxAttempts).toBe(3);
+    });
+
+    it('shows what the submitted form WOULD have done, so the fix is not mistaken for luck', () => {
+      const submitted: WorkflowInput = {
+        ...BASE,
+        steps: [
+          { id: 'receive', kind: 'call-function', ref: 'saveOrder', next: ['charge'], ui: { x: 80, y: 80 } },
+          { id: 'charge', kind: 'retry' as 'call-function', ref: 'chargeCard', params: { maxAttempts: 3 }, ui: { x: 340, y: 80 } }
+        ]
+      };
+      const changes = buildWorkflowChangeSet(MIGRATED_BASE, submitted).changes;
+      expect(changes.some((c: TSFixme) => c.id === 'node-type-changed:charge')).toBe(true);
+    });
+  });
 });

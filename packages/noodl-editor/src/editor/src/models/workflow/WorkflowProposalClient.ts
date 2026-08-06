@@ -17,7 +17,7 @@
 
 import { ipcInvoke } from '@noodl-utils/ipc';
 
-import type { WorkflowInput } from './types';
+import type { WorkflowDefinition, WorkflowInput } from './types';
 
 /** One staged proposal, as written by `noodl-mcp`. */
 export interface WorkflowProposal {
@@ -73,6 +73,20 @@ export async function discardWorkflowProposal(backendId: string, proposalId: str
 export interface WorkflowValidation {
   valid: boolean;
   errors: string[];
+  /**
+   * CWF-005: the definition the backend would STORE, when it would accept one.
+   *
+   * Not always what was submitted. A definition written against an older step
+   * vocabulary is migrated on the way in — `retry` became a `call-function`
+   * carrying a retry policy — so a surface that DRAWS a candidate before it is
+   * saved has to draw this.
+   *
+   * Absent from a backend older than the field. That degrades correctly rather
+   * than by luck: such a backend still serves the old kinds in its catalog, so
+   * the submitted form is exactly what it would store and exactly what its node
+   * library can draw.
+   */
+  definition?: WorkflowDefinition | null;
 }
 
 /**
@@ -87,5 +101,5 @@ export async function validateWorkflow(backendId: string, workflow: WorkflowInpu
   if (!result || typeof result.valid !== 'boolean') {
     throw new Error('The backend answered the validation check with something that is not a verdict.');
   }
-  return { valid: result.valid, errors: result.errors || [] };
+  return { valid: result.valid, errors: result.errors || [], definition: result.definition ?? null };
 }

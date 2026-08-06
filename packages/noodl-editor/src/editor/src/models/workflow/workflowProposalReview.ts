@@ -92,7 +92,25 @@ export async function openWorkflowProposal(
     base = await fetchWorkflow(backendId, proposal.workflowId).catch(() => null);
   }
 
-  const changeSet = buildWorkflowChangeSet(base, proposal.workflow);
+  /**
+   * CWF-005: review what the backend would STORE, not what the agent submitted.
+   *
+   * A proposal comes off DISK, written by `noodl-mcp` — it never passes through
+   * the read path that migrates an older step vocabulary. So an agent that still
+   * writes `kind: "retry"` produced a review that drew a `workflow.retry` card
+   * the node library no longer contains, and diffed it against the stored
+   * definition as a `node-type-changed` from `call-function` — a semantic change
+   * reported for a proposal that changes nothing, which the backend would then
+   * migrate straight back on save.
+   *
+   * The dry run above already asked the only component that knows the migration
+   * rule, so this costs no extra request. The fallback is for a backend older
+   * than the field, which still serves the old kinds and so would store the
+   * submission unchanged anyway.
+   */
+  const target = verdict.definition || proposal.workflow;
+
+  const changeSet = buildWorkflowChangeSet(base, target);
 
   // (3) Render.
   AppRegistry.instance.openDocument(ChangeReviewDocumentProvider.ID, {

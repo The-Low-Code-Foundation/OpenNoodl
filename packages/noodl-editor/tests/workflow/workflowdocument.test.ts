@@ -43,6 +43,23 @@ const CATALOG: StepKindCatalog = {
   valueLanguage: {},
   kinds: [
     {
+      // CWF-005: Call Function carries the retry policy that `retry` used to be
+      // a kind for, which is why the charge step below is one.
+      kind: 'call-function',
+      displayName: 'Call Function',
+      category: 'Workflow',
+      source: 'WF-001',
+      summary: '',
+      whenToUse: '',
+      invokesFunction: true,
+      params: [
+        { name: 'ref', type: 'string', required: true, description: '' },
+        { name: 'maxAttempts', type: 'number', group: 'Retry policy', description: '' }
+      ],
+      routes: [],
+      output: ''
+    },
+    {
       kind: 'wait',
       displayName: 'Wait',
       category: 'Workflow Timing',
@@ -175,7 +192,7 @@ describe('WFA-004 workflow document', () => {
       expect(charge.label).toBe('Charge card');
       // `typeLabelOverride` is what the canvas painter already reads for the
       // card's sub-label — no painter change to show the function invoked.
-      expect(charge.metadata.typeLabelOverride).toBe('Retry · chargeCard');
+      expect(charge.metadata.typeLabelOverride).toBe('Call Function · chargeCard');
     });
 
     it('turns next, routes and onError into connections on distinct ports', () => {

@@ -142,13 +142,43 @@ export class WorkflowRegistry {
    * to report every reason rather than to stop at the first.
    */
   validate(input: WorkflowInput): string[] {
+    return this.preview(input).errors;
+  }
+
+  /**
+   * The dry run, plus **the definition this backend would store** (CWF-005).
+   *
+   * `validate` alone answers "would you accept this", which was enough while the
+   * stored form was always the submitted form. It is not any more: a definition
+   * written against an older step vocabulary is MIGRATED on the way in, so what
+   * the caller sent and what would be stored can differ.
+   *
+   * That matters to exactly one caller and it matters a lot. The editor draws a
+   * proposal on a review canvas BEFORE anything is saved, and a proposal comes
+   * off disk from `noodl-mcp` — it never passes through the read path that
+   * migrates. Drawing the submitted form meant reviewing a card for a step kind
+   * this backend no longer has, and diffing it against the stored definition
+   * reported a `node-type-changed` for a proposal that changes nothing.
+   *
+   * Answered HERE rather than converted in the editor because the migration rule
+   * is this backend's, and only this backend knows it. An editor-side copy would
+   * be a bundled copy of a served contract — the drift `migratedKinds`, the step
+   * catalog and the condition operator list all exist to prevent — and a
+   * PARTIAL copy would be worse than none: migrating the kind without
+   * materialising `maxAttempts` produces a step the backend then stores with no
+   * retry policy at all, silently.
+   */
+  preview(input: WorkflowInput): { errors: string[]; definition: WorkflowDefinition | null } {
     let def: WorkflowDefinition;
     try {
       def = this.normalize(input);
     } catch (e) {
-      return [e instanceof Error ? e.message : String(e)];
+      return { errors: [e instanceof Error ? e.message : String(e)], definition: null };
     }
-    return validateWorkflowDefinition(def);
+    const errors = validateWorkflowDefinition(def);
+    // A definition that would be REFUSED is not one this backend would store, so
+    // it is not offered as one. The caller's job then is to report the errors.
+    return { errors, definition: errors.length ? null : def };
   }
 
   /**

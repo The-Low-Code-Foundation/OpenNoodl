@@ -50,6 +50,20 @@ export interface WorkflowDeletedResponse {
 export interface WorkflowValidateResponse {
   valid: boolean;
   errors: string[];
+  /**
+   * CWF-005: **the definition this backend would store**, when it would accept
+   * one. Null when it would not.
+   *
+   * It can differ from what the caller sent, because a definition written
+   * against an older step vocabulary is migrated on the way in. A caller that
+   * DRAWS a candidate before it is saved — the editor's proposal review — has to
+   * draw this, not the submission, or it reviews a step kind this backend no
+   * longer has and reports a change the proposal does not make.
+   *
+   * Additive: a caller that only reads `valid` / `errors` is unaffected, and an
+   * older backend simply omits the field.
+   */
+  definition: WorkflowDefinition | null;
 }
 
 /** `POST /admin/workflow-defs/:id/run`. */
@@ -106,8 +120,12 @@ export class AdminWorkflowRoutes {
    */
   async validate(ctx: RequestContext): Promise<void> {
     const body = await readJSONBody(ctx.req);
-    const errors = this.subsystem().registry.validate(body as unknown as WorkflowInput);
-    sendJSON(ctx.res, 200, { valid: errors.length === 0, errors } satisfies WorkflowValidateResponse);
+    const { errors, definition } = this.subsystem().registry.preview(body as unknown as WorkflowInput);
+    sendJSON(ctx.res, 200, {
+      valid: errors.length === 0,
+      errors,
+      definition
+    } satisfies WorkflowValidateResponse);
   }
 
   async create(ctx: RequestContext): Promise<void> {
