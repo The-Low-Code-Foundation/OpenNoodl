@@ -84,20 +84,43 @@ that session is live before starting anything that overlaps.
   session** — do not commit a lockfile change on top of theirs. Wait until it is clean, or agree
   the handoff with that session first.
 - **NDA-017's per-input "Run on value change"** is the shipped design and stays.
+- **NDA-017 migration → yes, migrate on load.** Decided 2026-08-06: write `runOnChange-*: false` for
+  the value inputs of any node that has `Run` connected, preserving what the author actually built.
+  **Unowned, and no task is written.** Constraints at the foot of
+  [NDA-017](phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md) — in particular that a
+  declared `default` never runs its setter (so `false` must be written *explicitly*) and that a
+  saved project applies a parameter before the port exists, which jest cannot reproduce.
+- **AAQ-011 F10 → yes, start the project's backend on open and stop it on close.** Decided
+  2026-08-06. ⚠️ **The constraint, verbatim, is a hard requirement:** *"for the love of Mike please
+  make sure that all 'stop' cases are covered, like the editor crashes, the user's computer goes on
+  fire, etc so that there's no chance we leave orphaned backends running that fuck up other projects
+  or fry the user's CPU."* **A close handler is not the design** — a crash or a power cut never runs
+  one. The design owes **orphan reaping**: a durable pid/port/project record at spawn, swept on the
+  next launch. Unowned.
+- **AAQ-011 F13 → yes, `noodl-mcp` may provision backends.** Decided 2026-08-06, on the ground that
+  an external agent must be able to build a full-stack app end to end. What that opens is the design
+  work — lifecycle, ports and secrets ownership — and **it inherits F10's no-orphans constraint**,
+  in the harder form: an MCP sidecar has no window to close and no quit event. Unowned.
+- **`set_design_tokens` → declared in AAQ-005, implemented in AAQ-009.** Decided 2026-08-06. The
+  declaration is a vocabulary question (the one table in `validation/authoringVocabulary.ts`, so the
+  two clients cannot diverge on it); the behaviour is a styling question, on the `applyPreset` seam.
 - **TALK-001…007's decisions** at the foot of each doc are settled.
 
 ## Decisions still owed by Richard
 
 Ask these early — several tasks are gated on them.
 
+**Four of the six were answered on 2026-08-06** and have moved to the list above. They are numbered
+as they were, so a handover that cites "question 3" still resolves.
+
 | # | Question | Why it blocks |
 |---|---|---|
-| 1 | **Do we migrate projects authored before NDA-017?** Wiring `Run` used to make every value input passive; now each input auto-runs by default and nothing migrated existing graphs. Suggested migration: on load, write `runOnChange-*: false` for inputs on any node with `Run` connected, preserving what the author actually built. | It put a **double email send** one hop away in the prefabs (FH-023). Repo-wide, and silent. |
-| 2 | **AAQ-011 F10** — should opening a project start its backend? A wizard-built app is dead the second day because nothing spawns it. "A product decision as much as a defect." | Gates the full-stack story. |
-| 3 | **AAQ-011 F13** — may `noodl-mcp` spawn backend processes (ports, secrets, lifecycle, who stops them)? | Without it an external agent cannot build a full-stack app end to end. |
+| ~~1~~ | ~~**Do we migrate projects authored before NDA-017?**~~ ✅ **ANSWERED 2026-08-06 — yes, on load.** See above. | It put a **double email send** one hop away in the prefabs (FH-023). Repo-wide, and silent. |
+| ~~2~~ | ~~**AAQ-011 F10** — should opening a project start its backend?~~ ✅ **ANSWERED 2026-08-06 — yes, with orphan reaping as a hard requirement.** See above. | Gates the full-stack story. |
+| ~~3~~ | ~~**AAQ-011 F13** — may `noodl-mcp` spawn backend processes?~~ ✅ **ANSWERED 2026-08-06 — yes.** Ports, secrets and lifecycle are now design work, not a permission question. See above. | Without it an external agent cannot build a full-stack app end to end. |
 | 4 | **AAQ-011 F12** — the `noodl-mcp` write gate is component-scoped, so `duplicate-node-id` fires only *after* the write. Filed rather than patched because the fix is a design change. | AAQ-005. |
 | 5 | **AAQ-011 F3** — the `record_scope` "now answer in prose" second turn is visibly redundant. A design question, to decide inside AAQ-004's fix review. | AAQ-004 mechanism B. |
-| 6 | **AAQ-005** — does `set_design_tokens` land in AAQ-005 or AAQ-009? | Both. |
+| ~~6~~ | ~~**AAQ-005** — does `set_design_tokens` land in AAQ-005 or AAQ-009?~~ ✅ **ANSWERED 2026-08-06 — both: declared in AAQ-005, implemented in AAQ-009.** See above. | Both. |
 
 ---
 

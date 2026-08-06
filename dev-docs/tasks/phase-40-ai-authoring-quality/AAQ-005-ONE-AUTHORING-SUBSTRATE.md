@@ -294,11 +294,38 @@ Write — all staged into one changeset, nothing touches the project until apply
   (the AIX-002 compiler-loop property is the crown jewel; keep it per component).
 - `delete_component` — the planner currently can't even plan deletion; decide scope with Richard.
 - `set_project_setting` — allowlisted keys (`bodyScroll` first — AAQ-003).
-- `set_design_tokens` — bulk token writes through the `applyPreset` seam (AAQ-009).
+- `set_design_tokens` — bulk token writes through the `applyPreset` seam. ✅ **DECIDED 2026-08-06
+  (Richard): declared here, implemented in [AAQ-009](AAQ-009-A-BESPOKE-VISUAL-IDENTITY.md).** See
+  *Decisions taken* below.
 - `register_pages` — router registration if AAQ-001 lands it as a distinct verb rather than an
   `update_component` on App (decide there, honour it here).
 
 Preview/verify (AAQ-007 consumes these): `render_preview`, `get_render_report`.
+
+### Decisions taken
+
+- **`set_design_tokens` is DECLARED here and IMPLEMENTED in AAQ-009** — Richard, 2026-08-06. The
+  answer to *"AAQ-005 or AAQ-009?"* is **both**, and the split is the one this task exists to
+  enforce: the **declaration** is a vocabulary question and the **behaviour** is a styling question.
+
+  Concretely: AAQ-005 adds the tool to
+  `packages/noodl-editor/src/editor/src/validation/authoringVocabulary.ts` — the one table rendered
+  into **both** schema languages (the editor's zod and `noodl-mcp`'s JSON Schema) — so the two
+  clients cannot diverge on it. AAQ-009 builds what it does, on the `applyPreset` seam
+  (`StyleTokensModel.ts:263-268, 398-405`).
+
+  ⚠️ **Why the order matters, and it is F15's lesson costing nothing this time.** The two
+  `submit_component` / `create_component` schemas were hand-written twins and **`plug` was declared
+  on one door only** — a declared instance port without `plug` is *inert*, so a component authored
+  through the wrong door came out with no inputs, silently. `set_design_tokens` has exactly the same
+  shape of exposure: a token field one client accepts and the other drops produces a project styled
+  through one door and unstyled through the other, with no error anywhere. Declaring it in the table
+  first means the parity spec (`tests-unit/aaq-005`, `noodl-mcp/tests/vocabularyParity.test.ts`)
+  covers it from the day it exists rather than after the divergence is found.
+
+  ⚠️ **Do not derive the token schema from the table by widening it to `any`.** Slice 3's recorded
+  trap: deriving zod from the table turns the write path into `any` unless each field is declared
+  with its type. A token set is the largest structured payload either door will carry.
 
 ### Semantics that must hold
 

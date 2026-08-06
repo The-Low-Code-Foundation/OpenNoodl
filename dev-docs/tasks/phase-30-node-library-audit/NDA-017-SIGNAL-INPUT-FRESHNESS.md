@@ -34,6 +34,12 @@
 > checkboxes with `setInputValue` on a graph that was already built, and a *saved project*
 > applies the parameter first. That single ordering difference was the whole gap.
 >
+> ✅ **DECIDED, 2026-08-06: pre-§2 projects are MIGRATED ON LOAD** — `runOnChange-*: false` for the
+> value inputs of any node with `Run` connected, preserving what the author actually built. §2
+> reversed the default for every existing graph and migrated none of them; FH-023 measured a double
+> email send one hop away in the shipped prefabs. **Unowned — the decision is taken, the task is not
+> written.** See [the decision section](#-decided-by-richard-2026-08-06--projects-authored-before-2-are-migrated-on-load).
+>
 > 🔴 **SUPERSEDED, 2026-08-02: criterion 6's rule is now `defaultEnabled: false`.** Phase 35's
 > ERG-001 outcome contract made `done`/`completed` universal on every action, and that is the
 > exact signal the rule reads to mean *asynchronous*. The proxy no longer distinguishes anything.
@@ -514,6 +520,57 @@ broken. The guard has been rewritten to read the **real** catalog: four cases no
 misclassification, one pins `defaultEnabled === false`, one pins that narrowing cannot rescue it,
 and one reconstructs `var-click-counter` and asserts the rule fires on it. **When a real marker
 lands, those tests fail loudly** — which is the signal to flip the rule back on.
+
+## ✅ DECIDED by Richard, 2026-08-06 — **projects authored before §2 are migrated on load**
+
+The question §2 never asked. §2 changed the default: wiring `Run` used to make **every** value
+input passive, and now every input auto-runs unless it is un-ticked. **Nothing migrated existing
+graphs**, so §2 silently reversed the contract every pre-existing project was authored against —
+repo-wide, and with no diagnostic.
+
+**Richard's decision: migrate on load.** On project load, write `runOnChange-*: false` for the
+value inputs of any node that has `Run` connected.
+
+The reasoning is the same one that produced the checkbox in the first place: the author of a graph
+with `Run` wired **built against passive inputs and could see that they were passive**. Writing
+`false` for exactly those inputs preserves what the author actually built, rather than what §2's
+default would now do to it. A graph with no `Run` connected is untouched, because its behaviour did
+not change.
+
+**What this decision does not yet have is an owner or a task.** It is recorded here, in
+[phase 42's filed-not-fixed list](../phase-42-first-hour/README.md) and in
+[NEXT-SESSION.md](../NEXT-SESSION.md) so it stops being asked, not because anyone has scheduled it.
+
+### Why it matters more than a default change usually would
+
+FH-023 measured the consequence and it is not cosmetic: a **double email send** was one hop away in
+the shipped prefabs, because the key now arrives mid-request and an input that used to be passive
+re-triggers the run. See
+[FH-023](../phase-42-first-hour/FH-023-THE-PREFABS-LOST-THEIR-KEYS.md), which is what surfaced the
+question.
+
+### What the migration owes, whoever takes it
+
+Written as constraints rather than criteria, because the task does not exist yet and inventing
+criteria for it here would be the same mistake in a different register.
+
+- ⚠️ **A declared `default` never runs its setter (A-D1)**, and §2 relies on *absent reads as
+  ticked*. So the migration cannot express "passive" by omission — it has to **write `false`
+  explicitly**, which is the whole shape of the change.
+- ⚠️ **A saved project applies a parameter before the port it governs exists.** That is §3's live-QA
+  lesson and it broke the Expression node outright once already: a `runOnChange-a` parameter reached
+  `registerInputIfNeeded`, landed in the expression *scope*, and `_compileFunction` built a
+  `Function` with a parameter of that name and threw. A migration writes exactly these parameters
+  into exactly that ordering, at scale. **jest cannot reproduce it** — a test sets parameters with
+  `setInputValue` on a graph that is already built, so the port always exists first.
+- The governed set is not "every input": §2 covers **fifteen node families**, and only five of them
+  suppress a value *setter* — the rest suppress a *subscription*, which has no port to hang a
+  checkbox on. The migration must read the same `runOnValueChange` declarations
+  (`packages/noodl-runtime/src/run-on-value-change.ts`) rather than infer the set.
+- **One site keeps the old guard deliberately** — the *definition* port (`expression`,
+  `functionScript`). Do not migrate it.
+- Whether this runs once and stamps the project, or on every load, is an open question. Once-and-
+  stamp needs a marker the project format does not have today.
 
 ## Out of scope
 

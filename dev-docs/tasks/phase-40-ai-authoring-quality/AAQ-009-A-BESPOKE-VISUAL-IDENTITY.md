@@ -53,6 +53,27 @@ default set. Mechanical floor: pairwise token-set distance above a threshold on 
 families, radius character. Richard's eye is the real bar; the mechanical check just prevents silent
 regression to blue.
 
+## Decisions taken
+
+- **`set_design_tokens` is declared in [AAQ-005](AAQ-005-ONE-AUTHORING-SUBSTRATE.md) and
+  implemented here** — Richard, 2026-08-06. The question was *"does it land in AAQ-005 or AAQ-009?"*
+  and the answer is **both**, split along the line AAQ-005 exists to draw: **the declaration is a
+  vocabulary question, the behaviour is a styling question.**
+
+  AAQ-005 adds the tool to `packages/noodl-editor/src/editor/src/validation/authoringVocabulary.ts`
+  — the one table rendered into both schema languages — so the editor's agent and an external agent
+  driving `noodl-mcp` cannot diverge on what a token payload may contain. This task builds slice 2's
+  design step behind it, on the `applyPreset` seam.
+
+  What that means for sequencing: **slice 2 is blocked on AAQ-005 declaring the tool**, and nothing
+  else here is. Slices 1, 3 and 4 (the identity conversation, the contrast lint, the distinctness
+  test) do not touch the vocabulary.
+
+  ⚠️ **The contrast lint of slice 3 is this task's, not AAQ-005's.** A shared vocabulary declares
+  the *shape* of a token payload; it cannot know that a foreground and a background token are a
+  pair. That knowledge is here, and the muted-button lesson (143 call sites at 1.00:1) is what it
+  costs to not have it.
+
 ## Acceptance criteria
 
 1. Cold puppy replay: the project's Style Tokens panel shows a bespoke set; the rendered page shows

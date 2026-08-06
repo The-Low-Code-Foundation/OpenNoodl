@@ -66,6 +66,10 @@ building on one.
   unsafe by construction. The server-side `/config` filter lands regardless.
 - **ERG-005 §2 → add explicit type selection on Component I/O, inference stays the default.**
   Blocked on sequencing only: the other session's §1 changes the same seams.
+- **NDA-017 → migrate pre-existing projects on load.** Write `runOnChange-*: false` for the value
+  inputs of any node that has `Run` connected. **The decision is taken; the task is not written and
+  nobody owns it** — see the filed-not-fixed row below, and the constraints at the foot of
+  [NDA-017](../phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md).
 
 **Shipped, 2026-08-06 — the third batch (seven parallel agents, fourteen commits `54298d59`…`51f00310`):**
 
@@ -113,7 +117,7 @@ building on one.
 | CWF-009 has no admin route, so an editor Secrets panel has nothing to call | `HttpServer.ts` was outside that agent's scope. |
 | CWF-018's `timeoutMs` has no row in the Permissions panel | Backend + config + admin API are done; the editor control is not. |
 | **`runRetentionCleanup()` / `cleanupByAge` have zero call sites** | Fully implemented. **Nothing trims the execution-history table today.** Hence CWF-013's per-run cap of 200 log lines. |
-| **NDA-017 changed the run-on-value-change default and migrated nothing** | Repo-wide. It is what put a double-send one hop away in FH-023, and it silently reverses the contract graphs were authored against. Needs a decision. |
+| **NDA-017 changed the run-on-value-change default and migrated nothing** | Repo-wide. It is what put a double-send one hop away in FH-023, and it silently reverses the contract graphs were authored against. ✅ **DECIDED 2026-08-06 (Richard): migrate on load** — write `runOnChange-*: false` for the value inputs of any node that has `Run` connected, preserving what the author actually built. **Unowned, needs a task.** ⚠️ Two traps the task inherits, both already paid for once: a declared `default` never runs its setter, so "passive" cannot be expressed by omission — it must write `false` explicitly; and a **saved project applies a parameter before the port it governs exists**, which is exactly what a migration does at scale, and jest cannot reproduce it (a test sets parameters on a graph that is already built). Constraints in full at the foot of [NDA-017](../phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md). |
 | `impersonate()` writes `_Session` rows with `expiresAt`; `findSession` never reads it | An "expiring" impersonation session never expires (CWF-015). |
 | `fireWorkflow` never calls `recordTriggerFire` | Workflow-target fires are absent from trigger metrics (CWF-002). |
 | The Execution History panel's empty state says a function call is recorded "not node by node" | True only for a function with no Log node (CWF-013). |
