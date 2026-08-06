@@ -3,9 +3,12 @@
 **From:** found while driving [TALK-007](TALK-007-WHAT-CLOUD-FUNCTIONS-SHOULD-HAVE.md) §7's Run Tasks
 question, 2026-08-05. Not on anyone's list — it fell out of a probe whose fixture was wrong, which
 is the only reason anyone looked.
-**Status:** SHIPPED 2026-08-06 — slices 1 and 2. Slice 3 (the authoring-time warning) is still open,
-and so is the editor row for the new setting: the Permissions panel does not render `timeoutMs` yet,
-though the admin API it reads now returns it. Driven by
+**Status:** SHIPPED 2026-08-06 — slices 1 and 2. Slice 3 (the authoring-time warning) is still open.
+~~and so is the editor row for the new setting~~ — the **Permissions panel row landed the same day**
+(`25e9696c`): a `time limit (seconds)` field beside CWF-017's rate limit, on the same seam. It is
+authored in seconds and stored as `timeoutMs`; blank clears the entry and the service default
+applies, and a declared `0` is no limit at all — CWF-007 streaming's honest opt-out, and deliberately
+not the same as blank. Driven by
 `packages/nodegx-backend/tests/cloud-function-timeout.test.ts` (7 cases), not yet driven in a live
 editor. One cited mechanism was wrong and is **CORRECTED** in place below; everything else this doc
 said about `CloudRunner.run` and the workflow engine held up line for line.

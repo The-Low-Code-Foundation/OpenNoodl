@@ -2,7 +2,9 @@
 
 **From:** [TALK-007](TALK-007-WHAT-CLOUD-FUNCTIONS-SHOULD-HAVE.md) §6 row 3, approved 2026-08-05.
 **Status:** ✅ **shipped 2026-08-06** — slices 1–3 built and driven; slice 4 shipped as *two* doors
-(the store file and `NODEGX_SECRET_<NAME>`), **admin API deferred** — see below.
+(the store file and `NODEGX_SECRET_<NAME>`), and the **admin API landed later the same day**
+(`4aba4eb2`) once `HttpServer.ts` was in scope — see below. An editor Secrets panel is still not
+built, and is now the only part missing.
 **Sequenced before [CWF-010](CWF-010-THE-CRYPTO-KIT.md)**, which now has its signing key.
 
 ## What shipped
@@ -18,11 +20,23 @@
   in, `Do`, `Value` out, plus the outcome contract's `Done`/`Failure`/`Completed` and an `Error`
   string.
 - **Two doors in.** `<dataDir>/secrets.json` → `functions` → `<NAME>`, then
-  `NODEGX_SECRET_<NAME>` from the environment. **The admin API is deferred**: every admin route
-  family is constructed and dispatched in `HttpServer.ts`, which this pass was scoped out of. So an
-  editor Secrets panel has no backend route yet — do not assume one exists.
-- `SecretsStore.names(namespace)` exists for that future panel. There is deliberately still no
-  method that hands back a value (design question 4).
+  `NODEGX_SECRET_<NAME>` from the environment. ~~The admin API is deferred~~ — **it shipped
+  2026-08-06 (`4aba4eb2`)**: `GET /admin/secrets`, `PUT`/`DELETE /admin/secrets/:name`
+  ([admin-secrets.ts](../../../packages/nodegx-backend/src/server/admin-secrets.ts)), proxied to the
+  renderer as `backend:listSecrets` / `setSecret` / `deleteSecret`. The route has **no `:namespace`
+  segment**: the handler supplies `functions` exactly as `service.ts` does for a graph, so design
+  question 2 is answered by the same construction on both doors instead of by two checks.
+- `SecretsStore.names(namespace)` is what that route lists with, and remains the only reader —
+  **nothing hands back a value** (design question 4), including the new route: no GET of one, no
+  read-back after a write, and no length or fingerprint in the listing.
+- ⚠️ **Two things the admin route found, worth carrying forward.** (1) **Dev-open relaxes every
+  admin gate** on loopback (`HttpServer.checkAccess` step 2) — the posture the editor's own spawned
+  backend runs in — so "admin-gated" is not by itself a protection here; the protection is that
+  there is nothing to read. (2) A names-only listing of `secrets.json` is **misleading on its own**,
+  because the resolver has two doors: it would report "not provisioned" about a secret a function
+  resolves fine from the environment. The listing therefore reports the `NODEGX_SECRET_*` variable
+  names present too — names, not values, and `process.env` is already fully readable from inside any
+  cloud function (TALK-007 §3.1).
 
 ## Two doc premises that were wrong
 
