@@ -65,6 +65,7 @@
       "node_modules/dugite",
       "!test.js",
       "!src/main/main.js",
+      "!src/main/github-oauth-handler.js",
       "!src/main/src",
       "!src/editor/src",
       "!src/frames/viewer-frame/src",
