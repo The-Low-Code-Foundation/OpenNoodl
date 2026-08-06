@@ -6,6 +6,7 @@
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
+import { reapOrphanedBackends } from './backend/reaper';
 import { ToolError } from './errors';
 import { createServer } from './server';
 
@@ -41,6 +42,28 @@ async function main(): Promise<void> {
     process.stderr.write(USAGE);
     process.exitCode = 2;
     return;
+  }
+
+  // AAQ-011/F13 — reap first, serve second.
+  //
+  // This process may spawn backends, and it is the worst spawner in the product
+  // for orphaning them: no window to close, no quit event, and a client that can
+  // SIGKILL it at any moment. Startup is the one reliable moment we get, so a
+  // dead session's backends are cleaned up before this one adds any of its own.
+  // Deliberately awaited (a sweep is milliseconds unless something needs
+  // killing) and deliberately never fatal: a reaper that cannot start a server
+  // is worse than one that misses a process. It reports to stderr because stdout
+  // is the MCP protocol channel.
+  try {
+    const reaped = (await reapOrphanedBackends()).filter((row) => row.outcome !== 'owner-alive' && row.outcome !== 'self');
+    for (const row of reaped) {
+      process.stderr.write(
+        `noodl-mcp: orphaned backend "${row.backendName}" (${row.backendId}, pid ${row.pid}, port ${row.port}): ` +
+          `${row.outcome}${row.detail ? ` — ${row.detail}` : ''}\n`
+      );
+    }
+  } catch (err) {
+    process.stderr.write(`noodl-mcp: orphan sweep failed (${err instanceof Error ? err.message : err})\n`);
   }
 
   try {

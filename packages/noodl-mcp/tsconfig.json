@@ -6,7 +6,14 @@
     "skipLibCheck": true,
     "strictNullChecks": true,
     "isolatedModules": true,
-    "noEmit": true
+    "noEmit": true,
+    // AAQ-011/F13. Without this, TypeScript auto-includes EVERY `@types/*` package
+    // hoisted at the monorepo root — and `@types/jasmine` is one of them, because
+    // the editor's suite is jasmine. Its global `expect`/`describe` win over
+    // `@types/jest`'s, so every `toHaveLength` / `objectContaining` in this
+    // package's jest specs was a type error: ~40 of them, in a typecheck no gate
+    // runs. Naming the two we actually use ends that.
+    "types": ["jest", "node"]
   },
   "include": ["src/**/*", "tests/**/*.ts"]
 }

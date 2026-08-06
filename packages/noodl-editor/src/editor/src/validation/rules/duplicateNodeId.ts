@@ -82,8 +82,15 @@ export const duplicateNodeId: Rule = {
       }
 
       for (const [id, nodes] of byId) {
-        if (!componentsById.has(id)) componentsById.set(id, []);
-        componentsById.get(id).push(component.name);
+        // `has`-then-`get` reads as safe and is not: `Map.get` is typed
+        // `V | undefined` regardless, so the `.push` on it was the one
+        // `strictNullChecks` error in @noodl/mcp's typecheck (AAQ-011/F13).
+        let carriers = componentsById.get(id);
+        if (!carriers) {
+          carriers = [];
+          componentsById.set(id, carriers);
+        }
+        carriers.push(component.name);
 
         if (nodes.length < 2) continue;
 
