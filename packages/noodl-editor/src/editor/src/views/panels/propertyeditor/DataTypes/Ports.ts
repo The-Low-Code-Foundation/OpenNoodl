@@ -37,6 +37,7 @@ import { NumberWithUnits } from './NumberWithUnits';
 import { PopoutGroup } from './PopoutGroup';
 import { PropListType } from './PropListType';
 import {
+  WorkflowBackoffType,
   WorkflowCasesType,
   WorkflowConditionType,
   WorkflowFunctionRefType,
@@ -518,6 +519,11 @@ export class Ports extends View {
       return NodeLibrary.nameForPortType(type) === 'workflow-params';
     }
 
+    // CWF-005: an attempt count that shows the delay sequence it implies.
+    function isOfWorkflowBackoffType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-backoff';
+    }
+
     // WFA-005: a read-only fact about a trigger — a backend object drawn on the
     // canvas as an entry node. A row, not a control.
     function isOfWorkflowTriggerInfoType() {
@@ -569,6 +575,7 @@ export class Ports extends View {
     else if (isOfWorkflowCasesType()) return WorkflowCasesType;
     else if (isOfWorkflowValueType()) return WorkflowValueType;
     else if (isOfWorkflowParamsType()) return WorkflowParamsType;
+    else if (isOfWorkflowBackoffType()) return WorkflowBackoffType;
     else if (isOfWorkflowTriggerInfoType()) return WorkflowTriggerInfoType;
     else if (isOfWorkflowFunctionRefType()) return WorkflowFunctionRefType;
   }

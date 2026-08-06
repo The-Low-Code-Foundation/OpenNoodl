@@ -137,3 +137,24 @@ export const PORT_TYPE_PARAMS = 'workflow-params';
  * defensively in case anything ever writes one.
  */
 export const PORT_PARAM_MAPPING = '__paramMapping__';
+
+/**
+ * CWF-005: retry's attempt count, drawn with the delay sequence it implies.
+ *
+ * `maxAttempts` beside `delayMs`, `backoffMultiplier`, `maxDelayMs` and `jitter`
+ * is five numbers you have to do arithmetic on to know what the step will
+ * actually do. This row does the arithmetic.
+ */
+export const PORT_TYPE_BACKOFF = 'workflow-backoff';
+
+/**
+ * CWF-005: the served `control` names this editor has a bespoke port type for.
+ *
+ * A name that is not in here falls back to the control for the param's `type` —
+ * which is the whole reason `control` is a served string rather than an enum. A
+ * backend newer than this editor can name a control it has never heard of and the
+ * row still renders something usable.
+ */
+export const PORT_TYPE_FOR_CONTROL: Record<string, string> = {
+  'retry-backoff': PORT_TYPE_BACKOFF
+};

@@ -534,14 +534,31 @@ alternative branches (as after a `branch` or `switch`), which is the common case
 
 Invokes `ref` repeatedly with exponential backoff until it succeeds.
 
-| Param | Default | Description |
-|---|---|---|
-| `maxAttempts` | `3` | Total attempts, including the first. |
-| `delayMs` | `1000` | Delay before the second attempt. |
-| `backoffMultiplier` | `2` | Multiplies each subsequent delay. `1` = fixed. |
-| `maxDelayMs` | `60000` | Ceiling on any single delay. |
-| `jitter` | `false` | Randomise delays across [50%, 100%] to avoid retry storms. |
-| `retryOnStatus` | — | HTTP statuses worth retrying. Any other failure fails **immediately**. |
+| Param | Shown as | Default | Description |
+|---|---|---|---|
+| `maxAttempts` | Total attempts (incl. the first) | `3` | How many times the function is called **in total**. `1` means no retry. |
+| `delayMs` | First delay (ms) | `1000` | The wait before the **second** attempt. Later delays multiply from this. |
+| `backoffMultiplier` | Delay multiplier | `2` | Multiplies each subsequent delay. `1` = a fixed delay every time. |
+| `maxDelayMs` | Longest single delay (ms) | `60000` | Ceiling on any one delay, however far the multiplier has taken it. |
+| `jitter` | Spread delays randomly | `false` | Randomise each delay across [50%, 100%], to avoid retry storms. |
+| `retryOnStatus` | Retry ONLY these statuses | — | **Leave empty to retry any failure.** Set it and the meaning inverts. |
+
+Two of these have caught people out, and the property panel now says so where you
+read it rather than only in this table:
+
+- **`maxAttempts` counts the first call.** `4` means one attempt and three
+  retries; `1` means no retry at all, and used to be accepted without a word. The
+  panel labels it "Total attempts (incl. the first)" and says "1 means no retry"
+  when you type one.
+- **`retryOnStatus` is an allow-list, and setting it INVERTS the default.** Empty
+  means "retry any failure". Adding `503` to be helpful makes every other failure
+  fail immediately — which is usually right, and is never what adding one code to
+  a list looks like.
+
+The panel also draws the **delay sequence** beside the attempt count — "3
+attempts, waiting 1s, then 2s — up to 3s of delay" — because five numbers you
+have to multiply together are not a policy you can read. With jitter on it shows a
+range, because that is what you will observe.
 
 **Output:** the successful attempt's output, plus `attempts` and `retried`.
 

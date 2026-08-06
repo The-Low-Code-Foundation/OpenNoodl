@@ -155,6 +155,31 @@ describe('WFA-004 — the served step-kind catalog is what the canvas assumes', 
     expect(call.paramMapping!.reserved).toContain('previous');
   });
 
+  it('gives a bespoke control a type to fall back to (CWF-005)', () => {
+    // `control` is a served STRING, not an enum, so a backend newer than the
+    // editor can name a control the editor has never heard of. That only
+    // degrades gracefully if the param also declares a `type` the editor already
+    // knows a control for — otherwise the row renders nothing at all.
+    for (const kind of catalog.kinds) {
+      for (const param of kind.params as unknown as { name: string; type: string; control?: string }[]) {
+        if (!param.control) continue;
+        expect(KNOWN_PARAM_TYPES.has(param.type)).toBe(true);
+      }
+    }
+  });
+
+  it('labels the two retry knobs that lie in their names (CWF-005)', () => {
+    // `maxAttempts` counts the first call and `retryOnStatus` inverts the
+    // default when set. Neither NAME can change — it is the wire contract — so
+    // the served `displayName` is the only place the panel can be honest.
+    const retry = catalog.kinds.find((k) => k.kind === 'retry') as unknown as {
+      params: { name: string; displayName?: string }[];
+    };
+    if (!retry) return; // folded into call-function by a later task
+    expect(retry.params.find((p) => p.name === 'maxAttempts')?.displayName).toMatch(/incl\. the first/i);
+    expect(retry.params.find((p) => p.name === 'retryOnStatus')?.displayName).toMatch(/only these/i);
+  });
+
   it('marks the DSL-structure params raw, so they get an editor rather than a value control', () => {
     // WFA-003 marked these; a condition rendered as a value control would show
     // `{left: …, op: …}` as text, which §4 says fails the task.

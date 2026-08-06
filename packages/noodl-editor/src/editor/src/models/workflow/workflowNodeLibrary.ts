@@ -42,6 +42,7 @@ import {
   PORT_PARAM_MAPPING,
   PORT_TYPE_CASES,
   PORT_TYPE_CONDITION,
+  PORT_TYPE_FOR_CONTROL,
   PORT_TYPE_FUNCTION_REF,
   PORT_TYPE_PARAMS,
   PORT_TYPE_PATH,
@@ -85,7 +86,9 @@ export {
   PORT_TYPE_VALUE,
   PORT_TYPE_CASES,
   PORT_TYPE_PARAMS,
-  PORT_PARAM_MAPPING
+  PORT_PARAM_MAPPING,
+  PORT_TYPE_BACKOFF,
+  PORT_TYPE_FOR_CONTROL
 } from './workflowPorts';
 
 /**
@@ -118,6 +121,12 @@ function colorForCategory(category: string): string {
  */
 
 function portTypeForParam(param: StepParamSpec, catalog?: StepKindCatalog): unknown {
+  // CWF-005: a served `control` name wins over the type, when this editor has a
+  // port type for it. An unrecognised name falls through on purpose — see
+  // PORT_TYPE_FOR_CONTROL.
+  const bespoke = param.control ? PORT_TYPE_FOR_CONTROL[param.control] : undefined;
+  if (bespoke) return { name: bespoke };
+
   switch (param.type) {
     case 'enum':
       return { name: 'enum', enums: param.enums || [] };
@@ -235,7 +244,10 @@ function portsForKind(spec: StepKindSpec, catalog?: StepKindCatalog) {
 
     ports.push({
       name: param.name,
-      displayName: param.name,
+      // CWF-005: a served label wins over the param NAME. The name is the wire
+      // contract and cannot change without migrating every definition that sets
+      // it; the label is what the author reads. Two jobs, two fields.
+      displayName: param.displayName || param.name,
       type: param.raw ? portTypeForRawParam(param, catalog) : portTypeForParam(param, catalog),
       plug: 'input',
       group: GROUP_PARAMS,

@@ -67,8 +67,15 @@ import { isPlainObject, VALUE_LANGUAGE } from './values';
  * mapping still run, because the engine never needed the declaration. A pre-1.3.0
  * editor talking to a 1.3.0 backend ignores fields it does not know and renders
  * exactly what it rendered before.
+ * 1.4.0 — CWF-005 added `displayName` and `control` on a param. Two of retry's
+ * seven knobs lied in the only place people read — the field NAME — and neither
+ * could be renamed without migrating every definition that uses it, because the
+ * name is the wire contract. `displayName` separates the two jobs. `control`
+ * names a bespoke editor control, and an editor that does not recognise the name
+ * falls back to the control for the param's `type`, which is the whole reason it
+ * is a served string rather than an enum.
  */
-export const STEP_KIND_CATALOG_VERSION = '1.3.0';
+export const STEP_KIND_CATALOG_VERSION = '1.4.0';
 
 export interface StepParamSpec {
   name: string;
@@ -77,6 +84,26 @@ export interface StepParamSpec {
   default?: unknown;
   enums?: string[];
   description: string;
+  /**
+   * The label a property editor puts on the row. Defaults to `name`.
+   *
+   * CWF-005: `maxAttempts` is the case this exists for. The number means "how
+   * many calls in total", the name reads as "how many retries", and the
+   * description saying so was losing — a description is read once, a field name
+   * is read every time. The NAME cannot change: it is the wire contract, and
+   * renaming it would mean migrating every definition that sets it.
+   */
+  displayName?: string;
+  /**
+   * The name of a bespoke control a client's property editor should use for this
+   * param, when the control for its `type` will not do (CWF-005).
+   *
+   * Served rather than inferred, so the backend stays the authority on its own
+   * param vocabulary — and safe to add, because a client that does not recognise
+   * the name falls back to the control for `type`. That is the degradation story
+   * for an editor older than the backend it is talking to.
+   */
+  control?: string;
   /**
    * WFA-003: this param is a DSL STRUCTURE — a condition, a filter, a switch's
    * cases — not a value. Its operands use the value language, but the executor
@@ -426,27 +453,52 @@ export const STEP_KIND_SPECS: Record<StepKind, StepKindSpec> = {
     invokesFunction: true,
     params: [
       REF_PARAM,
-      { name: 'maxAttempts', type: 'number', default: 3, description: 'Total attempts, including the first. Min 1.' },
-      { name: 'delayMs', type: 'number', default: 1000, description: 'Delay before the second attempt.' },
+      {
+        name: 'maxAttempts',
+        displayName: 'Total attempts (incl. the first)',
+        // CWF-005: this row also draws the backoff preview, because the delay
+        // sequence is the thing seven separate number fields cannot show you.
+        control: 'retry-backoff',
+        type: 'number',
+        default: 3,
+        description: 'How many times the function is called IN TOTAL. 1 means no retry at all. Min 1.'
+      },
+      {
+        name: 'delayMs',
+        displayName: 'First delay (ms)',
+        type: 'number',
+        default: 1000,
+        description: 'How long to wait before the SECOND attempt. Later delays multiply from this.'
+      },
       {
         name: 'backoffMultiplier',
+        displayName: 'Delay multiplier',
         type: 'number',
         default: 2,
-        description: 'Each subsequent delay is multiplied by this. 1 = fixed delay.'
+        description: 'Each subsequent delay is multiplied by this. 1 = a fixed delay every time.'
       },
-      { name: 'maxDelayMs', type: 'number', default: 60000, description: 'Ceiling on any single backoff delay.' },
+      {
+        name: 'maxDelayMs',
+        displayName: 'Longest single delay (ms)',
+        type: 'number',
+        default: 60000,
+        description: 'Ceiling on any one backoff delay, however far the multiplier has taken it.'
+      },
       {
         name: 'jitter',
+        displayName: 'Spread delays randomly',
         type: 'boolean',
         default: false,
-        description: 'Randomise each delay across [50%, 100%] to avoid synchronised retry storms.'
+        description: 'Randomise each delay across [50%, 100%] of its computed length, to avoid retry storms.'
       },
       {
         name: 'retryOnStatus',
+        displayName: 'Retry ONLY these statuses',
         type: 'array',
         description:
-          'Optional HTTP status codes to retry. When set, any OTHER failure fails immediately — a 400 will not ' +
-          'get better on the third attempt.'
+          'Leave empty to retry any failure. Set it and the meaning INVERTS: only these HTTP statuses are ' +
+          'retried and every other failure fails immediately — which is usually what you want (a 400 will not ' +
+          'get better on the third attempt), and is never what adding one helpful code to the list looks like.'
       }
     ],
     routes: [],

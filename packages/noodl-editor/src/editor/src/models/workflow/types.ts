@@ -49,6 +49,15 @@ export interface StepParamSpec {
   default?: unknown;
   enums?: string[];
   description: string;
+  /** The row label. Falls back to `name` — see CWF-005's `maxAttempts`. */
+  displayName?: string;
+  /**
+   * A bespoke control this param wants, when the control for its `type` will not
+   * do. A name this editor does not recognise falls back to the type's control,
+   * which is what lets a NEWER backend name a control an OLDER editor has never
+   * heard of without breaking the row.
+   */
+  control?: string;
   /**
    * The param is a DSL structure (a condition, a filter, `switch.cases`), not a
    * value: its operands use the value language but the executor evaluates them

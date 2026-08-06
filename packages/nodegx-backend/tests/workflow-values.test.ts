@@ -327,9 +327,11 @@ describe('WFA-003 the served spec describes the value language', () => {
     // added `conditionLanguage`, because the workflow canvas renders a
     // condition from the served operator set rather than a bundled copy;
     // CWF-001 added `paramMapping`, so a client can render a row for the
-    // author-named params the engine has merged in since WFA-003.
+    // author-named params the engine has merged in since WFA-003; CWF-005 added
+    // `displayName` and `control`, because two of retry's knobs lied in the
+    // field NAME and the name is the wire contract and cannot change.
     // Bumping this line is the deliberate act the catalog's `version` is for.
-    expect(catalog.version).toBe('1.3.0');
+    expect(catalog.version).toBe('1.4.0');
   });
 
   it('marks every DSL param raw, and nothing else', () => {

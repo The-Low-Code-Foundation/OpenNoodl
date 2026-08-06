@@ -25,6 +25,7 @@ import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/Prope
 
 import { ConditionEditor } from '../components/WorkflowCondition/ConditionEditor';
 import { FunctionRefRow } from '../components/WorkflowCondition/FunctionRefRow';
+import { RetryBackoffRow } from '../components/WorkflowCondition/RetryBackoffRow';
 import { SwitchCasesEditor } from '../components/WorkflowCondition/SwitchCasesEditor';
 import { TriggerInfoRow } from '../components/WorkflowCondition/TriggerInfoRow';
 import { WorkflowParamsEditor } from '../components/WorkflowCondition/WorkflowParamsEditor';
@@ -298,6 +299,58 @@ export class WorkflowParamsType extends WorkflowTypeView {
           scope: this.scope,
           graph: this.graph,
           stepId: this.stepId
+        })
+      })
+    );
+  }
+}
+
+/**
+ * `maxAttempts`, with the delay sequence it implies (CWF-005 S1).
+ *
+ * The one row here that reads its SIBLINGS without writing them. The four other
+ * backoff numbers stay their own rows — each is individually meaningful — but
+ * nothing showed their product, so "3, 1000, 2, 60000" was arithmetic homework
+ * rather than a policy you could read.
+ *
+ * Re-renders on `parametersChanged` for the same reason `WorkflowFunctionRefType`
+ * does: change the multiplier in the row below and this preview is stale, and a
+ * stale preview of a delay sequence is worse than none.
+ */
+export class WorkflowBackoffType extends WorkflowTypeView {
+  static fromPort(args: TSFixme) {
+    return WorkflowTypeView.fill(new WorkflowBackoffType(), args);
+  }
+
+  render() {
+    const el = super.render();
+    this.graph?.findNodeWithId(this.stepId)?.on('parametersChanged', () => this.renderReact(), this);
+    return el;
+  }
+
+  dispose() {
+    this.graph?.findNodeWithId(this.stepId)?.off(this);
+    super.dispose();
+  }
+
+  renderReact() {
+    if (!this.root) return;
+    const get = (name: string) => this.parent.model.getParameter(name);
+    this.root.render(
+      React.createElement(PropertyPanelRow, {
+        label: this.displayName,
+        isChanged: get(this.name) !== undefined,
+        onReset: () => this.write(undefined),
+        children: React.createElement(RetryBackoffRow, {
+          value: get(this.name),
+          onChange: (v: number | undefined) => this.write(v),
+          policy: {
+            delayMs: get('delayMs'),
+            backoffMultiplier: get('backoffMultiplier'),
+            maxDelayMs: get('maxDelayMs'),
+            jitter: get('jitter')
+          },
+          ariaLabel: this.displayName
         })
       })
     );
