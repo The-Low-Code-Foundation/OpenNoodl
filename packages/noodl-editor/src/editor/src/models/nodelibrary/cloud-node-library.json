@@ -1375,8 +1375,9 @@
           "plug": "input",
           "group": "Access Control Rules",
           "displayName": "Access Control Rules",
-          "description": "Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; backends that have no per-record access control ignore them",
-          "index": 1000
+          "description": "Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; the NodeGX backend enforces them on every query and every realtime event, and backends with no per-record access control ignore them",
+          "index": 1000,
+          "tooltip": "Access Control Rules\n\nRules written onto the record itself and enforced by the backend, not by your app.\n\nOn the NodeGX backend a record you have no Read rule for is never returned by a query, and its changes are never delivered to you over realtime. It is a real permission boundary, not a display filter.\n\nBackends that control access another way — Supabase, PostgREST, Directus, PocketBase — have no per-record ACL and ignore these rules. On those this port is disabled, with the reason on the row."
         },
         {
           "name": "done",
@@ -1600,8 +1601,9 @@
           "plug": "input",
           "group": "Access Control Rules",
           "displayName": "Access Control Rules",
-          "description": "Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; backends that have no per-record access control ignore them",
-          "index": 1000
+          "description": "Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; the NodeGX backend enforces them on every query and every realtime event, and backends with no per-record access control ignore them",
+          "index": 1000,
+          "tooltip": "Access Control Rules\n\nRules written onto the record itself and enforced by the backend, not by your app.\n\nOn the NodeGX backend a record you have no Read rule for is never returned by a query, and its changes are never delivered to you over realtime. It is a real permission boundary, not a display filter.\n\nBackends that control access another way — Supabase, PostgREST, Directus, PocketBase — have no per-record ACL and ignore these rules. On those this port is disabled, with the reason on the row."
         },
         {
           "name": "done",
@@ -9169,6 +9171,375 @@
       ]
     },
     {
+      "name": "noodl.cloud.addusertorole",
+      "displayNodeName": "Add User To Role",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/add-user-to-role",
+      "shortDocs": "https://docs.noodl.net/nodes/cloud-functions/add-user-to-role-short.md",
+      "category": "Cloud",
+      "color": "data",
+      "connectionPanel": {
+        "groupPriority": [
+          "General",
+          "Actions",
+          "Roles",
+          "Events",
+          "Error"
+        ]
+      },
+      "ports": [
+        {
+          "name": "role",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Role",
+          "description": "Name of the role to put the user in, matching the name a permission rule uses after \"role:\" — letters, digits, underscore and hyphen only"
+        },
+        {
+          "name": "userId",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "User Id",
+          "description": "Object id of the account to act on, usually wired from Create User or a Request parameter; blank is a Failure rather than a fallback to whoever called the function"
+        },
+        {
+          "name": "createRole",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Create Role If Missing",
+          "description": "Creates the role when it does not exist yet, instead of failing; leave it off so a mistyped name is a loud Failure rather than a role no rule ever names",
+          "default": false
+        },
+        {
+          "name": "treatUnchangedAs",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced",
+          "displayName": "Treat Unchanged as",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way; Failure suits one whose idiom is that a no-op is a bug. Completed fires whatever this is set to.",
+          "default": "unchanged"
+        },
+        {
+          "name": "add",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do",
+          "description": "Adds the user to the role"
+        },
+        {
+          "name": "roles",
+          "type": "array",
+          "plug": "output",
+          "group": "Roles",
+          "displayName": "Roles",
+          "description": "Every role this user is in once the operation has finished, read back through the same resolver the access check itself uses"
+        },
+        {
+          "name": "roleCreated",
+          "type": "boolean",
+          "plug": "output",
+          "group": "Roles",
+          "displayName": "Role Was Created",
+          "description": "True when this call created the role as well as the membership, which is worth branching on because a brand-new role is named by no permission rule yet"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once the user is in the role and Roles lists it"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged",
+          "description": "Fires when the user was already in this role, with Roles still listing it, so a signup function re-run does not go red; set Treat Unchanged as to Failure if a repeat is a bug"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when the membership could not be written — a blank Role or User Id, a user id nothing resolves, or a role that does not exist and Create Role If Missing left off"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error",
+          "description": "Why the last operation could not be performed"
+        }
+      ]
+    },
+    {
+      "name": "noodl.cloud.removeuserfromrole",
+      "displayNodeName": "Remove User From Role",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/remove-user-from-role",
+      "shortDocs": "https://docs.noodl.net/nodes/cloud-functions/remove-user-from-role-short.md",
+      "category": "Cloud",
+      "color": "data",
+      "connectionPanel": {
+        "groupPriority": [
+          "General",
+          "Actions",
+          "Roles",
+          "Events",
+          "Error"
+        ]
+      },
+      "ports": [
+        {
+          "name": "role",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Role",
+          "description": "Name of the role to take the user out of, matching the name a permission rule uses after \"role:\""
+        },
+        {
+          "name": "userId",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "User Id",
+          "description": "Object id of the account to act on, usually wired from Create User or a Request parameter; blank is a Failure rather than a fallback to whoever called the function"
+        },
+        {
+          "name": "treatUnchangedAs",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced",
+          "displayName": "Treat Unchanged as",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way; Failure suits one whose idiom is that a no-op is a bug. Completed fires whatever this is set to.",
+          "default": "unchanged"
+        },
+        {
+          "name": "remove",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do",
+          "description": "Removes the user from the role"
+        },
+        {
+          "name": "roles",
+          "type": "array",
+          "plug": "output",
+          "group": "Roles",
+          "displayName": "Roles",
+          "description": "Every role this user is in once the operation has finished, read back through the same resolver the access check itself uses"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once the user is out of the role and Roles no longer lists it"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged",
+          "description": "Fires when the user was not in this role, or the role does not exist, so a de-provisioning job re-run does not go red; Error says which of the two it was"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when the membership could not be removed — a blank Role or User Id, or a store that would not write"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error",
+          "description": "Why the last operation could not be performed"
+        }
+      ]
+    },
+    {
+      "name": "noodl.cloud.getuserroles",
+      "displayNodeName": "Get User Roles",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/get-user-roles",
+      "shortDocs": "https://docs.noodl.net/nodes/cloud-functions/get-user-roles-short.md",
+      "category": "Cloud",
+      "color": "data",
+      "connectionPanel": {
+        "groupPriority": [
+          "General",
+          "Actions",
+          "Roles",
+          "Events",
+          "Error"
+        ]
+      },
+      "ports": [
+        {
+          "name": "userId",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "User Id",
+          "description": "Object id of the account to act on, usually wired from Create User or a Request parameter; blank is a Failure rather than a fallback to whoever called the function"
+        },
+        {
+          "name": "treatUnchangedAs",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced",
+          "displayName": "Treat Unchanged as",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way; Failure suits one whose idiom is that a no-op is a bug. Completed fires whatever this is set to.",
+          "default": "unchanged"
+        },
+        {
+          "name": "read",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do",
+          "description": "Reads the roles this user is in"
+        },
+        {
+          "name": "roles",
+          "type": "array",
+          "plug": "output",
+          "group": "Roles",
+          "displayName": "Roles",
+          "description": "Every role this user is in once the operation has finished, read back through the same resolver the access check itself uses"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once Roles holds every role this user is in"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged",
+          "description": "Fires when the user is in no roles at all, which is the branch a membership check wants"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when the roles could not be read — a blank User Id, or a user id nothing resolves"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error",
+          "description": "Why the last operation could not be performed"
+        }
+      ]
+    },
+    {
       "name": "noodl.cloud.aggregate",
       "displayNodeName": "Aggregate Records",
       "docs": "https://docs.noodl.net/nodes/cloud-functions/cloud-data/aggregate-records",
@@ -9673,6 +10044,14 @@
               "noodl.cloud.updateuser",
               "noodl.cloud.deleteuser",
               "noodl.cloud.verifysessiontoken"
+            ]
+          },
+          {
+            "name": "Roles",
+            "items": [
+              "noodl.cloud.addusertorole",
+              "noodl.cloud.removeuserfromrole",
+              "noodl.cloud.getuserroles"
             ]
           }
         ]

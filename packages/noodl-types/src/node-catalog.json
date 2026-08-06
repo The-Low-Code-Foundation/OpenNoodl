@@ -16934,7 +16934,7 @@
             "autoName": "Rule"
           },
           "isSignal": false,
-          "description": "Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; backends that have no per-record access control ignore them",
+          "description": "Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; the NodeGX backend enforces them on every query and every realtime event, and backends with no per-record access control ignore them",
           "index": 1000
         },
         {
@@ -24707,7 +24707,7 @@
             "autoName": "Rule"
           },
           "isSignal": false,
-          "description": "Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; backends that have no per-record access control ignore them",
+          "description": "Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; the NodeGX backend enforces them on every query and every realtime event, and backends with no per-record access control ignore them",
           "index": 1000
         },
         {
@@ -52772,6 +52772,175 @@
       }
     },
     {
+      "typeName": "noodl.cloud.addusertorole",
+      "displayName": "Add User To Role",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/add-user-to-role",
+      "inputs": [
+        {
+          "name": "add",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Adds the user to the role"
+        },
+        {
+          "name": "createRole",
+          "displayName": "Create Role If Missing",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Creates the role when it does not exist yet, instead of failing; leave it off so a mistyped name is a loud Failure rather than a role no rule ever names"
+        },
+        {
+          "name": "role",
+          "displayName": "Role",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the role to put the user in, matching the name a permission rule uses after \"role:\" — letters, digits, underscore and hyphen only"
+        },
+        {
+          "name": "treatUnchangedAs",
+          "displayName": "Treat Unchanged as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "unchanged",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way; Failure suits one whose idiom is that a no-op is a bug. Completed fires whatever this is set to."
+        },
+        {
+          "name": "userId",
+          "displayName": "User Id",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Object id of the account to act on, usually wired from Create User or a Request parameter; blank is a Failure rather than a fallback to whoever called the function"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the user is in the role and Roles lists it"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the last operation could not be performed"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the membership could not be written — a blank Role or User Id, a user id nothing resolves, or a role that does not exist and Create Role If Missing left off"
+        },
+        {
+          "name": "roleCreated",
+          "displayName": "Role Was Created",
+          "group": "Roles",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True when this call created the role as well as the membership, which is worth branching on because a brand-new role is named by no permission rule yet"
+        },
+        {
+          "name": "roles",
+          "displayName": "Roles",
+          "group": "Roles",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every role this user is in once the operation has finished, read back through the same resolver the access check itself uses"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the user was already in this role, with Roles still listing it, so a signup function re-run does not go red; set Treat Unchanged as to Failure if a repeat is a bug"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
+    },
+    {
       "typeName": "noodl.cloud.aggregate",
       "displayName": "Aggregate Records",
       "category": "Cloud Services",
@@ -53203,6 +53372,141 @@
           },
           "isSignal": true,
           "description": "Fires when there is no user with this id — the account is already absent, which is the goal met"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
+    },
+    {
+      "typeName": "noodl.cloud.getuserroles",
+      "displayName": "Get User Roles",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/get-user-roles",
+      "inputs": [
+        {
+          "name": "read",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Reads the roles this user is in"
+        },
+        {
+          "name": "treatUnchangedAs",
+          "displayName": "Treat Unchanged as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "unchanged",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way; Failure suits one whose idiom is that a no-op is a bug. Completed fires whatever this is set to."
+        },
+        {
+          "name": "userId",
+          "displayName": "User Id",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Object id of the account to act on, usually wired from Create User or a Request parameter; blank is a Failure rather than a fallback to whoever called the function"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once Roles holds every role this user is in"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the last operation could not be performed"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the roles could not be read — a blank User Id, or a user id nothing resolves"
+        },
+        {
+          "name": "roles",
+          "displayName": "Roles",
+          "group": "Roles",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every role this user is in once the operation has finished, read back through the same resolver the access check itself uses"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the user is in no roles at all, which is the branch a membership check wants"
         }
       ],
       "dynamicPorts": null,
@@ -53666,6 +53970,152 @@
           },
           "isSignal": false,
           "description": "Whether the token verified. False whenever Failure fired, so either can be wired"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
+    },
+    {
+      "typeName": "noodl.cloud.removeuserfromrole",
+      "displayName": "Remove User From Role",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/remove-user-from-role",
+      "inputs": [
+        {
+          "name": "remove",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Removes the user from the role"
+        },
+        {
+          "name": "role",
+          "displayName": "Role",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the role to take the user out of, matching the name a permission rule uses after \"role:\""
+        },
+        {
+          "name": "treatUnchangedAs",
+          "displayName": "Treat Unchanged as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "unchanged",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way; Failure suits one whose idiom is that a no-op is a bug. Completed fires whatever this is set to."
+        },
+        {
+          "name": "userId",
+          "displayName": "User Id",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Object id of the account to act on, usually wired from Create User or a Request parameter; blank is a Failure rather than a fallback to whoever called the function"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the user is out of the role and Roles no longer lists it"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the last operation could not be performed"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the membership could not be removed — a blank Role or User Id, or a store that would not write"
+        },
+        {
+          "name": "roles",
+          "displayName": "Roles",
+          "group": "Roles",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every role this user is in once the operation has finished, read back through the same resolver the access check itself uses"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the user was not in this role, or the role does not exist, so a de-provisioning job re-run does not go red; Error says which of the two it was"
         }
       ],
       "dynamicPorts": null,
