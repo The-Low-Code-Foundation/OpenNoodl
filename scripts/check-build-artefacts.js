@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Two checks on the boundary between source and build output.
+ * Three checks on the boundary between source and build output.
  *
  * **1. No generated editor build output is tracked in git.** REV-008. Until this
  * check existed, `src/main/main.bundle.js` and `src/editor/index.bundle.js` were
@@ -9,24 +9,42 @@
  * nothing in dev, and the editor opened a black window — see
  * dev-docs/reference/DEBUG-INFRASTRUCTURE.md.
  *
- * **2. Every `extraResources` entry is something the build actually produces.**
- * MCP-002. `extraResources` is how files get *outside* the asar, where an
- * external process can read them — the two MCP servers and the backend service
- * all depend on it. Every one of those sources lives in a gitignored `dist/`,
- * so it exists only where someone ran the right build, and nothing else in the
- * pipeline says a word when one is missing: the shipped app is simply short a
- * file, discovered by a user rather than by us. (`noodl.deploy.js` is the
- * standing example of exactly this — gitignored, rebuilt by nothing.)
+ * **2. Every packaged-resource entry resolves to something that will be there.**
+ * MCP-002. `extraResources`/`extraFiles` are how files get *outside* the asar,
+ * where an external process can read them — the two MCP servers, the backend
+ * service, and the legal documents the About menu opens all depend on it.
+ * electron-builder only *warns* on a missing source (`fileMatcher.js`: "file
+ * source doesn't exist") and packages the app anyway, so the shipped app is
+ * simply short a file, discovered by a user rather than by us.
+ *
+ * Two kinds of source, checked differently:
+ *   - **build output** (a path through `dist/`) exists only where a build ran,
+ *     so on every commit we assert a build step *exists*, and under `--built`
+ *     that it actually produced the file.
+ *   - **tracked files** (`../../PRIVACY.md`, `../../TERMS.md`) are committed and
+ *     therefore always present — so their absence is asserted on every commit,
+ *     not deferred to release time. A rename that misses `package.json` used to
+ *     surface only in a packaged build, which is the expensive place to find it.
+ *
+ * **3. Every packaging workflow builds the sidecars first.** The thing MCP-002
+ * actually was: `.github/workflows/{release,nightly}.yml` call
+ * `build:editor:_viewer` and `build:editor:_editor` *directly*, bypassing
+ * `scripts/build-editor.ts` where the sidecar builds used to live — so CI
+ * packaged an app with no `Resources/nodegx-backend/cli.js` and stayed green.
+ * A workflow that packages without `npm run build:sidecars` in front of it is
+ * that same defect, and check 2 cannot see it: on a CI runner the sources are
+ * missing for a reason no static path check can detect.
  *
  * Usage:
  *   npm run check:artefacts            # repo checks only — safe in a fresh clone
  *   node scripts/check-build-artefacts.js --built
- *                                      # ...and the files must exist on disk
+ *                                      # ...and the build outputs must exist too
  *
- * `--built` is run by scripts/build-editor.ts after the package builds and
- * before electron-builder, so a missing binary fails the build. Without the
- * flag nothing on disk is required, because a clean checkout has built nothing
- * and this must stay green there.
+ * `--built` is run at the end of `npm run build:sidecars`, which both packaging
+ * workflows and scripts/build-editor.ts run before electron-builder — so a
+ * missing binary fails the build. Without the flag nothing that needs a build is
+ * required on disk, because a clean checkout has built nothing and this must
+ * stay green there.
  *
  * Not a lint rule about file *names*: check 1 lists the exact paths webpack
  * writes, so a legitimately-tracked file that merely looks generated is never
@@ -83,45 +101,151 @@ if (tracked.length > 0) {
 console.log('✓ no generated editor build artefacts are tracked');
 
 // ---------------------------------------------------------------------------
-// Check 2 — extraResources
+// Check 2 — packaged resources (extraResources / extraFiles)
 // ---------------------------------------------------------------------------
 
 const editorPackage = JSON.parse(fs.readFileSync(path.join(EDITOR_DIR, 'package.json'), 'utf8'));
-const extraResources = (editorPackage.build && editorPackage.build.extraResources) || [];
-const buildScript = fs.readFileSync(path.join(ROOT, 'scripts', 'build-editor.ts'), 'utf8');
+const rootPackage = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+const buildConfig = editorPackage.build || {};
+
+/**
+ * `npm run build:sidecars` — the ONE list of sidecar builds, and the only one CI
+ * runs. `scripts/build-editor.ts` (the local packaging entry point) delegates to
+ * it rather than keeping a copy, precisely because a second list is how MCP-002
+ * happened. Anchoring the check here rather than on build-editor.ts is the
+ * difference between asserting the thing CI does and asserting a comment.
+ */
+const SIDECAR_SCRIPT_NAME = 'build:sidecars';
+const sidecarScript = (rootPackage.scripts && rootPackage.scripts[SIDECAR_SCRIPT_NAME]) || '';
+const localBuildScript = fs.readFileSync(path.join(ROOT, 'scripts', 'build-editor.ts'), 'utf8');
 
 const problems = [];
 
-for (const entry of extraResources) {
-  if (!entry || typeof entry.from !== 'string') continue;
+/**
+ * electron-builder accepts a bare string, a `{from,to}` object, or an array of
+ * either, for both `extraResources` and `extraFiles`. A bare string is its own
+ * `from`. Anything else (no string `from`) is a config shape this check cannot
+ * reason about, and is reported rather than skipped — a silently-skipped entry
+ * is the failure mode this whole file exists to prevent.
+ */
+function collectPackagedEntries(field) {
+  const raw = buildConfig[field];
+  if (raw == null) return [];
+  const list = Array.isArray(raw) ? raw : [raw];
+  const entries = [];
+  for (const item of list) {
+    if (typeof item === 'string') {
+      entries.push({ field, from: item, to: item });
+    } else if (item && typeof item.from === 'string') {
+      entries.push({ field, from: item.from, to: item.to || item.from });
+    } else {
+      problems.push(`${field} contains an entry with no string \`from\` — this check cannot verify it: ${JSON.stringify(item)}`);
+    }
+  }
+  return entries;
+}
+
+const packagedEntries = [...collectPackagedEntries('extraResources'), ...collectPackagedEntries('extraFiles')];
+
+// `asarUnpack` is deliberately NOT in the list above: its entries are globs
+// matched against the *packaged* app, not source paths, so there is nothing to
+// resolve on disk. It is empty today; if one is added, it needs its own rule.
+const asarUnpack = buildConfig.asarUnpack;
+if (asarUnpack != null && (Array.isArray(asarUnpack) ? asarUnpack.length : 1) > 0) {
+  console.log(`  note: build.asarUnpack has ${Array.isArray(asarUnpack) ? asarUnpack.length : 1} entry/entries (globs; not path-checked here)`);
+}
+
+let producedCount = 0;
+let trackedCount = 0;
+
+for (const entry of packagedEntries) {
   const from = path.resolve(EDITOR_DIR, entry.from);
   const relative = path.relative(ROOT, from);
+  const isGlob = /[*?[\]{}]/.test(entry.from);
 
-  // Only build output is checked. `../../PRIVACY.md` and friends are tracked
-  // files that are always there, and a check that demanded a build step for
-  // them would be noise.
+  // Build output vs. tracked file. A path through `dist/` is produced; anything
+  // else is a committed file that must already be in the checkout.
   const produced = /(^|[\\/])dist[\\/]/.test(entry.from);
 
   if (produced) {
+    producedCount++;
     // Which package's dist is this? `../<pkg>/dist/...`
     const match = /^\.\.[\\/]([^\\/]+)[\\/]/.exec(entry.from);
     const pkg = match && match[1];
-    // ⚠️ A name-mention check, not a path match: build-editor.ts builds these
-    // in a loop over an array of names, so the literal `packages/noodl-mcp`
-    // never appears in it. The failure this is here to catch is a resource
-    // whose package the build script has never heard of — added by hand, or
-    // left behind when a build step was deleted. The real assertion is
-    // `--built` below; this one is what runs on every commit.
-    if (pkg && !buildScript.includes(pkg)) {
+    // ⚠️ A name-mention check, not a path match: the sidecar script builds each
+    // package by directory name, so the literal `packages/noodl-mcp` never
+    // appears in it. The failure this catches is a resource whose package
+    // nothing builds — added by hand, or left behind when a build step was
+    // deleted. The real assertion is `--built`; this one runs on every commit.
+    if (pkg && !sidecarScript.includes(pkg)) {
       problems.push(
-        `${entry.from} is packaged, but scripts/build-editor.ts never mentions "${pkg}" — ` +
-          'nothing builds it before electron-builder runs.'
+        `${entry.field} entry ${entry.from} is packaged, but \`npm run ${SIDECAR_SCRIPT_NAME}\` never mentions "${pkg}" — ` +
+          'nothing builds it before electron-builder runs, and CI packages through that script.'
       );
+    }
+    if (pkg && !localBuildScript.includes(pkg)) {
+      problems.push(
+        `${entry.field} entry ${entry.from} is packaged, but scripts/build-editor.ts never mentions "${pkg}".`
+      );
+    }
+  } else {
+    trackedCount++;
+    // A committed file. Always assert it — waiting for `--built` defers a
+    // rename/delete to release time, which is the expensive place to find it.
+    if (!isGlob && !fs.existsSync(from)) {
+      problems.push(
+        `${entry.field} entry ${entry.from} points at ${relative}, which does not exist. ` +
+          `It is not build output, so nothing will ever create it — the app would ship without ${entry.to}.`
+      );
+      continue;
     }
   }
 
-  if (REQUIRE_BUILT && !fs.existsSync(from)) {
-    problems.push(`${relative} is missing — extraResources would ship the app without ${entry.to}.`);
+  if (REQUIRE_BUILT && !isGlob && !fs.existsSync(from)) {
+    problems.push(`${relative} is missing — ${entry.field} would ship the app without ${entry.to}.`);
+  }
+}
+
+// The `--built` assertion only protects a build that actually runs it. Both
+// packaging workflows reach it through `build:sidecars`; if that tail is
+// dropped, every check below degrades to electron-builder's warning again.
+if (!/check-build-artefacts(\.js)?\s+--built/.test(sidecarScript)) {
+  problems.push(
+    `\`npm run ${SIDECAR_SCRIPT_NAME}\` no longer ends in \`node scripts/check-build-artefacts.js --built\` — ` +
+      'nothing then asserts the sidecars were produced before electron-builder packages them.'
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Check 3 — every packaging workflow builds the sidecars first
+// ---------------------------------------------------------------------------
+
+const WORKFLOW_DIR = path.join(ROOT, '.github', 'workflows');
+/** The step that invokes electron-builder. */
+const PACKAGES_APP = /npm run build:editor:_editor/;
+/**
+ * Either the sidecar script itself, or the local entry point that calls it.
+ * ⚠️ The trailing `(?![:\w-])` is load-bearing: `\b` would let `build:editor`
+ * match inside `npm run build:editor:_viewer`, which every packaging workflow
+ * runs and which builds no sidecars at all — the check would then pass on the
+ * exact workflow shape it exists to reject.
+ */
+const BUILDS_SIDECARS = /npm run (?:build:sidecars|build:editor)(?![:\w-])/;
+
+let workflowsChecked = 0;
+if (fs.existsSync(WORKFLOW_DIR)) {
+  for (const file of fs.readdirSync(WORKFLOW_DIR)) {
+    if (!/\.ya?ml$/.test(file)) continue;
+    const yaml = fs.readFileSync(path.join(WORKFLOW_DIR, file), 'utf8');
+    if (!PACKAGES_APP.test(yaml)) continue;
+    workflowsChecked++;
+    if (!BUILDS_SIDECARS.test(yaml)) {
+      problems.push(
+        `.github/workflows/${file} packages the app (build:editor:_editor) without running \`npm run build:sidecars\` first — ` +
+          'electron-builder only warns on a missing extraResources source, so that job would publish an app ' +
+          'with no Resources/nodegx-backend/cli.js and stay green. (MCP-002)'
+      );
+    }
   }
 }
 
@@ -130,16 +254,17 @@ if (problems.length > 0) {
   for (const problem of problems) console.error(`    ${problem}`);
   console.error(
     '\nextraResources is what puts a file OUTSIDE the asar, where an external\n' +
-      'process (the MCP servers, the backend service) can read it. A missing one\n' +
-      'is not a build error — it is an app that ships without the file and fails\n' +
-      "on someone's machine.\n"
+      'process (the MCP servers, the backend service) or a window (the legal\n' +
+      'documents) can read it. A missing one is not a build error — it is an app\n' +
+      "that ships without the file and fails on someone's machine.\n"
   );
   process.exit(1);
 }
 
 console.log(
   REQUIRE_BUILT
-    ? `✓ all ${extraResources.length} extraResources entries are built and present`
-    : `✓ all ${extraResources.length} extraResources entries have a build step`
+    ? `✓ all ${packagedEntries.length} packaged-resource entries are present (${producedCount} built, ${trackedCount} tracked)`
+    : `✓ all ${packagedEntries.length} packaged-resource entries resolve (${producedCount} have a build step, ${trackedCount} tracked and present)`
 );
+console.log(`✓ ${workflowsChecked} packaging workflow(s) build the sidecars before electron-builder`);
 process.exit(0);
